@@ -7,6 +7,8 @@ set_property(TARGET shk PROPERTY CXX_STANDARD 11)
 set(RC_ENABLE_CATCH ON)
 add_subdirectory(vendor/rapidcheck)
 
-add_executable(shk_test test/main.cpp)
+add_executable(shk_test
+  test/main.cpp
+  test/properties.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_link_libraries(shk_test catch rapidcheck rapidcheck_catch)

@@ -64,27 +64,6 @@ Steps of a Shuriken build:
     - delete stale outputs
     - record data in the invocation log
 
-When testing, verify the following properties:
-* Correctness
-  * Build steps should actually be performed
-  * Building inputs I, changing the inputs to I' and building should yield the same results as building I' with nothing before
-  * Building inputs I, changing the inputs to I', building, then changing back to I should result in the same state as the initial build
-  * Performing a build and then cleaning should leave the system in the original state
-  * Test behavior when terminated mid-build
-* Efficiency
-  * When performing a build and then later another build, the second build should do nothing
-  * Builds should be minimal. How to define that?
-  * Test restat
-  * Test parallelism
-* Detecting errors
-  * Builds with insufficiently declared dependencies should fail
-  * Builds with steps that read output files should fail
-  * Builds with steps that modify input files should fail
-  * Builds with steps that access network should fail
-  * Builds with steps that spawn daemons should fail
-  * Builds that declare cyclic dependencies should fail
-  * Environment variables should be restricted
-
 Stuff that would be good to have:
 - Invocation structs
 - Manifest graph structs
