@@ -1,0 +1,122 @@
+https://www.kernel.org/pub/software/scm/git/docs/technical/racy-git.txt
+
+https://github.com/apenwarr/redo#readme
+http://cr.yp.to/redo/honest-script.html
+
+Features of Ninja that are unnecessary when detecting outputs and inputs:
+* All dependencies behave as order only dependencies.
+* msvc_deps_prefix, deps, depfile are unnecessary
+
+
+Build steps in Shuriken must fulfill the following requirements:
+* Must be a pure function; given the same input must generate the same output
+* The output must be written only as files and output to stdin/stderr
+* The input must be read only from the file system, from the command line and from
+  environment variables. This means that input must not come from stdin, network, other
+  processes, devices etc. Ideally it should also not depend on time or randomness.
+* Must not modify input files. This also includes that input files must not be moved.
+  (Every file that the build step did not create is an input file.)
+* When inputs are outputs of other build steps, those must be declared as dependencies.
+* When the command of the build step returns, all of the processes it created must be dead.
+
+
+Steps of a Shuriken build:
+* Read the manifest file, build Manifest graph, which contains
+  - All build steps:
+    - Other build steps that (order-only) depend on this build step
+    - Command line invocation
+    - bool restat
+* Read the invocation log, which contains
+  - All build invocations that have been successfully run:
+    - Output files fingerprints
+    - Inputs (fingerprints, but also make sure to handle the access syscall)
+    - (Hash of) the build step that the invocation is based on
+
+* Find build invocations that no longer exist in the Manifest graph
+  - Remove the outputs
+* Find build invocations that are dirty
+  - Verify input and output fingerprints
+* Find build steps that have no corresponding build invocation
+
+* Construct Tasks graph:
+  - From dirty invocations and build steps that don't have an invocation
+  - Each task contains
+    - Command line invocation
+    - Output file fingerprints of prior build invocation (if any)
+    - bool restat
+    - Other tasks that depend on this one
+    - The number of tasks that this task depends on
+      - Decremented if a restat task changes nothing
+      - The command is not run if the number is zero
+
+* Execute Tasks graph:
+  - Invoke commands in parallel
+    - Restrict env vars
+  - Lint
+    - File system access
+      - Do not read outputs
+      - Do not modify inputs (move or change contents)
+      - Verify that any input files that are outputs of other build invocations are
+        declared as dependencies. (How to do this efficiently?)
+    - Disallowed syscalls
+    - Detect and reject daemons
+  - When a command is done
+    - delete stale outputs
+    - record data in the invocation log
+
+When testing, verify the following properties:
+* Correctness
+  * Build steps should actually be performed
+  * Building inputs I, changing the inputs to I' and building should yield the same results as building I' with nothing before
+  * Building inputs I, changing the inputs to I', building, then changing back to I should result in the same state as the initial build
+  * Performing a build and then cleaning should leave the system in the original state
+  * Test behavior when terminated mid-build
+* Efficiency
+  * When performing a build and then later another build, the second build should do nothing
+  * Builds should be minimal. How to define that?
+  * Test restat
+  * Test parallelism
+* Detecting errors
+  * Builds with insufficiently declared dependencies should fail
+  * Builds with steps that read output files should fail
+  * Builds with steps that modify input files should fail
+  * Builds with steps that access network should fail
+  * Builds with steps that spawn daemons should fail
+  * Builds that declare cyclic dependencies should fail
+  * Environment variables should be restricted
+
+Stuff that would be good to have:
+- Invocation structs
+- Manifest graph structs
+- Tasks graph structs
+- FileSystem, with in memory and real implementations (for efficient testing)
+- CommandRunner
+  - takes a command
+  - returns
+    - Input files
+    - Output files
+    - return code
+    - stdout, stderr output
+    - List of linting errors
+- Fingerprint stuff
+- Function to parse manifest
+* Hashing function
+* Functionality to parse and write to the invocation log
+- Function to find build invocations that no longer exist in the Manifest graph
+- Function to find build invocations that are dirty
+- Function to find build steps that have no corresponding build invocation
+- Function to construct Tasks graph
+- Function to execute a Tasks graph
+- Function to delete outputs
+* Function to detect insufficiently declared dependencies (how to do this?)
+
+Steal directly from Ninja:
+* getopt
+* manifest_parser / lexer (with modifications)
+* deps_log (refactor into invocation log)
+* eval_env
+* edit_distance
+* line_printer
+* sha1* (from shuriken)
+* version
+* utils (parts of it, for calculating CPU count, load average etc, GetShellEscapedString)
