@@ -1,0 +1,3 @@
+[submodule "vendor/rapidcheck"]
+	path = vendor/rapidcheck
+	url = git@github.com:emil-e/rapidcheck.git
