@@ -1,8 +1,44 @@
 #include <catch.hpp>
 #include <rapidcheck/catch.h>
 
+#include "path.h"
+
+namespace shk {
+namespace gen {
+
+rc::Gen<shk::Path> path(Paths &paths) {
+  return rc::gen::exec([&paths] {
+    const auto path_component_gen =
+        rc::gen::container<std::string>(rc::gen::inRange<char>('a', 'z'));
+    const auto path_components =
+        *rc::gen::container<std::vector<std::string>>(path_component_gen);
+    std::string path;
+    for (const auto &path_component : path_components) {
+      if (!path.empty()) {
+        path += "/";
+      }
+      path += path_component;
+    }
+    return paths.get(path);
+  });
+}
+
+using Files = std::unordered_map<shk::Path, std::string>;
+
+rc::Gen<Files> files(Paths &paths) {
+  return rc::gen::exec([&paths] {
+    return *rc::gen::container<Files>(
+        path(paths),
+        rc::gen::arbitrary<std::string>());
+  });
+}
+
+}  // namespace gen
+
 TEST_CASE("Correctness") {
   rc::prop("build steps are performed", []() {
+    Paths paths;
+    printf("%s\n", (*gen::path(paths)).canonicalized().c_str());
     // TODO(peck): Implement me
   });
 
@@ -78,3 +114,5 @@ TEST_CASE("Error detection") {
     // Move this to CommandRunner tests?
   });
 }
+
+}  // namespace shk
