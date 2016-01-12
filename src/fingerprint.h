@@ -3,27 +3,15 @@
 #include <functional>
 #include <string>
 
+#include "file_system.h"
+#include "hash.h"
+
 namespace shk {
-
-struct FileMetadata {
-  int mode = 0;
-  size_t size = 0;
-};
-
-struct Timestamps {
-  Timestamp mtime = 0;
-  Timestamp ctime = 0;
-};
-
-struct Stat {
-  FileMetadata metadata;
-  Timestamps timestamps;
-};
 
 struct Fingerprint {
   Stat stat;
-  Hash hash = 0;
-  Timestamp timestamp;
+  Hash hash;
+  std::chrono::system_clock::time_point timestamp;
   std::string path;
 };
 

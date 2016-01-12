@@ -1,7 +1,17 @@
 cmake_minimum_required(VERSION 3.2.1)
 project(shk)
 
-add_executable(shk src/shk.cpp)
+add_executable(shk
+  src/build.h
+  src/command_runner.h
+  src/file_system.h
+  src/fingerprint.cpp
+  src/fingerprint.h
+  src/invocation.h
+  src/manifest_parser.h
+  src/shk.cpp
+  src/step.h
+  src/task.h)
 set_property(TARGET shk PROPERTY CXX_STANDARD 11)
 
 set(RC_ENABLE_CATCH ON)

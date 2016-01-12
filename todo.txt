@@ -1,3 +1,5 @@
+https://blake2.net/
+https://www.schneier.com/cryptography/skein/
 https://www.kernel.org/pub/software/scm/git/docs/technical/racy-git.txt
 
 https://github.com/apenwarr/redo#readme
@@ -65,9 +67,13 @@ Steps of a Shuriken build:
     - record data in the invocation log
 
 Stuff that would be good to have:
+- SmallHash
+- InvocationLog
+
 - Invocation structs
+  - Missing SmallHash
 - Manifest graph structs
-- Tasks graph structs
+  - Missing SmallHash
 - FileSystem, with in memory and real implementations (for efficient testing)
 - CommandRunner
   - takes a command
@@ -81,11 +87,6 @@ Stuff that would be good to have:
 - Function to parse manifest
 * Hashing function
 * Functionality to parse and write to the invocation log
-- Function to find build invocations that no longer exist in the Manifest graph
-- Function to find build invocations that are dirty
-- Function to find build steps that have no corresponding build invocation
-- Function to construct Tasks graph
-- Function to execute a Tasks graph
 - Function to delete outputs
 * Function to detect insufficiently declared dependencies (how to do this?)
 

@@ -9,8 +9,7 @@ struct Result {
   std::vector<std::string> input_files;
   std::vector<std::string> output_files;
   int return_code;
-  std::string stdout;
-  std::string stderr;
+  std::string output;
   std::vector<std::string> linting_errors;
 };
 

@@ -2,6 +2,7 @@
 
 namespace shk {
 
+#if 0
 def matches(Fingerprint fp, Path path):
   Stat current = lstat(path)
   if current == fp.stat:
@@ -27,5 +28,6 @@ def matches(Fingerprint fp, Path path):
     # At this point, the fingerprint should be updated to avoid the
     # expensive file content check in the future.
     return current.metadata == fp.stat.metadata and hash(path) == fp.hash
+#endif
 
 }  // namespace shk
