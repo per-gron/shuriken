@@ -11,16 +11,22 @@ namespace shk {
 /**
  * Find build invocations that are in the invocation log but no longer exist in
  * the Manifest graph. Their outputs should be deleted.
+ *
+ * The function returns a list of build step hashes that can be found as keys in
+ * invocations.entries.
  */
-Invocations staleInvocations(
+std::vector<Hash> staleInvocations(
     const Steps &steps,
     const Invocations &invocations);
 
 /**
  * Find invocations that need to be re-run. Steps is provided to ensure that only
  * invocations that correspond to steps that are still in the manifest are run.
+ *
+ * The function returns a list of build step hashes that can be found as keys in
+ * invocations.entries.
  */
-Invocations dirtyInvocations(
+std::vector<Hash> dirtyInvocations(
     FileSystem &file_system,
     const Steps &steps,
     const Invocations &invocations);

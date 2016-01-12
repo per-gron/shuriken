@@ -36,7 +36,7 @@ rc::Gen<Files> files(Paths &paths) {
 }  // namespace gen
 
 TEST_CASE("Correctness") {
-  rc::prop("build steps are performed", []() {
+  rc::prop("successful builds should create declared output files", []() {
     Paths paths;
     printf("%s\n", (*gen::path(paths)).canonicalized().c_str());
     // TODO(peck): Implement me
@@ -91,6 +91,10 @@ TEST_CASE("Error detection") {
   });
 
   rc::prop("detect write to input", []() {
+    // TODO(peck): Implement me
+  });
+
+  rc::prop("detect failure to write declared outputs", []() {
     // TODO(peck): Implement me
   });
 

@@ -61,6 +61,7 @@ class Paths;
  * object!
  */
 class Path {
+  friend struct std::hash<Path>;
  public:
   Path(
       const detail::CanonicalizedPath *canonicalized_path,
@@ -101,7 +102,9 @@ struct hash<shk::detail::CanonicalizedPath> {
   using result_type = std::size_t;
 
   result_type operator()(const argument_type &p) const {
-    return std::hash<std::string>()(p.path);
+    // Hash the pointer
+    auto ad = reinterpret_cast<uintptr_t>(&p);
+    return static_cast<size_t>(ad ^ (ad >> 16));
   }
 };
 
@@ -111,7 +114,7 @@ struct hash<shk::Path> {
   using result_type = std::size_t;
 
   result_type operator()(const argument_type &p) const {
-    return std::hash<std::string>()(p.canonicalized());
+    return hash<shk::detail::CanonicalizedPath>()(*p._canonicalized_path);
   }
 };
 
