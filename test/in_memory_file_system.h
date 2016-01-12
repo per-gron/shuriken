@@ -2,6 +2,12 @@
 
 namespace shk {
 
+/**
+ * FileSystem that is backed only by memory. Used for testing. In addition to
+ * the FileSystem functionality, it is also copiable and offers an equality
+ * operator, which is useful to see if a sequence of operations produce
+ * identical results.
+ */
 class InMemoryFileSystem : public FileSystem {
  public:
   std::unique_ptr<Stream> open(const Path &path, const char *mode) throw(IoError) override;

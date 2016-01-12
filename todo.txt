@@ -66,8 +66,6 @@ Steps of a Shuriken build:
     - delete stale outputs
     - record data in the invocation log
 
-- InvocationLog
-
 * Path stuff
 - FileSystem, with in memory and real implementations (for efficient testing)
 - Fingerprint stuff

@@ -7,6 +7,12 @@
 
 namespace shk {
 
+/**
+ * InvocationLog is a class that is used during a build to manipulate the
+ * on-disk storage of the invocation log. It does not offer means to read
+ * Invocations from the invocation log; that is done in a separate build step
+ * so it is done separately.
+ */
 class InvocationLog {
  public:
   virtual ~InvocationLog() = default;
