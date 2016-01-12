@@ -1,41 +1,48 @@
 #pragma once
 
-#include <unordered_set>
-#include <unordered_map>
-
-#include "fingerprint.h"
 #include "hash.h"
+#include "invocations.h"
+#include "io_error.h"
 #include "path.h"
 
 namespace shk {
 
-/**
- * An InvocationLog contains information about what Shuriken has done in
- * previous builds. It is used to be able to know what build steps of the
- * build that don't need to be done, but also what build steps that have been
- * done before that might have to be cleaned up.
- *
- * InvocationLog is a passive dumb data object.
- */
-struct InvocationLog {
-  struct Entry {
-    std::vector<Fingerprint> output_files;
-    std::vector<Fingerprint> input_files;
-  };
+class InvocationLog {
+ public:
+  virtual ~InvocationLog() = default;
 
   /**
-   * Contains information about build steps that have been performed. Used to
-   * check if the corresponding build step is dirty and has to be re-invoked,
-   * but also to be able to clean up outputs when necessary.
+   * Writes an entry in the invocation log that Shuriken has created a
+   * directory. This will cause Shuriken to delete the directory in subsequent
+   * invocations if it cleans up the last file of that directory.
    */
-  std::unordered_map<Hash, Entry> entries;
+  virtual void createdDirectory(const Path &path) throw(IoError) = 0;
 
   /**
-   * Set of directories that Shuriken has created to make room for outputs of
-   * build steps. They are kept track of to be able to remove then when cleaning
-   * up.
+   * Writes an entry in the invocation log stating that Shuriken no longer is
+   * responsible for the given directory. This should not be called unless the
+   * given folder has been deleted in a cleanup process (or if it's gone).
    */
-  std::unordered_set<Path> created_directories;
+  virtual void removedDirectory(const Path &path) throw(IoError) = 0;
+
+  /**
+   * Writes an entry in the invocation log that says that the build step with
+   * the given hash has been successfully run with information about outputs and
+   * dependencies.
+   */
+  virtual void ranCommand(
+      const Hash &build_step_hash,
+      const Invocations::Entry &entry) throw(IoError) = 0;
+
+  /**
+   * Writes an entry in the invocation log that says that the build step with
+   * the given hash has been cleaned and can be treated as if it was never run.
+   *
+   * It is the responsibility of the caller to ensure that all output files are
+   * actually cleaned before calling this method.
+   */
+  virtual void cleanedCommand(
+      const Hash &build_step_hash) throw(IoError) = 0;
 };
 
 }  // namespace shk
