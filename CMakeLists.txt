@@ -11,6 +11,7 @@ add_library(shklib
   src/invocation.h
   src/io_error.h
   src/manifest_parser.h
+  src/path.cpp
   src/path.h
   src/step.h
   src/task.h)

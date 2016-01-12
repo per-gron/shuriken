@@ -68,10 +68,7 @@ Steps of a Shuriken build:
 
 - InvocationLog
 
-- Invocation structs
-  - Missing SmallHash
-- Manifest graph structs
-  - Missing SmallHash
+* Path stuff
 - FileSystem, with in memory and real implementations (for efficient testing)
 - CommandRunner
   - takes a command
