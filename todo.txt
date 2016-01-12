@@ -86,7 +86,7 @@ Steps of a Shuriken build:
 * Function to detect insufficiently declared dependencies (how to do this?)
 
 Steal directly from Ninja:
-* getopt
+* getopt (for Windows only)
 * manifest_parser / lexer (with modifications)
 * deps_log (refactor into invocation log)
 * eval_env
