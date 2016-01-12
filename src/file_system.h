@@ -27,6 +27,7 @@ struct Stat {
 };
 
 class FileSystem {
+ public:
   virtual ~FileSystem() = default;
 
   class Stream {
