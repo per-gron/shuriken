@@ -5,7 +5,7 @@
 #include "io_error.h"
 #include "path.h"
 
-namespace shk {
+namespace shk {
 
 /**
  * InvocationLog is a class that is used during a build to manipulate the

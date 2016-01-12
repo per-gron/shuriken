@@ -52,10 +52,48 @@ inline bool operator==(const CanonicalizedPath &a, const CanonicalizedPath &b) {
 }
 
 }  // namespace detail
+
+class Paths;
+
+/**
+ * Object that represents a file system path that can be efficiently compared
+ * with other Path objects. A Path object lives only as long as its parent Paths
+ * object!
+ */
+class Path {
+ public:
+  Path(
+      const detail::CanonicalizedPath *canonicalized_path,
+      SlashBits slash_bits)
+      : _canonicalized_path(canonicalized_path),
+        _slash_bits(slash_bits) {}
+
+  /**
+   * Returns true if the paths point to the same paths. operator== is not
+   * used for this because this does not take slash_bits into account.
+   */
+  bool isSame(const Path &other) const {
+    return _canonicalized_path == other._canonicalized_path;
+  }
+
+  std::string decanonicalized() const;
+
+  const std::string &canonicalized() const;
+
+  bool operator==(const Path &other) const {
+    return (
+      _canonicalized_path == other._canonicalized_path &&
+      _slash_bits == other._slash_bits);
+  }
+
+ private:
+  const detail::CanonicalizedPath *_canonicalized_path;
+  SlashBits _slash_bits;
+};
+
 }  // namespace shk
 
-namespace std
-{
+namespace std {
 
 template<>
 struct hash<shk::detail::CanonicalizedPath> {
@@ -67,36 +105,19 @@ struct hash<shk::detail::CanonicalizedPath> {
   }
 };
 
-}
+template<>
+struct hash<shk::Path> {
+  using argument_type = shk::Path;
+  using result_type = std::size_t;
+
+  result_type operator()(const argument_type &p) const {
+    return std::hash<std::string>()(p.canonicalized());
+  }
+};
+
+}  // namespace std
 
 namespace shk {
-
-class Paths;
-
-class Path {
- public:
-  Path(
-      const detail::CanonicalizedPath *canonicalized_path,
-      SlashBits slash_bits)
-      : _canonicalized_path(canonicalized_path),
-        _slash_bits(slash_bits) {}
-
-  /**
-   * Returns true if the paths point to the same paths. operator== is not
-   * used because this does not take slash_bits into account.
-   */
-  bool isSame(const Path &other) const {
-    return _canonicalized_path == other._canonicalized_path;
-  }
-
-  std::string decanonicalized() const;
-
-  const std::string &canonicalized() const;
-
- private:
-  const detail::CanonicalizedPath *_canonicalized_path;
-  SlashBits _slash_bits;
-};
 
 class Paths {
  public:

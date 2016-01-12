@@ -2,12 +2,13 @@
 
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
 
 #include "fingerprint.h"
 #include "hash.h"
 #include "path.h"
 
-namespace shk {
+namespace shk {
 
 /**
  * An Invocations object contains information about what Shuriken has done in

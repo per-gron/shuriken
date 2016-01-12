@@ -2,7 +2,7 @@
 
 namespace shk {
 
-void InMemoryInvocationLog::createdDirectory(const Path &path) throw(IoError) {
+void InMemoryInvocationLog::createdDirectory(const Path &path) throw(IoError) {
   _invocations.created_directories.insert(path);
 }
 
