@@ -10,6 +10,14 @@ class InMemoryFileSystem : public FileSystem {
   void mkdir(const Path &path) throw(IoError) override;
   void rmdir(const Path &path) throw(IoError) override;
   void unlink(const Path &path) throw(IoError) override;
+
+ private:
+  struct File {
+    std::string contents;
+  };
+
+  // std::unordered_set<Path> _directories;
+  // std::unordered_map<Path, File> _files;
 };
 
 bool operator==(const InMemoryFileSystem &a, const InMemoryFileSystem &b);

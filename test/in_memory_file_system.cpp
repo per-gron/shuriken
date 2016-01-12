@@ -25,4 +25,8 @@ void InMemoryFileSystem::rmdir(const Path &path) throw(IoError) {
 void InMemoryFileSystem::unlink(const Path &path) throw(IoError) {
 }
 
+bool operator==(const InMemoryFileSystem &a, const InMemoryFileSystem &b) {
+  return true;  // TODO(peck): Implement me
+}
+
 }  // namespace shk

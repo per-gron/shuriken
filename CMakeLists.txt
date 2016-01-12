@@ -13,6 +13,8 @@ add_library(shklib
   src/manifest_parser.h
   src/path.cpp
   src/path.h
+  src/persistent_file_system.cpp
+  src/persistent_file_system.h
   src/step.h
   src/task.h)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)

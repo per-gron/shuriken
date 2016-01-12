@@ -89,7 +89,9 @@ class Path {
     return _canonicalized_path == other._canonicalized_path;
   }
 
-  std::string pathDecanonicalized() const;
+  std::string decanonicalized() const;
+
+  const std::string &canonicalized() const;
 
  private:
   const detail::CanonicalizedPath *_canonicalized_path;

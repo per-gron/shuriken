@@ -14,6 +14,7 @@ struct FileMetadata {
 
 struct Timestamps {
   std::chrono::system_clock::time_point mtime;
+  // TODO(peck): What should ctime be used for exactly?
   std::chrono::system_clock::time_point ctime;
 };
 

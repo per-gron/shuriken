@@ -183,7 +183,7 @@ bool canonicalizePath(
 
 }  // namespace detail
 
-std::string Path::pathDecanonicalized() const {
+std::string Path::decanonicalized() const {
   auto result = _canonicalized_path->path;
 #ifdef _WIN32
   unsigned uint64_t mask = 1;
@@ -195,6 +195,10 @@ std::string Path::pathDecanonicalized() const {
   }
 #endif
   return result;
+}
+
+const std::string &Path::canonicalized() const {
+  return _canonicalized_path->path;
 }
 
 Path Paths::get(const std::string &path) {
