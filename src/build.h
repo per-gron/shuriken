@@ -1,5 +1,7 @@
 #pragma once
 
+#include "build_status.h"
+#include "command_runner.h"
 #include "file_system.h"
 #include "invocation.h"
 #include "step.h"

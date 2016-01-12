@@ -3,6 +3,7 @@ project(shk)
 
 add_library(shklib
   src/build.h
+  src/build_status.h
   src/command_runner.h
   src/file_system.h
   src/fingerprint.cpp
