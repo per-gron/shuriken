@@ -66,8 +66,6 @@ Steps of a Shuriken build:
     - delete stale outputs
     - record data in the invocation log
 
-Stuff that would be good to have:
-- SmallHash
 - InvocationLog
 
 - Invocation structs

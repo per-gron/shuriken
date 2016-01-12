@@ -31,9 +31,9 @@ struct Step {
    */
   std::vector<Path> outputs;
 
-  SmallHash hash() const;
+  Hash hash() const;
 };
 
-using Steps = std::unordered_map<SmallHash, Step>;
+using Steps = std::unordered_map<Hash, Step>;
 
 }  // namespace shk
