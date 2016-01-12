@@ -31,6 +31,7 @@ class FileSystem {
   virtual ~FileSystem() = default;
 
   class Stream {
+   public:
     virtual ~Stream() = default;
 
     /**
@@ -50,12 +51,12 @@ class FileSystem {
     virtual bool eof() = 0;
   };
 
-  virtual std::unique_ptr<Stream> open(const Path &path, const char *mode) = 0;
+  virtual std::unique_ptr<Stream> open(const Path &path, const char *mode) throw(IoError) = 0;
   virtual Stat stat(const Path &path) = 0;
   virtual Stat lstat(const Path &path) = 0;
-  virtual int mkdir(const Path &path) = 0;
-  virtual int rmdir(const Path &path) = 0;
-  virtual int unlink(const Path &path) = 0;
+  virtual void mkdir(const Path &path) throw(IoError) = 0;
+  virtual void rmdir(const Path &path) throw(IoError) = 0;
+  virtual void unlink(const Path &path) throw(IoError) = 0;
 };
 
 }  // namespace shk
