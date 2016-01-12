@@ -70,14 +70,6 @@ Steps of a Shuriken build:
 
 * Path stuff
 - FileSystem, with in memory and real implementations (for efficient testing)
-- CommandRunner
-  - takes a command
-  - returns
-    - Input files
-    - Output files
-    - return code
-    - stdout, stderr output
-    - List of linting errors
 - Fingerprint stuff
 - Function to parse manifest
 * Hashing function

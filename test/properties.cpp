@@ -6,6 +6,10 @@ TEST_CASE("Correctness") {
     // TODO(peck): Implement me
   });
 
+  rc::prop("build steps that fail should not leave any trace", []() {
+    // TODO(peck): Implement me
+  });
+
   rc::prop("build, change, build is same as change, build", []() {
     // TODO(peck): Implement me
   });
