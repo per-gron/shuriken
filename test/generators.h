@@ -11,6 +11,8 @@ namespace gen {
 
 rc::Gen<std::vector<std::string>> pathComponents();
 
+std::string joinPathComponents(const std::vector<std::string> &path_components);
+
 rc::Gen<std::string> pathString();
 
 rc::Gen<shk::Path> path(const std::shared_ptr<Paths> &paths);

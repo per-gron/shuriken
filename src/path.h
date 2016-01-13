@@ -63,6 +63,10 @@ class Paths;
 class Path {
   friend struct std::hash<Path>;
  public:
+  Path()
+      : _canonicalized_path(nullptr),
+        _slash_bits(0) {}
+
   Path(
       const detail::CanonicalizedPath *canonicalized_path,
       SlashBits slash_bits)
@@ -86,6 +90,12 @@ class Path {
       _canonicalized_path == other._canonicalized_path &&
       _slash_bits == other._slash_bits);
   }
+
+  /**
+   * Split the path into its dirname and basename. The first element in the
+   * pair is the dirname, the second the basename.
+   */
+  std::pair<std::string, std::string> basenameSplit() const;
 
  private:
   const detail::CanonicalizedPath *_canonicalized_path;

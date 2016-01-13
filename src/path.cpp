@@ -192,6 +192,20 @@ const std::string &Path::canonicalized() const {
   return _canonicalized_path->path;
 }
 
+std::pair<std::string, std::string> Path::basenameSplit() const {
+  const auto &path = canonicalized();
+
+  const auto slash_pos = path.find_last_of('/');
+
+  if (slash_pos == std::string::npos) {
+    return std::make_pair("", path);
+  } else {
+    return std::make_pair(
+        std::string(path.begin(), path.begin() + slash_pos),
+        std::string(path.begin() + slash_pos + 1, path.end()));
+  }
+}
+
 Path Paths::get(const std::string &path) throw(PathError) {
   SlashBits slash_bits = 0;
   auto canonicalized_path = path;
