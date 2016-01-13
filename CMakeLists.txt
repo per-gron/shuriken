@@ -40,6 +40,7 @@ add_executable(shk_test
   test/generators.h
   test/in_memory_file_system.cpp
   test/in_memory_file_system.h
+  test/in_memory_file_system_test.cpp
   test/in_memory_invocation_log.cpp
   test/in_memory_invocation_log.h
   test/main.cpp

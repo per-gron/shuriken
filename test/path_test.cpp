@@ -21,28 +21,4 @@ TEST_CASE("Path::operator==") {
   });
 }
 
-TEST_CASE("Path::basenameSplit") {
-  rc::prop("extracts the basename and the dirname", []() {
-    Paths paths;
-
-    const auto path_components = *gen::pathComponents();
-    RC_PRE(!path_components.empty());
-
-    const auto path_string = gen::joinPathComponents(path_components);
-    const auto dirname_string = gen::joinPathComponents(
-        std::vector<std::string>(
-            path_components.begin(),
-            path_components.end() - 1));
-
-    const auto path = paths.get(path_string);
-
-    std::string dirname;
-    std::string basename;
-    std::tie(dirname, basename) = path.basenameSplit();
-
-    RC_ASSERT(basename == *path_components.rbegin());
-    RC_ASSERT(dirname == dirname_string);
-  });
-}
-
 }  // namespace shk

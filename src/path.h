@@ -91,12 +91,6 @@ class Path {
       _slash_bits == other._slash_bits);
   }
 
-  /**
-   * Split the path into its dirname and basename. The first element in the
-   * pair is the dirname, the second the basename.
-   */
-  std::pair<std::string, std::string> basenameSplit() const;
-
  private:
   const detail::CanonicalizedPath *_canonicalized_path;
   SlashBits _slash_bits;

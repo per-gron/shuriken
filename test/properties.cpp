@@ -73,7 +73,7 @@ TEST_CASE("Correctness") {
 
     BuildInput build_input = *gen::buildInput(paths);
 
-    InMemoryFileSystem file_system;
+    InMemoryFileSystem file_system(*paths);
     addFilesToFileSystem(build_input.input_files, file_system);
 
     DummyCommandRunner command_runner;
