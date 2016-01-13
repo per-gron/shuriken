@@ -1,5 +1,7 @@
 #include "in_memory_file_system.h"
 
+#include <errno.h>
+
 namespace shk {
 namespace detail {
 
@@ -45,7 +47,21 @@ void InMemoryFileSystem::rmdir(const Path &path) throw(IoError) {
 }
 
 void InMemoryFileSystem::unlink(const Path &path) throw(IoError) {
-  // TODO(peck): Implement me
+  const auto l = lookup(path);
+  switch (l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+    break;
+  case EntryType::FILE_DOES_NOT_EXIST:
+    throw IoError("The named file does not exist", ENOENT);
+    break;
+  case EntryType::DIRECTORY:
+    throw IoError("The named file is a directory", EPERM);
+    break;
+  case EntryType::FILE:
+    l.directory->files.erase(l.basename);
+    break;
+  }
 }
 
 bool InMemoryFileSystem::operator==(const InMemoryFileSystem &other) const {
@@ -60,7 +76,9 @@ bool InMemoryFileSystem::Directory::operator==(const Directory &other) const {
       directories == other.directories);
 }
 
-InMemoryFileSystem::EntryType InMemoryFileSystem::entryType(const Path &path) const {
+InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(const Path &path) {
+  LookupResult result;
+
   std::string dirname;
   std::string basename;
   std::tie(dirname, basename) = detail::basenameSplit(path.canonicalized());
@@ -68,18 +86,23 @@ InMemoryFileSystem::EntryType InMemoryFileSystem::entryType(const Path &path) co
 
   const auto it = _directories.find(dir_path);
   if (it == _directories.end()) {
-    return EntryType::DOES_NOT_EXIST;
+    result.entry_type = EntryType::DIRECTORY_DOES_NOT_EXIST;
+    return result;
   }
 
-  const auto &directory = it->second;
+  auto &directory = it->second;
 
   if (directory.files.count(basename)) {
-    return EntryType::FILE;
+    result.entry_type = EntryType::FILE;
   } else if (directory.directories.count(basename)) {
-    return EntryType::DIRECTORY;
+    result.entry_type = EntryType::DIRECTORY;
   } else {
-    return EntryType::DOES_NOT_EXIST;
+    return result;
   }
+
+  result.directory = &directory;
+  result.basename = basename;
+  return result;
 }
 
 }  // namespace shk

@@ -38,7 +38,8 @@ class InMemoryFileSystem : public FileSystem {
 
  private:
   enum class EntryType {
-    DOES_NOT_EXIST,
+    FILE_DOES_NOT_EXIST,
+    DIRECTORY_DOES_NOT_EXIST,
     DIRECTORY,
     FILE,
   };
@@ -54,7 +55,13 @@ class InMemoryFileSystem : public FileSystem {
     bool operator==(const Directory &other) const;
   };
 
-  EntryType entryType(const Path &path) const;
+  struct LookupResult {
+    EntryType entry_type = EntryType::FILE_DOES_NOT_EXIST;
+    Directory *directory = nullptr;
+    std::string basename;
+  };
+
+  LookupResult lookup(const Path &path);
 
   Paths *_paths;
   std::unordered_map<Path, Directory> _directories;
