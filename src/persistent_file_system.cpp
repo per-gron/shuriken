@@ -50,11 +50,11 @@ class PersistentFileSystem : public FileSystem {
       }
     }
 
-    long tell() throw(IoError) override {
+    long tell() const throw(IoError) override {
       return checkForMinusOne(ftell(_f));
     }
 
-    bool eof() override {
+    bool eof() const override {
       return feof(_f) != 0;
     }
 

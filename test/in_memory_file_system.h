@@ -44,13 +44,17 @@ class InMemoryFileSystem : public FileSystem {
     FILE,
   };
 
+  struct File {
+    std::string contents;
+  };
+
   struct Directory {
     /**
      * Key is the basename of the file, value is the contents of the file. It's
      * a shared pointer to make it possible to keep a stream to it open even
      * after unlinking it.
      */
-    std::unordered_map<std::string, std::shared_ptr<std::string>> files;
+    std::unordered_map<std::string, std::shared_ptr<File>> files;
 
     std::unordered_set<std::string> directories;
 
@@ -62,6 +66,30 @@ class InMemoryFileSystem : public FileSystem {
     EntryType entry_type = EntryType::FILE_DOES_NOT_EXIST;
     Directory *directory = nullptr;
     std::string basename;
+  };
+
+  class InMemoryFileStream : public Stream {
+   public:
+    InMemoryFileStream(
+        const std::shared_ptr<File> &file,
+        bool read,
+        bool write);
+
+    size_t read(
+        uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override;
+    void write(
+        const uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override;
+    long tell() const throw(IoError) override;
+    bool eof() const override;
+
+   private:
+    void checkNotEof() const throw(IoError);
+
+    const bool _read;
+    const bool _write;
+    bool _eof = false;
+    size_t _position = 0;
+    const std::shared_ptr<File> _file;
   };
 
   LookupResult lookup(const Path &path);

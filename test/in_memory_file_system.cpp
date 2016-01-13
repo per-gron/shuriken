@@ -22,9 +22,53 @@ std::pair<std::string, std::string> basenameSplit(const std::string &path) {
 InMemoryFileSystem::InMemoryFileSystem(Paths &paths)
     : _paths(&paths) {}
 
-std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(const Path &path, const char *mode) throw(IoError) {
-  return nullptr;
-  // TODO(peck): Implement me
+std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
+    const Path &path, const char *mode) throw(IoError) {
+  const auto mode_string = std::string(mode);
+  bool read = false;
+  bool write = false;
+  bool truncate_or_create = false;
+  if (mode_string == "r") {
+    read = true;
+    write = false;
+  } else if (mode_string == "r+") {
+    read = true;
+    write = false;
+  } else if (mode_string == "w") {
+    read = false;
+    write = true;
+    truncate_or_create = true;
+  } else if (mode_string == "w+") {
+    read = true;
+    write = true;
+    truncate_or_create = true;
+  }
+
+  const auto l = lookup(path);
+  switch (l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+  case EntryType::DIRECTORY:
+    throw IoError("The named file is a directory", EISDIR);
+  case EntryType::FILE_DOES_NOT_EXIST:
+    if (!truncate_or_create) {
+      throw IoError("The file does not exist", ENOENT);
+    }
+    {
+      const auto &file = l.directory->files[l.basename];
+      return std::unique_ptr<Stream>(
+          new InMemoryFileStream(file, read, write));
+    }
+  case EntryType::FILE:
+    {
+      const auto &file = l.directory->files[l.basename];
+      if (truncate_or_create) {
+        file->contents.clear();
+      }
+      return std::unique_ptr<Stream>(
+          new InMemoryFileStream(file, read, write));
+    }
+  }
 }
 
 Stat InMemoryFileSystem::stat(const Path &path) {
@@ -34,7 +78,25 @@ Stat InMemoryFileSystem::stat(const Path &path) {
 
 Stat InMemoryFileSystem::lstat(const Path &path) {
   Stat stat;
-  // TODO(peck): Implement me
+
+  const auto l = lookup(path);
+  switch (l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    stat.result = ENOTDIR;
+    break;
+  case EntryType::FILE_DOES_NOT_EXIST:
+    stat.result = ENOENT;
+    break;
+  case EntryType::FILE:
+  case EntryType::DIRECTORY:
+    stat.metadata.mode = 0755;  // Pretend this is the umask
+    if (l.entry_type == EntryType::FILE) {
+      stat.metadata.size = l.directory->files[l.basename]->contents.size();
+    }
+    // TODO(peck): Set mtime and ctime
+    break;
+  }
+
   return stat;
 }
 
@@ -70,7 +132,9 @@ void InMemoryFileSystem::rmdir(const Path &path) throw(IoError) {
   case EntryType::DIRECTORY:
     const auto &dir = _directories[path];
     if (!dir.empty()) {
-      throw IoError("The named directory contains files other than `.' and `..' in it", ENOTEMPTY);
+      throw IoError(
+          "The named directory contains files other than `.' and `..' in it",
+          ENOTEMPTY);
     } else {
       l.directory->directories.erase(l.basename);
       _directories.erase(path);
@@ -111,6 +175,66 @@ bool InMemoryFileSystem::Directory::operator==(const Directory &other) const {
   return (
       files == other.files &&
       directories == other.directories);
+}
+
+InMemoryFileSystem::InMemoryFileStream::InMemoryFileStream(
+    const std::shared_ptr<File> &file,
+    bool read,
+    bool write)
+    : _file(file),
+      _read(read),
+      _write(write) {}
+
+size_t InMemoryFileSystem::InMemoryFileStream::read(
+    uint8_t *ptr, size_t size, size_t nitems) throw(IoError) {
+  if (!_read) {
+    throw IoError("Attempted read from a write only stream", 0);
+  }
+  checkNotEof();
+
+  const auto bytes = size * nitems;
+  const auto bytes_remaining = _file->contents.size() - _position;
+  if (bytes > bytes_remaining) {
+    _eof = true;
+  }
+
+  const auto items_to_read = std::min(bytes_remaining, bytes) / size;
+  const auto bytes_to_read = items_to_read * size;
+
+  const auto it = _file->contents.begin() + _position;
+  std::copy(
+      it,
+      it + bytes_to_read,
+      reinterpret_cast<char *>(ptr));
+
+  return items_to_read;
+}
+
+void InMemoryFileSystem::InMemoryFileStream::write(
+  const uint8_t *ptr, size_t size, size_t nitems) throw(IoError) {
+  if (!_write) {
+    throw IoError("Attempted write to a read only stream", 0);
+  }
+  checkNotEof();
+
+  const auto bytes = size * nitems;
+  _file->contents.insert(_position, reinterpret_cast<const char *>(ptr), bytes);
+  _position += bytes;
+}
+
+long InMemoryFileSystem::InMemoryFileStream::tell() const throw(IoError) {
+  return _position;
+}
+
+bool InMemoryFileSystem::InMemoryFileStream::eof() const {
+  return _eof;
+}
+
+void InMemoryFileSystem::InMemoryFileStream::checkNotEof()
+    const throw(IoError) {
+  if (_eof) {
+    throw IoError("Attempted to write to file that is past eof", 0);
+  }
 }
 
 InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(const Path &path) {

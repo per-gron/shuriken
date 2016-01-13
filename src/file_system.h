@@ -22,7 +22,7 @@ struct Stat {
   /**
    * Return value of stat.
    */
-  int result;
+  int result = 0;
   FileMetadata metadata;
   Timestamps timestamps;
 };
@@ -42,17 +42,20 @@ class FileSystem {
      * Returns the number of objects that were read. May be less if the end of
      * file was reached.
      */
-    virtual size_t read(uint8_t *ptr, size_t size, size_t nitems) throw(IoError) = 0;
+    virtual size_t read(
+        uint8_t *ptr, size_t size, size_t nitems) throw(IoError) = 0;
     /**
      * Write ntitems objects, each size bytes long, obtaining them from the
      * location given to by ptr.
      */
-    virtual void write(const uint8_t *ptr, size_t size, size_t nitems) throw(IoError) = 0;
-    virtual long tell() throw(IoError) = 0;
-    virtual bool eof() = 0;
+    virtual void write(
+        const uint8_t *ptr, size_t size, size_t nitems) throw(IoError) = 0;
+    virtual long tell() const throw(IoError) = 0;
+    virtual bool eof() const = 0;
   };
 
-  virtual std::unique_ptr<Stream> open(const Path &path, const char *mode) throw(IoError) = 0;
+  virtual std::unique_ptr<Stream> open(
+      const Path &path, const char *mode) throw(IoError) = 0;
   virtual Stat stat(const Path &path) = 0;
   virtual Stat lstat(const Path &path) = 0;
   virtual void mkdir(const Path &path) throw(IoError) = 0;
