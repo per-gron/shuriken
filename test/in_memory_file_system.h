@@ -1,5 +1,7 @@
 #include "file_system.h"
 
+#include <unordered_map>
+
 namespace shk {
 
 /**
@@ -18,12 +20,14 @@ class InMemoryFileSystem : public FileSystem {
   void unlink(const Path &path) throw(IoError) override;
 
  private:
-  struct File {
-    std::string contents;
+  struct Directory {
+    /**
+     * Key is the basename of the file, value is the contents of the file.
+     */
+    std::unordered_map<std::string, std::string> files;
   };
 
-  // std::unordered_set<Path> _directories;
-  // std::unordered_map<Path, File> _files;
+  std::unordered_map<Path, Directory> _directories;
 };
 
 bool operator==(const InMemoryFileSystem &a, const InMemoryFileSystem &b);

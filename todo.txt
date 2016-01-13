@@ -89,6 +89,14 @@ Steps of a Shuriken build:
 - Function to delete outputs
 * Function to detect insufficiently declared dependencies (how to do this?)
 
+To fill in the first test:
+* InMemoryFileSystem implementation
+* FileSystem::readFile and writeFile helpers
+* DummyCommandRunner::checkCommand, DummyCommandRunner::runCommand
+* addFilesToFileSystem in properties.cpp
+* Generate actual DAG in gen::buildInput
+* Add assertions to the property
+
 Steal directly from Ninja:
 * getopt (for Windows only)
 * manifest_parser / lexer (with modifications)

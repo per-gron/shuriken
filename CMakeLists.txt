@@ -43,6 +43,7 @@ add_executable(shk_test
   test/in_memory_invocation_log.cpp
   test/in_memory_invocation_log.h
   test/main.cpp
+  test/path_test.cpp
   test/properties.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC vendor/rapidcheck/extras/catch/include)
