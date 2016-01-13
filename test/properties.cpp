@@ -1,9 +1,24 @@
 #include <catch.hpp>
 #include <rapidcheck/catch.h>
 
+#include "build.h"
+#include "build_status.h"
 #include "path.h"
+#include "step.h"
+
+#include "dummy_command_runner.h"
+#include "in_memory_file_system.h"
+#include "in_memory_invocation_log.h"
 
 namespace shk {
+
+using Files = std::unordered_map<shk::Path, std::string>;
+
+struct BuildInput {
+  std::vector<Step> steps;
+  Files input_files;
+};
+
 namespace gen {
 
 rc::Gen<shk::Path> path(Paths &paths) {
@@ -23,23 +38,77 @@ rc::Gen<shk::Path> path(Paths &paths) {
   });
 }
 
-using Files = std::unordered_map<shk::Path, std::string>;
+rc::Gen<std::vector<Path>> pathVector(Paths &paths) {
+  return rc::gen::container<std::vector<Path>>(path(paths));
+}
 
-rc::Gen<Files> files(Paths &paths) {
+/**
+ * Partially generates a build step. Used by the steps generator, whichadds
+ * more information to construct a real DAG.
+ */
+rc::Gen<Step> step(Paths &paths) {
   return rc::gen::exec([&paths] {
-    return *rc::gen::container<Files>(
-        path(paths),
-        rc::gen::arbitrary<std::string>());
+    Step step;
+    // step.command is generated later
+    step.restat = *rc::gen::arbitrary<bool>();
+    step.dependencies = *pathVector(paths);
+    step.outputs = *pathVector(paths);
+    return step;
+  });
+}
+
+/**
+ * Construct a list of Step objects and input files that represent an arbitrary
+ * valid Shuriken build.
+ */
+rc::Gen<BuildInput> buildInput(Paths &paths) {
+  return rc::gen::exec([&paths] {
+    BuildInput build_input;
+
+    build_input.steps =
+        *rc::gen::container<std::vector<Step>>(step(paths));
+
+    for (const auto &step : build_input.steps) {
+      for (const auto &path : step.dependencies) {
+        build_input.input_files[path] = *rc::gen::arbitrary<std::string>();
+      }
+    }
+
+    // TODO(peck): Generate dependencies between steps
+    // TODO(peck): Generate commands for steps
+
+    return build_input;
   });
 }
 
 }  // namespace gen
 
+void addFilesToFileSystem(const Files &files, FileSystem &file_system) {
+  // TODO(peck)
+}
+
 TEST_CASE("Correctness") {
   rc::prop("successful builds should create declared output files", []() {
     Paths paths;
-    printf("%s\n", (*gen::path(paths)).canonicalized().c_str());
-    // TODO(peck): Implement me
+
+    BuildInput build_input = *gen::buildInput(paths);
+
+    InMemoryFileSystem file_system;
+    addFilesToFileSystem(build_input.input_files, file_system);
+
+    DummyCommandRunner command_runner;
+
+    BuildStatus build_status;
+
+    InMemoryInvocationLog invocation_log;
+
+    build(
+        file_system,
+        command_runner,
+        build_status,
+        invocation_log,
+        build_input.steps,
+        Invocations() /* No prior invocations, this is a build from scratch */);
   });
 
   rc::prop("build steps that fail should not leave any trace", []() {

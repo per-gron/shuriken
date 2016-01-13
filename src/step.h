@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 
+#include "hash.h"
+#include "path.h"
+
 namespace shk {
 
 /**
@@ -26,26 +29,21 @@ struct Step {
   bool restat = false;
 
   /**
-   * Order only dependencies, as specified in the manifest.
-   *
-   * In Shuriken, the "explicit" and "implicit" dependencies are not used for
-   * dependency purposes; such dependencies are inferred from the syscalls that
-   * the command made when it was run. order_only_dependencies is the only thing
-   * from the build manifest that has an influence on the actual build DAG.
-   */
-  std::vector<Path> order_only_dependencies;
-
-  /**
-   * Input files, as specified in the manifest. These include both input files
-   * (aka "explicit" dependencies) and "implicit" dependencies.
+   * Input files, implicit depenencies and order only dependencies, as specified
+   * in the manifest.
    *
    * Because the only difference between Ninja "explicit" and "implicit"
    * dependencies is that implicit dependencies don't show up in the $in
    * variable there is no need to distinguish between them in Step objects. The
    * command has already been evaluated so there is no point in differentiating
    * them anymore.
+   *
+   * Furthermore, because these input dependencies are used only in the first
+   * build (subsequent builds use dependency information gathered from running
+   * the command), there is no need to distinguish between explicit/implicit
+   * dependencies and order-only dependencies.
    */
-  std::vector<Path> inputs;
+  std::vector<Path> dependencies;
 
   /**
    * Output files, as specified in the manifest. These are used as names for
@@ -54,7 +52,5 @@ struct Step {
    */
   std::vector<Path> outputs;
 };
-
-using Steps = std::unordered_map<Hash, Step>;
 
 }  // namespace shk

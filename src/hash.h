@@ -12,7 +12,7 @@ struct Hash {
   std::array<uint8_t, 20> data;
 };
 
-bool operator==(const Hash &a, const Hash &b) {
+inline bool operator==(const Hash &a, const Hash &b) {
   return a.data == b.data;
 }
 

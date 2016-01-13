@@ -5,8 +5,12 @@ https://www.kernel.org/pub/software/scm/git/docs/technical/racy-git.txt
 https://github.com/apenwarr/redo#readme
 http://cr.yp.to/redo/honest-script.html
 
-Features of Ninja that are unnecessary when detecting outputs and inputs:
-* All dependencies behave as order only dependencies.
+Differences from Ninja:
+* All dependencies provided in the Manifest behave as order only dependencies.
+* It is acceptable for input files to be missing: That is treated as another value of the file
+* Generator rules:
+  * (From Ninja) Not rebuilt when command line changes
+  * (From Ninja) Not cleaned by default
 * msvc_deps_prefix, deps, depfile are unnecessary
 
 

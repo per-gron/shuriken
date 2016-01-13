@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -29,21 +30,23 @@ class CommandRunner {
    * Invoke a command. When the command is finished, callback is invoked with
    * the result. It is allowed to call invoke() and empty() from the callback,
    * but it is not allowed to call wait() from there.
+   *
+   * The callback is always invokedfrom within a runCommands call.
    */
-  virtual Result invoke(
+  virtual void invoke(
       const std::string &command,
       const Callback &callback) = 0;
 
   /**
    * Returns false if there are any commands running currently.
    */
-  virtual bool empty() const;
+  virtual bool empty() const = 0;
 
   /**
    * Wait until a command has completed. If there are no commands running
    * right now (if empty()), then the method returns immediately.
    */
-  virtual void wait();
+  virtual void runCommands() = 0;
 };
 
 }  // namespace shk

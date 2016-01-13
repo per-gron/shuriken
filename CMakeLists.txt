@@ -3,6 +3,7 @@ project(shk)
 
 add_library(shklib
   src/build.h
+  src/build.cpp
   src/build_status.h
   src/command_runner.h
   src/file_system.h
@@ -31,6 +32,8 @@ set(RC_ENABLE_CATCH ON)
 add_subdirectory(vendor/rapidcheck)
 
 add_executable(shk_test
+  test/dummy_command_runner.cpp
+  test/dummy_command_runner.h
   test/in_memory_file_system.cpp
   test/in_memory_file_system.h
   test/in_memory_invocation_log.cpp

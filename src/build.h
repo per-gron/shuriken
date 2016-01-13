@@ -1,12 +1,17 @@
 #pragma once
 
+#include <unordered_set>
+#include <vector>
+
 #include "build_status.h"
 #include "command_runner.h"
 #include "file_system.h"
-#include "invocation.h"
+#include "invocation_log.h"
+#include "invocations.h"
 #include "step.h"
+#include "task.h"
 
-namespace shk {
+namespace shk {
 
 /**
  * Find build invocations that are in the invocation log but no longer exist in
@@ -16,7 +21,7 @@ namespace shk {
  * invocations.entries.
  */
 std::vector<Hash> staleInvocations(
-    const Steps &steps,
+    const std::unordered_set<Hash> &step_hashes,
     const Invocations &invocations);
 
 /**
@@ -28,7 +33,7 @@ std::vector<Hash> staleInvocations(
  */
 std::vector<Hash> dirtyInvocations(
     FileSystem &file_system,
-    const Steps &steps,
+    const std::unordered_set<Hash> &step_hashes,
     const Invocations &invocations);
 
 /**
@@ -36,7 +41,7 @@ std::vector<Hash> dirtyInvocations(
  * These steps are dirty and should be run.
  */
 std::vector<Step> unbuiltSteps(
-    const Steps &steps,
+    const std::unordered_set<Hash> &step_hashes,
     const Invocations &invocations);
 
 /**
@@ -72,7 +77,7 @@ void build(
     CommandRunner &command_runner,
     BuildStatus &build_status,
     InvocationLog &invocation_log,
-    const Steps &steps,
+    const std::vector<Step> &steps,
     const Invocations &invocations);
 
 }  // namespace shk
