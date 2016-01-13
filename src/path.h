@@ -17,6 +17,8 @@
 #include <string>
 #include <unordered_set>
 
+#include "path_error.h"
+
 namespace shk {
 
 using SlashBits = uint64_t;
@@ -28,15 +30,13 @@ namespace detail {
  * |slash_bits| has bits set starting from lowest for a backslash that was
  * normalized to a forward slash. (only used on Windows)
  */
-static bool canonicalizePath(
+static void canonicalizePath(
     std::string *path,
-    shk::SlashBits *slash_bits,
-    std::string *err);
-static bool canonicalizePath(
+    shk::SlashBits *slash_bits) throw(PathError);
+static void canonicalizePath(
     char *path,
     size_t *len,
-    shk::SlashBits *slash_bits,
-    std::string *err);
+    shk::SlashBits *slash_bits) throw(PathError);
 
 struct CanonicalizedPath {
   explicit CanonicalizedPath(const std::string &path)
@@ -102,9 +102,7 @@ struct hash<shk::detail::CanonicalizedPath> {
   using result_type = std::size_t;
 
   result_type operator()(const argument_type &p) const {
-    // Hash the pointer
-    auto ad = reinterpret_cast<uintptr_t>(&p);
-    return static_cast<size_t>(ad ^ (ad >> 16));
+    return std::hash<std::string>()(p.path);
   }
 };
 
@@ -114,7 +112,9 @@ struct hash<shk::Path> {
   using result_type = std::size_t;
 
   result_type operator()(const argument_type &p) const {
-    return hash<shk::detail::CanonicalizedPath>()(*p._canonicalized_path);
+    // Hash the pointer
+    auto ad = reinterpret_cast<uintptr_t>(p._canonicalized_path);
+    return static_cast<size_t>(ad ^ (ad >> 16));
   }
 };
 
@@ -124,7 +124,7 @@ namespace shk {
 
 class Paths {
  public:
-  Path get(const std::string &path);
+  Path get(const std::string &path) throw(PathError);
 
  private:
   std::unordered_set<detail::CanonicalizedPath> _canonicalized_paths;

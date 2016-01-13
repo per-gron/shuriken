@@ -7,6 +7,7 @@
 #include "step.h"
 
 #include "dummy_command_runner.h"
+#include "generators.h"
 #include "in_memory_file_system.h"
 #include "in_memory_invocation_log.h"
 
@@ -21,33 +22,12 @@ struct BuildInput {
 
 namespace gen {
 
-rc::Gen<shk::Path> path(Paths &paths) {
-  return rc::gen::exec([&paths] {
-    const auto path_component_gen =
-        rc::gen::container<std::string>(rc::gen::inRange<char>('a', 'z'));
-    const auto path_components =
-        *rc::gen::container<std::vector<std::string>>(path_component_gen);
-    std::string path;
-    for (const auto &path_component : path_components) {
-      if (!path.empty()) {
-        path += "/";
-      }
-      path += path_component;
-    }
-    return paths.get(path);
-  });
-}
-
-rc::Gen<std::vector<Path>> pathVector(Paths &paths) {
-  return rc::gen::container<std::vector<Path>>(path(paths));
-}
-
 /**
  * Partially generates a build step. Used by the steps generator, whichadds
  * more information to construct a real DAG.
  */
-rc::Gen<Step> step(Paths &paths) {
-  return rc::gen::exec([&paths] {
+rc::Gen<Step> step(const std::shared_ptr<Paths> &paths) {
+  return rc::gen::exec([paths] {
     Step step;
     // step.command is generated later
     step.restat = *rc::gen::arbitrary<bool>();
@@ -61,8 +41,8 @@ rc::Gen<Step> step(Paths &paths) {
  * Construct a list of Step objects and input files that represent an arbitrary
  * valid Shuriken build.
  */
-rc::Gen<BuildInput> buildInput(Paths &paths) {
-  return rc::gen::exec([&paths] {
+rc::Gen<BuildInput> buildInput(const std::shared_ptr<Paths> &paths) {
+  return rc::gen::exec([paths] {
     BuildInput build_input;
 
     build_input.steps =
@@ -89,7 +69,7 @@ void addFilesToFileSystem(const Files &files, FileSystem &file_system) {
 
 TEST_CASE("Correctness") {
   rc::prop("successful builds should create declared output files", []() {
-    Paths paths;
+    const auto paths = std::make_shared<Paths>();
 
     BuildInput build_input = *gen::buildInput(paths);
 
@@ -111,10 +91,6 @@ TEST_CASE("Correctness") {
         Invocations() /* No prior invocations, this is a build from scratch */);
   });
 
-  rc::prop("build steps that fail should not leave any trace", []() {
-    // TODO(peck): Implement me
-  });
-
   rc::prop("build, change, build is same as change, build", []() {
     // TODO(peck): Implement me
   });
@@ -124,6 +100,10 @@ TEST_CASE("Correctness") {
   });
 
   rc::prop("clean", []() {
+    // TODO(peck): Implement me
+  });
+
+  rc::prop("build steps that fail should not leave any trace", []() {
     // TODO(peck): Implement me
   });
 

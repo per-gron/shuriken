@@ -18,20 +18,16 @@ namespace shk {
 
 namespace detail {
 
-bool canonicalizePath(
+void canonicalizePath(
     std::string *path,
-    shk::SlashBits *slash_bits,
-    std::string *err) {
+    shk::SlashBits *slash_bits) throw(PathError) {
   size_t len = path->size();
   char* str = 0;
   if (len > 0) {
     str = &(*path)[0];
+    canonicalizePath(str, &len, slash_bits);
+    path->resize(len);
   }
-  if (!canonicalizePath(str, &len, slash_bits, err)) {
-    return false;
-  }
-  path->resize(len);
-  return true;
 }
 
 #ifdef _WIN32
@@ -53,16 +49,14 @@ shk::SlashBits shiftOverBit(int offset, shk::SlashBits bits) {
 
 #endif
 
-bool canonicalizePath(
+void canonicalizePath(
     char *path,
     size_t *len,
-    shk::SlashBits *slash_bits,
-    std::string *err) {
+    shk::SlashBits *slash_bits) throw(PathError) {
   // WARNING: this function is performance-critical; please benchmark
   // any changes you make to it.
   if (*len == 0) {
-    *err = "empty path";
-    return false;
+    throw PathError("empty path", path);
   }
 
   const int kMaxPathComponents = sizeof(shk::SlashBits) * 8 - 2;
@@ -91,8 +85,7 @@ bool canonicalizePath(
     }
   }
   if (bits_offset > kMaxPathComponents) {
-    *err = "too many path components";
-    return false;
+    throw PathError("too many path components", path);
   }
   bits_offset = 0;
 #endif
@@ -153,7 +146,7 @@ bool canonicalizePath(
     }
  
     if (component_count == kMaxPathComponents) {
-      throw std::runtime_error(std::string("path has too many components: ") + path);
+      throw PathError("path has too many components", path);
     }
     components[component_count] = dst;
     ++component_count;
@@ -168,8 +161,7 @@ bool canonicalizePath(
   }
 
   if (dst == start) {
-    *err = "path canonicalizes to the empty path";
-    return false;
+    throw PathError("path canonicalizes to the empty path", path);
   }
 
   *len = dst - start - 1;
@@ -178,7 +170,6 @@ bool canonicalizePath(
 #else
   *slash_bits = 0;
 #endif
-  return true;
 }
 
 }  // namespace detail
@@ -201,13 +192,14 @@ const std::string &Path::canonicalized() const {
   return _canonicalized_path->path;
 }
 
-Path Paths::get(const std::string &path) {
-  SlashBits slash_bits;
-  _canonicalized_paths.emplace(path);
-  // TODO(peck): Implement me
-  const detail::CanonicalizedPath *canonicalized_path =
-      &*_canonicalized_paths.find(detail::CanonicalizedPath(path));
-  return Path(canonicalized_path, slash_bits);
+Path Paths::get(const std::string &path) throw(PathError) {
+  SlashBits slash_bits = 0;
+  auto canonicalized_path = path;
+  detail::canonicalizePath(&canonicalized_path, &slash_bits);
+
+  const auto result = _canonicalized_paths.emplace(canonicalized_path);
+  const detail::CanonicalizedPath *canonicalized_path_ptr = &*result.first;
+  return Path(canonicalized_path_ptr, slash_bits);
 }
 
 }  // namespace shk

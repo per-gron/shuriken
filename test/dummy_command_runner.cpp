@@ -17,6 +17,18 @@ std::string joinPaths(const Range &paths, const std::string sep = ":") {
 
 }  // anonymous namespace
 
+namespace detail {
+
+std::pair<std::vector<Path>, std::vector<Path>> splitCommand(
+    const Paths &paths,
+    const std::string &command) {
+  std::vector<Path> inputs;
+  std::vector<Path> outputs;
+  return std::make_pair(inputs, outputs);
+}
+
+}  // namespace detail
+
 void DummyCommandRunner::invoke(
     const std::string &command,
     const Callback &callback) {
