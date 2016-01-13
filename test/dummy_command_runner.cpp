@@ -7,12 +7,29 @@ template<typename Range>
 std::string joinPaths(const Range &paths, const std::string sep = ":") {
   std::string result;
   for (const auto &path : paths) {
-    if (!result.empty()) {
-      result += sep;
-    }
     result += path.canonicalized();
+    result += sep;
   }
   return result;
+}
+
+template<typename Iter, typename Out>
+void splitPaths(
+    Paths &paths,
+    const Iter begin,
+    const Iter end,
+    const typename Iter::value_type sep,
+    Out out) {
+  auto it = begin;
+  while (it != end) {
+    const auto next = std::find(it, end, sep);
+    if (next == end) {
+      break;
+    }
+    const auto str = std::string(it, next);
+    *out++ = paths.get(str);
+    it = next + 1;
+  }
 }
 
 }  // anonymous namespace
@@ -20,10 +37,27 @@ std::string joinPaths(const Range &paths, const std::string sep = ":") {
 namespace detail {
 
 std::pair<std::vector<Path>, std::vector<Path>> splitCommand(
-    const Paths &paths,
+    Paths &paths,
     const std::string &command) {
   std::vector<Path> inputs;
   std::vector<Path> outputs;
+
+  const auto semicolon = std::find(command.begin(), command.end(), ';');
+  splitPaths(
+      paths,
+      command.begin(),
+      semicolon,
+      ':',
+      std::back_inserter(inputs));
+  if (semicolon != command.end()) {
+    splitPaths(
+        paths,
+        semicolon + 1,
+        command.end(),
+        ':',
+        std::back_inserter(outputs));
+  }
+
   return std::make_pair(inputs, outputs);
 }
 

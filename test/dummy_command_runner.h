@@ -12,7 +12,7 @@ namespace detail {
  * This is exposed for testing purposes.
  */
 std::pair<std::vector<Path>, std::vector<Path>> splitCommand(
-    const Paths &paths,
+    Paths &paths,
     const std::string &command);
 
 }  // namespace detail
