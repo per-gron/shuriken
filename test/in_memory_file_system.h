@@ -46,12 +46,15 @@ class InMemoryFileSystem : public FileSystem {
 
   struct Directory {
     /**
-     * Key is the basename of the file, value is the contents of the file.
+     * Key is the basename of the file, value is the contents of the file. It's
+     * a shared pointer to make it possible to keep a stream to it open even
+     * after unlinking it.
      */
-    std::unordered_map<std::string, std::string> files;
+    std::unordered_map<std::string, std::shared_ptr<std::string>> files;
 
     std::unordered_set<std::string> directories;
 
+    bool empty() const;
     bool operator==(const Directory &other) const;
   };
 

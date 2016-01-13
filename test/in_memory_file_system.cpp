@@ -39,11 +39,44 @@ Stat InMemoryFileSystem::lstat(const Path &path) {
 }
 
 void InMemoryFileSystem::mkdir(const Path &path) throw(IoError) {
-  // TODO(peck): Implement me
+  const auto l = lookup(path);
+  switch (l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+    break;
+  case EntryType::FILE:
+  case EntryType::DIRECTORY:
+    throw IoError("The named file exists", EEXIST);
+    break;
+  case EntryType::FILE_DOES_NOT_EXIST:
+    l.directory->directories.insert(l.basename);
+    _directories[path];
+    break;
+  }
 }
 
 void InMemoryFileSystem::rmdir(const Path &path) throw(IoError) {
-  // TODO(peck): Implement me
+  const auto l = lookup(path);
+  switch (l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+    break;
+  case EntryType::FILE_DOES_NOT_EXIST:
+    throw IoError("The named directory does not exist", ENOENT);
+    break;
+  case EntryType::FILE:
+    throw IoError("The named directory is a file", EPERM);
+    break;
+  case EntryType::DIRECTORY:
+    const auto &dir = _directories[path];
+    if (!dir.empty()) {
+      throw IoError("The named directory contains files other than `.' and `..' in it", ENOTEMPTY);
+    } else {
+      l.directory->directories.erase(l.basename);
+      _directories.erase(path);
+    }
+    break;
+  }
 }
 
 void InMemoryFileSystem::unlink(const Path &path) throw(IoError) {
@@ -68,6 +101,10 @@ bool InMemoryFileSystem::operator==(const InMemoryFileSystem &other) const {
   return (
       _paths == other._paths &&
       _directories == other._directories);
+}
+
+bool InMemoryFileSystem::Directory::empty() const {
+  return files.empty() && directories.empty();
 }
 
 bool InMemoryFileSystem::Directory::operator==(const Directory &other) const {
