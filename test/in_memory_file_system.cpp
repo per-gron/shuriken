@@ -1,6 +1,7 @@
 #include "in_memory_file_system.h"
 
 #include <errno.h>
+#include <sys/stat.h>
 
 namespace shk {
 namespace detail {
@@ -99,6 +100,9 @@ Stat InMemoryFileSystem::lstat(const Path &path) {
     stat.metadata.mode = 0755;  // Pretend this is the umask
     if (l.entry_type == EntryType::FILE) {
       stat.metadata.size = l.directory->files[l.basename]->contents.size();
+      stat.metadata.mode |= S_IFREG;
+    } else {
+      stat.metadata.mode |= S_IFDIR;
     }
     // TODO(peck): Set mtime and ctime
     break;
@@ -294,9 +298,6 @@ std::string readFile(FileSystem &file_system, const Path &path) throw(IoError) {
   return result;
 }
 
-/**
- * Helper function for writing a string to a file.
- */
 void writeFile(
     FileSystem &file_system,
     const Path &path,
@@ -304,6 +305,26 @@ void writeFile(
   const auto stream = file_system.open(path, "w");
   const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
   stream->write(data, 1, contents.size());
+}
+
+void mkdirs(FileSystem &file_system, const Path &path) throw(IoError) {
+  if (path.canonicalized().empty()) {
+    // Nothing left to do
+    return;
+  }
+
+  const auto stat = file_system.stat(path);
+  if (stat.result == ENOENT || stat.result == ENOTDIR) {
+    std::string dirname, basename;
+    std::tie(dirname, basename) = detail::basenameSplit(path.canonicalized());
+    mkdirs(file_system, file_system.paths().get(dirname));
+    file_system.mkdir(path);
+  } else if (S_ISDIR(stat.metadata.mode)) {
+    // No need to do anything
+  } else {
+    // It exists and is not a directory
+    throw IoError("Not a directory: " + path.canonicalized(), ENOTDIR);
+  }
 }
 
 }  // namespace shk

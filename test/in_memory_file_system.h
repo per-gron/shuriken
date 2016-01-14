@@ -112,4 +112,9 @@ void writeFile(
     const Path &path,
     const std::string &contents) throw(IoError);
 
+/**
+ * Create directory and parent directories. Like mkdir -p
+ */
+void mkdirs(FileSystem &file_system, const Path &path) throw(IoError);
+
 }  // namespace shk

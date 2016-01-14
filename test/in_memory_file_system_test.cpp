@@ -1,3 +1,5 @@
+#include <sys/stat.h>
+
 #include <catch.hpp>
 #include <rapidcheck/catch.h>
 
@@ -47,6 +49,7 @@ TEST_CASE("InMemoryFileSystem") {
 
     const auto stat = fs.stat(path);
     CHECK(stat.result == 0);
+    CHECK(S_ISDIR(stat.metadata.mode));
   }
 
   SECTION("mkdir over existing directory") {
@@ -95,7 +98,9 @@ TEST_CASE("InMemoryFileSystem") {
     const auto path = paths.get("abc");
     fs.open(path, "w");
 
-    CHECK(fs.stat(path).result == 0);
+    const auto stat = fs.stat(path);
+    CHECK(stat.result == 0);
+    CHECK(S_ISREG(stat.metadata.mode));
   }
 
   SECTION("open missing file for reading") {
@@ -127,6 +132,33 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(readFile(fs, path) == "hello!");
   }
 
+  SECTION("mkdirs") {
+    SECTION("single directory") {
+      const auto dir_path = paths.get("abc");
+      mkdirs(fs, dir_path);
+      CHECK(S_ISDIR(fs.stat(dir_path).metadata.mode));
+    }
+
+    SECTION("already existing directory") {
+      const auto dir_path = paths.get("abc");
+      mkdirs(fs, dir_path);
+      mkdirs(fs, dir_path);  // Should be ok
+      CHECK(S_ISDIR(fs.stat(dir_path).metadata.mode));
+    }
+
+    SECTION("over file") {
+      const auto dir_path = paths.get("abc");
+      fs.open(dir_path, "w");
+      CHECK_THROWS_AS(mkdirs(fs, dir_path), IoError);
+    }
+
+    SECTION("several directories") {
+      const auto dir_path = paths.get("abc/def/ghi");
+      const auto file_path = paths.get("abc/def/ghi/jkl");
+      mkdirs(fs, dir_path);
+      writeFile(fs, file_path, "hello");
+    }
+  }
 }
 
 }  // namespace shk
