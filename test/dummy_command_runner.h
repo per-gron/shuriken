@@ -23,7 +23,6 @@ std::pair<std::vector<Path>, std::vector<Path>> splitCommand(
  * This is exposed for testing purposes.
  */
 CommandRunner::Result runCommand(
-    Paths &paths,
     FileSystem &file_system,
     const std::string &command);
 
@@ -31,7 +30,7 @@ CommandRunner::Result runCommand(
 
 class DummyCommandRunner : public CommandRunner {
  public:
-  DummyCommandRunner(Paths &paths, FileSystem &file_system);
+  DummyCommandRunner(FileSystem &file_system);
 
   void invoke(
       const std::string &command,
@@ -55,7 +54,6 @@ class DummyCommandRunner : public CommandRunner {
       throw(IoError, std::runtime_error);
 
  private:
-  Paths &_paths;
   FileSystem &_file_system;
   std::vector<std::pair<std::string, Callback>> _enqueued_commands;
 };

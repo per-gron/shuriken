@@ -91,6 +91,16 @@ class Path {
       _slash_bits == other._slash_bits);
   }
 
+  /**
+   * Comparison operator, suitable for use in maps and sets but the
+   * comparison is dependent on memory layout so is not stable across runs.
+   */
+  bool operator<(const Path &other) const {
+    return (
+        std::tie(_canonicalized_path, _slash_bits) <
+        std::tie(other._canonicalized_path, other._slash_bits));
+  }
+
  private:
   const detail::CanonicalizedPath *_canonicalized_path;
   SlashBits _slash_bits;

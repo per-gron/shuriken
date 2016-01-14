@@ -76,7 +76,7 @@ TEST_CASE("Correctness") {
     InMemoryFileSystem file_system(*paths);
     addFilesToFileSystem(build_input.input_files, file_system);
 
-    DummyCommandRunner command_runner(*paths, file_system);
+    DummyCommandRunner command_runner(file_system);
 
     BuildStatus build_status;
 

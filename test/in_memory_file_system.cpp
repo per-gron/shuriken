@@ -213,6 +213,7 @@ size_t InMemoryFileSystem::InMemoryFileStream::read(
       it,
       it + bytes_to_read,
       reinterpret_cast<char *>(ptr));
+  _position += bytes_to_read;
 
   return items_to_read;
 }
