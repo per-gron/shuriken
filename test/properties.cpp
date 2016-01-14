@@ -20,6 +20,21 @@ struct BuildInput {
   Files input_files;
 };
 
+void showValue(const Step &step, std::ostream &os) {
+  os << "<Step:'" << step.command << "' ";
+  if (step.restat) {
+    os << "restat ";
+  }
+  os << rc::toString(step.dependencies) << " => " << rc::toString(step.outputs);
+  os << ">";
+}
+
+void showValue(const BuildInput &build_input, std::ostream &os) {
+  os << "  BuildInput:\n";
+  os << "steps: " << rc::toString(build_input.steps) << "\n";
+  os << "input_files: " << rc::toString(build_input.input_files) << std::endl;
+}
+
 namespace gen {
 
 /**
@@ -64,7 +79,10 @@ rc::Gen<BuildInput> buildInput(const std::shared_ptr<Paths> &paths) {
 }  // namespace gen
 
 void addFilesToFileSystem(const Files &files, FileSystem &file_system) {
-  // TODO(peck)
+  for (const auto &file : files) {
+    mkdirsFor(file_system, file.first);
+    writeFile(file_system, file.first, file.second);
+  }
 }
 
 TEST_CASE("Correctness") {
