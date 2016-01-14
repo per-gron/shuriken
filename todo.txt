@@ -90,7 +90,6 @@ Steps of a Shuriken build:
 * Function to detect insufficiently declared dependencies (how to do this?)
 
 To fill in the first test:
-* DummyCommandRunner::readFile and writeFile helpers
 * DummyCommandRunner::checkCommand, DummyCommandRunner::runCommand
 * addFilesToFileSystem in properties.cpp
 * Generate actual DAG in gen::buildInput
