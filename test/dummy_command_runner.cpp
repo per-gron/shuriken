@@ -1,5 +1,7 @@
 #include "dummy_command_runner.h"
 
+#include "in_memory_file_system.h"
+
 namespace shk {
 namespace {
 
@@ -32,6 +34,17 @@ void splitPaths(
   }
 }
 
+std::string makeInputData(
+    FileSystem &file_system, const std::vector<Path> &inputs) {
+  std::string input_data;
+  for (const auto &input : inputs) {
+    input_data += input.canonicalized() + "\n";
+    input_data += readFile(file_system, input);
+    input_data += "\n";
+  }
+  return input_data;
+}
+
 }  // anonymous namespace
 
 namespace detail {
@@ -61,7 +74,39 @@ std::pair<std::vector<Path>, std::vector<Path>> splitCommand(
   return std::make_pair(inputs, outputs);
 }
 
+CommandRunner::Result runCommand(
+    Paths &paths,
+    FileSystem &file_system,
+    const std::string &command) {
+  CommandRunner::Result result;
+  std::tie(result.input_files, result.output_files) =
+      splitCommand(paths, command);
+
+  std::string input_data;
+  try {
+    input_data = makeInputData(file_system, result.input_files);
+  } catch (IoError &) {
+    result.return_code = 1;
+    return result;
+  }
+
+  for (const auto &output : result.output_files) {
+    try {
+      writeFile(file_system, output, output.canonicalized() + "\n" + input_data);
+    } catch (IoError &) {
+      result.return_code = 1;
+      return result;
+    }
+  }
+
+  return result;
+}
+
 }  // namespace detail
+
+DummyCommandRunner::DummyCommandRunner(Paths &paths, FileSystem &file_system)
+    : _paths(paths),
+      _file_system(file_system) {}
 
 void DummyCommandRunner::invoke(
     const std::string &command,
@@ -69,13 +114,13 @@ void DummyCommandRunner::invoke(
   _enqueued_commands.emplace_back(command, callback);
 }
 
-bool DummyCommandRunner::empty() const {
-  return _enqueued_commands.empty();
+size_t DummyCommandRunner::size() const {
+  return _enqueued_commands.size();
 }
 
 void DummyCommandRunner::runCommands() {
   for (const auto &command : _enqueued_commands) {
-    runCommand(command.first, command.second);
+    command.second(detail::runCommand(_paths, _file_system, command.first));
   }
   _enqueued_commands.clear();
 }
@@ -86,15 +131,21 @@ std::string DummyCommandRunner::constructCommand(
   return joinPaths(inputs) + ";" + joinPaths(outputs);
 }
 
-bool DummyCommandRunner::checkCommand(
-    FileSystem &file_system, const std::string &command) {
-  // TODO(peck): Implement me
-  return false;
-}
+void DummyCommandRunner::checkCommand(
+    FileSystem &file_system, const std::string &command)
+        throw(IoError, std::runtime_error) {
+  std::vector<Path> inputs;
+  std::vector<Path> outputs;
+  std::tie(inputs, outputs) = detail::splitCommand(file_system.paths(), command);
 
-void DummyCommandRunner::runCommand(
-    const std::string &command, const Callback &callback) {
-  // TODO(peck): Implement me
+  const auto input_data = makeInputData(file_system, inputs);
+
+  for (const auto &output : outputs) {
+    const auto data = readFile(file_system, output);
+    if (data != output.canonicalized() + "\n" + input_data) {
+      throw std::runtime_error("Unexpected output file contents for file " + output.canonicalized());
+    }
+  }
 }
 
 }  // namespace shk

@@ -24,6 +24,10 @@ InMemoryFileSystem::InMemoryFileSystem(Paths &paths)
   _directories[paths.get("")];
 }
 
+Paths &InMemoryFileSystem::paths() {
+  return *_paths;
+}
+
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
     const Path &path, const char *mode) throw(IoError) {
   const auto mode_string = std::string(mode);

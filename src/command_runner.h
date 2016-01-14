@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "path.h"
+
 namespace shk {
 
 /**
@@ -17,14 +19,16 @@ class CommandRunner {
   virtual ~CommandRunner() = default;
 
   struct Result {
-    std::vector<std::string> input_files;
-    std::vector<std::string> output_files;
+    std::vector<Path> input_files;
+    std::vector<Path> output_files;
     int return_code;
     std::string output;
     std::vector<std::string> linting_errors;
   };
 
   using Callback = std::function<void (Result &&result)>;
+
+  static void noopCallback(Result &&result) {}
 
   /**
    * Invoke a command. When the command is finished, callback is invoked with
@@ -38,9 +42,11 @@ class CommandRunner {
       const Callback &callback) = 0;
 
   /**
-   * Returns false if there are any commands running currently.
+   * Returns the number of currently running commands.
    */
-  virtual bool empty() const = 0;
+  virtual size_t size() const = 0;
+
+  bool empty() const { return size() == 0; }
 
   /**
    * Wait until a command has completed. If there are no commands running

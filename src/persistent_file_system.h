@@ -4,6 +4,6 @@
 
 namespace shk {
 
-std::unique_ptr<FileSystem> persistentFileSystem();
+std::unique_ptr<FileSystem> persistentFileSystem(Paths &paths);
 
 }  // namespace shk

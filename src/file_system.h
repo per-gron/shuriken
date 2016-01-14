@@ -54,6 +54,11 @@ class FileSystem {
     virtual bool eof() const = 0;
   };
 
+  /**
+   * Return the Paths object that this FileSystem uses for its paths.
+   */
+  virtual Paths &paths() = 0;
+
   virtual std::unique_ptr<Stream> open(
       const Path &path, const char *mode) throw(IoError) = 0;
   virtual Stat stat(const Path &path) = 0;

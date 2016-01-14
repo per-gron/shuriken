@@ -27,6 +27,7 @@ class InMemoryFileSystem : public FileSystem {
  public:
   InMemoryFileSystem(Paths &paths);
 
+  Paths &paths() override;
   std::unique_ptr<Stream> open(const Path &path, const char *mode) throw(IoError) override;
   Stat stat(const Path &path) override;
   Stat lstat(const Path &path) override;

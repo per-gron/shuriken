@@ -8,13 +8,15 @@ void showValue(const Path &path, std::ostream &os) {
 
 namespace gen {
 
+rc::Gen<std::string> pathComponent() {
+  return rc::gen::nonEmpty(
+      rc::gen::container<std::string>(rc::gen::inRange<char>('a', 'z')));
+}
+
 rc::Gen<std::vector<std::string>> pathComponents() {
-  const auto path_component_gen =
-      rc::gen::nonEmpty(
-          rc::gen::container<std::string>(rc::gen::inRange<char>('a', 'z')));
   return rc::gen::resize(
       10,
-      rc::gen::container<std::vector<std::string>>(path_component_gen));
+      rc::gen::container<std::vector<std::string>>(pathComponent()));
 }
 
 std::string joinPathComponents(
@@ -41,8 +43,19 @@ rc::Gen<shk::Path> path(const std::shared_ptr<Paths> &paths) {
   });
 }
 
+rc::Gen<shk::Path> pathWithSingleComponent(const std::shared_ptr<Paths> &paths) {
+  return rc::gen::exec([paths] {
+    return paths->get(*pathComponent());
+  });
+}
+
 rc::Gen<std::vector<Path>> pathVector(const std::shared_ptr<Paths> &paths) {
   return rc::gen::container<std::vector<Path>>(path(paths));
+}
+
+rc::Gen<std::vector<Path>> pathWithSingleComponentVector(
+    const std::shared_ptr<Paths> &paths) {
+  return rc::gen::container<std::vector<Path>>(pathWithSingleComponent(paths));
 }
 
 }  // namespace gen
