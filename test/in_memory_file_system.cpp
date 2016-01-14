@@ -18,6 +18,12 @@ std::pair<std::string, std::string> basenameSplit(const std::string &path) {
   }
 }
 
+std::string dirname(const std::string &path) {
+  std::string dirname, basename;
+  std::tie(dirname, basename) = detail::basenameSplit(path);
+  return dirname;
+}
+
 }  // namespace detail
 
 InMemoryFileSystem::InMemoryFileSystem(Paths &paths)
@@ -315,8 +321,7 @@ void mkdirs(FileSystem &file_system, const Path &path) throw(IoError) {
 
   const auto stat = file_system.stat(path);
   if (stat.result == ENOENT || stat.result == ENOTDIR) {
-    std::string dirname, basename;
-    std::tie(dirname, basename) = detail::basenameSplit(path.canonicalized());
+    const auto dirname = detail::dirname(path.canonicalized());
     mkdirs(file_system, file_system.paths().get(dirname));
     file_system.mkdir(path);
   } else if (S_ISDIR(stat.metadata.mode)) {
@@ -325,6 +330,11 @@ void mkdirs(FileSystem &file_system, const Path &path) throw(IoError) {
     // It exists and is not a directory
     throw IoError("Not a directory: " + path.canonicalized(), ENOTDIR);
   }
+}
+
+void mkdirsFor(FileSystem &file_system, const Path &path) throw(IoError) {
+  const auto dirname = detail::dirname(path.canonicalized());
+  mkdirs(file_system, file_system.paths().get(dirname));
 }
 
 }  // namespace shk

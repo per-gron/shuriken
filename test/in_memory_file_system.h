@@ -13,6 +13,8 @@ namespace detail {
  */
 std::pair<std::string, std::string> basenameSplit(const std::string &path);
 
+std::string dirname(const std::string &path);
+
 }  // namespace detail
 
 /**
@@ -116,5 +118,11 @@ void writeFile(
  * Create directory and parent directories. Like mkdir -p
  */
 void mkdirs(FileSystem &file_system, const Path &path) throw(IoError);
+
+/**
+ * Make sure that there is a directory for the given path. Like
+ * mkdir -p `dirname path`
+ */
+void mkdirsFor(FileSystem &file_system, const Path &path) throw(IoError);
 
 }  // namespace shk

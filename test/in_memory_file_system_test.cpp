@@ -159,6 +159,13 @@ TEST_CASE("InMemoryFileSystem") {
       writeFile(fs, file_path, "hello");
     }
   }
+
+  SECTION("mkdirsFor") {
+    const auto file_path = paths.get("abc/def/ghi/jkl");
+    mkdirsFor(fs, file_path);
+    fs.open(file_path, "w");
+    CHECK(fs.stat(file_path).result == 0);
+  }
 }
 
 }  // namespace shk
