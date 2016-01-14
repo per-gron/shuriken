@@ -6,7 +6,9 @@
 
 namespace shk {
 
-TEST_CASE("detail::basenameSplit") {
+TEST_CASE("InMemoryFileSystem") {
+
+SECTION("detail::basenameSplit") {
   rc::prop("extracts the basename and the dirname", []() {
     const auto path_components = *gen::pathComponents();
     RC_PRE(!path_components.empty());
@@ -26,23 +28,20 @@ TEST_CASE("detail::basenameSplit") {
   });
 }
 
-TEST_CASE("InMemoryFileSystem::lstat missing file") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+Paths paths;
+InMemoryFileSystem fs(paths);
+
+SECTION("lstat missing file") {
   const auto stat = fs.lstat(paths.get("abc"));
   CHECK(stat.result == ENOENT);
 }
 
-TEST_CASE("InMemoryFileSystem::stat missing file") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+SECTION("stat missing file") {
   const auto stat = fs.stat(paths.get("abc"));
   CHECK(stat.result == ENOENT);
 }
 
-TEST_CASE("InMemoryFileSystem::mkdir") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+SECTION("mkdir") {
   const auto path = paths.get("abc");
   fs.mkdir(path);
 
@@ -50,24 +49,18 @@ TEST_CASE("InMemoryFileSystem::mkdir") {
   CHECK(stat.result == 0);
 }
 
-TEST_CASE("InMemoryFileSystem::mkdir over existing directory") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+SECTION("mkdir over existing directory") {
   const auto path = paths.get("abc");
   fs.mkdir(path);
   CHECK_THROWS_AS(fs.mkdir(path), IoError);
 }
 
-TEST_CASE("InMemoryFileSystem::rmdir missing file") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+SECTION("rmdir missing file") {
   const auto path = paths.get("abc");
   CHECK_THROWS_AS(fs.rmdir(path), IoError);
 }
 
-TEST_CASE("InMemoryFileSystem::rmdir") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+SECTION("rmdir") {
   const auto path = paths.get("abc");
   fs.mkdir(path);
   fs.rmdir(path);
@@ -75,9 +68,7 @@ TEST_CASE("InMemoryFileSystem::rmdir") {
   CHECK(fs.stat(path).result == ENOENT);
 }
 
-TEST_CASE("InMemoryFileSystem::rmdir nonempty directory") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+SECTION("rmdir nonempty directory") {
   const auto path = paths.get("abc");
   const auto file_path = paths.get("abc/def");
   fs.mkdir(path);
@@ -86,17 +77,13 @@ TEST_CASE("InMemoryFileSystem::rmdir nonempty directory") {
   CHECK(fs.stat(path).result == 0);
 }
 
-TEST_CASE("InMemoryFileSystem::unlink directory") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+SECTION("unlink directory") {
   const auto path = paths.get("abc");
   fs.mkdir(path);
   CHECK_THROWS_AS(fs.unlink(path), IoError);
 }
 
-TEST_CASE("InMemoryFileSystem::unlink") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+SECTION("unlink") {
   const auto path = paths.get("abc");
   fs.open(path, "w");
 
@@ -104,20 +91,42 @@ TEST_CASE("InMemoryFileSystem::unlink") {
   CHECK(fs.stat(path).result == ENOENT);
 }
 
-TEST_CASE("InMemoryFileSystem::open for writing") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+SECTION("open for writing") {
   const auto path = paths.get("abc");
   fs.open(path, "w");
 
   CHECK(fs.stat(path).result == 0);
 }
 
-TEST_CASE("InMemoryFileSystem::open missing file for reading") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+SECTION("open missing file for reading") {
   const auto path = paths.get("abc");
   CHECK_THROWS_AS(fs.open(path, "r"), IoError);
 }
+
+SECTION("open missing file for reading") {
+  const auto path = paths.get("abc");
+  CHECK_THROWS_AS(fs.open(path, "r"), IoError);
+}
+
+SECTION("writeFile") {
+  const auto path = paths.get("abc");
+  writeFile(fs, path, "hello");
+  CHECK(fs.stat(path).result == 0);  // Verify file exists
+}
+
+SECTION("writeFile, readFile") {
+  const auto path = paths.get("abc");
+  writeFile(fs, path, "hello");
+  CHECK(readFile(fs, path) == "hello");
+}
+
+SECTION("writeFile, writeFile, readFile") {
+  const auto path = paths.get("abc");
+  writeFile(fs, path, "hello");
+  writeFile(fs, path, "hello!");
+  CHECK(readFile(fs, path) == "hello!");
+}
+
+}  // TEST_CASE("InMemoryFileSystem")
 
 }  // namespace shk

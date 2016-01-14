@@ -276,4 +276,29 @@ InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(const Path &path) {
   return result;
 }
 
+std::string readFile(FileSystem &file_system, const Path &path) throw(IoError) {
+  std::string result;
+
+  const auto stream = file_system.open(path, "r");
+  uint8_t buf[1024];
+  while (!stream->eof()) {
+    size_t read_bytes = stream->read(buf, 1, sizeof(buf));
+    result.append(reinterpret_cast<char *>(buf), read_bytes);
+  }
+
+  return result;
+}
+
+/**
+ * Helper function for writing a string to a file.
+ */
+void writeFile(
+    FileSystem &file_system,
+    const Path &path,
+    const std::string &contents) throw(IoError) {
+  const auto stream = file_system.open(path, "w");
+  const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
+  stream->write(data, 1, contents.size());
+}
+
 }  // namespace shk

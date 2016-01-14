@@ -98,4 +98,17 @@ class InMemoryFileSystem : public FileSystem {
   std::unordered_map<Path, Directory> _directories;
 };
 
+/**
+ * Helper function for reading the entire contents of a file.
+ */
+std::string readFile(FileSystem &file_system, const Path &path) throw(IoError);
+
+/**
+ * Helper function for writing a string to a file.
+ */
+void writeFile(
+    FileSystem &file_system,
+    const Path &path,
+    const std::string &contents) throw(IoError);
+
 }  // namespace shk
