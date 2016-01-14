@@ -68,7 +68,7 @@ void addFilesToFileSystem(const Files &files, FileSystem &file_system) {
 }
 
 TEST_CASE("Correctness") {
-  rc::prop("successful builds should create declared output files", []() {
+  rc::prop("successful builds should run all build steps", []() {
     const auto paths = std::make_shared<Paths>();
 
     BuildInput build_input = *gen::buildInput(paths);
@@ -91,11 +91,15 @@ TEST_CASE("Correctness") {
         Invocations() /* No prior invocations, this is a build from scratch */);
   });
 
-  rc::prop("build, change, build is same as change, build", []() {
+  rc::prop("In {build, build}, the second build is a no-op", []() {
     // TODO(peck): Implement me
   });
 
-  rc::prop("build, change, build, undo, build is same as build", []() {
+  rc::prop("{build, change, build} is same as {change, build}", []() {
+    // TODO(peck): Implement me
+  });
+
+  rc::prop("{build, change, build, undo, build} is same as {build}", []() {
     // TODO(peck): Implement me
   });
 

@@ -26,4 +26,98 @@ TEST_CASE("detail::basenameSplit") {
   });
 }
 
+TEST_CASE("InMemoryFileSystem::lstat missing file") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto stat = fs.lstat(paths.get("abc"));
+  CHECK(stat.result == ENOENT);
+}
+
+TEST_CASE("InMemoryFileSystem::stat missing file") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto stat = fs.stat(paths.get("abc"));
+  CHECK(stat.result == ENOENT);
+}
+
+TEST_CASE("InMemoryFileSystem::mkdir") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto path = paths.get("abc");
+  fs.mkdir(path);
+
+  const auto stat = fs.stat(path);
+  CHECK(stat.result == 0);
+}
+
+TEST_CASE("InMemoryFileSystem::mkdir over existing directory") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto path = paths.get("abc");
+  fs.mkdir(path);
+  CHECK_THROWS_AS(fs.mkdir(path), IoError);
+}
+
+TEST_CASE("InMemoryFileSystem::rmdir missing file") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto path = paths.get("abc");
+  CHECK_THROWS_AS(fs.rmdir(path), IoError);
+}
+
+TEST_CASE("InMemoryFileSystem::rmdir") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto path = paths.get("abc");
+  fs.mkdir(path);
+  fs.rmdir(path);
+
+  CHECK(fs.stat(path).result == ENOENT);
+}
+
+TEST_CASE("InMemoryFileSystem::rmdir nonempty directory") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto path = paths.get("abc");
+  const auto file_path = paths.get("abc/def");
+  fs.mkdir(path);
+  fs.open(file_path, "w");
+  CHECK_THROWS_AS(fs.rmdir(path), IoError);
+  CHECK(fs.stat(path).result == 0);
+}
+
+TEST_CASE("InMemoryFileSystem::unlink directory") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto path = paths.get("abc");
+  fs.mkdir(path);
+  CHECK_THROWS_AS(fs.unlink(path), IoError);
+}
+
+TEST_CASE("InMemoryFileSystem::unlink") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto path = paths.get("abc");
+  fs.open(path, "w");
+
+  fs.unlink(path);
+  CHECK(fs.stat(path).result == ENOENT);
+}
+
+TEST_CASE("InMemoryFileSystem::open for writing") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto path = paths.get("abc");
+  fs.open(path, "w");
+
+  CHECK(fs.stat(path).result == 0);
+}
+
+TEST_CASE("InMemoryFileSystem::open missing file for reading") {
+  Paths paths;
+  InMemoryFileSystem fs(paths);
+  const auto path = paths.get("abc");
+  CHECK_THROWS_AS(fs.open(path, "r"), IoError);
+}
+
 }  // namespace shk

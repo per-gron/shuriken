@@ -20,7 +20,9 @@ std::pair<std::string, std::string> basenameSplit(const std::string &path) {
 }  // namespace detail
 
 InMemoryFileSystem::InMemoryFileSystem(Paths &paths)
-    : _paths(&paths) {}
+    : _paths(&paths) {
+  _directories[paths.get("")];
+}
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
     const Path &path, const char *mode) throw(IoError) {
@@ -55,7 +57,8 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
       throw IoError("The file does not exist", ENOENT);
     }
     {
-      const auto &file = l.directory->files[l.basename];
+      const auto &file = std::make_shared<File>();
+      l.directory->files[l.basename] = file;
       return std::unique_ptr<Stream>(
           new InMemoryFileStream(file, read, write));
     }
@@ -218,7 +221,14 @@ void InMemoryFileSystem::InMemoryFileStream::write(
   checkNotEof();
 
   const auto bytes = size * nitems;
-  _file->contents.insert(_position, reinterpret_cast<const char *>(ptr), bytes);
+  const auto new_size = _position + bytes;
+  if (_file->contents.size() < new_size) {
+    _file->contents.resize(new_size);
+  }
+  std::copy(
+      reinterpret_cast<const char *>(ptr),
+      reinterpret_cast<const char *>(ptr + bytes),
+      _file->contents.begin() + _position);
   _position += bytes;
 }
 
@@ -258,7 +268,7 @@ InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(const Path &path) {
   } else if (directory.directories.count(basename)) {
     result.entry_type = EntryType::DIRECTORY;
   } else {
-    return result;
+    result.entry_type = EntryType::FILE_DOES_NOT_EXIST;
   }
 
   result.directory = &directory;
