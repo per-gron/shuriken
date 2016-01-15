@@ -13,6 +13,8 @@ add_library(shklib
   src/build.cpp
   src/build_status.h
   src/command_runner.h
+  src/edit_distance.cpp
+  src/edit_distance.h
   src/eval_env.cpp
   src/eval_env.h
   src/file_system.h
@@ -45,6 +47,7 @@ add_executable(shk_test
   test/dummy_command_runner.cpp
   test/dummy_command_runner.h
   test/dummy_command_runner_test.cpp
+  test/edit_distance_test.cpp
   test/generators.cpp
   test/generators.h
   test/in_memory_file_system.cpp

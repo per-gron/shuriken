@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <catch.hpp>
-#include <rapidcheck/catch.h>
 
 #include "eval_env.h"
 #include "lexer.h"

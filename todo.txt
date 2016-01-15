@@ -97,8 +97,6 @@ Steal directly from Ninja:
 * getopt (for Windows only)
 * manifest_parser / lexer (with modifications)
 * deps_log (refactor into invocation log)
-* eval_env
-* edit_distance
 * line_printer
 * sha1* (from shuriken)
 * version
