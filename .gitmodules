@@ -1,3 +1,6 @@
 [submodule "vendor/rapidcheck"]
 	path = vendor/rapidcheck
 	url = git@github.com:emil-e/rapidcheck.git
+[submodule "vendor/re2c"]
+	path = vendor/re2c
+	url = git@github.com:skvadrik/re2c.git
