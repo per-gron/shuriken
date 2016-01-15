@@ -4,9 +4,9 @@ project(shk)
 add_subdirectory(vendor)
 
 add_custom_command(
-  OUTPUT lexer.cc
-  COMMAND re2c -b -i --no-generation-date -o lexer.cc ${CMAKE_SOURCE_DIR}/src/lexer.in.cc
-  DEPENDS src/lexer.in.cc re2c)
+  OUTPUT lexer.cpp
+  COMMAND re2c -b -i --no-generation-date -o lexer.cpp ${CMAKE_SOURCE_DIR}/src/lexer.in.cpp
+  DEPENDS src/lexer.in.cpp re2c)
 
 add_library(shklib
   src/build.h
@@ -24,6 +24,8 @@ add_library(shklib
   src/invocation_log.h
   src/invocations.h
   src/lexer.h
+  src/line_printer.cpp
+  src/line_printer.h
   src/io_error.h
   src/manifest_parser.h
   src/path.cpp
@@ -34,7 +36,7 @@ add_library(shklib
   src/step.h
   src/string_piece.h
   src/task.h
-  lexer.cc)
+  lexer.cpp)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC src)
 
@@ -56,6 +58,7 @@ add_executable(shk_test
   test/in_memory_invocation_log.cpp
   test/in_memory_invocation_log.h
   test/lexer_test.cpp
+  test/line_printer_test.cpp
   test/main.cpp
   test/path_test.cpp
   test/properties.cpp)
