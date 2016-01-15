@@ -3,6 +3,11 @@ project(shk)
 
 add_subdirectory(vendor)
 
+add_custom_command(
+  OUTPUT lexer.cc
+  COMMAND re2c -b -i --no-generation-date -o lexer.cc ${CMAKE_SOURCE_DIR}/src/lexer.in.cc
+  DEPENDS src/lexer.in.cc re2c)
+
 add_library(shklib
   src/build.h
   src/build.cpp
@@ -14,6 +19,7 @@ add_library(shklib
   src/hash.h
   src/invocation_log.h
   src/invocations.h
+  src/lexer.h
   src/io_error.h
   src/manifest_parser.h
   src/path.cpp
@@ -22,7 +28,9 @@ add_library(shklib
   src/persistent_file_system.cpp
   src/persistent_file_system.h
   src/step.h
-  src/task.h)
+  src/string_piece.h
+  src/task.h
+  lexer.cc)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC src)
 
