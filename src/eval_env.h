@@ -35,7 +35,7 @@ struct Env {
  * Can be evaluated relative to an Env.
  */
 struct EvalString {
-  std::string Evaluate(Env* env) const;
+  std::string evaluate(Env* env) const;
 
   void clear() { _parsed.clear(); }
   bool empty() const { return _parsed.empty(); }
@@ -98,8 +98,8 @@ struct BindingEnv : public Env {
   virtual std::string lookupVariable(const std::string& var);
 
   void addRule(const Rule* rule);
-  const Rule* lookupRule(const std::string& rule_name) const;
-  const Rule* lookupRuleCurrentScope(const std::string& rule_name) const;
+  const Rule *lookupRule(const std::string& rule_name) const;
+  const Rule *lookupRuleCurrentScope(const std::string& rule_name) const;
   const std::map<std::string, const Rule*> &getRules() const;
 
   void addBinding(const std::string& key, const std::string& val);

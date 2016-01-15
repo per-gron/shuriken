@@ -13,6 +13,8 @@ add_library(shklib
   src/build.cpp
   src/build_status.h
   src/command_runner.h
+  src/eval_env.cpp
+  src/eval_env.h
   src/file_system.h
   src/fingerprint.cpp
   src/fingerprint.h
@@ -50,6 +52,7 @@ add_executable(shk_test
   test/in_memory_file_system_test.cpp
   test/in_memory_invocation_log.cpp
   test/in_memory_invocation_log.h
+  test/lexer_test.cpp
   test/main.cpp
   test/path_test.cpp
   test/properties.cpp)
