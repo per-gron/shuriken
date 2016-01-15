@@ -16,6 +16,8 @@
 
 #include "eval_env.h"
 
+namespace shk {
+
 std::string BindingEnv::lookupVariable(const std::string &var) {
   const auto i = _bindings.find(var);
   if (i != _bindings.end())
@@ -131,3 +133,5 @@ std::string EvalString::serialize() const {
   }
   return result;
 }
+
+}  // namespace shk

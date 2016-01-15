@@ -17,6 +17,7 @@
 #include <stddef.h>
 #include <string>
 
+namespace shk {
 namespace detail {
 
 /**
@@ -98,3 +99,5 @@ struct LinePrinter {
    */
   void printOrBuffer(const char *data, size_t size);
 };
+
+}  // namespace shk

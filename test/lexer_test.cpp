@@ -17,6 +17,8 @@
 #include "eval_env.h"
 #include "lexer.h"
 
+namespace shk {
+
 TEST_CASE("Lexer") {
   SECTION("readVarValue") {
     Lexer lexer("plain text $var $VaR ${x}\n");
@@ -92,3 +94,5 @@ TEST_CASE("Lexer") {
     CHECK("tabs are not allowed, use spaces" == lexer.describeLastError());
   }
 }
+
+}  // namespace shk

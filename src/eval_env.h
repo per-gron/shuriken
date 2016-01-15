@@ -20,6 +20,8 @@
 
 #include "string_piece.h"
 
+namespace shk {
+
 struct Rule;
 
 /**
@@ -121,3 +123,5 @@ private:
   std::map<std::string, const Rule*> _rules;
   BindingEnv *_parent;
 };
+
+}  // namespace shk

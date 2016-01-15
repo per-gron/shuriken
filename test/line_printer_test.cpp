@@ -16,6 +16,8 @@
 
 #include "line_printer.h"
 
+namespace shk {
+
 TEST_CASE("LinePrinter") {
   SECTION("elideMiddle") {
     SECTION("NothingToElide") {
@@ -29,3 +31,5 @@ TEST_CASE("LinePrinter") {
     }
   }
 }
+
+}  // namespace shk

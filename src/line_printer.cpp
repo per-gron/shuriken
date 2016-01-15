@@ -25,6 +25,7 @@
 #include <sys/time.h>
 #endif
 
+namespace shk {
 namespace detail {
 
 std::string elideMiddle(const std::string &str, size_t width) {
@@ -153,3 +154,5 @@ void LinePrinter::setConsoleLocked(bool locked) {
     _line_buffer.clear();
   }
 }
+
+}  // namespace shk

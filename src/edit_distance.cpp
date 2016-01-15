@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <vector>
 
+namespace shk {
+
 int editDistance(
     const StringPiece& s1,
     const StringPiece& s2,
@@ -72,3 +74,5 @@ int editDistance(
 
   return row[n];
 }
+
+}  // namespace shk

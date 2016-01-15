@@ -16,6 +16,8 @@
 
 #include "edit_distance.h"
 
+namespace shk {
+
 TEST_CASE("editDistance") {
   SECTION("empty") {
     CHECK(5 == editDistance("", "ninja"));
@@ -49,3 +51,5 @@ TEST_CASE("editDistance") {
     CHECK(1 == editDistance("browser_tests", "browser_test"));
   }
 }
+
+}  // namespace shk

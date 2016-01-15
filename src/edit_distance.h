@@ -16,8 +16,12 @@
 
 #include "string_piece.h"
 
+namespace shk {
+
 int editDistance(
     const StringPiece &s1,
     const StringPiece &s2,
     bool allow_replacements = true,
     int max_edit_distance = 0);
+
+}  // namespace shk

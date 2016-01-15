@@ -21,6 +21,8 @@
 #undef ERROR
 #endif
 
+namespace shk {
+
 struct EvalString;
 
 struct Lexer {
@@ -100,3 +102,5 @@ private:
   const char *_ofs;
   const char *_last_token;
 };
+
+}  // namespace shk
