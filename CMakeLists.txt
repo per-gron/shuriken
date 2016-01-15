@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.2.1)
 project(shk)
 
+add_subdirectory(vendor)
+
 add_library(shklib
   src/build.h
   src/build.cpp
@@ -28,9 +30,6 @@ add_executable(shk
   src/shk.cpp)
 set_property(TARGET shk PROPERTY CXX_STANDARD 11)
 target_link_libraries(shk shklib)
-
-set(RC_ENABLE_CATCH ON)
-add_subdirectory(vendor/rapidcheck)
 
 add_executable(shk_test
   test/dummy_command_runner.cpp
