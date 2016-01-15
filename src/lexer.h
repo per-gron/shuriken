@@ -48,50 +48,74 @@ struct Lexer {
     TEOF,
   };
 
-  /// Return a human-readable form of a token, used in error messages.
+  /**
+   * Return a human-readable form of a token, used in error messages.
+   */
   static const char* tokenName(Token t);
 
-  /// Return a human-readable token hint, used in error messages.
+  /**
+   * Return a human-readable token hint, used in error messages.
+   */
   static const char* tokenErrorHint(Token expected);
 
-  /// If the last token read was an ERROR token, provide more info
-  /// or the empty string.
+  /**
+   * If the last token read was an ERROR token, provide more info
+   * or the empty string.
+   */
   std::string describeLastError();
 
-  /// Start parsing some input.
+  /**
+   * Start parsing some input.
+   */
   void start(StringPiece filename, StringPiece input);
 
-  /// Read a Token from the Token enum.
+  /**
+   * Read a Token from the Token enum.
+   */
   Token readToken();
 
-  /// Rewind to the last read Token.
+  /**
+   * Rewind to the last read Token.
+   */
   void unreadToken();
 
-  /// If the next token is \a token, read it and return true.
+  /**
+   * If the next token is \a token, read it and return true.
+   */
   bool peekToken(Token token);
 
-  /// Read a simple identifier (a rule or variable name).
-  /// Returns false if a name can't be read.
+  /**
+   * Read a simple identifier (a rule or variable name).
+   * Returns false if a name can't be read.
+   */
   bool readIdent(std::string* out);
 
-  /// Read a path (complete with $escapes).
-  /// Returns false only on error, returned path may be empty if a delimiter
-  /// (space, newline) is hit.
+  /**
+   * Read a path (complete with $escapes).
+   * Returns false only on error, returned path may be empty if a delimiter
+   * (space, newline) is hit.
+   */
   bool readPath(EvalString* path, std::string* err) {
     return readEvalString(path, true, err);
   }
 
-  /// Read the value side of a var = value line (complete with $escapes).
-  /// Returns false only on error.
+  /**
+   * Read the value side of a var = value line (complete with $escapes).
+   * Returns false only on error.
+   */
   bool readVarValue(EvalString* value, std::string* err) {
     return readEvalString(value, false, err);
   }
 
-  /// Construct an error message with context.
+  /**
+   * Construct an error message with context.
+   */
   bool error(const std::string& message, std::string* err);
 
 private:
-  /// Skip past whitespace (called after each read token/ident/etc.).
+  /**
+   * Skip past whitespace (called after each read token/ident/etc.).
+   */
   void eatWhitespace();
 
   /// Read a $-escaped string.

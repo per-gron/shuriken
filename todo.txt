@@ -97,7 +97,6 @@ Steal directly from Ninja:
 * getopt (for Windows only)
 * manifest_parser / lexer (with modifications)
 * deps_log (refactor into invocation log)
-* line_printer
 * sha1* (from shuriken)
 * version
 * utils (parts of it, for calculating CPU count, load average etc, GetShellEscapedString)
