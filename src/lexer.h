@@ -95,7 +95,7 @@ struct Lexer {
    *
    * Throws ParseError if a name can't be read.
    */
-  void readIdent(std::string *out, const char *ident_type) throw(ParseError);
+  std::string readIdent(const char *ident_type) throw(ParseError);
 
   /**
    * Read a path (complete with $escapes).

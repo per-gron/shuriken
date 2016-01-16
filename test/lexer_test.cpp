@@ -49,24 +49,17 @@ TEST_CASE("Lexer") {
 
   SECTION("readIdent") {
     Lexer lexer("foo baR baz_123 foo-bar");
-    std::string ident;
-    lexer.readIdent(&ident, "");
-    CHECK("foo" == ident);
-    lexer.readIdent(&ident, "");
-    CHECK("baR" == ident);
-    lexer.readIdent(&ident, "");
-    CHECK("baz_123" == ident);
-    lexer.readIdent(&ident, "");
-    CHECK("foo-bar" == ident);
+    CHECK("foo" == lexer.readIdent(""));
+    CHECK("baR" == lexer.readIdent(""));
+    CHECK("baz_123" == lexer.readIdent(""));
+    CHECK("foo-bar" == lexer.readIdent(""));
   }
 
   SECTION("readIdentCurlies") {
     // Verify that readIdent includes dots in the name,
     // but in an expansion $bar.dots stops at the dot.
     Lexer lexer("foo.dots $bar.dots ${bar.dots}\n");
-    std::string ident;
-    lexer.readIdent(&ident, "");
-    CHECK("foo.dots" == ident);
+    CHECK("foo.dots" == lexer.readIdent(""));
 
     EvalString eval;
     lexer.readVarValue(&eval);

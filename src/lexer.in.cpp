@@ -184,13 +184,14 @@ void Lexer::eatWhitespace() {
   }
 }
 
-void Lexer::readIdent(std::string *out, const char *ident_type) throw(ParseError) {
+std::string Lexer::readIdent(const char *ident_type) throw(ParseError) {
+  std::string out;
   const char* p = _ofs;
   for (;;) {
     const char* start = p;
     /*!re2c
     varname {
-      out->assign(start, p - start);
+      out.assign(start, p - start);
       break;
     }
     [^] { throw ParseError(error(std::string("expected ") + ident_type)); }
@@ -198,6 +199,7 @@ void Lexer::readIdent(std::string *out, const char *ident_type) throw(ParseError
   }
   _ofs = p;
   eatWhitespace();
+  return out;
 }
 
 void Lexer::readEvalString(EvalString* eval, bool path) throw(ParseError) {
