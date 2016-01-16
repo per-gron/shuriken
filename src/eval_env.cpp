@@ -100,7 +100,7 @@ std::string BindingEnv::lookupWithFallback(
 std::string EvalString::evaluate(Env &env) const {
   std::string result;
   for (auto i = _parsed.begin(); i != _parsed.end(); ++i) {
-    if (i->second == RAW)
+    if (i->second == TokenType::RAW)
       result.append(i->first);
     else
       result.append(env.lookupVariable(i->first));
@@ -109,22 +109,22 @@ std::string EvalString::evaluate(Env &env) const {
 }
 
 void EvalString::addText(StringPiece text) {
-  // Add it to the end of an existing RAW token if possible.
-  if (!_parsed.empty() && _parsed.back().second == RAW) {
+  // Add it to the end of an existing TokenType::RAW token if possible.
+  if (!_parsed.empty() && _parsed.back().second == TokenType::RAW) {
     _parsed.back().first.append(text._str, text._len);
   } else {
-    _parsed.push_back(make_pair(text.asString(), RAW));
+    _parsed.push_back(make_pair(text.asString(), TokenType::RAW));
   }
 }
 void EvalString::addSpecial(StringPiece text) {
-  _parsed.push_back(make_pair(text.asString(), SPECIAL));
+  _parsed.push_back(make_pair(text.asString(), TokenType::SPECIAL));
 }
 
 std::string EvalString::serialize() const {
   std::string result;
   for (auto i = _parsed.begin(); i != _parsed.end(); ++i) {
     result.append("[");
-    if (i->second == SPECIAL)
+    if (i->second == TokenType::SPECIAL)
       result.append("$");
     result.append(i->first);
     result.append("]");

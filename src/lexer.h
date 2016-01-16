@@ -102,14 +102,14 @@ struct Lexer {
    *
    * Returned path may be empty if a delimiter (space, newline) is hit.
    */
-  void readPath(EvalString* path) throw(ParseError) {
+  void readPath(EvalString *path) throw(ParseError) {
     return readEvalString(path, true);
   }
 
   /**
    * Read the value side of a var = value line (complete with $escapes).
    */
-  void readVarValue(EvalString* value) throw(ParseError) {
+  void readVarValue(EvalString *value) throw(ParseError) {
     return readEvalString(value, false);
   }
 

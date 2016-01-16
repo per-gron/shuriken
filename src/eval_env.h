@@ -22,8 +22,6 @@
 
 namespace shk {
 
-struct Rule;
-
 /**
  * An interface for a scope for variable (e.g. "$foo") lookups.
  */
@@ -52,7 +50,7 @@ struct EvalString {
   std::string serialize() const;
 
 private:
-  enum TokenType { RAW, SPECIAL };
+  enum class TokenType { RAW, SPECIAL };
   using TokenList = std::vector<std::pair<std::string, TokenType>>;
   TokenList _parsed;
 };
@@ -60,16 +58,14 @@ private:
 /**
  * An invokable build command and associated metadata (description, etc.).
  *
- * Rules are created and manipulated by the manifest parser only. After parsing
- * is complete, Rules are all const and should not be modified. This is
- * important for thread safety (and sanity in general).
+ * Rules are created and manipulated by the manifest parser only.
  */
 struct Rule {
   using Bindings = std::map<std::string, EvalString>;
 
   static bool isReservedBinding(const std::string &var);
 
-  const EvalString* getBinding(const std::string &key) const;
+  const EvalString *getBinding(const std::string &key) const;
 
   std::string name;
   Bindings bindings;
