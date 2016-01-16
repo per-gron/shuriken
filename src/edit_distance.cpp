@@ -15,7 +15,6 @@
 #include "edit_distance.h"
 
 #include <algorithm>
-#include <vector>
 
 namespace shk {
 
@@ -73,6 +72,38 @@ int editDistance(
   }
 
   return row[n];
+}
+
+const char *spellcheckStringV(
+    const std::string &text,
+    const std::vector<const char*> &words) {
+  const bool kAllowReplacements = true;
+  const int kMaxValidEditDistance = 3;
+
+  int min_distance = kMaxValidEditDistance + 1;
+  const char* result = NULL;
+  for (auto i = words.begin(); i != words.end(); ++i) {
+    int distance = editDistance(*i, text, kAllowReplacements,
+                                kMaxValidEditDistance);
+    if (distance < min_distance) {
+      min_distance = distance;
+      result = *i;
+    }
+  }
+  return result;
+}
+
+const char *spellcheckString(const char *text, ...) {
+  // Note: This takes a const char* instead of a string& because using
+  // va_start() with a reference parameter is undefined behavior.
+  va_list ap;
+  va_start(ap, text);
+  std::vector<const char*> words;
+  const char* word;
+  while ((word = va_arg(ap, const char*)))
+    words.push_back(word);
+  va_end(ap);
+  return spellcheckStringV(text, words);
 }
 
 }  // namespace shk

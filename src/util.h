@@ -61,19 +61,6 @@ void getWin32EscapedString(const std::string &input, std::string *result);
 void setCloseOnExec(int fd);
 
 /**
- * Given a misspelled string and a list of correct spellings, returns
- * the closest match or NULL if there is no close enough match.
- */
-const char* spellcheckStringV(
-    const std::string &text,
-    const std::vector<const char*>& words);
-
-/**
- * Like SpellcheckStringV, but takes a NULL-terminated list.
- */
-const char* spellcheckString(const char *text, ...);
-
-/**
  * Removes all Ansi escape codes (http://www.termsys.demon.co.uk/vtansi.htm).
  */
 std::string stripAnsiEscapeCodes(const std::string &in);
