@@ -116,12 +116,12 @@ TEST_CASE("DummyCommandRunner") {
       // Place inputs in their own folder to make sure that they don't collide
       // with outputs.
       const auto input_path_gen = rc::gen::exec([paths] {
-        return paths->get("in/" + *gen::pathComponent());
+        return paths->get("_in/" + *gen::pathComponent());
       });
       const auto inputs = *rc::gen::container<std::vector<Path>>(input_path_gen);
 
       // Create input files
-      file_system.mkdir(paths->get("in"));
+      file_system.mkdir(paths->get("_in"));
       for (const auto &input : inputs) {
         writeFile(file_system, input, "file:" + input.canonicalized());
       }
