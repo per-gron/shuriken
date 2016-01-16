@@ -53,27 +53,6 @@ const Rule* BindingEnv::lookupRule(const std::string &rule_name) const {
   return NULL;
 }
 
-const EvalString *Rule::getBinding(const std::string &key) const {
-  const auto i = bindings.find(key);
-  if (i == bindings.end())
-    return NULL;
-  return &i->second;
-}
-
-// static
-bool Rule::isReservedBinding(const std::string &var) {
-  return var == "command" ||
-      var == "depfile" ||
-      var == "description" ||
-      var == "deps" ||
-      var == "generator" ||
-      var == "pool" ||
-      var == "restat" ||
-      var == "rspfile" ||
-      var == "rspfile_content" ||
-      var == "msvc_deps_prefix";
-}
-
 const std::map<std::string, Rule>& BindingEnv::getRules() const {
   return _rules;
 }
@@ -95,41 +74,6 @@ std::string BindingEnv::lookupWithFallback(
   }
 
   return "";
-}
-
-std::string EvalString::evaluate(Env &env) const {
-  std::string result;
-  for (auto i = _parsed.begin(); i != _parsed.end(); ++i) {
-    if (i->second == TokenType::RAW)
-      result.append(i->first);
-    else
-      result.append(env.lookupVariable(i->first));
-  }
-  return result;
-}
-
-void EvalString::addText(StringPiece text) {
-  // Add it to the end of an existing TokenType::RAW token if possible.
-  if (!_parsed.empty() && _parsed.back().second == TokenType::RAW) {
-    _parsed.back().first.append(text._str, text._len);
-  } else {
-    _parsed.push_back(make_pair(text.asString(), TokenType::RAW));
-  }
-}
-void EvalString::addSpecial(StringPiece text) {
-  _parsed.push_back(make_pair(text.asString(), TokenType::SPECIAL));
-}
-
-std::string EvalString::serialize() const {
-  std::string result;
-  for (auto i = _parsed.begin(); i != _parsed.end(); ++i) {
-    result.append("[");
-    if (i->second == TokenType::SPECIAL)
-      result.append("$");
-    result.append(i->first);
-    result.append("]");
-  }
-  return result;
 }
 
 }  // namespace shk

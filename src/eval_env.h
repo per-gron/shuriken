@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "eval_string.h"
+#include "rule.h"
 #include "string_piece.h"
 
 namespace shk {
@@ -32,22 +33,6 @@ class Env {
  public:
   virtual ~Env() {}
   virtual std::string lookupVariable(const std::string& var) = 0;
-};
-
-/**
- * An invokable build command and associated metadata (description, etc.).
- *
- * Rules are created and manipulated by the manifest parser only.
- */
-struct Rule {
-  using Bindings = std::map<std::string, EvalString>;
-
-  static bool isReservedBinding(const std::string &var);
-
-  const EvalString *getBinding(const std::string &key) const;
-
-  std::string name;
-  Bindings bindings;
 };
 
 /**

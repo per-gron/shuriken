@@ -39,6 +39,8 @@ add_library(shklib
   src/path_error.h
   src/persistent_file_system.cpp
   src/persistent_file_system.h
+  src/rule.cpp
+  src/rule.h
   src/step.h
   src/string_piece.h
   src/task.h
