@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "parse_error.h"
 #include "string_piece.h"
 
 // Windows may #define ERROR.
@@ -92,19 +93,18 @@ struct Lexer {
 
   /**
    * Read a path (complete with $escapes).
-   * Returns false only on error, returned path may be empty if a delimiter
-   * (space, newline) is hit.
+   *
+   * Returned path may be empty if a delimiter (space, newline) is hit.
    */
-  bool readPath(EvalString* path, std::string* err) {
-    return readEvalString(path, true, err);
+  void readPath(EvalString* path) throw(ParseError) {
+    return readEvalString(path, true);
   }
 
   /**
    * Read the value side of a var = value line (complete with $escapes).
-   * Returns false only on error.
    */
-  bool readVarValue(EvalString* value, std::string* err) {
-    return readEvalString(value, false, err);
+  void readVarValue(EvalString* value) throw(ParseError) {
+    return readEvalString(value, false);
   }
 
   /**
@@ -118,8 +118,10 @@ private:
    */
   void eatWhitespace();
 
-  /// Read a $-escaped string.
-  bool readEvalString(EvalString* eval, bool path, std::string* err);
+  /**
+   * Read a $-escaped string.
+   */
+  void readEvalString(EvalString* eval, bool path) throw(ParseError);
 
   StringPiece _filename;
   StringPiece _input;

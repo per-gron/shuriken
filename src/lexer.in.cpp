@@ -201,7 +201,7 @@ bool Lexer::readIdent(std::string* out) {
   return true;
 }
 
-bool Lexer::readEvalString(EvalString* eval, bool path, std::string* err) {
+void Lexer::readEvalString(EvalString* eval, bool path) throw(ParseError) {
   const char* p = _ofs;
   const char* q;
   const char* start;
@@ -256,18 +256,15 @@ bool Lexer::readEvalString(EvalString* eval, bool path, std::string* err) {
     }
     "$". {
       _last_token = start;
-      *err = error("bad $-escape (literal $ must be written as $$)");
-      return false;
+      throw ParseError(error("bad $-escape (literal $ must be written as $$)"));
     }
     nul {
       _last_token = start;
-      *err = error("unexpected EOF");
-      return false;
+      throw ParseError(error("unexpected EOF"));
     }
     [^] {
       _last_token = start;
-      *err = error(describeLastError());
-      return false;
+      throw ParseError(error(describeLastError()));
     }
     */
   }
@@ -276,7 +273,6 @@ bool Lexer::readEvalString(EvalString* eval, bool path, std::string* err) {
   if (path)
     eatWhitespace();
   // Non-path strings end in newlines, so there's no whitespace to eat.
-  return true;
 }
 
 }  // namespace shk

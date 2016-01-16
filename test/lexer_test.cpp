@@ -18,23 +18,32 @@
 #include "lexer.h"
 
 namespace shk {
+namespace {
+
+std::string readVarValueError(Lexer &lexer, EvalString* value) {
+  try {
+    lexer.readVarValue(value);
+    CHECK_THROWS((void)0);
+    return "";
+  } catch (ParseError &error) {
+    return error.what();
+  }
+}
+
+}  // anonymous namespace
 
 TEST_CASE("Lexer") {
   SECTION("readVarValue") {
     Lexer lexer("plain text $var $VaR ${x}\n");
     EvalString eval;
-    std::string err;
-    CHECK(lexer.readVarValue(&eval, &err));
-    CHECK("" == err);
+    lexer.readVarValue(&eval);
     CHECK("[plain text ][$var][ ][$VaR][ ][$x]" == eval.serialize());
   }
 
   SECTION("ReadEvalStringEscapes") {
     Lexer lexer("$ $$ab c$: $\ncde\n");
     EvalString eval;
-    std::string err;
-    CHECK(lexer.readVarValue(&eval, &err));
-    CHECK("" == err);
+    lexer.readVarValue(&eval);
     CHECK("[ $ab c: cde]" == eval.serialize());
   }
 
@@ -60,20 +69,19 @@ TEST_CASE("Lexer") {
     CHECK("foo.dots" == ident);
 
     EvalString eval;
-    std::string err;
-    CHECK(lexer.readVarValue(&eval, &err));
-    CHECK("" == err);
+    lexer.readVarValue(&eval);
     CHECK("[$bar][.dots ][$bar.dots]" == eval.serialize());
   }
 
   SECTION("Error") {
     Lexer lexer("foo$\nbad $");
     EvalString eval;
-    std::string err;
-    CHECK(!lexer.readVarValue(&eval, &err));
-    CHECK("input:2: bad $-escape (literal $ must be written as $$)\n"
-          "bad $\n"
-          "    ^ near here" == err);
+    const auto err = readVarValueError(lexer, &eval);
+    const auto expected_err =
+        "input:2: bad $-escape (literal $ must be written as $$)\n"
+        "bad $\n"
+        "    ^ near here";
+    CHECK(err == expected_err);
   }
 
   SECTION("CommentEOF") {

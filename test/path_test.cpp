@@ -21,7 +21,7 @@ std::pair<std::string, SlashBits> canonicalizePathWithSlashBits(std::string path
   return std::make_pair(path, slash_bits);
 }
 
-std::string canonicalizePathError(std::string path) throw(PathError) {
+std::string canonicalizePathError(std::string path) {
   try {
     canonicalizePath(path);
     CHECK_THROWS((void)0);
