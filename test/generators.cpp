@@ -16,7 +16,8 @@ rc::Gen<std::string> pathComponent() {
 rc::Gen<std::vector<std::string>> pathComponents() {
   return rc::gen::resize(
       10,
-      rc::gen::container<std::vector<std::string>>(pathComponent()));
+      rc::gen::nonEmpty(
+          rc::gen::container<std::vector<std::string>>(pathComponent())));
 }
 
 std::string joinPathComponents(

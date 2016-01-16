@@ -56,7 +56,7 @@ void canonicalizePath(
   // WARNING: this function is performance-critical; please benchmark
   // any changes you make to it.
   if (*len == 0) {
-    throw PathError("empty path", path);
+    return;
   }
 
   const int kMaxPathComponents = sizeof(shk::SlashBits) * 8 - 2;
@@ -161,10 +161,10 @@ void canonicalizePath(
   }
 
   if (dst == start) {
-    throw PathError("path canonicalizes to the empty path", path);
+    *len = 0;
+  } else {
+    *len = dst - start - 1;
   }
-
-  *len = dst - start - 1;
 #ifdef _WIN32
   *slash_bits = bits;
 #else

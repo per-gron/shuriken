@@ -29,6 +29,8 @@
 #define NORETURN __attribute__((noreturn))
 #endif
 
+namespace shk {
+
 /// Log a fatal message and exit.
 NORETURN void fatal(const char *msg, ...);
 
@@ -85,3 +87,5 @@ std::string getLastErrorString();
 /// Calls fatal() with a function name and getLastErrorString.
 NORETURN void win32Fatal(const char *function);
 #endif
+
+}  // namespace shk

@@ -69,7 +69,8 @@ add_executable(shk_test
   test/line_printer_test.cpp
   test/main.cpp
   test/path_test.cpp
-  test/properties.cpp)
+  test/properties.cpp
+  test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC vendor/rapidcheck/extras/catch/include)
 target_link_libraries(shk_test shklib catch rapidcheck rapidcheck_catch)
