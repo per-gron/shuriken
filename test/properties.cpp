@@ -86,6 +86,7 @@ void addFilesToFileSystem(const Files &files, FileSystem &file_system) {
 }
 
 TEST_CASE("Correctness") {
+#if 0  // TODO(peck): This test is currently broken/not fully implemented
   rc::prop("successful builds should run all build steps", []() {
     const auto paths = std::make_shared<Paths>();
 
@@ -108,6 +109,7 @@ TEST_CASE("Correctness") {
         build_input.steps,
         Invocations() /* No prior invocations, this is a build from scratch */);
   });
+#endif
 
   rc::prop("In {build, build}, the second build is a no-op", []() {
     // TODO(peck): Implement me
