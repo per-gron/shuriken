@@ -157,15 +157,14 @@ private:
   }
 
   void parseRule() throw(ParseError) {
-    const auto name = _lexer.readIdent("rule name");
+    Rule rule;
+    rule.name = _lexer.readIdent("rule name");
 
     expectToken(_lexer, Lexer::NEWLINE);
 
-    if (_env.lookupRuleCurrentScope(name) != NULL) {
-      _lexer.throwError("duplicate rule '" + name + "'");
+    if (_env.lookupRuleCurrentScope(rule.name) != NULL) {
+      _lexer.throwError("duplicate rule '" + rule.name + "'");
     }
-
-    Rule rule;
 
     while (_lexer.peekToken(Lexer::INDENT)) {
       std::string key;
@@ -202,22 +201,27 @@ private:
     _lexer.readVarValue(val);
   }
 
-  Path toPath(const std::string &str) throw(ParseError) {
+  Path toPath(const std::string &str, bool allow_empty = false) throw(ParseError) {
     try {
-      return _file_system.paths().get(str);
+      const auto path = _file_system.paths().get(str);
+      if (!allow_empty && path.canonicalized().empty()) {
+        _lexer.throwError("empty path");
+      }
+      return path;
     } catch (PathError &error) {
       _lexer.throwError(error.what());
     }
   }
 
-  template<typename Out>
-  void evalStringsToPaths(
+  std::vector<Path> evalStringsToPaths(
       const std::vector<EvalString> &outs,
-      BindingEnv &env,
-      Out out) throw(ParseError) {
+      BindingEnv &env) throw(ParseError) {
+    std::vector<Path> result;
+    result.reserve(outs.size());
     for (auto i = outs.begin(); i != outs.end(); ++i) {
-      *out++ = toPath(i->evaluate(env));
+      result.push_back(toPath(i->evaluate(env)));
     }
+    return result;
   }
 
   /**
@@ -302,37 +306,34 @@ private:
     }
 
     Step step;
-    step.inputs.reserve(ins.size() + implicit.size());
-    evalStringsToPaths(ins, *env, std::back_inserter(step.inputs));
-    evalStringsToPaths(implicit, *env, std::back_inserter(step.inputs));
-
-    step.dependencies.reserve(order_only.size());
-    evalStringsToPaths(order_only, *env, std::back_inserter(step.inputs));
-
-    step.outputs.reserve(outs.size());
-    evalStringsToPaths(outs, *env, std::back_inserter(step.outputs));
+    step.inputs = evalStringsToPaths(ins, *env);
+    step.implicit_inputs = evalStringsToPaths(implicit, *env);
+    step.dependencies = evalStringsToPaths(order_only, *env);
+    step.outputs = evalStringsToPaths(outs, *env);
 
     step.pool_name = getPoolName(*rule, _env);
 
-    const auto get_binding = [&](const std::string &key) {
+    const auto get_binding = [&](
+        const std::string &key,
+        StepEnv::EscapeKind escape_kind = StepEnv::EscapeKind::DO_NOT_ESCAPE) {
       return getBinding(
           *rule,
           *env,
           step.inputs,
           step.outputs,
-          StepEnv::EscapeKind::DO_NOT_ESCAPE,
+          escape_kind,
           key);
     };
     const auto to_bool = [&](const std::string &value) {
       return !value.empty();
     };
 
-    step.command = get_binding("command");
+    step.command = get_binding("command", StepEnv::EscapeKind::SHELL_ESCAPE);
     step.description = get_binding("description");
     step.restat = to_bool(get_binding("restat"));
     step.generator = to_bool(get_binding("generator"));
-    step.depfile = toPath(get_binding("depfile"));
-    step.rspfile = toPath(get_binding("rspfile"));
+    step.depfile = toPath(get_binding("depfile"), /*allow_empty:*/true);
+    step.rspfile = toPath(get_binding("rspfile"), /*allow_empty:*/true);
     step.rspfile_content = get_binding("rspfile_content");
 
     _manifest.steps.push_back(std::move(step));

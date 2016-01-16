@@ -30,7 +30,7 @@ std::string BindingEnv::lookupVariable(const std::string &var) {
 }
 
 void BindingEnv::addBinding(std::string &&key, std::string &&val) {
-  _bindings.emplace(std::move(key), std::move(val));
+  _bindings[std::move(key)] = std::move(val);
 }
 
 void BindingEnv::addRule(Rule &&rule) {

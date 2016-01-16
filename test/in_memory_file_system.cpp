@@ -65,7 +65,7 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
     throw IoError("The named file is a directory", EISDIR);
   case EntryType::FILE_DOES_NOT_EXIST:
     if (!truncate_or_create) {
-      throw IoError("The file does not exist", ENOENT);
+      throw IoError("No such file or directory", ENOENT);
     }
     {
       const auto &file = std::make_shared<File>();

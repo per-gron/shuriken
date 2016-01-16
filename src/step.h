@@ -20,17 +20,19 @@ namespace shk {
  */
 struct Step {
   /**
-   * Input files, as specified in the manifest. These are files that the build
-   * step is going to read from directly. In the Ninja manifest, these are the
-   * "explicit" and the "implicit" dependencies.
-   *
-   * Because the only difference between Ninja "explicit" and "implicit"
-   * dependencies is that implicit dependencies don't show up in the $in
-   * variable there is no need to distinguish between them in Step objects. The
-   * command has already been evaluated so there is no point in differentiating
-   * them anymore.
+   * Input files, as specified in the manifest. These, together with the
+   * implicit dependencies are files that the build step is expected to read
+   * from directly.
    */
   std::vector<Path> inputs;
+
+  /**
+   * Input files, as specified in the manifest. Like inputs, but the implicit
+   * dependencies are not part of the $in and $in_newline variables. Once the
+   * manifest has been parsed into Steps objects like these, there isn't really
+   * much of a difference between inputs and implicit dependencies.
+   */
+  std::vector<Path> implicit_inputs;
 
   /**
    * Dependencies are paths to targets that generate output files that this

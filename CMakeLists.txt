@@ -74,6 +74,7 @@ add_executable(shk_test
   test/lexer_test.cpp
   test/line_printer_test.cpp
   test/main.cpp
+  test/manifest_test.cpp
   test/path_test.cpp
   test/properties.cpp
   test/util_test.cpp)

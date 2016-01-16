@@ -21,7 +21,7 @@ class CommandRunner {
   struct Result {
     std::vector<Path> input_files;
     std::vector<Path> output_files;
-    int return_code;
+    int return_code = 0;
     std::string output;
     std::vector<std::string> linting_errors;
   };
