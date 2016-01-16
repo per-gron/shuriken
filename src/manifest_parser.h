@@ -7,8 +7,11 @@
 
 namespace shk {
 
-Steps parseManifest(
-    FileSystem &file_system,
+/**
+ * Parse a Ninja manifest file at the given path.
+ */
+std::vector<Steps> parseManifest(
+    FileSystem::Stream &file_stream,
     const std::string &path);
 
 }  // namespace shk

@@ -26,29 +26,43 @@ struct Step {
    */
   std::string command;
 
+  bool phony() const {
+    return command.empty();
+  }
+
   bool restat = false;
 
   /**
-   * Input files, implicit depenencies and order only dependencies, as specified
-   * in the manifest.
+   * Input files, as specified in the manifest. These are files that the build
+   * step is going to read from directly. In the Ninja manifest, these are the
+   * "explicit" and the "implicit" dependencies.
    *
    * Because the only difference between Ninja "explicit" and "implicit"
    * dependencies is that implicit dependencies don't show up in the $in
    * variable there is no need to distinguish between them in Step objects. The
    * command has already been evaluated so there is no point in differentiating
    * them anymore.
+   */
+  std::vector<Path> inputs;
+
+  /**
+   * Dependencies are paths to targets that generate output files that this
+   * target may depend on. These are different from inputs because they
+   * themselves are often not read by the build step. A common use case for this
+   * is targets that generate headers that other targets may depend on.
    *
-   * Furthermore, because these input dependencies are used only in the first
-   * build (subsequent builds use dependency information gathered from running
-   * the command), there is no need to distinguish between explicit/implicit
-   * dependencies and order-only dependencies.
+   * These correspond to "order only" dependencies in the Ninja manifest.
+   *
+   * dependencies and inputs are kept separate because persistent caching cares
+   * about the difference.
    */
   std::vector<Path> dependencies;
 
   /**
    * Output files, as specified in the manifest. These are used as names for
-   * targets and to make sure that the directory where the outputs should live
-   * exists before the command is invoked.
+   * targets, to deduce the dependencies between different build steps and to
+   * make sure that the directory where the outputs should live exists before
+   * the command is invoked.
    */
   std::vector<Path> outputs;
 };
