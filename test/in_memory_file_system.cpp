@@ -198,9 +198,9 @@ InMemoryFileSystem::InMemoryFileStream::InMemoryFileStream(
     const std::shared_ptr<File> &file,
     bool read,
     bool write)
-    : _file(file),
-      _read(read),
-      _write(write) {}
+    : _read(read),
+      _write(write),
+      _file(file) {}
 
 size_t InMemoryFileSystem::InMemoryFileStream::read(
     uint8_t *ptr, size_t size, size_t nitems) throw(IoError) {

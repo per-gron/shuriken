@@ -30,10 +30,10 @@ namespace detail {
  * |slash_bits| has bits set starting from lowest for a backslash that was
  * normalized to a forward slash. (only used on Windows)
  */
-static void canonicalizePath(
+void canonicalizePath(
     std::string *path,
     shk::SlashBits *slash_bits) throw(PathError);
-static void canonicalizePath(
+void canonicalizePath(
     char *path,
     size_t *len,
     shk::SlashBits *slash_bits) throw(PathError);

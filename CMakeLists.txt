@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.2.1)
 project(shk)
 
+set(SHK_COMPILER_FLAGS "-Wall -Werror")
+
 add_subdirectory(vendor)
 
 add_custom_command(
@@ -39,11 +41,13 @@ add_library(shklib
   lexer.cpp)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC src)
+set_target_properties(shklib PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk
   src/shk.cpp)
 set_property(TARGET shk PROPERTY CXX_STANDARD 11)
 target_link_libraries(shk shklib)
+set_target_properties(shk PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk_test
   test/dummy_command_runner.cpp
@@ -65,3 +69,4 @@ add_executable(shk_test
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC vendor/rapidcheck/extras/catch/include)
 target_link_libraries(shk_test shklib catch rapidcheck rapidcheck_catch)
+set_target_properties(shk_test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
