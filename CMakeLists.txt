@@ -38,6 +38,10 @@ add_library(shklib
   src/step.h
   src/string_piece.h
   src/task.h
+  src/util.cpp
+  src/util.h
+  src/version.cpp
+  src/version.h
   lexer.cpp)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC src)
