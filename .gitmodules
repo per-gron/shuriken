@@ -4,3 +4,6 @@
 [submodule "vendor/re2c"]
 	path = vendor/re2c
 	url = git@github.com:skvadrik/re2c.git
+[submodule "vendor/blake2"]
+	path = vendor/blake2
+	url = git@github.com:BLAKE2/BLAKE2.git
