@@ -24,6 +24,8 @@
 
 namespace shk {
 
+class Path;
+
 /**
  * An interface for a scope for variable (e.g. "$foo") lookups.
  *
@@ -47,8 +49,7 @@ struct BindingEnv : public Env {
   BindingEnv() : _parent(NULL) {}
   explicit BindingEnv(BindingEnv &parent) : _parent(&parent) {}
 
-  virtual ~BindingEnv() {}
-  virtual std::string lookupVariable(const std::string& var);
+  std::string lookupVariable(const std::string& var) override;
 
   void addRule(Rule &&rule);
   const Rule *lookupRule(const std::string& rule_name) const;
@@ -59,9 +60,9 @@ struct BindingEnv : public Env {
 
   /**
    * This is tricky.  Edges want lookup scope to go in this order:
-   * 1) value set on edge itself (_edge->_env)
+   * 1) value set on edge itself
    * 2) value set on rule, with expansion in the edge's scope
-   * 3) value set on enclosing scope of edge (_edge->_env->_parent)
+   * 3) value set on enclosing scope of edge
    * This function takes as parameters the necessary info to do (2).
    */
   std::string lookupWithFallback(
@@ -73,6 +74,59 @@ private:
   std::map<std::string, std::string> _bindings;
   std::map<std::string, Rule> _rules;
   BindingEnv * const _parent;
+};
+
+/**
+ * An Env for a build step, NOT providing $in and $out. This is used when
+ * looking up the pool binding, which is done before there are inputs and
+ * outputs. (The class is also used when doing lookups that do have $in and
+ * $out, see StepEnv.)
+ */
+struct StepEnvWithoutInAndOut : public Env {
+  StepEnvWithoutInAndOut(const Rule &rule, const BindingEnv &env)
+      : _rule(rule),
+        _env(env),
+        _recursive(false) {}
+
+  std::string lookupVariable(const std::string &var) override;
+
+ private:
+  std::vector<std::string> _lookups;
+  const Rule &_rule;
+  const BindingEnv &_env;
+  bool _recursive;
+};
+
+/**
+ * An Env for a build step, providing $in and $out.
+ */
+struct StepEnv : public StepEnvWithoutInAndOut {
+  enum class EscapeKind { SHELL_ESCAPE, DO_NOT_ESCAPE };
+
+  StepEnv(
+      const Rule &rule,
+      const BindingEnv &env,
+      const std::vector<Path> &inputs,
+      const std::vector<Path> &outputs,
+      EscapeKind escape)
+      : StepEnvWithoutInAndOut(rule, env),
+        _inputs(inputs),
+        _outputs(outputs),
+        _escape_in_out(escape) {}
+
+  std::string lookupVariable(const std::string& var) override;
+
+ private:
+  /**
+   * Given some Paths, construct a list of paths suitable for a command line.
+   */
+  std::string makePathList(
+      const std::vector<Path> &paths,
+      char sep);
+
+  const std::vector<Path> &_inputs;
+  const std::vector<Path> &_outputs;
+  const EscapeKind _escape_in_out;
 };
 
 }  // namespace shk
