@@ -66,6 +66,12 @@ class FileSystem {
   virtual void mkdir(const Path &path) throw(IoError) = 0;
   virtual void rmdir(const Path &path) throw(IoError) = 0;
   virtual void unlink(const Path &path) throw(IoError) = 0;
+
+  /**
+   * Utility function for reading files. It is on this interface because on
+   * Windows reading the file as a whole is faster than reading it using Stream.
+   */
+  virtual std::string readFile(const Path &path) throw(IoError) = 0;
 };
 
 }  // namespace shk

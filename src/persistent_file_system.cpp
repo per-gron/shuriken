@@ -1,3 +1,18 @@
+// Copyright 2011 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
 #include "persistent_file_system.h"
 
 #include <assert.h>
@@ -91,6 +106,56 @@ class PersistentFileSystem : public FileSystem {
 
   void unlink(const Path &path) throw(IoError) override {
     checkForMinusOne(::unlink(path.canonicalized().c_str()));
+  }
+
+  std::string readFile(const Path &path) throw(IoError) override {
+    std::string contents;
+#ifdef _WIN32
+    // This makes a ninja run on a set of 1500 manifest files about 4% faster
+    // than using the generic fopen code below.
+    err->clear();
+    HANDLE f = ::CreateFile(
+        path.canonicalized().c_str(),
+        GENERIC_READ,
+        FILE_SHARE_READ,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_SEQUENTIAL_SCAN,
+        NULL);
+    if (f == INVALID_HANDLE_VALUE) {
+      throw IoError(GetLastErrorString(), ENOENT);
+    }
+
+    for (;;) {
+      DWORD len;
+      char buf[64 << 10];
+      if (!::ReadFile(f, buf, sizeof(buf), &len, NULL)) {
+        throw IoError(GetLastErrorString(), 0);
+      }
+      if (len == 0) {
+        break;
+      }
+      contents.append(buf, len);
+    }
+    ::CloseHandle(f);
+#else
+    FILE* f = fopen(path.canonicalized().c_str(), "rb");
+    if (!f) {
+      throw IoError(strerror(errno), errno);
+    }
+
+    char buf[64 << 10];
+    size_t len;
+    while ((len = fread(buf, 1, sizeof(buf), f)) > 0) {
+      contents.append(buf, len);
+    }
+    if (ferror(f)) {
+      fclose(f);
+      throw IoError(strerror(errno), errno);  // XXX errno?
+    }
+    fclose(f);
+#endif
+    return contents;
   }
 
  private:

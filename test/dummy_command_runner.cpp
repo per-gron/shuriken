@@ -39,7 +39,7 @@ std::string makeInputData(
   std::string input_data;
   for (const auto &input : inputs) {
     input_data += input.canonicalized() + "\n";
-    input_data += readFile(file_system, input);
+    input_data += file_system.readFile(input);
     input_data += "\n";
   }
   return input_data;
@@ -139,7 +139,7 @@ void DummyCommandRunner::checkCommand(
   const auto input_data = makeInputData(file_system, inputs);
 
   for (const auto &output : outputs) {
-    const auto data = readFile(file_system, output);
+    const auto data = file_system.readFile(output);
     if (data != output.canonicalized() + "\n" + input_data) {
       throw std::runtime_error("Unexpected output file contents for file " + output.canonicalized());
     }

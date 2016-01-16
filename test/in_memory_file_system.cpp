@@ -178,6 +178,19 @@ void InMemoryFileSystem::unlink(const Path &path) throw(IoError) {
   }
 }
 
+std::string InMemoryFileSystem::readFile(const Path &path) throw(IoError) {
+  std::string result;
+
+  const auto stream = open(path, "r");
+  uint8_t buf[1024];
+  while (!stream->eof()) {
+    size_t read_bytes = stream->read(buf, 1, sizeof(buf));
+    result.append(reinterpret_cast<char *>(buf), read_bytes);
+  }
+
+  return result;
+}
+
 bool InMemoryFileSystem::operator==(const InMemoryFileSystem &other) const {
   return (
       _paths == other._paths &&
@@ -288,19 +301,6 @@ InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(const Path &path) {
 
   result.directory = &directory;
   result.basename = basename;
-  return result;
-}
-
-std::string readFile(FileSystem &file_system, const Path &path) throw(IoError) {
-  std::string result;
-
-  const auto stream = file_system.open(path, "r");
-  uint8_t buf[1024];
-  while (!stream->eof()) {
-    size_t read_bytes = stream->read(buf, 1, sizeof(buf));
-    result.append(reinterpret_cast<char *>(buf), read_bytes);
-  }
-
   return result;
 }
 

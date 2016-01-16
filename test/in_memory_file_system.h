@@ -36,6 +36,7 @@ class InMemoryFileSystem : public FileSystem {
   void mkdir(const Path &path) throw(IoError) override;
   void rmdir(const Path &path) throw(IoError) override;
   void unlink(const Path &path) throw(IoError) override;
+  std::string readFile(const Path &path) throw(IoError) override;
 
   bool operator==(const InMemoryFileSystem &other) const;
 
@@ -100,11 +101,6 @@ class InMemoryFileSystem : public FileSystem {
   Paths *_paths;
   std::unordered_map<Path, Directory> _directories;
 };
-
-/**
- * Helper function for reading the entire contents of a file.
- */
-std::string readFile(FileSystem &file_system, const Path &path) throw(IoError);
 
 /**
  * Helper function for writing a string to a file.

@@ -122,14 +122,14 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("writeFile, readFile") {
     const auto path = paths.get("abc");
     writeFile(fs, path, "hello");
-    CHECK(readFile(fs, path) == "hello");
+    CHECK(fs.readFile(path) == "hello");
   }
 
   SECTION("writeFile, writeFile, readFile") {
     const auto path = paths.get("abc");
     writeFile(fs, path, "hello");
     writeFile(fs, path, "hello!");
-    CHECK(readFile(fs, path) == "hello!");
+    CHECK(fs.readFile(path) == "hello!");
   }
 
   SECTION("mkdirs") {
