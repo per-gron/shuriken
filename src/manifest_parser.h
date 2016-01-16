@@ -12,7 +12,7 @@ namespace shk {
 /**
  * Parse a Ninja manifest file at the given path.
  */
-std::vector<Steps> parseManifest(
+std::vector<Step> parseManifest(
     FileSystem::Stream &file_stream,
     const std::string &path) throw(IoError, ParseError);
 

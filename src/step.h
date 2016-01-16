@@ -62,6 +62,15 @@ struct Step {
   Path depfile;
 
   /**
+   * If rspfile is not empty, Shuriken will write rspfile_content to the path
+   * specified by rspfile before running the build step and then remove the file
+   * after the build step has finished running. Useful on Windows, where
+   * commands have a rather short maximum length.
+   */
+  Path rspfile;
+  std::string rspfile_content;
+
+  /**
    * Input files, as specified in the manifest. These are files that the build
    * step is going to read from directly. In the Ninja manifest, these are the
    * "explicit" and the "implicit" dependencies.
