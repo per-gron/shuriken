@@ -87,9 +87,13 @@ struct Lexer {
 
   /**
    * Read a simple identifier (a rule or variable name).
-   * Returns false if a name can't be read.
+   *
+   * \a ident_type is a string describing the expected type, used in the error
+   * message of the ParseError on failure.
+   *
+   * Throws ParseError if a name can't be read.
    */
-  bool readIdent(std::string* out);
+  void readIdent(std::string *out, const char *ident_type) throw(ParseError);
 
   /**
    * Read a path (complete with $escapes).
@@ -111,6 +115,13 @@ struct Lexer {
    * Construct an error message with context.
    */
   std::string error(const std::string& message) const;
+
+  /**
+   * Construct and throw an error message with context.
+   */
+  void throwError(const std::string& message) const {
+    throw ParseError(error(message));
+  }
 
 private:
   /**

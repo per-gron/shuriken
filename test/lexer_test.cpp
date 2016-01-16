@@ -50,13 +50,13 @@ TEST_CASE("Lexer") {
   SECTION("readIdent") {
     Lexer lexer("foo baR baz_123 foo-bar");
     std::string ident;
-    CHECK(lexer.readIdent(&ident));
+    lexer.readIdent(&ident, "");
     CHECK("foo" == ident);
-    CHECK(lexer.readIdent(&ident));
+    lexer.readIdent(&ident, "");
     CHECK("baR" == ident);
-    CHECK(lexer.readIdent(&ident));
+    lexer.readIdent(&ident, "");
     CHECK("baz_123" == ident);
-    CHECK(lexer.readIdent(&ident));
+    lexer.readIdent(&ident, "");
     CHECK("foo-bar" == ident);
   }
 
@@ -65,7 +65,7 @@ TEST_CASE("Lexer") {
     // but in an expansion $bar.dots stops at the dot.
     Lexer lexer("foo.dots $bar.dots ${bar.dots}\n");
     std::string ident;
-    CHECK(lexer.readIdent(&ident));
+    lexer.readIdent(&ident, "");
     CHECK("foo.dots" == ident);
 
     EvalString eval;
