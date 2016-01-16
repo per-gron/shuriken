@@ -119,22 +119,6 @@ TEST_CASE("Manifest") {
     CHECK(step.restat);
   }
 
-#if 0  // TODO(peck): This seems broken
-  SECTION("IgnoreIndentedBlankLines") {
-    // the indented blanks used to cause parse errors
-    const auto step = parseStep(fs,
-        "  \n"
-        "rule cat\n"
-        "  command = cat $in > $out\n"
-        "  \n"
-        "build result: cat in_1.cc $variable\n"
-        "  \n"
-        "variable=my_var\n");
-
-    CHECK(step.command == "cat in_1.cc my_var > result");
-  }
-#endif
-
   SECTION("ResponseFiles") {
     const auto step = parseStep(fs,
         "rule cat_rsp\n"
