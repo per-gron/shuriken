@@ -28,7 +28,9 @@ struct EvalString;
 
 struct Lexer {
   Lexer() {}
-  /// Helper ctor useful for tests.
+  /**
+   * Helper ctor useful for tests.
+   */
   explicit Lexer(const char *input);
 
   enum Token {
@@ -52,12 +54,12 @@ struct Lexer {
   /**
    * Return a human-readable form of a token, used in error messages.
    */
-  static const char* tokenName(Token t);
+  static const char *tokenName(Token t);
 
   /**
    * Return a human-readable token hint, used in error messages.
    */
-  static const char* tokenErrorHint(Token expected);
+  static const char *tokenErrorHint(Token expected);
 
   /**
    * If the last token read was an ERROR token, provide more info
