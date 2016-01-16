@@ -81,27 +81,29 @@ const std::map<std::string, Rule>& BindingEnv::getRules() const {
 std::string BindingEnv::lookupWithFallback(
     const std::string &var,
     const EvalString *eval,
-    Env *env) const {
+    Env &env) const {
   const auto i = _bindings.find(var);
   if (i != _bindings.end())
     return i->second;
 
-  if (eval)
+  if (eval) {
     return eval->evaluate(env);
+  }
 
-  if (_parent)
+  if (_parent) {
     return _parent->lookupVariable(var);
+  }
 
   return "";
 }
 
-std::string EvalString::evaluate(Env *env) const {
+std::string EvalString::evaluate(Env &env) const {
   std::string result;
   for (auto i = _parsed.begin(); i != _parsed.end(); ++i) {
     if (i->second == RAW)
       result.append(i->first);
     else
-      result.append(env->lookupVariable(i->first));
+      result.append(env.lookupVariable(i->first));
   }
   return result;
 }

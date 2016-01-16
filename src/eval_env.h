@@ -37,7 +37,7 @@ struct Env {
  * Can be evaluated relative to an Env.
  */
 struct EvalString {
-  std::string evaluate(Env* env) const;
+  std::string evaluate(Env &env) const;
 
   void clear() { _parsed.clear(); }
   bool empty() const { return _parsed.empty(); }
@@ -85,7 +85,7 @@ struct Rule {
  */
 struct BindingEnv : public Env {
   BindingEnv() : _parent(NULL) {}
-  explicit BindingEnv(BindingEnv* parent) : _parent(parent) {}
+  explicit BindingEnv(BindingEnv &parent) : _parent(&parent) {}
 
   virtual ~BindingEnv() {}
   virtual std::string lookupVariable(const std::string& var);
@@ -107,12 +107,12 @@ struct BindingEnv : public Env {
   std::string lookupWithFallback(
       const std::string &var,
       const EvalString *eval,
-      Env *env) const;
+      Env &env) const;
 
 private:
   std::map<std::string, std::string> _bindings;
   std::map<std::string, Rule> _rules;
-  BindingEnv *_parent;
+  BindingEnv * const _parent;
 };
 
 }  // namespace shk
