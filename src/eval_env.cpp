@@ -27,13 +27,13 @@ std::string BindingEnv::lookupVariable(const std::string &var) {
   return "";
 }
 
-void BindingEnv::addBinding(const std::string &key, const std::string &val) {
-  _bindings[key] = val;
+void BindingEnv::addBinding(std::string &&key, std::string &&val) {
+  _bindings.emplace(std::move(key), std::move(val));
 }
 
-void BindingEnv::addRule(const Rule *rule) {
-  assert(lookupRuleCurrentScope(rule->name()) == NULL);
-  _rules[rule->name()] = rule;
+void BindingEnv::addRule(Rule &&rule) {
+  assert(lookupRuleCurrentScope(rule.name) == NULL);
+  _rules.emplace(std::string(rule.name), std::move(rule));
 }
 
 const Rule* BindingEnv::lookupRuleCurrentScope(
@@ -41,25 +41,21 @@ const Rule* BindingEnv::lookupRuleCurrentScope(
   const auto i = _rules.find(rule_name);
   if (i == _rules.end())
     return NULL;
-  return i->second;
+  return &i->second;
 }
 
 const Rule* BindingEnv::lookupRule(const std::string &rule_name) const {
   const auto i = _rules.find(rule_name);
   if (i != _rules.end())
-    return i->second;
+    return &i->second;
   if (_parent)
     return _parent->lookupRule(rule_name);
   return NULL;
 }
 
-void Rule::addBinding(const std::string &key, const EvalString &val) {
-  _bindings[key] = val;
-}
-
 const EvalString *Rule::getBinding(const std::string &key) const {
-  const auto i = _bindings.find(key);
-  if (i == _bindings.end())
+  const auto i = bindings.find(key);
+  if (i == bindings.end())
     return NULL;
   return &i->second;
 }
@@ -78,7 +74,7 @@ bool Rule::isReservedBinding(const std::string &var) {
       var == "msvc_deps_prefix";
 }
 
-const std::map<std::string, const Rule*>& BindingEnv::getRules() const {
+const std::map<std::string, Rule>& BindingEnv::getRules() const {
   return _rules;
 }
 

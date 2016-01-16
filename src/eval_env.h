@@ -65,23 +65,14 @@ private:
  * important for thread safety (and sanity in general).
  */
 struct Rule {
-  explicit Rule(const std::string &name) : name_(name) {}
-
-  const std::string& name() const { return name_; }
-
   using Bindings = std::map<std::string, EvalString>;
-  void addBinding(const std::string &key, const EvalString &val);
 
   static bool isReservedBinding(const std::string &var);
 
   const EvalString* getBinding(const std::string &key) const;
 
- private:
-  // Allow the parsers to reach into this object and fill out its fields.
-  friend struct ManifestParser;
-
-  std::string name_;
-  std::map<std::string, EvalString> _bindings;
+  std::string name;
+  Bindings bindings;
 };
 
 /**
@@ -99,12 +90,12 @@ struct BindingEnv : public Env {
   virtual ~BindingEnv() {}
   virtual std::string lookupVariable(const std::string& var);
 
-  void addRule(const Rule* rule);
+  void addRule(Rule &&rule);
   const Rule *lookupRule(const std::string& rule_name) const;
   const Rule *lookupRuleCurrentScope(const std::string& rule_name) const;
-  const std::map<std::string, const Rule*> &getRules() const;
+  const std::map<std::string, Rule> &getRules() const;
 
-  void addBinding(const std::string& key, const std::string& val);
+  void addBinding(std::string &&key, std::string &&val);
 
   /**
    * This is tricky.  Edges want lookup scope to go in this order:
@@ -120,7 +111,7 @@ struct BindingEnv : public Env {
 
 private:
   std::map<std::string, std::string> _bindings;
-  std::map<std::string, const Rule*> _rules;
+  std::map<std::string, Rule> _rules;
   BindingEnv *_parent;
 };
 
