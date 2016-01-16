@@ -20,6 +20,42 @@ namespace shk {
  */
 struct Step {
   /**
+   * Input files, as specified in the manifest. These are files that the build
+   * step is going to read from directly. In the Ninja manifest, these are the
+   * "explicit" and the "implicit" dependencies.
+   *
+   * Because the only difference between Ninja "explicit" and "implicit"
+   * dependencies is that implicit dependencies don't show up in the $in
+   * variable there is no need to distinguish between them in Step objects. The
+   * command has already been evaluated so there is no point in differentiating
+   * them anymore.
+   */
+  std::vector<Path> inputs;
+
+  /**
+   * Dependencies are paths to targets that generate output files that this
+   * target may depend on. These are different from inputs because they
+   * themselves are often not read by the build step. A common use case for this
+   * is targets that generate headers that other targets may depend on.
+   *
+   * These correspond to "order only" dependencies in the Ninja manifest.
+   *
+   * dependencies and inputs are kept separate because persistent caching cares
+   * about the difference.
+   */
+  std::vector<Path> dependencies;
+
+  /**
+   * Output files, as specified in the manifest. These are used as names for
+   * targets, to deduce the dependencies between different build steps and to
+   * make sure that the directory where the outputs should live exists before
+   * the command is invoked.
+   */
+  std::vector<Path> outputs;
+
+  std::string pool_name;
+
+  /**
    * Command that should be invoked in order to perform this build step.
    *
    * The command string is empty for phony rules.
@@ -69,40 +105,6 @@ struct Step {
    */
   Path rspfile;
   std::string rspfile_content;
-
-  /**
-   * Input files, as specified in the manifest. These are files that the build
-   * step is going to read from directly. In the Ninja manifest, these are the
-   * "explicit" and the "implicit" dependencies.
-   *
-   * Because the only difference between Ninja "explicit" and "implicit"
-   * dependencies is that implicit dependencies don't show up in the $in
-   * variable there is no need to distinguish between them in Step objects. The
-   * command has already been evaluated so there is no point in differentiating
-   * them anymore.
-   */
-  std::vector<Path> inputs;
-
-  /**
-   * Dependencies are paths to targets that generate output files that this
-   * target may depend on. These are different from inputs because they
-   * themselves are often not read by the build step. A common use case for this
-   * is targets that generate headers that other targets may depend on.
-   *
-   * These correspond to "order only" dependencies in the Ninja manifest.
-   *
-   * dependencies and inputs are kept separate because persistent caching cares
-   * about the difference.
-   */
-  std::vector<Path> dependencies;
-
-  /**
-   * Output files, as specified in the manifest. These are used as names for
-   * targets, to deduce the dependencies between different build steps and to
-   * make sure that the directory where the outputs should live exists before
-   * the command is invoked.
-   */
-  std::vector<Path> outputs;
 };
 
 }  // namespace shk

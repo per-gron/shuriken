@@ -81,6 +81,9 @@ private:
  * looking up the pool binding, which is done before there are inputs and
  * outputs. (The class is also used when doing lookups that do have $in and
  * $out, see StepEnv.)
+ *
+ * StepEnvWithoutInAndOut is a one-shot object. It supports only one lookup.
+ * After that it is consumed and another one has to be created.
  */
 struct StepEnvWithoutInAndOut : public Env {
   StepEnvWithoutInAndOut(const Rule &rule, const BindingEnv &env)
@@ -99,6 +102,9 @@ struct StepEnvWithoutInAndOut : public Env {
 
 /**
  * An Env for a build step, providing $in and $out.
+ *
+ * StepEnv is a one-shot object. It supports only one lookup. After that it is
+ * consumed and another one has to be created.
  */
 struct StepEnv : public StepEnvWithoutInAndOut {
   enum class EscapeKind { SHELL_ESCAPE, DO_NOT_ESCAPE };

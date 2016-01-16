@@ -16,6 +16,7 @@
 
 #include "parse_error.h"
 #include "string_piece.h"
+#include "util.h"
 
 // Windows may #define ERROR.
 #ifdef ERROR
@@ -121,7 +122,7 @@ struct Lexer {
   /**
    * Construct and throw an error message with context.
    */
-  void throwError(const std::string& message) const {
+  NORETURN void throwError(const std::string& message) const {
     throw ParseError(error(message));
   }
 

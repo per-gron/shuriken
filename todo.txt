@@ -11,6 +11,7 @@ Differences from Ninja:
   and depfile are ignored, other than that the .d file is removed)
 * File hashes are used rather than mtimes (except for generator rules, they still use mtimes)
 * msvc_deps_prefix, deps, depfile are unnecessary (except that the .d file should be removed)
+* Supports multiple outputs even when deps is specified
 
 
 Build steps in Shuriken must fulfill the following requirements:

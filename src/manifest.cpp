@@ -202,18 +202,21 @@ private:
     _lexer.readVarValue(val);
   }
 
+  Path toPath(const std::string &str) throw(ParseError) {
+    try {
+      return _file_system.paths().get(str);
+    } catch (PathError &error) {
+      _lexer.throwError(error.what());
+    }
+  }
+
   template<typename Out>
   void evalStringsToPaths(
       const std::vector<EvalString> &outs,
       BindingEnv &env,
       Out out) throw(ParseError) {
     for (auto i = outs.begin(); i != outs.end(); ++i) {
-      auto path = i->evaluate(env);
-      try {
-        *out++ = _file_system.paths().get(path);
-      } catch (PathError &error) {
-        _lexer.throwError(error.what());
-      }
+      *out++ = toPath(i->evaluate(env));
     }
   }
 
@@ -231,6 +234,28 @@ private:
       paths.push_back(in);
     }
     return paths;
+  }
+
+  std::string getPoolName(const Rule &rule, const BindingEnv &env) {
+    const auto pool_name = StepEnvWithoutInAndOut(rule, env).lookupVariable("pool");
+
+    if (!pool_name.empty()) {
+      if (_manifest.pools.count(pool_name) == 0) {
+        _lexer.throwError("unknown pool name '" + pool_name + "'");
+      }
+    }
+
+    return pool_name;
+  }
+
+  std::string getBinding(
+      const Rule &rule,
+      const BindingEnv &env,
+      const std::vector<Path> &inputs,
+      const std::vector<Path> &outputs,
+      StepEnv::EscapeKind escape,
+      const std::string &key) const {
+    return StepEnv(rule, env, inputs, outputs, escape).lookupVariable(key);
   }
 
   void parseEdge() throw(ParseError) {
@@ -276,19 +301,7 @@ private:
       has_indent_token = _lexer.peekToken(Lexer::INDENT);
     }
 
-    const auto pool_name = std::string(""); // TODO(peck): Edge::getPoolName(rule, env);
-    if (!pool_name.empty()) {
-      if (_manifest.pools.count(pool_name) == 0) {
-        _lexer.throwError("unknown pool name '" + pool_name + "'");
-      }
-    }
-
     Step step;
-    step.command = "TODO(peck)";
-    step.description = "TODO(peck)";
-    step.restat = false; // TODO(peck)
-    step.generator = false; // TODO(peck)
-    // TODO(peck): depfile rspfile rspfile_content
     step.inputs.reserve(ins.size() + implicit.size());
     evalStringsToPaths(ins, *env, std::back_inserter(step.inputs));
     evalStringsToPaths(implicit, *env, std::back_inserter(step.inputs));
@@ -298,6 +311,29 @@ private:
 
     step.outputs.reserve(outs.size());
     evalStringsToPaths(outs, *env, std::back_inserter(step.outputs));
+
+    step.pool_name = getPoolName(*rule, _env);
+
+    const auto get_binding = [&](const std::string &key) {
+      return getBinding(
+          *rule,
+          *env,
+          step.inputs,
+          step.outputs,
+          StepEnv::EscapeKind::DO_NOT_ESCAPE,
+          key);
+    };
+    const auto to_bool = [&](const std::string &value) {
+      return !value.empty();
+    };
+
+    step.command = get_binding("command");
+    step.description = get_binding("description");
+    step.restat = to_bool(get_binding("restat"));
+    step.generator = to_bool(get_binding("generator"));
+    step.depfile = toPath(get_binding("depfile"));
+    step.rspfile = toPath(get_binding("rspfile"));
+    step.rspfile_content = get_binding("rspfile_content");
 
     _manifest.steps.push_back(std::move(step));
   }
@@ -311,12 +347,7 @@ private:
 
     do {
       const auto path = eval.evaluate(_env);
-      try {
-        _manifest.defaults.push_back(
-            _file_system.paths().get(path));
-      } catch (PathError &error) {
-        _lexer.throwError(error.what());
-      }
+      _manifest.defaults.push_back(toPath(path));
 
       eval.clear();
       _lexer.readPath(&eval);
