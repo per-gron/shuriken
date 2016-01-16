@@ -110,7 +110,7 @@ struct Lexer {
   /**
    * Construct an error message with context.
    */
-  bool error(const std::string& message, std::string* err);
+  std::string error(const std::string& message) const;
 
 private:
   /**

@@ -21,7 +21,9 @@
 
 namespace shk {
 
-bool Lexer::error(const std::string& message, std::string* err) {
+std::string Lexer::error(const std::string& message) const {
+  std::string err;
+
   // Compute line/column.
   int line = 1;
   const char* context = _input._str;
@@ -35,8 +37,8 @@ bool Lexer::error(const std::string& message, std::string* err) {
 
   char buf[1024];
   snprintf(buf, sizeof(buf), "%s:%d: ", _filename.asString().c_str(), line);
-  *err = buf;
-  *err += message + "\n";
+  err = buf;
+  err += message + "\n";
 
   // Add some context to the message.
   const int kTruncateColumn = 72;
@@ -49,15 +51,15 @@ bool Lexer::error(const std::string& message, std::string* err) {
         break;
       }
     }
-    *err += std::string(context, len);
+    err += std::string(context, len);
     if (truncated)
-      *err += "...";
-    *err += "\n";
-    *err += std::string(col, ' ');
-    *err += "^ near here";
+      err += "...";
+    err += "\n";
+    err += std::string(col, ' ');
+    err += "^ near here";
   }
 
-  return false;
+  return err;
 }
 
 Lexer::Lexer(const char* input) {
@@ -254,15 +256,18 @@ bool Lexer::readEvalString(EvalString* eval, bool path, std::string* err) {
     }
     "$". {
       _last_token = start;
-      return error("bad $-escape (literal $ must be written as $$)", err);
+      *err = error("bad $-escape (literal $ must be written as $$)");
+      return false;
     }
     nul {
       _last_token = start;
-      return error("unexpected EOF", err);
+      *err = error("unexpected EOF");
+      return false;
     }
     [^] {
       _last_token = start;
-      return error(describeLastError(), err);
+      *err = error(describeLastError());
+      return false;
     }
     */
   }
