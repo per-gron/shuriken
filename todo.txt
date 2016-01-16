@@ -6,14 +6,10 @@ https://github.com/apenwarr/redo#readme
 http://cr.yp.to/redo/honest-script.html
 
 Differences from Ninja:
-* All dependencies provided in the Manifest behave as order only dependencies.
-* It is acceptable for input files to be missing: That is treated as another value of the file
-* Build steps that don't create a declared output fail the build if other steps depend on it as an input
-  (maybe Ninja already does this?)
-* Generator rules:
-  * (From Ninja) Not rebuilt when command line changes
-  * (From Ninja) Not cleaned by default
-  * Always run before all other rules
+* Dependencies of builds steps that have been run are deduced from the files that the build
+  step read instead of relying on the information in the manifest. (mscv_deps_prefix, deps
+  and depfile are ignored, other than that the .d file is removed)
+* File hashes are used rather than mtimes (except for generator rules, they still use mtimes)
 * msvc_deps_prefix, deps, depfile are unnecessary (except that the .d file should be removed)
 
 
@@ -28,8 +24,10 @@ Build steps in Shuriken must fulfill the following requirements:
 * When inputs are outputs of other build steps, those must be declared as dependencies.
 * When the command of the build step returns, all of the processes it created must be dead.
 
+
 The manifest must fulfill the following requirements:
 * There must not be more than one build step that generates any given output file
+* All input files except for phony inputs must exist
 * No cyclic dependencies
 
 
@@ -97,5 +95,3 @@ Steal directly from Ninja:
 * getopt (for Windows only)
 * manifest_parser / lexer (with modifications)
 * deps_log (refactor into invocation log)
-* version
-* utils (parts of it, for calculating CPU count, load average etc, GetShellEscapedString)

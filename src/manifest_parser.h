@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "file_system.h"
+#include "parse_error.h"
 #include "step.h"
 
 namespace shk {
@@ -13,6 +14,6 @@ namespace shk {
  */
 std::vector<Steps> parseManifest(
     FileSystem::Stream &file_stream,
-    const std::string &path);
+    const std::string &path) throw(IoError, ParseError);
 
 }  // namespace shk
