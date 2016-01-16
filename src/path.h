@@ -64,14 +64,20 @@ class Path {
   friend struct std::hash<Path>;
  public:
   Path()
-      : _canonicalized_path(nullptr),
-        _slash_bits(0) {}
+      : _canonicalized_path(nullptr)
+#ifdef _WIN32
+        , _slash_bits(0)
+#endif
+        {}
 
   Path(
       const detail::CanonicalizedPath *canonicalized_path,
       SlashBits slash_bits)
-      : _canonicalized_path(canonicalized_path),
-        _slash_bits(slash_bits) {}
+      : _canonicalized_path(canonicalized_path)
+#ifdef _WIN32
+        , _slash_bits(slash_bits)
+#endif
+        {}
 
   /**
    * Returns true if the paths point to the same paths. operator== is not
@@ -87,8 +93,11 @@ class Path {
 
   bool operator==(const Path &other) const {
     return (
-      _canonicalized_path == other._canonicalized_path &&
-      _slash_bits == other._slash_bits);
+      _canonicalized_path == other._canonicalized_path
+#ifdef _WIN32
+      && _slash_bits == other._slash_bits
+#endif
+      );
   }
 
   /**
@@ -96,14 +105,20 @@ class Path {
    * comparison is dependent on memory layout so is not stable across runs.
    */
   bool operator<(const Path &other) const {
+#ifdef _WIN32
     return (
         std::tie(_canonicalized_path, _slash_bits) <
         std::tie(other._canonicalized_path, other._slash_bits));
+#else
+    return _canonicalized_path < other._canonicalized_path;
+#endif
   }
 
  private:
   const detail::CanonicalizedPath *_canonicalized_path;
+#ifdef _WIN32
   SlashBits _slash_bits;
+#endif
 };
 
 }  // namespace shk
