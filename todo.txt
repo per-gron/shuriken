@@ -29,6 +29,7 @@ The manifest must fulfill the following requirements:
 * There must not be more than one build step that generates any given output file
 * All input files except for phony inputs must exist
 * No cyclic dependencies
+* For each output file of the build, there must be only one build step that generates it
 
 
 Steps of a Shuriken build:

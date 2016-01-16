@@ -29,6 +29,7 @@ add_library(shklib
   src/line_printer.cpp
   src/line_printer.h
   src/io_error.h
+  src/manifest.cpp
   src/manifest.h
   src/parse_error.h
   src/path.cpp

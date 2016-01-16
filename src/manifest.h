@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "file_system.h"
@@ -9,11 +10,17 @@
 
 namespace shk {
 
+struct Manifest {
+  std::vector<Step> steps;
+  std::vector<Path> defaults;
+  std::unordered_map<std::string, int> pools;
+};
+
 /**
  * Parse a Ninja manifest file at the given path.
  */
-std::vector<Step> parseManifest(
-    FileSystem::Stream &file_stream,
+Manifest parseManifest(
+    FileSystem &file_system,
     const std::string &path) throw(IoError, ParseError);
 
 }  // namespace shk
