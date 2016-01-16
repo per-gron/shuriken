@@ -698,6 +698,113 @@ TEST_CASE("Manifest") {
         "  command = something$expand \r\n"
         "  description = YAY!\r\n");
   }
+
+  SECTION("VariableExpansionTime") {
+    SECTION("EagerlyEvaluateStepBindings") {
+      const auto step = parseStep(fs,
+          "variable = old\n"
+          "rule cat\n"
+          "  command = echo $out $variable\n"
+          "  description = Hi $variable\n"
+          "build result: cat\n"
+          "  description = $variable\n"
+          "variable = my_var\n");
+
+      CHECK(step.description == "old");
+    }
+
+    SECTION("EagerlyEvaluateInputs") {
+      const auto step = parseStep(fs,
+          "variable = old\n"
+          "rule cat\n"
+          "  command = echo $out $variable\n"
+          "  description = Hi $variable\n"
+          "build result: cat $variable\n"
+          "variable = new\n");
+
+      REQUIRE(step.inputs.size() == 1);
+      CHECK(step.inputs[0].canonicalized() == "old");
+    }
+
+    SECTION("EagerlyEvaluateOutputs") {
+      const auto step = parseStep(fs,
+          "variable = old\n"
+          "rule cat\n"
+          "  command = echo $out $variable\n"
+          "  description = Hi $variable\n"
+          "build $variable: cat in\n"
+          "variable = new\n");
+
+      REQUIRE(step.outputs.size() == 1);
+      CHECK(step.outputs[0].canonicalized() == "old");
+    }
+
+    SECTION("EagerlyEvaluateImplicit") {
+      const auto step = parseStep(fs,
+          "variable = old\n"
+          "rule cat\n"
+          "  command = echo $out $variable\n"
+          "  description = Hi $variable\n"
+          "build result: cat | $variable\n"
+          "variable = new\n");
+
+      REQUIRE(step.implicit_inputs.size() == 1);
+      CHECK(step.implicit_inputs[0].canonicalized() == "old");
+    }
+
+    SECTION("EagerlyEvaluateOrderOnly") {
+      const auto step = parseStep(fs,
+          "variable = old\n"
+          "rule cat\n"
+          "  command = echo $out $variable\n"
+          "  description = Hi $variable\n"
+          "build result: cat || $variable\n"
+          "variable = new\n");
+
+      REQUIRE(step.dependencies.size() == 1);
+      CHECK(step.dependencies[0].canonicalized() == "old");
+    }
+
+    SECTION("EagerlyEvaluatePoolName") {
+      const auto step = parseStep(fs,
+          "variable = old\n"
+          "pool old\n"
+          "  depth = 1\n"
+          "pool new\n"
+          "  depth = 1\n"
+          "rule cat\n"
+          "  command = echo $out\n"
+          "  pool = $variable\n"
+          "build result: cat\n"
+          "variable = new\n");
+
+      CHECK(step.pool_name == "old");
+    }
+
+    SECTION("LazilyEvaluateRuleBindings") {
+      const auto step = parseStep(fs,
+          "variable = old\n"
+          "rule cat\n"
+          "  command = echo $out $variable\n"
+          "  description = Hi $variable\n"
+          "  restat = $other_var\n"
+          "  generator = $other_var\n"
+          "  depfile = $variable\n"
+          "  rspfile = $variable\n"
+          "  rspfile_content = $variable\n"
+          "build result: cat || $variable\n"
+          "variable = new\n"
+          "other_var = new2\n");
+
+      CHECK(step.command == "echo result new");
+      CHECK(step.description == "Hi new");
+      CHECK(step.restat);
+      CHECK(step.generator);
+      CHECK(step.depfile.canonicalized() == "new");
+      CHECK(step.rspfile.canonicalized() == "new");
+      CHECK(step.rspfile_content == "new");
+    }
+  }
 }
 
 }  // namespace shk

@@ -95,5 +95,4 @@ To fill in the first test:
 
 Steal directly from Ninja:
 * getopt (for Windows only)
-* manifest_parser / lexer (with modifications)
 * deps_log (refactor into invocation log)

@@ -14,6 +14,7 @@
 
 #include "manifest.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -38,12 +39,18 @@ void expectToken(Lexer &lexer, Lexer::Token expected) throw(ParseError) {
   }
 }
 
-}  // anonymous namespace
+using ManifestPostprocessingData = std::vector<std::pair<
+    const BindingEnv *, const Rule *>>;
 
 struct ManifestParser {
-  ManifestParser(FileSystem &file_system, Manifest &manifest, BindingEnv &env)
+  ManifestParser(
+      FileSystem &file_system,
+      Manifest &manifest,
+      ManifestPostprocessingData &postprocessing_data,
+      BindingEnv &env)
       : _file_system(file_system),
         _manifest(manifest),
+        _postprocessing_data(postprocessing_data),
         _env(env) {}
 
   /**
@@ -65,6 +72,50 @@ struct ManifestParser {
     parse(filename, contents);
   }
 
+  /**
+   * Ninja is a bit inconsistent in when it evaluates variables in the manifest.
+   * For inputs, outputs, implicit dependencies, order-only dependencies, the
+   * pool name and bindings that are overridden in build statements, it
+   * evaluates them eagerly at the point of parsing the build statement.
+   * However, variable references in rules, for example command, description,
+   * rspfile and depfile are not expanded until after the whole manifest is
+   * parsed. This weirdness is what this method takes care of: It evaluates
+   * the bindings that are supposed to be evaluated after the manifest has been
+   * fully parsed.
+   */
+  void postprocessSteps() {
+    assert(_postprocessing_data.size() == _manifest.steps.size());
+    for (size_t i = 0; i < _postprocessing_data.size(); i++) {
+      const BindingEnv *env;
+      const Rule *rule;
+      std::tie(env, rule) = _postprocessing_data[i];
+      Step &step = _manifest.steps[i];
+
+      const auto get_binding = [&](
+          const std::string &key,
+          StepEnv::EscapeKind escape_kind = StepEnv::EscapeKind::DO_NOT_ESCAPE) {
+        return getBinding(
+            *rule,
+            *env,
+            step.inputs,
+            step.outputs,
+            escape_kind,
+            key);
+      };
+      const auto to_bool = [&](const std::string &value) {
+        return !value.empty();
+      };
+
+      step.command = get_binding("command", StepEnv::EscapeKind::SHELL_ESCAPE);
+      step.description = get_binding("description");
+      step.restat = to_bool(get_binding("restat"));
+      step.generator = to_bool(get_binding("generator"));
+      step.depfile = toPath(get_binding("depfile"), /*allow_empty:*/true);
+      step.rspfile = toPath(get_binding("rspfile"), /*allow_empty:*/true);
+      step.rspfile_content = get_binding("rspfile_content");
+    }
+  }
+
 private:
   /**
    * Parse a file, given its contents as a string.
@@ -81,7 +132,7 @@ private:
         parsePool();
         break;
       case Lexer::BUILD:
-        parseEdge();
+        parseStep();
         break;
       case Lexer::RULE:
         parseRule();
@@ -262,7 +313,7 @@ private:
     return StepEnv(rule, env, inputs, outputs, escape).lookupVariable(key);
   }
 
-  void parseEdge() throw(ParseError) {
+  void parseStep() throw(ParseError) {
     const auto outs = parsePaths();
     if (outs.empty()) {
       _lexer.throwError("expected path");
@@ -280,12 +331,10 @@ private:
     // XXX should we require one path here?
     const auto ins = parsePaths();
 
-    // Add implicit deps
     const auto implicit = _lexer.peekToken(Lexer::PIPE) ?
         parsePaths() :
         std::vector<EvalString>();
 
-    // Add all order-only deps, counting how many as we go.
     const auto order_only = _lexer.peekToken(Lexer::PIPE2) ?
         parsePaths() :
         std::vector<EvalString>();
@@ -301,11 +350,24 @@ private:
       EvalString val;
       parseLet(&key, &val);
 
+      // Evaluate the build statement's environment eagerly. This means that
+      // variables set on the build statement only can see variables earlier
+      // in the Ninja file. On the contrary, variables set on rules can see
+      // variables that are set later on in the file. This behavior seems to be
+      // incidental more than intentional but Shuriken intentionally copies
+      // Ninja's behavior.
       env->addBinding(std::move(key), val.evaluate(_env));
       has_indent_token = _lexer.peekToken(Lexer::INDENT);
     }
 
     Step step;
+    // Evaluate input and output paths eagerly. Paths that are set as inputs,
+    // outputs, implicit or order-only dependencies can contain variables, but
+    // these paths can only see variables that are set higher up in the Ninja
+    // file. This is different from how variables on rules work, which can see
+    // variables that are set both after the rule declaration and after the
+    // build declaration. This behavior seems to be  incidental more than
+    // intentional but Shuriken intentionally copies Ninja's behavior.
     step.inputs = evalStringsToPaths(ins, *env);
     step.implicit_inputs = evalStringsToPaths(implicit, *env);
     step.dependencies = evalStringsToPaths(order_only, *env);
@@ -313,29 +375,7 @@ private:
 
     step.pool_name = getPoolName(*rule, _env);
 
-    const auto get_binding = [&](
-        const std::string &key,
-        StepEnv::EscapeKind escape_kind = StepEnv::EscapeKind::DO_NOT_ESCAPE) {
-      return getBinding(
-          *rule,
-          *env,
-          step.inputs,
-          step.outputs,
-          escape_kind,
-          key);
-    };
-    const auto to_bool = [&](const std::string &value) {
-      return !value.empty();
-    };
-
-    step.command = get_binding("command", StepEnv::EscapeKind::SHELL_ESCAPE);
-    step.description = get_binding("description");
-    step.restat = to_bool(get_binding("restat"));
-    step.generator = to_bool(get_binding("generator"));
-    step.depfile = toPath(get_binding("depfile"), /*allow_empty:*/true);
-    step.rspfile = toPath(get_binding("rspfile"), /*allow_empty:*/true);
-    step.rspfile_content = get_binding("rspfile_content");
-
+    _postprocessing_data.emplace_back(env, rule);
     _manifest.steps.push_back(std::move(step));
   }
 
@@ -365,11 +405,12 @@ private:
     _lexer.readPath(&eval);
     std::string path = eval.evaluate(_env);
 
-    BindingEnv inner_env(_env);
+    // XXX This leaks memory (BindingEnv allocation). Is that ok?
     ManifestParser subparser(
         _file_system,
         _manifest,
-        new_scope ? inner_env : _env);
+        _postprocessing_data,
+        new_scope ? *(new BindingEnv(_env)) : _env);
 
     subparser.load(path, &_lexer);
 
@@ -378,17 +419,22 @@ private:
 
   FileSystem &_file_system;
   Manifest &_manifest;
+  ManifestPostprocessingData &_postprocessing_data;
   BindingEnv &_env;
   Lexer _lexer;
 };
+
+}  // anonymous namespace
 
 Manifest parseManifest(
     FileSystem &file_system,
     const std::string &path) throw(IoError, ParseError) {
   Manifest manifest;
   BindingEnv env;
-  ManifestParser parser(file_system, manifest, env);
+  ManifestPostprocessingData postprocessing_data;
+  ManifestParser parser(file_system, manifest, postprocessing_data, env);
   parser.load(path, nullptr);
+  parser.postprocessSteps();
   return manifest;
 }
 
