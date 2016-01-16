@@ -19,6 +19,8 @@ add_library(shklib
   src/edit_distance.h
   src/eval_env.cpp
   src/eval_env.h
+  src/eval_string.cpp
+  src/eval_string.h
   src/file_system.h
   src/fingerprint.cpp
   src/fingerprint.h

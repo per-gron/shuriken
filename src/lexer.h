@@ -24,7 +24,7 @@
 
 namespace shk {
 
-struct EvalString;
+class EvalString;
 
 struct Lexer {
   Lexer() {}

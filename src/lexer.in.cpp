@@ -17,6 +17,7 @@
 #include <stdio.h>
 
 #include "eval_env.h"
+#include "eval_string.h"
 #include "util.h"
 
 namespace shk {

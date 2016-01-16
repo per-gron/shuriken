@@ -18,41 +18,20 @@
 #include <string>
 #include <vector>
 
+#include "eval_string.h"
 #include "string_piece.h"
 
 namespace shk {
 
 /**
  * An interface for a scope for variable (e.g. "$foo") lookups.
+ *
+ * Used in the manifest parser.
  */
-struct Env {
+class Env {
+ public:
   virtual ~Env() {}
   virtual std::string lookupVariable(const std::string& var) = 0;
-};
-
-/**
- * A tokenized string that contains variable references.
- * Can be evaluated relative to an Env.
- */
-struct EvalString {
-  std::string evaluate(Env &env) const;
-
-  void clear() { _parsed.clear(); }
-  bool empty() const { return _parsed.empty(); }
-
-  void addText(StringPiece text);
-  void addSpecial(StringPiece text);
-
-  /**
-   * Construct a human-readable representation of the parsed state,
-   * for use in tests.
-   */
-  std::string serialize() const;
-
-private:
-  enum class TokenType { RAW, SPECIAL };
-  using TokenList = std::vector<std::pair<std::string, TokenType>>;
-  TokenList _parsed;
 };
 
 /**
