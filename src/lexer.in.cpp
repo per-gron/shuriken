@@ -119,9 +119,9 @@ void Lexer::unreadToken() {
 }
 
 Lexer::Token Lexer::readToken() {
-  const char* p = _ofs;
-  const char* q;
-  const char* start;
+  const char *p = _ofs;
+  const char *q;
+  const char *start;
   Lexer::Token token;
   for (;;) {
     start = p;
@@ -157,8 +157,9 @@ Lexer::Token Lexer::readToken() {
 
   _last_token = start;
   _ofs = p;
-  if (token != NEWLINE && token != TEOF)
+  if (token != NEWLINE && token != TEOF) {
     eatWhitespace();
+  }
   return token;
 }
 
@@ -171,8 +172,8 @@ bool Lexer::peekToken(Token token) {
 }
 
 void Lexer::eatWhitespace() {
-  const char* p = _ofs;
-  const char* q;
+  const char *p = _ofs;
+  const char *q;
   for (;;) {
     _ofs = p;
     /*!re2c
@@ -187,9 +188,9 @@ void Lexer::eatWhitespace() {
 
 std::string Lexer::readIdent(const char *ident_type) throw(ParseError) {
   std::string out;
-  const char* p = _ofs;
+  const char *p = _ofs;
   for (;;) {
-    const char* start = p;
+    const char *start = p;
     /*!re2c
     varname {
       out.assign(start, p - start);
@@ -204,9 +205,9 @@ std::string Lexer::readIdent(const char *ident_type) throw(ParseError) {
 }
 
 void Lexer::readEvalString(EvalString* eval, bool path) throw(ParseError) {
-  const char* p = _ofs;
-  const char* q;
-  const char* start;
+  const char *p = _ofs;
+  const char *q;
+  const char *start;
   for (;;) {
     start = p;
     /*!re2c
