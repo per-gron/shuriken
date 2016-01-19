@@ -329,9 +329,26 @@ StringPiece readLiteral(ParsingContext &context) throw(ParseError) {
       continue;
     }
     "\\x"[a-fA-F0-9]{2} {
+      // De-escape hex escape
       const auto a = *(context.in - 2);
       const auto b = *(context.in - 1);
       *out++ = (hexToInt(a) << 4) + hexToInt(b);
+      continue;
+    }
+    "\\"[0-7]{2} {
+      // De-escape two digit octal escape
+      //
+      // Looking at TinyScheme's parser, it does not look like it supports
+      // single digit hex escape sequences.
+      const auto a = *(context.in - 2);
+      const auto b = *(context.in - 1);
+      *out++ = ((a - '0') << 3) + (b - '0');
+      continue;
+    }
+    "\\"[0-7] {
+      // De-escape single digit octal escape
+      const auto a = *(context.in - 1);
+      *out++ = a - '0';
       continue;
     }
     "\\" {
