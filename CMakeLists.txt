@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.2.1)
 project(shk)
 
-set(SHK_COMPILER_FLAGS "-Wall -Werror")
+set(SHK_COMPILER_FLAGS "-Wall -Wimplicit-fallthrough -Werror")
 
 add_subdirectory(vendor)
 
@@ -9,6 +9,11 @@ add_custom_command(
   OUTPUT lexer.cpp
   COMMAND re2c -b -i --no-generation-date -o lexer.cpp ${CMAKE_SOURCE_DIR}/src/lexer.in.cpp
   DEPENDS src/lexer.in.cpp re2c)
+
+add_custom_command(
+  OUTPUT sandbox_parser.cpp
+  COMMAND re2c -b -i --no-generation-date -o sandbox_parser.cpp ${CMAKE_SOURCE_DIR}/src/sandbox_parser.in.cpp
+  DEPENDS src/sandbox_parser.in.cpp re2c)
 
 add_library(shklib
   src/build.h
@@ -41,6 +46,7 @@ add_library(shklib
   src/persistent_file_system.h
   src/rule.cpp
   src/rule.h
+  src/sandbox_parser.h
   src/step.h
   src/string_piece.h
   src/task.h
@@ -48,7 +54,8 @@ add_library(shklib
   src/util.h
   src/version.cpp
   src/version.h
-  lexer.cpp)
+  lexer.cpp
+  sandbox_parser.cpp)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC src)
 set_target_properties(shklib PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
@@ -77,6 +84,7 @@ add_executable(shk_test
   test/manifest_test.cpp
   test/path_test.cpp
   test/properties.cpp
+  test/sandbox_parser_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC vendor/rapidcheck/extras/catch/include)

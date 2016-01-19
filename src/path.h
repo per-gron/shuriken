@@ -154,6 +154,7 @@ namespace shk {
 class Paths {
  public:
   Path get(const std::string &path) throw(PathError);
+  Path get(std::string &&path) throw(PathError);
 
  private:
   std::unordered_set<detail::CanonicalizedPath> _canonicalized_paths;

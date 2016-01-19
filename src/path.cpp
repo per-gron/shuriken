@@ -193,11 +193,14 @@ const std::string &Path::canonicalized() const {
 }
 
 Path Paths::get(const std::string &path) throw(PathError) {
-  SlashBits slash_bits = 0;
-  auto canonicalized_path = path;
-  detail::canonicalizePath(&canonicalized_path, &slash_bits);
+  return get(std::string(path));
+}
 
-  const auto result = _canonicalized_paths.emplace(canonicalized_path);
+Path Paths::get(std::string &&path) throw(PathError) {
+  SlashBits slash_bits = 0;
+  detail::canonicalizePath(&path, &slash_bits);
+
+  const auto result = _canonicalized_paths.emplace(path);
   const detail::CanonicalizedPath *canonicalized_path_ptr = &*result.first;
   return Path(canonicalized_path_ptr, slash_bits);
 }
