@@ -113,6 +113,10 @@ TEST_CASE("SandboxParser") {
         "(allow file-read-metadata (literal \"/another/path\"))",
         {},
         { "/another/path" });
+    checkDisallowedAllowFiles(
+        "(allow file-read-data (literal \"/a/path\"))\n"
+        "(allow file-write-create (literal \"/a/path\"))\n",
+        "Process created file that it had previously read from: /a/path");
   }
 
   SECTION("WriteWithoutCreate") {

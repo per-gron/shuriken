@@ -413,7 +413,13 @@ void readAllow(
 
   switch (token) {
   case AllowToken::FILE_WRITE_CREATE: {
-    result.created.insert(paths.get(readLiteral(context).asString()));
+    const auto path = paths.get(readLiteral(context).asString());
+    if (result.read.count(path) != 0) {
+      result.violations.emplace_back(
+          "Process created file that it had previously read from: " +
+          path.canonicalized());
+    }
+    result.created.insert(path);
     readToEOL(context);
     break;
   }
