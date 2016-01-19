@@ -13,6 +13,10 @@ namespace shk {
  * which files the command read and wrote to, verifying that the command did
  * not do something disallowed, for example access network or leave a daemon
  * process running.
+ *
+ * It is not responsible for verifying anything that requires knowledge of the
+ * whole build graph to check, for example if the command read a file that is
+ * an output of another command without declaring that as a dependency.
  */
 class CommandRunner {
  public:

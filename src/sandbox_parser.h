@@ -9,7 +9,19 @@
 namespace shk {
 
 struct SandboxResult {
+  /**
+   * Contains the list of files that the process created and did not remove.
+   * If the process creates a file and then moves it, this set contains only
+   * the path that was moved to. These files can be seen as output files of the
+   * command that ran. When cleaning, these files should be removed.
+   */
   std::unordered_set<Path> created;
+  /**
+   * Contains the list of files that were read. These can be seen as
+   * dependencies of the command that ran. Files that were created are not
+   * added to this set: They are not seen as input dependencies even if the
+   * program reads them.
+   */
   std::unordered_set<Path> read;
   /**
    * A list of human readable strings that describe things that the process did

@@ -83,9 +83,7 @@ Steps of a Shuriken build:
     - record data in the invocation log
 
 * Path stuff
-- FileSystem, with in memory and real implementations (for efficient testing)
 - Fingerprint stuff
-- Function to parse manifest
 * Hashing function
 * Functionality to parse and write to the invocation log
 - Function to delete outputs
