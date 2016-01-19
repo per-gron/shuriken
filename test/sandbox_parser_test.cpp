@@ -222,6 +222,10 @@ TEST_CASE("SandboxParser") {
         "(allow file-read-data (literal \"/a\\tb\"))",
         {},
         { "/a\tb" });
+    checkResult(
+        "(allow file-read-data (literal \"/a\\x22b\"))",
+        {},
+        { "/a\"b" });
 
     checkFailsParse("(allow file-read-data (literal \"\\a\"))");
   }

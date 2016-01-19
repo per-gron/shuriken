@@ -271,6 +271,15 @@ void readLiteralPrefix(ParsingContext &context) throw(ParseError) {
 }
 
 /**
+ * Converts a hex char (upper or lower case) to an int. Does not do bound
+ * checking.
+ */
+int hexToInt(char chr) {
+  const auto upper = toupper(chr);
+  return upper <= '9' ? upper - '0' : upper - 'A' + 10;
+}
+
+/**
  * Consume a string literal of the form '(literal "/a/b/c"' (does not consume
  * the final end paren).
  *
@@ -285,6 +294,7 @@ StringPiece readLiteral(ParsingContext &context) throw(ParseError) {
   // out: Current output point (typically same as context.in, but can fall
   // behind as we de-escape backslashes).
   char *out = context.in;
+  char *q;
 
   for (;;) {
     // start: beginning of the current parsed span.
@@ -316,6 +326,12 @@ StringPiece readLiteral(ParsingContext &context) throw(ParseError) {
     "\\\"" {
       // De-escape double quote
       *out++ = '"';
+      continue;
+    }
+    "\\x"[a-fA-F0-9]{2} {
+      const auto a = *(context.in - 2);
+      const auto b = *(context.in - 1);
+      *out++ = (hexToInt(a) << 4) + hexToInt(b);
       continue;
     }
     "\\" {
