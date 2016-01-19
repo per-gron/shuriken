@@ -177,7 +177,7 @@ AllowToken readAllowToken(ParsingContext &context) throw(ParseError) {
     "file-write-flags"       { token = AllowToken::FILE_WRITE_FLAGS;       break; }
     "file-write-mode"        { token = AllowToken::FILE_WRITE_MODE;        break; }
     "file-write-owner"       { token = AllowToken::FILE_WRITE_OWNER;       break; }
-    "file-write-setguid"     { token = AllowToken::FILE_WRITE_SETUGID;     break; }
+    "file-write-setugid"     { token = AllowToken::FILE_WRITE_SETUGID;     break; }
     "file-revoke"            { token = AllowToken::FILE_REVOKE;            break; }
     "file-write-unlink"      { token = AllowToken::FILE_WRITE_UNLINK;      break; }
     "file-ioctl"             { token = AllowToken::FILE_IOCTL;             break; }
@@ -263,7 +263,7 @@ void readLiteralPrefix(ParsingContext &context) throw(ParseError) {
   char *q;
   for (;;) {
     /*!re2c
-    [ ]+"\([ ]*literal"[ ]+"\"" { break; }
+    [ ]+"("[ ]*"literal"[ ]+"\"" { break; }
     [^] { parseError(context, "Encountered unexpected token; expected (literal"); }
     */
   }
@@ -301,18 +301,22 @@ StringPiece readLiteral(ParsingContext &context) throw(ParseError) {
     "\\n" {
       // De-escape newline
       *out++ = '\n';
+      continue;
     }
     "\\t" {
       // De-escape tab
       *out++ = '\t';
+      continue;
     }
     "\\r" {
       // De-escape line feed
       *out++ = '\r';
+      continue;
     }
     "\\\"" {
       // De-escape double quote
       *out++ = '"';
+      continue;
     }
     "\\" {
       parseError(context, "Encountered unexpected escape sequence");
@@ -385,7 +389,7 @@ void readAllow(
     const auto path = readPath(paths, context);
     if (result.created.count(path) == 0) {
       result.violations.emplace_back(
-          "Subprocess unlinked file or directory that it did not create: " +
+          "Process unlinked file or directory that it did not create: " +
           path.canonicalized());
     }
     result.created.erase(path);
@@ -402,7 +406,7 @@ void readAllow(
     const auto path = readPath(paths, context);
     if (result.created.count(path) == 0) {
       result.violations.emplace_back(
-          "Subprocess performed action " + token_slice.asString() + " on file "
+          "Process performed action " + token_slice.asString() + " on file "
           "or directory that it did not create: " + path.canonicalized());
     }
     readToEOL(context);
@@ -425,7 +429,7 @@ void readAllow(
     const auto path = readLiteral(context);
     if (path != "/dev/dtracehelper") {
       result.violations.emplace_back(
-          "Subprocess used ioctl on illegal path " + path.asString());
+          "Process used ioctl on illegal path " + path.asString());
     }
     readToEOL(context);
     break;
@@ -436,14 +440,14 @@ void readAllow(
       const auto path = readLiteral(context);
       if (path != "/private/var/run/syslog") {
         result.violations.emplace_back(
-            "Subprocess opened network connection on illegal path " +
+            "Process opened network connection on illegal path " +
             path.asString());
       }
     } catch (ParseError &) {
       // Failed to read path. Might be a network address such as
       // (remote tcp4 "*:80"). These are disallowed
       result.violations.emplace_back(
-          "Subprocess performed disallowed action network-outbound");
+          "Process performed disallowed action network-outbound");
     }
     readToEOL(context);
     break;
@@ -464,7 +468,7 @@ void readAllow(
     // In order to support this, the build system would need to include xattrs
     // in the build step dirtiness calculations.
     result.violations.emplace_back(
-        "Subprocess performed unsupported action " + token_slice.asString() +
+        "Process performed unsupported action " + token_slice.asString() +
         ". If this affects you, please report this to the project maintainers, "
         "this can be fixed.");
     readToEOL(context);
@@ -510,7 +514,7 @@ void readAllow(
   case AllowToken::MACH_PRIV_TASK_PORT:
   case AllowToken::MACH_TASK_NAME: {
     result.violations.emplace_back(
-        "Subprocess performed disallowed action " + token_slice.asString());
+        "Process performed disallowed action " + token_slice.asString());
     readToEOL(context);
     break;
   }
