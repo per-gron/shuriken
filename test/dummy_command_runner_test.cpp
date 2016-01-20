@@ -41,7 +41,7 @@ TEST_CASE("DummyCommandRunner") {
       const auto empty_command = DummyCommandRunner::constructCommand({}, {});
       const auto result = detail::runCommand(file_system, empty_command);
 
-      CHECK(result.return_code == 0);
+      CHECK(result.exit_status == ExitStatus::SUCCESS);
       CHECK(empty_file_system == file_system);
     }
 
@@ -51,12 +51,12 @@ TEST_CASE("DummyCommandRunner") {
 
       // Should fail because it should try to read a missing file
       const auto result = detail::runCommand(file_system, command);
-      CHECK(result.return_code != 0);
+      CHECK(result.exit_status != ExitStatus::SUCCESS);
 
       file_system.open(path, "w");  // Create the file
       // Should now not fail anymore
       const auto second_result = detail::runCommand(file_system, command);
-      CHECK(second_result.return_code == 0);
+      CHECK(second_result.exit_status == ExitStatus::SUCCESS);
     }
 
     SECTION("command should write output files") {
@@ -64,7 +64,7 @@ TEST_CASE("DummyCommandRunner") {
       const auto command = DummyCommandRunner::constructCommand({}, { path });
 
       const auto result = detail::runCommand(file_system, command);
-      CHECK(result.return_code == 0);
+      CHECK(result.exit_status == ExitStatus::SUCCESS);
 
       CHECK(file_system.stat(path).result == 0);  // Output file should have been created
     }
@@ -90,15 +90,15 @@ TEST_CASE("DummyCommandRunner") {
       const auto path = paths.get("abc");
       const auto command = DummyCommandRunner::constructCommand({ path }, {});
 
-      int return_code = 0;
+      auto exit_status = ExitStatus::SUCCESS;
       runner.invoke(command, [&](CommandRunner::Result &&result) {
-        return_code = result.return_code;
+        exit_status = result.exit_status;
       });
       while (!runner.empty()) {
         runner.runCommands();
       }
 
-      CHECK(return_code != 0);
+      CHECK(exit_status != ExitStatus::SUCCESS);
     }
   }
 

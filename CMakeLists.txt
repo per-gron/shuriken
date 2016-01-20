@@ -26,6 +26,7 @@ add_library(shklib
   src/eval_env.h
   src/eval_string.cpp
   src/eval_string.h
+  src/exit_status.h
   src/file_system.h
   src/fingerprint.cpp
   src/fingerprint.h

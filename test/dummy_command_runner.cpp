@@ -85,7 +85,7 @@ CommandRunner::Result runCommand(
   try {
     input_data = makeInputData(file_system, result.input_files);
   } catch (IoError &) {
-    result.return_code = 1;
+    result.exit_status = ExitStatus::FAILURE;
     return result;
   }
 
@@ -93,7 +93,7 @@ CommandRunner::Result runCommand(
     try {
       writeFile(file_system, output, output.canonicalized() + "\n" + input_data);
     } catch (IoError &) {
-      result.return_code = 1;
+      result.exit_status = ExitStatus::FAILURE;
       return result;
     }
   }

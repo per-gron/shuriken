@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "exit_status.h"
 #include "path.h"
 
 namespace shk {
@@ -25,7 +26,7 @@ class CommandRunner {
   struct Result {
     std::vector<Path> input_files;
     std::vector<Path> output_files;
-    int return_code = 0;
+    ExitStatus exit_status = ExitStatus::SUCCESS;
     std::string output;
     std::vector<std::string> linting_errors;
   };
