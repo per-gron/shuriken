@@ -41,14 +41,14 @@ struct CommandResult {
 
 CommandResult runCommand(
     const std::string &command,
-    bool use_console = false) {
+    UseConsole use_console = UseConsole::NO) {
   CommandResult result;
   SubprocessSet subprocs;
 
   bool did_finish = false;
   subprocs.invoke(
       command,
-      /*use_console=*/use_console,
+      use_console,
       [&](ExitStatus status, std::string &&output) {
         result.exit_status = status;
         result.output = std::move(output);
@@ -69,7 +69,7 @@ void verifyInterrupted(const std::string &command) {
   SubprocessSet subprocs;
   subprocs.invoke(
       command,
-      /*use_console=*/false,
+      UseConsole::NO,
       [](ExitStatus status, std::string &&output) {
       });
 
@@ -136,7 +136,7 @@ TEST_CASE("Subprocess") {
       // Also check that the current process is connected to a terminal.
       const auto result = runCommand(
           "test -t 0 -a -t 1 -a -t 2 && " + kIsConnectedToTerminal,
-          /*use_console=*/true);
+          UseConsole::YES);
       CHECK(result.exit_status == ExitStatus::SUCCESS);
     }
   }
@@ -177,7 +177,7 @@ TEST_CASE("Subprocess") {
     for (int i = 0; i < 3; ++i) {
       subprocs.invoke(
           kCommands[i],
-          /*use_console=*/false,
+          UseConsole::NO,
           [i, &processes_done, &finished_processes](
               ExitStatus status, std::string &&output) {
             CHECK(status == ExitStatus::SUCCESS);
@@ -223,7 +223,7 @@ TEST_CASE("Subprocess") {
     for (size_t i = 0; i < kNumProcs; ++i) {
       subprocs.invoke(
           "/bin/echo",
-          /*use_console=*/false,
+          UseConsole::NO,
           [&](ExitStatus status, std::string &&output) {
             CHECK(ExitStatus::SUCCESS == status);
             CHECK("" != output);

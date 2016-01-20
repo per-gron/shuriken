@@ -27,7 +27,7 @@
 
 namespace shk {
 
-Subprocess::Subprocess(const Callback &callback, bool use_console)
+Subprocess::Subprocess(const Callback &callback, UseConsole use_console)
     : _callback(callback),
       _use_console(use_console) {}
 
@@ -77,7 +77,7 @@ void Subprocess::start(SubprocessSet *set, const std::string &command) {
         break;
       }
 
-      if (!_use_console) {
+      if (_use_console == UseConsole::NO) {
         // Put the child in its own session and process group. It will be
         // detached from the current terminal and ctrl-c won't reach it.
         // Since this process was just forked, it is not a process group leader
@@ -227,7 +227,7 @@ SubprocessSet::~SubprocessSet() {
 
 void SubprocessSet::invoke(
     const std::string &command,
-    bool use_console,
+    UseConsole use_console,
     const Subprocess::Callback &callback) {
   auto subprocess = std::unique_ptr<Subprocess>(
       new Subprocess(callback, use_console));
@@ -337,7 +337,7 @@ void SubprocessSet::clear() {
   for (const auto &subprocess : _running) {
     // Since the foreground process is in our process group, it will receive
     // the interruption signal (i.e. SIGINT or SIGTERM) at the same time as us.
-    if (!subprocess->_use_console) {
+    if (subprocess->_use_console == UseConsole::NO) {
       kill(-subprocess->_pid, _interrupted);
     }
   }

@@ -20,6 +20,7 @@
 
 #include <signal.h>
 
+#include "command_runner.h"
 #include "exit_status.h"
 
 namespace shk {
@@ -39,7 +40,7 @@ class Subprocess {
   bool done() const;
 
  private:
-  Subprocess(const Callback &callback, bool use_console);
+  Subprocess(const Callback &callback, UseConsole use_console);
 
   void finish();
   void start(class SubprocessSet *set, const std::string &command);
@@ -50,7 +51,7 @@ class Subprocess {
 
   int _fd = -1;
   pid_t _pid = -1;
-  bool _use_console;
+  UseConsole _use_console;
 
   friend class SubprocessSet;
 };
@@ -66,7 +67,7 @@ class SubprocessSet {
 
   void invoke(
       const std::string &command,
-      bool use_console,
+      UseConsole use_console,
       const Subprocess::Callback &callback);
   bool runCommands();
   void clear();
