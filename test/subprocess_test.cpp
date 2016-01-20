@@ -46,7 +46,7 @@ CommandResult runCommand(
   SubprocessSet subprocs;
 
   bool did_finish = false;
-  Subprocess *subproc = subprocs.add(
+  subprocs.add(
       command,
       /*use_console=*/use_console,
       [&](ExitStatus status, std::string &&output) {
@@ -54,7 +54,6 @@ CommandResult runCommand(
         result.output = std::move(output);
         did_finish = true;
       });
-  REQUIRE(subproc != NULL);
 
   while (!subprocs.running().empty()) {
     // Pretend we discovered that stderr was ready for writing.
@@ -68,12 +67,11 @@ CommandResult runCommand(
 
 void verifyInterrupted(const std::string &command) {
   SubprocessSet subprocs;
-  Subprocess *subproc = subprocs.add(
+  subprocs.add(
       command,
       /*use_console=*/false,
       [](ExitStatus status, std::string &&output) {
       });
-  REQUIRE(subproc != NULL);
 
   while (!subprocs.running().empty()) {
     const bool interrupted = subprocs.doWork();
@@ -159,7 +157,6 @@ TEST_CASE("Subprocess") {
   SECTION("SetWithMulti") {
     SubprocessSet subprocs;
 
-    Subprocess *processes[3];
     const char* kCommands[3] = {
       kSimpleCommand,
 #ifdef _WIN32
@@ -172,35 +169,36 @@ TEST_CASE("Subprocess") {
     };
 
     int finished_processes = 0;
+    bool processes_done[3];
+    for (int i = 0; i < 3; ++i) {
+      processes_done[i] = 0;
+    }
 
     for (int i = 0; i < 3; ++i) {
-      processes[i] = subprocs.add(
+      subprocs.add(
           kCommands[i],
           /*use_console=*/false,
-          [&](ExitStatus status, std::string &&output) {
+          [i, &processes_done, &finished_processes](
+              ExitStatus status, std::string &&output) {
             CHECK(status == ExitStatus::SUCCESS);
             CHECK("" != output);
+            processes_done[i] = true;
             finished_processes++;
           });
     }
 
     CHECK(3u == subprocs.running().size());
     for (int i = 0; i < 3; ++i) {
-      CHECK(!processes[i]->done());
+      CHECK(!processes_done[i]);
     }
 
-    while (!processes[0]->done() || !processes[1]->done() ||
-           !processes[2]->done()) {
+    while (!processes_done[0] || !processes_done[1] || !processes_done[2]) {
       CHECK(subprocs.running().size() > 0u);
       subprocs.doWork();
     }
 
     CHECK(0u == subprocs.running().size());
     CHECK(3 == finished_processes);
-
-    for (int i = 0; i < 3; ++i) {
-      delete processes[i];
-    }
   }
 
 // OS X's process limit is less than 1025 by default
@@ -221,10 +219,9 @@ TEST_CASE("Subprocess") {
       return;
     }
 
-    std::vector<Subprocess *> procs;
     int num_procs_finished = 0;
     for (size_t i = 0; i < kNumProcs; ++i) {
-      Subprocess *subproc = subprocs.add(
+      subprocs.add(
           "/bin/echo",
           /*use_console=*/false,
           [&](ExitStatus status, std::string &&output) {
@@ -232,13 +229,11 @@ TEST_CASE("Subprocess") {
             CHECK("" != output);
             num_procs_finished++;
           });
-      REQUIRE(subproc != NULL);
-      procs.push_back(subproc);
     }
     while (!subprocs.running().empty()) {
       subprocs.doWork();
     }
-    CHECK(num_procs_finished == procs.size());
+    CHECK(num_procs_finished == kNumProcs);
   }
 #endif  // !__APPLE__ && !_WIN32
 

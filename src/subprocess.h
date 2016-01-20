@@ -82,7 +82,7 @@ class SubprocessSet {
   SubprocessSet();
   ~SubprocessSet();
 
-  Subprocess *add(
+  void add(
       const std::string &command,
       bool use_console,
       const Subprocess::Callback &callback);

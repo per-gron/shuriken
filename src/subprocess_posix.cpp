@@ -225,14 +225,13 @@ SubprocessSet::~SubprocessSet() {
   }
 }
 
-Subprocess *SubprocessSet::add(
+void SubprocessSet::add(
     const std::string &command,
     bool use_console,
     const Subprocess::Callback &callback) {
   Subprocess *subprocess = new Subprocess(callback, use_console);
   subprocess->start(this, command);
   _running.push_back(subprocess);
-  return subprocess;
 }
 
 #ifdef USE_PPOLL
