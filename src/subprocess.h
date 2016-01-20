@@ -31,28 +31,25 @@ namespace shk {
 /**
  * Subprocess wraps a single async subprocess.  It is entirely
  * passive: it expects the caller to notify it when its fds are ready
- * for reading, as well as call Finish() to reap the child once done()
+ * for reading, as well as call finish() to reap the child once done()
  * is true.
  */
 class Subprocess {
  public:
   ~Subprocess();
 
-  /**
-   * Returns ExitSuccess on successful process exit, ExitInterrupted if
-   * the process was interrupted, ExitFailure if it otherwise failed.
-   */
-  ExitStatus finish();
+  using Callback = std::function<void (ExitStatus status, std::string &&output)>;
 
   bool done() const;
 
-  const std::string &getOutput() const;
-
  private:
-  Subprocess(bool use_console);
+  Subprocess(const Callback &callback, bool use_console);
+
+  void finish();
   void start(class SubprocessSet *set, const std::string &command);
   void onPipeReady();
 
+  const Callback _callback;
   std::string _buf;
 
 #ifdef _WIN32
@@ -85,12 +82,10 @@ class SubprocessSet {
   SubprocessSet();
   ~SubprocessSet();
 
-  using Callback = std::function<void (ExitStatus status, std::string &&output)>;
-
   Subprocess *add(
       const std::string &command,
       bool use_console,
-      const Callback &callback);
+      const Subprocess::Callback &callback);
   bool doWork();
   void clear();
 

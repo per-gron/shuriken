@@ -45,10 +45,14 @@ CommandResult runCommand(
   CommandResult result;
   SubprocessSet subprocs;
 
+  bool did_finish = false;
   Subprocess *subproc = subprocs.add(
       command,
       /*use_console=*/use_console,
-      [](ExitStatus status, std::string &&output) {
+      [&](ExitStatus status, std::string &&output) {
+        result.exit_status = status;
+        result.output = std::move(output);
+        did_finish = true;
       });
   REQUIRE(subproc != NULL);
 
@@ -57,8 +61,7 @@ CommandResult runCommand(
     subprocs.doWork();
   }
 
-  result.exit_status = subproc->finish();
-  result.output = subproc->getOutput();
+  CHECK(did_finish);
 
   return result;
 }
@@ -168,18 +171,22 @@ TEST_CASE("Subprocess") {
 #endif
     };
 
+    int finished_processes = 0;
+
     for (int i = 0; i < 3; ++i) {
       processes[i] = subprocs.add(
           kCommands[i],
           /*use_console=*/false,
-          [](ExitStatus status, std::string &&output) {
+          [&](ExitStatus status, std::string &&output) {
+            CHECK(status == ExitStatus::SUCCESS);
+            CHECK("" != output);
+            finished_processes++;
           });
     }
 
     CHECK(3u == subprocs.running().size());
     for (int i = 0; i < 3; ++i) {
       CHECK(!processes[i]->done());
-      CHECK("" == processes[i]->getOutput());
     }
 
     while (!processes[0]->done() || !processes[1]->done() ||
@@ -189,10 +196,9 @@ TEST_CASE("Subprocess") {
     }
 
     CHECK(0u == subprocs.running().size());
+    CHECK(3 == finished_processes);
 
     for (int i = 0; i < 3; ++i) {
-      CHECK(ExitStatus::SUCCESS == processes[i]->finish());
-      CHECK("" != processes[i]->getOutput());
       delete processes[i];
     }
   }
@@ -216,21 +222,23 @@ TEST_CASE("Subprocess") {
     }
 
     std::vector<Subprocess *> procs;
+    int num_procs_finished = 0;
     for (size_t i = 0; i < kNumProcs; ++i) {
       Subprocess *subproc = subprocs.add(
           "/bin/echo",
           /*use_console=*/false,
-          [](ExitStatus status, std::string &&output) {
+          [&](ExitStatus status, std::string &&output) {
+            CHECK(ExitStatus::SUCCESS == status);
+            CHECK("" != output);
+            num_procs_finished++;
           });
       REQUIRE(subproc != NULL);
       procs.push_back(subproc);
     }
-    while (!subprocs.running().empty())
+    while (!subprocs.running().empty()) {
       subprocs.doWork();
-    for (size_t i = 0; i < procs.size(); ++i) {
-      CHECK(ExitStatus::SUCCESS == procs[i]->finish());
-      CHECK("" != procs[i]->getOutput());
     }
+    CHECK(num_procs_finished == procs.size());
   }
 #endif  // !__APPLE__ && !_WIN32
 
@@ -245,5 +253,4 @@ TEST_CASE("Subprocess") {
   }
 #endif  // _WIN32
 }
-
 }  // namespace shk

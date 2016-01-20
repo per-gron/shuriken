@@ -27,8 +27,9 @@
 
 namespace shk {
 
-Subprocess::Subprocess(bool use_console)
-    : _use_console(use_console) {}
+Subprocess::Subprocess(const Callback &callback, bool use_console)
+    : _callback(callback),
+      _use_console(use_console) {}
 
 Subprocess::~Subprocess() {
   if (_fd >= 0) {
@@ -137,14 +138,9 @@ void Subprocess::onPipeReady() {
   }
 }
 
-ExitStatus Subprocess::finish() {
-  assert(_pid != -1);
-  int status;
-  if (waitpid(_pid, &status, 0) < 0) {
-    fatal("waitpid(%d): %s", _pid, strerror(errno));
-  }
-  _pid = -1;
+namespace {
 
+ExitStatus computeExitStatus(int status) {
   if (WIFEXITED(status)) {
     int exit = WEXITSTATUS(status);
     if (exit == 0) {
@@ -158,12 +154,22 @@ ExitStatus Subprocess::finish() {
   return ExitStatus::FAILURE;
 }
 
-bool Subprocess::done() const {
-  return _fd == -1;
+}  // anonymous namespace
+
+void Subprocess::finish() {
+  assert(_pid != -1);
+  int status;
+  if (waitpid(_pid, &status, 0) < 0) {
+    fatal("waitpid(%d): %s", _pid, strerror(errno));
+  }
+  _pid = -1;
+
+  const auto exit_status = computeExitStatus(status);
+  _callback(exit_status, std::move(_buf));
 }
 
-const std::string &Subprocess::getOutput() const {
-  return _buf;
+bool Subprocess::done() const {
+  return _fd == -1;
 }
 
 int SubprocessSet::_interrupted;
@@ -222,8 +228,8 @@ SubprocessSet::~SubprocessSet() {
 Subprocess *SubprocessSet::add(
     const std::string &command,
     bool use_console,
-    const Callback &callback) {
-  Subprocess *subprocess = new Subprocess(use_console);
+    const Subprocess::Callback &callback) {
+  Subprocess *subprocess = new Subprocess(callback, use_console);
   subprocess->start(this, command);
   _running.push_back(subprocess);
   return subprocess;
@@ -260,15 +266,16 @@ bool SubprocessSet::doWork() {
   }
 
   nfds_t cur_nfd = 0;
-  for (const auto *subprocess : _running) {
-    int fd = subprocess->_fd;
+  for (auto i = _running.begin(); i != _running.end(); ) {
+    int fd = (*i)->_fd;
     if (fd < 0) {
       continue;
     }
     assert(fd == fds[cur_nfd].fd);
     if (fds[cur_nfd++].revents) {
-      subprocess->onPipeReady();
-      if (subprocess->done()) {
+      (*i)->onPipeReady();
+      if ((*i)->done()) {
+        (*i)->finish();
         i = _running.erase(i);
         continue;
       }
@@ -314,6 +321,7 @@ bool SubprocessSet::doWork() {
     if (fd >= 0 && FD_ISSET(fd, &set)) {
       (*i)->onPipeReady();
       if ((*i)->done()) {
+        (*i)->finish();
         i = _running.erase(i);
         continue;
       }
