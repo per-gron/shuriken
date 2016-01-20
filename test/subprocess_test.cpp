@@ -171,7 +171,7 @@ TEST_CASE("Subprocess") {
     CHECK(ExitStatus::SUCCESS == subproc->finish());
     CHECK("" != subproc->getOutput());
 
-    CHECK(1u == subprocs._finished.size());
+    CHECK(1u == subprocs.finished().size());
   }
 
   SECTION("SetWithMulti") {
@@ -192,7 +192,7 @@ TEST_CASE("Subprocess") {
       CHECK(processes[i] != NULL);
     }
 
-    CHECK(3u == subprocs._running.size());
+    CHECK(3u == subprocs.running().size());
     for (int i = 0; i < 3; ++i) {
       CHECK(!processes[i]->done());
       CHECK("" == processes[i]->getOutput());
@@ -200,12 +200,12 @@ TEST_CASE("Subprocess") {
 
     while (!processes[0]->done() || !processes[1]->done() ||
            !processes[2]->done()) {
-      CHECK(subprocs._running.size() > 0u);
+      CHECK(subprocs.running().size() > 0u);
       subprocs.doWork();
     }
 
-    CHECK(0u == subprocs._running.size());
-    CHECK(3u == subprocs._finished.size());
+    CHECK(0u == subprocs.running().size());
+    CHECK(3u == subprocs.finished().size());
 
     for (int i = 0; i < 3; ++i) {
       CHECK(ExitStatus::SUCCESS == processes[i]->finish());
@@ -236,13 +236,13 @@ TEST_CASE("Subprocess") {
       REQUIRE(subproc != NULL);
       procs.push_back(subproc);
     }
-    while (!subprocs._running.empty())
+    while (!subprocs.running().empty())
       subprocs.doWork();
     for (size_t i = 0; i < procs.size(); ++i) {
       CHECK(ExitStatus::SUCCESS, procs[i]->finish());
       CHECK("" != procs[i]->getOutput());
     }
-    CHECK(kNumProcs == subprocs._finished.size());
+    CHECK(kNumProcs == subprocs.finished().size());
   }
 #endif  // !__APPLE__ && !_WIN32
 
@@ -257,7 +257,7 @@ TEST_CASE("Subprocess") {
       subprocs.doWork();
     }
     CHECK(ExitStatus::SUCCESS == subproc->finish());
-    CHECK(1u == subprocs._finished.size());
+    CHECK(1u == subprocs.finished().size());
   }
 #endif  // _WIN32
 }

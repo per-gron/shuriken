@@ -91,6 +91,14 @@ class SubprocessSet {
   Subprocess *nextFinished();
   void clear();
 
+  const std::vector<Subprocess *> &running() {
+    return _running;
+  }
+  const std::queue<Subprocess *> &finished() {
+    return _finished;
+  }
+
+ private:
   std::vector<Subprocess *> _running;
   std::queue<Subprocess *> _finished;
 
@@ -112,6 +120,8 @@ class SubprocessSet {
   struct sigaction _old_term_act;
   sigset_t _old_mask;
 #endif
+
+  friend class Subprocess;
 };
 
 }  // namespace shk
