@@ -50,6 +50,8 @@ add_library(shklib
   src/sandbox_parser.h
   src/step.h
   src/string_piece.h
+  src/subprocess.h
+  src/subprocess_posix.cpp
   src/task.h
   src/util.cpp
   src/util.h
@@ -86,6 +88,7 @@ add_executable(shk_test
   test/path_test.cpp
   test/properties.cpp
   test/sandbox_parser_test.cpp
+  test/subprocess_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC vendor/rapidcheck/extras/catch/include)
