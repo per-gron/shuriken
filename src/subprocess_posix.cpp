@@ -269,7 +269,6 @@ bool SubprocessSet::doWork() {
     if (fds[cur_nfd++].revents) {
       subprocess->onPipeReady();
       if (subprocess->done()) {
-        _finished.push(*i);
         i = _running.erase(i);
         continue;
       }
@@ -315,7 +314,6 @@ bool SubprocessSet::doWork() {
     if (fd >= 0 && FD_ISSET(fd, &set)) {
       (*i)->onPipeReady();
       if ((*i)->done()) {
-        _finished.push(*i);
         i = _running.erase(i);
         continue;
       }
@@ -326,15 +324,6 @@ bool SubprocessSet::doWork() {
   return isInterrupted();
 }
 #endif  // !defined(USE_PPOLL)
-
-Subprocess *SubprocessSet::nextFinished() {
-  if (_finished.empty()) {
-    return NULL;
-  }
-  Subprocess * const subproc = _finished.front();
-  _finished.pop();
-  return subproc;
-}
 
 void SubprocessSet::clear() {
   for (const auto *subprocess : _running) {

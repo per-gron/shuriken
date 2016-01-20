@@ -78,8 +78,7 @@ class Subprocess {
 
 /**
  * SubprocessSet runs a ppoll/pselect() loop around a set of Subprocesses.
- * doWork() waits for any state change in subprocesses; _finished
- * is a queue of subprocesses as they finish.
+ * doWork() waits for any state change in subprocesses.
  */
 class SubprocessSet {
  public:
@@ -93,19 +92,14 @@ class SubprocessSet {
       bool use_console,
       const Callback &callback);
   bool doWork();
-  Subprocess *nextFinished();
   void clear();
 
   const std::vector<Subprocess *> &running() {
     return _running;
   }
-  const std::queue<Subprocess *> &finished() {
-    return _finished;
-  }
 
  private:
   std::vector<Subprocess *> _running;
-  std::queue<Subprocess *> _finished;
 
 #ifdef _WIN32
   static BOOL WINAPI notifyInterrupted(DWORD dwCtrlType);

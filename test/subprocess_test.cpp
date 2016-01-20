@@ -60,8 +60,6 @@ CommandResult runCommand(
   result.exit_status = subproc->finish();
   result.output = subproc->getOutput();
 
-  CHECK(1u == subprocs.finished().size());
-
   return result;
 }
 
@@ -176,7 +174,6 @@ TEST_CASE("Subprocess") {
           /*use_console=*/false,
           [](ExitStatus status, std::string &&output) {
           });
-      CHECK(processes[i] != NULL);
     }
 
     CHECK(3u == subprocs.running().size());
@@ -192,7 +189,6 @@ TEST_CASE("Subprocess") {
     }
 
     CHECK(0u == subprocs.running().size());
-    CHECK(3u == subprocs.finished().size());
 
     for (int i = 0; i < 3; ++i) {
       CHECK(ExitStatus::SUCCESS == processes[i]->finish());
@@ -232,10 +228,9 @@ TEST_CASE("Subprocess") {
     while (!subprocs.running().empty())
       subprocs.doWork();
     for (size_t i = 0; i < procs.size(); ++i) {
-      CHECK(ExitStatus::SUCCESS, procs[i]->finish());
+      CHECK(ExitStatus::SUCCESS == procs[i]->finish());
       CHECK("" != procs[i]->getOutput());
     }
-    CHECK(kNumProcs == subprocs.finished().size());
   }
 #endif  // !__APPLE__ && !_WIN32
 
