@@ -27,7 +27,9 @@
 
 namespace shk {
 
-Subprocess::Subprocess(const Callback &callback, UseConsole use_console)
+Subprocess::Subprocess(
+    const CommandRunner::Callback &callback,
+    UseConsole use_console)
     : _callback(callback),
       _use_console(use_console) {}
 
@@ -165,7 +167,11 @@ void Subprocess::finish() {
   _pid = -1;
 
   const auto exit_status = computeExitStatus(status);
-  _callback(exit_status, std::move(_buf));
+
+  CommandRunner::Result result;
+  result.exit_status = exit_status;
+  result.output = std::move(_buf);
+  _callback(std::move(result));
 }
 
 bool Subprocess::done() const {
@@ -228,7 +234,7 @@ SubprocessSet::~SubprocessSet() {
 void SubprocessSet::invoke(
     const std::string &command,
     UseConsole use_console,
-    const Subprocess::Callback &callback) {
+    const CommandRunner::Callback &callback) {
   auto subprocess = std::unique_ptr<Subprocess>(
       new Subprocess(callback, use_console));
   subprocess->start(this, command);

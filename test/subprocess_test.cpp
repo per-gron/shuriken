@@ -34,24 +34,18 @@ const char* kSimpleCommand = "cmd /c dir \\";
 const char* kSimpleCommand = "ls /";
 #endif
 
-struct CommandResult {
-  ExitStatus exit_status = ExitStatus::SUCCESS;
-  std::string output;
-};
-
-CommandResult runCommand(
+CommandRunner::Result runCommand(
     const std::string &command,
     UseConsole use_console = UseConsole::NO) {
-  CommandResult result;
+  CommandRunner::Result result;
   SubprocessSet subprocs;
 
   bool did_finish = false;
   subprocs.invoke(
       command,
       use_console,
-      [&](ExitStatus status, std::string &&output) {
-        result.exit_status = status;
-        result.output = std::move(output);
+      [&](CommandRunner::Result &&result_) {
+        result = std::move(result_);
         did_finish = true;
       });
 
@@ -70,7 +64,7 @@ void verifyInterrupted(const std::string &command) {
   subprocs.invoke(
       command,
       UseConsole::NO,
-      [](ExitStatus status, std::string &&output) {
+      [](CommandRunner::Result &&result) {
       });
 
   while (!subprocs.empty()) {
@@ -179,9 +173,9 @@ TEST_CASE("Subprocess") {
           kCommands[i],
           UseConsole::NO,
           [i, &processes_done, &finished_processes](
-              ExitStatus status, std::string &&output) {
-            CHECK(status == ExitStatus::SUCCESS);
-            CHECK("" != output);
+              CommandRunner::Result &&result) {
+            CHECK(result.exit_status == ExitStatus::SUCCESS);
+            CHECK("" != result.output);
             processes_done[i] = true;
             finished_processes++;
           });
@@ -224,9 +218,9 @@ TEST_CASE("Subprocess") {
       subprocs.invoke(
           "/bin/echo",
           UseConsole::NO,
-          [&](ExitStatus status, std::string &&output) {
-            CHECK(ExitStatus::SUCCESS == status);
-            CHECK("" != output);
+          [&](CommandRunner::Result &&result) {
+            CHECK(ExitStatus::SUCCESS == result.exit_status§);
+            CHECK("" != result.output);
             num_procs_finished++;
           });
     }

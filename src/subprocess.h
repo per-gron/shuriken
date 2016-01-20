@@ -35,18 +35,16 @@ class Subprocess {
  public:
   ~Subprocess();
 
-  using Callback = std::function<void (ExitStatus status, std::string &&output)>;
-
   bool done() const;
 
  private:
-  Subprocess(const Callback &callback, UseConsole use_console);
+  Subprocess(const CommandRunner::Callback &callback, UseConsole use_console);
 
   void finish();
   void start(class SubprocessSet *set, const std::string &command);
   void onPipeReady();
 
-  const Callback _callback;
+  const CommandRunner::Callback _callback;
   std::string _buf;
 
   int _fd = -1;
@@ -68,7 +66,7 @@ class SubprocessSet {
   void invoke(
       const std::string &command,
       UseConsole use_console,
-      const Subprocess::Callback &callback);
+      const CommandRunner::Callback &callback);
   bool runCommands();
   void clear();
 
