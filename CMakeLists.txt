@@ -45,13 +45,13 @@ add_library(shklib
   src/path_error.h
   src/persistent_file_system.cpp
   src/persistent_file_system.h
+  src/real_command_runner.h
+  src/real_command_runner_posix.cpp
   src/rule.cpp
   src/rule.h
   src/sandbox_parser.h
   src/step.h
   src/string_piece.h
-  src/subprocess.h
-  src/subprocess_posix.cpp
   src/task.h
   src/util.cpp
   src/util.h
@@ -87,8 +87,8 @@ add_executable(shk_test
   test/manifest_test.cpp
   test/path_test.cpp
   test/properties.cpp
+  test/real_command_runner_test.cpp
   test/sandbox_parser_test.cpp
-  test/subprocess_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC vendor/rapidcheck/extras/catch/include)

@@ -14,7 +14,7 @@
 
 #include <catch.hpp>
 
-#include "subprocess.h"
+#include "real_command_runner.h"
 
 #include <string>
 
