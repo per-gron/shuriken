@@ -116,11 +116,12 @@ size_t DummyCommandRunner::size() const {
   return _enqueued_commands.size();
 }
 
-void DummyCommandRunner::runCommands() {
+bool DummyCommandRunner::runCommands() {
   for (const auto &command : _enqueued_commands) {
     command.second(detail::runCommand(_file_system, command.first));
   }
   _enqueued_commands.clear();
+  return false;
 }
 
 std::string DummyCommandRunner::constructCommand(

@@ -38,7 +38,7 @@ class DummyCommandRunner : public CommandRunner {
 
   size_t size() const override;
 
-  void runCommands() override;
+  bool runCommands() override;
 
   static std::string constructCommand(
       const std::vector<Path> &inputs,

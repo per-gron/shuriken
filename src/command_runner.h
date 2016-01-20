@@ -56,8 +56,10 @@ class CommandRunner {
   /**
    * Wait until a command has completed. If there are no commands running
    * right now (if empty()), then the method returns immediately.
+   *
+   * @return true if the process was interrupted while running the commands.
    */
-  virtual void runCommands() = 0;
+  virtual bool runCommands() = 0;
 };
 
 }  // namespace shk
