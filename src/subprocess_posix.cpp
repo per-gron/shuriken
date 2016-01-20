@@ -14,11 +14,16 @@
 
 #include "subprocess.h"
 
+#include <string>
+#include <vector>
+#include <queue>
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <unistd.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -120,7 +125,7 @@ void Subprocess::start(SubprocessSet *set, const std::string &command) {
   if (_fd >= static_cast<int>(FD_SETSIZE)) {
     fatal("pipe: %s", strerror(EMFILE));
   }
-#endif  // !USE_PPOLL
+#endif  // !defined(USE_PPOLL)
   setCloseOnExec(_fd);
 
   _pid = fork();
@@ -356,7 +361,7 @@ bool SubprocessSet::runCommands() {
   return isInterrupted();
 }
 
-#else  // !defined(USE_PPOLL)
+#else  // USE_PPOLL
 bool SubprocessSet::runCommands() {
   fd_set set;
   int nfds = 0;
@@ -402,7 +407,7 @@ bool SubprocessSet::runCommands() {
 
   return isInterrupted();
 }
-#endif  // !defined(USE_PPOLL)
+#endif  // USE_PPOLL
 
 void SubprocessSet::clear() {
   for (const auto &subprocess : _running) {
