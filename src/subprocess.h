@@ -89,8 +89,11 @@ class SubprocessSet {
   bool doWork();
   void clear();
 
-  const std::vector<Subprocess *> &running() {
-    return _running;
+  bool empty() const {
+    return _running.empty();
+  }
+  size_t size() const {
+    return _running.size();
   }
 
  private:

@@ -55,7 +55,7 @@ CommandResult runCommand(
         did_finish = true;
       });
 
-  while (!subprocs.running().empty()) {
+  while (!subprocs.empty()) {
     // Pretend we discovered that stderr was ready for writing.
     subprocs.doWork();
   }
@@ -73,7 +73,7 @@ void verifyInterrupted(const std::string &command) {
       [](ExitStatus status, std::string &&output) {
       });
 
-  while (!subprocs.running().empty()) {
+  while (!subprocs.empty()) {
     const bool interrupted = subprocs.doWork();
     if (interrupted) {
       return;
@@ -187,17 +187,17 @@ TEST_CASE("Subprocess") {
           });
     }
 
-    CHECK(3u == subprocs.running().size());
+    CHECK(3u == subprocs.size());
     for (int i = 0; i < 3; ++i) {
       CHECK(!processes_done[i]);
     }
 
     while (!processes_done[0] || !processes_done[1] || !processes_done[2]) {
-      CHECK(subprocs.running().size() > 0u);
+      CHECK(subprocs.size() > 0u);
       subprocs.doWork();
     }
 
-    CHECK(0u == subprocs.running().size());
+    CHECK(0u == subprocs.size());
     CHECK(3 == finished_processes);
   }
 
@@ -230,7 +230,7 @@ TEST_CASE("Subprocess") {
             num_procs_finished++;
           });
     }
-    while (!subprocs.running().empty()) {
+    while (!subprocs.empty()) {
       subprocs.doWork();
     }
     CHECK(num_procs_finished == kNumProcs);
