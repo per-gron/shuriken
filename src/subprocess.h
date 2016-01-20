@@ -58,7 +58,7 @@ class Subprocess {
  * SubprocessSet runs a ppoll/pselect() loop around a set of Subprocesses.
  * runCommands() waits for any state change in subprocesses.
  */
-class SubprocessSet {
+class SubprocessSet : public CommandRunner {
  public:
   SubprocessSet();
   ~SubprocessSet();
@@ -66,14 +66,11 @@ class SubprocessSet {
   void invoke(
       const std::string &command,
       UseConsole use_console,
-      const CommandRunner::Callback &callback);
-  bool runCommands();
+      const Callback &callback) override;
+  bool runCommands() override;
   void clear();
 
-  bool empty() const {
-    return _running.empty();
-  }
-  size_t size() const {
+  size_t size() const override {
     return _running.size();
   }
 
