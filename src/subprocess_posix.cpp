@@ -40,7 +40,7 @@ Subprocess::~Subprocess() {
   }
 }
 
-bool Subprocess::start(SubprocessSet *set, const std::string &command) {
+void Subprocess::start(SubprocessSet *set, const std::string &command) {
   int output_pipe[2];
   if (pipe(output_pipe) < 0) {
     fatal("pipe: %s", strerror(errno));
@@ -121,7 +121,6 @@ bool Subprocess::start(SubprocessSet *set, const std::string &command) {
   }
 
   close(output_pipe[1]);
-  return true;
 }
 
 void Subprocess::onPipeReady() {
@@ -222,10 +221,7 @@ SubprocessSet::~SubprocessSet() {
 
 Subprocess *SubprocessSet::add(const std::string &command, bool use_console) {
   Subprocess *subprocess = new Subprocess(use_console);
-  if (!subprocess->start(this, command)) {
-    delete subprocess;
-    return 0;
-  }
+  subprocess->start(this, command);
   _running.push_back(subprocess);
   return subprocess;
 }

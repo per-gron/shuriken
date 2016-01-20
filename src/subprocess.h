@@ -50,7 +50,7 @@ class Subprocess {
 
  private:
   Subprocess(bool use_console);
-  bool start(class SubprocessSet *set, const std::string &command);
+  void start(class SubprocessSet *set, const std::string &command);
   void onPipeReady();
 
   std::string _buf;
