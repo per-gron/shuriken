@@ -34,6 +34,7 @@ class DummyCommandRunner : public CommandRunner {
 
   void invoke(
       const std::string &command,
+      UseConsole use_console,
       const Callback &callback) override;
 
   size_t size() const override;

@@ -78,7 +78,7 @@ TEST_CASE("DummyCommandRunner") {
       const auto path = paths.get("abc");
       const auto command = DummyCommandRunner::constructCommand({}, { path });
 
-      runner.invoke(command, CommandRunner::noopCallback);
+      runner.invoke(command, UseConsole::NO, CommandRunner::noopCallback);
       while (!runner.empty()) {
         runner.runCommands();
       }
@@ -91,7 +91,7 @@ TEST_CASE("DummyCommandRunner") {
       const auto command = DummyCommandRunner::constructCommand({ path }, {});
 
       auto exit_status = ExitStatus::SUCCESS;
-      runner.invoke(command, [&](CommandRunner::Result &&result) {
+      runner.invoke(command, UseConsole::NO, [&](CommandRunner::Result &&result) {
         exit_status = result.exit_status;
       });
       while (!runner.empty()) {
@@ -134,7 +134,7 @@ TEST_CASE("DummyCommandRunner") {
       // The command is not run yet so should not pass
       RC_ASSERT_THROWS(DummyCommandRunner::checkCommand(file_system, command));
 
-      runner.invoke(command, CommandRunner::noopCallback);
+      runner.invoke(command, UseConsole::NO, CommandRunner::noopCallback);
       while (!runner.empty()) {
         runner.runCommands();
       }
