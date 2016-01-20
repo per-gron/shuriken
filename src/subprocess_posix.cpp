@@ -229,9 +229,10 @@ void SubprocessSet::add(
     const std::string &command,
     bool use_console,
     const Subprocess::Callback &callback) {
-  Subprocess *subprocess = new Subprocess(callback, use_console);
+  auto subprocess = std::unique_ptr<Subprocess>(
+      new Subprocess(callback, use_console));
   subprocess->start(this, command);
-  _running.push_back(subprocess);
+  _running.push_back(std::move(subprocess));
 }
 
 #ifdef USE_PPOLL
@@ -239,7 +240,7 @@ bool SubprocessSet::doWork() {
   vector<pollfd> fds;
   nfds_t nfds = 0;
 
-  for (const auto *subprocess : _running) {
+  for (const auto &subprocess : _running) {
     int fd = subprocess->_fd;
     if (fd < 0) {
       continue;
@@ -290,7 +291,7 @@ bool SubprocessSet::doWork() {
   int nfds = 0;
   FD_ZERO(&set);
 
-  for (const auto *subprocess : _running) {
+  for (const auto &subprocess : _running) {
     int fd = subprocess->_fd;
     if (fd >= 0) {
       FD_SET(fd, &set);
@@ -333,15 +334,12 @@ bool SubprocessSet::doWork() {
 #endif  // !defined(USE_PPOLL)
 
 void SubprocessSet::clear() {
-  for (const auto *subprocess : _running) {
+  for (const auto &subprocess : _running) {
     // Since the foreground process is in our process group, it will receive
     // the interruption signal (i.e. SIGINT or SIGTERM) at the same time as us.
     if (!subprocess->_use_console) {
       kill(-subprocess->_pid, _interrupted);
     }
-  }
-  for (const auto *subprocess : _running) {
-    delete subprocess;
   }
   _running.clear();
 }

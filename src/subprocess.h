@@ -97,7 +97,7 @@ class SubprocessSet {
   }
 
  private:
-  std::vector<Subprocess *> _running;
+  std::vector<std::unique_ptr<Subprocess>> _running;
 
 #ifdef _WIN32
   static BOOL WINAPI notifyInterrupted(DWORD dwCtrlType);
