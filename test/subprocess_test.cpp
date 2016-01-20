@@ -34,91 +34,93 @@ const char* kSimpleCommand = "cmd /c dir \\";
 const char* kSimpleCommand = "ls /";
 #endif
 
-TEST_CASE("Subprocess") {
+struct CommandResult {
+  ExitStatus exit_status = ExitStatus::SUCCESS;
+  std::string output;
+};
+
+CommandResult runCommand(
+    const std::string &command,
+    bool use_console = false) {
+  CommandResult result;
   SubprocessSet subprocs;
 
+  Subprocess *subproc = subprocs.add(
+      command,
+      /*use_console=*/use_console,
+      [](ExitStatus status, std::string &&output) {
+      });
+  REQUIRE(subproc != NULL);
+
+  while (!subprocs.running().empty()) {
+    // Pretend we discovered that stderr was ready for writing.
+    subprocs.doWork();
+  }
+
+  result.exit_status = subproc->finish();
+  result.output = subproc->getOutput();
+
+  CHECK(1u == subprocs.finished().size());
+
+  return result;
+}
+
+void verifyInterrupted(const std::string &command) {
+  SubprocessSet subprocs;
+  Subprocess *subproc = subprocs.add(
+      command,
+      /*use_console=*/false,
+      [](ExitStatus status, std::string &&output) {
+      });
+  REQUIRE(subproc != NULL);
+
+  while (!subprocs.running().empty()) {
+    const bool interrupted = subprocs.doWork();
+    if (interrupted) {
+      return;
+    }
+  }
+
+  CHECK(!"We should have been interrupted");
+}
+
+TEST_CASE("Subprocess") {
   // Run a command that fails and emits to stderr.
   SECTION("BadCommandStderr") {
-    Subprocess *subproc = subprocs.add("cmd /c ninja_no_such_command");
-    REQUIRE(subproc != NULL);
-
-    while (!subproc->done()) {
-      // Pretend we discovered that stderr was ready for writing.
-      subprocs.doWork();
-    }
-
-    CHECK(ExitStatus::FAILURE == subproc->finish());
-    CHECK("" != subproc->getOutput());
+    const auto result = runCommand("cmd /c ninja_no_such_command");
+    CHECK(result.exit_status == ExitStatus::FAILURE);
+    CHECK(result.output != "");
   }
 
   // Run a command that does not exist
   SECTION("NoSuchCommand") {
-    Subprocess *subproc = subprocs.add("ninja_no_such_command");
-    REQUIRE(subproc != NULL);
-
-    while (!subproc->done()) {
-      // Pretend we discovered that stderr was ready for writing.
-      subprocs.doWork();
-    }
-
-    CHECK(ExitStatus::FAILURE == subproc->finish());
-    CHECK("" != subproc->getOutput());
+    const auto result = runCommand("ninja_no_such_command");
+    CHECK(result.exit_status == ExitStatus::FAILURE);
+    CHECK(result.output != "");
 #ifdef _WIN32
     CHECK("CreateProcess failed: The system cannot find the file "
-          "specified.\n" == subproc->getOutput());
+          "specified.\n" == result.output);
 #endif
   }
 
 #ifndef _WIN32
 
   SECTION("InterruptChild") {
-    Subprocess *subproc = subprocs.add("kill -INT $$");
-    REQUIRE(subproc != NULL);
-
-    while (!subproc->done()) {
-      subprocs.doWork();
-    }
-
-    CHECK(ExitStatus::INTERRUPTED == subproc->finish());
+    const auto result = runCommand("kill -INT $$");
+    CHECK(result.exit_status == ExitStatus::INTERRUPTED);
   }
 
   SECTION("InterruptParent") {
-    Subprocess *subproc = subprocs.add("kill -INT $PPID ; sleep 1");
-    REQUIRE(subproc != NULL);
-
-    while (!subproc->done()) {
-      const bool interrupted = subprocs.doWork();
-      if (interrupted) {
-        return;
-      }
-    }
-
-    CHECK(!"We should have been interrupted");
+    verifyInterrupted("kill -INT $PPID ; sleep 1");
   }
 
   SECTION("InterruptChildWithSigTerm") {
-    Subprocess *subproc = subprocs.add("kill -TERM $$");
-    REQUIRE(subproc != NULL);
-
-    while (!subproc->done()) {
-      subprocs.doWork();
-    }
-
-    CHECK(ExitStatus::INTERRUPTED == subproc->finish());
+    const auto result = runCommand("kill -TERM $$");
+    CHECK(result.exit_status == ExitStatus::INTERRUPTED);
   }
 
   SECTION("InterruptParentWithSigTerm") {
-    Subprocess *subproc = subprocs.add("kill -TERM $PPID ; sleep 1");
-    REQUIRE(subproc != NULL);
-
-    while (!subproc->done()) {
-      const bool interrupted = subprocs.doWork();
-      if (interrupted) {
-        return;
-      }
-    }
-
-    CHECK(!"We should have been interrupted");
+    verifyInterrupted("kill -TERM $PPID ; sleep 1");
   }
 
   // A shell command to check if the current process is connected to a terminal.
@@ -126,55 +128,36 @@ TEST_CASE("Subprocess") {
   // instance consider the command "yes < /dev/null > /dev/null 2>&1".
   // As "ps" will confirm, "yes" could still be connected to a terminal, despite
   // not having any of the standard file descriptors be a terminal.
-  static const char kIsConnectedToTerminal[] = "tty < /dev/tty > /dev/null";
+  const std::string kIsConnectedToTerminal = "tty < /dev/tty > /dev/null";
 
   SECTION("Console") {
     // Skip test if we don't have the console ourselves.
     if (isatty(0) && isatty(1) && isatty(2)) {
       // Test that stdin, stdout and stderr are a terminal.
       // Also check that the current process is connected to a terminal.
-      Subprocess* subproc =
-          subprocs.add(std::string("test -t 0 -a -t 1 -a -t 2 && ") +
-                            std::string(kIsConnectedToTerminal),
-                        /*use_console=*/true);
-      REQUIRE(subproc != NULL);
-
-      while (!subproc->done()) {
-        subprocs.doWork();
-      }
-
-      CHECK(ExitStatus::SUCCESS == subproc->finish());
+      const auto result = runCommand(
+          "test -t 0 -a -t 1 -a -t 2 && " + kIsConnectedToTerminal,
+          /*use_console=*/true);
+      CHECK(result.exit_status == ExitStatus::SUCCESS);
     }
   }
 
   SECTION("NoConsole") {
-    Subprocess *subproc =
-        subprocs.add(kIsConnectedToTerminal, /*use_console=*/false);
-    REQUIRE(subproc != NULL);
-
-    while (!subproc->done()) {
-      subprocs.doWork();
-    }
-
-    CHECK(ExitStatus::SUCCESS != subproc->finish());
+    const auto result = runCommand(kIsConnectedToTerminal);
+    CHECK(result.exit_status != ExitStatus::SUCCESS);
   }
 
 #endif
 
   SECTION("SetWithSingle") {
-    Subprocess *subproc = subprocs.add(kSimpleCommand);
-    REQUIRE(subproc != NULL);
-
-    while (!subproc->done()) {
-      subprocs.doWork();
-    }
-    CHECK(ExitStatus::SUCCESS == subproc->finish());
-    CHECK("" != subproc->getOutput());
-
-    CHECK(1u == subprocs.finished().size());
+    const auto result = runCommand(kSimpleCommand);
+    CHECK(result.exit_status == ExitStatus::SUCCESS);
+    CHECK(result.output != "");
   }
 
   SECTION("SetWithMulti") {
+    SubprocessSet subprocs;
+
     Subprocess *processes[3];
     const char* kCommands[3] = {
       kSimpleCommand,
@@ -188,7 +171,11 @@ TEST_CASE("Subprocess") {
     };
 
     for (int i = 0; i < 3; ++i) {
-      processes[i] = subprocs.add(kCommands[i]);
+      processes[i] = subprocs.add(
+          kCommands[i],
+          /*use_console=*/false,
+          [](ExitStatus status, std::string &&output) {
+          });
       CHECK(processes[i] != NULL);
     }
 
@@ -218,6 +205,8 @@ TEST_CASE("Subprocess") {
 // (|sysctl kern.maxprocperuid| is 709 on 10.7 and 10.8 and less prior to that).
 #if !defined(__APPLE__) && !defined(_WIN32)
   SECTION("SetWithLots") {
+    SubprocessSet subprocs;
+
     // Arbitrary big number; needs to be over 1024 to confirm we're no longer
     // hostage to pselect.
     const unsigned kNumProcs = 1025;
@@ -232,7 +221,11 @@ TEST_CASE("Subprocess") {
 
     std::vector<Subprocess *> procs;
     for (size_t i = 0; i < kNumProcs; ++i) {
-      Subprocess *subproc = subprocs.add("/bin/echo");
+      Subprocess *subproc = subprocs.add(
+          "/bin/echo",
+          /*use_console=*/false,
+          [](ExitStatus status, std::string &&output) {
+          });
       REQUIRE(subproc != NULL);
       procs.push_back(subproc);
     }
@@ -252,12 +245,8 @@ TEST_CASE("Subprocess") {
   // Verify that a command that attempts to read stdin correctly thinks
   // that stdin is closed.
   SECTION("ReadStdin") {
-    Subprocess *subproc = subprocs.add("cat -");
-    while (!subproc->done()) {
-      subprocs.doWork();
-    }
-    CHECK(ExitStatus::SUCCESS == subproc->finish());
-    CHECK(1u == subprocs.finished().size());
+    const auto result = runCommand("cat -");
+    CHECK(result.exit_status == ExitStatus::SUCCESS);
   }
 #endif  // _WIN32
 }

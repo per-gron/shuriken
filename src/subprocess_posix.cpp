@@ -219,7 +219,10 @@ SubprocessSet::~SubprocessSet() {
   }
 }
 
-Subprocess *SubprocessSet::add(const std::string &command, bool use_console) {
+Subprocess *SubprocessSet::add(
+    const std::string &command,
+    bool use_console,
+    const Callback &callback) {
   Subprocess *subprocess = new Subprocess(use_console);
   subprocess->start(this, command);
   _running.push_back(subprocess);

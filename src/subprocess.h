@@ -86,7 +86,12 @@ class SubprocessSet {
   SubprocessSet();
   ~SubprocessSet();
 
-  Subprocess *add(const std::string &command, bool use_console = false);
+  using Callback = std::function<void (ExitStatus status, std::string &&output)>;
+
+  Subprocess *add(
+      const std::string &command,
+      bool use_console,
+      const Callback &callback);
   bool doWork();
   Subprocess *nextFinished();
   void clear();
