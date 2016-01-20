@@ -46,7 +46,7 @@ CommandResult runCommand(
   SubprocessSet subprocs;
 
   bool did_finish = false;
-  subprocs.add(
+  subprocs.invoke(
       command,
       /*use_console=*/use_console,
       [&](ExitStatus status, std::string &&output) {
@@ -57,7 +57,7 @@ CommandResult runCommand(
 
   while (!subprocs.empty()) {
     // Pretend we discovered that stderr was ready for writing.
-    subprocs.doWork();
+    subprocs.runCommands();
   }
 
   CHECK(did_finish);
@@ -67,14 +67,14 @@ CommandResult runCommand(
 
 void verifyInterrupted(const std::string &command) {
   SubprocessSet subprocs;
-  subprocs.add(
+  subprocs.invoke(
       command,
       /*use_console=*/false,
       [](ExitStatus status, std::string &&output) {
       });
 
   while (!subprocs.empty()) {
-    const bool interrupted = subprocs.doWork();
+    const bool interrupted = subprocs.runCommands();
     if (interrupted) {
       return;
     }
@@ -175,7 +175,7 @@ TEST_CASE("Subprocess") {
     }
 
     for (int i = 0; i < 3; ++i) {
-      subprocs.add(
+      subprocs.invoke(
           kCommands[i],
           /*use_console=*/false,
           [i, &processes_done, &finished_processes](
@@ -194,7 +194,7 @@ TEST_CASE("Subprocess") {
 
     while (!processes_done[0] || !processes_done[1] || !processes_done[2]) {
       CHECK(subprocs.size() > 0u);
-      subprocs.doWork();
+      subprocs.runCommands();
     }
 
     CHECK(0u == subprocs.size());
@@ -221,7 +221,7 @@ TEST_CASE("Subprocess") {
 
     int num_procs_finished = 0;
     for (size_t i = 0; i < kNumProcs; ++i) {
-      subprocs.add(
+      subprocs.invoke(
           "/bin/echo",
           /*use_console=*/false,
           [&](ExitStatus status, std::string &&output) {
@@ -231,7 +231,7 @@ TEST_CASE("Subprocess") {
           });
     }
     while (!subprocs.empty()) {
-      subprocs.doWork();
+      subprocs.runCommands();
     }
     CHECK(num_procs_finished == kNumProcs);
   }

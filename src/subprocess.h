@@ -57,18 +57,18 @@ class Subprocess {
 
 /**
  * SubprocessSet runs a ppoll/pselect() loop around a set of Subprocesses.
- * doWork() waits for any state change in subprocesses.
+ * runCommands() waits for any state change in subprocesses.
  */
 class SubprocessSet {
  public:
   SubprocessSet();
   ~SubprocessSet();
 
-  void add(
+  void invoke(
       const std::string &command,
       bool use_console,
       const Subprocess::Callback &callback);
-  bool doWork();
+  bool runCommands();
   void clear();
 
   bool empty() const {
