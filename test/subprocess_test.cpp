@@ -38,10 +38,10 @@ CommandRunner::Result runCommand(
     const std::string &command,
     UseConsole use_console = UseConsole::NO) {
   CommandRunner::Result result;
-  SubprocessSet subprocs;
+  const auto runner = makeRealCommandRunner();
 
   bool did_finish = false;
-  subprocs.invoke(
+  runner->invoke(
       command,
       use_console,
       [&](CommandRunner::Result &&result_) {
@@ -49,9 +49,9 @@ CommandRunner::Result runCommand(
         did_finish = true;
       });
 
-  while (!subprocs.empty()) {
+  while (!runner->empty()) {
     // Pretend we discovered that stderr was ready for writing.
-    subprocs.runCommands();
+    runner->runCommands();
   }
 
   CHECK(did_finish);
@@ -60,15 +60,15 @@ CommandRunner::Result runCommand(
 }
 
 void verifyInterrupted(const std::string &command) {
-  SubprocessSet subprocs;
-  subprocs.invoke(
+  const auto runner = makeRealCommandRunner();
+  runner->invoke(
       command,
       UseConsole::NO,
       [](CommandRunner::Result &&result) {
       });
 
-  while (!subprocs.empty()) {
-    const bool interrupted = subprocs.runCommands();
+  while (!runner->empty()) {
+    const bool interrupted = runner->runCommands();
     if (interrupted) {
       return;
     }
@@ -77,7 +77,7 @@ void verifyInterrupted(const std::string &command) {
   CHECK(!"We should have been interrupted");
 }
 
-TEST_CASE("Subprocess") {
+TEST_CASE("SubprocessSet") {
   // Run a command that fails and emits to stderr.
   SECTION("BadCommandStderr") {
     const auto result = runCommand("cmd /c ninja_no_such_command");
@@ -149,7 +149,7 @@ TEST_CASE("Subprocess") {
   }
 
   SECTION("SetWithMulti") {
-    SubprocessSet subprocs;
+    const auto runner = makeRealCommandRunner();
 
     const char* kCommands[3] = {
       kSimpleCommand,
@@ -169,7 +169,7 @@ TEST_CASE("Subprocess") {
     }
 
     for (int i = 0; i < 3; ++i) {
-      subprocs.invoke(
+      runner->invoke(
           kCommands[i],
           UseConsole::NO,
           [i, &processes_done, &finished_processes](
@@ -181,17 +181,17 @@ TEST_CASE("Subprocess") {
           });
     }
 
-    CHECK(3u == subprocs.size());
+    CHECK(3u == runner->size());
     for (int i = 0; i < 3; ++i) {
       CHECK(!processes_done[i]);
     }
 
     while (!processes_done[0] || !processes_done[1] || !processes_done[2]) {
-      CHECK(subprocs.size() > 0u);
-      subprocs.runCommands();
+      CHECK(runner->size() > 0u);
+      runner->runCommands();
     }
 
-    CHECK(0u == subprocs.size());
+    CHECK(0u == runner->size());
     CHECK(3 == finished_processes);
   }
 
@@ -199,7 +199,7 @@ TEST_CASE("Subprocess") {
 // (|sysctl kern.maxprocperuid| is 709 on 10.7 and 10.8 and less prior to that).
 #if !defined(__APPLE__) && !defined(_WIN32)
   SECTION("SetWithLots") {
-    SubprocessSet subprocs;
+    const auto runner = makeRealCommandRunner();
 
     // Arbitrary big number; needs to be over 1024 to confirm we're no longer
     // hostage to pselect.
@@ -215,7 +215,7 @@ TEST_CASE("Subprocess") {
 
     int num_procs_finished = 0;
     for (size_t i = 0; i < kNumProcs; ++i) {
-      subprocs.invoke(
+      runner->invoke(
           "/bin/echo",
           UseConsole::NO,
           [&](CommandRunner::Result &&result) {
@@ -224,8 +224,8 @@ TEST_CASE("Subprocess") {
             num_procs_finished++;
           });
     }
-    while (!subprocs.empty()) {
-      subprocs.runCommands();
+    while (!runner->empty()) {
+      runner->runCommands();
     }
     CHECK(num_procs_finished == kNumProcs);
   }
