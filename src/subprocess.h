@@ -18,11 +18,7 @@
 #include <vector>
 #include <queue>
 
-#ifdef _WIN32
-#include <windows.h>
-#else
 #include <signal.h>
-#endif
 
 #include "exit_status.h"
 
@@ -52,22 +48,8 @@ class Subprocess {
   const Callback _callback;
   std::string _buf;
 
-#ifdef _WIN32
-  /**
-   * Set up pipe_ as the parent-side pipe of the subprocess; return the
-   * other end of the pipe, usable in the child process.
-   */
-  HANDLE setupPipe(HANDLE ioport);
-
-  HANDLE child_;
-  HANDLE pipe_;
-  OVERLAPPED overlapped_;
-  char _overlapped_buf[4 << 10];
-  bool _is_reading;
-#else
   int _fd = -1;
   pid_t _pid = -1;
-#endif
   bool _use_console;
 
   friend class SubprocessSet;
@@ -99,10 +81,6 @@ class SubprocessSet {
  private:
   std::vector<std::unique_ptr<Subprocess>> _running;
 
-#ifdef _WIN32
-  static BOOL WINAPI notifyInterrupted(DWORD dwCtrlType);
-  static HANDLE _ioport;
-#else
   static void setInterruptedFlag(int signum);
   static void handlePendingInterruption();
   /**
@@ -116,7 +94,6 @@ class SubprocessSet {
   struct sigaction _old_int_act;
   struct sigaction _old_term_act;
   sigset_t _old_mask;
-#endif
 
   friend class Subprocess;
 };
