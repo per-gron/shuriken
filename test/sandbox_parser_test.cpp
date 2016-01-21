@@ -113,6 +113,18 @@ TEST_CASE("SandboxParser") {
         "(allow file-read-metadata (literal \"/another/path\"))",
         {},
         { "/another/path" });
+    checkResult(
+        "(allow process-exec* (literal \"/bin/ls\"))",
+        {},
+        { "/bin/ls" });
+    checkResult(
+        "(allow process-exec (literal \"/bin/ls\"))",
+        {},
+        { "/bin/ls" });
+    checkResult(
+        "(allow process* (literal \"/bin/ls\"))",
+        {},
+        { "/bin/ls" });
     checkDisallowedAllowFiles(
         "(allow file-read-data (literal \"/a/path\"))\n"
         "(allow file-write-create (literal \"/a/path\"))\n",

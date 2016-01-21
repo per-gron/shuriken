@@ -453,7 +453,10 @@ void readAllow(
   }
 
   case AllowToken::FILE_READ_METADATA:
-  case AllowToken::FILE_READ_DATA: {
+  case AllowToken::FILE_READ_DATA:
+  case AllowToken::PROCESS_STAR:
+  case AllowToken::PROCESS_EXEC:
+  case AllowToken::PROCESS_EXEC_STAR: {
     const auto path = readPath(paths, context);
     if (result.created.count(path) == 0) {
       // It is ok for the process to read from a file it created, but only count
@@ -493,9 +496,6 @@ void readAllow(
   }
 
   case AllowToken::SYSCTL_READ:
-  case AllowToken::PROCESS_STAR:
-  case AllowToken::PROCESS_EXEC:
-  case AllowToken::PROCESS_EXEC_STAR:
   case AllowToken::PROCESS_FORK: {
     // Allowed
     readToEOL(context);

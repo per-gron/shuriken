@@ -48,7 +48,7 @@ TEST_CASE("TracingCommandRunner") {
 
   const auto result = runCommand(*runner, "/bin/ls /sbin");
   CHECK(contains(result.input_files, paths.get("/sbin")));
-  //CHECK(contains(result.input_files, paths.get("/bin/ls")));
+  CHECK(contains(result.input_files, paths.get("/bin/ls")));
   CHECK(result.output_files.empty());
 }
 
