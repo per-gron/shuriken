@@ -78,7 +78,16 @@ TEST_CASE("TracingCommandRunner") {
   }
 
   SECTION("TrackMovedOutputs") {
-    // FIXME(peck)
+    const auto other_path = paths.get(output_path.canonicalized() + ".b");
+    const auto result = runCommand(
+        *runner,
+        "/usr/bin/touch " + output_path.canonicalized() + " && /bin/mv " +
+        output_path.canonicalized() + " " + other_path.canonicalized());
+    CHECK(result.output_files.size() == 1);
+    // Should have only other_path as an output path; the file at output_path
+    // was moved.
+    CHECK(contains(result.output_files, other_path));
+    fs->unlink(other_path);
   }
 
   SECTION("HandleTmpFileCreationError") {
