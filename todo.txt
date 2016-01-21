@@ -82,7 +82,13 @@ Steps of a Shuriken build:
     - delete stale outputs
     - record data in the invocation log
 
+* TracingCommandRunner
+* Try reduce number of /bin/sh invocations per command. I think it's 3 now
 * Path stuff
+  - normalization of paths
+  - case (in)sensitivity?
+    http://www.opensource.apple.com/source/xnu/xnu-2050.18.24/bsd/hfs/hfs_vfsutils.c?txt
+  - perhaps ditch canonicalization and use st_dev/st_ino instead.
 - Fingerprint stuff
 * Hashing function
 * Functionality to parse and write to the invocation log

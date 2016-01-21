@@ -1,15 +1,24 @@
 #include "tracing_command_runner.h"
 
 #include <assert.h>
+#include <errno.h>
+#include <unistd.h>
 
+#include "util.h"
 #include "sandbox_parser.h"
 
 namespace shk {
 namespace {
 
 Path generateTemporaryPath(Paths &paths) throw(IoError) {
-  // TODO(peck): Implement me
-  return paths.get("a");
+  std::string filename("shk.tmp.sb.XXXXXXXX");
+  if (mkstemp(&filename[0]) == -1) {
+    throw IoError(
+        std::string("Failed to create path for temporary file: ") +
+        strerror(errno),
+        errno);
+  }
+  return paths.get(std::move(filename));
 }
 
 class TemporaryFile {
@@ -45,20 +54,28 @@ class TracingCommandRunner : public CommandRunner {
       const std::string &command,
       UseConsole use_console,
       const Callback &callback) override {
-    // TODO(peck): Handle tmp file creation error
-    const auto tmp = std::make_shared<TemporaryFile>(_file_system);
+    try {
+      const auto tmp = std::make_shared<TemporaryFile>(_file_system);
 
-    // Here we assume that the generated temporary file path does not contain
-    // ' or ". It would be an evil temporary file creation function that would
-    // do that.
-    _inner->invoke(
-        "/usr/bin/sandbox-exec -p '(version 1)(trace \"" +
-            tmp->path.canonicalized() + "\")' " + command,
-        use_console,
-        [this, tmp, callback](CommandRunner::Result &&result) {
-          computeResults(tmp->path, result);
-          callback(std::move(result));
-        });
+      std::string escaped_command;
+      getShellEscapedString(command, &escaped_command);
+      // Here we assume that the generated temporary file path does not contain
+      // ' or ". It would be an evil temporary file creation function that would
+      // do that.
+      _inner->invoke(
+          "/usr/bin/sandbox-exec -p '(version 1)(trace \"" +
+              tmp->path.canonicalized() + "\")' /bin/sh -c " + escaped_command,
+          use_console,
+          [this, tmp, callback](CommandRunner::Result &&result) {
+            computeResults(tmp->path, result);
+            callback(std::move(result));
+          });
+    } catch (IoError &error) {
+      _inner->invoke(
+          "/bin/echo Failed to create temporary file && exit 1",
+          use_console,
+          callback);
+    }
   }
 
   size_t size() const override {

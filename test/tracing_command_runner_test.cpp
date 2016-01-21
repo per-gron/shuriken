@@ -37,6 +37,13 @@ bool contains(const Container &container, const Value &value) {
       container.begin(), container.end(), value) != container.end();
 }
 
+std::string getWorkingDir() {
+  char *wd = getcwd(NULL, 0);
+  std::string result = wd;
+  free(wd);
+  return result;
+}
+
 }  // anonymous namespace
 
 TEST_CASE("TracingCommandRunner") {
@@ -45,11 +52,74 @@ TEST_CASE("TracingCommandRunner") {
   const auto runner = makeTracingCommandRunner(
       *fs,
       makeRealCommandRunner());
+  const auto output_path = paths.get(getWorkingDir() + "/shk.test-file");
 
-  const auto result = runCommand(*runner, "/bin/ls /sbin");
-  CHECK(contains(result.input_files, paths.get("/sbin")));
-  CHECK(contains(result.input_files, paths.get("/bin/ls")));
-  CHECK(result.output_files.empty());
+  SECTION("TrackInputs") {
+    const auto result = runCommand(*runner, "/bin/ls /sbin");
+    CHECK(contains(result.input_files, paths.get("/sbin")));
+    CHECK(contains(result.input_files, paths.get("/bin/ls")));
+    CHECK(result.output_files.empty());
+  }
+
+  SECTION("TrackOutputs") {
+    const auto result = runCommand(
+        *runner, "/usr/bin/touch " + output_path.canonicalized());
+    CHECK(result.output_files.size() == 1);
+    CHECK(contains(result.output_files, output_path));
+    fs->unlink(output_path);
+  }
+
+  SECTION("TrackRemovedOutputs") {
+    const auto result = runCommand(
+        *runner,
+        "/usr/bin/touch '" + output_path.canonicalized() + "'; /bin/rm '" +
+        output_path.canonicalized() + "'");
+    CHECK(result.output_files.empty());
+  }
+
+  SECTION("TrackMovedOutputs") {
+    // FIXME(peck)
+  }
+
+  SECTION("HandleTmpFileCreationError") {
+    // FIXME(peck)
+  }
+
+  SECTION("HandleTmpFileRemovalError") {
+    // FIXME(peck)
+  }
+
+  SECTION("abort") {
+    CommandRunner::Result result;
+
+    runner->invoke(
+        "/bin/echo",
+        UseConsole::NO,
+        CommandRunner::noopCallback);
+  }
+
+  SECTION("size") {
+    CommandRunner::Result result;
+
+    runner->invoke(
+        "/bin/echo",
+        UseConsole::NO,
+        CommandRunner::noopCallback);
+
+    CHECK(runner->size() == 1);
+
+    runner->invoke(
+        "/bin/echo",
+        UseConsole::NO,
+        CommandRunner::noopCallback);
+
+    CHECK(runner->size() == 2);
+
+    while (!runner->empty()) {
+      // Pretend we discovered that stderr was ready for writing.
+      runner->runCommands();
+    }
+  }
 }
 
 }  // namespace shk
