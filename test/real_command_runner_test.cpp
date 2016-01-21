@@ -27,7 +27,7 @@
 #endif
 
 namespace shk {
-
+namespace {
 #ifdef _WIN32
 const char* kSimpleCommand = "cmd /c dir \\";
 #else
@@ -58,6 +58,8 @@ CommandRunner::Result runCommand(
 
   return result;
 }
+
+}  // anonymous namespace
 
 void verifyInterrupted(const std::string &command) {
   const auto runner = makeRealCommandRunner();

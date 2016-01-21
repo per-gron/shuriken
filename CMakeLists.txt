@@ -53,6 +53,8 @@ add_library(shklib
   src/step.h
   src/string_piece.h
   src/task.h
+  src/tracing_command_runner.cpp
+  src/tracing_command_runner.h
   src/util.cpp
   src/util.h
   src/version.cpp
@@ -89,6 +91,7 @@ add_executable(shk_test
   test/properties.cpp
   test/real_command_runner_test.cpp
   test/sandbox_parser_test.cpp
+  test/tracing_command_runner_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC vendor/rapidcheck/extras/catch/include)
