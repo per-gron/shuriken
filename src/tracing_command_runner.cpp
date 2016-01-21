@@ -1,7 +1,6 @@
 #include "tracing_command_runner.h"
 
 #include <assert.h>
-#include <errno.h>
 
 #include "util.h"
 #include "sandbox_parser.h"
@@ -9,21 +8,10 @@
 namespace shk {
 namespace {
 
-Path generateTemporaryPath(Paths &paths) throw(IoError) {
-  std::string filename("shk.tmp.sb.XXXXXXXX");
-  if (mkstemp(&filename[0]) == -1) {
-    throw IoError(
-        std::string("Failed to create path for temporary file: ") +
-        strerror(errno),
-        errno);
-  }
-  return paths.get(std::move(filename));
-}
-
 class TemporaryFile {
  public:
   TemporaryFile(FileSystem &file_system) throw(IoError)
-      : path(generateTemporaryPath(file_system.paths())),
+      : path(file_system.mkstemp("shk.tmp.sb.XXXXXXXX")),
         _file_system(file_system) {}
 
   ~TemporaryFile() {
