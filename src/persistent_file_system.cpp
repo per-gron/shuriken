@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 namespace shk {
 
@@ -156,6 +157,16 @@ class PersistentFileSystem : public FileSystem {
     fclose(f);
 #endif
     return contents;
+  }
+
+  Path mkstemp(std::string &&filename_template) throw(IoError) override {
+    if (::mkstemp(&filename_template[0]) == -1) {
+      throw IoError(
+          std::string("Failed to create path for temporary file: ") +
+          strerror(errno),
+          errno);
+    }
+    return _paths.get(std::move(filename_template));
   }
 
  private:

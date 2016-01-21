@@ -132,6 +132,19 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.readFile(path) == "hello!");
   }
 
+  SECTION("mkstemp creates file") {
+    const auto path = fs.mkstemp("hi.XXX");
+    CHECK(fs.stat(path).result == 0);
+  }
+
+  SECTION("mkstemp creates unique paths") {
+    const auto path1 = fs.mkstemp("hi.XXX");
+    const auto path2 = fs.mkstemp("hi.XXX");
+    CHECK(path1 != path2);
+    CHECK(fs.stat(path1).result == 0);
+    CHECK(fs.stat(path2).result == 0);
+  }
+
   SECTION("mkdirs") {
     SECTION("single directory") {
       const auto dir_path = paths.get("abc");

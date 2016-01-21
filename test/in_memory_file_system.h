@@ -37,6 +37,7 @@ class InMemoryFileSystem : public FileSystem {
   void rmdir(const Path &path) throw(IoError) override;
   void unlink(const Path &path) throw(IoError) override;
   std::string readFile(const Path &path) throw(IoError) override;
+  Path mkstemp(std::string &&filename_template) throw(IoError) override;
 
   bool operator==(const InMemoryFileSystem &other) const;
 

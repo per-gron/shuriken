@@ -72,6 +72,17 @@ class FileSystem {
    * Windows reading the file as a whole is faster than reading it using Stream.
    */
   virtual std::string readFile(const Path &path) throw(IoError) = 0;
+
+  /**
+   * Create a temporary file that follows a template. See the man page for
+   * mkstemp. This is necessary to have on the FileSystem interface for the
+   * same reason mkstemp exists: mktemp that creates a temporary file path
+   * often creates races when used, because it is possible that others will
+   * create a file at that path between mktemp returns and when the file is
+   * first created. mkstemp chooses a path and creates a file atomically,
+   * avoiding this problem.
+   */
+  virtual Path mkstemp(std::string &&filename_template) throw(IoError) = 0;
 };
 
 }  // namespace shk
