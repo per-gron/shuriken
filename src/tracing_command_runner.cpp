@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <unistd.h>
 
 #include "util.h"
 #include "sandbox_parser.h"

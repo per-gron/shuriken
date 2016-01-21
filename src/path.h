@@ -51,6 +51,10 @@ inline bool operator==(const CanonicalizedPath &a, const CanonicalizedPath &b) {
   return a.path == b.path;
 }
 
+inline bool operator!=(const CanonicalizedPath &a, const CanonicalizedPath &b) {
+  return !(a == b);
+}
+
 }  // namespace detail
 
 class Paths;
@@ -98,6 +102,10 @@ class Path {
       && _slash_bits == other._slash_bits
 #endif
       );
+  }
+
+  bool operator!=(const Path &other) const {
+    return !(*this == other);
   }
 
   /**

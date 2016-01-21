@@ -36,7 +36,7 @@ std::string canonicalizePathError(std::string path) {
 
 
 TEST_CASE("Path") {
-  SECTION("operator==") {
+  SECTION("operator==, operator!=") {
     rc::prop("equal string paths are equal paths", []() {
       Paths paths;
 
@@ -47,6 +47,7 @@ TEST_CASE("Path") {
       const auto path_2 = paths.get(path_2_string);
 
       RC_ASSERT((path_1 == path_2) == (path_1_string == path_2_string));
+      RC_ASSERT((path_1 != path_2) == (path_1_string != path_2_string));
     });
   }
 
