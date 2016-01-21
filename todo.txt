@@ -82,7 +82,6 @@ Steps of a Shuriken build:
     - delete stale outputs
     - record data in the invocation log
 
-* TracingCommandRunner
 * Try reduce number of /bin/sh invocations per command. I think it's 3 now
 * Path stuff
   - normalization of paths

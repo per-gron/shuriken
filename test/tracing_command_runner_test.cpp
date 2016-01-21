@@ -31,6 +31,87 @@ CommandRunner::Result runCommand(
   return result;
 }
 
+class FailingMkstempFileSystem : public FileSystem {
+ public:
+  FailingMkstempFileSystem(Paths &paths)
+      : _fs(persistentFileSystem(paths)) {}
+
+  Paths &paths() override {
+    return _fs->paths();
+  }
+
+  std::unique_ptr<Stream> open(
+      const Path &path, const char *mode) throw(IoError) override {
+    return _fs->open(path, mode);
+  }
+  Stat stat(const Path &path) override {
+    return _fs->stat(path);
+  }
+  Stat lstat(const Path &path) override {
+    return _fs->lstat(path);
+  }
+  void mkdir(const Path &path) throw(IoError) override {
+    return _fs->mkdir(path);
+  }
+  void rmdir(const Path &path) throw(IoError) override {
+    return _fs->rmdir(path);
+  }
+  void unlink(const Path &path) throw(IoError) override {
+    return _fs->unlink(path);
+  }
+  std::string readFile(const Path &path) throw(IoError) override {
+    return _fs->readFile(path);
+  }
+  Path mkstemp(std::string &&filename_template) throw(IoError) override {
+    throw IoError("Test-induced mkstemp error", 0);
+  }
+
+ private:
+  std::unique_ptr<FileSystem> _fs;
+};
+
+class FailingUnlinkFileSystem : public FileSystem {
+ public:
+  FailingUnlinkFileSystem(Paths &paths)
+      : _fs(persistentFileSystem(paths)) {}
+
+  Paths &paths() override {
+    return _fs->paths();
+  }
+
+  std::unique_ptr<Stream> open(
+      const Path &path, const char *mode) throw(IoError) override {
+    return _fs->open(path, mode);
+  }
+  Stat stat(const Path &path) override {
+    return _fs->stat(path);
+  }
+  Stat lstat(const Path &path) override {
+    return _fs->lstat(path);
+  }
+  void mkdir(const Path &path) throw(IoError) override {
+    return _fs->mkdir(path);
+  }
+  void rmdir(const Path &path) throw(IoError) override {
+    return _fs->rmdir(path);
+  }
+  void unlink(const Path &path) throw(IoError) override {
+    // Unlink it anyway, because we don't want to leave files around on the
+    // file system after the test has finished running.
+    _fs->unlink(path);
+    throw IoError("Test-induced unlink error", 0);
+  }
+  std::string readFile(const Path &path) throw(IoError) override {
+    return _fs->readFile(path);
+  }
+  Path mkstemp(std::string &&filename_template) throw(IoError) override {
+    return _fs->mkstemp(std::move(filename_template));
+  }
+
+ private:
+  std::unique_ptr<FileSystem> _fs;
+};
+
 template<typename Container, typename Value>
 bool contains(const Container &container, const Value &value) {
   return std::find(
@@ -91,11 +172,28 @@ TEST_CASE("TracingCommandRunner") {
   }
 
   SECTION("HandleTmpFileCreationError") {
-    // FIXME(peck)
+    FailingMkstempFileSystem failing_mkstemp(paths);
+    const auto runner = makeTracingCommandRunner(
+        failing_mkstemp,
+        makeRealCommandRunner());
+
+    // Failing to create tmpfile should not make invoke throw
+    const auto result = runCommand(*runner, "/bin/echo");
+
+    // But it should make the command fail
+    CHECK(result.exit_status == ExitStatus::FAILURE);
   }
 
   SECTION("HandleTmpFileRemovalError") {
-    // FIXME(peck)
+    FailingUnlinkFileSystem failing_unlink(paths);
+    const auto runner = makeTracingCommandRunner(
+        failing_unlink,
+        makeRealCommandRunner());
+
+    const auto result = runCommand(*runner, "/bin/ls /sbin");
+    CHECK(contains(result.input_files, paths.get("/bin/ls")));
+
+    // Failing to remove the tempfile should be ignored
   }
 
   SECTION("abort") {
