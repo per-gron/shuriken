@@ -31,16 +31,24 @@ void checkBasenameSplit(
     const std::string &basename) {
   StringPiece dn, bn;
   std::tie(dn, bn) = detail::basenameSplitPiece(path);
-  CHECK(dn == dirname);
-  CHECK(bn == basename);
+  CHECK(dn.asString() == dirname);
+  CHECK(bn.asString() == basename);
 }
 
-}  // namespace
-
+}  // anonymous namespace
 
 TEST_CASE("Path") {
   SECTION("detail::basenameSplit") {
     checkBasenameSplit("/usr/lib", "/usr", "lib");
+    checkBasenameSplit("/usr/", "/", "usr");
+    checkBasenameSplit("/usr/////////", "/", "usr");
+    checkBasenameSplit("usr", ".", "usr");
+    checkBasenameSplit("/", "/", "/");
+    checkBasenameSplit("//", "/", "/");
+    checkBasenameSplit("/////", "/", "/");
+    checkBasenameSplit(".", ".", ".");
+    checkBasenameSplit("..", ".", "..");
+    checkBasenameSplit("", ".", "");
 
     rc::prop("extracts the basename and the dirname", []() {
       const auto path_components = *gen::pathComponents();

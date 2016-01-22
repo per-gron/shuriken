@@ -19,14 +19,21 @@ namespace shk {
 namespace detail {
 
 std::pair<StringPiece, StringPiece> basenameSplitPiece(const std::string &path) {
-  const auto slash_pos = path.find_last_of('/');
+  auto last_nonslash = path.find_last_not_of('/');
+  auto slash_pos = path.find_last_of('/', last_nonslash);
 
   if (slash_pos == std::string::npos) {
     return std::make_pair(StringPiece(".", 1), StringPiece(path));
+  } else if (last_nonslash == std::string::npos) {
+    return std::make_pair(StringPiece("/", 1), StringPiece("/", 1));
   } else {
     return std::make_pair(
-        StringPiece(path.data(), slash_pos),
-        StringPiece(path.data() + slash_pos + 1, path.size() - slash_pos - 1));
+        slash_pos == 0 ?
+            StringPiece("/", 1) :
+            StringPiece(path.data(), slash_pos),
+        StringPiece(
+            path.data() + slash_pos + 1,
+            last_nonslash - slash_pos));
   }
 }
 
