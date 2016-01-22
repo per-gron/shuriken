@@ -27,7 +27,9 @@ class StringPiece {
  public:
   StringPiece() : _str(NULL), _len(0) {}
 
-  /// The constructors intentionally allow for implicit conversions.
+  /**
+   * The constructors intentionally allow for implicit conversions.
+   */
   StringPiece(const std::string& str) : _str(str.data()), _len(str.size()) {}
   StringPiece(const char* str) : _str(str), _len(strlen(str)) {}
 
@@ -40,12 +42,14 @@ class StringPiece {
     return !(*this == other);
   }
 
-  /// Convert the slice into a full-fledged std::string, copying the
-  /// data into a new string.
+  /**
+   * Convert the slice into a full-fledged std::string, copying the
+   * data into a new string.
+   */
   std::string asString() const {
     return _len ? std::string(_str, _len) : std::string();
   }
 
-  const char * _str;
+  const char *_str;
   size_t _len;
 };
