@@ -376,12 +376,8 @@ StringPiece readLiteral(ParsingContext &context) throw(ParseError) {
   return StringPiece(filename, out - filename);
 }
 
-Path readPath(Paths &paths, ParsingContext &context) throw(ParseError) {
-  try {
-    return paths.get(readLiteral(context).asString());
-  } catch (PathError &error) {
-    throw ParseError(error.what());
-  }
+std::string readPath(ParsingContext &context) throw(ParseError) {
+  return readLiteral(context).asString();
 }
 
 /**
@@ -404,7 +400,6 @@ void readWhitespace(ParsingContext &context) throw(ParseError) {
 }
 
 void readAllow(
-    Paths &paths,
     ParsingContext &context,
     SandboxResult &result) throw(ParseError) {
   const char *token_start = context.in;
@@ -413,11 +408,10 @@ void readAllow(
 
   switch (token) {
   case AllowToken::FILE_WRITE_CREATE: {
-    const auto path = paths.get(readLiteral(context).asString());
+    const auto path = readLiteral(context).asString();
     if (result.read.count(path) != 0) {
       result.violations.emplace_back(
-          "Process created file that it had previously read from: " +
-          path.canonicalized());
+          "Process created file that it had previously read from: " + path);
     }
     result.created.insert(path);
     readToEOL(context);
@@ -425,11 +419,10 @@ void readAllow(
   }
 
   case AllowToken::FILE_WRITE_UNLINK: {
-    const auto path = readPath(paths, context);
+    const auto path = readPath(context);
     if (result.created.count(path) == 0) {
       result.violations.emplace_back(
-          "Process unlinked file or directory that it did not create: " +
-          path.canonicalized());
+          "Process unlinked file or directory that it did not create: " + path);
     }
     result.created.erase(path);
     readToEOL(context);
@@ -442,11 +435,11 @@ void readAllow(
   case AllowToken::FILE_WRITE_OWNER:
   case AllowToken::FILE_WRITE_SETUGID:
   case AllowToken::FILE_REVOKE: {
-    const auto path = readPath(paths, context);
+    const auto path = readPath(context);
     if (result.created.count(path) == 0) {
       result.violations.emplace_back(
           "Process performed action " + token_slice.asString() + " on file "
-          "or directory that it did not create: " + path.canonicalized());
+          "or directory that it did not create: " + path);
     }
     readToEOL(context);
     break;
@@ -457,7 +450,7 @@ void readAllow(
   case AllowToken::PROCESS_STAR:
   case AllowToken::PROCESS_EXEC:
   case AllowToken::PROCESS_EXEC_STAR: {
-    const auto path = readPath(paths, context);
+    const auto path = readPath(context);
     if (result.created.count(path) == 0) {
       // It is ok for the process to read from a file it created, but only count
       // files as read if they were not created by the process.
@@ -560,7 +553,7 @@ void readAllow(
   }
 }
 
-void readLine(Paths &paths, ParsingContext &context, SandboxResult &result) throw(ParseError) {
+void readLine(ParsingContext &context, SandboxResult &result) throw(ParseError) {
   if (!readOpeningParen(context)) {
     return;
   }
@@ -574,7 +567,7 @@ void readLine(Paths &paths, ParsingContext &context, SandboxResult &result) thro
     readToEOL(context);
     break;
   case StatementToken::ALLOW:
-    readAllow(paths, context, result);
+    readAllow(context, result);
     break;
   }
 }
@@ -582,11 +575,11 @@ void readLine(Paths &paths, ParsingContext &context, SandboxResult &result) thro
 }  // anonymous namespace
 
 SandboxResult parseSandbox(
-    Paths &paths, std::string &&contents) throw(ParseError) {
+    std::string &&contents) throw(ParseError) {
   SandboxResult result;
   ParsingContext context(&contents[0], contents.data() + contents.size());
   while (!context.atEnd()) {
-    readLine(paths, context, result);
+    readLine(context, result);
   }
   return result;
 }
