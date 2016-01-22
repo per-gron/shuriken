@@ -94,6 +94,22 @@ Steps of a Shuriken build:
 - Function to delete outputs
 * Function to detect insufficiently declared dependencies (how to do this?)
 
+Path:
+* Is a (st_ino, st_dev) tuple + canonicalized path under it (interned)
+* A path can be 1 machine word, if the interned string also has the stat data
+* Canonicalization consists of both normalizing .. and . and //s and canonicalizing
+  + case folding the string itself.
+* All directories within the canonicalized path must be real directories, not symlinks
+* Need to detect and fail on directories that would have been created to do the
+  build that are hard links to each other.
+* Things to make sure
+  - No two Paths that case fold/normalize to the same path but have different non
+    case folded/normalized representations.
+  - Keep a map from (st_dev, st_ino) => Path. Whenever a directory is created because
+    it was missing when the build started, and it turns out that it has already been
+    created by someone else, make sure that its (st_dev, st_ino) is not the same as
+    some other path that we have seen. That means hardlink and could break the build.
+
 To fill in the first test:
 * Generate actual DAG in gen::buildInput
 * Add assertions to the property

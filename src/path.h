@@ -159,6 +159,70 @@ struct hash<shk::Path> {
 
 namespace shk {
 
+/**
+ * Shuriken manifests contain lots of paths. In order to accurately track
+ * dependencies between build steps, it is necessary to accurately detect when
+ * to paths contained in the manifest point to the same underlying file. Doing
+ * this in an efficient way is a little bit tricky. This class solves this
+ * problem.
+ *
+ * One part of the problem is that it is necessary to be able to compare two
+ * paths efficiently. This is solved by providing a special Path class instead
+ * of using plain strings. Path objects are interned, meaning that instead of
+ * containing the path directly, it has a pointer to an object with the path.
+ * Paths guarantees that these objects are unique, so to compare a path it is
+ * sufficient to compare the pointer in the Path object.
+ *
+ * The other half of the problem is that it is necessary to ensure that there
+ * can actually only exist one CanonicalizedPath (the type that Path objects
+ * have a pointer to) objects are really unique for any given file. There are
+ * several aspects to this:
+ *
+ * Path canonicalization: The path a/../c.txt and the path c.txt actually point
+ * to the same file. In order to make sure that there is only one
+ * CanonicalizedPath for both of these paths, paths are canonicalized before
+ * they are put into a CanonicalizedPath object. Shuriken always canonicalizes
+ * every path in the manifest before it does anything else with it.
+ *
+ * Links (symbolic and hard): If there is a symbolic link from a to b, the paths
+ * a/c.txt and b/c.txt point to the same file. This problem is a little bit
+ * harder to solve than the path canonicalization above, because it requires
+ * consulting the file system. What Paths does here is to stat all paths and
+ * record the st_ino and st_dev fields of the stat result. If st_ino and st_dev
+ * are the same, then the paths are known to point to the same file, even if
+ * links are playing tricks with us.
+ *
+ * Using st_ino and st_dev alone is not sufficient, though, because the manifest
+ * often (always in the case of a clean build) contain paths to files that do
+ * not yet exist. When Paths encounters a path that does not exist, it gets the
+ * dirname of the path and tries to stat that, over and over again until it
+ * finds an existing path. It then stores the st_ino and st_dev fields along
+ * with the path after it. This is what a CanonicalizedPath object contains.
+ *
+ * For example, for the path /a/b/c/d/../e.txt, if /a/b exists but not /a/b/c,
+ * then the CanonicalizedPath would be the st_ino and st_dev of /a/b combined
+ * with c/e.txt.
+ *
+ * Absolute vs relative paths: If the current working directory is /a, then the
+ * paths b.txt and /a/b.txt point to the same file. Solving this problem
+ * requires system calls (at the very least to find the current working
+ * directory). One way to solve it could be to absolutize all relative paths by
+ * prepending the working directory. Shuriken does not do this though, because
+ * the solution mentioned above to deal with links solves this issue too.
+ *
+ * Case folding: On some systems (such as most Mac OS X and Windows systems),
+ * the path A.txt and a.txt point to the same file. Part of this problem is
+ * solved by the (st_ino, st_dev) solution mentioned above. The part that is not
+ * fixes is the part of the path that does not yet exist. For this, Shuriken
+ * normalizes and case folds the path.
+ *
+ * On systems that have case sensitive file systems, this could cause extraenous
+ * dependencies between targets, when there are different output files that have
+ * the same path when case folding. To avoid this, Shuriken disallows build
+ * steps that declare different outputs that case folds to the same thing. This
+ * is conservative but it is arguably a nice thing: It makes sure that the build
+ * does not break when run on systems with different case sensitivity.
+ */
 class Paths {
  public:
   Path get(const std::string &path) throw(PathError);
