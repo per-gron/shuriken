@@ -18,6 +18,18 @@ namespace shk {
 
 namespace detail {
 
+std::pair<StringPiece, StringPiece> basenameSplitPiece(const std::string &path) {
+  const auto slash_pos = path.find_last_of('/');
+
+  if (slash_pos == std::string::npos) {
+    return std::make_pair(StringPiece("", 0), StringPiece(path));
+  } else {
+    return std::make_pair(
+        StringPiece(path.data(), slash_pos),
+        StringPiece(path.data() + slash_pos + 1, path.size() - slash_pos - 1));
+  }
+}
+
 void canonicalizePath(std::string *path) throw(PathError) {
   size_t len = path->size();
   char* str = 0;

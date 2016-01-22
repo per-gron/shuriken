@@ -18,19 +18,24 @@
 #include <unordered_set>
 
 #include "path_error.h"
+#include "string_piece.h"
 
 namespace shk {
-
 namespace detail {
+
+/**
+ * Split a path into its dirname and basename. The first element in the
+ * pair is the dirname, the second the basename.
+ *
+ * Acts like the dirname and basename functions in the standard library.
+ */
+std::pair<StringPiece, StringPiece> basenameSplitPiece(const std::string &path);
 
 /**
  * Canonicalize a path like "foo/../bar.h" into just "bar.h".
  */
-void canonicalizePath(
-    std::string *path) throw(PathError);
-void canonicalizePath(
-    char *path,
-    size_t *len) throw(PathError);
+void canonicalizePath(std::string *path) throw(PathError);
+void canonicalizePath(char *path, size_t *len) throw(PathError);
 
 struct CanonicalizedPath {
   explicit CanonicalizedPath(const std::string &path)

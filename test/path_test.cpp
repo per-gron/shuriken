@@ -29,6 +29,26 @@ std::string canonicalizePathError(std::string path) {
 
 
 TEST_CASE("Path") {
+  SECTION("detail::basenameSplit") {
+    rc::prop("extracts the basename and the dirname", []() {
+      const auto path_components = *gen::pathComponents();
+      RC_PRE(!path_components.empty());
+
+      const auto path_string = gen::joinPathComponents(path_components);
+      const auto dirname_string = gen::joinPathComponents(
+          std::vector<std::string>(
+              path_components.begin(),
+              path_components.end() - 1));
+
+      StringPiece dirname;
+      StringPiece basename;
+      std::tie(dirname, basename) = detail::basenameSplitPiece(path_string);
+
+      RC_ASSERT(basename == *path_components.rbegin());
+      RC_ASSERT(dirname == dirname_string);
+    });
+  }
+
   SECTION("operator==, operator!=") {
     rc::prop("equal string paths are equal paths", []() {
       Paths paths;

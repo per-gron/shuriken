@@ -2,22 +2,7 @@
 
 #include <unordered_map>
 
-#include "string_piece.h"
-
 namespace shk {
-namespace detail {
-
-/**
- * Split a path into its dirname and basename. The first element in the
- * pair is the dirname, the second the basename.
- *
- * Does not support absolute paths.
- */
-std::pair<StringPiece, StringPiece> basenameSplit(const std::string &path);
-
-StringPiece dirname(const std::string &path);
-
-}  // namespace detail
 
 /**
  * FileSystem that is backed only by memory. Used for testing. In addition to

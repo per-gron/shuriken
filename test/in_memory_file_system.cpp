@@ -4,25 +4,13 @@
 #include <sys/stat.h>
 
 namespace shk {
-namespace detail {
+namespace {
 
-std::pair<StringPiece, StringPiece> basenameSplit(const std::string &path) {
-  const auto slash_pos = path.find_last_of('/');
-
-  if (slash_pos == std::string::npos) {
-    return std::make_pair(StringPiece("", 0), StringPiece(path));
-  } else {
-    return std::make_pair(
-        StringPiece(path.data(), slash_pos),
-        StringPiece(path.data() + slash_pos + 1, path.size() - slash_pos - 1));
-  }
+std::string dirname(const std::string &path) {
+  return detail::basenameSplitPiece(path).first.asString();
 }
 
-StringPiece dirname(const std::string &path) {
-  return basenameSplit(path).first;
-}
-
-}  // namespace detail
+}  // anonymous namespace
 
 InMemoryFileSystem::InMemoryFileSystem(Paths &paths)
     : _paths(&paths) {
@@ -296,7 +284,7 @@ InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(const Path &path) {
 
   StringPiece dirname_piece;
   StringPiece basename_piece;
-  std::tie(dirname_piece, basename_piece) = detail::basenameSplit(path.canonicalized());
+  std::tie(dirname_piece, basename_piece) = detail::basenameSplitPiece(path.canonicalized());
   const auto dirname = dirname_piece.asString();
   const auto basename = basename_piece.asString();
   const Path dir_path = _paths->get(dirname);
@@ -339,7 +327,7 @@ void mkdirs(FileSystem &file_system, const Path &path) throw(IoError) {
 
   const auto stat = file_system.stat(path);
   if (stat.result == ENOENT || stat.result == ENOTDIR) {
-    const auto dirname = detail::dirname(path.canonicalized()).asString();
+    const auto dirname = shk::dirname(path.canonicalized());
     mkdirs(file_system, file_system.paths().get(dirname));
     file_system.mkdir(path);
   } else if (S_ISDIR(stat.metadata.mode)) {
@@ -351,7 +339,7 @@ void mkdirs(FileSystem &file_system, const Path &path) throw(IoError) {
 }
 
 void mkdirsFor(FileSystem &file_system, const Path &path) throw(IoError) {
-  const auto dirname = detail::dirname(path.canonicalized()).asString();
+  const auto dirname = shk::dirname(path.canonicalized());
   mkdirs(file_system, file_system.paths().get(dirname));
 }
 
