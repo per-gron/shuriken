@@ -39,7 +39,7 @@ std::pair<StringPiece, StringPiece> basenameSplitPiece(const std::string &path) 
 
 void canonicalizePath(std::string *path) throw(PathError) {
   size_t len = path->size();
-  char* str = 0;
+  char *str = 0;
   if (len > 0) {
     str = &(*path)[0];
     canonicalizePath(str, &len);
@@ -57,18 +57,18 @@ void canonicalizePath(
   }
 
   const int kMaxPathComponents = 62;
-  char* components[kMaxPathComponents];
+  char *components[kMaxPathComponents];
   int component_count = 0;
 
-  char* start = path;
-  char* dst = start;
-  const char* src = start;
-  const char* end = start + *len;
+  char *start = path;
+  char *dst = start;
+  const char *src = start;
+  const char *end = start + *len;
 
 #ifdef _WIN32
   // Convert \ to /, setting a bit in |bits| for each \ encountered.
   for (char* c = path; c < end; ++c) {
-    if (*c) {
+    if (*c == '\\') {
       *c = '/';
     }
   }
@@ -131,7 +131,7 @@ void canonicalizePath(
   if (dst == start) {
     *len = 0;
   } else {
-    *len = dst - start - 1;
+    *len = dst - start - (component_count ? 1 : 0);
   }
 }
 

@@ -109,7 +109,9 @@ TEST_CASE("Path") {
 #else
       CHECK("/foo" == canonicalizePath("//foo"));
 #endif
-      CHECK("" == canonicalizePath("/"));
+      CHECK("/" == canonicalizePath("/"));
+      CHECK("/" == canonicalizePath("//"));
+      CHECK("/" == canonicalizePath("/////"));
     }
 
 #ifdef _WIN32
