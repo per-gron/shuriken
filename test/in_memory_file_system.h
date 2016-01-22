@@ -23,7 +23,7 @@ class InMemoryFileSystem : public FileSystem {
   Stat lstat(const Path &path) override;
   void mkdir(const Path &path) throw(IoError) override;
   void rmdir(const Path &path) throw(IoError) override;
-  void unlink(const Path &path) throw(IoError) override;
+  void unlink(const std::string &path) throw(IoError) override;
   std::string readFile(const Path &path) throw(IoError) override;
   std::string mkstemp(std::string &&filename_template) throw(IoError) override;
 

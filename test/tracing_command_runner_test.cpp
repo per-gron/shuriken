@@ -56,7 +56,7 @@ class FailingMkstempFileSystem : public FileSystem {
   void rmdir(const Path &path) throw(IoError) override {
     return _fs->rmdir(path);
   }
-  void unlink(const Path &path) throw(IoError) override {
+  void unlink(const std::string &path) throw(IoError) override {
     return _fs->unlink(path);
   }
   std::string readFile(const Path &path) throw(IoError) override {
@@ -95,7 +95,7 @@ class FailingUnlinkFileSystem : public FileSystem {
   void rmdir(const Path &path) throw(IoError) override {
     return _fs->rmdir(path);
   }
-  void unlink(const Path &path) throw(IoError) override {
+  void unlink(const std::string &path) throw(IoError) override {
     // Unlink it anyway, because we don't want to leave files around on the
     // file system after the test has finished running.
     _fs->unlink(path);
@@ -147,7 +147,7 @@ TEST_CASE("TracingCommandRunner") {
         *runner, "/usr/bin/touch " + output_path.canonicalized());
     CHECK(result.output_files.size() == 1);
     CHECK(contains(result.output_files, output_path));
-    fs->unlink(output_path);
+    fs->unlink(output_path.canonicalized());
   }
 
   SECTION("TrackRemovedOutputs") {
@@ -168,7 +168,7 @@ TEST_CASE("TracingCommandRunner") {
     // Should have only other_path as an output path; the file at output_path
     // was moved.
     CHECK(contains(result.output_files, other_path));
-    fs->unlink(other_path);
+    fs->unlink(other_path.canonicalized());
   }
 
   SECTION("HandleTmpFileCreationError") {

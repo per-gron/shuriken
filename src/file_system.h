@@ -65,7 +65,7 @@ class FileSystem {
   virtual Stat lstat(const Path &path) = 0;
   virtual void mkdir(const Path &path) throw(IoError) = 0;
   virtual void rmdir(const Path &path) throw(IoError) = 0;
-  virtual void unlink(const Path &path) throw(IoError) = 0;
+  virtual void unlink(const std::string &path) throw(IoError) = 0;
 
   /**
    * Utility function for reading files. It is on this interface because on

@@ -146,8 +146,8 @@ void InMemoryFileSystem::rmdir(const Path &path) throw(IoError) {
   }
 }
 
-void InMemoryFileSystem::unlink(const Path &path) throw(IoError) {
-  const auto l = lookup(path);
+void InMemoryFileSystem::unlink(const std::string &path) throw(IoError) {
+  const auto l = lookup(_paths->get(path));
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     throw IoError("A component of the path prefix is not a directory", ENOTDIR);

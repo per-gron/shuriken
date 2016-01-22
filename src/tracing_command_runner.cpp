@@ -16,7 +16,7 @@ class TemporaryFile {
 
   ~TemporaryFile() {
     try {
-      _file_system.unlink(path);
+      _file_system.unlink(path.canonicalized());
     } catch (IoError &) {
       // Maybe the file is already gone, or was never created. We don't care
       // enough to make sure to clean up this temporary file.

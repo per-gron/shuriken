@@ -61,14 +61,14 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("unlink directory") {
     const auto path = paths.get("abc");
     fs.mkdir(path);
-    CHECK_THROWS_AS(fs.unlink(path), IoError);
+    CHECK_THROWS_AS(fs.unlink(path.canonicalized()), IoError);
   }
 
   SECTION("unlink") {
     const auto path = paths.get("abc");
     fs.open(path, "w");
 
-    fs.unlink(path);
+    fs.unlink(path.canonicalized());
     CHECK(fs.stat(path).result == ENOENT);
   }
 
