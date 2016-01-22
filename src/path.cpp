@@ -140,6 +140,11 @@ void canonicalizePath(
 
 }  // namespace detail
 
+Paths::Paths(FileSystem &file_system)
+    : _file_system(file_system) {
+  _file_system.stat("");  // FIXME(peck): Remove me
+}
+
 Path Paths::get(const std::string &path) throw(PathError) {
   return get(std::string(path));
 }

@@ -120,8 +120,8 @@ std::string getWorkingDir() {
 }  // anonymous namespace
 
 TEST_CASE("TracingCommandRunner") {
-  Paths paths;
   const auto fs = persistentFileSystem();
+  Paths paths(*fs);
   const auto runner = makeTracingCommandRunner(
       paths,
       *fs,

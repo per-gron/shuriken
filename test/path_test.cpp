@@ -4,6 +4,7 @@
 #include "path.h"
 
 #include "generators.h"
+#include "in_memory_file_system.h"
 
 namespace shk {
 namespace {
@@ -74,7 +75,8 @@ TEST_CASE("Path") {
 
   SECTION("operator==, operator!=") {
     rc::prop("equal string paths are equal paths", []() {
-      Paths paths;
+      InMemoryFileSystem fs;
+      Paths paths(fs);
 
       const auto path_1_string = *gen::pathString();
       const auto path_2_string = *gen::pathString();

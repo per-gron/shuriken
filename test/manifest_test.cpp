@@ -57,8 +57,8 @@ Step parseStep(Paths &paths, FileSystem &file_system, const char* input) {
 }  // anonymous namespace
 
 TEST_CASE("Manifest") {
-  Paths paths;
   InMemoryFileSystem fs;
+  Paths paths(fs);
 
   SECTION("Empty") {
     parse(paths, fs, "");

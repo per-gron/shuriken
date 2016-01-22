@@ -9,7 +9,8 @@ namespace shk {
 
 TEST_CASE("DummyCommandRunner") {
   rc::prop("splitCommand of constructCommand should be an identity transformation", []() {
-    const auto paths = std::make_shared<Paths>();
+    InMemoryFileSystem fs;
+    const auto paths = std::make_shared<Paths>(fs);
     const auto in_inputs = *gen::pathVector(paths);
     const auto in_outputs = *gen::pathVector(paths);
 
@@ -23,8 +24,8 @@ TEST_CASE("DummyCommandRunner") {
     RC_ASSERT(out_outputs == out_outputs);
   });
 
-  Paths paths;
   InMemoryFileSystem file_system;
+  Paths paths(file_system);
   DummyCommandRunner runner(paths, file_system);
 
   SECTION("initially empty") {
@@ -109,8 +110,8 @@ TEST_CASE("DummyCommandRunner") {
     }
 
     rc::prop("checkCommand after runCommand", []() {
-      const auto paths = std::make_shared<Paths>();
       InMemoryFileSystem file_system;
+      const auto paths = std::make_shared<Paths>(file_system);
       DummyCommandRunner runner(*paths, file_system);
 
       // Place inputs in their own folder to make sure that they don't collide

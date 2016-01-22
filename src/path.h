@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "file_system.h"
 #include "path_error.h"
 #include "string_piece.h"
 
@@ -236,10 +237,13 @@ namespace shk {
  */
 class Paths {
  public:
+  Paths(FileSystem &file_system);
+
   Path get(const std::string &path) throw(PathError);
   Path get(std::string &&path) throw(PathError);
 
  private:
+  FileSystem &_file_system;
   std::unordered_set<detail::CanonicalizedPath> _canonicalized_paths;
   std::unordered_set<std::string> _original_paths;
 };
