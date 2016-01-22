@@ -87,18 +87,15 @@ class TracingCommandRunner : public CommandRunner {
     }
     try {
       auto sandbox = parseSandbox(
-          _paths,
           _file_system.readFile(path));
 
-      std::copy(
-          sandbox.read.begin(),
-          sandbox.read.end(),
-          std::back_inserter(result.input_files));
+      for (const auto &path : sandbox.read) {
+        result.input_files.push_back(_paths.get(path));
+      }
 
-      std::copy(
-          sandbox.created.begin(),
-          sandbox.created.end(),
-          std::back_inserter(result.output_files));
+      for (const auto &path : sandbox.created) {
+        result.output_files.push_back(_paths.get(path));
+      }
 
       assert(result.linting_errors.empty());
       result.linting_errors = std::move(sandbox.violations);

@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "parse_error.h"
-#include "path.h"
 
 namespace shk {
 
@@ -15,14 +14,14 @@ struct SandboxResult {
    * the path that was moved to. These files can be seen as output files of the
    * command that ran. When cleaning, these files should be removed.
    */
-  std::unordered_set<Path> created;
+  std::unordered_set<std::string> created;
   /**
    * Contains the list of files that were read. These can be seen as
    * dependencies of the command that ran. Files that were created are not
    * added to this set: They are not seen as input dependencies even if the
    * program reads them.
    */
-  std::unordered_set<Path> read;
+  std::unordered_set<std::string> read;
   /**
    * A list of human readable strings that describe things that the process did
    * that is disallowed, for example network access, mounting a file system or
@@ -46,7 +45,6 @@ inline bool operator==(const SandboxResult &a, const SandboxResult &b) {
  *
  * Throws ParseError when it encounters syntax that it doesn't support.
  */
-SandboxResult parseSandbox(
-    Paths &paths, std::string &&contents) throw(ParseError);
+SandboxResult parseSandbox(std::string &&contents) throw(ParseError);
 
 }  // namespace shk

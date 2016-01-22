@@ -12,8 +12,7 @@ namespace {
 SandboxResult checkDisallowedAllowFiles(
     std::string &&input,
     const std::string &violation) {
-  Paths paths;
-  const auto result = parseSandbox(paths, std::move(input));
+  const auto result = parseSandbox(std::move(input));
   REQUIRE(result.violations.size() == 1);
   CHECK(result.violations[0] == violation);
   return result;
@@ -44,25 +43,22 @@ void checkDisallowedAction(const std::string &action, std::string &&input) {
  * Verify that a string parses with an empty result.
  */
 void checkEmpty(std::string &&input) {
-  Paths paths;
-  CHECK(parseSandbox(paths, std::move(input)) == SandboxResult());
+  CHECK(parseSandbox(std::move(input)) == SandboxResult());
 }
 
 /**
  * Verify that a string fails to parse.
  */
 void checkFailsParse(std::string &&input) {
-  Paths paths;
-  CHECK_THROWS_AS(parseSandbox(paths, std::move(input)), ParseError);
+  CHECK_THROWS_AS(parseSandbox(std::move(input)), ParseError);
 }
 
 void comparePaths(
-    Paths &paths,
     const std::vector<std::string> &a,
-    const std::unordered_set<Path> &b) {
-  std::unordered_set<Path> a_set;
+    const std::unordered_set<std::string> &b) {
+  std::unordered_set<std::string> a_set;
   for (const auto &path : a) {
-    a_set.insert(paths.get(path));
+    a_set.insert(path);
   }
   CHECK(a_set == b);
 }
@@ -71,18 +67,15 @@ void checkResult(
     std::string &&input,
     const std::vector<std::string> &created,
     const std::vector<std::string> &read) {
-  Paths paths;
-  const auto result = parseSandbox(paths, std::move(input));
-  comparePaths(paths, created, result.created);
-  comparePaths(paths, read, result.read);
+  const auto result = parseSandbox(std::move(input));
+  comparePaths(created, result.created);
+  comparePaths(read, result.read);
   CHECK(result.violations.empty());
 }
 
 }  // anomymous namespace
 
 TEST_CASE("SandboxParser") {
-  Paths paths;
-
   SECTION("EmptyAndComments") {
     checkEmpty("");
     checkEmpty(" ");
