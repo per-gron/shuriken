@@ -89,11 +89,11 @@ class PersistentFileSystem : public FileSystem {
     return std::unique_ptr<Stream>(new FileStream(path, mode));
   }
 
-  Stat stat(const Path &path) override {
+  Stat stat(const std::string &path) override {
     return genericStat(::stat, path);
   }
 
-  Stat lstat(const Path &path) override {
+  Stat lstat(const std::string &path) override {
     return genericStat(::lstat, path);
   }
 
@@ -172,10 +172,10 @@ class PersistentFileSystem : public FileSystem {
 
  private:
   template<typename StatFunction>
-  Stat genericStat(StatFunction fn, const Path &path) {
+  Stat genericStat(StatFunction fn, const std::string &path) {
     Stat result;
     struct stat input;
-    auto ret = fn(path.canonicalized().c_str(), &input);
+    auto ret = fn(path.c_str(), &input);
     if (ret == -1) {
       result.result = ret;
     } else {

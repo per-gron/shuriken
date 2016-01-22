@@ -71,15 +71,15 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
   }
 }
 
-Stat InMemoryFileSystem::stat(const Path &path) {
+Stat InMemoryFileSystem::stat(const std::string &path) {
   // Symlinks are not supported so stat is the same as lstat
   return lstat(path);
 }
 
-Stat InMemoryFileSystem::lstat(const Path &path) {
+Stat InMemoryFileSystem::lstat(const std::string &path) {
   Stat stat;
 
-  const auto l = lookup(path);
+  const auto l = lookup(_paths->get(path));
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     stat.result = ENOTDIR;
@@ -189,7 +189,7 @@ std::string InMemoryFileSystem::mkstemp(
     }
     // This is potentially an infinite loop… but since this is for testing I
     // don't care to do anything about that.
-    if (stat(paths().get(filename)).result == ENOENT) {
+    if (stat(filename).result == ENOENT) {
       filename_template = std::move(filename);
       writeFile(*this, paths().get(filename_template), "");
       return filename_template;
@@ -327,7 +327,7 @@ void mkdirs(FileSystem &file_system, const std::string &path) throw(IoError) {
     return;
   }
 
-  const auto stat = file_system.stat(file_system.paths().get(path));
+  const auto stat = file_system.stat(path);
   if (stat.result == ENOENT || stat.result == ENOTDIR) {
     const auto dirname = shk::dirname(path);
     mkdirs(file_system, dirname);

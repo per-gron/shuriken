@@ -66,7 +66,7 @@ TEST_CASE("DummyCommandRunner") {
       const auto result = detail::runCommand(file_system, command);
       CHECK(result.exit_status == ExitStatus::SUCCESS);
 
-      CHECK(file_system.stat(path).result == 0);  // Output file should have been created
+      CHECK(file_system.stat(path.canonicalized()).result == 0);  // Output file should have been created
     }
   }
 
@@ -83,7 +83,7 @@ TEST_CASE("DummyCommandRunner") {
         runner.runCommands();
       }
 
-      CHECK(file_system.stat(path).result == 0);
+      CHECK(file_system.stat(path.canonicalized()).result == 0);
     }
 
     SECTION("should fail with missing input") {

@@ -12,18 +12,18 @@ TEST_CASE("InMemoryFileSystem") {
   InMemoryFileSystem fs(paths);
 
   SECTION("lstat missing file") {
-    const auto stat = fs.lstat(paths.get("abc"));
+    const auto stat = fs.lstat("abc");
     CHECK(stat.result == ENOENT);
   }
 
   SECTION("stat missing file") {
-    const auto stat = fs.stat(paths.get("abc"));
+    const auto stat = fs.stat("abc");
     CHECK(stat.result == ENOENT);
   }
 
   SECTION("mkdir") {
-    const auto path = paths.get("abc");
-    fs.mkdir(path.canonicalized());
+    const std::string path = "abc";
+    fs.mkdir(path);
 
     const auto stat = fs.stat(path);
     CHECK(stat.result == 0);
@@ -42,9 +42,9 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("rmdir") {
-    const auto path = paths.get("abc");
-    fs.mkdir(path.canonicalized());
-    fs.rmdir(path.canonicalized());
+    const std::string path = "abc";
+    fs.mkdir(path);
+    fs.rmdir(path);
 
     CHECK(fs.stat(path).result == ENOENT);
   }
@@ -55,7 +55,7 @@ TEST_CASE("InMemoryFileSystem") {
     fs.mkdir(path.canonicalized());
     fs.open(file_path, "w");
     CHECK_THROWS_AS(fs.rmdir(path.canonicalized()), IoError);
-    CHECK(fs.stat(path).result == 0);
+    CHECK(fs.stat(path.canonicalized()).result == 0);
   }
 
   SECTION("unlink directory") {
@@ -69,14 +69,14 @@ TEST_CASE("InMemoryFileSystem") {
     fs.open(path, "w");
 
     fs.unlink(path.canonicalized());
-    CHECK(fs.stat(path).result == ENOENT);
+    CHECK(fs.stat(path.canonicalized()).result == ENOENT);
   }
 
   SECTION("open for writing") {
     const auto path = paths.get("abc");
     fs.open(path, "w");
 
-    const auto stat = fs.stat(path);
+    const auto stat = fs.stat(path.canonicalized());
     CHECK(stat.result == 0);
     CHECK(S_ISREG(stat.metadata.mode));
   }
@@ -94,7 +94,7 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("writeFile") {
     const auto path = paths.get("abc");
     writeFile(fs, path, "hello");
-    CHECK(fs.stat(path).result == 0);  // Verify file exists
+    CHECK(fs.stat(path.canonicalized()).result == 0);  // Verify file exists
   }
 
   SECTION("writeFile, readFile") {
@@ -112,28 +112,28 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("mkstemp creates file") {
     const auto path = fs.mkstemp("hi.XXX");
-    CHECK(fs.stat(paths.get(path)).result == 0);
+    CHECK(fs.stat(path).result == 0);
   }
 
   SECTION("mkstemp creates unique paths") {
     const auto path1 = fs.mkstemp("hi.XXX");
     const auto path2 = fs.mkstemp("hi.XXX");
     CHECK(path1 != path2);
-    CHECK(fs.stat(paths.get(path1)).result == 0);
-    CHECK(fs.stat(paths.get(path2)).result == 0);
+    CHECK(fs.stat(path1).result == 0);
+    CHECK(fs.stat(path2).result == 0);
   }
 
   SECTION("mkdirs") {
     SECTION("single directory") {
       const auto dir_path = paths.get("abc");
       mkdirs(fs, dir_path.canonicalized());
-      CHECK(S_ISDIR(fs.stat(dir_path).metadata.mode));
+      CHECK(S_ISDIR(fs.stat(dir_path.canonicalized()).metadata.mode));
     }
 
     SECTION("already existing directory") {
-      const auto dir_path = paths.get("abc");
-      mkdirs(fs, dir_path.canonicalized());
-      mkdirs(fs, dir_path.canonicalized());  // Should be ok
+      const std::string dir_path = "abc";
+      mkdirs(fs, dir_path);
+      mkdirs(fs, dir_path);  // Should be ok
       CHECK(S_ISDIR(fs.stat(dir_path).metadata.mode));
     }
 
@@ -155,7 +155,7 @@ TEST_CASE("InMemoryFileSystem") {
     const auto file_path = paths.get("abc/def/ghi/jkl");
     mkdirsFor(fs, file_path.canonicalized());
     fs.open(file_path, "w");
-    CHECK(fs.stat(file_path).result == 0);
+    CHECK(fs.stat(file_path.canonicalized()).result == 0);
   }
 }
 

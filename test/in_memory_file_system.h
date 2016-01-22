@@ -19,8 +19,8 @@ class InMemoryFileSystem : public FileSystem {
   Paths &paths() override;
   std::unique_ptr<Stream> open(
       const Path &path, const char *mode) throw(IoError) override;
-  Stat stat(const Path &path) override;
-  Stat lstat(const Path &path) override;
+  Stat stat(const std::string &path) override;
+  Stat lstat(const std::string &path) override;
   void mkdir(const std::string &path) throw(IoError) override;
   void rmdir(const std::string &path) throw(IoError) override;
   void unlink(const std::string &path) throw(IoError) override;
