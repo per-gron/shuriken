@@ -120,8 +120,8 @@ void InMemoryFileSystem::mkdir(const Path &path) throw(IoError) {
   }
 }
 
-void InMemoryFileSystem::rmdir(const Path &path) throw(IoError) {
-  const auto l = lookup(path);
+void InMemoryFileSystem::rmdir(const std::string &path) throw(IoError) {
+  const auto l = lookup(_paths->get(path));
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     throw IoError("A component of the path prefix is not a directory", ENOTDIR);
@@ -133,14 +133,14 @@ void InMemoryFileSystem::rmdir(const Path &path) throw(IoError) {
     throw IoError("The named directory is a file", EPERM);
     break;
   case EntryType::DIRECTORY:
-    const auto &dir = _directories[path];
+    const auto &dir = _directories[_paths->get(path)];
     if (!dir.empty()) {
       throw IoError(
           "The named directory contains files other than `.' and `..' in it",
           ENOTEMPTY);
     } else {
       l.directory->directories.erase(l.basename);
-      _directories.erase(path);
+      _directories.erase(_paths->get(path));
     }
     break;
   }

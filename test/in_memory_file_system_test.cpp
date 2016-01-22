@@ -38,13 +38,13 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("rmdir missing file") {
     const auto path = paths.get("abc");
-    CHECK_THROWS_AS(fs.rmdir(path), IoError);
+    CHECK_THROWS_AS(fs.rmdir(path.canonicalized()), IoError);
   }
 
   SECTION("rmdir") {
     const auto path = paths.get("abc");
     fs.mkdir(path);
-    fs.rmdir(path);
+    fs.rmdir(path.canonicalized());
 
     CHECK(fs.stat(path).result == ENOENT);
   }
@@ -54,7 +54,7 @@ TEST_CASE("InMemoryFileSystem") {
     const auto file_path = paths.get("abc/def");
     fs.mkdir(path);
     fs.open(file_path, "w");
-    CHECK_THROWS_AS(fs.rmdir(path), IoError);
+    CHECK_THROWS_AS(fs.rmdir(path.canonicalized()), IoError);
     CHECK(fs.stat(path).result == 0);
   }
 

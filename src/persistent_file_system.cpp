@@ -101,8 +101,8 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::mkdir(path.canonicalized().c_str(), 0777));
   }
 
-  void rmdir(const Path &path) throw(IoError) override {
-    checkForMinusOne(::rmdir(path.canonicalized().c_str()));
+  void rmdir(const std::string &path) throw(IoError) override {
+    checkForMinusOne(::rmdir(path.c_str()));
   }
 
   void unlink(const std::string &path) throw(IoError) override {
