@@ -92,22 +92,22 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("writeFile") {
-    const auto path = paths.get("abc");
+    const std::string path = "abc";
     writeFile(fs, path, "hello");
-    CHECK(fs.stat(path.canonicalized()).result == 0);  // Verify file exists
+    CHECK(fs.stat(path).result == 0);  // Verify file exists
   }
 
   SECTION("writeFile, readFile") {
-    const auto path = paths.get("abc");
+    const std::string path = "abc";
     writeFile(fs, path, "hello");
-    CHECK(fs.readFile(path.canonicalized()) == "hello");
+    CHECK(fs.readFile(path) == "hello");
   }
 
   SECTION("writeFile, writeFile, readFile") {
-    const auto path = paths.get("abc");
+    const std::string path = "abc";
     writeFile(fs, path, "hello");
     writeFile(fs, path, "hello!");
-    CHECK(fs.readFile(path.canonicalized()) == "hello!");
+    CHECK(fs.readFile(path) == "hello!");
   }
 
   SECTION("mkstemp creates file") {
@@ -144,9 +144,9 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("several directories") {
-      const auto dir_path = paths.get("abc/def/ghi");
-      const auto file_path = paths.get("abc/def/ghi/jkl");
-      mkdirs(fs, dir_path.canonicalized());
+      const std::string dir_path = "abc/def/ghi";
+      const std::string file_path = "abc/def/ghi/jkl";
+      mkdirs(fs, dir_path);
       writeFile(fs, file_path, "hello");
     }
   }

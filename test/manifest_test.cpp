@@ -32,7 +32,7 @@ void verifyManifest(const Manifest &manifest) {
 }
 
 Manifest parse(FileSystem &file_system, const char* input) {
-  writeFile(file_system, file_system.paths().get("build.ninja"), input);
+  writeFile(file_system, "build.ninja", input);
   const auto manifest = parseManifest(file_system, "build.ninja");
   verifyManifest(manifest);
   return manifest;
@@ -566,7 +566,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("SubNinja") {
-    writeFile(fs, paths.get("test.ninja"),
+    writeFile(fs, "test.ninja",
         "var = inner\n"
         "build $builddir/inner: varref\n");
     const auto manifest = parse(fs,
@@ -598,7 +598,7 @@ TEST_CASE("Manifest") {
 
   SECTION("DuplicateRuleInDifferentSubninjas") {
     // Test that rules are scoped to subninjas.
-    writeFile(fs, paths.get("test.ninja"),
+    writeFile(fs, "test.ninja",
         "rule cat\n"
         "  command = cat\n");
     parse(fs,
@@ -609,10 +609,10 @@ TEST_CASE("Manifest") {
 
   SECTION("DuplicateRuleInDifferentSubninjasWithInclude") {
     // Test that rules are scoped to subninjas even with includes.
-    writeFile(fs, paths.get("rules.ninja"),
+    writeFile(fs, "rules.ninja",
         "rule cat\n"
         "  command = cat\n");
-    writeFile(fs, paths.get("test.ninja"),
+    writeFile(fs, "test.ninja",
         "include rules.ninja\n"
         "build x : cat\n");
     parse(fs,
@@ -622,7 +622,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("Include") {
-    writeFile(fs, paths.get("include.ninja"),
+    writeFile(fs, "include.ninja",
         "var = inner\n");
     const auto step = parseStep(fs,
         "var = outer\n"
@@ -635,7 +635,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("BrokenInclude") {
-    writeFile(fs, paths.get("include.ninja"),
+    writeFile(fs, "include.ninja",
         "build\n");
     CHECK(parseError(fs, "include include.ninja\n") ==
         "include.ninja:1: expected path\n"

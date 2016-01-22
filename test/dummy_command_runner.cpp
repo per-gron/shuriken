@@ -91,7 +91,10 @@ CommandRunner::Result runCommand(
 
   for (const auto &output : result.output_files) {
     try {
-      writeFile(file_system, output, output.canonicalized() + "\n" + input_data);
+      writeFile(
+          file_system,
+          output.canonicalized(),
+          output.canonicalized() + "\n" + input_data);
     } catch (IoError &) {
       result.exit_status = ExitStatus::FAILURE;
       return result;

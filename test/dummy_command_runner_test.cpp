@@ -123,7 +123,10 @@ TEST_CASE("DummyCommandRunner") {
       // Create input files
       file_system.mkdir("_in");
       for (const auto &input : inputs) {
-        writeFile(file_system, input, "file:" + input.canonicalized());
+        writeFile(
+            file_system,
+            input.canonicalized(),
+            "file:" + input.canonicalized());
       }
 
       const auto outputs = *rc::gen::nonEmpty(

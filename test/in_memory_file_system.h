@@ -96,7 +96,7 @@ class InMemoryFileSystem : public FileSystem {
  */
 void writeFile(
     FileSystem &file_system,
-    const Path &path,
+    const std::string &path,
     const std::string &contents) throw(IoError);
 
 /**
