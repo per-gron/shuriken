@@ -53,7 +53,7 @@ TEST_CASE("DummyCommandRunner") {
       const auto result = detail::runCommand(file_system, command);
       CHECK(result.exit_status != ExitStatus::SUCCESS);
 
-      file_system.open(path, "w");  // Create the file
+      file_system.open(path.canonicalized(), "w");  // Create the file
       // Should now not fail anymore
       const auto second_result = detail::runCommand(file_system, command);
       CHECK(second_result.exit_status == ExitStatus::SUCCESS);

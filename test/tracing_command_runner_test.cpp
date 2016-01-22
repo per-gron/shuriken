@@ -41,7 +41,7 @@ class FailingMkstempFileSystem : public FileSystem {
   }
 
   std::unique_ptr<Stream> open(
-      const Path &path, const char *mode) throw(IoError) override {
+      const std::string &path, const char *mode) throw(IoError) override {
     return _fs->open(path, mode);
   }
   Stat stat(const std::string &path) override {
@@ -80,7 +80,7 @@ class FailingUnlinkFileSystem : public FileSystem {
   }
 
   std::unique_ptr<Stream> open(
-      const Path &path, const char *mode) throw(IoError) override {
+      const std::string &path, const char *mode) throw(IoError) override {
     return _fs->open(path, mode);
   }
   Stat stat(const std::string &path) override {

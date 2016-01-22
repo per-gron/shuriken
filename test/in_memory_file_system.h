@@ -18,7 +18,7 @@ class InMemoryFileSystem : public FileSystem {
 
   Paths &paths() override;
   std::unique_ptr<Stream> open(
-      const Path &path, const char *mode) throw(IoError) override;
+      const std::string &path, const char *mode) throw(IoError) override;
   Stat stat(const std::string &path) override;
   Stat lstat(const std::string &path) override;
   void mkdir(const std::string &path) throw(IoError) override;
@@ -85,10 +85,10 @@ class InMemoryFileSystem : public FileSystem {
     const std::shared_ptr<File> _file;
   };
 
-  LookupResult lookup(const Path &path);
+  LookupResult lookup(const std::string &path);
 
   Paths *_paths;
-  std::unordered_map<Path, Directory> _directories;
+  std::unordered_map<std::string, Directory> _directories;
 };
 
 /**

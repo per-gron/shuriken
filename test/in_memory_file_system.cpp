@@ -14,7 +14,7 @@ std::string dirname(const std::string &path) {
 
 InMemoryFileSystem::InMemoryFileSystem(Paths &paths)
     : _paths(&paths) {
-  _directories[paths.get(".")];
+  _directories["."];
 }
 
 Paths &InMemoryFileSystem::paths() {
@@ -22,7 +22,7 @@ Paths &InMemoryFileSystem::paths() {
 }
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
-    const Path &path, const char *mode) throw(IoError) {
+    const std::string &path, const char *mode) throw(IoError) {
   const auto mode_string = std::string(mode);
   bool read = false;
   bool write = false;
@@ -79,7 +79,7 @@ Stat InMemoryFileSystem::stat(const std::string &path) {
 Stat InMemoryFileSystem::lstat(const std::string &path) {
   Stat stat;
 
-  const auto l = lookup(_paths->get(path));
+  const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     stat.result = ENOTDIR;
@@ -104,7 +104,7 @@ Stat InMemoryFileSystem::lstat(const std::string &path) {
 }
 
 void InMemoryFileSystem::mkdir(const std::string &path) throw(IoError) {
-  const auto l = lookup(_paths->get(path));
+  const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     throw IoError("A component of the path prefix is not a directory", ENOTDIR);
@@ -115,13 +115,13 @@ void InMemoryFileSystem::mkdir(const std::string &path) throw(IoError) {
     break;
   case EntryType::FILE_DOES_NOT_EXIST:
     l.directory->directories.insert(l.basename);
-    _directories[_paths->get(path)];
+    _directories[path];
     break;
   }
 }
 
 void InMemoryFileSystem::rmdir(const std::string &path) throw(IoError) {
-  const auto l = lookup(_paths->get(path));
+  const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     throw IoError("A component of the path prefix is not a directory", ENOTDIR);
@@ -133,21 +133,21 @@ void InMemoryFileSystem::rmdir(const std::string &path) throw(IoError) {
     throw IoError("The named directory is a file", EPERM);
     break;
   case EntryType::DIRECTORY:
-    const auto &dir = _directories[_paths->get(path)];
+    const auto &dir = _directories[path];
     if (!dir.empty()) {
       throw IoError(
           "The named directory contains files other than `.' and `..' in it",
           ENOTEMPTY);
     } else {
       l.directory->directories.erase(l.basename);
-      _directories.erase(_paths->get(path));
+      _directories.erase(path);
     }
     break;
   }
 }
 
 void InMemoryFileSystem::unlink(const std::string &path) throw(IoError) {
-  const auto l = lookup(_paths->get(path));
+  const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     throw IoError("A component of the path prefix is not a directory", ENOTDIR);
@@ -167,7 +167,7 @@ void InMemoryFileSystem::unlink(const std::string &path) throw(IoError) {
 std::string InMemoryFileSystem::readFile(const std::string &path) throw(IoError) {
   std::string result;
 
-  const auto stream = open(_paths->get(path), "r");
+  const auto stream = open(path, "r");
   uint8_t buf[1024];
   while (!stream->eof()) {
     size_t read_bytes = stream->read(buf, 1, sizeof(buf));
@@ -198,9 +198,7 @@ std::string InMemoryFileSystem::mkstemp(
 }
 
 bool InMemoryFileSystem::operator==(const InMemoryFileSystem &other) const {
-  return (
-      _paths == other._paths &&
-      _directories == other._directories);
+  return _directories == other._directories;
 }
 
 bool InMemoryFileSystem::Directory::empty() const {
@@ -281,17 +279,17 @@ void InMemoryFileSystem::InMemoryFileStream::checkNotEof()
   }
 }
 
-InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(const Path &path) {
+InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
+    const std::string &path) {
   LookupResult result;
 
   StringPiece dirname_piece;
   StringPiece basename_piece;
-  std::tie(dirname_piece, basename_piece) = detail::basenameSplitPiece(path.canonicalized());
+  std::tie(dirname_piece, basename_piece) = detail::basenameSplitPiece(path);
   const auto dirname = dirname_piece.asString();
   const auto basename = basename_piece.asString();
-  const Path dir_path = _paths->get(dirname);
 
-  const auto it = _directories.find(dir_path);
+  const auto it = _directories.find(dirname);
   if (it == _directories.end()) {
     result.entry_type = EntryType::DIRECTORY_DOES_NOT_EXIST;
     return result;
@@ -316,7 +314,7 @@ void writeFile(
     FileSystem &file_system,
     const std::string &path,
     const std::string &contents) throw(IoError) {
-  const auto stream = file_system.open(file_system.paths().get(path), "w");
+  const auto stream = file_system.open(path, "w");
   const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
   stream->write(data, 1, contents.size());
 }
