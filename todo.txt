@@ -110,6 +110,13 @@ Path:
     created by someone else, make sure that its (st_dev, st_ino) is not the same as
     some other path that we have seen. That means hardlink and could break the build.
 
+Large things remaining to do:
+* Improved path handling
+* Fingerprint code
+* Invocation log
+* The actual build algorithm
+* CLI
+
 To fill in the first test:
 * Generate actual DAG in gen::buildInput
 * Add assertions to the property

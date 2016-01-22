@@ -9,18 +9,11 @@ namespace shk {
 namespace {
 
 std::string canonicalizePath(std::string path) throw(PathError) {
-  SlashBits unused;
-  detail::canonicalizePath(&path, &unused);
+  detail::canonicalizePath(&path);
   return path;
 }
 
 #ifdef _WIN32
-std::pair<std::string, SlashBits> canonicalizePathWithSlashBits(std::string path) throw(PathError) {
-  SlashBits slash_bits;
-  detail::canonicalizePath(&path, &slash_bits);
-  return std::make_pair(path, slash_bits);
-}
-
 std::string canonicalizePathError(std::string path) {
   try {
     canonicalizePath(path);
@@ -91,45 +84,39 @@ TEST_CASE("Path") {
       CHECK("/foo" == canonicalizePath("\\foo"));
       CHECK("//foo" == canonicalizePath("\\\\foo"));
       CHECK("" == canonicalizePath("\\"));
+      CHECK(canonicalizePath("foo.h") == "foo.h");
+      CHECK(canonicalizePath("a\\foo.h") == "a/foo.h");
+      CHECK(canonicalizePath("a/bcd/efh\\foo.h") == "a/bcd/efh/foo.h");
+      CHECK(canonicalizePath("a\\bcd/efh\\foo.h") == "a/bcd/efh/foo.h");
+      CHECK(canonicalizePath("a\\bcd\\efh\\foo.h") == "a/bcd/efh/foo.h");
+      CHECK(canonicalizePath("a/bcd/efh/foo.h") == "a/bcd/efh/foo.h");
+      CHECK(canonicalizePath("a\\./efh\\foo.h") == "a/efh/foo.h");
+      CHECK(canonicalizePath("a\\../efh\\foo.h") == "efh/foo.h");
+      CHECK(canonicalizePath("a\\b\\c\\d\\e\\f\\g\\foo.h") == "a/b/c/d/e/f/g/foo.h", );
+      CHECK(canonicalizePath("a\\b\\c\\..\\..\\..\\g\\foo.h") == "g/foo.h");
+      CHECK(canonicalizePath("a\\b/c\\../../..\\g\\foo.h") == "g/foo.h");
+      CHECK(canonicalizePath("a\\b/c\\./../..\\g\\foo.h") == "a/g/foo.h");
+      CHECK(canonicalizePath("a\\b/c\\./../..\\g/foo.h") == "a/g/foo.h");
+      CHECK(canonicalizePath("a\\\\\\foo.h") == "a/foo.h");
+      CHECK(canonicalizePath("a/\\\\foo.h") == "a/foo.h");
+      CHECK(canonicalizePath("a\\//foo.h") == "a/foo.h");
     }
 
     SECTION("Windows Slash Tracking") {
-      SECTION("Canonicalize Slash Bits") {
-        CHECK(canonicalizePathWithSlashBits("foo.h") == std::make_pair("foo.h", 0));
-        CHECK(canonicalizePathWithSlashBits("a\\foo.h") == std::make_pair("a/foo.h", 1));
-        CHECK(canonicalizePathWithSlashBits("a/bcd/efh\\foo.h") == std::make_pair("a/bcd/efh/foo.h", 4));
-        CHECK(canonicalizePathWithSlashBits("a\\bcd/efh\\foo.h") == std::make_pair("a/bcd/efh/foo.h", 5));
-        CHECK(canonicalizePathWithSlashBits("a\\bcd\\efh\\foo.h") == std::make_pair("a/bcd/efh/foo.h", 7));
-        CHECK(canonicalizePathWithSlashBits("a/bcd/efh/foo.h") == std::make_pair("a/bcd/efh/foo.h", 0));
-        CHECK(canonicalizePathWithSlashBits("a\\./efh\\foo.h") == std::make_pair("a/efh/foo.h", 3));
-        CHECK(canonicalizePathWithSlashBits("a\\../efh\\foo.h") == std::make_pair("efh/foo.h", 1));
-        CHECK(canonicalizePathWithSlashBits("a\\b\\c\\d\\e\\f\\g\\foo.h") == std::make_pair("a/b/c/d/e/f/g/foo.h", 127));
-        CHECK(canonicalizePathWithSlashBits("a\\b\\c\\..\\..\\..\\g\\foo.h") == std::make_pair("g/foo.h", 1));
-        CHECK(canonicalizePathWithSlashBits("a\\b/c\\../../..\\g\\foo.h") == std::make_pair("g/foo.h", 1));
-        CHECK(canonicalizePathWithSlashBits("a\\b/c\\./../..\\g\\foo.h") == std::make_pair("a/g/foo.h", 3));
-        CHECK(canonicalizePathWithSlashBits("a\\b/c\\./../..\\g/foo.h") == std::make_pair("a/g/foo.h", 1));
-        CHECK(canonicalizePathWithSlashBits("a\\\\\\foo.h") == std::make_pair("a/foo.h", 1));
-        CHECK(canonicalizePathWithSlashBits("a/\\\\foo.h") == std::make_pair("a/foo.h", 0));
-        CHECK(canonicalizePathWithSlashBits("a\\//foo.h") == std::make_pair("a/foo.h", 1));
-      }
-
       SECTION("Canonicalize Not Exceeding Len") {
         // Make sure searching \/ doesn't go past supplied len.
         char buf[] = "foo/bar\\baz.h\\";  // Last \ past end.
-        SlashBits slash_bits;
         size_t size = 13;
-        detail::canonicalizePath(buf, &size, &slash_bits);
+        detail::canonicalizePath(buf, &size);
         EXPECT_EQ(0, strncmp("foo/bar/baz.h", buf, size));
-        EXPECT_EQ(2, slash_bits);  // Not including the trailing one.
       }
 
       SECTION("TooManyComponents") {
-        SlashBits slash_bits;
         // 64 is OK.
         std::string path =
             "a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a"
             "/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./x.h";
-        detail::canonicalizePath(&path, &slash_bits);
+        detail::canonicalizePath(&path);
 
         // Backslashes version.
         path =
@@ -137,8 +124,7 @@ TEST_CASE("Path") {
             "\\a\\.\\a\\.\\a\\.\\a\\.\\"
             "a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\."
             "\\a\\.\\a\\.\\a\\.\\a\\.\\x.h";
-        detail::canonicalizePath(&path, &slash_bits);
-        EXPECT_EQ(slash_bits, 0xffffffff);
+        detail::canonicalizePath(&path);
 
         // 65 is not.
         path =
@@ -169,17 +155,16 @@ TEST_CASE("Path") {
     SECTION("NotNullTerminated") {
       std::string path;
       size_t len;
-      SlashBits unused;
 
       path = "foo/. bar/.";
       len = strlen("foo/.");  // Canonicalize only the part before the space.
-      detail::canonicalizePath(&path[0], &len, &unused);
+      detail::canonicalizePath(&path[0], &len);
       CHECK(strlen("foo") == len);
       CHECK("foo/. bar/." == path);
 
       path = "foo/../file bar/.";
       len = strlen("foo/../file");
-      detail::canonicalizePath(&path[0], &len, &unused);
+      detail::canonicalizePath(&path[0], &len);
       CHECK(strlen("file") == len);
       CHECK("file ./file bar/." == path);
     }

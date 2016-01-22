@@ -21,22 +21,16 @@
 
 namespace shk {
 
-using SlashBits = uint64_t;
-
 namespace detail {
 
 /**
  * Canonicalize a path like "foo/../bar.h" into just "bar.h".
- * |slash_bits| has bits set starting from lowest for a backslash that was
- * normalized to a forward slash. (only used on Windows)
  */
 void canonicalizePath(
-    std::string *path,
-    shk::SlashBits *slash_bits) throw(PathError);
+    std::string *path) throw(PathError);
 void canonicalizePath(
     char *path,
-    size_t *len,
-    shk::SlashBits *slash_bits) throw(PathError);
+    size_t *len) throw(PathError);
 
 struct CanonicalizedPath {
   explicit CanonicalizedPath(const std::string &path)
@@ -68,20 +62,16 @@ class Path {
   friend struct std::hash<Path>;
  public:
   Path()
-      : _canonicalized_path(nullptr)
-#ifdef _WIN32
-        , _slash_bits(0)
-#endif
-        {}
+      : _canonicalized_path(nullptr),
+        _original_path(nullptr) {
+    // TODO(peck): This constructor isn't really great. It creates a broken
+    // object. Remove me.
+  }
 
-  Path(
-      const detail::CanonicalizedPath *canonicalized_path,
-      SlashBits slash_bits)
-      : _canonicalized_path(canonicalized_path)
-#ifdef _WIN32
-        , _slash_bits(slash_bits)
-#endif
-        {}
+  Path(const detail::CanonicalizedPath *canonicalized_path,
+       const std::string *original_path)
+      : _canonicalized_path(canonicalized_path),
+        _original_path(original_path) {}
 
   /**
    * Returns true if the paths point to the same paths. operator== is not
@@ -91,17 +81,18 @@ class Path {
     return _canonicalized_path == other._canonicalized_path;
   }
 
-  std::string decanonicalized() const;
+  const std::string &decanonicalized() const {
+    return *_original_path;
+  }
 
-  const std::string &canonicalized() const;
+  const std::string &canonicalized() const {
+    return _canonicalized_path->path;
+  }
 
   bool operator==(const Path &other) const {
     return (
-      _canonicalized_path == other._canonicalized_path
-#ifdef _WIN32
-      && _slash_bits == other._slash_bits
-#endif
-      );
+        _canonicalized_path == other._canonicalized_path &&
+        _original_path == other._original_path);
   }
 
   bool operator!=(const Path &other) const {
@@ -113,20 +104,14 @@ class Path {
    * comparison is dependent on memory layout so is not stable across runs.
    */
   bool operator<(const Path &other) const {
-#ifdef _WIN32
     return (
-        std::tie(_canonicalized_path, _slash_bits) <
-        std::tie(other._canonicalized_path, other._slash_bits));
-#else
-    return _canonicalized_path < other._canonicalized_path;
-#endif
+        std::tie(_canonicalized_path, _original_path) <
+        std::tie(other._canonicalized_path, other._original_path));
   }
 
  private:
   const detail::CanonicalizedPath *_canonicalized_path;
-#ifdef _WIN32
-  SlashBits _slash_bits;
-#endif
+  const std::string *_original_path;
 };
 
 }  // namespace shk
@@ -163,8 +148,8 @@ namespace shk {
  * Shuriken manifests contain lots of paths. In order to accurately track
  * dependencies between build steps, it is necessary to accurately detect when
  * to paths contained in the manifest point to the same underlying file. Doing
- * this in an efficient way is a little bit tricky. This class solves this
- * problem.
+ * this in an efficient way is a little bit tricky. Solving that problem is the
+ * job of this class.
  *
  * One part of the problem is that it is necessary to be able to compare two
  * paths efficiently. This is solved by providing a special Path class instead
@@ -230,6 +215,7 @@ class Paths {
 
  private:
   std::unordered_set<detail::CanonicalizedPath> _canonicalized_paths;
+  std::unordered_set<std::string> _original_paths;
 };
 
 }  // namespace shk

@@ -18,48 +18,26 @@ namespace shk {
 
 namespace detail {
 
-void canonicalizePath(
-    std::string *path,
-    shk::SlashBits *slash_bits) throw(PathError) {
+void canonicalizePath(std::string *path) throw(PathError) {
   size_t len = path->size();
   char* str = 0;
   if (len > 0) {
     str = &(*path)[0];
-    canonicalizePath(str, &len, slash_bits);
+    canonicalizePath(str, &len);
     path->resize(len);
   }
 }
 
-#ifdef _WIN32
-
-namespace {
-
-shk::SlashBits shiftOverBit(int offset, shk::SlashBits bits) {
-  // e.g. for |offset| == 2:
-  // | ... 9 8 7 6 5 4 3 2 1 0 |
-  // \_________________/   \_/
-  //        above         below
-  // So we drop the bit at offset and move above "down" into its place.
-  shk::SlashBits above = bits & ~((1 << (offset + 1)) - 1);
-  shk::SlashBits below = bits & ((1 << offset) - 1);
-  return (above >> 1) | below;
-}
-
-}  // anonymous namespace
-
-#endif
-
 void canonicalizePath(
     char *path,
-    size_t *len,
-    shk::SlashBits *slash_bits) throw(PathError) {
+    size_t *len) throw(PathError) {
   // WARNING: this function is performance-critical; please benchmark
   // any changes you make to it.
   if (*len == 0) {
     return;
   }
 
-  const int kMaxPathComponents = sizeof(shk::SlashBits) * 8 - 2;
+  const int kMaxPathComponents = 62;
   char* components[kMaxPathComponents];
   int component_count = 0;
 
@@ -69,35 +47,20 @@ void canonicalizePath(
   const char* end = start + *len;
 
 #ifdef _WIN32
-  shk::SlashBits bits = 0;
-  shk::SlashBits bits_mask = 1;
-  int bits_offset = 0;
   // Convert \ to /, setting a bit in |bits| for each \ encountered.
   for (char* c = path; c < end; ++c) {
-    switch (*c) {
-      case '\\':
-        bits |= bits_mask;
-        *c = '/';
-        // Intentional fallthrough.
-      case '/':
-        bits_mask <<= 1;
-        bits_offset++;
+    if (*c) {
+      *c = '/';
     }
   }
-  if (bits_offset > kMaxPathComponents) {
-    throw PathError("too many path components", path);
-  }
-  bits_offset = 0;
 #endif
 
   if (*src == '/') {
 #ifdef _WIN32
-    bits_offset++;
     // network path starts with //
     if (*len > 1 && *(src + 1) == '/') {
       src += 2;
       dst += 2;
-      bits_offset++;
     } else {
       ++src;
       ++dst;
@@ -113,9 +76,6 @@ void canonicalizePath(
       if (src + 1 == end || src[1] == '/') {
         // '.' component; eliminate.
         src += 2;
-#ifdef _WIN32
-        bits = shiftOverBit(bits_offset, bits);
-#endif
         continue;
       } else if (src[1] == '.' && (src + 2 == end || src[2] == '/')) {
         // '..' component.  Back up if possible.
@@ -123,11 +83,6 @@ void canonicalizePath(
           dst = components[component_count - 1];
           src += 3;
           --component_count;
-#ifdef _WIN32
-          bits = shiftOverBit(bits_offset, bits);
-          bits_offset--;
-          bits = shiftOverBit(bits_offset, bits);
-#endif
         } else {
           *dst++ = *src++;
           *dst++ = *src++;
@@ -139,9 +94,6 @@ void canonicalizePath(
 
     if (*src == '/') {
       src++;
-#ifdef _WIN32
-      bits = shiftOverBit(bits_offset, bits);
-#endif
       continue;
     }
  
@@ -154,9 +106,6 @@ void canonicalizePath(
     while (*src != '/' && src != end) {
       *dst++ = *src++;
     }
-#ifdef _WIN32
-    bits_offset++;
-#endif
     *dst++ = *src++;  // Copy '/' or final \0 character as well.
   }
 
@@ -165,44 +114,21 @@ void canonicalizePath(
   } else {
     *len = dst - start - 1;
   }
-#ifdef _WIN32
-  *slash_bits = bits;
-#else
-  *slash_bits = 0;
-#endif
 }
 
 }  // namespace detail
-
-std::string Path::decanonicalized() const {
-  auto result = _canonicalized_path->path;
-#ifdef _WIN32
-  unsigned uint64_t mask = 1;
-  for (char *c = &result[0]; (c = strchr(c, '/')) != NULL;) {
-    if (_slash_bits & mask)
-      *c = '\\';
-    c++;
-    mask <<= 1;
-  }
-#endif
-  return result;
-}
-
-const std::string &Path::canonicalized() const {
-  return _canonicalized_path->path;
-}
 
 Path Paths::get(const std::string &path) throw(PathError) {
   return get(std::string(path));
 }
 
 Path Paths::get(std::string &&path) throw(PathError) {
-  SlashBits slash_bits = 0;
-  detail::canonicalizePath(&path, &slash_bits);
-
-  const auto result = _canonicalized_paths.emplace(path);
-  const detail::CanonicalizedPath *canonicalized_path_ptr = &*result.first;
-  return Path(canonicalized_path_ptr, slash_bits);
+  const auto original_result = _original_paths.emplace(path);
+  detail::canonicalizePath(&path);
+  const auto canonicalized_result = _canonicalized_paths.emplace(path);
+  return Path(
+      &*canonicalized_result.first,
+      &*original_result.first);
 }
 
 }  // namespace shk
