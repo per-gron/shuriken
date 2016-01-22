@@ -14,7 +14,7 @@ std::string dirname(const std::string &path) {
 
 InMemoryFileSystem::InMemoryFileSystem(Paths &paths)
     : _paths(&paths) {
-  _directories[paths.get("")];
+  _directories[paths.get(".")];
 }
 
 Paths &InMemoryFileSystem::paths() {

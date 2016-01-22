@@ -22,7 +22,7 @@ std::pair<StringPiece, StringPiece> basenameSplitPiece(const std::string &path) 
   const auto slash_pos = path.find_last_of('/');
 
   if (slash_pos == std::string::npos) {
-    return std::make_pair(StringPiece("", 0), StringPiece(path));
+    return std::make_pair(StringPiece(".", 1), StringPiece(path));
   } else {
     return std::make_pair(
         StringPiece(path.data(), slash_pos),

@@ -25,20 +25,35 @@ std::string canonicalizePathError(std::string path) {
 }
 #endif
 
+void checkBasenameSplit(
+    const std::string &path,
+    const std::string &dirname,
+    const std::string &basename) {
+  StringPiece dn, bn;
+  std::tie(dn, bn) = detail::basenameSplitPiece(path);
+  CHECK(dn == dirname);
+  CHECK(bn == basename);
+}
+
 }  // namespace
 
 
 TEST_CASE("Path") {
   SECTION("detail::basenameSplit") {
+    checkBasenameSplit("/usr/lib", "/usr", "lib");
+
     rc::prop("extracts the basename and the dirname", []() {
       const auto path_components = *gen::pathComponents();
       RC_PRE(!path_components.empty());
 
       const auto path_string = gen::joinPathComponents(path_components);
-      const auto dirname_string = gen::joinPathComponents(
+      auto dirname_string = gen::joinPathComponents(
           std::vector<std::string>(
               path_components.begin(),
               path_components.end() - 1));
+      if (dirname_string.empty()) {
+        dirname_string = ".";
+      }
 
       StringPiece dirname;
       StringPiece basename;
