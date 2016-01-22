@@ -16,6 +16,7 @@ namespace shk {
  * tracking; that might be overwritten by this object.
  */
 std::unique_ptr<CommandRunner> makeTracingCommandRunner(
+    Paths &paths,
     FileSystem &file_system,
     std::unique_ptr<CommandRunner> &&command_runner);
 

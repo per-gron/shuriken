@@ -44,11 +44,13 @@ using ManifestPostprocessingData = std::vector<std::pair<
 
 struct ManifestParser {
   ManifestParser(
+      Paths &paths,
       FileSystem &file_system,
       Manifest &manifest,
       ManifestPostprocessingData &postprocessing_data,
       BindingEnv &env)
-      : _file_system(file_system),
+      : _paths(paths),
+        _file_system(file_system),
         _manifest(manifest),
         _postprocessing_data(postprocessing_data),
         _env(env) {}
@@ -257,7 +259,7 @@ private:
       if (!allow_empty && str.empty()) {
         _lexer.throwError("empty path");
       }
-      const auto path = _file_system.paths().get(str);
+      const auto path = _paths.get(str);
       return path;
     } catch (PathError &error) {
       _lexer.throwError(error.what());
@@ -407,6 +409,7 @@ private:
 
     // XXX This leaks memory (BindingEnv allocation). Is that ok?
     ManifestParser subparser(
+        _paths,
         _file_system,
         _manifest,
         _postprocessing_data,
@@ -417,6 +420,7 @@ private:
     expectToken(_lexer, Lexer::NEWLINE);
   }
 
+  Paths &_paths;
   FileSystem &_file_system;
   Manifest &_manifest;
   ManifestPostprocessingData &_postprocessing_data;
@@ -427,12 +431,13 @@ private:
 }  // anonymous namespace
 
 Manifest parseManifest(
+    Paths &paths,
     FileSystem &file_system,
     const std::string &path) throw(IoError, ParseError) {
   Manifest manifest;
   BindingEnv env;
   ManifestPostprocessingData postprocessing_data;
-  ManifestParser parser(file_system, manifest, postprocessing_data, env);
+  ManifestParser parser(paths, file_system, manifest, postprocessing_data, env);
   parser.load(path, nullptr);
   parser.postprocessSteps();
   return manifest;

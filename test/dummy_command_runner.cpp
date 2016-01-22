@@ -75,11 +75,12 @@ std::pair<std::vector<Path>, std::vector<Path>> splitCommand(
 }
 
 CommandRunner::Result runCommand(
+    Paths &paths,
     FileSystem &file_system,
     const std::string &command) {
   CommandRunner::Result result;
   std::tie(result.input_files, result.output_files) =
-      splitCommand(file_system.paths(), command);
+      splitCommand(paths, command);
 
   std::string input_data;
   try {
@@ -106,8 +107,8 @@ CommandRunner::Result runCommand(
 
 }  // namespace detail
 
-DummyCommandRunner::DummyCommandRunner(FileSystem &file_system)
-    : _file_system(file_system) {}
+DummyCommandRunner::DummyCommandRunner(Paths &paths, FileSystem &file_system)
+    : _paths(paths), _file_system(file_system) {}
 
 void DummyCommandRunner::invoke(
     const std::string &command,
@@ -122,7 +123,7 @@ size_t DummyCommandRunner::size() const {
 
 bool DummyCommandRunner::runCommands() {
   for (const auto &command : _enqueued_commands) {
-    command.second(detail::runCommand(_file_system, command.first));
+    command.second(detail::runCommand(_paths, _file_system, command.first));
   }
   _enqueued_commands.clear();
   return false;
@@ -135,11 +136,11 @@ std::string DummyCommandRunner::constructCommand(
 }
 
 void DummyCommandRunner::checkCommand(
-    FileSystem &file_system, const std::string &command)
+    Paths &paths, FileSystem &file_system, const std::string &command)
         throw(IoError, std::runtime_error) {
   std::vector<Path> inputs;
   std::vector<Path> outputs;
-  std::tie(inputs, outputs) = detail::splitCommand(file_system.paths(), command);
+  std::tie(inputs, outputs) = detail::splitCommand(paths, command);
 
   const auto input_data = makeInputData(file_system, inputs);
 

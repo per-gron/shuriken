@@ -3,7 +3,6 @@
 #include <chrono>
 
 #include "io_error.h"
-#include "path.h"
 
 namespace shk {
 
@@ -53,11 +52,6 @@ class FileSystem {
     virtual long tell() const throw(IoError) = 0;
     virtual bool eof() const = 0;
   };
-
-  /**
-   * Return the Paths object that this FileSystem uses for its paths.
-   */
-  virtual Paths &paths() = 0;
 
   virtual std::unique_ptr<Stream> open(
       const std::string &path, const char *mode) throw(IoError) = 0;

@@ -24,8 +24,8 @@ TEST_CASE("DummyCommandRunner") {
   });
 
   Paths paths;
-  InMemoryFileSystem file_system(paths);
-  DummyCommandRunner runner(file_system);
+  InMemoryFileSystem file_system;
+  DummyCommandRunner runner(paths, file_system);
 
   SECTION("initially empty") {
     CHECK(runner.empty());
@@ -39,7 +39,7 @@ TEST_CASE("DummyCommandRunner") {
     SECTION("empty command should do nothing") {
       const auto empty_file_system = file_system;
       const auto empty_command = DummyCommandRunner::constructCommand({}, {});
-      const auto result = detail::runCommand(file_system, empty_command);
+      const auto result = detail::runCommand(paths, file_system, empty_command);
 
       CHECK(result.exit_status == ExitStatus::SUCCESS);
       CHECK(empty_file_system == file_system);
@@ -50,12 +50,12 @@ TEST_CASE("DummyCommandRunner") {
       const auto command = DummyCommandRunner::constructCommand({ path }, {});
 
       // Should fail because it should try to read a missing file
-      const auto result = detail::runCommand(file_system, command);
+      const auto result = detail::runCommand(paths, file_system, command);
       CHECK(result.exit_status != ExitStatus::SUCCESS);
 
       file_system.open(path.canonicalized(), "w");  // Create the file
       // Should now not fail anymore
-      const auto second_result = detail::runCommand(file_system, command);
+      const auto second_result = detail::runCommand(paths, file_system, command);
       CHECK(second_result.exit_status == ExitStatus::SUCCESS);
     }
 
@@ -63,7 +63,7 @@ TEST_CASE("DummyCommandRunner") {
       const auto path = paths.get("abc");
       const auto command = DummyCommandRunner::constructCommand({}, { path });
 
-      const auto result = detail::runCommand(file_system, command);
+      const auto result = detail::runCommand(paths, file_system, command);
       CHECK(result.exit_status == ExitStatus::SUCCESS);
 
       CHECK(file_system.stat(path.canonicalized()).result == 0);  // Output file should have been created
@@ -105,13 +105,13 @@ TEST_CASE("DummyCommandRunner") {
   SECTION("checkCommand") {
     SECTION("empty command") {
       const auto empty_command = DummyCommandRunner::constructCommand({}, {});
-      DummyCommandRunner::checkCommand(file_system, empty_command);
+      DummyCommandRunner::checkCommand(paths, file_system, empty_command);
     }
 
     rc::prop("checkCommand after runCommand", []() {
       const auto paths = std::make_shared<Paths>();
-      InMemoryFileSystem file_system(*paths);
-      DummyCommandRunner runner(file_system);
+      InMemoryFileSystem file_system;
+      DummyCommandRunner runner(*paths, file_system);
 
       // Place inputs in their own folder to make sure that they don't collide
       // with outputs.
@@ -135,14 +135,14 @@ TEST_CASE("DummyCommandRunner") {
       const auto command = DummyCommandRunner::constructCommand(inputs, outputs);
 
       // The command is not run yet so should not pass
-      RC_ASSERT_THROWS(DummyCommandRunner::checkCommand(file_system, command));
+      RC_ASSERT_THROWS(DummyCommandRunner::checkCommand(*paths, file_system, command));
 
       runner.invoke(command, UseConsole::NO, CommandRunner::noopCallback);
       while (!runner.empty()) {
         runner.runCommands();
       }
 
-      DummyCommandRunner::checkCommand(file_system, command);
+      DummyCommandRunner::checkCommand(*paths, file_system, command);
     });
   }
 }

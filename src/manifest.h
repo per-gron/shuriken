@@ -20,6 +20,7 @@ struct Manifest {
  * Parse a Ninja manifest file at the given path.
  */
 Manifest parseManifest(
+    Paths &paths,
     FileSystem &file_system,
     const std::string &path) throw(IoError, ParseError);
 

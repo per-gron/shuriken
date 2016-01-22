@@ -31,16 +31,16 @@ void verifyManifest(const Manifest &manifest) {
   }
 }
 
-Manifest parse(FileSystem &file_system, const char* input) {
+Manifest parse(Paths &paths, FileSystem &file_system, const char* input) {
   writeFile(file_system, "build.ninja", input);
-  const auto manifest = parseManifest(file_system, "build.ninja");
+  const auto manifest = parseManifest(paths, file_system, "build.ninja");
   verifyManifest(manifest);
   return manifest;
 }
 
-std::string parseError(FileSystem &file_system, const char* input) {
+std::string parseError(Paths &paths, FileSystem &file_system, const char* input) {
   try {
-    parse(file_system, input);
+    parse(paths, file_system, input);
     CHECK(!"parse should have failed");
     return "";
   } catch (ParseError &error) {
@@ -48,8 +48,8 @@ std::string parseError(FileSystem &file_system, const char* input) {
   }
 }
 
-Step parseStep(FileSystem &file_system, const char* input) {
-  const auto manifest = parse(file_system, input);
+Step parseStep(Paths &paths, FileSystem &file_system, const char* input) {
+  const auto manifest = parse(paths, file_system, input);
   REQUIRE(manifest.steps.size() == 1);
   return manifest.steps[0];
 }
@@ -58,14 +58,14 @@ Step parseStep(FileSystem &file_system, const char* input) {
 
 TEST_CASE("Manifest") {
   Paths paths;
-  InMemoryFileSystem fs(paths);
+  InMemoryFileSystem fs;
 
   SECTION("Empty") {
-    parse(fs, "");
+    parse(paths, fs, "");
   }
 
   SECTION("Rules") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule cat\n"
         "  command = cat $in > $out\n"
         "\n"
@@ -80,7 +80,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("DotPath") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule cat\n"
         "  command = cat $in > $out\n"
         "\n"
@@ -96,7 +96,7 @@ TEST_CASE("Manifest") {
 
   SECTION("RuleAttributes") {
     // Check that all of the allowed rule attributes are parsed ok.
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule cat\n"
         "  command = a\n"
         "  depfile = b\n"
@@ -119,7 +119,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("IgnoreIndentedComments") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "  #indented comment\n"
         "rule cat\n"
         "  command = cat $in > $out\n"
@@ -135,7 +135,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("ResponseFiles") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule cat_rsp\n"
         "  command = cat $rspfile > $out\n"
         "  rspfile = $rspfile\n"
@@ -149,7 +149,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("InNewline") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule cat_rsp\n"
         "  command = cat $in_newline > $out\n"
         "\n"
@@ -160,7 +160,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("Variables") {
-    const auto manifest = parse(fs,
+    const auto manifest = parse(paths, fs,
         "l = one-letter-test\n"
         "rule link\n"
         "  command = ld $l $extra $with_under -o $out $in\n"
@@ -183,7 +183,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("VariableScope") {
-    const auto manifest = parse(fs,
+    const auto manifest = parse(paths, fs,
         "foo = bar\n"
         "rule cmd\n"
         "  command = cmd $foo $in $out\n"
@@ -199,7 +199,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("Continuation") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule link\n"
         "  command = foo bar $\n"
         "    baz\n"
@@ -211,7 +211,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("Backslash") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "foo = bar\\baz\n"
         "foo2 = bar\\ baz\n"
         "\n"
@@ -223,7 +223,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("Comment") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "# this is a comment\n"
         "foo = not # a comment\n"
         "\n"
@@ -235,7 +235,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("Dollars") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule foo\n"
         "  command = ${out}bar$$baz$$$\n"
         "blah\n"
@@ -251,7 +251,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("EscapeSpaces") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule spaces\n"
         "  command = something\n"
         "build foo$ bar: spaces $$one two$$$ three\n");
@@ -264,7 +264,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("CanonicalizeFile") {
-    const auto manifest = parse(fs,
+    const auto manifest = parse(paths, fs,
         "rule cat\n"
         "  command = cat $in > $out\n"
         "build out: cat in/1 in//2\n"
@@ -280,7 +280,7 @@ TEST_CASE("Manifest") {
 
   #ifdef _WIN32
   SECTION("CanonicalizeFileBackslashes") {
-    const auto manifest = parse(fs,
+    const auto manifest = parse(paths, fs,
         "rule cat\n"
         "  command = cat $in > $out\n"
         "build out: cat in\\1 in\\\\2\n"
@@ -300,7 +300,7 @@ TEST_CASE("Manifest") {
   #endif
 
   SECTION("PathVariables") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule cat\n"
         "  command = cat $in > $out\n"
         "dir = out\n"
@@ -310,7 +310,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("ReservedWords") {
-    const auto manifest = parse(fs,
+    const auto manifest = parse(paths, fs,
         "rule build\n"
         "  command = rule run $out $in\n"
         "build subninja: build include default foo.cc\n"
@@ -325,72 +325,72 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("Errors") {
-    CHECK(parseError(fs, "subn") ==
+    CHECK(parseError(paths, fs, "subn") ==
         "build.ninja:1: expected '=', got eof\n"
         "subn\n"
         "    ^ near here");
 
-    CHECK(parseError(fs, "foobar") ==
+    CHECK(parseError(paths, fs, "foobar") ==
         "build.ninja:1: expected '=', got eof\n"
         "foobar\n"
         "      ^ near here");
 
-    CHECK(parseError(fs, "x 3") ==
+    CHECK(parseError(paths, fs, "x 3") ==
         "build.ninja:1: expected '=', got identifier\n"
         "x 3\n"
         "  ^ near here");
 
-    CHECK(parseError(fs, "x = 3") ==
+    CHECK(parseError(paths, fs, "x = 3") ==
         "build.ninja:1: unexpected EOF\n"
         "x = 3\n"
         "     ^ near here");
 
-    CHECK(parseError(fs, "x = 3\ny 2") ==
+    CHECK(parseError(paths, fs, "x = 3\ny 2") ==
         "build.ninja:2: expected '=', got identifier\n"
         "y 2\n"
         "  ^ near here");
 
-    CHECK(parseError(fs, "x = $") ==
+    CHECK(parseError(paths, fs, "x = $") ==
         "build.ninja:1: bad $-escape (literal $ must be written as $$)\n"
         "x = $\n"
         "    ^ near here");
 
-    CHECK(parseError(fs, "x = $\n $[\n") ==
+    CHECK(parseError(paths, fs, "x = $\n $[\n") ==
         "build.ninja:2: bad $-escape (literal $ must be written as $$)\n"
         " $[\n"
         " ^ near here");
 
-    CHECK(parseError(fs, "x = a$\n b$\n $\n") ==
+    CHECK(parseError(paths, fs, "x = a$\n b$\n $\n") ==
         "build.ninja:4: unexpected EOF\n");
 
-    CHECK(parseError(fs, "build\n") ==
+    CHECK(parseError(paths, fs, "build\n") ==
         "build.ninja:1: expected path\n"
         "build\n"
         "     ^ near here");
 
-    CHECK(parseError(fs, "build x: y z\n") ==
+    CHECK(parseError(paths, fs, "build x: y z\n") ==
         "build.ninja:1: unknown build rule 'y'\n"
         "build x: y z\n"
         "       ^ near here");
 
-    CHECK(parseError(fs, "build x:: y z\n") ==
+    CHECK(parseError(paths, fs, "build x:: y z\n") ==
         "build.ninja:1: expected build command name\n"
         "build x:: y z\n"
         "       ^ near here");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule cat\n  command = cat ok\n"
             "build x: cat $\n :\n") ==
         "build.ninja:4: expected newline, got ':'\n"
         " :\n"
         " ^ near here");
 
-    CHECK(parseError(fs, "rule cat\n") ==
+    CHECK(parseError(paths, fs, "rule cat\n") ==
         "build.ninja:2: expected 'command =' line\n");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule cat\n"
             "  command = echo\n"
             "rule cat\n"
@@ -400,14 +400,14 @@ TEST_CASE("Manifest") {
         "        ^ near here");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule cat\n"
             "  command = echo\n"
             "  rspfile = cat.rsp\n") ==
         "build.ninja:4: rspfile and rspfile_content need to be both specified\n");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule cat\n"
             "  command = ${fafsd\n"
             "foo = bar\n") ==
@@ -416,7 +416,7 @@ TEST_CASE("Manifest") {
         "            ^ near here");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule cat\n"
             "  command = cat\n"
             "build $.: cat foo\n") ==
@@ -425,7 +425,7 @@ TEST_CASE("Manifest") {
         "      ^ near here");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule cat\n"
             "  command = cat\n"
             "build $: cat foo\n") ==
@@ -433,11 +433,11 @@ TEST_CASE("Manifest") {
         "build $: cat foo\n"
         "                ^ near here");
 
-    CHECK(parseError(fs, "rule %foo\n") ==
+    CHECK(parseError(paths, fs, "rule %foo\n") ==
         "build.ninja:1: expected rule name\n");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule cc\n"
             "  command = foo\n"
             "  othervar = bar\n") ==
@@ -446,7 +446,7 @@ TEST_CASE("Manifest") {
         "                ^ near here");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule cc\n  command = foo\n"
             "build $.: cc bar.cc\n") ==
         "build.ninja:3: bad $-escape (literal $ must be written as $$)\n"
@@ -454,24 +454,24 @@ TEST_CASE("Manifest") {
         "      ^ near here");
 
     CHECK(
-        parseError(fs, "rule cc\n  command = foo\n  && bar") ==
+        parseError(paths, fs, "rule cc\n  command = foo\n  && bar") ==
         "build.ninja:3: expected variable name\n");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule cc\n  command = foo\n"
             "build $: cc bar.cc\n") ==
         "build.ninja:3: expected ':', got newline ($ also escapes ':')\n"
         "build $: cc bar.cc\n"
         "                  ^ near here");
 
-    CHECK(parseError(fs, "default\n") ==
+    CHECK(parseError(paths, fs, "default\n") ==
         "build.ninja:1: expected target name\n"
         "default\n"
         "       ^ near here");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule r\n  command = r\n"
             "build b: r\n"
             "default b:\n") ==
@@ -479,7 +479,7 @@ TEST_CASE("Manifest") {
         "default b:\n"
         "         ^ near here");
 
-    CHECK(parseError(fs, "default $a\n") ==
+    CHECK(parseError(paths, fs, "default $a\n") ==
         "build.ninja:1: empty path\n"
         "default $a\n"
         "          ^ near here");
@@ -487,7 +487,7 @@ TEST_CASE("Manifest") {
     // XXX the line number is wrong; we should evaluate paths in ParseEdge
     // as we see them, not after we've read them all!
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule r\n"
             "  command = r\n"
             "build $a: r $c\n") ==
@@ -496,21 +496,21 @@ TEST_CASE("Manifest") {
     // the indented blank line must terminate the rule
     // this also verifies that "unexpected (token)" errors are correct
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule r\n"
             "  command = r\n"
             "  \n"
             "  generator = 1\n") ==
         "build.ninja:4: unexpected indent\n");
 
-    CHECK(parseError(fs, "pool\n") ==
+    CHECK(parseError(paths, fs, "pool\n") ==
         "build.ninja:1: expected pool name\n");
 
-    CHECK(parseError(fs, "pool foo\n") ==
+    CHECK(parseError(paths, fs, "pool foo\n") ==
         "build.ninja:2: expected 'depth =' line\n");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "pool foo\n"
             "  depth = 4\n"
             "pool foo\n") ==
@@ -519,7 +519,7 @@ TEST_CASE("Manifest") {
         "        ^ near here");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "pool foo\n"
             "  depth = -1\n") ==
         "build.ninja:2: invalid pool depth\n"
@@ -527,7 +527,7 @@ TEST_CASE("Manifest") {
         "            ^ near here");
 
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "pool foo\n"
             "  bar = 1\n") ==
         "build.ninja:2: unexpected variable 'bar'\n"
@@ -536,7 +536,7 @@ TEST_CASE("Manifest") {
 
     // Pool names are dereferenced at edge parsing time.
     CHECK(
-        parseError(fs,
+        parseError(paths, fs,
             "rule run\n"
             "  command = echo\n"
             "  pool = unnamed_pool\n"
@@ -546,7 +546,7 @@ TEST_CASE("Manifest") {
 
   SECTION("MissingInput") {
     try {
-      parseManifest(fs, "build.ninja");
+      parseManifest(paths, fs, "build.ninja");
       CHECK(!"parse should have failed");
     } catch (ParseError &error) {
       CHECK("loading 'build.ninja': No such file or directory" ==
@@ -555,7 +555,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("MultipleOutputs") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule cc\n"
         "  command = foo\n"
         "  depfile = bar\n"
@@ -569,7 +569,7 @@ TEST_CASE("Manifest") {
     writeFile(fs, "test.ninja",
         "var = inner\n"
         "build $builddir/inner: varref\n");
-    const auto manifest = parse(fs,
+    const auto manifest = parse(paths, fs,
         "builddir = some_dir/\n"
         "rule varref\n"
         "  command = varref $var\n"
@@ -590,7 +590,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("MissingSubNinja") {
-    CHECK(parseError(fs, "subninja foo.ninja\n") ==
+    CHECK(parseError(paths, fs, "subninja foo.ninja\n") ==
         "build.ninja:1: loading 'foo.ninja': No such file or directory\n"
         "subninja foo.ninja\n"
         "                  ^ near here");
@@ -601,7 +601,7 @@ TEST_CASE("Manifest") {
     writeFile(fs, "test.ninja",
         "rule cat\n"
         "  command = cat\n");
-    parse(fs,
+    parse(paths, fs,
         "rule cat\n"
         "  command = cat\n"
         "subninja test.ninja\n");
@@ -615,7 +615,7 @@ TEST_CASE("Manifest") {
     writeFile(fs, "test.ninja",
         "include rules.ninja\n"
         "build x : cat\n");
-    parse(fs,
+    parse(paths, fs,
         "include rules.ninja\n"
         "subninja test.ninja\n"
         "build y : cat\n");
@@ -624,7 +624,7 @@ TEST_CASE("Manifest") {
   SECTION("Include") {
     writeFile(fs, "include.ninja",
         "var = inner\n");
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "var = outer\n"
         "include include.ninja\n"
         "rule r\n"
@@ -637,14 +637,14 @@ TEST_CASE("Manifest") {
   SECTION("BrokenInclude") {
     writeFile(fs, "include.ninja",
         "build\n");
-    CHECK(parseError(fs, "include include.ninja\n") ==
+    CHECK(parseError(paths, fs, "include include.ninja\n") ==
         "include.ninja:1: expected path\n"
         "build\n"
         "     ^ near here");
   }
 
   SECTION("Implicit") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule cat\n"
         "  command = cat $in > $out\n"
         "build foo: cat bar | baz\n");
@@ -658,7 +658,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("OrderOnly") {
-    const auto step = parseStep(fs,
+    const auto step = parseStep(paths, fs,
         "rule cat\n  command = cat $in > $out\n"
         "build foo: cat bar || baz\n");
 
@@ -670,7 +670,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("DefaultDefault") {
-    const auto manifest = parse(fs,
+    const auto manifest = parse(paths, fs,
         "rule cat\n  command = cat $in > $out\n"
         "build a: cat foo\n"
         "build b: cat foo\n"
@@ -680,7 +680,7 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("DefaultStatements") {
-    const auto manifest = parse(fs,
+    const auto manifest = parse(paths, fs,
         "rule cat\n  command = cat $in > $out\n"
         "build a: cat foo\n"
         "build b: cat foo\n"
@@ -697,16 +697,16 @@ TEST_CASE("Manifest") {
   }
 
   SECTION("UTF8") {
-    const auto manifest = parse(fs,
+    const auto manifest = parse(paths, fs,
         "rule utf8\n"
         "  command = true\n"
         "  description = compilaci\xC3\xB3\n");
   }
 
   SECTION("CRLF") {
-    parse(fs, "# comment with crlf\r\n");
-    parse(fs, "foo = foo\nbar = bar\r\n");
-    parse(fs, 
+    parse(paths, fs, "# comment with crlf\r\n");
+    parse(paths, fs, "foo = foo\nbar = bar\r\n");
+    parse(paths, fs, 
         "pool link_pool\r\n"
         "  depth = 15\r\n\r\n"
         "rule xyz\r\n"
@@ -716,7 +716,7 @@ TEST_CASE("Manifest") {
 
   SECTION("VariableExpansionTime") {
     SECTION("EagerlyEvaluateStepBindings") {
-      const auto step = parseStep(fs,
+      const auto step = parseStep(paths, fs,
           "variable = old\n"
           "rule cat\n"
           "  command = echo $out $variable\n"
@@ -729,7 +729,7 @@ TEST_CASE("Manifest") {
     }
 
     SECTION("EagerlyEvaluateInputs") {
-      const auto step = parseStep(fs,
+      const auto step = parseStep(paths, fs,
           "variable = old\n"
           "rule cat\n"
           "  command = echo $out $variable\n"
@@ -742,7 +742,7 @@ TEST_CASE("Manifest") {
     }
 
     SECTION("EagerlyEvaluateOutputs") {
-      const auto step = parseStep(fs,
+      const auto step = parseStep(paths, fs,
           "variable = old\n"
           "rule cat\n"
           "  command = echo $out $variable\n"
@@ -755,7 +755,7 @@ TEST_CASE("Manifest") {
     }
 
     SECTION("EagerlyEvaluateImplicit") {
-      const auto step = parseStep(fs,
+      const auto step = parseStep(paths, fs,
           "variable = old\n"
           "rule cat\n"
           "  command = echo $out $variable\n"
@@ -768,7 +768,7 @@ TEST_CASE("Manifest") {
     }
 
     SECTION("EagerlyEvaluateOrderOnly") {
-      const auto step = parseStep(fs,
+      const auto step = parseStep(paths, fs,
           "variable = old\n"
           "rule cat\n"
           "  command = echo $out $variable\n"
@@ -781,7 +781,7 @@ TEST_CASE("Manifest") {
     }
 
     SECTION("EagerlyEvaluatePoolName") {
-      const auto step = parseStep(fs,
+      const auto step = parseStep(paths, fs,
           "variable = old\n"
           "pool old\n"
           "  depth = 1\n"
@@ -797,7 +797,7 @@ TEST_CASE("Manifest") {
     }
 
     SECTION("LazilyEvaluateRuleBindings") {
-      const auto step = parseStep(fs,
+      const auto step = parseStep(paths, fs,
           "variable = old\n"
           "rule cat\n"
           "  command = echo $out $variable\n"

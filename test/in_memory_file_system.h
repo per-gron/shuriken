@@ -1,6 +1,7 @@
 #include "file_system.h"
 
 #include <unordered_map>
+#include <unordered_set>
 
 namespace shk {
 
@@ -14,9 +15,8 @@ namespace shk {
  */
 class InMemoryFileSystem : public FileSystem {
  public:
-  InMemoryFileSystem(Paths &paths);
+  InMemoryFileSystem();
 
-  Paths &paths() override;
   std::unique_ptr<Stream> open(
       const std::string &path, const char *mode) throw(IoError) override;
   Stat stat(const std::string &path) override;
@@ -87,7 +87,6 @@ class InMemoryFileSystem : public FileSystem {
 
   LookupResult lookup(const std::string &path);
 
-  Paths *_paths;
   std::unordered_map<std::string, Directory> _directories;
 };
 

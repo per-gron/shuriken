@@ -33,12 +33,8 @@ CommandRunner::Result runCommand(
 
 class FailingMkstempFileSystem : public FileSystem {
  public:
-  FailingMkstempFileSystem(Paths &paths)
-      : _fs(persistentFileSystem(paths)) {}
-
-  Paths &paths() override {
-    return _fs->paths();
-  }
+  FailingMkstempFileSystem()
+      : _fs(persistentFileSystem()) {}
 
   std::unique_ptr<Stream> open(
       const std::string &path, const char *mode) throw(IoError) override {
@@ -72,12 +68,8 @@ class FailingMkstempFileSystem : public FileSystem {
 
 class FailingUnlinkFileSystem : public FileSystem {
  public:
-  FailingUnlinkFileSystem(Paths &paths)
-      : _fs(persistentFileSystem(paths)) {}
-
-  Paths &paths() override {
-    return _fs->paths();
-  }
+  FailingUnlinkFileSystem()
+      : _fs(persistentFileSystem()) {}
 
   std::unique_ptr<Stream> open(
       const std::string &path, const char *mode) throw(IoError) override {
@@ -129,8 +121,9 @@ std::string getWorkingDir() {
 
 TEST_CASE("TracingCommandRunner") {
   Paths paths;
-  const auto fs = persistentFileSystem(paths);
+  const auto fs = persistentFileSystem();
   const auto runner = makeTracingCommandRunner(
+      paths,
       *fs,
       makeRealCommandRunner());
   const auto output_path = paths.get(getWorkingDir() + "/shk.test-file");
@@ -172,8 +165,9 @@ TEST_CASE("TracingCommandRunner") {
   }
 
   SECTION("HandleTmpFileCreationError") {
-    FailingMkstempFileSystem failing_mkstemp(paths);
+    FailingMkstempFileSystem failing_mkstemp;
     const auto runner = makeTracingCommandRunner(
+        paths,
         failing_mkstemp,
         makeRealCommandRunner());
 
@@ -185,8 +179,9 @@ TEST_CASE("TracingCommandRunner") {
   }
 
   SECTION("HandleTmpFileRemovalError") {
-    FailingUnlinkFileSystem failing_unlink(paths);
+    FailingUnlinkFileSystem failing_unlink;
     const auto runner = makeTracingCommandRunner(
+        paths,
         failing_unlink,
         makeRealCommandRunner());
 

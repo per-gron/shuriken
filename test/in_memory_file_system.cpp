@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+#include "path.h"
+
 namespace shk {
 namespace {
 
@@ -12,13 +14,8 @@ std::string dirname(const std::string &path) {
 
 }  // anonymous namespace
 
-InMemoryFileSystem::InMemoryFileSystem(Paths &paths)
-    : _paths(&paths) {
+InMemoryFileSystem::InMemoryFileSystem() {
   _directories["."];
-}
-
-Paths &InMemoryFileSystem::paths() {
-  return *_paths;
 }
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(

@@ -8,8 +8,7 @@
 namespace shk {
 
 TEST_CASE("InMemoryFileSystem") {
-  Paths paths;
-  InMemoryFileSystem fs(paths);
+  InMemoryFileSystem fs;
   const std::string abc = "abc";
 
   SECTION("lstat missing file") {

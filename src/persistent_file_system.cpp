@@ -79,12 +79,6 @@ class PersistentFileSystem : public FileSystem {
   };
 
  public:
-  PersistentFileSystem(Paths &paths) : _paths(paths) {}
-
-  Paths &paths() override {
-    return _paths;
-  }
-
   std::unique_ptr<Stream> open(
       const std::string &path, const char *mode) throw(IoError) override {
     return std::unique_ptr<Stream>(new FileStream(path, mode));
@@ -190,12 +184,10 @@ class PersistentFileSystem : public FileSystem {
     }
     return result;
   }
-
-  Paths &_paths;
 };
 
-std::unique_ptr<FileSystem> persistentFileSystem(Paths &paths) {
-  return std::unique_ptr<FileSystem>(new PersistentFileSystem(paths));
+std::unique_ptr<FileSystem> persistentFileSystem() {
+  return std::unique_ptr<FileSystem>(new PersistentFileSystem());
 }
 
 }  // namespace shk
