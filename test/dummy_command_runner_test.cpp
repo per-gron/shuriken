@@ -121,7 +121,7 @@ TEST_CASE("DummyCommandRunner") {
       const auto inputs = *rc::gen::container<std::vector<Path>>(input_path_gen);
 
       // Create input files
-      file_system.mkdir(paths->get("_in"));
+      file_system.mkdir("_in");
       for (const auto &input : inputs) {
         writeFile(file_system, input, "file:" + input.canonicalized());
       }

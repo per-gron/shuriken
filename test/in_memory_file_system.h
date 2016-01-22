@@ -21,7 +21,7 @@ class InMemoryFileSystem : public FileSystem {
       const Path &path, const char *mode) throw(IoError) override;
   Stat stat(const Path &path) override;
   Stat lstat(const Path &path) override;
-  void mkdir(const Path &path) throw(IoError) override;
+  void mkdir(const std::string &path) throw(IoError) override;
   void rmdir(const std::string &path) throw(IoError) override;
   void unlink(const std::string &path) throw(IoError) override;
   std::string readFile(const Path &path) throw(IoError) override;
@@ -102,12 +102,12 @@ void writeFile(
 /**
  * Create directory and parent directories. Like mkdir -p
  */
-void mkdirs(FileSystem &file_system, const Path &path) throw(IoError);
+void mkdirs(FileSystem &file_system, const std::string &path) throw(IoError);
 
 /**
  * Make sure that there is a directory for the given path. Like
  * mkdir -p `dirname path`
  */
-void mkdirsFor(FileSystem &file_system, const Path &path) throw(IoError);
+void mkdirsFor(FileSystem &file_system, const std::string &path) throw(IoError);
 
 }  // namespace shk

@@ -50,7 +50,7 @@ class FailingMkstempFileSystem : public FileSystem {
   Stat lstat(const Path &path) override {
     return _fs->lstat(path);
   }
-  void mkdir(const Path &path) throw(IoError) override {
+  void mkdir(const std::string &path) throw(IoError) override {
     return _fs->mkdir(path);
   }
   void rmdir(const std::string &path) throw(IoError) override {
@@ -89,7 +89,7 @@ class FailingUnlinkFileSystem : public FileSystem {
   Stat lstat(const Path &path) override {
     return _fs->lstat(path);
   }
-  void mkdir(const Path &path) throw(IoError) override {
+  void mkdir(const std::string &path) throw(IoError) override {
     return _fs->mkdir(path);
   }
   void rmdir(const std::string &path) throw(IoError) override {

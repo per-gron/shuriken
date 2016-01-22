@@ -97,8 +97,8 @@ class PersistentFileSystem : public FileSystem {
     return genericStat(::lstat, path);
   }
 
-  void mkdir(const Path &path) throw(IoError) override {
-    checkForMinusOne(::mkdir(path.canonicalized().c_str(), 0777));
+  void mkdir(const std::string &path) throw(IoError) override {
+    checkForMinusOne(::mkdir(path.c_str(), 0777));
   }
 
   void rmdir(const std::string &path) throw(IoError) override {

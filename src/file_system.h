@@ -63,7 +63,7 @@ class FileSystem {
       const Path &path, const char *mode) throw(IoError) = 0;
   virtual Stat stat(const Path &path) = 0;
   virtual Stat lstat(const Path &path) = 0;
-  virtual void mkdir(const Path &path) throw(IoError) = 0;
+  virtual void mkdir(const std::string &path) throw(IoError) = 0;
   virtual void rmdir(const std::string &path) throw(IoError) = 0;
   virtual void unlink(const std::string &path) throw(IoError) = 0;
 

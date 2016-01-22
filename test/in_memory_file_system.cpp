@@ -103,8 +103,8 @@ Stat InMemoryFileSystem::lstat(const Path &path) {
   return stat;
 }
 
-void InMemoryFileSystem::mkdir(const Path &path) throw(IoError) {
-  const auto l = lookup(path);
+void InMemoryFileSystem::mkdir(const std::string &path) throw(IoError) {
+  const auto l = lookup(_paths->get(path));
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     throw IoError("A component of the path prefix is not a directory", ENOTDIR);
@@ -115,7 +115,7 @@ void InMemoryFileSystem::mkdir(const Path &path) throw(IoError) {
     break;
   case EntryType::FILE_DOES_NOT_EXIST:
     l.directory->directories.insert(l.basename);
-    _directories[path];
+    _directories[_paths->get(path)];
     break;
   }
 }
@@ -321,28 +321,28 @@ void writeFile(
   stream->write(data, 1, contents.size());
 }
 
-void mkdirs(FileSystem &file_system, const Path &path) throw(IoError) {
-  if (path.canonicalized() == ".") {
+void mkdirs(FileSystem &file_system, const std::string &path) throw(IoError) {
+  if (path == "." || path == "/") {
     // Nothing left to do
     return;
   }
 
-  const auto stat = file_system.stat(path);
+  const auto stat = file_system.stat(file_system.paths().get(path));
   if (stat.result == ENOENT || stat.result == ENOTDIR) {
-    const auto dirname = shk::dirname(path.canonicalized());
-    mkdirs(file_system, file_system.paths().get(dirname));
+    const auto dirname = shk::dirname(path);
+    mkdirs(file_system, dirname);
     file_system.mkdir(path);
   } else if (S_ISDIR(stat.metadata.mode)) {
     // No need to do anything
   } else {
     // It exists and is not a directory
-    throw IoError("Not a directory: " + path.canonicalized(), ENOTDIR);
+    throw IoError("Not a directory: " + path, ENOTDIR);
   }
 }
 
-void mkdirsFor(FileSystem &file_system, const Path &path) throw(IoError) {
-  const auto dirname = shk::dirname(path.canonicalized());
-  mkdirs(file_system, file_system.paths().get(dirname));
+void mkdirsFor(FileSystem &file_system, const std::string &path) throw(IoError) {
+  const auto dirname = shk::dirname(path);
+  mkdirs(file_system, dirname);
 }
 
 }  // namespace shk

@@ -23,7 +23,7 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("mkdir") {
     const auto path = paths.get("abc");
-    fs.mkdir(path);
+    fs.mkdir(path.canonicalized());
 
     const auto stat = fs.stat(path);
     CHECK(stat.result == 0);
@@ -32,8 +32,8 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("mkdir over existing directory") {
     const auto path = paths.get("abc");
-    fs.mkdir(path);
-    CHECK_THROWS_AS(fs.mkdir(path), IoError);
+    fs.mkdir(path.canonicalized());
+    CHECK_THROWS_AS(fs.mkdir(path.canonicalized()), IoError);
   }
 
   SECTION("rmdir missing file") {
@@ -43,7 +43,7 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("rmdir") {
     const auto path = paths.get("abc");
-    fs.mkdir(path);
+    fs.mkdir(path.canonicalized());
     fs.rmdir(path.canonicalized());
 
     CHECK(fs.stat(path).result == ENOENT);
@@ -52,7 +52,7 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("rmdir nonempty directory") {
     const auto path = paths.get("abc");
     const auto file_path = paths.get("abc/def");
-    fs.mkdir(path);
+    fs.mkdir(path.canonicalized());
     fs.open(file_path, "w");
     CHECK_THROWS_AS(fs.rmdir(path.canonicalized()), IoError);
     CHECK(fs.stat(path).result == 0);
@@ -60,7 +60,7 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("unlink directory") {
     const auto path = paths.get("abc");
-    fs.mkdir(path);
+    fs.mkdir(path.canonicalized());
     CHECK_THROWS_AS(fs.unlink(path.canonicalized()), IoError);
   }
 
@@ -126,34 +126,34 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("mkdirs") {
     SECTION("single directory") {
       const auto dir_path = paths.get("abc");
-      mkdirs(fs, dir_path);
+      mkdirs(fs, dir_path.canonicalized());
       CHECK(S_ISDIR(fs.stat(dir_path).metadata.mode));
     }
 
     SECTION("already existing directory") {
       const auto dir_path = paths.get("abc");
-      mkdirs(fs, dir_path);
-      mkdirs(fs, dir_path);  // Should be ok
+      mkdirs(fs, dir_path.canonicalized());
+      mkdirs(fs, dir_path.canonicalized());  // Should be ok
       CHECK(S_ISDIR(fs.stat(dir_path).metadata.mode));
     }
 
     SECTION("over file") {
       const auto dir_path = paths.get("abc");
       fs.open(dir_path, "w");
-      CHECK_THROWS_AS(mkdirs(fs, dir_path), IoError);
+      CHECK_THROWS_AS(mkdirs(fs, dir_path.canonicalized()), IoError);
     }
 
     SECTION("several directories") {
       const auto dir_path = paths.get("abc/def/ghi");
       const auto file_path = paths.get("abc/def/ghi/jkl");
-      mkdirs(fs, dir_path);
+      mkdirs(fs, dir_path.canonicalized());
       writeFile(fs, file_path, "hello");
     }
   }
 
   SECTION("mkdirsFor") {
     const auto file_path = paths.get("abc/def/ghi/jkl");
-    mkdirsFor(fs, file_path);
+    mkdirsFor(fs, file_path.canonicalized());
     fs.open(file_path, "w");
     CHECK(fs.stat(file_path).result == 0);
   }
