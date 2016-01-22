@@ -169,12 +169,12 @@ namespace shk {
  * have a pointer to) objects are really unique for any given file. There are
  * several aspects to this:
  *
- * Links (symbolic and hard): If there is a symbolic link from a to b, the paths
- * a/c.txt and b/c.txt point to the same file. Doing this right requires
- * consulting the file system. What Paths does here is to stat all paths and
- * record the st_ino and st_dev fields of the stat result. If st_ino and st_dev
- * are the same, then the paths are known to point to the same file, even if
- * links are playing tricks with us.
+ * Links (symbolic and hard): If there is a link from a to b, the paths a/c.txt
+ * and b/c.txt point to the same file. Detecting this requires consulting the
+ * file system. What Paths does here is to stat all paths and record the st_ino
+ * and st_dev fields of the stat result. If st_ino and st_dev are the same, then
+ * the paths are known to point to the same file, even if links are playing
+ * tricks with us.
  *
  * Using st_ino and st_dev alone is not sufficient, though, because the manifest
  * often (always in the case of a clean build) contains paths to files that do

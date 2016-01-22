@@ -38,10 +38,17 @@ class InMemoryFileSystem : public FileSystem {
   };
 
   struct File {
+    File(ino_t ino) : ino(ino) {}
+
+    ino_t ino;
     std::string contents;
   };
 
   struct Directory {
+    Directory(ino_t ino) : ino(ino) {}
+
+    ino_t ino;
+
     /**
      * Key is the basename of the file, value is the contents of the file. It's
      * a shared pointer to make it possible to keep a stream to it open even
@@ -88,6 +95,7 @@ class InMemoryFileSystem : public FileSystem {
   LookupResult lookup(const std::string &path);
 
   std::unordered_map<std::string, Directory> _directories;
+  ino_t _ino = 0;
 };
 
 /**

@@ -2,6 +2,8 @@
 
 #include <chrono>
 
+#include <sys/types.h>
+
 #include "io_error.h"
 
 namespace shk {
@@ -9,6 +11,8 @@ namespace shk {
 struct FileMetadata {
   int mode = 0;
   size_t size = 0;
+  ino_t ino = 0;
+  dev_t dev = 0;
 };
 
 struct Timestamps {

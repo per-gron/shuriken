@@ -78,6 +78,20 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK_THROWS_AS(fs.open("abc", "r"), IoError);
   }
 
+  SECTION("inos are unique") {
+    fs.open("1", "w");
+    fs.open("2", "w");
+    fs.mkdir("3");
+    fs.mkdir("4");
+
+    std::unordered_set<ino_t> inos;
+    inos.insert(fs.stat("1").metadata.ino);
+    inos.insert(fs.stat("2").metadata.ino);
+    inos.insert(fs.stat("3").metadata.ino);
+    inos.insert(fs.stat("4").metadata.ino);
+    CHECK(inos.size() == 4);
+  }
+
   SECTION("writeFile") {
     writeFile(fs, abc, "hello");
     CHECK(fs.stat(abc).result == 0);  // Verify file exists

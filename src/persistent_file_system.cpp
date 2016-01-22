@@ -175,6 +175,8 @@ class PersistentFileSystem : public FileSystem {
       result.result = ret;
     } else {
       result.result = 0;
+      result.metadata.ino = input.st_ino;
+      result.metadata.dev = input.st_dev;
       result.metadata.mode = input.st_mode;
       result.metadata.size = input.st_size;
       using time_point = std::chrono::system_clock::time_point;

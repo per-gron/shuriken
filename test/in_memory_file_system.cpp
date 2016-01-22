@@ -15,7 +15,7 @@ std::string dirname(const std::string &path) {
 }  // anonymous namespace
 
 InMemoryFileSystem::InMemoryFileSystem() {
-  _directories["."];
+  _directories.emplace(".", Directory(_ino++));
 }
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
@@ -51,7 +51,7 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
       throw IoError("No such file or directory", ENOENT);
     }
     {
-      const auto &file = std::make_shared<File>();
+      const auto &file = std::make_shared<File>(_ino++);
       l.directory->files[l.basename] = file;
       return std::unique_ptr<Stream>(
           new InMemoryFileStream(file, read, write));
@@ -88,9 +88,13 @@ Stat InMemoryFileSystem::lstat(const std::string &path) {
   case EntryType::DIRECTORY:
     stat.metadata.mode = 0755;  // Pretend this is the umask
     if (l.entry_type == EntryType::FILE) {
-      stat.metadata.size = l.directory->files[l.basename]->contents.size();
+      const auto &file = l.directory->files[l.basename];
+      stat.metadata.size = file->contents.size();
+      stat.metadata.ino = file->ino;
       stat.metadata.mode |= S_IFREG;
     } else {
+      const auto &dir = _directories.find(path)->second;
+      stat.metadata.ino = dir.ino;
       stat.metadata.mode |= S_IFDIR;
     }
     // TODO(peck): Set mtime and ctime
@@ -112,7 +116,7 @@ void InMemoryFileSystem::mkdir(const std::string &path) throw(IoError) {
     break;
   case EntryType::FILE_DOES_NOT_EXIST:
     l.directory->directories.insert(l.basename);
-    _directories[path];
+    _directories.emplace(path, _ino++);
     break;
   }
 }
@@ -130,7 +134,7 @@ void InMemoryFileSystem::rmdir(const std::string &path) throw(IoError) {
     throw IoError("The named directory is a file", EPERM);
     break;
   case EntryType::DIRECTORY:
-    const auto &dir = _directories[path];
+    const auto &dir = _directories.find(path)->second;
     if (!dir.empty()) {
       throw IoError(
           "The named directory contains files other than `.' and `..' in it",
