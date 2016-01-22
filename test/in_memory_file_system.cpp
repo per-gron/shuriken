@@ -6,22 +6,20 @@
 namespace shk {
 namespace detail {
 
-std::pair<std::string, std::string> basenameSplit(const std::string &path) {
+std::pair<StringPiece, StringPiece> basenameSplit(const std::string &path) {
   const auto slash_pos = path.find_last_of('/');
 
   if (slash_pos == std::string::npos) {
-    return std::make_pair("", path);
+    return std::make_pair(StringPiece("", 0), StringPiece(path));
   } else {
     return std::make_pair(
-        std::string(path.begin(), path.begin() + slash_pos),
-        std::string(path.begin() + slash_pos + 1, path.end()));
+        StringPiece(path.data(), slash_pos),
+        StringPiece(path.data() + slash_pos + 1, path.size() - slash_pos - 1));
   }
 }
 
-std::string dirname(const std::string &path) {
-  std::string dirname, basename;
-  std::tie(dirname, basename) = detail::basenameSplit(path);
-  return dirname;
+StringPiece dirname(const std::string &path) {
+  return basenameSplit(path).first;
 }
 
 }  // namespace detail
@@ -296,9 +294,11 @@ void InMemoryFileSystem::InMemoryFileStream::checkNotEof()
 InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(const Path &path) {
   LookupResult result;
 
-  std::string dirname;
-  std::string basename;
-  std::tie(dirname, basename) = detail::basenameSplit(path.canonicalized());
+  StringPiece dirname_piece;
+  StringPiece basename_piece;
+  std::tie(dirname_piece, basename_piece) = detail::basenameSplit(path.canonicalized());
+  const auto dirname = dirname_piece.asString();
+  const auto basename = basename_piece.asString();
   const Path dir_path = _paths->get(dirname);
 
   const auto it = _directories.find(dir_path);
@@ -339,7 +339,7 @@ void mkdirs(FileSystem &file_system, const Path &path) throw(IoError) {
 
   const auto stat = file_system.stat(path);
   if (stat.result == ENOENT || stat.result == ENOTDIR) {
-    const auto dirname = detail::dirname(path.canonicalized());
+    const auto dirname = detail::dirname(path.canonicalized()).asString();
     mkdirs(file_system, file_system.paths().get(dirname));
     file_system.mkdir(path);
   } else if (S_ISDIR(stat.metadata.mode)) {
@@ -351,7 +351,7 @@ void mkdirs(FileSystem &file_system, const Path &path) throw(IoError) {
 }
 
 void mkdirsFor(FileSystem &file_system, const Path &path) throw(IoError) {
-  const auto dirname = detail::dirname(path.canonicalized());
+  const auto dirname = detail::dirname(path.canonicalized()).asString();
   mkdirs(file_system, file_system.paths().get(dirname));
 }
 

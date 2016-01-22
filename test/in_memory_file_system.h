@@ -2,6 +2,8 @@
 
 #include <unordered_map>
 
+#include "string_piece.h"
+
 namespace shk {
 namespace detail {
 
@@ -11,9 +13,9 @@ namespace detail {
  *
  * Does not support absolute paths.
  */
-std::pair<std::string, std::string> basenameSplit(const std::string &path);
+std::pair<StringPiece, StringPiece> basenameSplit(const std::string &path);
 
-std::string dirname(const std::string &path);
+StringPiece dirname(const std::string &path);
 
 }  // namespace detail
 

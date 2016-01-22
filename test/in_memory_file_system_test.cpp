@@ -21,8 +21,8 @@ TEST_CASE("InMemoryFileSystem") {
               path_components.begin(),
               path_components.end() - 1));
 
-      std::string dirname;
-      std::string basename;
+      StringPiece dirname;
+      StringPiece basename;
       std::tie(dirname, basename) = detail::basenameSplit(path_string);
 
       RC_ASSERT(basename == *path_components.rbegin());
