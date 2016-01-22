@@ -320,7 +320,7 @@ void writeFile(
 }
 
 void mkdirs(FileSystem &file_system, const Path &path) throw(IoError) {
-  if (path.canonicalized().empty()) {
+  if (path.canonicalized() == ".") {
     // Nothing left to do
     return;
   }

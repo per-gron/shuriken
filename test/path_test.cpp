@@ -89,9 +89,9 @@ TEST_CASE("Path") {
 
   SECTION("canonicalizePath") {
     SECTION("Path samples") {
-      CHECK("" == canonicalizePath(""));
-      CHECK("" == canonicalizePath("."));
-      CHECK("" == canonicalizePath("./."));
+      CHECK("." == canonicalizePath(""));
+      CHECK("." == canonicalizePath("."));
+      CHECK("." == canonicalizePath("./."));
       CHECK("foo.h" == canonicalizePath("foo.h"));
       CHECK("foo.h" == canonicalizePath("./foo.h"));
       CHECK("foo/bar.h" == canonicalizePath("./foo/./bar.h"));

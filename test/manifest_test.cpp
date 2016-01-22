@@ -79,6 +79,21 @@ TEST_CASE("Manifest") {
     CHECK(!step.restat);
   }
 
+  SECTION("DotPath") {
+    const auto step = parseStep(fs,
+        "rule cat\n"
+        "  command = cat $in > $out\n"
+        "\n"
+        "rule date\n"
+        "  command = date > $out\n"
+        "\n"
+        "build result: cat . in-2.O\n");
+
+    CHECK(step.command == "cat . in-2.O > result");
+    CHECK(!step.generator);
+    CHECK(!step.restat);
+  }
+
   SECTION("RuleAttributes") {
     // Check that all of the allowed rule attributes are parsed ok.
     const auto step = parseStep(fs,

@@ -45,6 +45,9 @@ void canonicalizePath(std::string *path) throw(PathError) {
     canonicalizePath(str, &len);
     path->resize(len);
   }
+  if (len == 0) {
+    *path = ".";
+  }
 }
 
 void canonicalizePath(

@@ -254,10 +254,10 @@ private:
 
   Path toPath(const std::string &str, bool allow_empty = false) throw(ParseError) {
     try {
-      const auto path = _file_system.paths().get(str);
-      if (!allow_empty && path.canonicalized().empty()) {
+      if (!allow_empty && str.empty()) {
         _lexer.throwError("empty path");
       }
+      const auto path = _file_system.paths().get(str);
       return path;
     } catch (PathError &error) {
       _lexer.throwError(error.what());
