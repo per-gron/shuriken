@@ -111,11 +111,17 @@ Path:
     some other path that we have seen. That means hardlink and could break the build.
 
 Large things remaining to do:
+- Basic code structure
+- Manifest parsing
+- Command running
+- Command tracing
 * Improved path handling
 * Fingerprint code
 * Invocation log
 * The actual build algorithm
 * CLI
+* Caching
+* Distributed caching
 
 To fill in the first test:
 * Generate actual DAG in gen::buildInput

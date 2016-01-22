@@ -43,12 +43,19 @@ struct CanonicalizedPath {
     : path(path) {}
   CanonicalizedPath(const CanonicalizedPath &) = delete;
   CanonicalizedPath &operator=(const CanonicalizedPath &) = delete;
+  CanonicalizedPath(CanonicalizedPath &&) = default;
+  CanonicalizedPath &operator=(CanonicalizedPath &&) = default;
 
+  ino_t ino = 0;
+  dev_t dev = 0;
   std::string path;
 };
 
 inline bool operator==(const CanonicalizedPath &a, const CanonicalizedPath &b) {
-  return a.path == b.path;
+  return (
+    a.ino == b.ino &&
+    a.dev == b.dev &&
+    a.path == b.path);
 }
 
 inline bool operator!=(const CanonicalizedPath &a, const CanonicalizedPath &b) {
