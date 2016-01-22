@@ -71,7 +71,7 @@ class FileSystem {
    * Utility function for reading files. It is on this interface because on
    * Windows reading the file as a whole is faster than reading it using Stream.
    */
-  virtual std::string readFile(const Path &path) throw(IoError) = 0;
+  virtual std::string readFile(const std::string &path) throw(IoError) = 0;
 
   /**
    * Create a temporary file that follows a template. See the man page for

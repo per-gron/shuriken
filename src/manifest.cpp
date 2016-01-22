@@ -60,7 +60,7 @@ struct ManifestParser {
     std::string contents;
 
     try {
-      contents = _file_system.readFile(_file_system.paths().get(filename));
+      contents = _file_system.readFile(filename);
     } catch (IoError &error) {
       auto err = "loading '" + filename + "': " + error.what();
       if (parent) {

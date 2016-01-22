@@ -109,14 +109,14 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::unlink(path.c_str()));
   }
 
-  std::string readFile(const Path &path) throw(IoError) override {
+  std::string readFile(const std::string &path) throw(IoError) override {
     std::string contents;
 #ifdef _WIN32
     // This makes a ninja run on a set of 1500 manifest files about 4% faster
     // than using the generic fopen code below.
     err->clear();
     HANDLE f = ::CreateFile(
-        path.canonicalized().c_str(),
+        path.c_str(),
         GENERIC_READ,
         FILE_SHARE_READ,
         NULL,
@@ -140,7 +140,7 @@ class PersistentFileSystem : public FileSystem {
     }
     ::CloseHandle(f);
 #else
-    FILE* f = fopen(path.canonicalized().c_str(), "rb");
+    FILE* f = fopen(path.c_str(), "rb");
     if (!f) {
       throw IoError(strerror(errno), errno);
     }

@@ -164,10 +164,10 @@ void InMemoryFileSystem::unlink(const std::string &path) throw(IoError) {
   }
 }
 
-std::string InMemoryFileSystem::readFile(const Path &path) throw(IoError) {
+std::string InMemoryFileSystem::readFile(const std::string &path) throw(IoError) {
   std::string result;
 
-  const auto stream = open(path, "r");
+  const auto stream = open(_paths->get(path), "r");
   uint8_t buf[1024];
   while (!stream->eof()) {
     size_t read_bytes = stream->read(buf, 1, sizeof(buf));

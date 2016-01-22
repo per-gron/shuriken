@@ -84,8 +84,9 @@ class TracingCommandRunner : public CommandRunner {
       return;
     }
     try {
-      auto sandbox =
-          parseSandbox(_file_system.paths(), _file_system.readFile(path));
+      auto sandbox = parseSandbox(
+          _file_system.paths(),
+          _file_system.readFile(path.canonicalized()));
 
       std::copy(
           sandbox.read.begin(),
