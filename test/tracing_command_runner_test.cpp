@@ -62,7 +62,7 @@ class FailingMkstempFileSystem : public FileSystem {
   std::string readFile(const Path &path) throw(IoError) override {
     return _fs->readFile(path);
   }
-  Path mkstemp(std::string &&filename_template) throw(IoError) override {
+  std::string mkstemp(std::string &&filename_template) throw(IoError) override {
     throw IoError("Test-induced mkstemp error", 0);
   }
 
@@ -104,7 +104,7 @@ class FailingUnlinkFileSystem : public FileSystem {
   std::string readFile(const Path &path) throw(IoError) override {
     return _fs->readFile(path);
   }
-  Path mkstemp(std::string &&filename_template) throw(IoError) override {
+  std::string mkstemp(std::string &&filename_template) throw(IoError) override {
     return _fs->mkstemp(std::move(filename_template));
   }
 

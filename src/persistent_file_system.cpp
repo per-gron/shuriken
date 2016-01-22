@@ -159,14 +159,15 @@ class PersistentFileSystem : public FileSystem {
     return contents;
   }
 
-  Path mkstemp(std::string &&filename_template) throw(IoError) override {
+  std::string mkstemp(
+      std::string &&filename_template) throw(IoError) override {
     if (::mkstemp(&filename_template[0]) == -1) {
       throw IoError(
           std::string("Failed to create path for temporary file: ") +
           strerror(errno),
           errno);
     }
-    return _paths.get(std::move(filename_template));
+    return filename_template;
   }
 
  private:

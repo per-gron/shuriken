@@ -11,7 +11,7 @@ namespace {
 class TemporaryFile {
  public:
   TemporaryFile(FileSystem &file_system) throw(IoError)
-      : path(file_system.mkstemp("shk.tmp.sb.XXXXXXXX")),
+      : path(file_system.paths().get(file_system.mkstemp("shk.tmp.sb.XXXXXXXX"))),
         _file_system(file_system) {}
 
   ~TemporaryFile() {

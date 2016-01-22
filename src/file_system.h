@@ -82,7 +82,8 @@ class FileSystem {
    * first created. mkstemp chooses a path and creates a file atomically,
    * avoiding this problem.
    */
-  virtual Path mkstemp(std::string &&filename_template) throw(IoError) = 0;
+  virtual std::string mkstemp(
+      std::string &&filename_template) throw(IoError) = 0;
 };
 
 }  // namespace shk

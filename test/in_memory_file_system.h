@@ -17,14 +17,15 @@ class InMemoryFileSystem : public FileSystem {
   InMemoryFileSystem(Paths &paths);
 
   Paths &paths() override;
-  std::unique_ptr<Stream> open(const Path &path, const char *mode) throw(IoError) override;
+  std::unique_ptr<Stream> open(
+      const Path &path, const char *mode) throw(IoError) override;
   Stat stat(const Path &path) override;
   Stat lstat(const Path &path) override;
   void mkdir(const Path &path) throw(IoError) override;
   void rmdir(const Path &path) throw(IoError) override;
   void unlink(const Path &path) throw(IoError) override;
   std::string readFile(const Path &path) throw(IoError) override;
-  Path mkstemp(std::string &&filename_template) throw(IoError) override;
+  std::string mkstemp(std::string &&filename_template) throw(IoError) override;
 
   bool operator==(const InMemoryFileSystem &other) const;
 

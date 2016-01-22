@@ -177,22 +177,24 @@ std::string InMemoryFileSystem::readFile(const Path &path) throw(IoError) {
   return result;
 }
 
-Path InMemoryFileSystem::mkstemp(std::string &&filename_template) throw(IoError) {
-  std::string filename = std::move(filename_template);
-  Path path;
-  do {
+std::string InMemoryFileSystem::mkstemp(
+    std::string &&filename_template) throw(IoError) {
+  for (;;) {
+    std::string filename = filename_template;
     if (mktemp(&filename[0]) == NULL) {
       throw IoError(
           std::string("Failed to create path for temporary file: ") +
           strerror(errno),
           errno);
     }
-    path = _paths->get(filename);
     // This is potentially an infinite loop… but since this is for testing I
     // don't care to do anything about that.
-  } while (stat(path).result != ENOENT);
-  writeFile(*this, path, "");
-  return path;
+    if (stat(paths().get(filename)).result == ENOENT) {
+      filename_template = std::move(filename);
+      writeFile(*this, paths().get(filename_template), "");
+      return filename_template;
+    }
+  }
 }
 
 bool InMemoryFileSystem::operator==(const InMemoryFileSystem &other) const {
