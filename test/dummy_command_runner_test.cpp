@@ -8,8 +8,8 @@
 namespace shk {
 
 TEST_CASE("DummyCommandRunner") {
-  rc::prop("splitCommand of constructCommand should be an identity transformation", []() {
-    InMemoryFileSystem fs;
+  InMemoryFileSystem fs;
+  rc::prop("splitCommand of constructCommand should be an identity transformation", [&fs]() {
     const auto paths = std::make_shared<Paths>(fs);
     const auto in_inputs = *gen::pathVector(paths);
     const auto in_outputs = *gen::pathVector(paths);

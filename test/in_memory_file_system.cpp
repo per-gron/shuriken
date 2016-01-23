@@ -298,7 +298,9 @@ InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
 
   auto &directory = it->second;
 
-  if (directory.files.count(basename)) {
+  if (basename == ".") {
+    result.entry_type = EntryType::DIRECTORY;
+  } else if (directory.files.count(basename)) {
     result.entry_type = EntryType::FILE;
   } else if (directory.directories.count(basename)) {
     result.entry_type = EntryType::DIRECTORY;

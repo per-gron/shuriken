@@ -68,15 +68,6 @@ void canonicalizePath(
   const char *src = start;
   const char *end = start + *len;
 
-#ifdef _WIN32
-  // Convert \ to /, setting a bit in |bits| for each \ encountered.
-  for (char* c = path; c < end; ++c) {
-    if (*c == '\\') {
-      *c = '/';
-    }
-  }
-#endif
-
   if (*src == '/') {
 #ifdef _WIN32
     // network path starts with //
@@ -140,10 +131,92 @@ void canonicalizePath(
 
 namespace {
 
+#ifdef _WIN32
+template<typename Iter>
+void replaceBackslashes(const Iter begin, const Iter end) {
+  for (auto c = begin; c < end; ++c) {
+    if (*c == '\\') {
+      *c = '/';
+    }
+  }
+}
+#endif
+
 CanonicalizedPath makeCanonicalizedPath(
     FileSystem &file_system, std::string &&path) {
+  if (path.empty()) {
+    throw PathError("Empty path", path);
+  }
+
+#ifdef _WIN32
+  replaceBackslashes(path.begin(), path.end());
+#endif
+
+  // We have a path (say /a/b/c) and want to find a prefix of this path that
+  // exists on the file system (for example /a).
+  //
+  // pos points to the last character in the path that is about to be tested for
+  // existence.
+  auto pos = path.size() - 1;  // The string is verified to not be empty above
+  Stat stat;
+  bool at_root = false;
+  bool at_relative_root = false;
+  for (;;) {
+    // Discard any trailing slashes. They have no semantic meaning.
+    while (path[pos] == '/') {
+      if (pos == 0) {
+        // As a special case, don't discard a trailing slash if the path is only
+        // "/", since that would transform an absolute path into a relative one.
+        at_root = true;
+        break;
+      }
+      pos--;
+    }
+
+    StringPiece path_to_try(
+        at_relative_root ? "." : path.c_str(),
+        pos + 1);
+    // Use stat, not lstat: the idea is to follow symlinks to the actual file to
+    // directory where this will live. Comparing links for identity does no
+    // good.
+    stat = file_system.stat(path_to_try.asString());
+    if (stat.result == 0) {
+      // Found an existing file
+      break;
+    } else if (at_root || at_relative_root) {
+      throw PathError(
+          "None of the path components can be accessed and exist", path);
+    } else {
+      while (path[pos] != '/') {
+        if (pos == 0) {
+          // The loop hit the beginning of the string. That means this is a
+          // relative path and this none of the path components other than the
+          // current working directory exist.
+          at_relative_root = true;
+          break;
+        }
+        pos--;
+      }
+    }
+  }
+
+  // At this point, the longest prefix of path that actually exists has been
+  // found. Now extract the nonexisting part of the path and canonicalize it.
+  do {
+    pos++;
+  } while (pos != path.size() && path[pos] == '/');
+  auto len = path.size() - pos;
+  std::string p(&path[pos], len);
+  if (len > 0) {
+    canonicalizePath(&p[0], &len);
+    p.resize(len);
+  }
+
   canonicalizePath(&path);
-  return CanonicalizedPath(path);
+  return CanonicalizedPath(
+      0,  // TODO(peck): stat.metadata.ino,
+      0,  // TODO(peck): stat.metadata.dev,
+      std::move(path));
 }
 
 }  // anonymous namespace

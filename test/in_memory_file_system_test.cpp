@@ -21,6 +21,11 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(stat.result == ENOENT);
   }
 
+  SECTION("stat cwd") {
+    const auto stat = fs.stat(".");
+    CHECK(stat.result == 0);
+  }
+
   SECTION("mkdir") {
     fs.mkdir(abc);
 

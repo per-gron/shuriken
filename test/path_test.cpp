@@ -74,8 +74,8 @@ TEST_CASE("Path") {
   }
 
   SECTION("operator==, operator!=") {
-    rc::prop("equal string paths are equal paths", []() {
-      InMemoryFileSystem fs;
+    InMemoryFileSystem fs;
+    rc::prop("equal string paths are equal paths", [&fs]() {
       Paths paths(fs);
 
       const auto path_1_string = *gen::pathString();
@@ -88,6 +88,20 @@ TEST_CASE("Path") {
       RC_ASSERT((path_1 != path_2) == (path_1_string != path_2_string));
     });
   }
+
+  // TODO(peck): To test:
+  // * Empty paths are rejected
+  // * ///
+  // * /
+  // * When root is not readable
+  // * abc
+  // * .
+  // * a/b
+  // * When . is not readable
+  // * a/b when only a is readable
+  // * non-canonicalized existing path part
+  // * non-canonicalized nonexisting path part
+  // * stuff in the seam between existing and nonexisting, for example /./ and ..
 
   SECTION("canonicalizePath") {
     SECTION("Path samples") {

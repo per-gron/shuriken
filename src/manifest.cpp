@@ -112,8 +112,8 @@ struct ManifestParser {
       step.description = get_binding("description");
       step.restat = to_bool(get_binding("restat"));
       step.generator = to_bool(get_binding("generator"));
-      step.depfile = toPath(get_binding("depfile"), /*allow_empty:*/true);
-      step.rspfile = toPath(get_binding("rspfile"), /*allow_empty:*/true);
+      step.depfile = toPathAllowEmpty(get_binding("depfile"));
+      step.rspfile = toPathAllowEmpty(get_binding("rspfile"));
       step.rspfile_content = get_binding("rspfile_content");
     }
   }
@@ -254,9 +254,20 @@ private:
     _lexer.readVarValue(val);
   }
 
-  Path toPath(const std::string &str, bool allow_empty = false) throw(ParseError) {
+  Path toPathAllowEmpty(const std::string &str) throw(ParseError) {
     try {
-      if (!allow_empty && str.empty()) {
+      if (str.empty()) {
+        return Path();
+      }
+      return _paths.get(str);
+    } catch (PathError &error) {
+      _lexer.throwError(error.what());
+    }
+  }
+
+  Path toPath(const std::string &str) throw(ParseError) {
+    try {
+      if (str.empty()) {
         _lexer.throwError("empty path");
       }
       const auto path = _paths.get(str);

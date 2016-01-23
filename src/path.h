@@ -39,15 +39,18 @@ void canonicalizePath(std::string *path) throw(PathError);
 void canonicalizePath(char *path, size_t *len) throw(PathError);
 
 struct CanonicalizedPath {
-  explicit CanonicalizedPath(const std::string &path)
-    : path(path) {}
+  explicit CanonicalizedPath(
+    ino_t ino,
+    dev_t dev,
+    std::string &&path)
+    : ino(ino), dev(dev), path(path) {}
   CanonicalizedPath(const CanonicalizedPath &) = delete;
   CanonicalizedPath &operator=(const CanonicalizedPath &) = delete;
   CanonicalizedPath(CanonicalizedPath &&) = default;
   CanonicalizedPath &operator=(CanonicalizedPath &&) = default;
 
-  ino_t ino = 0;
-  dev_t dev = 0;
+  ino_t ino;
+  dev_t dev;
   std::string path;
 };
 
