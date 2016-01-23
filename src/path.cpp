@@ -206,17 +206,17 @@ CanonicalizedPath makeCanonicalizedPath(
     pos++;
   } while (pos != path.size() && path[pos] == '/');
   auto len = path.size() - pos;
-  std::string p(&path[pos], len);
+  std::string nonexisting_part(&path[pos], len);
   if (len > 0) {
-    canonicalizePath(&p[0], &len);
-    p.resize(len);
+    canonicalizePath(&nonexisting_part[0], &len);
+    nonexisting_part.resize(len);
   }
 
   canonicalizePath(&path);
   return CanonicalizedPath(
-      0,  // TODO(peck): stat.metadata.ino,
-      0,  // TODO(peck): stat.metadata.dev,
-      std::move(path));
+      stat.metadata.ino,
+      stat.metadata.dev,
+      std::move(nonexisting_part));
 }
 
 }  // anonymous namespace
