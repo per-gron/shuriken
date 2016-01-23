@@ -122,6 +122,7 @@ Large things remaining to do:
 * CLI
 * Caching
 * Distributed caching
+* Path case folding
 
 To fill in the first test:
 * Generate actual DAG in gen::buildInput

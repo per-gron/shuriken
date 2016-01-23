@@ -91,7 +91,7 @@ class Path {
 
   /**
    * Returns true if the paths point to the same paths. operator== is not
-   * used for this because this does not take slash_bits into account.
+   * used for this because this does not take the original path into account.
    */
   bool isSame(const Path &other) const {
     return _canonicalized_path == other._canonicalized_path;
@@ -101,6 +101,12 @@ class Path {
     return *_original_path;
   }
 
+  /**
+   * Compare two path objects and see if they are equal. To be counted as equal
+   * the objects have to have the same original path, it is not enough to have
+   * the same canonicalized path. This is important to be able to use Path
+   * objects in hash tables and sets.
+   */
   bool operator==(const Path &other) const {
     return (
         _canonicalized_path == other._canonicalized_path &&
@@ -170,10 +176,9 @@ namespace shk {
  * Paths guarantees that these objects are unique, so to compare a path it is
  * sufficient to compare the pointer in the Path object.
  *
- * The other half of the problem is that it is necessary to ensure that there
- * can actually only exist one CanonicalizedPath (the type that Path objects
- * have a pointer to) objects are really unique for any given file. There are
- * several aspects to this:
+ * The other half of the problem is that it is necessary to ensure that
+ * CanonicalizedPath (the type that Path objects have a pointer to) objects are
+ * unique for any given file. There are several aspects to this:
  *
  * Links (symbolic and hard): If there is a link from a to b, the paths a/c.txt
  * and b/c.txt point to the same file. Detecting this requires consulting the

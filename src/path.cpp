@@ -15,7 +15,6 @@
 #include "path.h"
 
 namespace shk {
-
 namespace detail {
 
 std::pair<StringPiece, StringPiece> basenameSplitPiece(const std::string &path) {
