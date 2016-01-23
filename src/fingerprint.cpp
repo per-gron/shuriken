@@ -1,33 +1,93 @@
 #include "fingerprint.h"
 
-namespace shk {
+#include <sys/stat.h>
 
-#if 0
-def matches(Fingerprint fp, Path path):
-  Stat current = lstat(path)
-  if current == fp.stat:
-    if fp.stat.timestamps.mtime < fp.timestamp:
-      return True
-    else:
-      # The file is racily clean. This happens when a the fingerprint
-      # was taken during the same second as the file was last modified.
-      # It is not possible to tell if the file matches the fingerprint
-      # by looking at stat information only, need to fall back on a
-      # file content comparison.
-      #
-      # At this point, the fingerprint should be updated to avoid the
-      # racily clean state.
-      return hash(path) == fp.hash
-  else:
-    # The file has definitely been touched, but might still have the
-    # same contents
-    #
-    # Might be better to simply return False here and allow redundant
-    # rebuilds.
-    #
-    # At this point, the fingerprint should be updated to avoid the
-    # expensive file content check in the future.
-    return current.metadata == fp.stat.metadata and hash(path) == fp.hash
-#endif
+namespace shk {
+namespace {
+
+Fingerprint::Stat fingerprintStat(
+    FileSystem &file_system, const std::string &path) throw(IoError) {
+  Fingerprint::Stat result;
+
+  const auto stat = file_system.lstat(path);
+  result.size = stat.metadata.size;
+  result.ino = stat.metadata.ino;
+  static constexpr auto mode_mask =
+      S_IFMT | S_IRWXU | S_IRWXG | S_IXOTH | S_ISUID | S_ISGID | S_ISVTX;
+  result.mode = stat.metadata.mode & mode_mask;
+
+  if (!S_ISLNK(result.mode) && !S_ISREG(result.mode) && !S_ISDIR(result.mode)) {
+    throw IoError(
+        "Can only fingerprint regular files, directories and links", 0);
+  }
+
+  return result;
+}
+
+}  // anonymous namespace
+
+bool Fingerprint::Stat::operator==(const Stat &other) const {
+  return (
+      size == other.size &&
+      ino == other.ino &&
+      mode == other.mode &&
+      mtime == other.mtime &&
+      ctime == other.ctime);
+}
+
+bool Fingerprint::Stat::operator!=(const Stat &other) const {
+  return !(*this == other);
+}
+
+Fingerprint takeFingerprint(
+    FileSystem &file_system,
+    const Clock &clock,
+    const std::string &path) throw(IoError) {
+  Fingerprint fp;
+
+  fp.stat = fingerprintStat(file_system, path);
+  fp.timestamp = clock();
+  fp.hash = hashFile(file_system, path);
+
+  return fp;
+}
+
+MatchesResult fingerprintMatches(
+    FileSystem &file_system,
+    const std::string &path,
+    const Fingerprint &fp) throw(IoError) {
+  MatchesResult result;
+  const auto current = fingerprintStat(file_system, path);
+  if (current == fp.stat &&
+      fp.stat.mtime < fp.timestamp && fp.stat.ctime < fp.timestamp) {
+    // The file's current stat information and the stat information of the
+    // fingerprint exactly match. Furthermore, the fingerprint is strictly
+    // newer than the files. This means that unless mtime/ctime has been
+    // tampered with, we know for sure that the file has not been modified
+    // since the fingerprint was taken.
+    result.clean = true;
+  } else {
+    // This branch is hit either when we know for sure that the file has been
+    // touched since the fingerprint was taken (current != fp.stat) or when
+    // the file is "racily clean" (current == fp.stat but the fingerprint was
+    // taken less than one second after the file was last modified).
+    //
+    // If the file is racily clean, it is not possible to tell if the file
+    // matches the fingerprint by looking at stat information only, need to fall
+    // back on a file content comparison.
+    if (current.size == fp.stat.size && current.mode == fp.stat.mode) {
+      // If the file size or mode would have been different then we would have
+      // already known for sure that the file is different, but now they are the
+      // same. In order to know if it's dirty or not, we need to hash the file
+      // again.
+      result.clean = hashFile(file_system, path) == fp.hash;
+
+      // At this point, the fingerprint in the invocation log should be
+      // re-calculated to avoid this expensive file content check in the future.
+      result.should_update = true;
+    }
+  }
+  return result;
+}
 
 }  // namespace shk

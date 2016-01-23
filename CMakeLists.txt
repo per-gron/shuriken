@@ -30,6 +30,7 @@ add_library(shklib
   src/file_system.h
   src/fingerprint.cpp
   src/fingerprint.h
+  src/hash.cpp
   src/hash.h
   src/invocation_log.h
   src/invocations.h
