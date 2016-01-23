@@ -3,7 +3,7 @@
 namespace shk {
 
 void showValue(const Path &path, std::ostream &os) {
-  os << "'" << path.decanonicalized() << "'";
+  os << "'" << path.original() << "'";
 }
 
 namespace gen {

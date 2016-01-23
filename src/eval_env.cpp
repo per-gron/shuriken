@@ -121,7 +121,7 @@ std::string StepEnv::makePathList(
     if (!result.empty()) {
       result.push_back(sep);
     }
-    const auto path_string = path.decanonicalized();
+    const auto path_string = path.original();
     if (_escape_in_out == EscapeKind::SHELL_ESCAPE) {
 #if _WIN32
       getWin32EscapedString(path_string, &result);
