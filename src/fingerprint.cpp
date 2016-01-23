@@ -10,17 +10,19 @@ Fingerprint::Stat fingerprintStat(
   Fingerprint::Stat result;
 
   const auto stat = file_system.lstat(path);
-  result.size = stat.metadata.size;
-  result.ino = stat.metadata.ino;
-  static constexpr auto mode_mask =
-      S_IFMT | S_IRWXU | S_IRWXG | S_IXOTH | S_ISUID | S_ISGID | S_ISVTX;
-  result.mode = stat.metadata.mode & mode_mask;
-  result.mtime = stat.timestamps.mtime;
-  result.ctime = stat.timestamps.ctime;
+  if (stat.result == 0) {
+    result.size = stat.metadata.size;
+    result.ino = stat.metadata.ino;
+    static constexpr auto mode_mask =
+        S_IFMT | S_IRWXU | S_IRWXG | S_IXOTH | S_ISUID | S_ISGID | S_ISVTX;
+    result.mode = stat.metadata.mode & mode_mask;
+    result.mtime = stat.timestamps.mtime;
+    result.ctime = stat.timestamps.ctime;
 
-  if (!S_ISLNK(result.mode) && !S_ISREG(result.mode) && !S_ISDIR(result.mode)) {
-    throw IoError(
-        "Can only fingerprint regular files, directories and links", 0);
+    if (!S_ISLNK(result.mode) && !S_ISREG(result.mode) && !S_ISDIR(result.mode)) {
+      throw IoError(
+          "Can only fingerprint regular files, directories and links", 0);
+    }
   }
 
   return result;
@@ -51,8 +53,10 @@ Fingerprint takeFingerprint(
   fp.timestamp = clock();
   if (S_ISDIR(fp.stat.mode)) {
     fp.hash = file_system.hashDir(path);
-  } else {
+  } else if (fp.stat.couldAccess()) {
     fp.hash = file_system.hashFile(path);
+  } else {
+    std::fill(fp.hash.data.begin(), fp.hash.data.end(), 0);
   }
 
   return fp;

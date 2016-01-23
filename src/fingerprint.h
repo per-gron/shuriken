@@ -40,14 +40,18 @@ struct Fingerprint {
    * contain st_dev, because it's not stable over time on network file systems.
    */
   struct Stat {
-    size_t size;
-    ino_t ino;
+    size_t size = 0;
+    ino_t ino = 0;
     /**
      * Contains only a subset of the st_mode data.
      */
-    mode_t mode;
-    time_t mtime;
-    time_t ctime;
+    mode_t mode = 0;
+    time_t mtime = 0;
+    time_t ctime = 0;
+
+    bool couldAccess() const {
+      return mode != 0;
+    }
 
     bool operator==(const Stat &other) const;
     bool operator!=(const Stat &other) const;

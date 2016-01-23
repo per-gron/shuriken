@@ -71,6 +71,22 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.ctime == now);
       CHECK(fp.timestamp == 12345);
       CHECK(fp.hash == fs.hashFile("a"));
+      CHECK(fp.stat.couldAccess());
+    }
+
+    SECTION("missing file") {
+      const auto fp = takeFingerprint(fs, [] { return 12345; }, "b");
+
+      CHECK(fp.stat.size == 0);
+      CHECK(fp.stat.ino == 0);
+      CHECK(fp.stat.mode == 0);
+      CHECK(fp.stat.mtime == 0);
+      CHECK(fp.stat.ctime == 0);
+      CHECK(fp.timestamp == 12345);
+      Hash zero;
+      std::fill(zero.data.begin(), zero.data.end(), 0);
+      CHECK(fp.hash == zero);
+      CHECK(!fp.stat.couldAccess());
     }
 
     SECTION("directory") {
@@ -83,6 +99,7 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.ctime == now);
       CHECK(fp.timestamp == 12345);
       CHECK(fp.hash == fs.hashDir("dir"));
+      CHECK(fp.stat.couldAccess());
     }
   }
 }
