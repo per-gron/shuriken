@@ -67,6 +67,12 @@ struct Fingerprint {
 
 struct MatchesResult {
   bool clean = false;
+  /**
+   * Set to true if fingerprintMatch has to do an (expensive) file content
+   * hashing operation in order to know if an update is required. In these
+   * situations it is beneficial to recompute the fingerprint for the file.
+   * There is then a good chance that hashing will no longer be needed later.
+   */
   bool should_update = false;
 };
 
@@ -75,7 +81,7 @@ struct MatchesResult {
  */
 Fingerprint takeFingerprint(
     FileSystem &file_system,
-    const Clock &clock,
+    time_t timestamp,
     const std::string &path) throw(IoError);
 
 /**

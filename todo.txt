@@ -116,7 +116,7 @@ Large things remaining to do:
 - Command running
 - Command tracing
 - Improved path handling
-* Fingerprint code
+- Fingerprint code
 * Invocation log
 * The actual build algorithm
 * CLI

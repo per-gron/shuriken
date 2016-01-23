@@ -62,7 +62,7 @@ TEST_CASE("Fingerprint") {
 
   SECTION("takeFingerprint") {
     SECTION("regular file") {
-      const auto fp = takeFingerprint(fs, [] { return 12345; }, "a");
+      const auto fp = takeFingerprint(fs, 12345, "a");
 
       CHECK(fp.stat.size == initial_contents.size());
       CHECK(fp.stat.ino == fs.stat("a").metadata.ino);
@@ -75,7 +75,7 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("missing file") {
-      const auto fp = takeFingerprint(fs, [] { return 12345; }, "b");
+      const auto fp = takeFingerprint(fs, 12345, "b");
 
       CHECK(fp.stat.size == 0);
       CHECK(fp.stat.ino == 0);
@@ -90,7 +90,7 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("directory") {
-      const auto fp = takeFingerprint(fs, [] { return 12345; }, "dir");
+      const auto fp = takeFingerprint(fs, 12345, "dir");
 
       CHECK(fp.stat.size == 0);
       CHECK(fp.stat.ino == fs.stat("dir").metadata.ino);
@@ -100,6 +100,103 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.timestamp == 12345);
       CHECK(fp.hash == fs.hashDir("dir"));
       CHECK(fp.stat.couldAccess());
+    }
+  }
+
+  SECTION("fingerprintMatches") {
+    SECTION("no changes, fingerprint taken at the same time as file mtime") {
+      const auto initial_fp = takeFingerprint(fs, now, "a");
+      const auto result = fingerprintMatches(fs, "a", initial_fp);
+      CHECK(result.clean);
+      CHECK(result.should_update);
+    }
+
+    SECTION("no changes, fingerprint taken later") {
+      const auto initial_fp = takeFingerprint(fs, now + 1, "a");
+      const auto result = fingerprintMatches(fs, "a", initial_fp);
+      CHECK(result.clean);
+      CHECK(!result.should_update);
+    }
+
+    SECTION("file changed, everything at the same time, same size") {
+      const auto initial_fp = takeFingerprint(fs, now, "a");
+      writeFile(fs, "a", "initial_content>");
+      const auto result = fingerprintMatches(fs, "a", initial_fp);
+      CHECK(!result.clean);
+      CHECK(result.should_update);
+    }
+
+    SECTION("file changed, everything at the same time, different size") {
+      const auto initial_fp = takeFingerprint(fs, now, "a");
+      writeFile(fs, "a", "changed");
+      const auto result = fingerprintMatches(fs, "a", initial_fp);
+      CHECK(!result.clean);
+      // It can see that the file size is different so no need to re-hash and
+      // thus no need to update.
+      CHECK(!result.should_update);
+    }
+
+    SECTION("file changed, including timestamps, same size") {
+      const auto initial_fp = takeFingerprint(fs, now, "a");
+      now++;
+      writeFile(fs, "a", "initial_content>");
+      const auto result = fingerprintMatches(fs, "a", initial_fp);
+      CHECK(!result.clean);
+      // It can see that the file's timestamp is newer than the fingerprint,
+      // but it needs to hash the contents to find out if it is actually
+      // different.
+      CHECK(result.should_update);
+    }
+
+    SECTION("file changed, including timestamps, different size") {
+      const auto initial_fp = takeFingerprint(fs, now, "a");
+      now++;
+      writeFile(fs, "a", "changed");
+      const auto result = fingerprintMatches(fs, "a", initial_fp);
+      CHECK(!result.clean);
+      // It can see that the file size is different so no need to re-hash and
+      // thus no need to update.
+      CHECK(!result.should_update);
+    }
+
+    SECTION("only timestamps changed") {
+      const auto initial_fp = takeFingerprint(fs, now, "a");
+      now++;
+      writeFile(fs, "a", initial_contents);
+      const auto result = fingerprintMatches(fs, "a", initial_fp);
+      CHECK(result.clean);
+      CHECK(result.should_update);
+    }
+
+    SECTION("missing file before and after") {
+      const auto initial_fp = takeFingerprint(fs, now, "b");
+      const auto result = fingerprintMatches(fs, "b", initial_fp);
+      CHECK(result.clean);
+      CHECK(!result.should_update);
+    }
+
+    SECTION("missing file before but not after") {
+      const auto initial_fp = takeFingerprint(fs, now, "b");
+      writeFile(fs, "b", initial_contents);
+      const auto result = fingerprintMatches(fs, "b", initial_fp);
+      CHECK(!result.clean);
+      CHECK(!result.should_update);
+    }
+
+    SECTION("missing file after but not before") {
+      const auto initial_fp = takeFingerprint(fs, now, "a");
+      fs.unlink("a");
+      const auto result = fingerprintMatches(fs, "a", initial_fp);
+      CHECK(!result.clean);
+      CHECK(!result.should_update);
+    }
+
+    SECTION("dir: no changes, fingerprint taken at the same time as file mtime") {
+      fs.mkdir("d");
+      const auto initial_fp = takeFingerprint(fs, now, "d");
+      const auto result = fingerprintMatches(fs, "d", initial_fp);
+      CHECK(result.clean);
+      CHECK(result.should_update);
     }
   }
 }
