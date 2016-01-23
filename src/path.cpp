@@ -212,7 +212,6 @@ CanonicalizedPath makeCanonicalizedPath(
     nonexisting_part.resize(len);
   }
 
-  canonicalizePath(&path);
   return CanonicalizedPath(
       stat.metadata.ino,
       stat.metadata.dev,
