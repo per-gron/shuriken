@@ -107,6 +107,13 @@ class FileSystem {
       const std::string &path) throw(IoError) = 0;
 
   /**
+   * Utility function for hashing a directory. It is rather important that this
+   * hash function works the same for all FileSystem implementations, so it is
+   * defined directly here. It is implemented in terms of readDir.
+   */
+  Hash hashDir(const std::string &path) throw(IoError);
+
+  /**
    * Utility function for reading files. It is on this interface because on
    * Windows reading the file as a whole is faster than reading it using Stream.
    */
