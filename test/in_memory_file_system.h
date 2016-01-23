@@ -10,8 +10,6 @@ namespace shk {
  * the FileSystem functionality, it is also copiable and offers an equality
  * operator, which is useful to see if a sequence of operations produce
  * identical results.
- *
- * Does not support absolute paths.
  */
 class InMemoryFileSystem : public FileSystem {
  public:
@@ -66,6 +64,7 @@ class InMemoryFileSystem : public FileSystem {
     EntryType entry_type = EntryType::FILE_DOES_NOT_EXIST;
     Directory *directory = nullptr;
     std::string basename;
+    std::string canonicalized;
   };
 
   class InMemoryFileStream : public Stream {

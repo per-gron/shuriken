@@ -12,10 +12,15 @@ std::string dirname(const std::string &path) {
   return detail::basenameSplitPiece(path).first.asString();
 }
 
+std::string canonicalize(std::string path) {
+  detail::canonicalizePath(&path);
+  return path;
+}
+
 }  // anonymous namespace
 
 InMemoryFileSystem::InMemoryFileSystem() {
-  _directories.emplace(".", Directory(_ino++));
+  _directories.emplace("/", Directory(_ino++));
 }
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
@@ -93,7 +98,7 @@ Stat InMemoryFileSystem::lstat(const std::string &path) {
       stat.metadata.ino = file->ino;
       stat.metadata.mode |= S_IFREG;
     } else {
-      const auto &dir = _directories.find(path)->second;
+      const auto &dir = _directories.find(l.canonicalized)->second;
       stat.metadata.ino = dir.ino;
       stat.metadata.mode |= S_IFDIR;
     }
@@ -116,7 +121,7 @@ void InMemoryFileSystem::mkdir(const std::string &path) throw(IoError) {
     break;
   case EntryType::FILE_DOES_NOT_EXIST:
     l.directory->directories.insert(l.basename);
-    _directories.emplace(path, _ino++);
+    _directories.emplace(l.canonicalized, _ino++);
     break;
   }
 }
@@ -134,7 +139,7 @@ void InMemoryFileSystem::rmdir(const std::string &path) throw(IoError) {
     throw IoError("The named directory is a file", EPERM);
     break;
   case EntryType::DIRECTORY:
-    const auto &dir = _directories.find(path)->second;
+    const auto &dir = _directories.find(l.canonicalized)->second;
     if (!dir.empty()) {
       throw IoError(
           "The named directory contains files other than `.' and `..' in it",
@@ -283,10 +288,12 @@ void InMemoryFileSystem::InMemoryFileStream::checkNotEof()
 InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
     const std::string &path) {
   LookupResult result;
+  result.canonicalized = canonicalize("/" + path);
 
   StringPiece dirname_piece;
   StringPiece basename_piece;
-  std::tie(dirname_piece, basename_piece) = detail::basenameSplitPiece(path);
+  std::tie(dirname_piece, basename_piece) = detail::basenameSplitPiece(
+      result.canonicalized);
   const auto dirname = dirname_piece.asString();
   const auto basename = basename_piece.asString();
 
@@ -298,7 +305,7 @@ InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
 
   auto &directory = it->second;
 
-  if (basename == ".") {
+  if (basename == "/") {
     result.entry_type = EntryType::DIRECTORY;
   } else if (directory.files.count(basename)) {
     result.entry_type = EntryType::FILE;
@@ -322,7 +329,10 @@ void writeFile(
   stream->write(data, 1, contents.size());
 }
 
-void mkdirs(FileSystem &file_system, const std::string &path) throw(IoError) {
+void mkdirs(
+    FileSystem &file_system,
+    const std::string &noncanonical_path) throw(IoError) {
+  const auto path = canonicalize(noncanonical_path);
   if (path == "." || path == "/") {
     // Nothing left to do
     return;
