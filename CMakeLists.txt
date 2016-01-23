@@ -77,6 +77,7 @@ add_executable(shk_test
   test/dummy_command_runner.h
   test/dummy_command_runner_test.cpp
   test/edit_distance_test.cpp
+  test/file_system_test.cpp
   test/fingerprint_test.cpp
   test/generators.cpp
   test/generators.h
