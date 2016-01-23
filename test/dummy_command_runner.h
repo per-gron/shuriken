@@ -1,7 +1,6 @@
 #include "command_runner.h"
 
 #include "file_system.h"
-#include "path.h"
 
 namespace shk {
 namespace detail {
@@ -11,8 +10,7 @@ namespace detail {
  *
  * This is exposed for testing purposes.
  */
-std::pair<std::vector<Path>, std::vector<Path>> splitCommand(
-    Paths &paths,
+std::pair<std::vector<std::string>, std::vector<std::string>> splitCommand(
     const std::string &command);
 
 /**
@@ -23,7 +21,6 @@ std::pair<std::vector<Path>, std::vector<Path>> splitCommand(
  * This is exposed for testing purposes.
  */
 CommandRunner::Result runCommand(
-    Paths &paths,
     FileSystem &file_system,
     const std::string &command);
 
@@ -31,7 +28,7 @@ CommandRunner::Result runCommand(
 
 class DummyCommandRunner : public CommandRunner {
  public:
-  DummyCommandRunner(Paths &paths, FileSystem &file_system);
+  DummyCommandRunner(FileSystem &file_system);
 
   void invoke(
       const std::string &command,
@@ -43,8 +40,8 @@ class DummyCommandRunner : public CommandRunner {
   bool runCommands() override;
 
   static std::string constructCommand(
-      const std::vector<Path> &inputs,
-      const std::vector<Path> &outputs);
+      const std::vector<std::string> &inputs,
+      const std::vector<std::string> &outputs);
 
   /**
    * Verify that a command has run by looking at the file system and see that
@@ -53,11 +50,10 @@ class DummyCommandRunner : public CommandRunner {
    * Throws an exception when the check fails.
    */
   static void checkCommand(
-      Paths &paths, FileSystem &file_system, const std::string &command)
+      FileSystem &file_system, const std::string &command)
           throw(IoError, std::runtime_error);
 
  private:
-  Paths &_paths;
   FileSystem &_file_system;
   std::vector<std::pair<std::string, Callback>> _enqueued_commands;
 };

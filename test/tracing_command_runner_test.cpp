@@ -121,53 +121,50 @@ std::string getWorkingDir() {
 
 TEST_CASE("TracingCommandRunner") {
   const auto fs = persistentFileSystem();
-  Paths paths(*fs);
   const auto runner = makeTracingCommandRunner(
-      paths,
       *fs,
       makeRealCommandRunner());
-  const auto output_path = paths.get(getWorkingDir() + "/shk.test-file");
+  const auto output_path = getWorkingDir() + "/shk.test-file";
 
   SECTION("TrackInputs") {
     const auto result = runCommand(*runner, "/bin/ls /sbin");
-    CHECK(contains(result.input_files, paths.get("/sbin")));
-    CHECK(contains(result.input_files, paths.get("/bin/ls")));
+    CHECK(contains(result.input_files, "/sbin"));
+    CHECK(contains(result.input_files, "/bin/ls"));
     CHECK(result.output_files.empty());
   }
 
   SECTION("TrackOutputs") {
     const auto result = runCommand(
-        *runner, "/usr/bin/touch " + output_path.canonicalized());
+        *runner, "/usr/bin/touch " + output_path);
     CHECK(result.output_files.size() == 1);
     CHECK(contains(result.output_files, output_path));
-    fs->unlink(output_path.canonicalized());
+    fs->unlink(output_path);
   }
 
   SECTION("TrackRemovedOutputs") {
     const auto result = runCommand(
         *runner,
-        "/usr/bin/touch '" + output_path.canonicalized() + "'; /bin/rm '" +
-        output_path.canonicalized() + "'");
+        "/usr/bin/touch '" + output_path + "'; /bin/rm '" +
+        output_path + "'");
     CHECK(result.output_files.empty());
   }
 
   SECTION("TrackMovedOutputs") {
-    const auto other_path = paths.get(output_path.canonicalized() + ".b");
+    const auto other_path = output_path + ".b";
     const auto result = runCommand(
         *runner,
-        "/usr/bin/touch " + output_path.canonicalized() + " && /bin/mv " +
-        output_path.canonicalized() + " " + other_path.canonicalized());
+        "/usr/bin/touch " + output_path + " && /bin/mv " +
+        output_path + " " + other_path);
     CHECK(result.output_files.size() == 1);
     // Should have only other_path as an output path; the file at output_path
     // was moved.
     CHECK(contains(result.output_files, other_path));
-    fs->unlink(other_path.canonicalized());
+    fs->unlink(other_path);
   }
 
   SECTION("HandleTmpFileCreationError") {
     FailingMkstempFileSystem failing_mkstemp;
     const auto runner = makeTracingCommandRunner(
-        paths,
         failing_mkstemp,
         makeRealCommandRunner());
 
@@ -181,12 +178,11 @@ TEST_CASE("TracingCommandRunner") {
   SECTION("HandleTmpFileRemovalError") {
     FailingUnlinkFileSystem failing_unlink;
     const auto runner = makeTracingCommandRunner(
-        paths,
         failing_unlink,
         makeRealCommandRunner());
 
     const auto result = runCommand(*runner, "/bin/ls /sbin");
-    CHECK(contains(result.input_files, paths.get("/bin/ls")));
+    CHECK(contains(result.input_files, "/bin/ls"));
 
     // Failing to remove the tempfile should be ignored
   }

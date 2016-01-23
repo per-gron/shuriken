@@ -9,7 +9,7 @@ template<typename Range>
 std::string joinPaths(const Range &paths, const std::string sep = ":") {
   std::string result;
   for (const auto &path : paths) {
-    result += path.canonicalized();
+    result += path;
     result += sep;
   }
   return result;
@@ -17,7 +17,6 @@ std::string joinPaths(const Range &paths, const std::string sep = ":") {
 
 template<typename Iter, typename Out>
 void splitPaths(
-    Paths &paths,
     const Iter begin,
     const Iter end,
     const typename Iter::value_type sep,
@@ -28,18 +27,17 @@ void splitPaths(
     if (next == end) {
       break;
     }
-    const auto str = std::string(it, next);
-    *out++ = paths.get(str);
+    *out++ = std::string(it, next);
     it = next + 1;
   }
 }
 
 std::string makeInputData(
-    FileSystem &file_system, const std::vector<Path> &inputs) {
+    FileSystem &file_system, const std::vector<std::string> &inputs) {
   std::string input_data;
   for (const auto &input : inputs) {
-    input_data += input.canonicalized() + "\n";
-    input_data += file_system.readFile(input.canonicalized());
+    input_data += input + "\n";
+    input_data += file_system.readFile(input);
     input_data += "\n";
   }
   return input_data;
@@ -49,22 +47,19 @@ std::string makeInputData(
 
 namespace detail {
 
-std::pair<std::vector<Path>, std::vector<Path>> splitCommand(
-    Paths &paths,
+std::pair<std::vector<std::string>, std::vector<std::string>> splitCommand(
     const std::string &command) {
-  std::vector<Path> inputs;
-  std::vector<Path> outputs;
+  std::vector<std::string> inputs;
+  std::vector<std::string> outputs;
 
   const auto semicolon = std::find(command.begin(), command.end(), ';');
   splitPaths(
-      paths,
       command.begin(),
       semicolon,
       ':',
       std::back_inserter(inputs));
   if (semicolon != command.end()) {
     splitPaths(
-        paths,
         semicolon + 1,
         command.end(),
         ':',
@@ -75,12 +70,10 @@ std::pair<std::vector<Path>, std::vector<Path>> splitCommand(
 }
 
 CommandRunner::Result runCommand(
-    Paths &paths,
     FileSystem &file_system,
     const std::string &command) {
   CommandRunner::Result result;
-  std::tie(result.input_files, result.output_files) =
-      splitCommand(paths, command);
+  std::tie(result.input_files, result.output_files) = splitCommand(command);
 
   std::string input_data;
   try {
@@ -94,8 +87,8 @@ CommandRunner::Result runCommand(
     try {
       writeFile(
           file_system,
-          output.canonicalized(),
-          output.canonicalized() + "\n" + input_data);
+          output,
+          output + "\n" + input_data);
     } catch (IoError &) {
       result.exit_status = ExitStatus::FAILURE;
       return result;
@@ -107,8 +100,8 @@ CommandRunner::Result runCommand(
 
 }  // namespace detail
 
-DummyCommandRunner::DummyCommandRunner(Paths &paths, FileSystem &file_system)
-    : _paths(paths), _file_system(file_system) {}
+DummyCommandRunner::DummyCommandRunner(FileSystem &file_system)
+    : _file_system(file_system) {}
 
 void DummyCommandRunner::invoke(
     const std::string &command,
@@ -123,31 +116,31 @@ size_t DummyCommandRunner::size() const {
 
 bool DummyCommandRunner::runCommands() {
   for (const auto &command : _enqueued_commands) {
-    command.second(detail::runCommand(_paths, _file_system, command.first));
+    command.second(detail::runCommand(_file_system, command.first));
   }
   _enqueued_commands.clear();
   return false;
 }
 
 std::string DummyCommandRunner::constructCommand(
-    const std::vector<Path> &inputs,
-    const std::vector<Path> &outputs) {
+    const std::vector<std::string> &inputs,
+    const std::vector<std::string> &outputs) {
   return joinPaths(inputs) + ";" + joinPaths(outputs);
 }
 
 void DummyCommandRunner::checkCommand(
-    Paths &paths, FileSystem &file_system, const std::string &command)
+    FileSystem &file_system, const std::string &command)
         throw(IoError, std::runtime_error) {
-  std::vector<Path> inputs;
-  std::vector<Path> outputs;
-  std::tie(inputs, outputs) = detail::splitCommand(paths, command);
+  std::vector<std::string> inputs;
+  std::vector<std::string> outputs;
+  std::tie(inputs, outputs) = detail::splitCommand(command);
 
   const auto input_data = makeInputData(file_system, inputs);
 
   for (const auto &output : outputs) {
-    const auto data = file_system.readFile(output.canonicalized());
-    if (data != output.canonicalized() + "\n" + input_data) {
-      throw std::runtime_error("Unexpected output file contents for file " + output.canonicalized());
+    const auto data = file_system.readFile(output);
+    if (data != output + "\n" + input_data) {
+      throw std::runtime_error("Unexpected output file contents for file " + output);
     }
   }
 }

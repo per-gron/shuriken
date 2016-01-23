@@ -21,10 +21,11 @@ rc::Gen<shk::Path> path(const std::shared_ptr<Paths> &paths);
 
 rc::Gen<shk::Path> pathWithSingleComponent(const std::shared_ptr<Paths> &paths);
 
+rc::Gen<std::vector<std::string>> pathStringVector();
+
 rc::Gen<std::vector<Path>> pathVector(const std::shared_ptr<Paths> &paths);
 
-rc::Gen<std::vector<Path>> pathWithSingleComponentVector(
-    const std::shared_ptr<Paths> &paths);
+rc::Gen<std::vector<std::string>> pathStringWithSingleComponentVector();
 
 }  // namespace gen
 }  // namespace shk
