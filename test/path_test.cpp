@@ -36,6 +36,40 @@ void checkBasenameSplit(
   CHECK(bn.asString() == basename);
 }
 
+class FailingStatFileSystem : public FileSystem {
+ public:
+  std::unique_ptr<Stream> open(
+      const std::string &path, const char *mode) throw(IoError) override {
+    return _fs.open(path, mode);
+  }
+  Stat stat(const std::string &path) override {
+    Stat stat;
+    stat.result = ENOENT;
+    return stat;
+  }
+  Stat lstat(const std::string &path) override {
+    return _fs.lstat(path);
+  }
+  void mkdir(const std::string &path) throw(IoError) override {
+    return _fs.mkdir(path);
+  }
+  void rmdir(const std::string &path) throw(IoError) override {
+    return _fs.rmdir(path);
+  }
+  void unlink(const std::string &path) throw(IoError) override {
+    return _fs.unlink(path);
+  }
+  std::string readFile(const std::string &path) throw(IoError) override {
+    return _fs.readFile(path);
+  }
+  std::string mkstemp(std::string &&filename_template) throw(IoError) override {
+    throw _fs.mkstemp(std::move(filename_template));
+  }
+
+ private:
+  InMemoryFileSystem _fs;
+};
+
 }  // anonymous namespace
 
 TEST_CASE("Path") {
@@ -72,36 +106,6 @@ TEST_CASE("Path") {
       RC_ASSERT(dirname == dirname_string);
     });
   }
-
-  SECTION("operator==, operator!=") {
-    InMemoryFileSystem fs;
-    rc::prop("equal string paths are equal paths", [&fs]() {
-      Paths paths(fs);
-
-      const auto path_1_string = *gen::pathString();
-      const auto path_2_string = *gen::pathString();
-
-      const auto path_1 = paths.get(path_1_string);
-      const auto path_2 = paths.get(path_2_string);
-
-      RC_ASSERT((path_1 == path_2) == (path_1_string == path_2_string));
-      RC_ASSERT((path_1 != path_2) == (path_1_string != path_2_string));
-    });
-  }
-
-  // TODO(peck): To test:
-  // * Empty paths are rejected
-  // * ///
-  // * /
-  // * When root is not readable
-  // * abc
-  // * .
-  // * a/b
-  // * When . is not readable
-  // * a/b when only a is readable
-  // * non-canonicalized existing path part
-  // * non-canonicalized nonexisting path part
-  // * stuff in the seam between existing and nonexisting, for example /./ and ..
 
   SECTION("canonicalizePath") {
     SECTION("Path samples") {
@@ -153,7 +157,7 @@ TEST_CASE("Path") {
       CHECK(canonicalizePath("a/bcd/efh/foo.h") == "a/bcd/efh/foo.h");
       CHECK(canonicalizePath("a\\./efh\\foo.h") == "a/efh/foo.h");
       CHECK(canonicalizePath("a\\../efh\\foo.h") == "efh/foo.h");
-      CHECK(canonicalizePath("a\\b\\c\\d\\e\\f\\g\\foo.h") == "a/b/c/d/e/f/g/foo.h", );
+      CHECK(canonicalizePath("a\\b\\c\\d\\e\\f\\g\\foo.h") == "a/b/c/d/e/f/g/foo.h");
       CHECK(canonicalizePath("a\\b\\c\\..\\..\\..\\g\\foo.h") == "g/foo.h");
       CHECK(canonicalizePath("a\\b/c\\../../..\\g\\foo.h") == "g/foo.h");
       CHECK(canonicalizePath("a\\b/c\\./../..\\g\\foo.h") == "a/g/foo.h");
@@ -229,6 +233,67 @@ TEST_CASE("Path") {
       CHECK(strlen("file") == len);
       CHECK("file ./file bar/." == path);
     }
+  }
+
+  SECTION("operator==, operator!=") {
+    InMemoryFileSystem fs;
+    rc::prop("equal string paths are equal paths", [&fs]() {
+      Paths paths(fs);
+
+      const auto path_1_string = *gen::pathString();
+      const auto path_2_string = *gen::pathString();
+
+      const auto path_1 = paths.get(path_1_string);
+      const auto path_2 = paths.get(path_2_string);
+
+      RC_ASSERT((path_1 == path_2) == (path_1_string == path_2_string));
+      RC_ASSERT((path_1 != path_2) == (path_1_string != path_2_string));
+    });
+  }
+
+  SECTION("Paths.get") {
+    InMemoryFileSystem fs;
+    fs.open("file", "w");
+    fs.open("other_file", "w");
+    fs.mkdir("dir");
+    Paths paths(fs);
+
+    CHECK_THROWS_AS(paths.get(""), PathError);
+    CHECK(paths.get("/") != paths.get("//"));
+    CHECK(paths.get("/").isSame(paths.get("//")));
+    CHECK(paths.get("/").isSame(paths.get("///")));
+
+    CHECK(paths.get("/missing") != paths.get("//missing"));
+    CHECK(paths.get("/missing").isSame(paths.get("//missing")));
+
+    CHECK(paths.get("/file") != paths.get("//file"));
+    CHECK(paths.get("/file").isSame(paths.get("//file")));
+
+    CHECK(paths.get("/dir") == paths.get("/dir"));
+    CHECK(paths.get("/dir") != paths.get("//dir"));
+    CHECK(paths.get("/dir").isSame(paths.get("//dir")));
+
+    CHECK(paths.get("/dir/file").isSame(paths.get("/dir//file")));
+    CHECK(paths.get("/./dir/file").isSame(paths.get("/dir//file")));
+    CHECK(paths.get("/dir/file").isSame(paths.get("/dir/file/.")));
+    CHECK(paths.get("/./dir/file").isSame(paths.get("/dir/./file/../file")));
+
+    CHECK(!paths.get("/dir/file_").isSame(paths.get("/dir/file")));
+    CHECK(!paths.get("/file_").isSame(paths.get("/file")));
+    CHECK(!paths.get("/dir").isSame(paths.get("/file")));
+    CHECK(!paths.get("/other_file").isSame(paths.get("/file")));
+
+    CHECK(paths.get(".").isSame(paths.get("./")));
+
+    CHECK_THROWS_AS(paths.get("/file/"), PathError);
+    CHECK_THROWS_AS(paths.get("/file/blah"), PathError);
+    CHECK_THROWS_AS(paths.get("/file//"), PathError);
+    CHECK_THROWS_AS(paths.get("/file/./"), PathError);
+    CHECK_THROWS_AS(paths.get("/file/./x"), PathError);
+
+    FailingStatFileSystem failing_stat_fs;
+    CHECK_THROWS_AS(Paths(failing_stat_fs).get("/"), PathError);
+    CHECK_THROWS_AS(Paths(failing_stat_fs).get("."), PathError);
   }
 }
 

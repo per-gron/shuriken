@@ -14,10 +14,13 @@
 
 #include "path.h"
 
+#include <sys/stat.h>
+
 namespace shk {
 namespace detail {
 
-std::pair<StringPiece, StringPiece> basenameSplitPiece(const std::string &path) {
+std::pair<StringPiece, StringPiece> basenameSplitPiece(
+    const std::string &path) {
   const auto last_nonslash = path.find_last_not_of('/');
   const auto slash_pos = path.find_last_of('/', last_nonslash);
 
@@ -179,8 +182,14 @@ CanonicalizedPath makeCanonicalizedPath(
     // directory where this will live. Comparing links for identity does no
     // good.
     stat = file_system.stat(path_to_try.asString());
+
     if (stat.result == 0) {
-      // Found an existing file
+      // Found an existing file or directory
+      if (pos != path.size() - 1 && !S_ISDIR(stat.metadata.mode)) {
+        // This is not the final path component, so it has to be a directory.
+        throw PathError(
+            "Encountered file in a directory component of a path", path);
+      }
       break;
     } else if (at_root || at_relative_root) {
       throw PathError(

@@ -115,7 +115,7 @@ Large things remaining to do:
 - Manifest parsing
 - Command running
 - Command tracing
-* Improved path handling
+- Improved path handling
 * Fingerprint code
 * Invocation log
 * The actual build algorithm
