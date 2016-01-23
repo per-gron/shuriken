@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+#include <blake2.h>
+
 #include "path.h"
 
 namespace shk {
@@ -181,6 +183,20 @@ std::string InMemoryFileSystem::readFile(const std::string &path) throw(IoError)
   }
 
   return result;
+}
+
+Hash InMemoryFileSystem::hashFile(const std::string &path) throw(IoError) {
+  // This is optimized for readability rather than speed
+  Hash hash;
+  blake2b_state state;
+  blake2b_init(&state, hash.data.size());
+  const auto file_contents = readFile(path);
+  blake2b_update(
+      &state,
+      reinterpret_cast<const uint8_t *>(file_contents.data()),
+      file_contents.size());
+  blake2b_final(&state, hash.data.data(), hash.data.size());
+  return hash;
 }
 
 std::string InMemoryFileSystem::mkstemp(

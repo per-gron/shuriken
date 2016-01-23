@@ -47,7 +47,7 @@ Fingerprint takeFingerprint(
 
   fp.stat = fingerprintStat(file_system, path);
   fp.timestamp = clock();
-  fp.hash = hashFile(file_system, path);
+  fp.hash = file_system.hashFile(path);
 
   return fp;
 }
@@ -80,7 +80,7 @@ MatchesResult fingerprintMatches(
       // already known for sure that the file is different, but now they are the
       // same. In order to know if it's dirty or not, we need to hash the file
       // again.
-      result.clean = hashFile(file_system, path) == fp.hash;
+      result.clean = file_system.hashFile(path) == fp.hash;
 
       // At this point, the fingerprint in the invocation log should be
       // re-calculated to avoid this expensive file content check in the future.

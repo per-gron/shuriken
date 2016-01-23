@@ -122,7 +122,10 @@ Large things remaining to do:
 * CLI
 * Caching
 * Distributed caching
+
 * Path case folding
+* See if adding HAVE_SSSE3, HAVE_XOP, HAVE_SSE41 etc flags for blake2 makes sense
+* Check test coverage and add missing unit tests
 
 To fill in the first test:
 * Generate actual DAG in gen::buildInput

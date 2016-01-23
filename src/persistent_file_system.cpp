@@ -20,7 +20,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <blake2.h>
+
 namespace shk {
+namespace {
 
 class PersistentFileSystem : public FileSystem {
   template<typename T>
@@ -106,6 +109,39 @@ class PersistentFileSystem : public FileSystem {
 
   std::string readFile(const std::string &path) throw(IoError) override {
     std::string contents;
+    processFile(path, [&contents](const char *buf, size_t len) {
+      contents.append(buf, len);
+    });
+    return contents;
+  }
+
+  Hash hashFile(const std::string &path) throw(IoError) override {
+    Hash hash;
+    blake2b_state state;
+    blake2b_init(&state, hash.data.size());
+    processFile(path, [&state](const char *buf, size_t len) {
+      blake2b_update(&state, reinterpret_cast<const uint8_t *>(buf), len);
+    });
+    blake2b_final(&state, hash.data.data(), hash.data.size());
+    return hash;
+  }
+
+  std::string mkstemp(
+      std::string &&filename_template) throw(IoError) override {
+    if (::mkstemp(&filename_template[0]) == -1) {
+      throw IoError(
+          std::string("Failed to create path for temporary file: ") +
+          strerror(errno),
+          errno);
+    }
+    return filename_template;
+  }
+
+ private:
+  template<typename Append>
+  void processFile(
+      const std::string &path,
+      Append &&append) throw(IoError) {
 #ifdef _WIN32
     // This makes a ninja run on a set of 1500 manifest files about 4% faster
     // than using the generic fopen code below.
@@ -131,7 +167,7 @@ class PersistentFileSystem : public FileSystem {
       if (len == 0) {
         break;
       }
-      contents.append(buf, len);
+      append(buf, len);
     }
     ::CloseHandle(f);
 #else
@@ -143,7 +179,7 @@ class PersistentFileSystem : public FileSystem {
     char buf[64 << 10];
     size_t len;
     while ((len = fread(buf, 1, sizeof(buf), f)) > 0) {
-      contents.append(buf, len);
+      append(buf, len);
     }
     if (ferror(f)) {
       fclose(f);
@@ -151,21 +187,8 @@ class PersistentFileSystem : public FileSystem {
     }
     fclose(f);
 #endif
-    return contents;
   }
 
-  std::string mkstemp(
-      std::string &&filename_template) throw(IoError) override {
-    if (::mkstemp(&filename_template[0]) == -1) {
-      throw IoError(
-          std::string("Failed to create path for temporary file: ") +
-          strerror(errno),
-          errno);
-    }
-    return filename_template;
-  }
-
- private:
   template<typename StatFunction>
   Stat genericStat(StatFunction fn, const std::string &path) {
     Stat result;
@@ -187,6 +210,8 @@ class PersistentFileSystem : public FileSystem {
     return result;
   }
 };
+
+}  // anonymous namespace
 
 std::unique_ptr<FileSystem> persistentFileSystem() {
   return std::unique_ptr<FileSystem>(new PersistentFileSystem());

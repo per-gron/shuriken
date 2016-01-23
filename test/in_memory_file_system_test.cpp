@@ -114,6 +114,17 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.readFile(abc) == "hello!");
   }
 
+  SECTION("hashFile") {
+    writeFile(fs, "one", "some_content");
+    writeFile(fs, "two", "some_content");
+    writeFile(fs, "three", "some_other_content");
+
+    CHECK(fs.hashFile("one") == fs.hashFile("one"));
+    CHECK(fs.hashFile("one") == fs.hashFile("two"));
+    CHECK(fs.hashFile("one") != fs.hashFile("three"));
+  }
+
+
   SECTION("mkstemp creates file") {
     const auto path = fs.mkstemp("hi.XXX");
     CHECK(fs.stat(path).result == 0);

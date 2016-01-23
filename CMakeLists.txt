@@ -30,7 +30,6 @@ add_library(shklib
   src/file_system.h
   src/fingerprint.cpp
   src/fingerprint.h
-  src/hash.cpp
   src/hash.h
   src/invocation_log.h
   src/invocations.h
@@ -64,7 +63,7 @@ add_library(shklib
   sandbox_parser.cpp)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC src)
-target_link_libraries(shklib utf8proc)
+target_link_libraries(shklib utf8proc blake2)
 set_target_properties(shklib PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk

@@ -2,8 +2,6 @@
 
 #include <array>
 
-#include "file_system.h"
-
 namespace shk {
 
 /**
@@ -18,7 +16,9 @@ inline bool operator==(const Hash &a, const Hash &b) {
   return a.data == b.data;
 }
 
-Hash hashFile(FileSystem &file_system, const std::string &path);
+inline bool operator!=(const Hash &a, const Hash &b) {
+  return !(a == b);
+}
 
 }  // namespace shk
 

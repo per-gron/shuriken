@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 
+#include "hash.h"
 #include "io_error.h"
 
 namespace shk {
@@ -70,6 +71,13 @@ class FileSystem {
    * Windows reading the file as a whole is faster than reading it using Stream.
    */
   virtual std::string readFile(const std::string &path) throw(IoError) = 0;
+
+  /**
+   * Utility function for hashing the contents of a file. This method uses
+   * the blake2b hash function. Like readFile, it is directly on the FileSystem
+   * interface because this is a highly performance sensitive operation.
+   */
+  virtual Hash hashFile(const std::string &path) throw(IoError) = 0;
 
   /**
    * Create a temporary file that follows a template. See the man page for
