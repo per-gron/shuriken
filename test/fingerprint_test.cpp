@@ -82,7 +82,7 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.mtime == now);
       CHECK(fp.stat.ctime == now);
       CHECK(fp.timestamp == 12345);
-      // gCHECK(fp.hash == fs.hashFile("a"));
+      CHECK(fp.hash == fs.hashDir("dir"));
     }
   }
 }

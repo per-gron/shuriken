@@ -50,7 +50,7 @@ Fingerprint takeFingerprint(
   fp.stat = fingerprintStat(file_system, path);
   fp.timestamp = clock();
   if (S_ISDIR(fp.stat.mode)) {
-    // TODO(peck): Not implemented
+    fp.hash = file_system.hashDir(path);
   } else {
     fp.hash = file_system.hashFile(path);
   }
