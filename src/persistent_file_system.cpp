@@ -17,6 +17,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <sys/dir.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -107,6 +108,24 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::unlink(path.c_str()));
   }
 
+  std::vector<DirEntry> readDir(
+      const std::string &path) throw(IoError) override {
+    std::vector<DirEntry> result;
+
+    DIR *dp = opendir(path.c_str());
+    if (!dp) {
+      throw IoError(strerror(errno), errno);
+    }
+
+    dirent *dptr;
+    while (NULL != (dptr = readdir(dp))) {
+      result.emplace_back(direntTypeToType(dptr->d_type), dptr->d_name);
+    }
+    closedir(dp);
+
+    return result;
+  }
+
   std::string readFile(const std::string &path) throw(IoError) override {
     std::string contents;
     processFile(path, [&contents](const char *buf, size_t len) {
@@ -138,6 +157,30 @@ class PersistentFileSystem : public FileSystem {
   }
 
  private:
+  static DirEntry::Type direntTypeToType(unsigned char type) {
+    switch (type) {
+    case DT_FIFO:
+      return DirEntry::Type::FIFO;
+    case DT_CHR:
+      return DirEntry::Type::CHR;
+    case DT_DIR:
+      return DirEntry::Type::DIR;
+    case DT_BLK:
+      return DirEntry::Type::BLK;
+    case DT_REG:
+      return DirEntry::Type::REG;
+    case DT_LNK:
+      return DirEntry::Type::LNK;
+    case DT_SOCK:
+      return DirEntry::Type::SOCK;
+    case DT_WHT:
+      return DirEntry::Type::WHT;
+    case DT_UNKNOWN:
+    default:
+      return DirEntry::Type::UNKNOWN;
+    }
+  }
+
   template<typename Append>
   void processFile(
       const std::string &path,

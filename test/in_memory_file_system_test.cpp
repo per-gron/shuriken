@@ -108,6 +108,30 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.stat(abc).result == ENOENT);
   }
 
+  SECTION("readDir") {
+    SECTION("success") {
+      fs.mkdir("d");
+      fs.open("d/a", "w");
+      fs.mkdir("d/b");
+      auto dir_entries = fs.readDir("d");
+      std::sort(dir_entries.begin(), dir_entries.end());
+      REQUIRE(dir_entries.size() == 2);
+      CHECK(dir_entries[0].type == DirEntry::Type::REG);
+      CHECK(dir_entries[0].name == "a");
+      CHECK(dir_entries[1].type == DirEntry::Type::DIR);
+      CHECK(dir_entries[1].name == "b");
+    }
+
+    SECTION("fail") {
+      fs.open("f", "w");
+      fs.mkdir("d");
+      CHECK_THROWS_AS(fs.readDir("f"), IoError);
+      CHECK_THROWS_AS(fs.readDir("f/x"), IoError);
+      CHECK_THROWS_AS(fs.readDir("nonexisting"), IoError);
+      CHECK_THROWS_AS(fs.readDir("d/nonexisting"), IoError);
+    }
+  }
+
   SECTION("open for writing") {
     fs.open(abc, "w");
 

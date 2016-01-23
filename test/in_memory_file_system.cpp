@@ -123,11 +123,9 @@ void InMemoryFileSystem::mkdir(const std::string &path) throw(IoError) {
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     throw IoError("A component of the path prefix is not a directory", ENOTDIR);
-    break;
   case EntryType::FILE:
   case EntryType::DIRECTORY:
     throw IoError("The named file exists", EEXIST);
-    break;
   case EntryType::FILE_DOES_NOT_EXIST:
     l.directory->directories.emplace(l.basename);
     _directories.emplace(l.canonicalized, Directory(_clock(), _ino++));
@@ -140,13 +138,10 @@ void InMemoryFileSystem::rmdir(const std::string &path) throw(IoError) {
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     throw IoError("A component of the path prefix is not a directory", ENOTDIR);
-    break;
   case EntryType::FILE_DOES_NOT_EXIST:
     throw IoError("The named directory does not exist", ENOENT);
-    break;
   case EntryType::FILE:
     throw IoError("The named directory is a file", EPERM);
-    break;
   case EntryType::DIRECTORY:
     const auto &dir = _directories.find(l.canonicalized)->second;
     if (!dir.empty()) {
@@ -167,18 +162,40 @@ void InMemoryFileSystem::unlink(const std::string &path) throw(IoError) {
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
     throw IoError("A component of the path prefix is not a directory", ENOTDIR);
-    break;
   case EntryType::FILE_DOES_NOT_EXIST:
     throw IoError("The named file does not exist", ENOENT);
-    break;
   case EntryType::DIRECTORY:
     throw IoError("The named file is a directory", EPERM);
-    break;
   case EntryType::FILE:
     l.directory->files.erase(l.basename);
     l.directory->mtime = _clock();
     break;
   }
+}
+
+std::vector<DirEntry> InMemoryFileSystem::readDir(
+    const std::string &path) throw(IoError) {
+  std::vector<DirEntry> result;
+  const auto l = lookup(path);
+  switch (l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+  case EntryType::FILE_DOES_NOT_EXIST:
+    throw IoError("The named directory does not exist", ENOENT);
+  case EntryType::FILE:
+    throw IoError("The named directory is a file", EPERM);
+  case EntryType::DIRECTORY:
+    const auto &dir = _directories.find(l.canonicalized)->second;
+    for (const auto &dir_path : dir.directories) {
+      result.emplace_back(DirEntry::Type::DIR, dir_path);
+    }
+    for (const auto &file : dir.files) {
+      result.emplace_back(DirEntry::Type::REG, file.first);
+    }
+    break;
+  }
+
+  return result;
 }
 
 std::string InMemoryFileSystem::readFile(const std::string &path) throw(IoError) {

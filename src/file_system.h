@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include <sys/types.h>
 
 #include "hash.h"
@@ -26,6 +28,40 @@ struct Stat {
   int result = 0;
   FileMetadata metadata;
   Timestamps timestamps;
+};
+
+struct DirEntry {
+  /**
+   * Type of the DirEntry. These map to the type when using the readdir
+   * function. The value of these is significant and should stay stable over
+   * Shuriken versions, or strange things can happen when a directory is hashed.
+   */
+  enum class Type : uint8_t {
+    UNKNOWN = 0,
+    FIFO = 1,
+    CHR = 2,
+    DIR = 3,
+    BLK = 4,
+    REG = 5,
+    LNK = 6,
+    SOCK = 7,
+    WHT = 8,
+  };
+
+  DirEntry() = default;
+  DirEntry(Type type, std::string name)
+      : type(type),
+        name(std::move(name)) {}
+
+  Type type = Type::UNKNOWN;
+  std::string name;
+
+  /**
+   * Comparison operator so that DirEntry objects can be conveniently sorted.
+   */
+  inline bool operator<(const DirEntry &other) const {
+    return std::tie(name, type) < std::tie(other.name, other.type);
+  }
 };
 
 class FileSystem {
@@ -62,6 +98,13 @@ class FileSystem {
   virtual void mkdir(const std::string &path) throw(IoError) = 0;
   virtual void rmdir(const std::string &path) throw(IoError) = 0;
   virtual void unlink(const std::string &path) throw(IoError) = 0;
+  /**
+   * Return the files, directories and other entries in a given directory. Fails
+   * if the path does not point to a directory. The returned entries are not
+   * necessarily sorted in any particular order.
+   */
+  virtual std::vector<DirEntry> readDir(
+      const std::string &path) throw(IoError) = 0;
 
   /**
    * Utility function for reading files. It is on this interface because on
