@@ -15,6 +15,8 @@ Fingerprint::Stat fingerprintStat(
   static constexpr auto mode_mask =
       S_IFMT | S_IRWXU | S_IRWXG | S_IXOTH | S_ISUID | S_ISGID | S_ISVTX;
   result.mode = stat.metadata.mode & mode_mask;
+  result.mtime = stat.timestamps.mtime;
+  result.ctime = stat.timestamps.ctime;
 
   if (!S_ISLNK(result.mode) && !S_ISREG(result.mode) && !S_ISDIR(result.mode)) {
     throw IoError(
@@ -47,7 +49,11 @@ Fingerprint takeFingerprint(
 
   fp.stat = fingerprintStat(file_system, path);
   fp.timestamp = clock();
-  fp.hash = file_system.hashFile(path);
+  if (S_ISDIR(fp.stat.mode)) {
+    // TODO(peck): Not implemented
+  } else {
+    fp.hash = file_system.hashFile(path);
+  }
 
   return fp;
 }
