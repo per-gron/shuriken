@@ -119,10 +119,12 @@ Large things remaining to do:
 - Fingerprint code
 * Invocation log
 * The actual build algorithm
+* BuildStatus
 * CLI
 * Caching
 * Distributed caching
 
+* Write documentation
 * Path case folding
 * See if adding HAVE_SSSE3, HAVE_XOP, HAVE_SSE41 etc flags for blake2 makes sense
 * Check test coverage and add missing unit tests

@@ -8,6 +8,7 @@
 #include "file_system.h"
 #include "invocation_log.h"
 #include "invocations.h"
+#include "manifest.h"
 #include "step.h"
 #include "task.h"
 
@@ -53,18 +54,20 @@ Tasks tasks(
 
 /**
  * Delete the provided outputs, and also the containing folders that Shuriken
- * have created.
+ * has created.
  */
 void deleteOutputs(
     FileSystem &file_system,
-    const std::vector<Fingerprint> &outputs);
+    InvocationLog &invocation_log,
+    const Invocations &invocations,
+    const std::vector<const std::string *> &outputs);
 
 /**
  * Perform build tasks.
  */
 void executeTasks(
-    CommandRunner &command_runner,
     FileSystem &file_system,
+    CommandRunner &command_runner,
     BuildStatus &build_status,
     InvocationLog &invocation_log,
     const Tasks &tasks);
@@ -77,7 +80,7 @@ void build(
     CommandRunner &command_runner,
     BuildStatus &build_status,
     InvocationLog &invocation_log,
-    const std::vector<Step> &steps,
+    const Manifest &manifest,
     const Invocations &invocations);
 
 }  // namespace shk

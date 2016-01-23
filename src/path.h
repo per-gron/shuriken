@@ -245,6 +245,14 @@ namespace shk {
  * objects that are different but the same when case folded. This is
  * conservative but that is arguably a nice thing: It makes sure that the build
  * does not break when run on systems with different case sensitivity settings.
+ *
+ * ---
+ *
+ * A key aspect of Paths is that its comparison routines only work if all stat
+ * calls it makes are done while the file system is not modified. In practice
+ * this means that Path objects can be created during manifest parsing and when
+ * Shuriken is calculating what to build, but once the build has started, it
+ * is not possible to create new Path objects.
  */
 class Paths {
  public:
