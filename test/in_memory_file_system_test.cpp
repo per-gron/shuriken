@@ -8,7 +8,8 @@
 namespace shk {
 
 TEST_CASE("InMemoryFileSystem") {
-  InMemoryFileSystem fs;
+  time_t now = 0;
+  InMemoryFileSystem fs([&now] { return now; });
   const std::string abc = "abc";
 
   SECTION("lstat missing file") {
@@ -25,6 +26,41 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.stat(".").result == 0);
     CHECK(fs.stat("/").result == 0);
     CHECK(fs.stat("a/..").result == 0);
+  }
+
+  SECTION("file mtime/ctime") {
+    now = 1234;
+    const auto stream = fs.open("f", "w");
+    CHECK(fs.stat("f").timestamps.mtime == 1234);
+    CHECK(fs.stat("f").timestamps.ctime == 1234);
+
+    now++;
+    stream->write(nullptr, 1, 0);
+    CHECK(fs.stat("f").timestamps.mtime == 1235);
+    CHECK(fs.stat("f").timestamps.ctime == 1235);
+  }
+
+  SECTION("directory mtime/ctime") {
+    now = 123;
+    fs.mkdir("d");
+    fs.mkdir("d/subdir");
+    CHECK(fs.stat("d").timestamps.mtime == 123);
+    CHECK(fs.stat("d").timestamps.ctime == 123);
+
+    now++;
+    fs.open("d/f.txt", "w");
+    CHECK(fs.stat("d").timestamps.mtime == 124);
+    CHECK(fs.stat("d").timestamps.ctime == 124);
+
+    now++;
+    fs.unlink("d/f.txt");
+    CHECK(fs.stat("d").timestamps.mtime == 125);
+    CHECK(fs.stat("d").timestamps.ctime == 125);
+
+    now++;
+    fs.rmdir("d/subdir");
+    CHECK(fs.stat("d").timestamps.mtime == 126);
+    CHECK(fs.stat("d").timestamps.ctime == 126);
   }
 
   SECTION("mkdir") {

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <chrono>
-
 #include <sys/types.h>
 
 #include "hash.h"
@@ -17,9 +15,8 @@ struct FileMetadata {
 };
 
 struct Timestamps {
-  std::chrono::system_clock::time_point mtime;
-  // TODO(peck): What should ctime be used for exactly?
-  std::chrono::system_clock::time_point ctime;
+  time_t mtime;
+  time_t ctime;
 };
 
 struct Stat {

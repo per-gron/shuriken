@@ -202,10 +202,8 @@ class PersistentFileSystem : public FileSystem {
       result.metadata.dev = input.st_dev;
       result.metadata.mode = input.st_mode;
       result.metadata.size = input.st_size;
-      using time_point = std::chrono::system_clock::time_point;
-      using duration = std::chrono::system_clock::duration;
-      result.timestamps.mtime = time_point(duration(input.st_mtime));
-      result.timestamps.ctime = time_point(duration(input.st_ctime));
+      result.timestamps.mtime = input.st_mtime;
+      result.timestamps.ctime = input.st_ctime;
     }
     return result;
   }

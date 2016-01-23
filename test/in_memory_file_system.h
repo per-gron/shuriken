@@ -13,7 +13,7 @@ namespace shk {
  */
 class InMemoryFileSystem : public FileSystem {
  public:
-  InMemoryFileSystem();
+  InMemoryFileSystem(const std::function<time_t ()> &clock = []{ return 0; });
 
   std::unique_ptr<Stream> open(
       const std::string &path, const char *mode) throw(IoError) override;
@@ -39,13 +39,16 @@ class InMemoryFileSystem : public FileSystem {
   struct File {
     File(ino_t ino) : ino(ino) {}
 
+    time_t mtime;
     ino_t ino;
     std::string contents;
   };
 
   struct Directory {
-    Directory(ino_t ino) : ino(ino) {}
+    Directory(time_t mtime, ino_t ino) :
+        mtime(mtime), ino(ino) {}
 
+    time_t mtime;
     ino_t ino;
 
     /**
@@ -71,6 +74,7 @@ class InMemoryFileSystem : public FileSystem {
   class InMemoryFileStream : public Stream {
    public:
     InMemoryFileStream(
+        const std::function<time_t ()> &clock,
         const std::shared_ptr<File> &file,
         bool read,
         bool write);
@@ -85,6 +89,7 @@ class InMemoryFileSystem : public FileSystem {
    private:
     void checkNotEof() const throw(IoError);
 
+    const std::function<time_t ()> _clock;
     const bool _read;
     const bool _write;
     bool _eof = false;
@@ -94,6 +99,7 @@ class InMemoryFileSystem : public FileSystem {
 
   LookupResult lookup(const std::string &path);
 
+  const std::function<time_t ()> _clock;
   std::unordered_map<std::string, Directory> _directories;
   ino_t _ino = 0;
 };

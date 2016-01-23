@@ -21,8 +21,9 @@ std::string canonicalize(std::string path) {
 
 }  // anonymous namespace
 
-InMemoryFileSystem::InMemoryFileSystem() {
-  _directories.emplace("/", Directory(_ino++));
+InMemoryFileSystem::InMemoryFileSystem(const std::function<time_t ()> &clock)
+    : _clock(clock) {
+  _directories.emplace("/", Directory(clock(), _ino++));
 }
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
@@ -59,9 +60,11 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
     }
     {
       const auto &file = std::make_shared<File>(_ino++);
+      file->mtime = _clock();
       l.directory->files[l.basename] = file;
+      l.directory->mtime = _clock();
       return std::unique_ptr<Stream>(
-          new InMemoryFileStream(file, read, write));
+          new InMemoryFileStream(_clock, file, read, write));
     }
   case EntryType::FILE:
     {
@@ -70,7 +73,7 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
         file->contents.clear();
       }
       return std::unique_ptr<Stream>(
-          new InMemoryFileStream(file, read, write));
+          new InMemoryFileStream(_clock, file, read, write));
     }
   }
 }
@@ -99,10 +102,14 @@ Stat InMemoryFileSystem::lstat(const std::string &path) {
       stat.metadata.size = file->contents.size();
       stat.metadata.ino = file->ino;
       stat.metadata.mode |= S_IFREG;
+      stat.timestamps.mtime = file->mtime;
+      stat.timestamps.ctime = file->mtime;
     } else {
       const auto &dir = _directories.find(l.canonicalized)->second;
       stat.metadata.ino = dir.ino;
       stat.metadata.mode |= S_IFDIR;
+      stat.timestamps.mtime = dir.mtime;
+      stat.timestamps.ctime = dir.mtime;
     }
     // TODO(peck): Set mtime and ctime
     break;
@@ -122,8 +129,8 @@ void InMemoryFileSystem::mkdir(const std::string &path) throw(IoError) {
     throw IoError("The named file exists", EEXIST);
     break;
   case EntryType::FILE_DOES_NOT_EXIST:
-    l.directory->directories.insert(l.basename);
-    _directories.emplace(l.canonicalized, _ino++);
+    l.directory->directories.emplace(l.basename);
+    _directories.emplace(l.canonicalized, Directory(_clock(), _ino++));
     break;
   }
 }
@@ -148,6 +155,7 @@ void InMemoryFileSystem::rmdir(const std::string &path) throw(IoError) {
           ENOTEMPTY);
     } else {
       l.directory->directories.erase(l.basename);
+      l.directory->mtime = _clock();
       _directories.erase(path);
     }
     break;
@@ -168,6 +176,7 @@ void InMemoryFileSystem::unlink(const std::string &path) throw(IoError) {
     break;
   case EntryType::FILE:
     l.directory->files.erase(l.basename);
+    l.directory->mtime = _clock();
     break;
   }
 }
@@ -234,10 +243,12 @@ bool InMemoryFileSystem::Directory::operator==(const Directory &other) const {
 }
 
 InMemoryFileSystem::InMemoryFileStream::InMemoryFileStream(
+    const std::function<time_t ()> &clock,
     const std::shared_ptr<File> &file,
     bool read,
     bool write)
-    : _read(read),
+    : _clock(clock),
+      _read(read),
       _write(write),
       _file(file) {}
 
@@ -284,6 +295,8 @@ void InMemoryFileSystem::InMemoryFileStream::write(
       reinterpret_cast<const char *>(ptr + bytes),
       _file->contents.begin() + _position);
   _position += bytes;
+
+  _file->mtime = _clock();
 }
 
 long InMemoryFileSystem::InMemoryFileStream::tell() const throw(IoError) {
