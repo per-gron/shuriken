@@ -110,11 +110,11 @@ TEST_CASE("Manifest") {
         "build result: cat\n");
 
     CHECK(step.command == "a");
-    CHECK(step.depfile.canonicalized() == "b");
+    CHECK(step.depfile.decanonicalized() == "b");
     CHECK(step.description == "d");
     CHECK(step.generator);
     CHECK(step.restat);
-    CHECK(step.rspfile.canonicalized() == "g");
+    CHECK(step.rspfile.decanonicalized() == "g");
     CHECK(step.rspfile_content == "h");
   }
 
@@ -144,7 +144,7 @@ TEST_CASE("Manifest") {
         "build out: cat_rsp in\n"
         "  rspfile=out.rsp\n");
 
-    CHECK(step.rspfile.canonicalized() == "out.rsp");
+    CHECK(step.rspfile.decanonicalized() == "out.rsp");
     CHECK(step.rspfile_content == "in");
   }
 
@@ -256,10 +256,10 @@ TEST_CASE("Manifest") {
         "  command = something\n"
         "build foo$ bar: spaces $$one two$$$ three\n");
     REQUIRE(step.outputs.size() == 1);
-    CHECK(step.outputs[0].canonicalized() == "foo bar");
+    CHECK(step.outputs[0].decanonicalized() == "foo bar");
     REQUIRE(step.inputs.size() == 2);
-    CHECK(step.inputs[0].canonicalized() == "$one");
-    CHECK(step.inputs[1].canonicalized() == "two$ three");
+    CHECK(step.inputs[0].decanonicalized() == "$one");
+    CHECK(step.inputs[1].decanonicalized() == "two$ three");
     CHECK(step.command == "something");
   }
 
@@ -267,37 +267,16 @@ TEST_CASE("Manifest") {
     const auto manifest = parse(paths, fs,
         "rule cat\n"
         "  command = cat $in > $out\n"
-        "build out: cat in/1 in//2\n"
-        "build in/1: cat\n"
-        "build in/2: cat\n");
+        "build out/1: cat in/1\n"
+        "build out/2: cat in//1\n");
 
-    REQUIRE(manifest.steps.size() >= 1);
-    const auto &step = manifest.steps[0];
-    REQUIRE(step.inputs.size() == 2);
-    CHECK(step.inputs[0].canonicalized() == "in/1");
-    CHECK(step.inputs[1].canonicalized() == "in/2");
+    REQUIRE(manifest.steps.size() == 2);
+    const auto &step_0 = manifest.steps[0];
+    const auto &step_1 = manifest.steps[1];
+    REQUIRE(step_0.inputs.size() == 1);
+    REQUIRE(step_1.inputs.size() == 1);
+    CHECK(step_0.inputs[0].isSame(step_1.inputs[0]));
   }
-
-  #ifdef _WIN32
-  SECTION("CanonicalizeFileBackslashes") {
-    const auto manifest = parse(paths, fs,
-        "rule cat\n"
-        "  command = cat $in > $out\n"
-        "build out: cat in\\1 in\\\\2\n"
-        "build in\\1: cat\n"
-        "build in\\2: cat\n");
-
-    REQUIRE(manifest.steps.size() == 3);
-    const auto &step1 = manifest.steps[1];
-    REQUIRE(step1.outputs.size() == 1);
-    CHECK(step1.outputs[0].canonicalized() == "in/1");
-
-    const auto &step1 = manifest.steps[0];
-    REQUIRE(step1.inputs.size() == 2);
-    CHECK(step1.inputs[0].canonicalized() == "in/1");
-    CHECK(step1.inputs[1].canonicalized() == "in/2");
-  }
-  #endif
 
   SECTION("PathVariables") {
     const auto step = parseStep(paths, fs,
@@ -317,7 +296,7 @@ TEST_CASE("Manifest") {
         "default subninja\n");
 
     REQUIRE(manifest.defaults.size() == 1);
-    CHECK(manifest.defaults[0].canonicalized() == "subninja");
+    CHECK(manifest.defaults[0].decanonicalized() == "subninja");
 
     REQUIRE(manifest.steps.size() == 1);
     const auto &step = manifest.steps[0];
@@ -561,8 +540,8 @@ TEST_CASE("Manifest") {
         "  depfile = bar\n"
         "build a.o b.o: cc c.cc\n");
     REQUIRE(step.outputs.size() == 2);
-    CHECK(step.outputs[0].canonicalized() == "a.o");
-    CHECK(step.outputs[1].canonicalized() == "b.o");
+    CHECK(step.outputs[0].decanonicalized() == "a.o");
+    CHECK(step.outputs[1].decanonicalized() == "b.o");
   }
 
   SECTION("SubNinja") {
@@ -570,7 +549,7 @@ TEST_CASE("Manifest") {
         "var = inner\n"
         "build $builddir/inner: varref\n");
     const auto manifest = parse(paths, fs,
-        "builddir = some_dir/\n"
+        "builddir = some_dir\n"
         "rule varref\n"
         "  command = varref $var\n"
         "var = outer\n"
@@ -579,10 +558,10 @@ TEST_CASE("Manifest") {
         "build $builddir/outer2: varref\n");
 
     REQUIRE(manifest.steps.size() == 3);
-    CHECK(manifest.steps[0].outputs[0].canonicalized() == "some_dir/outer");
+    CHECK(manifest.steps[0].outputs[0].decanonicalized() == "some_dir/outer");
     // Verify our builddir setting is inherited.
-    CHECK(manifest.steps[1].outputs[0].canonicalized() == "some_dir/inner");
-    CHECK(manifest.steps[2].outputs[0].canonicalized() == "some_dir/outer2");
+    CHECK(manifest.steps[1].outputs[0].decanonicalized() == "some_dir/inner");
+    CHECK(manifest.steps[2].outputs[0].decanonicalized() == "some_dir/outer2");
 
     CHECK(manifest.steps[0].command == "varref outer");
     CHECK(manifest.steps[1].command == "varref inner");
@@ -651,9 +630,9 @@ TEST_CASE("Manifest") {
 
     CHECK(step.command == "cat bar > foo");
     REQUIRE(step.inputs.size() == 1);
-    CHECK(step.inputs[0].canonicalized() == "bar");
+    CHECK(step.inputs[0].decanonicalized() == "bar");
     REQUIRE(step.implicit_inputs.size() == 1);
-    CHECK(step.implicit_inputs[0].canonicalized() == "baz");
+    CHECK(step.implicit_inputs[0].decanonicalized() == "baz");
     CHECK(step.dependencies.empty());
   }
 
@@ -663,10 +642,10 @@ TEST_CASE("Manifest") {
         "build foo: cat bar || baz\n");
 
     REQUIRE(step.inputs.size() == 1);
-    CHECK(step.inputs[0].canonicalized() == "bar");
+    CHECK(step.inputs[0].decanonicalized() == "bar");
     CHECK(step.implicit_inputs.empty());
     REQUIRE(step.dependencies.size() == 1);
-    CHECK(step.dependencies[0].canonicalized() == "baz");
+    CHECK(step.dependencies[0].decanonicalized() == "baz");
   }
 
   SECTION("DefaultDefault") {
@@ -691,9 +670,9 @@ TEST_CASE("Manifest") {
         "default $third\n");
 
     REQUIRE(manifest.defaults.size() == 3);
-    CHECK(manifest.defaults[0].canonicalized() == "a");
-    CHECK(manifest.defaults[1].canonicalized() == "b");
-    CHECK(manifest.defaults[2].canonicalized() == "c");
+    CHECK(manifest.defaults[0].decanonicalized() == "a");
+    CHECK(manifest.defaults[1].decanonicalized() == "b");
+    CHECK(manifest.defaults[2].decanonicalized() == "c");
   }
 
   SECTION("UTF8") {
@@ -738,7 +717,7 @@ TEST_CASE("Manifest") {
           "variable = new\n");
 
       REQUIRE(step.inputs.size() == 1);
-      CHECK(step.inputs[0].canonicalized() == "old");
+      CHECK(step.inputs[0].decanonicalized() == "old");
     }
 
     SECTION("EagerlyEvaluateOutputs") {
@@ -751,7 +730,7 @@ TEST_CASE("Manifest") {
           "variable = new\n");
 
       REQUIRE(step.outputs.size() == 1);
-      CHECK(step.outputs[0].canonicalized() == "old");
+      CHECK(step.outputs[0].decanonicalized() == "old");
     }
 
     SECTION("EagerlyEvaluateImplicit") {
@@ -764,7 +743,7 @@ TEST_CASE("Manifest") {
           "variable = new\n");
 
       REQUIRE(step.implicit_inputs.size() == 1);
-      CHECK(step.implicit_inputs[0].canonicalized() == "old");
+      CHECK(step.implicit_inputs[0].decanonicalized() == "old");
     }
 
     SECTION("EagerlyEvaluateOrderOnly") {
@@ -777,7 +756,7 @@ TEST_CASE("Manifest") {
           "variable = new\n");
 
       REQUIRE(step.dependencies.size() == 1);
-      CHECK(step.dependencies[0].canonicalized() == "old");
+      CHECK(step.dependencies[0].decanonicalized() == "old");
     }
 
     SECTION("EagerlyEvaluatePoolName") {
@@ -815,8 +794,8 @@ TEST_CASE("Manifest") {
       CHECK(step.description == "Hi new");
       CHECK(step.restat);
       CHECK(step.generator);
-      CHECK(step.depfile.canonicalized() == "new");
-      CHECK(step.rspfile.canonicalized() == "new");
+      CHECK(step.depfile.decanonicalized() == "new");
+      CHECK(step.rspfile.decanonicalized() == "new");
       CHECK(step.rspfile_content == "new");
     }
   }

@@ -101,10 +101,6 @@ class Path {
     return *_original_path;
   }
 
-  const std::string &canonicalized() const {
-    return _canonicalized_path->path;
-  }
-
   bool operator==(const Path &other) const {
     return (
         _canonicalized_path == other._canonicalized_path &&

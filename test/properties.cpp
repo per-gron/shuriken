@@ -80,8 +80,8 @@ rc::Gen<BuildInput> buildInput(const std::shared_ptr<Paths> &paths) {
 
 void addFilesToFileSystem(const Files &files, FileSystem &file_system) {
   for (const auto &file : files) {
-    mkdirsFor(file_system, file.first.canonicalized());
-    writeFile(file_system, file.first.canonicalized(), file.second);
+    mkdirsFor(file_system, file.first.decanonicalized());
+    writeFile(file_system, file.first.decanonicalized(), file.second);
   }
 }
 
