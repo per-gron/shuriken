@@ -121,6 +121,15 @@ Large things remaining to do:
 * The actual build algorithm
 * BuildStatus
 * CLI
+* CLI tools:
+  * deps
+  * clean
+  * commands
+  * graph
+  * query
+  * targets
+  * compdb
+  * recompact
 * Caching
 * Distributed caching
 

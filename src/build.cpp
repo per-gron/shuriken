@@ -1,5 +1,7 @@
 #include "build.h"
 
+#include "fingerprint.h"
+
 namespace shk {
 
 using StepIndex = size_t;
@@ -11,6 +13,12 @@ using StepIndex = size_t;
  * step to a build step that it depends on.
  */
 using OutputFileMap = std::unordered_map<Path, StepIndex>;
+
+/**
+ * "Map" of StepIndex => Hash of that step. The hash includes everything about
+ * that step but not information about its dependencies.
+ */
+using StepHashes = std::vector<Hash>;
 
 /**
  * During the build, the Build object has one StepNode for each Step in the
@@ -74,6 +82,18 @@ struct Build {
    * has happened, no more build commands should be invoked.
    */
   bool interrupted = false;
+
+  void markStepNodeAsDone(StepIndex step_idx) {
+    const auto &dependents = step_nodes[step_idx].dependents;
+    for (const auto dependent_idx : dependents) {
+      auto &dependent = step_nodes[dependent_idx];
+      assert(dependent.dependencies);
+      dependent.dependencies--;
+      if (dependent.dependencies == 0) {
+        ready_steps.push_back(dependent_idx);
+      }
+    }
+  }
 };
 
 /**
@@ -90,14 +110,20 @@ std::vector<StepIndex> rootSteps(
   // that is in a given step's list of outputs. Such steps are not roots.
   std::vector<bool> roots(steps.size(), true);
 
-  for (size_t i = 0; i < steps.size(); i++) {
-    const auto &step = steps[i];
-    for (const auto &input : step.inputs) {
-      const auto it = output_file_map.count(input);
+  const auto process_inputs = [&](const std::vector<Path> &inputs) {
+    for (const auto &input : inputs) {
+      const auto it = output_file_map.find(input);
       if (it != output_file_map.end()) {
         roots[it->second] = false;
       }
     }
+  };
+
+  for (size_t i = 0; i < steps.size(); i++) {
+    const auto &step = steps[i];
+    process_input(step.inputs);
+    process_input(step.implicit_inputs);
+    process_input(step.dependencies);
   }
 
   for (size_t i = 0; i < steps.size(); i++) {
@@ -195,20 +221,25 @@ void visitStep(
   cycle.push_back(idx);
 
   const auto &step = manifest.steps[idx];
-  for (const auto &input : step.inputs) {
-    const auto it = output_file_map.find(input);
-    if (it == output_file_map.end()) {
-      // This input is not an output of some other build step.
-      continue;
+  const auto process_inputs = [&](const std::vector<Path> &inputs) {
+    for (const auto &input : inputs) {
+      const auto it = output_file_map.find(input);
+      if (it == output_file_map.end()) {
+        // This input is not an output of some other build step.
+        continue;
+      }
+
+      const auto dependency_idx = it->second;
+      auto &dependency_node = build.step_nodes[dependency_idx];
+      dependency_node.dependents.push_back(step_idx);
+      step.dependencies++;
+
+      visitStep(output_file_map, build, cycle, dependency_idx);
     }
-
-    const auto dependency_idx = it->second;
-    auto &dependency_node = build.step_nodes[dependency_idx];
-    dependency_node.dependents.push_back(step_idx);
-    step.dependencies++;
-
-    visitStep(output_file_map, build, cycle, dependency_idx);
-  }
+  };
+  process_inputs(step.inputs);
+  process_inputs(step.implicit_inputs);
+  // TODO(peck): Handle order-only dependencies
 
   cycle.pop_back();
   step_node.currently_visited = false;
@@ -234,12 +265,76 @@ Build computeBuild(
   return build;
 }
 
+/**
+ * The fingerprinting system sometimes asks for a fingerprint of a clean target
+ * to be recomputed (this usually happens when the entry is "racily clean" which
+ * makes it necessary to hash the file contents to detect if the file is dirty
+ * or not). This function takes an Invocations::Entry, recomputes the
+ * fingerprints and creates a new Invocations::Entry with fresh fingerprints.
+ */
+Invocations::Entry recomputeInvocationEntry(
+    FileSystem &file_system, const Invocations::Entry &entry) {
+  // TODO(peck): Implement me
+
+  return entry;
+}
+
+/**
+ * Checks if a build step has already been performed and does not need to be
+ * run again. This is not purely a read-only action: It uses fingerprints, and
+ * if the fingerprint logic wants a fresher fingerprint in the invocation log
+ * for the future, isClean provides that.
+ */
 bool isClean(
+    FileSystem &file_system,
     InvocationLog &invocation_log,
     const Invocations &invocations,
-    const Step &step) throw(IoError) {
-  // TODO(peck): Implement me. Document me
-  return false;
+    const Hash &step_hash) throw(IoError) {
+  const auto it = invocations.find(step_hash);
+  if (it == invocations.end()) {
+    return false;
+  }
+
+  bool should_update = false;
+  bool clean = true;
+  const auto process_files = [&](
+      const std::vector<std::pair<Path, Fingerprint>> &files) {
+    for (const auto &file : files) {
+      const auto match = fingerprintMatches(
+          file_system,
+          file.first.original(),
+          file.second);
+      if (!match.clean) {
+        clean = false;
+      }
+      if (match.should_update) {
+        should_update = true;
+      }
+    }
+  };
+  const auto &entry = it->second;
+  process_files(entry.output_files);
+  process_files(entry.input_files);
+
+  if (clean && should_update) {
+    // There is no need to update the invocation log when dirty; it will be
+    // updated anyway as part of the build.
+    invocation_log.ranCommand(
+        step_hash, recomputeInvocationEntry(file_system, entry));
+  }
+
+  return clean;
+}
+
+StepHashes computeStepHashes(const std::vector<Step> &steps) {
+  StepHashes hashes;
+  hashes.reserve(steps.size());
+
+  for (const auto &step : steps) {
+    hashes.push_back(step.hash());  // TODO(peck): Add Step::hash
+  }
+
+  return hashes;
 }
 
 /**
@@ -248,9 +343,11 @@ bool isClean(
  * built.
  */
 void discardCleanSteps(
+    FileSystem &file_system,
     InvocationLog &invocation_log,
     const Invocations &invocations,
     const Manifest &manifest,
+    const StepHashes &step_hashes,
     Build &build) throw(IoError) {
   // This function goes through and consumes build.ready_steps. While doing that
   // it adds an element to new_ready_steps for each dirty step that it
@@ -273,16 +370,9 @@ void discardCleanSteps(
     }
     visited[step_idx] = true;
 
-    if (isClean(invocation_log, invocations, step)) {
-      const auto &dependents = build.step_nodes[step_idx].dependents;
-      for (const auto dependent_idx : dependents) {
-        auto &dependent = build.step_nodes[dependent_idx];
-        assert(dependent.dependencies);
-        dependent.dependencies--;
-        if (dependent.dependencies == 0) {
-          build.ready_steps.push_back(dependent_idx);
-        }
-      }
+    const auto &step_hash = step_hashes[step_idx];
+    if (isClean(file_system, invocation_log, invocations, step_hash)) {
+      build.markStepNodeAsDone(step_idx);
     } else {
       new_ready_steps.push_back(step_idx);
     }
@@ -291,12 +381,26 @@ void discardCleanSteps(
   build.ready_steps.swap(new_ready_steps);
 }
 
+void deleteTemporaryBuildFile(
+    FileSystem &file_system,
+    Path path) {
+  // TODO(peck): Implement me
+}
+
+void mkdirsForPath(
+    FileSystem &file_system,
+    InvocationLog &invocation_log,
+    Path path) {
+  // TODO(peck): Implement me
+}
+
 void commandDone(
     FileSystem &file_system,
     CommandRunner &command_runner,
     BuildStatus &build_status,
     InvocationLog &invocation_log,
     const Manifest &manifest,
+    const StepHashes &step_hashes,
     Build &build,
     StepIndex step_idx,
     CommandRunner::Result &&result) throw(IoError) {
@@ -305,16 +409,19 @@ void commandDone(
   // TODO(peck): Validate that the command did not read a file that is an output
   //   of a target that it does not depend on directly or indirectly.
 
-  deleteDepsfile(file_system, step);  // TODO(peck): Make this happen
-  deleteRspfile(file_system, step);  // TODO(peck): Make this happen
-  build_status.finished(step);
+  deleteTemporaryBuildFile(file_system, step.depfile);
+  deleteTemporaryBuildFile(file_system, step.rspfile);
+  build_status.finished(step);  // TODO(peck): Make this happen
 
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
     // TODO(peck): Write entry in the InvocationLog
-    // TODO(peck): Perform restat logic
-    // TODO(peck): Update the dependencies count of the dependents and maybe add
-    //   stuff to ready_steps.
+
+    if (false /*TODO(peck):NYI*/ && step.restat && outputsDidNotChange()) {
+      // TODO(peck): Mark this step as clean
+    } else {
+      build.markStepNodeAsDone(step_idx);
+    }
     break;
   case ExitStatus::FAILURE:
     // TODO(peck): Implement me
@@ -323,6 +430,17 @@ void commandDone(
     build.interrupted = true;
     break;
   }
+
+  // Feed the command runner with more commands now that this one is finished.
+  // TODO(peck): Is it safe to call invoke from within a Command callback?
+  enqueueBuildCommands(
+      file_system,
+      command_runner,
+      build_status,
+      invocation_log,
+      manfiest,
+      step_hashes,
+      build);
 }
 
 bool enqueueBuildCommand(
@@ -331,6 +449,7 @@ bool enqueueBuildCommand(
     BuildStatus &build_status,
     InvocationLog &invocation_log,
     const Manifest &manifest,
+    const StepHashes &step_hashes,
     Build &build) throw(IoError) {
   if (build.ready_steps.empty() ||
       build.interrupted ||
@@ -342,9 +461,15 @@ bool enqueueBuildCommand(
   const auto &step = manifest.steps[step_idx];
   build.ready_steps.pop_back();
 
+  const auto &step_hash = step_hashes[step_idx];
   deleteOldOutputs(invocations, step);  // TODO(peck): Make this happen
-  writeRspFile(file_system, step);  // TODO(peck): Make this happen. Also make directories if needed
-  createDirectoriesForOutputs(file_system, step);  // TODO(peck): Make this happen
+
+  mkdirsForPath(file_system, invocation_log, step.rspfile);
+  file_system.writeFile(step.rspfile, step.rspfile_content);
+
+  for (const auto &output : step.outputs) {
+    mkdirsForPath(file_system, invocation_log, output);
+  }
 
   // TODO(peck): What about pools?
 
@@ -360,12 +485,32 @@ bool enqueueBuildCommand(
             build_status,
             invocation_log,
             manifest,
+            step_hashes,
             build,
             step_idx,
             std::move(result));
       });
 
   return true;
+}
+
+
+bool enqueueBuildCommands(
+    FileSystem &file_system,
+    CommandRunner &command_runner,
+    BuildStatus &build_status,
+    InvocationLog &invocation_log,
+    const Manifest &manifest,
+    const StepHashes &step_hashes,
+    Build &build) throw(IoError) {
+  while (enqueueBuildCommand(
+      file_system,
+      command_runner,
+      build_status,
+      invocation_log,
+      manfiest,
+      step_hashes,
+      build)) {}
 }
 
 void build(
@@ -386,15 +531,24 @@ void build(
       output_file_map,
       manifest);
 
-  discardCleanSteps(invocation_log, invocations, manifest, build);
+  const auto step_hashes = computeStepHashes(manifest.steps);
 
-  while (enqueueBuildCommand(
+  discardCleanSteps(
+      file_system,
+      invocation_log,
+      invocations,
+      manifest,
+      step_hashes,
+      build);
+
+  enqueueBuildCommands(
       file_system,
       command_runner,
       build_status,
       invocation_log,
-      manfiest
-      build)) {}
+      manfiest,
+      step_hashes,
+      build);
 
   while (!command_runner.empty()) {
     if (command_runner.runCommands()) {

@@ -20,8 +20,8 @@ namespace shk {
  */
 struct Invocations {
   struct Entry {
-    std::vector<Fingerprint> output_files;
-    std::vector<Fingerprint> input_files;
+    std::vector<std::pair<Path, Fingerprint>> output_files;
+    std::vector<std::pair<Path, Fingerprint>> input_files;
   };
 
   /**
