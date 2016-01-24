@@ -17,7 +17,7 @@ add_custom_command(
 
 add_library(shklib
   src/build.h
-  src/build.cpp
+  # src/build.cpp  Commented out because it does not yet work or even build
   src/build_status.h
   src/command_runner.h
   src/edit_distance.cpp
