@@ -14,6 +14,7 @@
 
 #include "real_command_runner.h"
 
+#include <list>
 #include <string>
 #include <vector>
 #include <queue>
@@ -78,7 +79,7 @@ class SubprocessSet : public CommandRunner {
   }
 
  private:
-  std::vector<std::unique_ptr<Subprocess>> _running;
+  std::list<std::unique_ptr<Subprocess>> _running;
 
   static void setInterruptedFlag(int signum);
   static void handlePendingInterruption();

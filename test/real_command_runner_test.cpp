@@ -98,6 +98,35 @@ TEST_CASE("SubprocessSet") {
 #endif
   }
 
+  SECTION("InvokeFromCallback") {
+    const auto runner = makeRealCommandRunner();
+
+    // Push a lot of commands within the callback to increase the likelihood
+    // of a crash in case the command runner uses a vector or something else
+    // equally bad.
+    const size_t num_cmds = 50;
+    size_t done = 0;
+    runner->invoke(
+        "/bin/echo",
+        UseConsole::NO,
+        [&](CommandRunner::Result &&result) {
+          for (size_t i = 0; i < num_cmds; i++) {
+            runner->invoke(
+                "/bin/echo",
+                UseConsole::NO,
+                [&](CommandRunner::Result &&result) {
+                  done++;
+                });
+          }
+        });
+
+    while (!runner->empty()) {
+      runner->runCommands();
+    }
+
+    CHECK(num_cmds == done);
+  }
+
 #ifndef _WIN32
 
   SECTION("InterruptChild") {

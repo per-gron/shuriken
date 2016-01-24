@@ -432,7 +432,6 @@ void commandDone(
   }
 
   // Feed the command runner with more commands now that this one is finished.
-  // TODO(peck): Is it safe to call invoke from within a Command callback?
   enqueueBuildCommands(
       file_system,
       command_runner,

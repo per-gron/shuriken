@@ -1,5 +1,9 @@
 #include "command_runner.h"
 
+#include <list>
+#include <string>
+#include <vector>
+
 #include "file_system.h"
 
 namespace shk {
@@ -55,7 +59,7 @@ class DummyCommandRunner : public CommandRunner {
 
  private:
   FileSystem &_file_system;
-  std::vector<std::pair<std::string, Callback>> _enqueued_commands;
+  std::list<std::pair<std::string, Callback>> _enqueued_commands;
 };
 
 }  // namespace shk

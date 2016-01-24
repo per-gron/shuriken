@@ -44,6 +44,9 @@ class CommandRunner {
    * the result. It is allowed to call invoke() and empty() from the callback,
    * but it is not allowed to call wait() from there.
    *
+   * It is legal to call invoke even from a callback of invoke (ie within a
+   * runCommands invocation).
+   *
    * The callback is always invokedfrom within a runCommands call.
    */
   virtual void invoke(
