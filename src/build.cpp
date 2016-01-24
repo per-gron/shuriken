@@ -197,18 +197,26 @@ std::vector<StepIndex> computeReadySteps(
   return result;
 }
 
+std::string cycleErrorMessage(const std::vector<Path> &cycle) {
+  std::string error = "dependency cycle: ";
+  for (const auto &path : cycle) {
+    error += path.original() + " -> ";
+  }
+  error += cycle.first.original();
+  return error;
+}
+
 /**
  * Recursive helper for computeBuild. Implements the DFS traversal.
  */
 void visitStep(
     const OutputFileMap &output_file_map,
     Build &build,
-    std::vector<StepIndex> &cycle,
+    std::vector<Path> &cycle,
     StepIndex idx) throw(BuildError) {
   auto &step_node = build.step_nodes[idx];
   if (step_node.currently_visited) {
-    // TODO(peck): Better error message
-    throw BuildError("Cycle detected");
+    throw BuildError(cycleErrorMessage(cycle));
   }
 
   if (step_node.should_build) {
@@ -218,7 +226,6 @@ void visitStep(
   step_node.should_build = true;
 
   step_node.currently_visited = true;
-  cycle.push_back(idx);
 
   const auto &step = manifest.steps[idx];
   const auto process_inputs = [&](const std::vector<Path> &inputs) {
@@ -234,14 +241,15 @@ void visitStep(
       dependency_node.dependents.push_back(step_idx);
       step.dependencies++;
 
+      cycle.push_back(input);
       visitStep(output_file_map, build, cycle, dependency_idx);
+      cycle.pop_back();
     }
   };
   process_inputs(step.inputs);
   process_inputs(step.implicit_inputs);
-  // TODO(peck): Handle order-only dependencies
+  // FIXME(peck): Handle order-only dependencies
 
-  cycle.pop_back();
   step_node.currently_visited = false;
 }
 
@@ -255,7 +263,7 @@ Build computeBuild(
   Build build;
   build.step_nodes.resize(manifest.steps.size());
 
-  std::vector<StepIndex> cycle;
+  std::vector<Path> cycle;
   cycle.reserve(32);  // Guess at largest typical build dependency depth
   for (const auto step_idx : steps_to_build) {
     visitStep(output_file_map, build, cycle, step_idx);
@@ -331,7 +339,7 @@ StepHashes computeStepHashes(const std::vector<Step> &steps) {
   hashes.reserve(steps.size());
 
   for (const auto &step : steps) {
-    hashes.push_back(step.hash());  // TODO(peck): Add Step::hash
+    hashes.push_back(step.hash());
   }
 
   return hashes;
@@ -391,7 +399,7 @@ void mkdirsForPath(
     FileSystem &file_system,
     InvocationLog &invocation_log,
     Path path) {
-  // TODO(peck): Implement me
+  // FIXME(peck): Implement me
 }
 
 void commandDone(
@@ -411,7 +419,6 @@ void commandDone(
 
   deleteTemporaryBuildFile(file_system, step.depfile);
   deleteTemporaryBuildFile(file_system, step.rspfile);
-  build_status.finished(step);  // TODO(peck): Make this happen
 
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
@@ -424,7 +431,7 @@ void commandDone(
     }
     break;
   case ExitStatus::FAILURE:
-    // TODO(peck): Implement me
+    // FIXME(peck): Implement me
     break;
   case ExitStatus::INTERRUPTED:
     build.interrupted = true;
@@ -472,7 +479,6 @@ bool enqueueBuildCommand(
 
   // TODO(peck): What about pools?
 
-  build_status.started(step);  // TODO(peck): Make this happen
   command_runner.invoke(
       step.command,
       step.pool_name == "console" ? UseConsole::YES : UseConsole::NO,
@@ -519,6 +525,8 @@ void build(
     InvocationLog &invocation_log,
     const Manifest &manifest,
     const Invocations &invocations) throw(IoError, BuildError) {
+  // TODO(peck): Use build_status
+
   deleteStaleOutputs();  // TODO(peck): Make this happen
 
   const auto output_file_map = computeOutputFileMap(manifest.steps);
