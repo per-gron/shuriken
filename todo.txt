@@ -1,6 +1,12 @@
 https://blake2.net/
 https://www.schneier.com/cryptography/skein/
 https://www.kernel.org/pub/software/scm/git/docs/technical/racy-git.txt
+https://github.com/bazelbuild/bazel/blob/master/tools/cpp/CROSSTOOL
+https://www.chromium.org/developers/testing/isolated-testing/deterministic-builds
+https://codereview.chromium.org/699083004
+CppCompileAction.java options.add("-frandom-seed=" + outputFile.getExecPathString());
+https://lwn.net/Articles/630074/
+https://wiki.debian.org/ReproducibleBuilds/Howto
 
 https://github.com/apenwarr/redo#readme
 http://cr.yp.to/redo/honest-script.html

@@ -214,9 +214,67 @@ std::string cycleErrorMessage(const std::vector<Path> &cycle) {
 }
 
 /**
+ * In the process of calculating a build graph out of the build steps that are
+ * declared in the manifest (the computeBuild function does this), Shuriken
+ * traverses the build steps via its dependencies. This function helps this
+ * process by taking a step and (via callback invocations) providing the files
+ * that the given step depends on.
+ *
+ * This function operates differently on the initial build compared to
+ * subsequent builds, and this difference is rather central to the whole design
+ * of Shuriken and how Shuriken is different compared to Ninja. During the first
+ * build, Shuriken does not care about the difference between inputs, implicit
+ * dependencies and order-only dependencies; they are all dependencies and are
+ * treated equally.
+ *
+ * On subsequent builds, Ninja treats order-only dependencies differently from
+ * other dependencies, and also brings depfile dependencies into the mix by
+ * counting them as part of the implicit dependencies.
+ *
+ * Shuriken does not do this. It doesn't have to, because it has accurate
+ * dependency information from when the build step was last invoked. When there
+ * is an up-to-date invocation log entry for the given step, Shuriken completely
+ * ignores the dependencies declared in the manifest and uses only the
+ * calculated dependencies. This simplifies the logic a bit and unties manifest
+ * specified dependencies from dependencies retrieved from running the command.
+ */
+template<typename Callback>
+void visitStepInputs(
+    const StepHashes &step_hashes,
+    const Invocations &invocations,
+    const Manifest &manifest,
+    StepIndex idx,
+    Callback &&callback) {
+  const auto invocation_it = invocations.entries.find(step_hashes[idx]);
+  if (invocation_it == Invocations.entries.end()) {
+    // There is an entry for this step in the invocation log. Use the real
+    // inputs from the last invocation rather than the ones specified in the
+    // manifest.
+    const auto &output_files = invocation_it->second.output_files;
+    for (const auto &output_file : output_files) {
+      callback(output_file.first);
+    }
+  } else {
+    // There is no entry for this step in the invocation log.
+    const auto process_inputs = [&](const std::vector<Path> &inputs) {
+      for (const auto &input : inputs) {
+        callback(input);
+      }
+    };
+    const auto &step = manifest.steps[idx];
+    process_inputs(step.inputs);
+    process_inputs(step.implicit_inputs);
+    process_inputs(step.dependencies);
+  }
+}
+
+/**
  * Recursive helper for computeBuild. Implements the DFS traversal.
  */
 void visitStep(
+    const Manifest &manifest,
+    const StepHashes &step_hashes,
+    const Invocations &invocations,
     const OutputFileMap &output_file_map,
     Build &build,
     std::vector<Path> &cycle,
@@ -233,30 +291,35 @@ void visitStep(
   step_node.should_build = true;
 
   step_node.currently_visited = true;
+  visitStepInputs(
+      manifest,
+      step_hashes,
+      invocations,
+      manifest,
+      idx,
+      [&](const std::vector<Path> &inputs) {
+        const auto it = output_file_map.find(input);
+        if (it == output_file_map.end()) {
+          // This input is not an output of some other build step.
+          continue;
+        }
 
-  const auto &step = manifest.steps[idx];
-  const auto process_inputs = [&](const std::vector<Path> &inputs) {
-    for (const auto &input : inputs) {
-      const auto it = output_file_map.find(input);
-      if (it == output_file_map.end()) {
-        // This input is not an output of some other build step.
-        continue;
-      }
+        const auto dependency_idx = it->second;
+        auto &dependency_node = build.step_nodes[dependency_idx];
+        dependency_node.dependents.push_back(step_idx);
+        step_node.dependencies++;
 
-      const auto dependency_idx = it->second;
-      auto &dependency_node = build.step_nodes[dependency_idx];
-      dependency_node.dependents.push_back(step_idx);
-      step.dependencies++;
-
-      cycle.push_back(input);
-      visitStep(output_file_map, build, cycle, dependency_idx);
-      cycle.pop_back();
-    }
-  };
-  process_inputs(step.inputs);
-  process_inputs(step.implicit_inputs);
-  // FIXME(peck): Handle order-only dependencies
-
+        cycle.push_back(input);
+        visitStep(
+            manifest,
+            step_hashes,
+            invocations,
+            output_file_map,
+            build,
+            cycle,
+            dependency_idx);
+        cycle.pop_back();
+      });
   step_node.currently_visited = false;
 }
 
@@ -264,17 +327,26 @@ void visitStep(
  * Create a Build object suitable for use as a starting point for the build.
  */
 Build computeBuild(
-    std::vector<StepIndex> &&steps_to_build,
+    const StepHashes &step_hashes,
+    const Invocations &invocations,
     const OutputFileMap &output_file_map,
     const Manifest &manifest,
-    size_t allowed_failures) {
+    size_t allowed_failures,
+    std::vector<StepIndex> &&steps_to_build) {
   Build build;
   build.step_nodes.resize(manifest.steps.size());
 
   std::vector<Path> cycle;
   cycle.reserve(32);  // Guess at largest typical build dependency depth
   for (const auto step_idx : steps_to_build) {
-    visitStep(output_file_map, build, cycle, step_idx);
+    visitStep(
+        manifest,
+        step_hashes,
+        invocations,
+        output_file_map,
+        build,
+        cycle,
+        step_idx);
   }
 
   build.ready_steps = computeReadySteps(build.step_nodes);
@@ -398,9 +470,9 @@ void discardCleanSteps(
   build.ready_steps.swap(new_ready_steps);
 }
 
-void deleteTemporaryBuildFile(
+void deleteBuildProduct(
     FileSystem &file_system,
-    Path path) {
+    Path path) throw(IoError) {
   // TODO(peck): Implement me
 }
 
@@ -426,8 +498,8 @@ void commandDone(
   // TODO(peck): Validate that the command did not read a file that is an output
   //   of a target that it does not depend on directly or indirectly.
 
-  deleteTemporaryBuildFile(file_system, step.depfile);
-  deleteTemporaryBuildFile(file_system, step.rspfile);
+  deleteBuildProduct(file_system, step.depfile);
+  deleteBuildProduct(file_system, step.rspfile);
 
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
@@ -461,6 +533,21 @@ void commandDone(
       build);
 }
 
+void deleteOldOutputs(
+    FileSystem &file_system,
+    const Invocations &invocations,
+    const Hash &step_hash) throw(IoError) {
+  const auto it = invocations.entries.find(step_hash);
+  if (it == invocations.entries.end()) {
+    return;
+  }
+
+  const auto &entry = it->second;
+  for (const auto &output : entry.output_files) {
+    deleteBuildProduct(output.first);
+  }
+}
+
 bool enqueueBuildCommand(
     FileSystem &file_system,
     CommandRunner &command_runner,
@@ -481,7 +568,7 @@ bool enqueueBuildCommand(
   build.ready_steps.pop_back();
 
   const auto &step_hash = step_hashes[step_idx];
-  deleteOldOutputs(invocations, step);  // TODO(peck): Make this happen
+  deleteOldOutputs(file_system, invocations, step_hash);
 
   mkdirsForPath(file_system, invocation_log, step.rspfile);
   file_system.writeFile(step.rspfile, step.rspfile_content);
@@ -547,13 +634,15 @@ void build(
 
   auto steps_to_build = computeStepsToBuild(manifest, output_file_map);
 
+  const auto step_hashes = computeStepHashes(manifest.steps);
+
   auto build = computeBuild(
-      std::move(steps_to_build),
+      step_hashes,
+      invocations,
       output_file_map,
       manifest,
-      allowed_failures);
-
-  const auto step_hashes = computeStepHashes(manifest.steps);
+      allowed_failures,
+      std::move(steps_to_build));
 
   discardCleanSteps(
       file_system,
