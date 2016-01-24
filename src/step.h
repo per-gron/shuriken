@@ -107,6 +107,8 @@ struct Step {
    */
   Path rspfile;
   std::string rspfile_content;
+
+  Hash hash() const;
 };
 
 }  // namespace shk
