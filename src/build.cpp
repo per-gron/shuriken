@@ -83,6 +83,13 @@ struct Build {
    */
   bool interrupted = false;
 
+  /**
+   * The number of commands that are allowed to fail before the build stops. A
+   * value of 0 means that too many commands have failed and the build should
+   * stop.
+   */
+  int remaining_failures = 0;
+
   void markStepNodeAsDone(StepIndex step_idx) {
     const auto &dependents = step_nodes[step_idx].dependents;
     for (const auto dependent_idx : dependents) {
@@ -259,7 +266,8 @@ void visitStep(
 Build computeBuild(
     std::vector<StepIndex> &&steps_to_build,
     const OutputFileMap &output_file_map,
-    const Manifest &manifest) {
+    const Manifest &manifest,
+    size_t allowed_failures) {
   Build build;
   build.step_nodes.resize(manifest.steps.size());
 
@@ -270,6 +278,7 @@ Build computeBuild(
   }
 
   build.ready_steps = computeReadySteps(build.step_nodes);
+  build.allowed_failures = allowed_failures;
   return build;
 }
 
@@ -430,9 +439,12 @@ void commandDone(
       build.markStepNodeAsDone(step_idx);
     }
     break;
+
   case ExitStatus::FAILURE:
-    // FIXME(peck): Implement me
+    assert(build.remaining_failures);
+    build.remaining_failures--;
     break;
+
   case ExitStatus::INTERRUPTED:
     build.interrupted = true;
     break;
@@ -459,7 +471,8 @@ bool enqueueBuildCommand(
     Build &build) throw(IoError) {
   if (build.ready_steps.empty() ||
       build.interrupted ||
-      !command_runner.canRunMore()) {
+      !command_runner.canRunMore() ||
+      build.remaining_failures == 0) {
     return false;
   }
 
@@ -523,6 +536,7 @@ void build(
     CommandRunner &command_runner,
     BuildStatus &build_status,
     InvocationLog &invocation_log,
+    size_t allowed_failures,
     const Manifest &manifest,
     const Invocations &invocations) throw(IoError, BuildError) {
   // TODO(peck): Use build_status
@@ -536,7 +550,8 @@ void build(
   auto build = computeBuild(
       std::move(steps_to_build),
       output_file_map,
-      manifest);
+      manifest,
+      allowed_failures);
 
   const auto step_hashes = computeStepHashes(manifest.steps);
 
