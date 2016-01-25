@@ -120,6 +120,10 @@ struct Build {
   }
 };
 
+bool isConsolePool(const std::string &pool_name) {
+  return pool_name == "console";
+}
+
 /**
  * There are a bunch of functions in this file that take more or less the same
  * parameters, and quite many at that. The point of this struct is to avoid
@@ -622,11 +626,15 @@ void commandDone(
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
     // TODO(peck): Do something about result.linting_errors
-    // TODO(peck): Don't add to invocation log if using the console pool
 
-    params.invocation_log.ranCommand(
-        params.step_hashes[step_idx],
-        computeInvocationEntry(params.clock, params.file_system, result));
+    if (!isConsolePool(step.pool_name)) {
+      // The console pool gives the command access to stdin which is clearly not
+      // a deterministic source. Because of this, steps using the console pool
+      // are never counted as clean.
+      params.invocation_log.ranCommand(
+          params.step_hashes[step_idx],
+          computeInvocationEntry(params.clock, params.file_system, result));
+    }
 
     if (step.restat &&
         !outputsWereChanged(
@@ -694,7 +702,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
 
   params.command_runner.invoke(
       step.command,
-      step.pool_name == "console" ? UseConsole::YES : UseConsole::NO,
+      isConsolePool(step.pool_name) ? UseConsole::YES : UseConsole::NO,
       [&params, step_idx](CommandRunner::Result &&result) {
         commandDone(params, step_idx, std::move(result));
       });
