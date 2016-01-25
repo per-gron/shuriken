@@ -55,7 +55,6 @@ add_library(shklib
   src/step.cpp
   src/step.h
   src/string_piece.h
-  src/task.h
   src/tracing_command_runner.cpp
   src/tracing_command_runner.h
   src/util.cpp

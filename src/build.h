@@ -11,7 +11,6 @@
 #include "invocations.h"
 #include "manifest.h"
 #include "step.h"
-#include "task.h"
 
 namespace shk {
 
