@@ -7,6 +7,14 @@
 
 namespace shk {
 namespace detail {
+namespace {
+
+std::vector<StepIndex> rootSteps(
+    const std::vector<Step> &steps) {
+  return ::shk::detail::rootSteps(steps, computeOutputFileMap(steps));
+}
+
+}  // anonymous namespace
 
 TEST_CASE("Build") {
   InMemoryFileSystem fs;
@@ -66,6 +74,26 @@ TEST_CASE("Build") {
   }
 
   SECTION("rootSteps") {
+    CHECK(rootSteps({}).empty());
+    CHECK(rootSteps({ single_output }) == std::vector<StepIndex>{ 0 });
+    CHECK(
+        rootSteps({ single_output, single_output_b }) ==
+        (std::vector<StepIndex>{ 0, 1 }));
+    CHECK(
+        rootSteps({ single_output, single_input }) ==
+        std::vector<StepIndex>{ 1 });
+    CHECK(
+        rootSteps({ single_output, single_implicit_input }) ==
+        std::vector<StepIndex>{ 1 });
+    CHECK(
+        rootSteps({ single_output, single_dependency }) ==
+        std::vector<StepIndex>{ 1 });
+    CHECK(
+        rootSteps({ single_dependency, single_output }) ==
+        std::vector<StepIndex>{ 0 });
+    CHECK(
+        rootSteps({ single_dependency, single_output, multiple_outputs }) ==
+        (std::vector<StepIndex>{ 0, 2 }));
   }
 
   SECTION("computeStepsToBuild") {
