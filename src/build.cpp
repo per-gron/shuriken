@@ -703,8 +703,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   deleteOldOutputs(params.file_system, params.invocations, step_hash);
 
   mkdirsForPath(params.file_system, params.invocation_log, step.rspfile);
-  // TODO(peck): Add writeFile to FileSystem
-  // params.file_system.writeFile(step.rspfile, step.rspfile_content);
+  params.file_system.writeFile(step.rspfile.original(), step.rspfile_content);
 
   for (const auto &output : step.outputs) {
     mkdirsForPath(params.file_system, params.invocation_log, output);
