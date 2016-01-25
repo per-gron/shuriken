@@ -1,7 +1,10 @@
 #pragma once
 
+#include <string>
+#include <vector>
+
+#include "fingerprint.h"
 #include "hash.h"
-#include "invocations.h"
 #include "io_error.h"
 #include "path.h"
 
@@ -15,6 +18,11 @@ namespace shk {
  */
 class InvocationLog {
  public:
+  struct Entry {
+    std::vector<std::pair<std::string, Fingerprint>> output_files;
+    std::vector<std::pair<std::string, Fingerprint>> input_files;
+  };
+
   virtual ~InvocationLog() = default;
 
   /**
@@ -22,14 +30,14 @@ class InvocationLog {
    * directory. This will cause Shuriken to delete the directory in subsequent
    * invocations if it cleans up the last file of that directory.
    */
-  virtual void createdDirectory(const Path &path) throw(IoError) = 0;
+  virtual void createdDirectory(const std::string &path) throw(IoError) = 0;
 
   /**
    * Writes an entry in the invocation log stating that Shuriken no longer is
    * responsible for the given directory. This should not be called unless the
    * given folder has been deleted in a cleanup process (or if it's gone).
    */
-  virtual void removedDirectory(const Path &path) throw(IoError) = 0;
+  virtual void removedDirectory(const std::string &path) throw(IoError) = 0;
 
   /**
    * Writes an entry in the invocation log that says that the build step with
@@ -38,7 +46,7 @@ class InvocationLog {
    */
   virtual void ranCommand(
       const Hash &build_step_hash,
-      const Invocations::Entry &entry) throw(IoError) = 0;
+      const Entry &entry) throw(IoError) = 0;
 
   /**
    * Writes an entry in the invocation log that says that the build step with

@@ -2,23 +2,22 @@
 
 namespace shk {
 
-void InMemoryInvocationLog::createdDirectory(const Path &path) throw(IoError) {
-  _invocations.created_directories.insert(path);
+void InMemoryInvocationLog::createdDirectory(const std::string &path) throw(IoError) {
+  _created_directories.insert(path);
 }
 
-void InMemoryInvocationLog::removedDirectory(const Path &path) throw(IoError) {
-  _invocations.created_directories.erase(path);
+void InMemoryInvocationLog::removedDirectory(const std::string &path) throw(IoError) {
+  _created_directories.erase(path);
 }
 
 void InMemoryInvocationLog::ranCommand(
-    const Hash &build_step_hash,
-    const Invocations::Entry &entry) throw(IoError) {
-  _invocations.entries[build_step_hash] = entry;
+    const Hash &build_step_hash, const Entry &entry) throw(IoError) {
+  _entries[build_step_hash] = entry;
 }
 
 void InMemoryInvocationLog::cleanedCommand(
     const Hash &build_step_hash) throw(IoError) {
-  _invocations.entries.erase(build_step_hash);
+  _entries.erase(build_step_hash);
 }
 
 }  // namespace shk

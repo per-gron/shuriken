@@ -1,5 +1,8 @@
 #include "invocation_log.h"
-#include "invocations.h"
+
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace shk {
 
@@ -9,23 +12,25 @@ namespace shk {
  */
 class InMemoryInvocationLog : public InvocationLog {
  public:
-  void createdDirectory(const Path &path) throw(IoError) override;
-  void removedDirectory(const Path &path) throw(IoError) override;
+  void createdDirectory(const std::string &path) throw(IoError) override;
+  void removedDirectory(const std::string &path) throw(IoError) override;
   void ranCommand(
       const Hash &build_step_hash,
-      const Invocations::Entry &entry) throw(IoError) override;
+      const Entry &entry) throw(IoError) override;
   void cleanedCommand(
       const Hash &build_step_hash) throw(IoError) override;
 
-  /**
-   * Get the current Invocations
-   */
-  const Invocations &invocations() {
-    return _invocations;
+  const std::unordered_set<std::string> &createdDirectories() const {
+    return _created_directories;
+  }
+
+  const std::unordered_map<Hash, Entry> &entries() const {
+    return _entries;
   }
 
  private:
-  Invocations _invocations;
+  std::unordered_map<Hash, Entry> _entries;
+  std::unordered_set<std::string> _created_directories;
 };
 
 }  // namespace shk
