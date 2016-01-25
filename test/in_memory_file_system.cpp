@@ -239,7 +239,7 @@ std::string InMemoryFileSystem::mkstemp(
     // don't care to do anything about that.
     if (stat(filename).result == ENOENT) {
       filename_template = std::move(filename);
-      writeFile(*this, filename_template, "");
+      writeFile(filename_template, "");
       return filename_template;
     }
   }
@@ -364,15 +364,6 @@ InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
   result.directory = &directory;
   result.basename = basename;
   return result;
-}
-
-void writeFile(
-    FileSystem &file_system,
-    const std::string &path,
-    const std::string &contents) throw(IoError) {
-  const auto stream = file_system.open(path, "w");
-  const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
-  stream->write(data, 1, contents.size());
 }
 
 void mkdirs(

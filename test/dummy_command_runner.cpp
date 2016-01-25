@@ -85,8 +85,7 @@ CommandRunner::Result runCommand(
 
   for (const auto &output : result.output_files) {
     try {
-      writeFile(
-          file_system,
+      file_system.writeFile(
           output,
           output + "\n" + input_data);
     } catch (IoError &) {

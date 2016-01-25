@@ -12,7 +12,7 @@ TEST_CASE("Fingerprint") {
   time_t now = 321;
   InMemoryFileSystem fs([&now] { return now; });
   const std::string initial_contents = "initial_contents";
-  writeFile(fs, "a", initial_contents);
+  fs.writeFile("a", initial_contents);
   fs.mkdir("dir");
 
   SECTION("Stat") {
@@ -120,7 +120,7 @@ TEST_CASE("Fingerprint") {
 
     SECTION("file changed, everything at the same time, same size") {
       const auto initial_fp = takeFingerprint(fs, now, "a");
-      writeFile(fs, "a", "initial_content>");
+      fs.writeFile("a", "initial_content>");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       CHECK(result.should_update);
@@ -128,7 +128,7 @@ TEST_CASE("Fingerprint") {
 
     SECTION("file changed, everything at the same time, different size") {
       const auto initial_fp = takeFingerprint(fs, now, "a");
-      writeFile(fs, "a", "changed");
+      fs.writeFile("a", "changed");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       // It can see that the file size is different so no need to re-hash and
@@ -139,7 +139,7 @@ TEST_CASE("Fingerprint") {
     SECTION("file changed, including timestamps, same size") {
       const auto initial_fp = takeFingerprint(fs, now, "a");
       now++;
-      writeFile(fs, "a", "initial_content>");
+      fs.writeFile("a", "initial_content>");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       // It can see that the file's timestamp is newer than the fingerprint,
@@ -151,7 +151,7 @@ TEST_CASE("Fingerprint") {
     SECTION("file changed, including timestamps, different size") {
       const auto initial_fp = takeFingerprint(fs, now, "a");
       now++;
-      writeFile(fs, "a", "changed");
+      fs.writeFile("a", "changed");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       // It can see that the file size is different so no need to re-hash and
@@ -162,7 +162,7 @@ TEST_CASE("Fingerprint") {
     SECTION("only timestamps changed") {
       const auto initial_fp = takeFingerprint(fs, now, "a");
       now++;
-      writeFile(fs, "a", initial_contents);
+      fs.writeFile("a", initial_contents);
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(result.clean);
       CHECK(result.should_update);
@@ -177,7 +177,7 @@ TEST_CASE("Fingerprint") {
 
     SECTION("missing file before but not after") {
       const auto initial_fp = takeFingerprint(fs, now, "b");
-      writeFile(fs, "b", initial_contents);
+      fs.writeFile("b", initial_contents);
       const auto result = fingerprintMatches(fs, "b", initial_fp);
       CHECK(!result.clean);
       CHECK(!result.should_update);

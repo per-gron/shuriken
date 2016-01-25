@@ -7,6 +7,8 @@
 namespace shk {
 
 TEST_CASE("FileSystem") {
+  InMemoryFileSystem fs;
+
   SECTION("DirEntry") {
     DirEntry r(DirEntry::Type::REG, "f");
     CHECK(r.type == DirEntry::Type::REG);
@@ -25,7 +27,6 @@ TEST_CASE("FileSystem") {
   }
 
   SECTION("hashDir") {
-    InMemoryFileSystem fs;
     fs.mkdir("d");
     fs.mkdir("e");
 
@@ -45,6 +46,22 @@ TEST_CASE("FileSystem") {
 
     fs.rmdir("d/d");
     CHECK(fs.hashDir("d") == fs.hashDir("e"));
+  }
+
+  SECTION("writeFile") {
+    fs.writeFile("abc", "hello");
+    CHECK(fs.stat("abc").result == 0);  // Verify file exists
+  }
+
+  SECTION("writeFile, readFile") {
+    fs.writeFile("abc", "hello");
+    CHECK(fs.readFile("abc") == "hello");
+  }
+
+  SECTION("writeFile, writeFile, readFile") {
+    fs.writeFile("abc", "hello");
+    fs.writeFile("abc", "hello!");
+    CHECK(fs.readFile("abc") == "hello!");
   }
 }
 

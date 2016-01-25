@@ -107,14 +107,6 @@ class InMemoryFileSystem : public FileSystem {
 };
 
 /**
- * Helper function for writing a string to a file.
- */
-void writeFile(
-    FileSystem &file_system,
-    const std::string &path,
-    const std::string &contents) throw(IoError);
-
-/**
  * Create directory and parent directories. Like mkdir -p
  */
 void mkdirs(FileSystem &file_system, const std::string &path) throw(IoError);

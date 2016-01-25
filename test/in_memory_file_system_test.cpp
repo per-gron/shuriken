@@ -158,26 +158,10 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(inos.size() == 4);
   }
 
-  SECTION("writeFile") {
-    writeFile(fs, abc, "hello");
-    CHECK(fs.stat(abc).result == 0);  // Verify file exists
-  }
-
-  SECTION("writeFile, readFile") {
-    writeFile(fs, abc, "hello");
-    CHECK(fs.readFile(abc) == "hello");
-  }
-
-  SECTION("writeFile, writeFile, readFile") {
-    writeFile(fs, abc, "hello");
-    writeFile(fs, abc, "hello!");
-    CHECK(fs.readFile(abc) == "hello!");
-  }
-
   SECTION("hashFile") {
-    writeFile(fs, "one", "some_content");
-    writeFile(fs, "two", "some_content");
-    writeFile(fs, "three", "some_other_content");
+    fs.writeFile("one", "some_content");
+    fs.writeFile("two", "some_content");
+    fs.writeFile("three", "some_other_content");
 
     CHECK(fs.hashFile("one") == fs.hashFile("one"));
     CHECK(fs.hashFile("one") == fs.hashFile("two"));
@@ -219,7 +203,7 @@ TEST_CASE("InMemoryFileSystem") {
       const std::string dir_path = "abc/def/ghi";
       const std::string file_path = "abc/def/ghi/jkl";
       mkdirs(fs, dir_path);
-      writeFile(fs, file_path, "hello");
+      fs.writeFile(file_path, "hello");
     }
   }
 

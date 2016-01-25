@@ -127,6 +127,13 @@ class FileSystem {
   virtual Hash hashFile(const std::string &path) throw(IoError) = 0;
 
   /**
+   * Helper function for writing a string to a file.
+   */
+  void writeFile(
+      const std::string &path,
+      const std::string &contents) throw(IoError);
+
+  /**
    * Create a temporary file that follows a template. See the man page for
    * mkstemp. This is necessary to have on the FileSystem interface for the
    * same reason mkstemp exists: mktemp that creates a temporary file path

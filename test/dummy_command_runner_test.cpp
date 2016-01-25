@@ -152,8 +152,7 @@ TEST_CASE("DummyCommandRunner") {
       // Create input files
       file_system.mkdir("_in");
       for (const auto &input : inputs) {
-        writeFile(
-            file_system,
+        file_system.writeFile(
             input,
             "file:" + input);
       }
