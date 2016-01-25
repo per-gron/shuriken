@@ -23,6 +23,21 @@ using OutputFileMap = std::unordered_map<Path, StepIndex>;
 using StepHashes = std::vector<Hash>;
 
 /**
+ * "Map" of StepIndex => bool that indicates if the Step has been built before
+ * and at the time the build was started, its direct inputs and outputs were
+ * unchanged since the last time its command was run.
+ *
+ * That a step is "clean" in this sense does not imply that the step will not
+ * be re-run during the build, because it might depend on a file that will
+ * change during the build.
+ *
+ * This variable is used during the initial discardCleanSteps phase where
+ * clean steps are marked as already done, and also by restat steps when their
+ * outputs don't change.
+ */
+using CleanSteps = std::vector<bool>;
+
+/**
  * During the build, the Build object has one StepNode for each Step in the
  * Manifest. The StepNode contains information about dependencies between
  * steps in a format that is efficient when building.
@@ -428,6 +443,17 @@ InvocationLog::Entry computeInvocationEntry(
   return entry;
 }
 
+StepHashes computeStepHashes(const std::vector<Step> &steps) {
+  StepHashes hashes;
+  hashes.reserve(steps.size());
+
+  for (const auto &step : steps) {
+    hashes.push_back(step.hash());
+  }
+
+  return hashes;
+}
+
 /**
  * Checks if a build step has already been performed and does not need to be
  * run again. This is not purely a read-only action: It uses fingerprints, and
@@ -475,15 +501,26 @@ bool isClean(
   return clean;
 }
 
-StepHashes computeStepHashes(const std::vector<Step> &steps) {
-  StepHashes hashes;
-  hashes.reserve(steps.size());
+CleanSteps computeCleanSteps(
+    FileSystem &file_system,
+    InvocationLog &invocation_log,
+    const Invocations &invocations,
+    const StepHashes &step_hashes,
+    const Build &build) {
+  assert(step_hashes.size() == build.step_nodes.size());
 
-  for (const auto &step : steps) {
-    hashes.push_back(step.hash());
+  CleanSteps result(build.step_nodes.size(), false);
+
+  for (size_t i = 0; i < build.step_nodes.size(); i++) {
+    const auto &step_node = build.step_nodes[i];
+    if (!step_node.should_build) {
+      continue;
+    }
+    const auto &step_hash = step_hashes[i];
+    result[i] = isClean(file_system, invocation_log, invocations, step_hash);
   }
 
-  return hashes;
+  return result;
 }
 
 /**
@@ -492,12 +529,9 @@ StepHashes computeStepHashes(const std::vector<Step> &steps) {
  * built.
  */
 void discardCleanSteps(
-    FileSystem &file_system,
-    InvocationLog &invocation_log,
-    const Invocations &invocations,
     const Manifest &manifest,
-    const StepHashes &step_hashes,
-    Build &build) throw(IoError) {
+    const CleanSteps &clean_steps,
+    Build &build) {
   // This function goes through and consumes build.ready_steps. While doing that
   // it adds an element to new_ready_steps for each dirty step that it
   // encounters. When this function's search is over, it replaces
@@ -519,8 +553,7 @@ void discardCleanSteps(
     }
     visited[step_idx] = true;
 
-    const auto &step_hash = step_hashes[step_idx];
-    if (isClean(file_system, invocation_log, invocations, step_hash)) {
+    if (clean_steps[step_idx])) {
       build.markStepNodeAsDone(step_idx);
     } else {
       new_ready_steps.push_back(step_idx);
@@ -589,6 +622,7 @@ void commandDone(
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
     // TODO(peck): Do something about result.linting_errors
+    // TODO(peck): Don't add to invocation log if using the console pool
 
     params.invocation_log.ranCommand(
         params.step_hashes[step_idx],
@@ -721,13 +755,10 @@ void build(
       allowed_failures,
       std::move(steps_to_build));
 
-  discardCleanSteps(
-      file_system,
-      invocation_log,
-      invocations,
-      manifest,
-      step_hashes,
-      build);
+  const auto clean_steps = computeCleanSteps(
+      file_system, invocation_log, invocations, step_hashes, build);
+
+  discardCleanSteps(manifest, clean_steps, build);
 
   BuildCommandParameters params(
       clock,
