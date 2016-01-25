@@ -362,7 +362,27 @@ Build computeBuild(
  * fingerprints and creates a new Invocations::Entry with fresh fingerprints.
  */
 Invocations::Entry recomputeInvocationEntry(
-    FileSystem &file_system, const Invocations::Entry &entry) {
+    FileSystem &file_system, const Invocations::Entry &entry) throw(IoError) {
+  // TODO(peck): Implement me
+
+  return entry;
+}
+
+invocations::Entry computeInvocationEntry(
+    FileSystem &file_system,
+    const CommandRunner::Result &result) throw(IoError) {
+  // TODO(peck): Needs clock parameter. That type should probably not be in fingerprint.h
+  Invocations::Entry entry;
+
+  const auto add = [&](const std::vector<std::string> &paths) {
+    std::vector<std::pair<std::string, Fingerprint>> result;
+    result.reserve(paths.size());
+    for (const auto &path : paths) {}
+      result.emplace_back(path, takeFingerprint(file_system, clock(), path));
+    }
+    return result;
+  };
+
   // TODO(peck): Implement me
 
   return entry;
@@ -480,7 +500,7 @@ void mkdirsForPath(
     FileSystem &file_system,
     InvocationLog &invocation_log,
     Path path) {
-  // FIXME(peck): Implement me
+  // TODO(peck): Implement me
 }
 
 void commandDone(
@@ -503,7 +523,11 @@ void commandDone(
 
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
-    // TODO(peck): Write entry in the InvocationLog
+    // TODO(peck): Do something about result.linting_errors
+
+    invocation_log.ranCommand(
+        step_hashes[step_idx],
+        computeInvocationEntry(file_system, result));
 
     if (false /*TODO(peck):NYI*/ && step.restat && outputsDidNotChange()) {
       // TODO(peck): Mark this step as clean
@@ -618,6 +642,27 @@ bool enqueueBuildCommands(
       build)) {}
 }
 
+void deleteStaleOutputs(
+    FileSystem &file_system,
+    InvocationLog &invocation_log,
+    const StepHashes &step_hashes,
+    const Invocations &invocations) throw(IoError) {
+  std::unordered_set<Hash> step_hashes_set;
+  std::copy(
+      step_hashes.begin(),
+      step_hashes.end(),
+      std::inserter(step_hashes_set, step_hashes_set.begin()));
+
+  for (const auto &entry : invocations.entries) {
+    if (step_hashes_set.count(entry.first) == 0) {
+      for (const auto &output_file : entry.second.output_files) {
+        deleteBuildProduct(file_system, output_file.first);
+      }
+      invocation_log.cleanedCommand(entry.first);
+    }
+  }
+}
+
 void build(
     FileSystem &file_system,
     CommandRunner &command_runner,
@@ -628,13 +673,13 @@ void build(
     const Invocations &invocations) throw(IoError, BuildError) {
   // TODO(peck): Use build_status
 
-  deleteStaleOutputs();  // TODO(peck): Make this happen
+  const auto step_hashes = computeStepHashes(manifest.steps);
+
+  deleteStaleOutputs(file_system, invocation_log, step_hashes, invocations);
 
   const auto output_file_map = computeOutputFileMap(manifest.steps);
 
   auto steps_to_build = computeStepsToBuild(manifest, output_file_map);
-
-  const auto step_hashes = computeStepHashes(manifest.steps);
 
   auto build = computeBuild(
       step_hashes,
@@ -666,6 +711,8 @@ void build(
       build.interrupted = true;
     }
   }
+
+  // TODO(peck): Report result
 }
 
 }
