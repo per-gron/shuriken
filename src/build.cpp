@@ -23,12 +23,23 @@ void markStepNodeAsDone(Build &build, StepIndex step_idx) {
   }
 }
 
-/**
- * Compute the "root steps," that is the steps that don't have an output that
- * is an input to some other step. This is the set of steps that are built if
- * there are no default statements in the manifest and no steps where
- * specifically requested to be built.
- */
+OutputFileMap computeOutputFileMap(
+    const std::vector<Step> &steps) throw(BuildError) {
+  OutputFileMap result;
+
+  for (size_t i = 0; i < steps.size(); i++) {
+    const auto &step = steps[i];
+    for (const auto &output : step.outputs) {
+      const auto ins = result.emplace(output, i);
+      if (!ins.second) {
+        throw BuildError("Multiple rules generate " + output.original());
+      }
+    }
+  }
+
+  return result;
+}
+
 std::vector<StepIndex> rootSteps(
     const std::vector<Step> &steps,
     const OutputFileMap &output_file_map) {
@@ -78,23 +89,6 @@ std::vector<StepIndex> computeStepsToBuild(
     }
     return result;
   }
-}
-
-OutputFileMap computeOutputFileMap(
-    const std::vector<Step> &steps) throw(BuildError) {
-  OutputFileMap result;
-
-  for (size_t i = 0; i < steps.size(); i++) {
-    const auto &step = steps[i];
-    for (const auto &output : step.outputs) {
-      const auto ins = result.emplace(output, i);
-      if (!ins.second) {
-        throw BuildError("Multiple rules generate " + output.original());
-      }
-    }
-  }
-
-  return result;
 }
 
 std::vector<StepIndex> computeReadySteps(

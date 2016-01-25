@@ -159,6 +159,23 @@ struct BuildCommandParameters {
 };
 
 /**
+ * Throws BuildError if there exists an output file that more than one step
+ * generates.
+ */
+OutputFileMap computeOutputFileMap(
+    const std::vector<Step> &steps) throw(BuildError);
+
+/**
+ * Compute the "root steps," that is the steps that don't have an output that
+ * is an input to some other step. This is the set of steps that are built if
+ * there are no default statements in the manifest and no steps where
+ * specifically requested to be built.
+ */
+std::vector<StepIndex> rootSteps(
+    const std::vector<Step> &steps,
+    const OutputFileMap &output_file_map);
+
+/**
  * Find the steps that should be built if no steps are specifically requested.
  *
  * Uses defaults or the root steps.
@@ -166,13 +183,6 @@ struct BuildCommandParameters {
 std::vector<StepIndex> computeStepsToBuild(
     const Manifest &manifest,
     const OutputFileMap &output_file_map) throw(BuildError);
-
-/**
- * Throws BuildError if there exists an output file that more than one step
- * generates.
- */
-OutputFileMap computeOutputFileMap(
-    const std::vector<Step> &steps) throw(BuildError);
 
 /**
  * Helper for computeBuild.

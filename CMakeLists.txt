@@ -75,6 +75,7 @@ target_link_libraries(shk shklib)
 set_target_properties(shk PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk_test
+  test/build_test.cpp
   test/dummy_command_runner.cpp
   test/dummy_command_runner.h
   test/dummy_command_runner_test.cpp
