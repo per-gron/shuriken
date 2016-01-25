@@ -24,6 +24,20 @@ std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
   return vec;
 }
 
+Build computeBuild(
+    const Manifest &manifest,
+    const Invocations &invocations = Invocations(),
+    size_t allowed_failures = 1) throw(BuildError) {
+  const auto output_file_map = computeOutputFileMap(manifest.steps);
+  return ::shk::detail::computeBuild(
+      computeStepHashes(manifest.steps),
+      invocations,
+      output_file_map,
+      manifest,
+      allowed_failures,
+      ::shk::detail::computeStepsToBuild(manifest, output_file_map));
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Build") {
@@ -164,6 +178,196 @@ TEST_CASE("Build") {
   }
 
   SECTION("computeBuild") {
+    SECTION("empty") {
+      const auto build = computeBuild(Manifest());
+      CHECK(build.step_nodes.empty());
+      CHECK(build.ready_steps.empty());
+      CHECK(build.interrupted == false);
+      CHECK(build.remaining_failures == 1);
+    }
+
+    SECTION("remaining_failures") {
+      const auto build = computeBuild(Manifest(), Invocations(), 543);
+      CHECK(build.remaining_failures == 543);
+    }
+
+    SECTION("ready_steps") {
+      Manifest manifest;
+
+      SECTION("basic") {
+        manifest.steps = { single_output };
+        CHECK(computeBuild(manifest).ready_steps == vec({ 0 }));
+      }
+
+      SECTION("two steps") {
+        manifest.steps = { single_output, single_output_b };
+        CHECK(computeBuild(manifest).ready_steps == vec({ 0, 1 }));
+      }
+
+      SECTION("single dep") {
+        manifest.steps = { single_output, single_input };
+        CHECK(computeBuild(manifest).ready_steps == vec({ 0 }));
+
+        manifest.steps = { single_input, single_output };
+        CHECK(computeBuild(manifest).ready_steps == vec({ 1 }));
+      }
+
+      SECTION("dep chain") {
+        Step one;
+        one.outputs = { paths.get("a") };
+        Step two;
+        two.inputs = { paths.get("a") };
+        two.outputs = { paths.get("b") };
+        Step three;
+        three.inputs = { paths.get("b") };
+
+        manifest.steps = { three, one, two };
+        CHECK(computeBuild(manifest).ready_steps == vec({ 1 }));
+
+        manifest.steps = { one, two, three };
+        CHECK(computeBuild(manifest).ready_steps == vec({ 0 }));
+      }
+
+      SECTION("diamond dep") {
+        Step one;
+        one.outputs = { paths.get("a") };
+        Step two_1;
+        two_1.inputs = { paths.get("a") };
+        two_1.outputs = { paths.get("b") };
+        Step two_2;
+        two_2.inputs = { paths.get("a") };
+        two_2.outputs = { paths.get("c") };
+        Step three;
+        three.inputs = { paths.get("b"), paths.get("c") };
+
+        manifest.steps = { three, one, two_1, two_2 };
+        CHECK(computeBuild(manifest).ready_steps == vec({ 1 }));
+
+        manifest.steps = { three, two_2, two_1, one };
+        CHECK(computeBuild(manifest).ready_steps == vec({ 3 }));
+      }
+    }
+
+    SECTION("step_nodes.should_build") {
+      Manifest manifest;
+
+      Step one;
+      one.outputs = { paths.get("a") };
+      Step two;
+      two.inputs = { paths.get("a") };
+      two.outputs = { paths.get("b") };
+      Step three;
+      three.inputs = { paths.get("b") };
+
+      SECTION("everything") {
+        manifest.steps = { one, two, three };
+        const auto build = computeBuild(manifest);
+        REQUIRE(build.step_nodes.size() == 3);
+        CHECK(build.step_nodes[0].should_build);
+        CHECK(build.step_nodes[1].should_build);
+        CHECK(build.step_nodes[2].should_build);
+      }
+
+      SECTION("just some") {
+        manifest.steps = { one, two, three };
+        manifest.defaults = { paths.get("b") };
+        const auto build = computeBuild(manifest);
+        REQUIRE(build.step_nodes.size() == 3);
+        CHECK(build.step_nodes[0].should_build);
+        CHECK(build.step_nodes[1].should_build);
+        CHECK(!build.step_nodes[2].should_build);
+      }
+    }
+
+    SECTION("dependencies") {
+      Manifest manifest;
+
+      SECTION("independent") {
+        manifest.steps = { single_output, single_output_b };
+        const auto build = computeBuild(manifest);
+        REQUIRE(build.step_nodes.size() == 2);
+
+        CHECK(build.step_nodes[0].dependencies == 0);
+        CHECK(build.step_nodes[0].dependents == vec({}));
+
+        CHECK(build.step_nodes[1].dependencies == 0);
+        CHECK(build.step_nodes[1].dependents == vec({}));
+      }
+
+      SECTION("diamond") {
+        Step one;
+        one.outputs = { paths.get("a") };
+        Step two_1;
+        two_1.inputs = { paths.get("a") };
+        two_1.outputs = { paths.get("b") };
+        Step two_2;
+        two_2.inputs = { paths.get("a") };
+        two_2.outputs = { paths.get("c") };
+        Step three;
+        three.inputs = { paths.get("b"), paths.get("c") };
+
+        manifest.steps = { three, two_2, two_1, one };
+        const auto build = computeBuild(manifest);
+        REQUIRE(build.step_nodes.size() == 4);
+
+        // three
+        CHECK(build.step_nodes[0].dependencies == 2);
+        CHECK(build.step_nodes[0].dependents == vec({}));
+
+        // two_2
+        CHECK(build.step_nodes[1].dependencies == 1);
+        CHECK(build.step_nodes[1].dependents == vec({0}));
+
+        // two_1
+        CHECK(build.step_nodes[2].dependencies == 1);
+        CHECK(build.step_nodes[2].dependents == vec({0}));
+
+        // one
+        CHECK(build.step_nodes[3].dependencies == 0);
+        CHECK(build.step_nodes[3].dependents == vec({2, 1}));
+      }
+    }
+
+    SECTION("Deps from invocations") {
+      Step three;
+      three.inputs = { paths.get("a"), paths.get("b") };
+
+      Invocations::Entry entry;
+      // Didn't read all declared inputs
+      entry.input_files = { { paths.get("a"), Fingerprint() } };
+      Invocations invocations;
+      invocations.entries[three.hash()] = entry;
+
+      Manifest manifest;
+      manifest.steps = { single_output, single_output_b, three };
+      const auto build = computeBuild(manifest, invocations);
+      REQUIRE(build.step_nodes.size() == 3);
+
+      CHECK(build.step_nodes[0].dependencies == 0);
+      CHECK(build.step_nodes[0].dependents == vec({2}));
+
+      CHECK(build.step_nodes[1].dependencies == 0);
+      CHECK(build.step_nodes[1].dependents == vec({}));
+
+      CHECK(build.step_nodes[2].dependencies == 1);
+      CHECK(build.step_nodes[2].dependents == vec({}));
+    }
+
+    SECTION("Dependency cycle") {
+      Step one;
+      one.outputs = { paths.get("a") };
+      one.inputs = { paths.get("b") };
+      Step two;
+      two.inputs = { paths.get("a") };
+      two.outputs = { paths.get("b") };
+
+      Manifest manifest;
+      // Need to specify a default, otherwise none of the steps are roots, and
+      // nothing is "built".
+      manifest.defaults = { paths.get("a") };
+      manifest.steps = { one, two };
+      CHECK_THROWS_AS(computeBuild(manifest), BuildError);
+    }
   }
 
   SECTION("computeInvocationEntry") {

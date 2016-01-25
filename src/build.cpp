@@ -154,13 +154,13 @@ void visitStepInputs(
     StepIndex idx,
     Callback &&callback) {
   const auto invocation_it = invocations.entries.find(step_hashes[idx]);
-  if (invocation_it == invocations.entries.end()) {
+  if (invocation_it != invocations.entries.end()) {
     // There is an entry for this step in the invocation log. Use the real
     // inputs from the last invocation rather than the ones specified in the
     // manifest.
-    const auto &output_files = invocation_it->second.output_files;
-    for (const auto &output_file : output_files) {
-      callback(output_file.first);
+    const auto &input_files = invocation_it->second.input_files;
+    for (const auto &input_file : input_files) {
+      callback(input_file.first);
     }
   } else {
     // There is no entry for this step in the invocation log.
