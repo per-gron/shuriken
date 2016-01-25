@@ -147,6 +147,10 @@ TEST_CASE("Build") {
   }
 
   SECTION("cycleErrorMessage") {
+    CHECK(
+        cycleErrorMessage({ paths.get("a") }) == "a -> a");
+    CHECK(
+        cycleErrorMessage({ paths.get("a"), paths.get("b") }) == "a -> b -> a");
   }
 
   SECTION("computeBuild") {

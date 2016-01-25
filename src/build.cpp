@@ -111,7 +111,9 @@ std::vector<StepIndex> computeReadySteps(
 }
 
 std::string cycleErrorMessage(const std::vector<Path> &cycle) {
-  std::string error = "dependency cycle: ";
+  assert(!cycle.empty());
+
+  std::string error;
   for (const auto &path : cycle) {
     error += path.original() + " -> ";
   }
@@ -187,7 +189,7 @@ void visitStep(
     StepIndex idx) throw(BuildError) {
   auto &step_node = build.step_nodes[idx];
   if (step_node.currently_visited) {
-    throw BuildError(cycleErrorMessage(cycle));
+    throw BuildError("dependency cycle: " + cycleErrorMessage(cycle));
   }
 
   if (step_node.should_build) {

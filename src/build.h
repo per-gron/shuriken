@@ -186,6 +186,10 @@ std::vector<StepIndex> computeStepsToBuild(
     const Manifest &manifest,
     const OutputFileMap &output_file_map) throw(BuildError);
 
+/**
+ * Generate a string that describes a cycle, for example "a -> b -> a".
+ * cycle must be a non-empty vector.
+ */
 std::string cycleErrorMessage(const std::vector<Path> &cycle);
 
 /**
