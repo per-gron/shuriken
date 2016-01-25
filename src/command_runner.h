@@ -61,6 +61,8 @@ class CommandRunner {
 
   bool empty() const { return size() == 0; }
 
+  virtual bool canRunMore() const = 0;
+
   /**
    * Wait until a command has completed. If there are no commands running
    * right now (if empty()), then the method returns immediately.

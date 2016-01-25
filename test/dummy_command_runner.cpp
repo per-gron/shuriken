@@ -114,6 +114,10 @@ size_t DummyCommandRunner::size() const {
   return _enqueued_commands.size();
 }
 
+bool DummyCommandRunner::canRunMore() const {
+  return true;
+}
+
 bool DummyCommandRunner::runCommands() {
   for (const auto &command : _enqueued_commands) {
     command.second(detail::runCommand(_file_system, command.first));

@@ -69,6 +69,10 @@ class TracingCommandRunner : public CommandRunner {
     return _inner->size();
   }
 
+  bool canRunMore() const override {
+    return _inner->canRunMore();
+  }
+
   bool runCommands() override {
     return _inner->runCommands();
   }

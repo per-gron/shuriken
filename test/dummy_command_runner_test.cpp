@@ -127,6 +127,10 @@ TEST_CASE("DummyCommandRunner") {
     }
   }
 
+  SECTION("canRunMore") {
+    CHECK(runner.canRunMore());
+  }
+
   SECTION("checkCommand") {
     SECTION("empty command") {
       const auto empty_command = DummyCommandRunner::constructCommand({}, {});

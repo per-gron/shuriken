@@ -1,5 +1,8 @@
 #include "build.h"
 
+#include <assert.h>
+
+#include "build_error.h"
 #include "fingerprint.h"
 
 namespace shk {
@@ -137,6 +140,7 @@ struct BuildCommandParameters {
       CommandRunner &command_runner,
       BuildStatus &build_status,
       InvocationLog &invocation_log,
+      const Invocations &invocations,
       const Manifest &manifest,
       const StepHashes &step_hashes,
       Build &build)
@@ -144,6 +148,7 @@ struct BuildCommandParameters {
         file_system(file_system),
         command_runner(command_runner),
         build_status(build_status),
+        invocations(invocations),
         invocation_log(invocation_log),
         manifest(manifest),
         step_hashes(step_hashes),
@@ -153,6 +158,7 @@ struct BuildCommandParameters {
   FileSystem &file_system;
   CommandRunner &command_runner;
   BuildStatus &build_status;
+  const Invocations &invocations;
   InvocationLog &invocation_log;
   const Manifest &manifest;
   const StepHashes &step_hashes;
@@ -184,9 +190,9 @@ std::vector<StepIndex> rootSteps(
 
   for (size_t i = 0; i < steps.size(); i++) {
     const auto &step = steps[i];
-    process_input(step.inputs);
-    process_input(step.implicit_inputs);
-    process_input(step.dependencies);
+    process_inputs(step.inputs);
+    process_inputs(step.implicit_inputs);
+    process_inputs(step.dependencies);
   }
 
   for (size_t i = 0; i < steps.size(); i++) {
@@ -206,11 +212,11 @@ std::vector<StepIndex> computeStepsToBuild(
     const Manifest &manifest,
     const OutputFileMap &output_file_map) throw(BuildError) {
   if (manifest.defaults.empty()) {
-    return rootSteps(manifest.steps);
+    return rootSteps(manifest.steps, output_file_map);
   } else {
     std::vector<StepIndex> result;
     for (const auto &default_path : manifest.defaults) {
-      const auto it = output_file_map->find(default_path);
+      const auto it = output_file_map.find(default_path);
       if (it == output_file_map.end()) {
         throw BuildError(
             "default target does not exist: " + default_path.original());
@@ -251,8 +257,8 @@ OutputFileMap computeOutputFileMap(
 std::vector<StepIndex> computeReadySteps(
     const std::vector<StepNode> &step_nodes) {
   std::vector<StepIndex> result;
-  for (size_t i = 0; i < manifest.steps.size(); i++) {
-    const auto &step_node = build.step_nodes[i];
+  for (size_t i = 0; i < step_nodes.size(); i++) {
+    const auto &step_node = step_nodes[i];
     if (step_node.should_build && step_node.dependencies == 0) {
       result.push_back(i);
     }
@@ -265,7 +271,7 @@ std::string cycleErrorMessage(const std::vector<Path> &cycle) {
   for (const auto &path : cycle) {
     error += path.original() + " -> ";
   }
-  error += cycle.first.original();
+  error += cycle.front().original();
   return error;
 }
 
@@ -302,7 +308,7 @@ void visitStepInputs(
     StepIndex idx,
     Callback &&callback) {
   const auto invocation_it = invocations.entries.find(step_hashes[idx]);
-  if (invocation_it == Invocations.entries.end()) {
+  if (invocation_it == invocations.entries.end()) {
     // There is an entry for this step in the invocation log. Use the real
     // inputs from the last invocation rather than the ones specified in the
     // manifest.
@@ -348,21 +354,20 @@ void visitStep(
 
   step_node.currently_visited = true;
   visitStepInputs(
-      manifest,
       step_hashes,
       invocations,
       manifest,
       idx,
-      [&](const std::vector<Path> &inputs) {
+      [&](const Path &input) {
         const auto it = output_file_map.find(input);
         if (it == output_file_map.end()) {
           // This input is not an output of some other build step.
-          continue;
+          return;
         }
 
         const auto dependency_idx = it->second;
         auto &dependency_node = build.step_nodes[dependency_idx];
-        dependency_node.dependents.push_back(step_idx);
+        dependency_node.dependents.push_back(idx);
         step_node.dependencies++;
 
         cycle.push_back(input);
@@ -406,7 +411,7 @@ Build computeBuild(
   }
 
   build.ready_steps = computeReadySteps(build.step_nodes);
-  build.allowed_failures = allowed_failures;
+  build.remaining_failures = allowed_failures;
   return build;
 }
 
@@ -420,10 +425,11 @@ Build computeBuild(
 InvocationLog::Entry recomputeInvocationEntry(
     const Clock &clock,
     FileSystem &file_system,
-    const Invocations::Entry &entry) throw(IoError) {
+    const Invocations::Entry &entry) throw(IoError) {
+  InvocationLog::Entry result;
   // TODO(peck): Implement me
 
-  return entry;
+  return result;
 }
 
 InvocationLog::Entry computeInvocationEntry(
@@ -435,7 +441,7 @@ InvocationLog::Entry computeInvocationEntry(
   const auto add = [&](const std::vector<std::string> &paths) {
     std::vector<std::pair<std::string, Fingerprint>> result;
     result.reserve(paths.size());
-    for (const auto &path : paths) {}
+    for (const auto &path : paths) {
       result.emplace_back(path, takeFingerprint(file_system, clock(), path));
     }
     return result;
@@ -465,12 +471,13 @@ StepHashes computeStepHashes(const std::vector<Step> &steps) {
  * for the future, isClean provides that.
  */
 bool isClean(
+    const Clock &clock,
     FileSystem &file_system,
     InvocationLog &invocation_log,
     const Invocations &invocations,
     const Hash &step_hash) throw(IoError) {
-  const auto it = invocations.find(step_hash);
-  if (it == invocations.end()) {
+  const auto it = invocations.entries.find(step_hash);
+  if (it == invocations.entries.end()) {
     return false;
   }
 
@@ -499,13 +506,14 @@ bool isClean(
     // There is no need to update the invocation log when dirty; it will be
     // updated anyway as part of the build.
     invocation_log.ranCommand(
-        step_hash, recomputeInvocationEntry(file_system, entry));
+        step_hash, recomputeInvocationEntry(clock, file_system, entry));
   }
 
   return clean;
 }
 
 CleanSteps computeCleanSteps(
+    const Clock &clock,
     FileSystem &file_system,
     InvocationLog &invocation_log,
     const Invocations &invocations,
@@ -521,7 +529,8 @@ CleanSteps computeCleanSteps(
       continue;
     }
     const auto &step_hash = step_hashes[i];
-    result[i] = isClean(file_system, invocation_log, invocations, step_hash);
+    result[i] = isClean(
+        clock, file_system, invocation_log, invocations, step_hash);
   }
 
   return result;
@@ -533,7 +542,6 @@ CleanSteps computeCleanSteps(
  * built.
  */
 void discardCleanSteps(
-    const Manifest &manifest,
     const CleanSteps &clean_steps,
     Build &build) {
   // This function goes through and consumes build.ready_steps. While doing that
@@ -544,20 +552,19 @@ void discardCleanSteps(
 
   // Memo map of step index => visited. This is to make sure that each step
   // is processed at most once.
-  std::vector<bool> visited(manifest.steps.size(), false);
+  std::vector<bool> visited(build.step_nodes.size(), false);
 
   // This is a BFS search loop. build.ready_steps is the work stack.
   while (!build.ready_steps.empty()) {
     const auto step_idx = build.ready_steps.back();
-    ready_steps.pop_back();
-    const auto &step = manifest.steps[step_idx];
+    build.ready_steps.pop_back();
 
     if (visited[step_idx]) {
       continue;
     }
     visited[step_idx] = true;
 
-    if (clean_steps[step_idx])) {
+    if (clean_steps[step_idx]) {
       build.markStepNodeAsDone(step_idx);
     } else {
       new_ready_steps.push_back(step_idx);
@@ -593,8 +600,8 @@ bool outputsWereChanged(
     FileSystem &file_system,
     const Invocations &invocations,
     const Hash &step_hash) throw(IoError) {
-  const auto it = invocations.find(step_hash);
-  if (it == invocations.end()) {
+  const auto it = invocations.entries.find(step_hash);
+  if (it == invocations.entries.end()) {
     return true;
   }
 
@@ -611,6 +618,8 @@ bool outputsWereChanged(
   return false;
 }
 
+void enqueueBuildCommands(BuildCommandParameters &params) throw(IoError);
+
 void commandDone(
     BuildCommandParameters &params,
     StepIndex step_idx,
@@ -626,6 +635,7 @@ void commandDone(
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
     // TODO(peck): Do something about result.linting_errors
+    assert(result.linting_errors.empty() && "There was a linting error");
 
     if (!isConsolePool(step.pool_name)) {
       // The console pool gives the command access to stdin which is clearly not
@@ -638,12 +648,13 @@ void commandDone(
 
     if (step.restat &&
         !outputsWereChanged(
-            build.file_system,
-            build.invocations,
-            build.step_hashes[step_idx])) {
+            params.file_system,
+            params.invocations,
+            params.step_hashes[step_idx])) {
       // TODO(peck): Mark this step as clean
+      assert(!"Not implemented");
     } else {
-      build.markStepNodeAsDone(step_idx);
+      params.build.markStepNodeAsDone(step_idx);
     }
     break;
 
@@ -672,7 +683,7 @@ void deleteOldOutputs(
 
   const auto &entry = it->second;
   for (const auto &output : entry.output_files) {
-    deleteBuildProduct(output.first);
+    deleteBuildProduct(file_system, output.first);
   }
 }
 
@@ -680,7 +691,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   if (params.build.ready_steps.empty() ||
       params.build.interrupted ||
       !params.command_runner.canRunMore() ||
-      params.build.remaining_failures == 0) {
+      params.build.remaining_failures == 0) {
     return false;
   }
 
@@ -692,7 +703,8 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   deleteOldOutputs(params.file_system, params.invocations, step_hash);
 
   mkdirsForPath(params.file_system, params.invocation_log, step.rspfile);
-  params.file_system.writeFile(step.rspfile, step.rspfile_content);
+  // TODO(peck): Add writeFile to FileSystem
+  // params.file_system.writeFile(step.rspfile, step.rspfile_content);
 
   for (const auto &output : step.outputs) {
     mkdirsForPath(params.file_system, params.invocation_log, output);
@@ -711,7 +723,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
 }
 
 
-bool enqueueBuildCommands(BuildCommandParameters &params) throw(IoError) {
+void enqueueBuildCommands(BuildCommandParameters &params) throw(IoError) {
   while (enqueueBuildCommand(params)) {}
 }
 
@@ -764,9 +776,9 @@ void build(
       std::move(steps_to_build));
 
   const auto clean_steps = computeCleanSteps(
-      file_system, invocation_log, invocations, step_hashes, build);
+      clock, file_system, invocation_log, invocations, step_hashes, build);
 
-  discardCleanSteps(manifest, clean_steps, build);
+  discardCleanSteps(clean_steps, build);
 
   BuildCommandParameters params(
       clock,
@@ -774,7 +786,8 @@ void build(
       command_runner,
       build_status,
       invocation_log,
-      manfiest,
+      invocations,
+      manifest,
       step_hashes,
       build);
   enqueueBuildCommands(params);

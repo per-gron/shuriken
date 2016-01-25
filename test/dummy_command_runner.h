@@ -41,6 +41,8 @@ class DummyCommandRunner : public CommandRunner {
 
   size_t size() const override;
 
+  bool canRunMore() const override;
+
   bool runCommands() override;
 
   static std::string constructCommand(

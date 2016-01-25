@@ -78,6 +78,10 @@ class SubprocessSet : public CommandRunner {
     return _running.size();
   }
 
+  bool canRunMore() const override {
+    return true;
+  }
+
  private:
   std::list<std::unique_ptr<Subprocess>> _running;
 
