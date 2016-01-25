@@ -2,168 +2,26 @@
 
 #include <assert.h>
 
-#include "build_error.h"
 #include "fingerprint.h"
 
 namespace shk {
-
-using Clock = std::function<time_t ()>;
-
-using StepIndex = size_t;
-
-/**
- * Map of path => index of the step that has this file as an output.
- *
- * This is useful for traversing the build graph in the direction of a build
- * step to a build step that it depends on.
- */
-using OutputFileMap = std::unordered_map<Path, StepIndex>;
-
-/**
- * "Map" of StepIndex => Hash of that step. The hash includes everything about
- * that step but not information about its dependencies.
- */
-using StepHashes = std::vector<Hash>;
-
-/**
- * "Map" of StepIndex => bool that indicates if the Step has been built before
- * and at the time the build was started, its direct inputs and outputs were
- * unchanged since the last time its command was run.
- *
- * That a step is "clean" in this sense does not imply that the step will not
- * be re-run during the build, because it might depend on a file that will
- * change during the build.
- *
- * This variable is used during the initial discardCleanSteps phase where
- * clean steps are marked as already done, and also by restat steps when their
- * outputs don't change.
- */
-using CleanSteps = std::vector<bool>;
-
-/**
- * During the build, the Build object has one StepNode for each Step in the
- * Manifest. The StepNode contains information about dependencies between
- * steps in a format that is efficient when building.
- */
-struct StepNode {
-  /**
-   * List of steps that depend on this step.
-   *
-   * When a build step is completed, the builder visits the StepNode for each
-   * dependent step and decrements the dependencies counter. If the counter
-   * reaches zero, that StepNode is ready to be built and can be added to the
-   * Build::ready_steps list.
-   */
-  std::vector<StepIndex> dependents;
-
-  /**
-   * The number of not yet built steps that this step depends on.
-   */
-  int dependencies = 0;
-
-  /**
-   * true if the user has asked to build this step or any step that depends on
-   * this step. If false, the step should not be run even if it is dirty.
-   *
-   * This piece of information is used only when computing the initial list of
-   * steps that are ready to be built; after that it is not needed because
-   * dependents and dependencies never point to or from a step that should not
-   * be built.
-   */
-  bool should_build = false;
-
-  /**
-   * Used when computing the Build graph in order to detect cycles.
-   */
-  bool currently_visited = false;
-};
-
-/**
- * Build is the data structure that keeps track of the build steps that are
- * left to do in the build and helps to efficiently provide information about
- * what to do next when a build step has completed.
- */
-struct Build {
-  /**
-   * step_nodes.size() == manifest.steps.size()
-   *
-   * step_nodes contains step dependency information in an easily accessible
-   * format.
-   */
-  std::vector<StepNode> step_nodes;
-
-  /**
-   * List of steps that are ready to be run.
-   */
-  std::vector<StepIndex> ready_steps;
-
-  /**
-   * interrupted is set to true when the user interrupts the build. When this
-   * has happened, no more build commands should be invoked.
-   */
-  bool interrupted = false;
-
-  /**
-   * The number of commands that are allowed to fail before the build stops. A
-   * value of 0 means that too many commands have failed and the build should
-   * stop.
-   */
-  int remaining_failures = 0;
-
-  void markStepNodeAsDone(StepIndex step_idx) {
-    const auto &dependents = step_nodes[step_idx].dependents;
-    for (const auto dependent_idx : dependents) {
-      auto &dependent = step_nodes[dependent_idx];
-      assert(dependent.dependencies);
-      dependent.dependencies--;
-      if (dependent.dependencies == 0) {
-        ready_steps.push_back(dependent_idx);
-      }
-    }
-  }
-};
+namespace detail {
 
 bool isConsolePool(const std::string &pool_name) {
   return pool_name == "console";
 }
 
-/**
- * There are a bunch of functions in this file that take more or less the same
- * parameters, and quite many at that. The point of this struct is to avoid
- * having to pass all of them explicitly, which just gets overly verbose, hard
- * to read and painful to change.
- */
-struct BuildCommandParameters {
-  BuildCommandParameters(
-      const Clock &clock,
-      FileSystem &file_system,
-      CommandRunner &command_runner,
-      BuildStatus &build_status,
-      InvocationLog &invocation_log,
-      const Invocations &invocations,
-      const Manifest &manifest,
-      const StepHashes &step_hashes,
-      Build &build)
-      : clock(clock),
-        file_system(file_system),
-        command_runner(command_runner),
-        build_status(build_status),
-        invocations(invocations),
-        invocation_log(invocation_log),
-        manifest(manifest),
-        step_hashes(step_hashes),
-        build(build) {}
-
-  const Clock &clock;
-  FileSystem &file_system;
-  CommandRunner &command_runner;
-  BuildStatus &build_status;
-  const Invocations &invocations;
-  InvocationLog &invocation_log;
-  const Manifest &manifest;
-  const StepHashes &step_hashes;
-  Build &build;
-};
+void markStepNodeAsDone(Build &build, StepIndex step_idx) {
+  const auto &dependents = build.step_nodes[step_idx].dependents;
+  for (const auto dependent_idx : dependents) {
+    auto &dependent = build.step_nodes[dependent_idx];
+    assert(dependent.dependencies);
+    dependent.dependencies--;
+    if (dependent.dependencies == 0) {
+      build.ready_steps.push_back(dependent_idx);
+    }
+  }
+}
 
 /**
  * Compute the "root steps," that is the steps that don't have an output that
@@ -203,11 +61,6 @@ std::vector<StepIndex> rootSteps(
   return result;
 }
 
-/**
- * Find the steps that should be built if no steps are specifically requested.
- *
- * Uses defaults or the root steps.
- */
 std::vector<StepIndex> computeStepsToBuild(
     const Manifest &manifest,
     const OutputFileMap &output_file_map) throw(BuildError) {
@@ -227,10 +80,6 @@ std::vector<StepIndex> computeStepsToBuild(
   }
 }
 
-/**
- * Throws BuildError if there exists an output file that more than one step
- * generates.
- */
 OutputFileMap computeOutputFileMap(
     const std::vector<Step> &steps) throw(BuildError) {
   OutputFileMap result;
@@ -248,12 +97,6 @@ OutputFileMap computeOutputFileMap(
   return result;
 }
 
-/**
- * Helper for computeBuild.
- *
- * Takes a list of ready-computed StepNodes and finds the inital list of steps
- * that can be built.
- */
 std::vector<StepIndex> computeReadySteps(
     const std::vector<StepNode> &step_nodes) {
   std::vector<StepIndex> result;
@@ -384,16 +227,13 @@ void visitStep(
   step_node.currently_visited = false;
 }
 
-/**
- * Create a Build object suitable for use as a starting point for the build.
- */
 Build computeBuild(
     const StepHashes &step_hashes,
     const Invocations &invocations,
     const OutputFileMap &output_file_map,
     const Manifest &manifest,
     size_t allowed_failures,
-    std::vector<StepIndex> &&steps_to_build) {
+    std::vector<StepIndex> &&steps_to_build) throw(BuildError) {
   Build build;
   build.step_nodes.resize(manifest.steps.size());
 
@@ -464,12 +304,6 @@ StepHashes computeStepHashes(const std::vector<Step> &steps) {
   return hashes;
 }
 
-/**
- * Checks if a build step has already been performed and does not need to be
- * run again. This is not purely a read-only action: It uses fingerprints, and
- * if the fingerprint logic wants a fresher fingerprint in the invocation log
- * for the future, isClean provides that.
- */
 bool isClean(
     const Clock &clock,
     FileSystem &file_system,
@@ -518,7 +352,7 @@ CleanSteps computeCleanSteps(
     InvocationLog &invocation_log,
     const Invocations &invocations,
     const StepHashes &step_hashes,
-    const Build &build) {
+    const Build &build) throw(IoError) {
   assert(step_hashes.size() == build.step_nodes.size());
 
   CleanSteps result(build.step_nodes.size(), false);
@@ -536,11 +370,6 @@ CleanSteps computeCleanSteps(
   return result;
 }
 
-/**
- * Before the actual build is performed, this function goes through the build
- * graph and removes steps that don't need to be built because they are already
- * built.
- */
 void discardCleanSteps(
     const CleanSteps &clean_steps,
     Build &build) {
@@ -565,7 +394,7 @@ void discardCleanSteps(
     visited[step_idx] = true;
 
     if (clean_steps[step_idx]) {
-      build.markStepNodeAsDone(step_idx);
+      markStepNodeAsDone(build, step_idx);
     } else {
       new_ready_steps.push_back(step_idx);
     }
@@ -587,15 +416,6 @@ void mkdirsForPath(
   // TODO(peck): Implement me
 }
 
-/**
- * For build steps that have been configured to restat outputs after completion,
- * this is the function that performs the restat check.
- *
- * This function is similar to isClean but it's not quite the same. It does not
- * look at inputs, it only checks output files. Also, it ignores
- * MatchesResult::should_update because it has already been handled by isClean
- * earlier.
- */
 bool outputsWereChanged(
     FileSystem &file_system,
     const Invocations &invocations,
@@ -654,7 +474,7 @@ void commandDone(
       // TODO(peck): Mark this step as clean
       assert(!"Not implemented");
     } else {
-      params.build.markStepNodeAsDone(step_idx);
+      markStepNodeAsDone(params.build, step_idx);
     }
     break;
 
@@ -747,6 +567,8 @@ void deleteStaleOutputs(
   }
 }
 
+}  // namespace detail
+
 void build(
     const Clock &clock,
     FileSystem &file_system,
@@ -758,15 +580,16 @@ void build(
     const Invocations &invocations) throw(IoError, BuildError) {
   // TODO(peck): Use build_status
 
-  const auto step_hashes = computeStepHashes(manifest.steps);
+  const auto step_hashes = detail::computeStepHashes(manifest.steps);
 
-  deleteStaleOutputs(file_system, invocation_log, step_hashes, invocations);
+  detail::deleteStaleOutputs(
+      file_system, invocation_log, step_hashes, invocations);
 
-  const auto output_file_map = computeOutputFileMap(manifest.steps);
+  const auto output_file_map = detail::computeOutputFileMap(manifest.steps);
 
-  auto steps_to_build = computeStepsToBuild(manifest, output_file_map);
+  auto steps_to_build = detail::computeStepsToBuild(manifest, output_file_map);
 
-  auto build = computeBuild(
+  auto build = detail::computeBuild(
       step_hashes,
       invocations,
       output_file_map,
@@ -774,12 +597,12 @@ void build(
       allowed_failures,
       std::move(steps_to_build));
 
-  const auto clean_steps = computeCleanSteps(
+  const auto clean_steps = detail::computeCleanSteps(
       clock, file_system, invocation_log, invocations, step_hashes, build);
 
-  discardCleanSteps(clean_steps, build);
+  detail::discardCleanSteps(clean_steps, build);
 
-  BuildCommandParameters params(
+  detail::BuildCommandParameters params(
       clock,
       file_system,
       command_runner,
@@ -789,7 +612,7 @@ void build(
       manifest,
       step_hashes,
       build);
-  enqueueBuildCommands(params);
+  detail::enqueueBuildCommands(params);
 
   while (!command_runner.empty()) {
     if (command_runner.runCommands()) {
