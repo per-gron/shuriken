@@ -10,8 +10,6 @@
 
 namespace shk {
 
-using Clock = std::function<time_t ()>;
-
 /**
  * A Fingerprint is information about a file that Shuriken stores in the
  * invocation log. It contains information that can be used to detect if the

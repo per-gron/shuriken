@@ -4,6 +4,8 @@
 
 namespace shk {
 
+using Clock = std::function<time_t ()>;
+
 using StepIndex = size_t;
 
 /**
@@ -101,6 +103,41 @@ struct Build {
       }
     }
   }
+};
+
+/**
+ * There are a bunch of functions in this file that take more or less the same
+ * parameters, and quite many at that. The point of this struct is to avoid
+ * having to pass all of them explicitly, which just gets overly verbose, hard
+ * to read and painful to change.
+ */
+struct BuildCommandParameters {
+  BuildCommandParameters(
+      const Clock &clock,
+      FileSystem &file_system,
+      CommandRunner &command_runner,
+      BuildStatus &build_status,
+      InvocationLog &invocation_log,
+      const Manifest &manifest,
+      const StepHashes &step_hashes,
+      Build &build)
+      : clock(clock),
+        file_system(file_system),
+        command_runner(command_runner),
+        build_status(build_status),
+        invocation_log(invocation_log),
+        manifest(manifest),
+        step_hashes(step_hashes),
+        build(build) {}
+
+  const Clock &clock;
+  FileSystem &file_system;
+  CommandRunner &command_runner;
+  BuildStatus &build_status;
+  InvocationLog &invocation_log;
+  const Manifest &manifest;
+  const StepHashes &step_hashes;
+  Build &build;
 };
 
 /**
@@ -361,18 +398,20 @@ Build computeBuild(
  * or not). This function takes an Invocations::Entry, recomputes the
  * fingerprints and creates a new Invocations::Entry with fresh fingerprints.
  */
-Invocations::Entry recomputeInvocationEntry(
-    FileSystem &file_system, const Invocations::Entry &entry) throw(IoError) {
+InvocationLog::Entry recomputeInvocationEntry(
+    const Clock &clock,
+    FileSystem &file_system,
+    const Invocations::Entry &entry) throw(IoError) {
   // TODO(peck): Implement me
 
   return entry;
 }
 
-invocations::Entry computeInvocationEntry(
+InvocationLog::Entry computeInvocationEntry(
+    const Clock &clock,
     FileSystem &file_system,
     const CommandRunner::Result &result) throw(IoError) {
-  // TODO(peck): Needs clock parameter. That type should probably not be in fingerprint.h
-  Invocations::Entry entry;
+  InvocationLog::Entry entry;
 
   const auto add = [&](const std::vector<std::string> &paths) {
     std::vector<std::pair<std::string, Fingerprint>> result;
@@ -383,7 +422,8 @@ invocations::Entry computeInvocationEntry(
     return result;
   };
 
-  // TODO(peck): Implement me
+  entry.output_files = add(result.output_files);
+  entry.input_files = add(result.input_files);
 
   return entry;
 }
@@ -504,30 +544,24 @@ void mkdirsForPath(
 }
 
 void commandDone(
-    FileSystem &file_system,
-    CommandRunner &command_runner,
-    BuildStatus &build_status,
-    InvocationLog &invocation_log,
-    const Manifest &manifest,
-    const StepHashes &step_hashes,
-    Build &build,
+    BuildCommandParameters &params,
     StepIndex step_idx,
     CommandRunner::Result &&result) throw(IoError) {
-  const auto &step = manifest.steps[step_idx];
+  const auto &step = params.manifest.steps[step_idx];
 
   // TODO(peck): Validate that the command did not read a file that is an output
   //   of a target that it does not depend on directly or indirectly.
 
-  deleteBuildProduct(file_system, step.depfile);
-  deleteBuildProduct(file_system, step.rspfile);
+  deleteBuildProduct(params.file_system, step.depfile);
+  deleteBuildProduct(params.file_system, step.rspfile);
 
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
     // TODO(peck): Do something about result.linting_errors
 
-    invocation_log.ranCommand(
-        step_hashes[step_idx],
-        computeInvocationEntry(file_system, result));
+    params.invocation_log.ranCommand(
+        params.step_hashes[step_idx],
+        computeInvocationEntry(params.clock, params.file_system, result));
 
     if (false /*TODO(peck):NYI*/ && step.restat && outputsDidNotChange()) {
       // TODO(peck): Mark this step as clean
@@ -537,24 +571,17 @@ void commandDone(
     break;
 
   case ExitStatus::FAILURE:
-    assert(build.remaining_failures);
-    build.remaining_failures--;
+    assert(params.build.remaining_failures);
+    params.build.remaining_failures--;
     break;
 
   case ExitStatus::INTERRUPTED:
-    build.interrupted = true;
+    params.build.interrupted = true;
     break;
   }
 
   // Feed the command runner with more commands now that this one is finished.
-  enqueueBuildCommands(
-      file_system,
-      command_runner,
-      build_status,
-      invocation_log,
-      manfiest,
-      step_hashes,
-      build);
+  enqueueBuildCommands(params);
 }
 
 void deleteOldOutputs(
@@ -572,74 +599,43 @@ void deleteOldOutputs(
   }
 }
 
-bool enqueueBuildCommand(
-    FileSystem &file_system,
-    CommandRunner &command_runner,
-    BuildStatus &build_status,
-    InvocationLog &invocation_log,
-    const Manifest &manifest,
-    const StepHashes &step_hashes,
-    Build &build) throw(IoError) {
-  if (build.ready_steps.empty() ||
-      build.interrupted ||
-      !command_runner.canRunMore() ||
-      build.remaining_failures == 0) {
+bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
+  if (params.build.ready_steps.empty() ||
+      params.build.interrupted ||
+      !params.command_runner.canRunMore() ||
+      params.build.remaining_failures == 0) {
     return false;
   }
 
-  const auto step_idx = build.ready_steps.back();
-  const auto &step = manifest.steps[step_idx];
-  build.ready_steps.pop_back();
+  const auto step_idx = params.build.ready_steps.back();
+  const auto &step = params.manifest.steps[step_idx];
+  params.build.ready_steps.pop_back();
 
-  const auto &step_hash = step_hashes[step_idx];
-  deleteOldOutputs(file_system, invocations, step_hash);
+  const auto &step_hash = params.step_hashes[step_idx];
+  deleteOldOutputs(params.file_system, params.invocations, step_hash);
 
-  mkdirsForPath(file_system, invocation_log, step.rspfile);
-  file_system.writeFile(step.rspfile, step.rspfile_content);
+  mkdirsForPath(params.file_system, params.invocation_log, step.rspfile);
+  params.file_system.writeFile(step.rspfile, step.rspfile_content);
 
   for (const auto &output : step.outputs) {
-    mkdirsForPath(file_system, invocation_log, output);
+    mkdirsForPath(params.file_system, params.invocation_log, output);
   }
 
   // TODO(peck): What about pools?
 
-  command_runner.invoke(
+  params.command_runner.invoke(
       step.command,
       step.pool_name == "console" ? UseConsole::YES : UseConsole::NO,
-      [&file_system, &command_runner, &build_status, &invocation_log, &manifest,
-          &build, step_idx](CommandRunner::Result &&result) {
-        commandDone(
-            file_system,
-            command_runner,
-            build_status,
-            invocation_log,
-            manifest,
-            step_hashes,
-            build,
-            step_idx,
-            std::move(result));
+      [&params, step_idx](CommandRunner::Result &&result) {
+        commandDone(params, step_idx, std::move(result));
       });
 
   return true;
 }
 
 
-bool enqueueBuildCommands(
-    FileSystem &file_system,
-    CommandRunner &command_runner,
-    BuildStatus &build_status,
-    InvocationLog &invocation_log,
-    const Manifest &manifest,
-    const StepHashes &step_hashes,
-    Build &build) throw(IoError) {
-  while (enqueueBuildCommand(
-      file_system,
-      command_runner,
-      build_status,
-      invocation_log,
-      manfiest,
-      step_hashes,
-      build)) {}
+bool enqueueBuildCommands(BuildCommandParameters &params) throw(IoError) {
+  while (enqueueBuildCommand(params)) {}
 }
 
 void deleteStaleOutputs(
@@ -664,6 +660,7 @@ void deleteStaleOutputs(
 }
 
 void build(
+    const Clock &clock,
     FileSystem &file_system,
     CommandRunner &command_runner,
     BuildStatus &build_status,
@@ -697,7 +694,8 @@ void build(
       step_hashes,
       build);
 
-  enqueueBuildCommands(
+  BuildCommandParameters params(
+      clock,
       file_system,
       command_runner,
       build_status,
@@ -705,6 +703,7 @@ void build(
       manfiest,
       step_hashes,
       build);
+  enqueueBuildCommands(params);
 
   while (!command_runner.empty()) {
     if (command_runner.runCommands()) {
