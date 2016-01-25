@@ -543,6 +543,37 @@ void mkdirsForPath(
   // TODO(peck): Implement me
 }
 
+/**
+ * For build steps that have been configured to restat outputs after completion,
+ * this is the function that performs the restat check.
+ *
+ * This function is similar to isClean but it's not quite the same. It does not
+ * look at inputs, it only checks output files. Also, it ignores
+ * MatchesResult::should_update because it has already been handled by isClean
+ * earlier.
+ */
+bool outputsWereChanged(
+    FileSystem &file_system,
+    const Invocations &invocations,
+    const Hash &step_hash) throw(IoError) {
+  const auto it = invocations.find(step_hash);
+  if (it == invocations.end()) {
+    return true;
+  }
+
+  for (const auto &file : it->second.output_files) {
+    const auto match = fingerprintMatches(
+        file_system,
+        file.first.original(),
+        file.second);
+    if (!match.clean) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void commandDone(
     BuildCommandParameters &params,
     StepIndex step_idx,
@@ -563,7 +594,11 @@ void commandDone(
         params.step_hashes[step_idx],
         computeInvocationEntry(params.clock, params.file_system, result));
 
-    if (false /*TODO(peck):NYI*/ && step.restat && outputsDidNotChange()) {
+    if (step.restat &&
+        !outputsWereChanged(
+            build.file_system,
+            build.invocations,
+            build.step_hashes[step_idx])) {
       // TODO(peck): Mark this step as clean
     } else {
       build.markStepNodeAsDone(step_idx);
