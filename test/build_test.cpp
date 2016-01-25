@@ -153,13 +153,20 @@ TEST_CASE("Build") {
         cycleErrorMessage({ paths.get("a"), paths.get("b") }) == "a -> b -> a");
   }
 
+  SECTION("computeStepHashes") {
+    CHECK(computeStepHashes({}).empty());
+    CHECK(
+        computeStepHashes({ single_output }) ==
+        StepHashes{ single_output.hash() });
+    CHECK(
+        computeStepHashes({ single_output, single_input }) ==
+        (StepHashes{ single_output.hash(), single_input.hash() }));
+  }
+
   SECTION("computeBuild") {
   }
 
   SECTION("computeInvocationEntry") {
-  }
-
-  SECTION("computeStepHashes") {
   }
 
   SECTION("isClean") {

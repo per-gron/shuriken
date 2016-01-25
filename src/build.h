@@ -192,6 +192,8 @@ std::vector<StepIndex> computeStepsToBuild(
  */
 std::string cycleErrorMessage(const std::vector<Path> &cycle);
 
+StepHashes computeStepHashes(const std::vector<Step> &steps);
+
 /**
  * Create a Build object suitable for use as a starting point for the build.
  */
@@ -207,8 +209,6 @@ InvocationLog::Entry computeInvocationEntry(
     const Clock &clock,
     FileSystem &file_system,
     const CommandRunner::Result &result) throw(IoError);
-
-StepHashes computeStepHashes(const std::vector<Step> &steps);
 
 /**
  * Checks if a build step has already been performed and does not need to be

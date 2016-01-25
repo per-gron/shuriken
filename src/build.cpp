@@ -230,6 +230,17 @@ void visitStep(
   step_node.currently_visited = false;
 }
 
+StepHashes computeStepHashes(const std::vector<Step> &steps) {
+  StepHashes hashes;
+  hashes.reserve(steps.size());
+
+  for (const auto &step : steps) {
+    hashes.push_back(step.hash());
+  }
+
+  return hashes;
+}
+
 Build computeBuild(
     const StepHashes &step_hashes,
     const Invocations &invocations,
@@ -294,17 +305,6 @@ InvocationLog::Entry computeInvocationEntry(
   entry.input_files = add(result.input_files);
 
   return entry;
-}
-
-StepHashes computeStepHashes(const std::vector<Step> &steps) {
-  StepHashes hashes;
-  hashes.reserve(steps.size());
-
-  for (const auto &step : steps) {
-    hashes.push_back(step.hash());
-  }
-
-  return hashes;
 }
 
 bool isClean(

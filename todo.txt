@@ -139,7 +139,7 @@ Large things remaining to do:
   * targets
   * compdb
   * recompact
-* Shield the build process from the environment
+* Shield commands from env vars
 * Caching
 * Distributed caching
 
