@@ -178,20 +178,13 @@ std::vector<StepIndex> rootSteps(
 /**
  * Find the steps that should be built if no steps are specifically requested.
  *
+ * The returned array may contain duplicate values.
+ *
  * Uses defaults or the root steps.
  */
 std::vector<StepIndex> computeStepsToBuild(
     const Manifest &manifest,
     const OutputFileMap &output_file_map) throw(BuildError);
-
-/**
- * Helper for computeBuild.
- *
- * Takes a list of ready-computed StepNodes and finds the inital list of steps
- * that can be built.
- */
-std::vector<StepIndex> computeReadySteps(
-    const std::vector<StepNode> &step_nodes);
 
 std::string cycleErrorMessage(const std::vector<Path> &cycle);
 

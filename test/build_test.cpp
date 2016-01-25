@@ -14,6 +14,16 @@ std::vector<StepIndex> rootSteps(
   return ::shk::detail::rootSteps(steps, computeOutputFileMap(steps));
 }
 
+std::vector<StepIndex> computeStepsToBuild(
+    const Manifest &manifest) throw(BuildError) {
+  return ::shk::detail::computeStepsToBuild(
+      manifest, computeOutputFileMap(manifest.steps));
+}
+
+std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
+  return vec;
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Build") {
@@ -78,7 +88,7 @@ TEST_CASE("Build") {
     CHECK(rootSteps({ single_output }) == std::vector<StepIndex>{ 0 });
     CHECK(
         rootSteps({ single_output, single_output_b }) ==
-        (std::vector<StepIndex>{ 0, 1 }));
+        vec({ 0, 1 }));
     CHECK(
         rootSteps({ single_output, single_input }) ==
         std::vector<StepIndex>{ 1 });
@@ -97,9 +107,43 @@ TEST_CASE("Build") {
   }
 
   SECTION("computeStepsToBuild") {
-  }
+    SECTION("trivial") {
+      CHECK(computeStepsToBuild(Manifest()).empty());
+    }
 
-  SECTION("computeReadySteps") {
+    SECTION("invalid defaults") {
+      Manifest manifest;
+      manifest.defaults = { paths.get("missing") };
+      CHECK_THROWS_AS(computeStepsToBuild(manifest), BuildError);
+    }
+
+    SECTION("defaults") {
+      Manifest manifest;
+      manifest.steps = { single_output_b, multiple_outputs };
+
+      manifest.defaults = { paths.get("b") };
+      CHECK(computeStepsToBuild(manifest) == vec({0}));
+
+      manifest.defaults = { paths.get("c") };
+      CHECK(computeStepsToBuild(manifest) == vec({1}));
+
+      manifest.defaults = { paths.get("d") };
+      CHECK(computeStepsToBuild(manifest) == vec({1}));
+
+      manifest.defaults = { paths.get("d"), paths.get("c") };
+      // Duplicates are ok. We could deduplicate but that would just be an
+      // unnecessary expense.
+      CHECK(computeStepsToBuild(manifest) == vec({1, 1}));
+
+      manifest.defaults = { paths.get("b"), paths.get("c") };
+      CHECK(computeStepsToBuild(manifest) == vec({0, 1}));
+    }
+
+    SECTION("use root steps when defaults are missing") {
+      Manifest manifest;
+      manifest.steps = { single_output, single_input };
+      CHECK(computeStepsToBuild(manifest) == vec({1}));
+    }
   }
 
   SECTION("cycleErrorMessage") {

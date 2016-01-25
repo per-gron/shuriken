@@ -85,12 +85,19 @@ std::vector<StepIndex> computeStepsToBuild(
         throw BuildError(
             "default target does not exist: " + default_path.original());
       }
+      // This may result in duplicate values in result, which is ok
       result.push_back(it->second);
     }
     return result;
   }
 }
 
+/**
+ * Helper for computeBuild.
+ *
+ * Takes a list of ready-computed StepNodes and finds the inital list of steps
+ * that can be built.
+ */
 std::vector<StepIndex> computeReadySteps(
     const std::vector<StepNode> &step_nodes) {
   std::vector<StepIndex> result;
