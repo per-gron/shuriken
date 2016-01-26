@@ -421,24 +421,31 @@ TEST_CASE("Build") {
   }
 
   SECTION("isClean") {
+    // TODO(peck): Test this
   }
 
   SECTION("computeCleanSteps") {
+    // TODO(peck): Test this
   }
 
   SECTION("discardCleanSteps") {
+    // TODO(peck): Test this
   }
 
   SECTION("outputsWereChanged") {
+    // TODO(peck): Test this
   }
 
   SECTION("deleteOldOutputs") {
+    // TODO(peck): Test this
   }
 
   SECTION("deleteStaleOutputs") {
+    // TODO(peck): Test this
   }
 
   SECTION("build") {
+    // TODO(peck): Test this
   }
 }
 
