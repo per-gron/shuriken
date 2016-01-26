@@ -48,6 +48,8 @@ add_library(shklib
   src/path_error.h
   src/persistent_file_system.cpp
   src/persistent_file_system.h
+  src/persistent_invocation_log.cpp
+  src/persistent_invocation_log.h
   src/real_command_runner.h
   src/real_command_runner_posix.cpp
   src/rule.cpp
