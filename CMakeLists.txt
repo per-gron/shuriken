@@ -18,6 +18,7 @@ add_custom_command(
 add_library(shklib
   src/build.h
   src/build.cpp
+  src/build_config.h
   src/build_error.h
   src/build_status.h
   src/command_runner.h
