@@ -127,14 +127,14 @@ Large things remaining to do:
 - Improved path handling
 - Fingerprint code
 * The actual build algorithm
+* CLI
 * Invocation log
 * BuildStatus
-* CLI
 * CLI tools:
   * deps
   * clean
   * commands
-  * graph
+  * graph (graphviz)
   * query
   * targets
   * compdb
