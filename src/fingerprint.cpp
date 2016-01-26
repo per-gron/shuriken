@@ -43,6 +43,17 @@ bool Fingerprint::Stat::operator!=(const Stat &other) const {
   return !(*this == other);
 }
 
+bool Fingerprint::operator==(const Fingerprint &other) const {
+  return (
+      stat == other.stat &&
+      timestamp == other.timestamp &&
+      hash == other.hash);
+}
+
+bool Fingerprint::operator!=(const Fingerprint &other) const {
+  return !(*this == other);
+}
+
 Fingerprint takeFingerprint(
     FileSystem &file_system,
     time_t timestamp,

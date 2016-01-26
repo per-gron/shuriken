@@ -60,6 +60,38 @@ TEST_CASE("Fingerprint") {
     }
   }
 
+  SECTION("Fingerprint") {
+    Fingerprint a;
+    a.stat.size = 1;
+    a.timestamp = 2;
+    std::fill(a.hash.data.begin(), a.hash.data.end(), 0);
+
+    auto b = a;
+
+    SECTION("equal") {
+      CHECK(a == b);
+      CHECK(!(a != b));
+    }
+
+    SECTION("stat") {
+      b.stat.size++;
+      CHECK(a != b);
+      CHECK(!(a == b));
+    }
+
+    SECTION("timestamp") {
+      b.timestamp++;
+      CHECK(a != b);
+      CHECK(!(a == b));
+    }
+
+    SECTION("hash") {
+      b.hash.data[0] = 1;
+      CHECK(a != b);
+      CHECK(!(a == b));
+    }
+  }
+
   SECTION("takeFingerprint") {
     SECTION("regular file") {
       const auto fp = takeFingerprint(fs, 12345, "a");

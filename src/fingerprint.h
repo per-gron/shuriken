@@ -61,6 +61,9 @@ struct Fingerprint {
    */
   time_t timestamp;
   Hash hash;
+
+  bool operator==(const Fingerprint &other) const;
+  bool operator!=(const Fingerprint &other) const;
 };
 
 struct MatchesResult {

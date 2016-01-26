@@ -371,6 +371,53 @@ TEST_CASE("Build") {
   }
 
   SECTION("computeInvocationEntry") {
+    InMemoryFileSystem fs;
+    const Clock clock = []{ return 432; };
+
+    SECTION("empty") {
+      const auto entry = computeInvocationEntry(
+          clock, fs, CommandRunner::Result());
+      CHECK(entry.output_files.empty());
+      CHECK(entry.input_files.empty());
+    }
+
+    SECTION("files") {
+      fs.writeFile("a", "!");
+      fs.writeFile("b", "?");
+      fs.writeFile("c", ":");
+
+      CommandRunner::Result result;
+      result.output_files = { "c" };
+      result.input_files = { "a", "b" };
+
+      const auto entry = computeInvocationEntry(clock, fs, result);
+
+      REQUIRE(entry.output_files.size() == 1);
+      CHECK(entry.output_files[0].first == "c");
+      CHECK(entry.output_files[0].second == takeFingerprint(fs, 432, "c"));
+
+      REQUIRE(entry.input_files.size() == 2);
+      CHECK(entry.input_files[0].first == "a");
+      CHECK(entry.input_files[0].second == takeFingerprint(fs, 432, "a"));
+      CHECK(entry.input_files[1].first == "b");
+      CHECK(entry.input_files[1].second == takeFingerprint(fs, 432, "b"));
+    }
+
+    SECTION("missing files") {
+      CommandRunner::Result result;
+      result.output_files = { "a" };
+      result.input_files = { "b" };
+
+      const auto entry = computeInvocationEntry(clock, fs, result);
+
+      REQUIRE(entry.output_files.size() == 1);
+      CHECK(entry.output_files[0].first == "a");
+      CHECK(entry.output_files[0].second == takeFingerprint(fs, 432, "a"));
+
+      REQUIRE(entry.input_files.size() == 1);
+      CHECK(entry.input_files[0].first == "b");
+      CHECK(entry.input_files[0].second == takeFingerprint(fs, 432, "b"));
+    }
   }
 
   SECTION("isClean") {
