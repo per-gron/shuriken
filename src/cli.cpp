@@ -124,11 +124,6 @@ struct NinjaMain {
    */
   int runBuild(int argc, char **argv);
 
-  /**
-   * Dump the output requested by '-d stats'.
-   */
-  void dumpMetrics();
-
  private:
   /**
    * Build configuration set from flags (e.g. parallelism).
@@ -215,25 +210,9 @@ void usage(const BuildConfig &config) {
 "  -n       dry run (don't run commands but act like they succeeded)\n"
 "  -v       show all command lines while building\n"
 "\n"
-"  -d MODE  enable debugging (use -d list to list modes)\n"
 "  -t TOOL  run a subtool (use -t list to list subtools)\n"
 "    terminates toplevel options; further flags are passed to the tool\n",
           kNinjaVersion, config.parallelism);
-}
-
-/**
- * Choose a default value for the -j (parallelism) flag.
- */
-int guessParallelism() {
-  switch (int processors = getProcessorCount()) {
-  case 0:
-  case 1:
-    return 2;
-  case 2:
-    return 3;
-  default:
-    return processors + 2;
-  }
 }
 
 /**
@@ -328,10 +307,11 @@ int NinjaMain::toolQuery(int argc, char *argv[]) {
   }
 
   for (int i = 0; i < argc; ++i) {
-    std::string err;
-    Node *node = collectTarget(argv[i], &err);
-    if (!node) {
-      error("%s", err.c_str());
+    Node *node;
+    try {
+      node = collectTarget(argv[i]);
+    } catch (const BuildError &error) {
+      error("%s", error.what());
       return 1;
     }
 
@@ -702,47 +682,6 @@ const Tool *chooseTool(const std::string &tool_name) {
 }
 
 /**
- * Enable a debugging mode.  Returns false if Ninja should exit instead
- * of continuing.
- */
-bool debugEnable(const std::string &name) {
-  if (name == "list") {
-    printf("debugging modes:\n"
-"  stats    print operation counts/timing info\n"
-"  explain  explain what caused a command to execute\n"
-"  keeprsp  don't delete @response files on success\n"
-#ifdef _WIN32
-"  nostatcache  don't batch stat() calls per directory and cache them\n"
-#endif
-"multiple modes can be enabled via -d FOO -d BAR\n");
-    return false;
-  } else if (name == "stats") {
-    g_metrics = new Metrics;
-    return true;
-  } else if (name == "explain") {
-    g_explaining = true;
-    return true;
-  } else if (name == "keeprsp") {
-    g_keep_rsp = true;
-    return true;
-  } else if (name == "nostatcache") {
-    g_experimental_statcache = false;
-    return true;
-  } else {
-    const char *suggestion =
-        spellcheckString(name.c_str(), "stats", "explain", "keeprsp",
-        "nostatcache", NULL);
-    if (suggestion) {
-      error("unknown debug setting '%s', did you mean '%s'?",
-            name.c_str(), suggestion);
-    } else {
-      error("unknown debug setting '%s'", name.c_str());
-    }
-    return false;
-  }
-}
-
-/**
  * Open the deps log: load it, then open for writing.
  * @return false on error.
  */
@@ -777,16 +716,6 @@ bool NinjaMain::openDepsLog(bool recompact_only) {
   }
 
   return true;
-}
-
-void NinjaMain::dumpMetrics() {
-  g_metrics->report();
-
-  printf("\n");
-  int count = (int)_state.paths_.size();
-  int buckets = (int)_state.paths_.bucket_count();
-  printf("path->node hash load %.2f (%d entries / %d buckets)\n",
-         count / (double) buckets, count, buckets);
 }
 
 bool NinjaMain::ensureBuildDirExists() {
@@ -889,13 +818,9 @@ int ReadFlags(int *argc, char ***argv,
 
   int opt;
   while (!options->tool &&
-         (opt = getopt_long(*argc, *argv, "d:f:j:k:l:nt:v:C:h", kLongOptions,
+         (opt = getopt_long(*argc, *argv, "f:j:k:l:nt:v:C:h", kLongOptions,
                             NULL)) != -1) {
     switch (opt) {
-      case 'd':
-        if (!debugEnable(optarg))
-          return 1;
-        break;
       case 'f':
         options->input_file = optarg;
         break;
@@ -996,32 +921,36 @@ int real_main(int argc, char **argv) {
   for (int cycle = 1; cycle <= kCycleLimit; ++cycle) {
     NinjaMain ninja(config);
 
-    RealFileReader file_reader;
-    ManifestParser parser(&ninja._state, &file_reader);
-    std::string err;
-    if (!parser.Load(options.input_file, &err)) {
-      error("%s", err.c_str());
+    Manifest manifest;
+    try {
+      manifest = parseManifest(paths, _file_system, options.input_file);
+    } catch (const IoError &error) {
+      error("%s", error.what());
+    } catch (const ParseError &error) {
+      error("%s", error.what());
+    }
+
+    if (options.tool && options.tool->when == Tool::RUN_AFTER_LOAD) {
+      return (ninja.*options.tool->func)(argc, argv);
+    }
+
+    if (!ninja.ensureBuildDirExists() ||
+        !ninja.openDepsLog()) {
       return 1;
     }
 
-    if (options.tool && options.tool->when == Tool::RUN_AFTER_LOAD)
+    if (options.tool && options.tool->when == Tool::RUN_AFTER_LOGS) {
       return (ninja.*options.tool->func)(argc, argv);
-
-    if (!ninja.ensureBuildDirExists())
-      return 1;
-
-    if (!ninja.openDepsLog())
-      return 1;
-
-    if (options.tool && options.tool->when == Tool::RUN_AFTER_LOGS)
-      return (ninja.*options.tool->func)(argc, argv);
+    }
 
     // Attempt to rebuild the manifest before building anything else
+    std::string err;
     if (ninja.rebuildManifest(options.input_file, &err)) {
       // In dry_run mode the regeneration will succeed without changing the
       // manifest forever. Better to return immediately.
-      if (config.dry_run)
+      if (config.dry_run) {
         return 0;
+      }
       // Start the build over with the new manifest.
       continue;
     } else if (!err.empty()) {
@@ -1029,10 +958,7 @@ int real_main(int argc, char **argv) {
       return 1;
     }
 
-    int result = ninja.runBuild(argc, argv);
-    if (g_metrics)
-      ninja.dumpMetrics();
-    return result;
+    return ninja.runBuild(argc, argv);
   }
 
   error("manifest '%s' still dirty after %d tries\n",

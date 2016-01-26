@@ -270,6 +270,18 @@ int getProcessorCount() {
 #endif
 }
 
+int guessParallelism() {
+  switch (int processors = getProcessorCount()) {
+  case 0:
+  case 1:
+    return 2;
+  case 2:
+    return 3;
+  default:
+    return processors + 2;
+  }
+}
+
 #if defined(_WIN32) || defined(__CYGWIN__)
 static double calculateProcessorLoad(uint64_t idle_ticks, uint64_t total_ticks)
 {

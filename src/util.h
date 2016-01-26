@@ -72,6 +72,11 @@ std::string stripAnsiEscapeCodes(const std::string &in);
 int getProcessorCount();
 
 /**
+ * Choose a default value for the -j (parallelism) flag.
+ */
+int guessParallelism();
+
+/**
  * @return the load average of the machine. A negative value is returned
  * on error.
  */
