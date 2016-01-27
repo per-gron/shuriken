@@ -64,6 +64,75 @@ TEST_CASE("Build") {
   Step single_dependency;
   single_dependency.dependencies = { paths.get("a") };
 
+  SECTION("interpretPath") {
+    Step other_input;
+    other_input.inputs = { paths.get("other") };
+    other_input.outputs = { paths.get("foo") };
+
+    Step multiple_outputs;
+    multiple_outputs.inputs = { paths.get("hehe") };
+    multiple_outputs.outputs = { paths.get("hej"), paths.get("there") };
+
+    Step implicit_input;
+    implicit_input.implicit_inputs = { paths.get("implicit_input") };
+    implicit_input.outputs = { paths.get("implicit_output") };
+
+    Step dependency;
+    dependency.dependencies = { paths.get("dependency_input") };
+    dependency.outputs = { paths.get("dependency_output") };
+
+    Manifest manifest;
+    manifest.steps = {
+        single_output,
+        single_output_b,
+        single_input,
+        other_input,
+        multiple_outputs,
+        implicit_input,
+        dependency };
+
+    SECTION("normal (non-^)") {
+      CHECK(interpretPath(paths, manifest, "a") == paths.get("a"));
+      CHECK_THROWS_AS(interpretPath(paths, manifest, "x"), PathError);
+      CHECK_THROWS_AS(interpretPath(paths, manifest, "other"), PathError);
+    }
+
+    SECTION("^") {
+      CHECK_THROWS_AS(
+          interpretPath(paths, manifest, "fancy_schmanzy^"), PathError);
+      CHECK(interpretPath(paths, manifest, "other^") == paths.get("foo"));
+      CHECK_THROWS_AS(
+          interpretPath(paths, manifest, "a^"), PathError);  // No out edge
+      CHECK(interpretPath(paths, manifest, "hehe^") == paths.get("hej"));
+      CHECK(
+          interpretPath(paths, manifest, "implicit_input^") ==
+          paths.get("implicit_output"));
+      CHECK(
+          interpretPath(paths, manifest, "dependency_input^") ==
+          paths.get("dependency_output"));
+    }
+
+    SECTION("clean") {
+      try {
+        interpretPath(paths, manifest, "clean");
+        CHECK(!"Should throw");
+      } catch (const PathError &error) {
+        CHECK(error.what() == std::string(
+            "unknown target 'clean', did you mean 'shk -t clean'?"));
+      }
+    }
+
+    SECTION("help") {
+      try {
+        interpretPath(paths, manifest, "help");
+        CHECK(!"Should throw");
+      } catch (const PathError &error) {
+        CHECK(error.what() == std::string(
+            "unknown target 'help', did you mean 'shk -h'?"));
+      }
+    }
+  }
+
   SECTION("computeOutputFileMap") {
     SECTION("basics") {
       CHECK(computeOutputFileMap({}).empty());

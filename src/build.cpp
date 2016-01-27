@@ -5,6 +5,50 @@
 #include "fingerprint.h"
 
 namespace shk {
+
+Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
+    throw(PathError) {
+  const bool input = !path.empty() && path[path.size() - 1] == '^';
+  if (input) {
+    path.resize(path.size() - 1);
+  }
+
+  const auto p = paths.get(path);
+
+  const auto search = [&](const std::vector<Path> &paths_to_search) {
+    for (const auto &path_to_search : paths_to_search) {
+      if (p.isSame(path_to_search)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (const auto &step : manifest.steps) {
+    const auto found = input ?
+        (search(step.inputs) ||
+         search(step.implicit_inputs) ||
+         search(step.dependencies)) :
+        search(step.outputs);
+    if (found) {
+      if (step.outputs.empty()) {
+        throw PathError("Step with input '" + path + "' has no output", path);
+      } else {
+        return step.outputs[0];
+      }
+    }
+  }
+
+  // Not found
+  std::string error = "unknown target '" + path + "'";
+  if (path == "clean") {
+    error += ", did you mean 'shk -t clean'?";
+  } else if (path == "help") {
+    error += ", did you mean 'shk -h'?";
+  }
+  throw PathError(error, path);
+}
+
 namespace detail {
 
 bool isConsolePool(const std::string &pool_name) {
@@ -72,23 +116,34 @@ std::vector<StepIndex> rootSteps(
   return result;
 }
 
+/**
+ * Compute indices of steps to build from a list of output paths. Helper for
+ * computeStepsToBuild, used both for defaults specified in the manifest and
+ * paths specified from the command line.
+ */
+std::vector<StepIndex> computeStepsToBuildFromPaths(
+    const std::vector<Path> &paths,
+    const OutputFileMap &output_file_map) throw(BuildError) {
+  std::vector<StepIndex> result;
+  for (const auto &default_path : paths) {
+    const auto it = output_file_map.find(default_path);
+    if (it == output_file_map.end()) {
+      throw BuildError(
+          "specified target does not exist: " + default_path.original());
+    }
+    // This may result in duplicate values in result, which is ok
+    result.push_back(it->second);
+  }
+  return result;
+}
+
 std::vector<StepIndex> computeStepsToBuild(
     const Manifest &manifest,
     const OutputFileMap &output_file_map) throw(BuildError) {
   if (manifest.defaults.empty()) {
     return rootSteps(manifest.steps, output_file_map);
   } else {
-    std::vector<StepIndex> result;
-    for (const auto &default_path : manifest.defaults) {
-      const auto it = output_file_map.find(default_path);
-      if (it == output_file_map.end()) {
-        throw BuildError(
-            "default target does not exist: " + default_path.original());
-      }
-      // This may result in duplicate values in result, which is ok
-      result.push_back(it->second);
-    }
-    return result;
+    return computeStepsToBuildFromPaths(manifest.defaults, output_file_map);
   }
 }
 

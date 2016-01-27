@@ -79,12 +79,6 @@ struct NinjaMain {
   typedef int (NinjaMain::*ToolFunc)(int, char**);
 
   /**
-   * Get the Node for a given command-line path, handling features like
-   * spell correction.
-   */
-  Node *collectTarget(std::string &&path) throw(BuildError);
-
-  /**
    * collectTarget for all command-line arguments, filling in \a targets.
    */
   std::vector<Node *> collectTargetsFromArgs(
@@ -234,48 +228,6 @@ bool NinjaMain::rebuildManifest(const char *input_file, std::string *err) {
   // rebuilt.  Not doing so can lead to crashes, see
   // https://github.com/ninja-build/ninja/issues/874
   return builder.build(err);
-}
-
-Node *NinjaMain::collectTarget(std::string &&path) throw(BuildError) {
-  unsigned int slash_bits;
-  canonicalizePath(&path, &slash_bits);
-
-  // Special syntax: "foo.cc^" means "the first output of foo.cc".
-  bool first_dependent = false;
-  if (!path.empty() && path[path.size() - 1] == '^') {
-    path.resize(path.size() - 1);
-    first_dependent = true;
-  }
-
-  Node *node = _state.lookupNode(path);
-  if (node) {
-    if (first_dependent) {
-      if (node->out_edges().empty()) {
-        throw BuildError("'" + path + "' has no out edge");
-      }
-      Edge *edge = node->out_edges()[0];
-      if (edge->outputs_.empty()) {
-        edge->Dump();
-        fatal("edge has no outputs");
-      }
-      node = edge->outputs_[0];
-    }
-    return node;
-  } else {
-    std::string err =
-        "unknown target '" + Node::PathDecanonicalized(path, slash_bits) + "'";
-    if (path == "clean") {
-      err += ", did you mean 'ninja -t clean'?";
-    } else if (path == "help") {
-      err += ", did you mean 'ninja -h'?";
-    } else {
-      const Node * const suggestion = _state.spellcheckNode(path);
-      if (suggestion) {
-        err += ", did you mean '" + suggestion->path() + "'?";
-      }
-    }
-    throw BuildError(err);
-  }
 }
 
 std::vector<Node *> NinjaMain::collectTargetsFromArgs(

@@ -16,6 +16,13 @@ namespace shk {
 
 using Clock = std::function<time_t ()>;
 
+/**
+ * Get the Path to a given output file for a step in the manifest. This handles
+ * the ^ command line interface syntax.
+ */
+Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
+    throw(PathError);
+
 namespace detail {
 
 using StepIndex = size_t;

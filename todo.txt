@@ -22,6 +22,10 @@ Differences from Ninja:
   stdin is not a deterministic source, and it tends to be used for things as tests
   and generator rules anyway.
 
+Missing features:
+* spell checking on target file names
+* browse
+* urtle
 
 Build steps in Shuriken must fulfill the following requirements:
 * Must be a pure function; given the same input must generate the same output
