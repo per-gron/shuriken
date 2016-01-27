@@ -265,6 +265,15 @@ TEST_CASE("Path") {
     fs.mkdir("dir");
     Paths paths(fs);
 
+    CHECK(paths.get("/a").isSame(paths.get("a")));
+    CHECK(!paths.get("/a").isSame(paths.get("/b")));
+    CHECK(!paths.get("/a").isSame(paths.get("/a/b")));
+    CHECK(!paths.get("a").isSame(paths.get("b")));
+    CHECK(!paths.get("hey").isSame(paths.get("b")));
+    CHECK(!paths.get("hey").isSame(paths.get("there")));
+    CHECK(!paths.get("a/hey").isSame(paths.get("a/there")));
+    CHECK(!paths.get("hey/a").isSame(paths.get("there/a")));
+
     CHECK_THROWS_AS(paths.get(""), PathError);
     CHECK(paths.get("/") != paths.get("//"));
     CHECK(paths.get("/").isSame(paths.get("//")));

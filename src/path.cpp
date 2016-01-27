@@ -210,9 +210,11 @@ CanonicalizedPath makeCanonicalizedPath(
 
   // At this point, the longest prefix of path that actually exists has been
   // found. Now extract the nonexisting part of the path and canonicalize it.
-  do {
-    pos++;
-  } while (pos != path.size() && path[pos] == '/');
+  if (!at_relative_root) {
+    do {
+      pos++;
+    } while (pos != path.size() && path[pos] == '/');
+  }
   auto len = path.size() - pos;
   std::string nonexisting_part(&path[pos], len);
   if (len > 0) {
