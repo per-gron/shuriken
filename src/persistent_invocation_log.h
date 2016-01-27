@@ -9,6 +9,6 @@ namespace shk {
  * implementation.
  */
 std::unique_ptr<InvocationLog> makePersistentInvocationLog(
-    FileSystem &file_system, const std::string &log_path);
+    FileSystem &file_system, const std::string &log_path) throw(IoError);
 
 }  // namespace shk

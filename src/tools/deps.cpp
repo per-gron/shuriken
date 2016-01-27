@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-int NinjaMain::toolDeps(int argc, char **argv) {
+namespace shk {
+
+int toolDeps(int argc, char **argv) {
   std::vector<Node *> nodes;
   if (argc == 0) {
     for (const auto &n : _deps_log.nodes()) {
@@ -54,3 +56,5 @@ int NinjaMain::toolDeps(int argc, char **argv) {
 
   return 0;
 }
+
+}  // namespace shk

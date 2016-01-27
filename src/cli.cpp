@@ -33,105 +33,27 @@
 #include "build.h"
 #include "build_config.h"
 #include "build_error.h"
-#include "clean.h"
+#include "edit_distance.h"
 #include "manifest.h"
 #include "persistent_file_system.h"
 #include "persistent_invocation_log.h"
+#include "tools/clean.h"
+#include "tools/commands.h"
+#include "tools/compilation_database.h"
+#include "tools/deps.h"
+#include "tools/query.h"
+#include "tools/recompact.h"
+#include "tools/targets.h"
 #include "util.h"
 #include "version.h"
 
 namespace shk {
 namespace {
 
-struct Tool;
-
 /**
- * Command-line options.
+ * The type of functions that are the entry points to tools (subcommands).
  */
-struct Options {
-  /**
-   * Build file to load.
-   */
-  const char *input_file;
-
-  /**
-   * Directory to change into before running.
-   */
-  const char *working_dir;
-
-  /**
-   * Tool to run rather than building.
-   */
-  const Tool *tool;
-};
-
-/**
- * The Ninja main() loads up a series of data structures; various tools need
- * to poke into these, so store them as fields on an object.
- */
-struct NinjaMain {
-  NinjaMain(const BuildConfig &config) :
-      _config(config) {}
-
-  /**
-   * The type of functions that are the entry points to tools (subcommands).
-   */
-  typedef int (NinjaMain::*ToolFunc)(int, char**);
-
-  /**
-   * collectTarget for all command-line arguments, filling in \a targets.
-   */
-  std::vector<Node *> collectTargetsFromArgs(
-      int argc, char *argv[]) throw(BuildError);
-
-  /**
-   * Open the deps log: load it, then open for writing.
-   * @return false on error.
-   */
-  bool openDepsLog(bool recompact_only = false);
-
-  /**
-   * Ensure the build directory exists, creating it if necessary.
-   * @return false on error.
-   */
-  bool ensureBuildDirExists();
-
-  /**
-   * Rebuild the manifest, if necessary.
-   * Fills in \a err on error.
-   * @return true if the manifest was rebuilt.
-   */
-  bool rebuildManifest(const char *input_file, std::string *err);
-
-  /**
-   * Build the targets listed on the command line.
-   * @return an exit code.
-   */
-  int runBuild(int argc, char **argv);
-
- private:
-  /**
-   * Build configuration set from flags (e.g. parallelism).
-   */
-  const BuildConfig _config;
-
-  /**
-   * Loaded state (rules, nodes).
-   */
-  State _state;
-
-  /**
-   * Functions for accesssing the disk.
-   */
-  RealDiskInterface _disk_interface;
-
-  /**
-   * The build directory, used for storing the build log etc.
-   */
-  std::string _build_dir;
-
-  DepsLog _deps_log;
-};
+using ToolFunc = int (*)(int, char**);
 
 /**
  * Subtools, accessible via "-t foo".
@@ -171,7 +93,79 @@ struct Tool {
   /**
    * Implementation of the tool.
    */
-  NinjaMain::ToolFunc func;
+  ToolFunc func;
+};
+
+/**
+ * Command-line options.
+ */
+struct Options {
+  /**
+   * Build file to load.
+   */
+  const char *input_file;
+
+  /**
+   * Directory to change into before running.
+   */
+  const char *working_dir;
+
+  /**
+   * Tool to run rather than building.
+   */
+  const Tool *tool;
+};
+
+/**
+ * The Shuriken main() loads up a series of data structures; various tools need
+ * to poke into these, so store them as fields on an object.
+ */
+struct ShurikenMain {
+  ShurikenMain(
+      const BuildConfig &config)
+      : _config(config),
+        _file_system(persistentFileSystem()),
+        _paths(*_file_system) {}
+
+  std::vector<Path> interpretPaths(
+      int argc, char *argv[]) throw(BuildError);
+
+  /**
+   * Open the invocation log: load it, then open for writing.
+   * @return false on error.
+   */
+  bool openInvocationLog(bool recompact_only = false);
+
+  /**
+   * Ensure the build directory exists, creating it if necessary.
+   * @return false on error.
+   */
+  bool ensureBuildDirExists();
+
+  /**
+   * Rebuild the manifest, if necessary.
+   * Fills in \a err on error.
+   * @return true if the manifest was rebuilt.
+   */
+  bool rebuildManifest(const char *input_file, std::string *err);
+
+  /**
+   * Build the targets listed on the command line.
+   * @return an exit code.
+   */
+  int runBuild(int argc, char **argv);
+
+ private:
+  const BuildConfig _config;
+  const std::unique_ptr<FileSystem> _file_system;
+  Paths _paths;
+  std::unique_ptr<InvocationLog> _invocation_log;
+  Manifest _manifest;
+
+  /**
+   * The build directory, used for storing the build log etc.
+   */
+  std::string _build_dir;
 };
 
 /**
@@ -204,12 +198,10 @@ void usage(const BuildConfig &config) {
  * Rebuild the build manifest, if necessary.
  * Returns true if the manifest was rebuilt.
  */
-bool NinjaMain::rebuildManifest(const char *input_file, std::string *err) {
-  std::string path = input_file;
-  unsigned int slash_bits;  // Unused because this path is only used for lookup.
-  if (!canonicalizePath(&path, &slash_bits, err)) {
-    return false;
-  }
+bool ShurikenMain::rebuildManifest(const char *input_file, std::string *err) {
+#if 0  // TODO(peck): Implement me
+  const auto path = _paths.get(input_file);
+
   Node *node = _state.lookupNode(path);
   if (!node) {
     return false;
@@ -228,107 +220,44 @@ bool NinjaMain::rebuildManifest(const char *input_file, std::string *err) {
   // rebuilt.  Not doing so can lead to crashes, see
   // https://github.com/ninja-build/ninja/issues/874
   return builder.build(err);
+#endif
+  return false;
 }
 
-std::vector<Node *> NinjaMain::collectTargetsFromArgs(
+std::vector<Path> ShurikenMain::interpretPaths(
     int argc, char *argv[]) throw(BuildError) {
-  if (argc == 0) {
-    return _state.defaultNodes();
-  }
-
-  std::vector<Node *> targets;
+  std::vector<Path> targets;
   for (int i = 0; i < argc; ++i) {
-    targets->push_back(collectTarget(argv[i]));
+    targets.push_back(interpretPath(_paths, _manifest, argv[i]));
   }
   return targets;
 }
 
-int toolTargetsList(const std::vector<Node *> &nodes, int depth, int indent) {
-  for (const auto &n : nodes) {
-    for (int i = 0; i < indent; ++i) {
-      printf("  ");
-    }
-    const char *target = node->path().c_str();
-    if (node->in_edge()) {
-      printf("%s: %s\n", target, node->in_edge()->rule_->name().c_str());
-      if (depth > 1 || depth <= 0) {
-        toolTargetsList(node->in_edge()->inputs_, depth - 1, indent + 1);
-      }
-    } else {
-      printf("%s\n", target);
-    }
-  }
-  return 0;
-}
-
-int toolTargetsSourceList(State *state) {
-  for (const auto &edge : state->edges_) {
-    for (const auto &inp : edge->inputs_) {
-      if (!inp->in_edge()) {
-        printf("%s\n", inp->path().c_str());
-      }
-    }
-  }
-  return 0;
-}
-
-int toolTargetsList(State *state, const std::string &rule_name) {
-  std::set<std::string> rules;
-
-  // Gather the outputs.
-  for (const auto &edge : state->edges_) {
-    if (edge->rule_->name() == rule_name) {
-      for (const auto &out_node : edge->outputs_) {
-        rules.insert(out_node->path());
-      }
-    }
-  }
-
-  // Print them.
-  for (auto i = rules.begin(); i != rules.end(); ++i) {
-    printf("%s\n", (*i).c_str());
-  }
-
-  return 0;
-}
-
-int toolTargetsList(State *state) {
-  for (const auto &edge : state->edges_) {
-    for (const auto &out_node : edge->outputs_) {
-      printf(
-          "%s: %s\n",
-          out_node->path().c_str(),
-          edge->rule_->name().c_str());
-    }
-  }
-  return 0;
-}
-
 /**
  * Find the function to execute for \a tool_name and return it via \a func.
- * Returns a Tool, or NULL if Ninja should exit.
+ * Returns a Tool, or NULL if Shuriken should exit.
  */
 const Tool *chooseTool(const std::string &tool_name) {
   static const Tool kTools[] = {
     { "clean", "clean built files",
-      Tool::RUN_AFTER_LOAD, &NinjaMain::toolClean },
+      Tool::RUN_AFTER_LOAD, &toolClean },
     { "commands", "list all commands required to rebuild given targets",
-      Tool::RUN_AFTER_LOAD, &NinjaMain::toolCommands },
+      Tool::RUN_AFTER_LOAD, &toolCommands },
     { "deps", "show dependencies stored in the deps log",
-      Tool::RUN_AFTER_LOGS, &NinjaMain::toolDeps },
+      Tool::RUN_AFTER_LOGS, &toolDeps },
     { "query", "show inputs/outputs for a path",
-      Tool::RUN_AFTER_LOGS, &NinjaMain::toolQuery },
+      Tool::RUN_AFTER_LOGS, &toolQuery },
     { "targets",  "list targets by their rule or depth in the DAG",
-      Tool::RUN_AFTER_LOAD, &NinjaMain::toolTargets },
+      Tool::RUN_AFTER_LOAD, &toolTargets },
     { "compdb",  "dump JSON compilation database to stdout",
-      Tool::RUN_AFTER_LOAD, &NinjaMain::toolCompilationDatabase },
-    { "recompact",  "recompacts ninja-internal data structures",
-      Tool::RUN_AFTER_LOAD, &NinjaMain::toolRecompact },
+      Tool::RUN_AFTER_LOAD, &toolCompilationDatabase },
+    { "recompact",  "recompacts shuriken-internal data structures",
+      Tool::RUN_AFTER_LOAD, &toolRecompact },
     { NULL, NULL, Tool::RUN_AFTER_FLAGS, NULL }
   };
 
   if (tool_name == "list") {
-    printf("ninja subtools:\n");
+    printf("shk subtools:\n");
     for (const Tool *tool = &kTools[0]; tool->name; ++tool) {
       if (tool->desc) {
         printf("%10s  %s\n", tool->name, tool->desc);
@@ -361,32 +290,39 @@ const Tool *chooseTool(const std::string &tool_name) {
  * Open the deps log: load it, then open for writing.
  * @return false on error.
  */
-bool NinjaMain::openDepsLog(bool recompact_only) {
-  std::string path = ".ninja_deps";
-  if (!_build_dir.empty())
+bool ShurikenMain::openInvocationLog(bool recompact_only) {
+  std::string path = ".shk_log";
+  if (!_build_dir.empty()) {
     path = _build_dir + "/" + path;
-
-  std::string err;
-  if (!_deps_log.Load(path, &_state, &err)) {
-    error("loading deps log %s: %s", path.c_str(), err.c_str());
-    return false;
   }
-  if (!err.empty()) {
-    // Hack: Load() can return a warning via err by returning true.
-    Warning("%s", err.c_str());
-    err.clear();
+
+  try {
+    std::string warning;
+    std::tie(_invocation_log, warning) =
+        makePersistentInvocationLog(_file_system, path);
+    if (!warning.empty()) {
+      warning("%s", warning.c_str());
+    }
+  } catch (const IoError &error) {
+    error("loading deps log %s: %s", path.c_str(), error.what());
+    return false;
   }
 
   if (recompact_only) {
-    bool success = _deps_log.Recompact(path, &err);
-    if (!success)
-      error("failed recompaction: %s", err.c_str());
-    return success;
+    try {
+      _deps_log.recompact(path);
+      return true;
+    } catch (const IoError &error) {
+      error("failed recompaction: %s", error.what());
+      return false;
+    }
   }
 
   if (!_config.dry_run) {
-    if (!_deps_log.OpenForWrite(path, &err)) {
-      error("opening deps log: %s", err.c_str());
+    try {
+      _deps_log.openForWrite(path);
+    } catch (const IoError &error) {
+      error("opening deps log: %s", error.what());
       return false;
     }
   }
@@ -394,19 +330,20 @@ bool NinjaMain::openDepsLog(bool recompact_only) {
   return true;
 }
 
-bool NinjaMain::ensureBuildDirExists() {
+bool ShurikenMain::ensureBuildDirExists() {
   _build_dir = _state.bindings_.lookupVariable("builddir");
   if (!_build_dir.empty() && !_config.dry_run) {
     if (!_disk_interface.MakeDirs(_build_dir + "/.") && errno != EEXIST) {
-      error("creating build directory %s: %s",
-            _build_dir.c_str(), strerror(errno));
+      error(
+          "creating build directory %s: %s",
+          _build_dir.c_str(), strerror(errno));
       return false;
     }
   }
   return true;
 }
 
-int NinjaMain::runBuild(int argc, char **argv) {
+int ShurikenMain::runBuild(int argc, char **argv) {
   std::vector<Node *> targets;
   try {
     targets = collectTargetsFromArgs(argc, argv);
@@ -468,7 +405,7 @@ void terminateHandler() {
  * On Windows, we want to prevent error dialogs in case of exceptions.
  * This function handles the exception, and writes a minidump.
  */
-int ExceptionFilter(unsigned int code, struct _EXCEPTION_POINTERS *ep) {
+int exceptionFilter(unsigned int code, struct _EXCEPTION_POINTERS *ep) {
   error("exception: 0x%X", code);  // e.g. EXCEPTION_ACCESS_VIOLATION
   fflush(stderr); 
   createWin32MiniDump(ep);
@@ -479,9 +416,9 @@ int ExceptionFilter(unsigned int code, struct _EXCEPTION_POINTERS *ep) {
 
 /**
  * Parse argv for command-line options.
- * Returns an exit code, or -1 if Ninja should continue.
+ * Returns an exit code, or -1 if Shuriken should continue.
  */
-int ReadFlags(int *argc, char ***argv,
+int readFlags(int *argc, char ***argv,
               Options *options, BuildConfig *config) {
   config->parallelism = guessParallelism();
 
@@ -568,7 +505,7 @@ int real_main(int argc, char **argv) {
 
   setvbuf(stdout, NULL, _IOLBF, BUFSIZ);
 
-  int exit_code = ReadFlags(&argc, &argv, &options, &config);
+  int exit_code = readFlags(&argc, &argv, &options, &config);
   if (exit_code >= 0)
     return exit_code;
 
@@ -586,16 +523,16 @@ int real_main(int argc, char **argv) {
   }
 
   if (options.tool && options.tool->when == Tool::RUN_AFTER_FLAGS) {
-    // None of the RUN_AFTER_FLAGS actually use a NinjaMain, but it's needed
+    // None of the RUN_AFTER_FLAGS actually use a ShurikenMain, but it's needed
     // by other tools.
-    NinjaMain ninja(config);
-    return (ninja.*options.tool->func)(argc, argv);
+    ShurikenMain shk(config);
+    return (shk.*options.tool->func)(argc, argv);
   }
 
   // Limit number of rebuilds, to prevent infinite loops.
   const int kCycleLimit = 100;
   for (int cycle = 1; cycle <= kCycleLimit; ++cycle) {
-    NinjaMain ninja(config);
+    ShurikenMain shk(config);
 
     Manifest manifest;
     try {
@@ -607,21 +544,21 @@ int real_main(int argc, char **argv) {
     }
 
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOAD) {
-      return (ninja.*options.tool->func)(argc, argv);
+      return (shk.*options.tool->func)(argc, argv);
     }
 
-    if (!ninja.ensureBuildDirExists() ||
-        !ninja.openDepsLog()) {
+    if (!shk.ensureBuildDirExists() ||
+        !shk.openInvocationLog()) {
       return 1;
     }
 
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOGS) {
-      return (ninja.*options.tool->func)(argc, argv);
+      return (shk.*options.tool->func)(argc, argv);
     }
 
     // Attempt to rebuild the manifest before building anything else
     std::string err;
-    if (ninja.rebuildManifest(options.input_file, &err)) {
+    if (shk.rebuildManifest(options.input_file, &err)) {
       // In dry_run mode the regeneration will succeed without changing the
       // manifest forever. Better to return immediately.
       if (config.dry_run) {
@@ -634,7 +571,7 @@ int real_main(int argc, char **argv) {
       return 1;
     }
 
-    return ninja.runBuild(argc, argv);
+    return shk.runBuild(argc, argv);
   }
 
   error("manifest '%s' still dirty after %d tries\n",
@@ -643,6 +580,7 @@ int real_main(int argc, char **argv) {
 }
 
 }  // anonymous namespace
+}  // namespace shk
 
 int main(int argc, char **argv) {
 #if defined(_MSC_VER)
@@ -654,7 +592,7 @@ int main(int argc, char **argv) {
     // dialogs for errors such as bad_alloc.
     return real_main(argc, argv);
   }
-  __except(ExceptionFilter(GetExceptionCode(), GetExceptionInformation())) {
+  __except(exceptionFilter(GetExceptionCode(), GetExceptionInformation())) {
     // Common error situations return exitCode=1. 2 was chosen to
     // indicate a more serious problem.
     return 2;
@@ -663,5 +601,3 @@ int main(int argc, char **argv) {
   return real_main(argc, argv);
 #endif
 }
-
-}  namespace shk

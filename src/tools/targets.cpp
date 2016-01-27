@@ -12,7 +12,73 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-int NinjaMain::toolTargets(int argc, char *argv[]) {
+namespace shk {
+namespace {
+
+int toolTargetsList(const std::vector<Node *> &nodes, int depth, int indent) {
+  for (const auto &n : nodes) {
+    for (int i = 0; i < indent; ++i) {
+      printf("  ");
+    }
+    const char *target = node->path().c_str();
+    if (node->in_edge()) {
+      printf("%s: %s\n", target, node->in_edge()->rule_->name().c_str());
+      if (depth > 1 || depth <= 0) {
+        toolTargetsList(node->in_edge()->inputs_, depth - 1, indent + 1);
+      }
+    } else {
+      printf("%s\n", target);
+    }
+  }
+  return 0;
+}
+
+int toolTargetsSourceList(State *state) {
+  for (const auto &edge : state->edges_) {
+    for (const auto &inp : edge->inputs_) {
+      if (!inp->in_edge()) {
+        printf("%s\n", inp->path().c_str());
+      }
+    }
+  }
+  return 0;
+}
+
+int toolTargetsList(State *state, const std::string &rule_name) {
+  std::set<std::string> rules;
+
+  // Gather the outputs.
+  for (const auto &edge : state->edges_) {
+    if (edge->rule_->name() == rule_name) {
+      for (const auto &out_node : edge->outputs_) {
+        rules.insert(out_node->path());
+      }
+    }
+  }
+
+  // Print them.
+  for (auto i = rules.begin(); i != rules.end(); ++i) {
+    printf("%s\n", (*i).c_str());
+  }
+
+  return 0;
+}
+
+int toolTargetsList(State *state) {
+  for (const auto &edge : state->edges_) {
+    for (const auto &out_node : edge->outputs_) {
+      printf(
+          "%s: %s\n",
+          out_node->path().c_str(),
+          edge->rule_->name().c_str());
+    }
+  }
+  return 0;
+}
+
+}  // anonymous namespace
+
+int toolTargets(int argc, char *argv[]) {
   int depth = 1;
   if (argc >= 1) {
     std::string mode = argv[0];
@@ -54,3 +120,5 @@ int NinjaMain::toolTargets(int argc, char *argv[]) {
     return 1;
   }
 }
+
+}  // namespace shk

@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+namespace shk {
+namespace {
+
 void printCommands(Edge *edge, std::set<Edge *> *seen) {
   if (!edge) {
     return;
@@ -29,7 +32,9 @@ void printCommands(Edge *edge, std::set<Edge *> *seen) {
   }
 }
 
-int NinjaMain::toolCommands(int argc, char *argv[]) {
+}  // anonymous namespace
+
+int toolCommands(int argc, char *argv[]) {
   std::vector<Node *> nodes;
   try {
     nodes = collectTargetsFromArgs(argc, argv);
@@ -45,3 +50,5 @@ int NinjaMain::toolCommands(int argc, char *argv[]) {
 
   return 0;
 }
+
+}  // namespace shk

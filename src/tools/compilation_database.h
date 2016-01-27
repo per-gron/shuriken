@@ -12,18 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 namespace shk {
 
-int toolRecompact(int argc, char *argv[]) {
-  if (!ensureBuildDirExists()) {
-    return 1;
-  }
-
-  if (!openDepsLog(/*recompact_only=*/true)) {
-    return 1;
-  }
-
-  return 0;
-}
+int toolCompilationDatabase(int argc, char *argv[]);
 
 }  // namespace shk

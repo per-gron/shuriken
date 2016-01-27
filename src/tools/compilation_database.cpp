@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+namespace shk {
+namespace {
+
 void encodeJSONString(const char *str) {
   while (*str) {
     if (*str == '"' || *str == '\\') {
@@ -22,7 +25,9 @@ void encodeJSONString(const char *str) {
   }
 }
 
-int NinjaMain::toolCompilationDatabase(int argc, char *argv[]) {
+}  // anonymous namespace
+
+int toolCompilationDatabase(int argc, char *argv[]) {
   bool first = true;
   std::vector<char> cwd;
 
@@ -62,3 +67,5 @@ int NinjaMain::toolCompilationDatabase(int argc, char *argv[]) {
   puts("\n]");
   return 0;
 }
+
+}  // namespace shk

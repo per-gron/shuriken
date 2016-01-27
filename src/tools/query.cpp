@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-int NinjaMain::toolQuery(int argc, char *argv[]) {
+namespace shk {
+
+int toolQuery(int argc, char *argv[]) {
   if (argc == 0) {
     error("expected a target to query");
     return 1;
@@ -50,3 +52,5 @@ int NinjaMain::toolQuery(int argc, char *argv[]) {
   }
   return 0;
 }
+
+}  // namespace shk
