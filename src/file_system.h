@@ -110,6 +110,10 @@ class FileSystem {
    * Utility function for hashing a directory. It is rather important that this
    * hash function works the same for all FileSystem implementations, so it is
    * defined directly here. It is implemented in terms of readDir.
+   *
+   * Please note that this only hashes the directory itself, with the list of
+   * files that it contains. It does not hash the contents of those files or go
+   * through subdirectories recursively.
    */
   Hash hashDir(const std::string &path) throw(IoError);
 
