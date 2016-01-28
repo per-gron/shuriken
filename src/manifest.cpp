@@ -116,6 +116,8 @@ struct ManifestParser {
       step.rspfile = toPathAllowEmpty(get_binding("rspfile"));
       step.rspfile_content = get_binding("rspfile_content");
     }
+
+    _manifest.build_dir = _env.lookupVariable("builddir");
   }
 
 private:

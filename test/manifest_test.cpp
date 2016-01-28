@@ -64,6 +64,11 @@ TEST_CASE("Manifest") {
     parse(paths, fs, "");
   }
 
+  SECTION("Builddir") {
+    CHECK(parse(paths, fs, "").build_dir == "");
+    CHECK(parse(paths, fs, "builddir = a/b\n").build_dir == "a/b");
+  }
+
   SECTION("Rules") {
     const auto step = parseStep(paths, fs,
         "rule cat\n"
