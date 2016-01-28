@@ -38,7 +38,7 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
   } else if (mode_string == "r+") {
     read = true;
     write = false;
-  } else if (mode_string == "w") {
+  } else if (mode_string == "w" || mode_string == "wb") {
     read = false;
     write = true;
     truncate_or_create = true;
