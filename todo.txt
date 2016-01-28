@@ -131,10 +131,10 @@ Large things remaining to do:
 - Improved path handling
 - Fingerprint code
 * The actual build algorithm
-* CLI
 * Stat cache for use by Paths
 * Rebuild manifest
 * Limit parallelism / max load average
+* Dry runs
 * Invocation log
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
 * BuildStatus
