@@ -7,7 +7,7 @@
 namespace shk {
 
 Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
-    throw(PathError) {
+    throw(BuildError) {
   const bool input = !path.empty() && path[path.size() - 1] == '^';
   if (input) {
     path.resize(path.size() - 1);
@@ -32,7 +32,7 @@ Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
         search(step.outputs);
     if (found) {
       if (step.outputs.empty()) {
-        throw PathError("Step with input '" + path + "' has no output", path);
+        throw BuildError("Step with input '" + path + "' has no output");
       } else {
         return step.outputs[0];
       }
@@ -46,7 +46,7 @@ Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
   } else if (path == "help") {
     error += ", did you mean 'shk -h'?";
   }
-  throw PathError(error, path);
+  throw BuildError(error);
 }
 
 namespace detail {

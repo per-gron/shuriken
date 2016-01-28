@@ -93,16 +93,16 @@ TEST_CASE("Build") {
 
     SECTION("normal (non-^)") {
       CHECK(interpretPath(paths, manifest, "a") == paths.get("a"));
-      CHECK_THROWS_AS(interpretPath(paths, manifest, "x"), PathError);
-      CHECK_THROWS_AS(interpretPath(paths, manifest, "other"), PathError);
+      CHECK_THROWS_AS(interpretPath(paths, manifest, "x"), BuildError);
+      CHECK_THROWS_AS(interpretPath(paths, manifest, "other"), BuildError);
     }
 
     SECTION("^") {
       CHECK_THROWS_AS(
-          interpretPath(paths, manifest, "fancy_schmanzy^"), PathError);
+          interpretPath(paths, manifest, "fancy_schmanzy^"), BuildError);
       CHECK(interpretPath(paths, manifest, "other^") == paths.get("foo"));
       CHECK_THROWS_AS(
-          interpretPath(paths, manifest, "a^"), PathError);  // No out edge
+          interpretPath(paths, manifest, "a^"), BuildError);  // No out edge
       CHECK(interpretPath(paths, manifest, "hehe^") == paths.get("hej"));
       CHECK(
           interpretPath(paths, manifest, "implicit_input^") ==
@@ -116,7 +116,7 @@ TEST_CASE("Build") {
       try {
         interpretPath(paths, manifest, "clean");
         CHECK(!"Should throw");
-      } catch (const PathError &error) {
+      } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
             "unknown target 'clean', did you mean 'shk -t clean'?"));
       }
@@ -126,7 +126,7 @@ TEST_CASE("Build") {
       try {
         interpretPath(paths, manifest, "help");
         CHECK(!"Should throw");
-      } catch (const PathError &error) {
+      } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
             "unknown target 'help', did you mean 'shk -h'?"));
       }

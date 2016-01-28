@@ -21,7 +21,7 @@ using Clock = std::function<time_t ()>;
  * the ^ command line interface syntax.
  */
 Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
-    throw(PathError);
+    throw(BuildError);
 
 namespace detail {
 
