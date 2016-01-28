@@ -111,6 +111,7 @@ add_executable(shk_test
   test/in_memory_file_system_test.cpp
   test/in_memory_invocation_log.cpp
   test/in_memory_invocation_log.h
+  test/in_memory_invocation_log_test.cpp
   test/lexer_test.cpp
   test/line_printer_test.cpp
   test/main.cpp

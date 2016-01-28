@@ -8,7 +8,7 @@ namespace shk {
 
 /**
  * An InvocationLog implementation that is memory backed rather than disk based
- * like the real InvocationLog. Used for testing.
+ * like the real InvocationLog. Used for testing and for dry runs.
  */
 class InMemoryInvocationLog : public InvocationLog {
  public:
