@@ -98,6 +98,10 @@ class Path {
     return _canonicalized_path == other._canonicalized_path;
   }
 
+  /**
+   * The original, non-canonicalized path. Always absolute or relative to the
+   * current working directory.
+   */
   const std::string &original() const {
     return *_original_path;
   }

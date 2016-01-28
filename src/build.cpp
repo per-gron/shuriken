@@ -325,32 +325,21 @@ Build computeBuild(
 }
 
 /**
- * The fingerprinting system sometimes asks for a fingerprint of a clean target
- * to be recomputed (this usually happens when the entry is "racily clean" which
- * makes it necessary to hash the file contents to detect if the file is dirty
- * or not). This function takes an Invocations::Entry, recomputes the
- * fingerprints and creates a new Invocations::Entry with fresh fingerprints.
+ * Shared logic between computeInvocationEntry and recomputeInvocationEntry.
  */
-InvocationLog::Entry recomputeInvocationEntry(
-    const Clock &clock,
-    FileSystem &file_system,
-    const Invocations::Entry &entry) throw(IoError) {
-  InvocationLog::Entry result;
-  // TODO(peck): Implement me
-
-  return result;
-}
-
+template<typename GetPathString, typename Input>
 InvocationLog::Entry computeInvocationEntry(
     const Clock &clock,
     FileSystem &file_system,
-    const CommandRunner::Result &result) throw(IoError) {
+    const Input &result,
+    GetPathString &&get_path_string) throw(IoError) {
   InvocationLog::Entry entry;
 
-  const auto add = [&](const std::vector<std::string> &paths) {
+  const auto add = [&](const decltype(result.output_files) &files) {
     std::vector<std::pair<std::string, Fingerprint>> result;
-    result.reserve(paths.size());
-    for (const auto &path : paths) {
+    result.reserve(files.size());
+    for (const auto &file : files) {
+      const auto path = get_path_string(file);
       result.emplace_back(path, takeFingerprint(file_system, clock(), path));
     }
     return result;
@@ -360,6 +349,37 @@ InvocationLog::Entry computeInvocationEntry(
   entry.input_files = add(result.input_files);
 
   return entry;
+}
+
+InvocationLog::Entry computeInvocationEntry(
+    const Clock &clock,
+    FileSystem &file_system,
+    const CommandRunner::Result &result) throw(IoError) {
+  return computeInvocationEntry(
+      clock,
+      file_system,
+      result,
+      [](const std::string &path) { return path; });
+}
+
+/**
+ * The fingerprinting system sometimes asks for a fingerprint of a clean target
+ * to be recomputed (this usually happens when the entry is "racily clean" which
+ * makes it necessary to hash the file contents to detect if the file is dirty
+ * or not). This function takes an Invocations::Entry, recomputes the
+ * fingerprints and creates a new InvocationLog::Entry with fresh fingerprints.
+ */
+InvocationLog::Entry recomputeInvocationEntry(
+    const Clock &clock,
+    FileSystem &file_system,
+    const Invocations::Entry &entry) throw(IoError) {
+  return computeInvocationEntry(
+      clock,
+      file_system,
+      entry,
+      [](const std::pair<Path, Fingerprint> &file) {
+        return file.first.original();
+      });
 }
 
 bool isClean(

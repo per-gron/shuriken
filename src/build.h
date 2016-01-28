@@ -230,6 +230,10 @@ bool isClean(
     const Invocations &invocations,
     const Hash &step_hash) throw(IoError);
 
+/**
+ * Create a CleanSteps object. For more info, see the documentation for that
+ * typedef.
+ */
 CleanSteps computeCleanSteps(
     const Clock &clock,
     FileSystem &file_system,
