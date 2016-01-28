@@ -15,6 +15,7 @@
 namespace shk {
 
 int toolRecompact(int argc, char *argv[]) {
+#if 0
   if (!ensureBuildDirExists()) {
     return 1;
   }
@@ -25,6 +26,7 @@ int toolRecompact(int argc, char *argv[]) {
     error("failed recompaction: %s", error.what());
     return 1;
   }
+#endif
 
   return 0;
 }

@@ -21,7 +21,6 @@ add_library(shklib
   src/build_config.h
   src/build_error.h
   src/build_status.h
-  src/cli.cpp
   src/command_runner.h
   src/edit_distance.cpp
   src/edit_distance.h
@@ -61,6 +60,20 @@ add_library(shklib
   src/string_piece.h
   src/terminal_build_status.cpp
   src/terminal_build_status.h
+  src/tools/clean.cpp
+  src/tools/clean.h
+  src/tools/commands.cpp
+  src/tools/commands.h
+  src/tools/compilation_database.cpp
+  src/tools/compilation_database.h
+  src/tools/deps.cpp
+  src/tools/deps.h
+  src/tools/query.cpp
+  src/tools/query.h
+  src/tools/recompact.cpp
+  src/tools/recompact.h
+  src/tools/targets.cpp
+  src/tools/targets.h
   src/tracing_command_runner.cpp
   src/tracing_command_runner.h
   src/util.cpp

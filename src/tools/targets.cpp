@@ -13,6 +13,7 @@
 // limitations under the License.
 
 namespace shk {
+#if 0
 namespace {
 
 int toolTargetsList(const std::vector<Node *> &nodes, int depth, int indent) {
@@ -77,8 +78,10 @@ int toolTargetsList(State *state) {
 }
 
 }  // anonymous namespace
+#endif
 
 int toolTargets(int argc, char *argv[]) {
+#if 0
   int depth = 1;
   if (argc >= 1) {
     std::string mode = argv[0];
@@ -119,6 +122,9 @@ int toolTargets(int argc, char *argv[]) {
     error("%s", err.c_str());
     return 1;
   }
+#endif
+
+  return 0;
 }
 
 }  // namespace shk

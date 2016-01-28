@@ -15,6 +15,7 @@
 namespace shk {
 
 int toolClean(int argc, char *argv[]) {
+#if 0
   // The clean tool uses getopt, and expects argv[0] to contain the name of
   // the tool, i.e. "clean".
   argc++;
@@ -57,6 +58,9 @@ int toolClean(int argc, char *argv[]) {
   } else {
     return cleaner.cleanAll();
   }
+
+#endif
+  return 0;
 }
 
 }  // namespace shk

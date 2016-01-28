@@ -13,6 +13,7 @@
 // limitations under the License.
 
 namespace shk {
+#if 0
 namespace {
 
 void encodeJSONString(const char *str) {
@@ -26,8 +27,10 @@ void encodeJSONString(const char *str) {
 }
 
 }  // anonymous namespace
+#endif
 
 int toolCompilationDatabase(int argc, char *argv[]) {
+#if 0
   bool first = true;
   std::vector<char> cwd;
 
@@ -65,6 +68,8 @@ int toolCompilationDatabase(int argc, char *argv[]) {
   }
 
   puts("\n]");
+#endif
+
   return 0;
 }
 

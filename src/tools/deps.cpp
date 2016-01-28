@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace shk {
 
 int toolDeps(int argc, char **argv) {
+#if 0
   std::vector<Node *> nodes;
   if (argc == 0) {
     for (const auto &n : _deps_log.nodes()) {
@@ -53,6 +55,7 @@ int toolDeps(int argc, char **argv) {
     }
     printf("\n");
   }
+#endif
 
   return 0;
 }

@@ -15,6 +15,7 @@
 namespace shk {
 
 int toolQuery(int argc, char *argv[]) {
+#if 0
   if (argc == 0) {
     error("expected a target to query");
     return 1;
@@ -50,6 +51,7 @@ int toolQuery(int argc, char *argv[]) {
       }
     }
   }
+#endif
   return 0;
 }
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 namespace shk {
+#if 0
 namespace {
 
 void printCommands(Edge *edge, std::set<Edge *> *seen) {
@@ -33,8 +34,10 @@ void printCommands(Edge *edge, std::set<Edge *> *seen) {
 }
 
 }  // anonymous namespace
+#endif
 
 int toolCommands(int argc, char *argv[]) {
+#if 0
   std::vector<Node *> nodes;
   try {
     nodes = collectTargetsFromArgs(argc, argv);
@@ -47,8 +50,9 @@ int toolCommands(int argc, char *argv[]) {
   for (const auto &in : nodes) {
     printCommands(in->in_edge(), &seen);
   }
+#endif
 
   return 0;
 }
 
-}  // namespace shk
+}  // namespace shk
