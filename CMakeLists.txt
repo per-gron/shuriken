@@ -21,8 +21,6 @@ add_library(shklib
   src/build_config.h
   src/build_error.h
   src/build_status.h
-  src/clean.cpp
-  src/clean.h
   src/command_runner.h
   src/edit_distance.cpp
   src/edit_distance.h
