@@ -1,7 +1,8 @@
 #include <catch.hpp>
 
-#include "file_system.h"
+#include <sys/stat.h>
 
+#include "file_system.h"
 #include "in_memory_file_system.h"
 
 namespace shk {
@@ -62,6 +63,40 @@ TEST_CASE("FileSystem") {
     fs.writeFile("abc", "hello");
     fs.writeFile("abc", "hello!");
     CHECK(fs.readFile("abc") == "hello!");
+  }
+
+  SECTION("mkdirs") {
+    const std::string abc = "acb";
+
+    SECTION("single directory") {
+      mkdirs(fs, abc);
+      CHECK(S_ISDIR(fs.stat(abc).metadata.mode));
+    }
+
+    SECTION("already existing directory") {
+      mkdirs(fs, abc);
+      mkdirs(fs, abc);  // Should be ok
+      CHECK(S_ISDIR(fs.stat(abc).metadata.mode));
+    }
+
+    SECTION("over file") {
+      fs.open(abc, "w");
+      CHECK_THROWS_AS(mkdirs(fs, abc), IoError);
+    }
+
+    SECTION("several directories") {
+      const std::string dir_path = "abc/def/ghi";
+      const std::string file_path = "abc/def/ghi/jkl";
+      mkdirs(fs, dir_path);
+      fs.writeFile(file_path, "hello");
+    }
+  }
+
+  SECTION("mkdirsFor") {
+    const std::string file_path = "abc/def/ghi/jkl";
+    mkdirsFor(fs, file_path);
+    fs.open(file_path, "w");
+    CHECK(fs.stat(file_path).result == 0);
   }
 }
 

@@ -22,7 +22,6 @@
 #include "string_piece.h"
 
 namespace shk {
-namespace detail {
 
 /**
  * Split a path into its dirname and basename. The first element in the
@@ -37,6 +36,8 @@ std::pair<StringPiece, StringPiece> basenameSplitPiece(const std::string &path);
  */
 void canonicalizePath(std::string *path) throw(PathError);
 void canonicalizePath(char *path, size_t *len) throw(PathError);
+
+namespace detail {
 
 struct CanonicalizedPath {
   explicit CanonicalizedPath(

@@ -106,15 +106,4 @@ class InMemoryFileSystem : public FileSystem {
   ino_t _ino = 0;
 };
 
-/**
- * Create directory and parent directories. Like mkdir -p
- */
-void mkdirs(FileSystem &file_system, const std::string &path) throw(IoError);
-
-/**
- * Make sure that there is a directory for the given path. Like
- * mkdir -p `dirname path`
- */
-void mkdirsFor(FileSystem &file_system, const std::string &path) throw(IoError);
-
 }  // namespace shk

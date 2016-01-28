@@ -8,18 +8,6 @@
 #include "path.h"
 
 namespace shk {
-namespace {
-
-std::string dirname(const std::string &path) {
-  return detail::basenameSplitPiece(path).first.asString();
-}
-
-std::string canonicalize(std::string path) {
-  detail::canonicalizePath(&path);
-  return path;
-}
-
-}  // anonymous namespace
 
 InMemoryFileSystem::InMemoryFileSystem(const std::function<time_t ()> &clock)
     : _clock(clock) {
@@ -334,11 +322,17 @@ void InMemoryFileSystem::InMemoryFileStream::checkNotEof()
 InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
     const std::string &path) {
   LookupResult result;
-  result.canonicalized = canonicalize("/" + path);
+  result.canonicalized = "/" + path;
+  try {
+    canonicalizePath(&result.canonicalized);
+  } catch (const PathError &path_error) {
+    result.entry_type = EntryType::DIRECTORY_DOES_NOT_EXIST;
+    return result;
+  }
 
   StringPiece dirname_piece;
   StringPiece basename_piece;
-  std::tie(dirname_piece, basename_piece) = detail::basenameSplitPiece(
+  std::tie(dirname_piece, basename_piece) = basenameSplitPiece(
       result.canonicalized);
   const auto dirname = dirname_piece.asString();
   const auto basename = basename_piece.asString();
@@ -364,33 +358,6 @@ InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
   result.directory = &directory;
   result.basename = basename;
   return result;
-}
-
-void mkdirs(
-    FileSystem &file_system,
-    const std::string &noncanonical_path) throw(IoError) {
-  const auto path = canonicalize(noncanonical_path);
-  if (path == "." || path == "/") {
-    // Nothing left to do
-    return;
-  }
-
-  const auto stat = file_system.stat(path);
-  if (stat.result == ENOENT || stat.result == ENOTDIR) {
-    const auto dirname = shk::dirname(path);
-    mkdirs(file_system, dirname);
-    file_system.mkdir(path);
-  } else if (S_ISDIR(stat.metadata.mode)) {
-    // No need to do anything
-  } else {
-    // It exists and is not a directory
-    throw IoError("Not a directory: " + path, ENOTDIR);
-  }
-}
-
-void mkdirsFor(FileSystem &file_system, const std::string &path) throw(IoError) {
-  const auto dirname = shk::dirname(path);
-  mkdirs(file_system, dirname);
 }
 
 }  // namespace shk

@@ -8,6 +8,9 @@ namespace shk {
 /**
  * Parse an invocation log at a given path into an Invocations object.
  *
+ * A missing invocation log file does not count as an error. This simply causes
+ * this function to return an empty Invocations object.
+ *
  * @return A pair of the parsed Invocations and a string with a potential
  *     warning. This string is empty when there is no warning.
  */

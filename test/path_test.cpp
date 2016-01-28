@@ -10,7 +10,7 @@ namespace shk {
 namespace {
 
 std::string canonicalizePath(std::string path) throw(PathError) {
-  detail::canonicalizePath(&path);
+  shk::canonicalizePath(&path);
   return path;
 }
 
@@ -31,7 +31,7 @@ void checkBasenameSplit(
     const std::string &dirname,
     const std::string &basename) {
   StringPiece dn, bn;
-  std::tie(dn, bn) = detail::basenameSplitPiece(path);
+  std::tie(dn, bn) = basenameSplitPiece(path);
   CHECK(dn.asString() == dirname);
   CHECK(bn.asString() == basename);
 }
@@ -80,7 +80,7 @@ class FailingStatFileSystem : public FileSystem {
 }  // anonymous namespace
 
 TEST_CASE("Path") {
-  SECTION("detail::basenameSplit") {
+  SECTION("basenameSplit") {
     checkBasenameSplit("/usr/lib", "/usr", "lib");
     checkBasenameSplit("/usr/", "/", "usr");
     checkBasenameSplit("/usr/////////", "/", "usr");
@@ -107,7 +107,7 @@ TEST_CASE("Path") {
 
       StringPiece dirname;
       StringPiece basename;
-      std::tie(dirname, basename) = detail::basenameSplitPiece(path_string);
+      std::tie(dirname, basename) = basenameSplitPiece(path_string);
 
       RC_ASSERT(basename == *path_components.rbegin());
       RC_ASSERT(dirname == dirname_string);
@@ -179,7 +179,7 @@ TEST_CASE("Path") {
         // Make sure searching \/ doesn't go past supplied len.
         char buf[] = "foo/bar\\baz.h\\";  // Last \ past end.
         size_t size = 13;
-        detail::canonicalizePath(buf, &size);
+        canonicalizePath(buf, &size);
         EXPECT_EQ(0, strncmp("foo/bar/baz.h", buf, size));
       }
 
@@ -188,7 +188,7 @@ TEST_CASE("Path") {
         std::string path =
             "a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a"
             "/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./x.h";
-        detail::canonicalizePath(&path);
+        canonicalizePath(&path);
 
         // Backslashes version.
         path =
@@ -196,13 +196,13 @@ TEST_CASE("Path") {
             "\\a\\.\\a\\.\\a\\.\\a\\.\\"
             "a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\."
             "\\a\\.\\a\\.\\a\\.\\a\\.\\x.h";
-        detail::canonicalizePath(&path);
+        canonicalizePath(&path);
 
         // 65 is not.
         path =
             "a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/"
             "a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./a/./x.h";
-        CHECK(detail::canonicalizePathError(path) == "too many path components");
+        CHECK(canonicalizePathError(path) == "too many path components");
 
         // Backslashes version.
         path =
@@ -210,7 +210,7 @@ TEST_CASE("Path") {
             "\\a\\.\\a\\.\\a\\.\\a\\.\\"
             "a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\.\\a\\."
             "\\a\\.\\a\\.\\a\\.\\a\\.\\a\\x.h";
-        CHECK(detail::canonicalizePathError(path) == "too many path components");
+        CHECK(canonicalizePathError(path) == "too many path components");
       }
     }
 #endif
@@ -230,13 +230,13 @@ TEST_CASE("Path") {
 
       path = "foo/. bar/.";
       len = strlen("foo/.");  // Canonicalize only the part before the space.
-      detail::canonicalizePath(&path[0], &len);
+      canonicalizePath(&path[0], &len);
       CHECK(strlen("foo") == len);
       CHECK("foo/. bar/." == path);
 
       path = "foo/../file bar/.";
       len = strlen("foo/../file");
-      detail::canonicalizePath(&path[0], &len);
+      canonicalizePath(&path[0], &len);
       CHECK(strlen("file") == len);
       CHECK("file ./file bar/." == path);
     }

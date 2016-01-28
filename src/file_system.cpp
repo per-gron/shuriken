@@ -2,9 +2,21 @@
 
 #include <algorithm>
 
+#include <errno.h>
+#include <sys/stat.h>
+
 #include <blake2.h>
 
+#include "path.h"
+
 namespace shk {
+namespace {
+
+std::string dirname(const std::string &path) {
+  return basenameSplitPiece(path).first.asString();
+}
+
+}  // anonymous namespace
 
 Hash FileSystem::hashDir(const std::string &path) throw(IoError) {
   Hash hash;
@@ -35,6 +47,38 @@ void FileSystem::writeFile(
   const auto stream = open(path, "wb");
   const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
   stream->write(data, 1, contents.size());
+}
+
+void mkdirs(
+    FileSystem &file_system,
+    const std::string &noncanonical_path) throw(IoError) {
+  auto path = noncanonical_path;
+  try {
+    canonicalizePath(&path);
+  } catch (const PathError &path_error) {
+    throw IoError(path_error.what(), 0);
+  }
+  if (path == "." || path == "/") {
+    // Nothing left to do
+    return;
+  }
+
+  const auto stat = file_system.stat(path);
+  if (stat.result == ENOENT || stat.result == ENOTDIR) {
+    const auto dirname = shk::dirname(path);
+    mkdirs(file_system, dirname);
+    file_system.mkdir(path);
+  } else if (S_ISDIR(stat.metadata.mode)) {
+    // No need to do anything
+  } else {
+    // It exists and is not a directory
+    throw IoError("Not a directory: " + path, ENOTDIR);
+  }
+}
+
+void mkdirsFor(FileSystem &file_system, const std::string &path) throw(IoError) {
+  const auto dirname = shk::dirname(path);
+  mkdirs(file_system, dirname);
 }
 
 }  // namespace shk

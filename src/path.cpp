@@ -17,7 +17,6 @@
 #include <sys/stat.h>
 
 namespace shk {
-namespace detail {
 
 std::pair<StringPiece, StringPiece> basenameSplitPiece(
     const std::string &path) {
@@ -144,7 +143,7 @@ void replaceBackslashes(const Iter begin, const Iter end) {
 }
 #endif
 
-CanonicalizedPath makeCanonicalizedPath(
+detail::CanonicalizedPath makeCanonicalizedPath(
     FileSystem &file_system, std::string &&path) {
   if (path.empty()) {
     throw PathError("Empty path", path);
@@ -222,14 +221,13 @@ CanonicalizedPath makeCanonicalizedPath(
     nonexisting_part.resize(len);
   }
 
-  return CanonicalizedPath(
+  return detail::CanonicalizedPath(
       stat.metadata.ino,
       stat.metadata.dev,
       std::move(nonexisting_part));
 }
 
 }  // anonymous namespace
-}  // namespace detail
 
 Paths::Paths(FileSystem &file_system)
     : _file_system(file_system) {}
@@ -241,7 +239,7 @@ Path Paths::get(const std::string &path) throw(PathError) {
 Path Paths::get(std::string &&path) throw(PathError) {
   const auto original_result = _original_paths.emplace(path);
   const auto canonicalized_result = _canonicalized_paths.insert(
-      detail::makeCanonicalizedPath(_file_system, std::move(path)));
+      makeCanonicalizedPath(_file_system, std::move(path)));
   return Path(
       &*canonicalized_result.first,
       &*original_result.first);
