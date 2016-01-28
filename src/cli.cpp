@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 #ifdef _WIN32
 #include "getopt.h"
@@ -38,6 +39,7 @@
 #include "manifest.h"
 #include "persistent_file_system.h"
 #include "persistent_invocation_log.h"
+#include "real_command_runner.h"
 #include "tools/clean.h"
 #include "tools/commands.h"
 #include "tools/compilation_database.h"
@@ -45,6 +47,7 @@
 #include "tools/query.h"
 #include "tools/recompact.h"
 #include "tools/targets.h"
+#include "tracing_command_runner.h"
 #include "util.h"
 #include "version.h"
 
@@ -116,6 +119,14 @@ struct Options {
    */
   const Tool *tool;
 };
+
+time_t getTime() {
+  timeval t;
+  if (gettimeofday(&t, NULL)) {
+    throw BuildError("failed to get current time");
+  }
+  return t.tv_sec;
+}
 
 /**
  * The Shuriken main() loads up a series of data structures; various tools need
@@ -337,47 +348,50 @@ bool ShurikenMain::openInvocationLog() {
 }
 
 int ShurikenMain::runBuild(int argc, char **argv) {
-  std::vector<Node *> targets;
+  std::vector<Path> targets;
   try {
-    targets = collectTargetsFromArgs(argc, argv);
-  } catch (const BuildError &error) {
-    error("%s", error.what());
+    targets = interpretPaths(argc, argv);
+  } catch (const BuildError &build_error) {
+    error("%s", build_error.what());
     return 1;
   }
 
-  _disk_interface.allowStatCache(g_experimental_statcache);
+  const auto command_runner = makeTracingCommandRunner(
+      *_file_system,
+      makeRealCommandRunner());
 
-  std::string err;
-  Builder builder(&_state, _config, &_deps_log, &_disk_interface);
-  for (size_t i = 0; i < targets.size(); ++i) {
-    if (!builder.AddTarget(targets[i], &err)) {
-      if (!err.empty()) {
-        error("%s", err.c_str());
-        return 1;
-      } else {
-        // Added a target that is already up-to-date; not really
-        // an error.
-      }
-    }
-  }
+  try {
+    const auto result = build(
+        getTime,
+        _file_system,
+        command_runner,
+        TODO_build_status,
+        _invocation_log,
+        _config.failures_allowed,
+        _manifest,
+        _invocations);
 
-  // Make sure restat rules do not see stale timestamps.
-  _disk_interface.allowStatCache(false);
-
-  if (builder.alreadyUpToDate()) {
-    printf("shk: no work to do.\n");
-    return 0;
-  }
-
-  if (!builder.build(&err)) {
-    printf("shk: build stopped: %s.\n", err.c_str());
-    if (err.find("interrupted by user") != string::npos) {
+    switch (result) {
+    case BuildResult::NO_WORK_TO_DO:
+      printf("shk: no work to do.\n");
+      return 0;
+    case BuildResult::SUCCESS:
+      return 0;
+    case BuildResult::INTERRUPTED:
+      printf("shk: build interrupted by user.\n");
       return 2;
+      break;
+    case BuildResult::FAILURE:
+      printf("shk: build failed: subcommand(s) failed.\n");
+      return 1;
     }
+  } catch (const IoError &io_error) {
+    printf("shk: build failed: %s\n", io_error.what());
+    return 1;
+  } catch (const BuildError &build_error) {
+    printf("shk: build failed: %s\n", build_error.what());
     return 1;
   }
-
-  return 0;
 }
 
 #ifdef _MSC_VER
@@ -471,7 +485,7 @@ int readFlags(int *argc, char ***argv,
         }
         break;
       case 'v':
-        config->verbosity = BuildConfig::VERBOSE;
+        config->verbose = true;
         break;
       case 'C':
         options->working_dir = optarg;
@@ -499,8 +513,9 @@ int real_main(int argc, char **argv) {
   setvbuf(stdout, NULL, _IOLBF, BUFSIZ);
 
   int exit_code = readFlags(&argc, &argv, &options, &config);
-  if (exit_code >= 0)
+  if (exit_code >= 0) {
     return exit_code;
+  }
 
   if (options.working_dir) {
     // The formatting of this string, complete with funny quotes, is

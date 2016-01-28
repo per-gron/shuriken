@@ -132,6 +132,9 @@ Large things remaining to do:
 - Fingerprint code
 * The actual build algorithm
 * CLI
+* Stat cache for use by Paths
+* Rebuild manifest
+* Limit parallelism / max load average
 * Invocation log
 * BuildStatus
 * CLI tools:

@@ -301,7 +301,7 @@ Build computeBuild(
     const Invocations &invocations,
     const OutputFileMap &output_file_map,
     const Manifest &manifest,
-    size_t allowed_failures,
+    size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError) {
   Build build;
   build.step_nodes.resize(manifest.steps.size());
@@ -320,7 +320,7 @@ Build computeBuild(
   }
 
   build.ready_steps = computeReadySteps(build.step_nodes);
-  build.remaining_failures = allowed_failures;
+  build.remaining_failures = failures_allowed;
   return build;
 }
 
@@ -627,13 +627,13 @@ void deleteStaleOutputs(
 
 }  // namespace detail
 
-void build(
+BuildResult build(
     const Clock &clock,
     FileSystem &file_system,
     CommandRunner &command_runner,
     BuildStatus &build_status,
     InvocationLog &invocation_log,
-    size_t allowed_failures,
+    size_t failures_allowed,
     const Manifest &manifest,
     const Invocations &invocations) throw(IoError, BuildError) {
   // TODO(peck): Use build_status
@@ -652,7 +652,7 @@ void build(
       invocations,
       output_file_map,
       manifest,
-      allowed_failures,
+      failures_allowed,
       std::move(steps_to_build));
 
   const auto clean_steps = detail::computeCleanSteps(
@@ -679,6 +679,7 @@ void build(
   }
 
   // TODO(peck): Report result
+  return BuildResult::SUCCESS;
 }
 
 }

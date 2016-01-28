@@ -209,7 +209,7 @@ Build computeBuild(
     const Invocations &invocations,
     const OutputFileMap &output_file_map,
     const Manifest &manifest,
-    size_t allowed_failures,
+    size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError);
 
 InvocationLog::Entry computeInvocationEntry(
@@ -274,16 +274,23 @@ void deleteStaleOutputs(
 
 }  // namespace detail
 
+enum class BuildResult {
+  NO_WORK_TO_DO,
+  SUCCESS,
+  INTERRUPTED,
+  FAILURE,
+};
+
 /**
  * Main entry point for performing a build.
  */
-void build(
+BuildResult build(
     const Clock &clock,
     FileSystem &file_system,
     CommandRunner &command_runner,
     BuildStatus &build_status,
     InvocationLog &invocation_log,
-    size_t allowed_failures,
+    size_t failures_allowed,
     const Manifest &manifest,
     const Invocations &invocations) throw(IoError, BuildError);
 
