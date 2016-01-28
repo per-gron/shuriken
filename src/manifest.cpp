@@ -448,7 +448,12 @@ Manifest parseManifest(
     FileSystem &file_system,
     const std::string &path) throw(IoError, ParseError) {
   Manifest manifest;
+
   BindingEnv env;
+  Rule phony;
+  phony.name = "phony";
+  env.addRule(std::move(phony));
+
   ManifestPostprocessingData postprocessing_data;
   ManifestParser parser(paths, file_system, manifest, postprocessing_data, env);
   parser.load(path, nullptr);

@@ -84,6 +84,15 @@ TEST_CASE("Manifest") {
     CHECK(!step.restat);
   }
 
+  SECTION("PhonyRules") {
+    const auto step = parseStep(paths, fs,
+        "build result: phony in_1.cc in-2.O\n");
+
+    CHECK(step.command == "");
+    CHECK(!step.generator);
+    CHECK(!step.restat);
+  }
+
   SECTION("DotPath") {
     const auto step = parseStep(paths, fs,
         "rule cat\n"
