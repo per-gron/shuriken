@@ -2,7 +2,7 @@
 
 namespace shk {
 
-std::unique_ptr<InvocationLog> makePersistentInvocationLog(
+std::unique_ptr<InvocationLog> openPersistentInvocationLog(
     FileSystem &file_system, const std::string &log_path) throw(IoError) {
   // TODO(peck): Implement me
   return nullptr;

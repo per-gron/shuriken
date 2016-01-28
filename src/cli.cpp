@@ -34,6 +34,7 @@
 #include "build_config.h"
 #include "build_error.h"
 #include "edit_distance.h"
+#include "invocations.h"
 #include "manifest.h"
 #include "persistent_file_system.h"
 #include "persistent_invocation_log.h"
@@ -85,9 +86,9 @@ struct Tool {
     RUN_AFTER_LOAD,
 
     /**
-     * Run after loading the build/deps logs.
+     * Run after loading the invocation log.
      */
-    RUN_AFTER_LOGS,
+    RUN_AFTER_LOG,
   } when;
 
   /**
@@ -130,11 +131,21 @@ struct ShurikenMain {
   std::vector<Path> interpretPaths(
       int argc, char *argv[]) throw(BuildError);
 
+  std::string invocationLogPath() const;
+
   /**
-   * Open the invocation log: load it, then open for writing.
+   * Load the invocation log.
+   *
    * @return false on error.
    */
-  bool openInvocationLog(bool recompact_only = false);
+  bool readInvocations();
+
+  /**
+   * Open the invocation log for writing.
+   *
+   * @return false on error.
+   */
+  bool openInvocationLog();
 
   /**
    * Ensure the build directory exists, creating it if necessary.
@@ -159,6 +170,7 @@ struct ShurikenMain {
   const BuildConfig _config;
   const std::unique_ptr<FileSystem> _file_system;
   Paths _paths;
+  Invocations _invocations;
   std::unique_ptr<InvocationLog> _invocation_log;
   Manifest _manifest;
 
@@ -243,10 +255,10 @@ const Tool *chooseTool(const std::string &tool_name) {
       Tool::RUN_AFTER_LOAD, &toolClean },
     { "commands", "list all commands required to rebuild given targets",
       Tool::RUN_AFTER_LOAD, &toolCommands },
-    { "deps", "show dependencies stored in the deps log",
-      Tool::RUN_AFTER_LOGS, &toolDeps },
+    { "deps", "show dependencies stored in the invocation log",
+      Tool::RUN_AFTER_LOG, &toolDeps },
     { "query", "show inputs/outputs for a path",
-      Tool::RUN_AFTER_LOGS, &toolQuery },
+      Tool::RUN_AFTER_LOG, &toolQuery },
     { "targets",  "list targets by their rule or depth in the DAG",
       Tool::RUN_AFTER_LOAD, &toolTargets },
     { "compdb",  "dump JSON compilation database to stdout",
@@ -286,43 +298,38 @@ const Tool *chooseTool(const std::string &tool_name) {
   return NULL;  // Not reached.
 }
 
-/**
- * Open the deps log: load it, then open for writing.
- * @return false on error.
- */
-bool ShurikenMain::openInvocationLog(bool recompact_only) {
+std::string ShurikenMain::invocationLogPath() const {
   std::string path = ".shk_log";
   if (!_build_dir.empty()) {
     path = _build_dir + "/" + path;
   }
+  return path;
+}
 
+bool ShurikenMain::readInvocations() {
+  const auto path = invocationLogPath();
   try {
-    std::string warning;
-    std::tie(_invocation_log, warning) =
-        makePersistentInvocationLog(_file_system, path);
-    if (!warning.empty()) {
-      warning("%s", warning.c_str());
+    std::string parse_warning;
+    std::tie(_invocations, parse_warning) =
+        parsePersistentInvocationLog(*_file_system, path);
+    if (!parse_warning.empty()) {
+      warning("%s", parse_warning.c_str());
     }
-  } catch (const IoError &error) {
-    error("loading deps log %s: %s", path.c_str(), error.what());
+  } catch (const IoError &io_error) {
+    error("loading invocation log %s: %s", path.c_str(), io_error.what());
     return false;
   }
 
-  if (recompact_only) {
-    try {
-      _deps_log.recompact(path);
-      return true;
-    } catch (const IoError &error) {
-      error("failed recompaction: %s", error.what());
-      return false;
-    }
-  }
+  return true;
+}
 
+bool ShurikenMain::openInvocationLog() {
   if (!_config.dry_run) {
+    const auto path = invocationLogPath();
     try {
-      _deps_log.openForWrite(path);
-    } catch (const IoError &error) {
-      error("opening deps log: %s", error.what());
+      _invocation_log = openPersistentInvocationLog(*_file_system, path);
+    } catch (const IoError &io_error) {
+      error("opening invocation log: %s", io_error.what());
       return false;
     }
   }
@@ -548,11 +555,12 @@ int real_main(int argc, char **argv) {
     }
 
     if (!shk.ensureBuildDirExists() ||
+        !shk.readInvocations() ||
         !shk.openInvocationLog()) {
       return 1;
     }
 
-    if (options.tool && options.tool->when == Tool::RUN_AFTER_LOGS) {
+    if (options.tool && options.tool->when == Tool::RUN_AFTER_LOG) {
       return (shk.*options.tool->func)(argc, argv);
     }
 

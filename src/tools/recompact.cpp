@@ -19,7 +19,10 @@ int toolRecompact(int argc, char *argv[]) {
     return 1;
   }
 
-  if (!openDepsLog(/*recompact_only=*/true)) {
+  try {
+    _deps_log.recompact(path);
+  } catch (const IoError &error) {
+    error("failed recompaction: %s", error.what());
     return 1;
   }
 
