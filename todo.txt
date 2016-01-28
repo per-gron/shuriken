@@ -136,6 +136,7 @@ Large things remaining to do:
 * Rebuild manifest
 * Limit parallelism / max load average
 * Invocation log
+* There seems to be a race in TracingCommandRunner. It doesn't always catch deps
 * BuildStatus
 * CLI tools:
   * deps

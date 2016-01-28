@@ -40,6 +40,7 @@
 #include "persistent_file_system.h"
 #include "persistent_invocation_log.h"
 #include "real_command_runner.h"
+#include "terminal_build_status.h"
 #include "tools/clean.h"
 #include "tools/commands.h"
 #include "tools/compilation_database.h"
@@ -164,6 +165,14 @@ struct ShurikenMain {
    * @return true if the manifest was rebuilt.
    */
   bool rebuildManifest(const char *input_file, std::string *err);
+
+  Paths &paths() {
+    return _paths;
+  }
+
+  FileSystem &fileSystem() {
+    return *_file_system;
+  }
 
   /**
    * Build the targets listed on the command line.
@@ -360,13 +369,15 @@ int ShurikenMain::runBuild(int argc, char **argv) {
       *_file_system,
       makeRealCommandRunner());
 
+  const auto build_status = makeTerminalBuildStatus();
+
   try {
     const auto result = build(
         getTime,
-        _file_system,
-        command_runner,
-        TODO_build_status,
-        _invocation_log,
+        *_file_system,
+        *command_runner,
+        *build_status,
+        *_invocation_log,
         _config.failures_allowed,
         _manifest,
         _invocations);
@@ -534,7 +545,7 @@ int real_main(int argc, char **argv) {
     // None of the RUN_AFTER_FLAGS actually use a ShurikenMain, but it's needed
     // by other tools.
     ShurikenMain shk(config);
-    return (shk.*options.tool->func)(argc, argv);
+    return options.tool->func(argc, argv);
   }
 
   // Limit number of rebuilds, to prevent infinite loops.
@@ -544,15 +555,15 @@ int real_main(int argc, char **argv) {
 
     Manifest manifest;
     try {
-      manifest = parseManifest(paths, _file_system, options.input_file);
-    } catch (const IoError &error) {
-      error("%s", error.what());
-    } catch (const ParseError &error) {
-      error("%s", error.what());
+      manifest = parseManifest(shk.paths(), shk.fileSystem(), options.input_file);
+    } catch (const IoError &io_error) {
+      error("%s", io_error.what());
+    } catch (const ParseError &parse_error) {
+      error("%s", parse_error.what());
     }
 
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOAD) {
-      return (shk.*options.tool->func)(argc, argv);
+      return options.tool->func(argc, argv);
     }
 
     if (!shk.readInvocations() ||
@@ -561,7 +572,7 @@ int real_main(int argc, char **argv) {
     }
 
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOG) {
-      return (shk.*options.tool->func)(argc, argv);
+      return options.tool->func(argc, argv);
     }
 
     // Attempt to rebuild the manifest before building anything else
@@ -598,7 +609,7 @@ int main(int argc, char **argv) {
   __try {
     // Running inside __try ... __except suppresses any Windows error
     // dialogs for errors such as bad_alloc.
-    return real_main(argc, argv);
+    return shk::real_main(argc, argv);
   }
   __except(exceptionFilter(GetExceptionCode(), GetExceptionInformation())) {
     // Common error situations return exitCode=1. 2 was chosen to
@@ -606,6 +617,6 @@ int main(int argc, char **argv) {
     return 2;
   }
 #else
-  return real_main(argc, argv);
+  return shk::real_main(argc, argv);
 #endif
 }

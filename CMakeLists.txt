@@ -21,6 +21,7 @@ add_library(shklib
   src/build_config.h
   src/build_error.h
   src/build_status.h
+  src/cli.cpp
   src/command_runner.h
   src/edit_distance.cpp
   src/edit_distance.h
@@ -58,6 +59,8 @@ add_library(shklib
   src/step.cpp
   src/step.h
   src/string_piece.h
+  src/terminal_build_status.cpp
+  src/terminal_build_status.h
   src/tracing_command_runner.cpp
   src/tracing_command_runner.h
   src/util.cpp
