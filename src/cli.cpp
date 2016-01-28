@@ -148,12 +148,6 @@ struct ShurikenMain {
   bool openInvocationLog();
 
   /**
-   * Ensure the build directory exists, creating it if necessary.
-   * @return false on error.
-   */
-  bool ensureBuildDirExists();
-
-  /**
    * Rebuild the manifest, if necessary.
    * Fills in \a err on error.
    * @return true if the manifest was rebuilt.
@@ -173,11 +167,6 @@ struct ShurikenMain {
   Invocations _invocations;
   std::unique_ptr<InvocationLog> _invocation_log;
   Manifest _manifest;
-
-  /**
-   * The build directory, used for storing the build log etc.
-   */
-  std::string _build_dir;
 };
 
 /**
@@ -300,8 +289,8 @@ const Tool *chooseTool(const std::string &tool_name) {
 
 std::string ShurikenMain::invocationLogPath() const {
   std::string path = ".shk_log";
-  if (!_build_dir.empty()) {
-    path = _build_dir + "/" + path;
+  if (!_manifest.build_dir.empty()) {
+    path = _manifest.build_dir + "/" + path;
   }
   return path;
 }
@@ -326,6 +315,16 @@ bool ShurikenMain::readInvocations() {
 bool ShurikenMain::openInvocationLog() {
   if (!_config.dry_run) {
     const auto path = invocationLogPath();
+
+    try {
+      mkdirsFor(*_file_system, path);
+    } catch (const IoError &io_error) {
+      error(
+          "creating directory for invocation log %s: %s",
+          path.c_str(), strerror(errno));
+      return false;
+    }
+
     try {
       _invocation_log = openPersistentInvocationLog(*_file_system, path);
     } catch (const IoError &io_error) {
@@ -334,19 +333,6 @@ bool ShurikenMain::openInvocationLog() {
     }
   }
 
-  return true;
-}
-
-bool ShurikenMain::ensureBuildDirExists() {
-  _build_dir = _state.bindings_.lookupVariable("builddir");
-  if (!_build_dir.empty() && !_config.dry_run) {
-    if (!_disk_interface.MakeDirs(_build_dir + "/.") && errno != EEXIST) {
-      error(
-          "creating build directory %s: %s",
-          _build_dir.c_str(), strerror(errno));
-      return false;
-    }
-  }
   return true;
 }
 
@@ -554,8 +540,7 @@ int real_main(int argc, char **argv) {
       return (shk.*options.tool->func)(argc, argv);
     }
 
-    if (!shk.ensureBuildDirExists() ||
-        !shk.readInvocations() ||
+    if (!shk.readInvocations() ||
         !shk.openInvocationLog()) {
       return 1;
     }
