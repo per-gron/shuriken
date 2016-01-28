@@ -34,6 +34,7 @@
 #include "build.h"
 #include "build_config.h"
 #include "build_error.h"
+#include "dry_run_command_runner.h"
 #include "edit_distance.h"
 #include "invocations.h"
 #include "manifest.h"
@@ -365,9 +366,11 @@ int ShurikenMain::runBuild(int argc, char **argv) {
     return 1;
   }
 
-  const auto command_runner = makeTracingCommandRunner(
-      *_file_system,
-      makeRealCommandRunner());
+  const auto command_runner = _config.dry_run ?
+      makeDryRunCommandRunner() :
+      makeTracingCommandRunner(
+          *_file_system,
+          makeRealCommandRunner());
 
   const auto build_status = makeTerminalBuildStatus();
 
