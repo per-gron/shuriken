@@ -36,6 +36,7 @@
 #include "build_error.h"
 #include "dry_run_command_runner.h"
 #include "edit_distance.h"
+#include "in_memory_invocation_log.h"
 #include "invocations.h"
 #include "manifest.h"
 #include "persistent_file_system.h"
@@ -334,7 +335,10 @@ bool ShurikenMain::readInvocations() {
 }
 
 bool ShurikenMain::openInvocationLog() {
-  if (!_config.dry_run) {
+  if (_config.dry_run) {
+    _invocation_log = std::unique_ptr<InvocationLog>(
+        new InMemoryInvocationLog());
+  } else {
     const auto path = invocationLogPath();
 
     try {
