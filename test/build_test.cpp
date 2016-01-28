@@ -4,6 +4,7 @@
 
 #include "generators.h"
 #include "in_memory_file_system.h"
+#include "in_memory_invocation_log.h"
 
 namespace shk {
 namespace detail {
@@ -490,7 +491,159 @@ TEST_CASE("Build") {
   }
 
   SECTION("isClean") {
-    // TODO(peck): Test this
+    Hash hash_a;
+    std::fill(hash_a.data.begin(), hash_a.data.end(), 123);
+    Hash hash_b;
+    std::fill(hash_a.data.begin(), hash_a.data.end(), 321);
+    Hash hash_c;
+    std::fill(hash_a.data.begin(), hash_a.data.end(), 0);
+
+    const auto clock = []() { return 555; };
+    InMemoryFileSystem fs(clock);
+    Paths paths(fs);
+    InMemoryInvocationLog log;
+    Invocations invocations;
+
+    fs.writeFile("one", "one_content");
+    const auto one_fp = takeFingerprint(fs, clock() + 1, "one");
+    const auto one_fp_racy = takeFingerprint(fs, clock(), "one");
+    fs.writeFile("two", "two_content");
+    const auto two_fp = takeFingerprint(fs, clock() + 1, "two");
+
+
+    SECTION("no matching Invocation entry") {
+      CHECK(!isClean(
+          clock,
+          fs,
+          log,
+          invocations,
+          hash_a));
+      CHECK(log.createdDirectories().empty());
+      CHECK(log.entries().empty());
+    }
+
+    SECTION("no input or output files") {
+      invocations.entries[hash_a] = Invocations::Entry();
+      CHECK(isClean(
+          clock,
+          fs,
+          log,
+          invocations,
+          hash_a));
+      CHECK(log.createdDirectories().empty());
+      CHECK(log.entries().empty());
+    }
+
+    SECTION("clean input") {
+      Invocations::Entry entry;
+      entry.input_files.emplace_back(paths.get("one"), one_fp);
+      invocations.entries[hash_a] = entry;
+      CHECK(isClean(
+          clock,
+          fs,
+          log,
+          invocations,
+          hash_a));
+      CHECK(log.createdDirectories().empty());
+      CHECK(log.entries().empty());
+    }
+
+    SECTION("dirty input") {
+      Invocations::Entry entry;
+      entry.input_files.emplace_back(paths.get("one"), one_fp);
+      invocations.entries[hash_a] = entry;
+      fs.writeFile("one", "dirty");  // Make dirty
+      CHECK(!isClean(
+          clock,
+          fs,
+          log,
+          invocations,
+          hash_a));
+      CHECK(log.createdDirectories().empty());
+      CHECK(log.entries().empty());
+    }
+
+    SECTION("clean output") {
+      Invocations::Entry entry;
+      entry.output_files.emplace_back(paths.get("one"), one_fp);
+      invocations.entries[hash_a] = entry;
+      CHECK(isClean(
+          clock,
+          fs,
+          log,
+          invocations,
+          hash_a));
+      CHECK(log.createdDirectories().empty());
+      CHECK(log.entries().empty());
+    }
+
+    SECTION("dirty output") {
+      Invocations::Entry entry;
+      entry.output_files.emplace_back(paths.get("one"), one_fp);
+      invocations.entries[hash_a] = entry;
+      fs.writeFile("one", "dirty");  // Make dirty
+      CHECK(!isClean(
+          clock,
+          fs,
+          log,
+          invocations,
+          hash_a));
+      CHECK(log.createdDirectories().empty());
+      CHECK(log.entries().empty());
+    }
+
+    SECTION("dirty input and output") {
+      Invocations::Entry entry;
+      entry.output_files.emplace_back(paths.get("one"), one_fp);
+      entry.input_files.emplace_back(paths.get("two"), two_fp);
+      invocations.entries[hash_a] = entry;
+      fs.writeFile("one", "dirty");
+      fs.writeFile("two", "dirty!");
+      CHECK(!isClean(
+          clock,
+          fs,
+          log,
+          invocations,
+          hash_a));
+      CHECK(log.createdDirectories().empty());
+      CHECK(log.entries().empty());
+    }
+
+    SECTION("racily clean input") {
+      Invocations::Entry entry;
+      entry.input_files.emplace_back(paths.get("one"), one_fp_racy);
+      invocations.entries[hash_a] = entry;
+      CHECK(isClean(
+          clock,
+          fs,
+          log,
+          invocations,
+          hash_a));
+      CHECK(log.createdDirectories().empty());
+      REQUIRE(log.entries().count(hash_a) == 1);
+      const auto &computed_entry = log.entries().find(hash_a)->second;
+      REQUIRE(computed_entry.input_files.size() == 1);
+      REQUIRE(computed_entry.input_files[0].first == "one");
+      CHECK(computed_entry.output_files.empty());
+    }
+
+    SECTION("racily clean output") {
+      Invocations::Entry entry;
+      entry.output_files.emplace_back(paths.get("one"), one_fp_racy);
+      invocations.entries[hash_a] = entry;
+      CHECK(isClean(
+          clock,
+          fs,
+          log,
+          invocations,
+          hash_a));
+      CHECK(log.createdDirectories().empty());
+      REQUIRE(log.entries().count(hash_a) == 1);
+      const auto &computed_entry = log.entries().find(hash_a)->second;
+      CHECK(computed_entry.input_files.empty());
+      REQUIRE(computed_entry.output_files.size() == 1);
+      REQUIRE(computed_entry.output_files[0].first == "one");
+    }
   }
 
   SECTION("computeCleanSteps") {

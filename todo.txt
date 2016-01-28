@@ -147,6 +147,7 @@ Large things remaining to do:
 * Write documentation
 * Path case folding
 * See if adding HAVE_SSSE3, HAVE_XOP, HAVE_SSE41 etc flags for blake2 makes sense
+* Optimization opportunity: Don't calculate hashes twice for racily clean files
 * Check test coverage and add missing unit tests
 
 To fill in the first test:
