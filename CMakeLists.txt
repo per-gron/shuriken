@@ -22,6 +22,8 @@ add_library(shklib
   src/build_error.h
   src/build_status.h
   src/command_runner.h
+  src/dry_run_command_runner.cpp
+  src/dry_run_command_runner.h
   src/edit_distance.cpp
   src/edit_distance.h
   src/eval_env.cpp
@@ -95,6 +97,7 @@ set_target_properties(shk PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk_test
   test/build_test.cpp
+  test/dry_run_command_runner_test.cpp
   test/dummy_command_runner.cpp
   test/dummy_command_runner.h
   test/dummy_command_runner_test.cpp
