@@ -46,6 +46,7 @@ add_library(shklib
   src/io_error.h
   src/manifest.cpp
   src/manifest.h
+  src/optional.h
   src/parse_error.h
   src/path.cpp
   src/path.h
@@ -117,6 +118,7 @@ add_executable(shk_test
   test/line_printer_test.cpp
   test/main.cpp
   test/manifest_test.cpp
+  test/optional_test.cpp
   test/path_test.cpp
   test/properties.cpp
   test/real_command_runner_test.cpp
