@@ -17,10 +17,11 @@ Differences from Ninja:
   and depfile are ignored, other than that the .d file is removed)
 * File hashes are used rather than mtimes (except for generator rules, they still use mtimes)
 * msvc_deps_prefix, deps, depfile are unnecessary (except that the .d file should be removed)
-* Supports multiple outputs even when deps is specified
+* Supports multiple outputs even when deps is specified.
 * When the console pool is used, the command is always rebuilt. Reason being
   stdin is not a deterministic source, and it tends to be used for things as tests
   and generator rules anyway.
+* Does not fail the build on missing inputs.
 
 Missing features:
 * spell checking on target file names
@@ -132,6 +133,7 @@ Large things remaining to do:
 * Handle build pools
 * detail::deleteOldOutputs
 * detail::deleteStaleOutputs
+* Actually respect when targets are specified on the command line
 * Stat cache for use by Paths
 * Rebuild manifest
 * Limit parallelism / max load average

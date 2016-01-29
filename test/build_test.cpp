@@ -867,14 +867,15 @@ TEST_CASE("Build") {
       return parseManifest(paths, fs, "build.ninja");
     };
 
-    const auto build_manifest = [&](const Manifest &manifest) {
+    const auto build_manifest = [&](
+        const Manifest &manifest, size_t failures_allowed = 1) {
       return build(
           clock,
           fs,
           dummy_runner,
           status,
           log,
-          1,
+          failures_allowed,
           manifest,
           invocations);
     };
@@ -1022,40 +1023,196 @@ TEST_CASE("Build") {
         CHECK_THROWS(dummy_runner.checkCommand(fs, two));
       }
 
+#if 0  // TODO(peck): This test does not work because deletion is not yet implemented
       SECTION("delete depfile") {
-        // TODO(peck): Test this
+        const auto cmd = dummy_runner.constructCommand({}, {"depfile"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "  depfile = depfile\n"
+            "build out: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        CHECK(fs.stat("depfile").result == ENOENT);
+      }
+#endif
+
+      SECTION("don't fail if depfile is not created") {
+        const auto cmd = dummy_runner.constructCommand({}, {});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "  depfile = depfile\n"
+            "build out: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        CHECK(fs.stat("depfile").result == ENOENT);
+        dummy_runner.checkCommand(fs, cmd);
       }
 
+#if 0  // TODO(peck): This test does not work because deletion is not yet implemented
       SECTION("create and delete rspfile") {
-        // TODO(peck): Test this
+        const auto cmd = dummy_runner.constructCommand({"rsp"}, {});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "  rspfile = rsp\n"
+            "  rspfile_content = abc\n"
+            "build out: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        CHECK(fs.stat("rsp").result == ENOENT);
       }
+#endif
 
       SECTION("don't delete rspfile on failure") {
-        // TODO(peck): Test this
+        const auto cmd = dummy_runner.constructCommand({"nonexisting"}, {});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "  rspfile = rsp\n"
+            "  rspfile_content = abc\n"
+            "build out: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::FAILURE);
+        CHECK(fs.readFile("rsp") == "abc");
       }
 
       SECTION("phony as root") {
-        // TODO(peck): Test this
+        const auto one = dummy_runner.constructCommand({}, {"one"});
+        const auto manifest = parse(
+            "rule one\n"
+            "  command = " + one + "\n"
+            "build two: phony one\n"
+            "build one: one\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, one);
       }
 
       SECTION("phony as leaf") {
-        // TODO(peck): Test this
+        const auto cmd = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build one: phony\n"
+            "build two: cmd one\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+      }
+
+      SECTION("don't fail on missing input") {
+        // Ninja fails the build in this case. For Shuriken I can see no strong
+        // reason to fail though, incremental builds work even when input files
+        // are missing. If the input file is really needed then the build step
+        // should fail anyway.
+        //
+        // If it turns out to be important to do the same thing as Ninja here,
+        // it's probably no problem doing that either, it's just that I don't
+        // feel like spending time on adding the additional logic and stat calls
+        // for it right now.
+
+        const auto cmd = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd missing\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+      }
+
+      SECTION("don't fail on missing phony input") {
+        const auto manifest = parse(
+            "build out: phony missing\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
       }
 
       SECTION("swallow failures") {
-        // TODO(peck): Test this
+        const auto fail = dummy_runner.constructCommand({"nonexisting"}, {});
+        const auto succeed = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule fail\n"
+            "  command = " + fail + "\n"
+            "rule succeed\n"
+            "  command = " + succeed + "\n"
+            "build out1: fail\n"
+            "build out2: fail\n"
+            "build out3: succeed\n");
+        CHECK(build_manifest(manifest, 3) == BuildResult::FAILURE);
+        dummy_runner.checkCommand(fs, succeed);
+      }
+
+      SECTION("swallow failures (2)") {
+        const auto fail = dummy_runner.constructCommand({"nonexisting"}, {});
+        const auto succeed = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule fail\n"
+            "  command = " + fail + "\n"
+            "rule succeed\n"
+            "  command = " + succeed + "\n"
+            "build out3: succeed\n"
+            "build out1: fail\n"
+            "build out2: fail\n");
+        CHECK(build_manifest(manifest, 3) == BuildResult::FAILURE);
+        dummy_runner.checkCommand(fs, succeed);
       }
 
       SECTION("don't swallow too many failures") {
-        // TODO(peck): Test this
+        const auto fail = dummy_runner.constructCommand({"nonexisting"}, {});
+        const auto succeed1 = dummy_runner.constructCommand({}, {"out1"});
+        const auto succeed2 = dummy_runner.constructCommand({}, {"out2"});
+        const auto manifest = parse(
+            "rule fail\n"
+            "  command = " + fail + "\n"
+            "rule succeed1\n"
+            "  command = " + succeed1 + "\n"
+            "rule succeed2\n"
+            "  command = " + succeed2 + "\n"
+            "build out1: fail\n"
+            "build out2: fail\n"
+            "build out3: succeed1\n"
+            "build out4: succeed2 out3\n");
+        CHECK(build_manifest(manifest, 2) == BuildResult::FAILURE);
+        CHECK_THROWS(dummy_runner.checkCommand(fs, succeed2));
       }
 
       SECTION("swallow failures but don't run dependent steps") {
-        // TODO(peck): Test this
+        const auto fail = dummy_runner.constructCommand({"nonexisting"}, {});
+        const auto succeed = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule fail\n"
+            "  command = " + fail + "\n"
+            "rule succeed\n"
+            "  command = " + succeed + "\n"
+            "build out1: fail\n"
+            "build out2: succeed out1\n");
+        CHECK(build_manifest(manifest, 100) == BuildResult::FAILURE);
+        CHECK_THROWS(dummy_runner.checkCommand(fs, succeed));
+      }
+
+      SECTION("implicit deps") {
+        const auto one = dummy_runner.constructCommand({}, {"one"});
+        const auto two = dummy_runner.constructCommand({"one"}, {"two"});
+        const auto manifest = parse(
+            "rule one\n"
+            "  command = " + one + "\n"
+            "rule two\n"
+            "  command = " + two + "\n"
+            "build two: two | one\n"
+            "build one: one\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, one);
+        dummy_runner.checkCommand(fs, two);
       }
 
       SECTION("order-only deps") {
-        // TODO(peck): Test this
+        const auto one = dummy_runner.constructCommand({}, {"one"});
+        const auto two = dummy_runner.constructCommand({"one"}, {"two"});
+        const auto manifest = parse(
+            "rule one\n"
+            "  command = " + one + "\n"
+            "rule two\n"
+            "  command = " + two + "\n"
+            "build two: two || one\n"
+            "build one: one\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, one);
+        dummy_runner.checkCommand(fs, two);
       }
     }
 
@@ -1077,6 +1234,14 @@ TEST_CASE("Build") {
       }
 
       SECTION("rebuild when step is different") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("rebuild when step failed") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("rebuild when step failed linting") {
         // TODO(peck): Test this
       }
 
