@@ -41,6 +41,8 @@ add_library(shklib
   src/invocation_log.h
   src/invocations.h
   src/lexer.h
+  src/limited_command_runner.cpp
+  src/limited_command_runner.h
   src/line_printer.cpp
   src/line_printer.h
   src/io_error.h
@@ -115,6 +117,7 @@ add_executable(shk_test
   test/in_memory_file_system_test.cpp
   test/in_memory_invocation_log_test.cpp
   test/lexer_test.cpp
+  test/limited_command_runner_test.cpp
   test/line_printer_test.cpp
   test/main.cpp
   test/manifest_test.cpp

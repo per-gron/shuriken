@@ -42,7 +42,6 @@ Build steps in Shuriken must fulfill the following requirements:
 
 The manifest must fulfill the following requirements:
 * There must not be more than one build step that generates any given output file
-* All input files except for phony inputs must exist
 * No cyclic dependencies
 
 
@@ -136,7 +135,6 @@ Large things remaining to do:
 * Actually respect when targets are specified on the command line
 * Stat cache for use by Paths
 * Rebuild manifest
-* Limit parallelism / max load average
 * Invocation log
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
 * BuildStatus

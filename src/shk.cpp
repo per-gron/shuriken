@@ -38,6 +38,7 @@
 #include "edit_distance.h"
 #include "in_memory_invocation_log.h"
 #include "invocations.h"
+#include "limited_command_runner.h"
 #include "manifest.h"
 #include "persistent_file_system.h"
 #include "persistent_invocation_log.h"
@@ -144,6 +145,8 @@ struct ShurikenMain {
 
   std::vector<Path> interpretPaths(
       int argc, char *argv[]) throw(BuildError);
+
+  void parseManifest(const std::string &input_file) throw(IoError, ParseError);
 
   std::string invocationLogPath() const;
 
@@ -309,6 +312,11 @@ const Tool *chooseTool(const std::string &tool_name) {
   return NULL;  // Not reached.
 }
 
+void ShurikenMain::parseManifest(
+    const std::string &input_file) throw(IoError, ParseError) {
+  _manifest = ::shk::parseManifest(_paths, *_file_system, input_file);
+}
+
 std::string ShurikenMain::invocationLogPath() const {
   std::string path = ".shk_log";
   if (!_manifest.build_dir.empty()) {
@@ -372,9 +380,13 @@ int ShurikenMain::runBuild(int argc, char **argv) {
 
   const auto command_runner = _config.dry_run ?
       makeDryRunCommandRunner() :
-      makeTracingCommandRunner(
-          *_file_system,
-          makeRealCommandRunner());
+      makeLimitedCommandRunner(
+        getLoadAverage,
+        _config.max_load_average,
+        _config.parallelism,
+        makeTracingCommandRunner(
+            *_file_system,
+            makeRealCommandRunner()));
 
   const auto build_status = makeTerminalBuildStatus();
 
@@ -560,13 +572,14 @@ int real_main(int argc, char **argv) {
   for (int cycle = 1; cycle <= kCycleLimit; ++cycle) {
     ShurikenMain shk(config);
 
-    Manifest manifest;
     try {
-      manifest = parseManifest(shk.paths(), shk.fileSystem(), options.input_file);
+      shk.parseManifest(options.input_file);
     } catch (const IoError &io_error) {
       error("%s", io_error.what());
+      return 1;
     } catch (const ParseError &parse_error) {
       error("%s", parse_error.what());
+      return 1;
     }
 
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOAD) {
