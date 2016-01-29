@@ -684,7 +684,103 @@ TEST_CASE("Build") {
   }
 
   SECTION("discardCleanSteps") {
-    // TODO(peck): Test this
+    const auto compute_clean_steps = [&](
+        const Build &build,
+        Invocations &invocations,
+        const Manifest &manifest) {
+      return computeCleanSteps(
+          clock,
+          fs,
+          log,
+          invocations,
+          computeStepHashes(manifest.steps),
+          build);
+    };
+
+    SECTION("empty input") {
+      Build build;
+      discardCleanSteps(CleanSteps(), build);
+    }
+
+    SECTION("all clean (independent)") {
+      manifest.steps = { single_output_b, multiple_outputs };
+      // Add empty entry to mark clean
+      invocations.entries[single_output_b.hash()];
+      invocations.entries[multiple_outputs.hash()];
+      auto build = computeBuild(manifest, invocations);
+      CHECK(build.ready_steps.size() == 2);
+      discardCleanSteps(
+          compute_clean_steps(build, invocations, manifest),
+          build);
+      CHECK(build.ready_steps.empty());
+    }
+
+    SECTION("all dirty") {
+      manifest.steps = { single_output_b, multiple_outputs };
+      auto build = computeBuild(manifest, invocations);
+      CHECK(build.ready_steps.size() == 2);
+      discardCleanSteps(
+          compute_clean_steps(build, invocations, manifest),
+          build);
+      CHECK(build.ready_steps.size() == 2);
+    }
+
+    SECTION("some clean") {
+      manifest.steps = { single_output_b, multiple_outputs };
+      // Add empty entry to mark clean
+      invocations.entries[single_output_b.hash()];
+      auto build = computeBuild(manifest, invocations);
+      CHECK(build.ready_steps.size() == 2);
+      discardCleanSteps(
+          compute_clean_steps(build, invocations, manifest),
+          build);
+      CHECK(build.ready_steps.size() == 1);
+    }
+
+    Step root;
+    root.inputs = { paths.get("a") };
+    root.outputs = { paths.get("b") };
+
+    SECTION("all clean") {
+      manifest.steps = { single_output, root };
+      // Add empty entry to mark clean
+      invocations.entries[single_output.hash()];
+      invocations.entries[root.hash()];
+      auto build = computeBuild(manifest, invocations);
+      CHECK(build.ready_steps.size() == 1);
+      discardCleanSteps(
+          compute_clean_steps(build, invocations, manifest),
+          build);
+      CHECK(build.ready_steps.empty());
+    }
+
+    SECTION("leave clean, root dirty") {
+      manifest.steps = { single_output, root };
+      // Add empty entry to mark clean
+      invocations.entries[single_output.hash()];
+      auto build = computeBuild(manifest, invocations);
+      REQUIRE(build.ready_steps.size() == 1);
+      CHECK(build.ready_steps[0] == 0);
+      discardCleanSteps(
+          compute_clean_steps(build, invocations, manifest),
+          build);
+      REQUIRE(build.ready_steps.size() == 1);
+      CHECK(build.ready_steps[0] == 1);
+    }
+
+    SECTION("leave dirty, root clean") {
+      manifest.steps = { single_output, root };
+      // Add empty entry to mark clean
+      invocations.entries[single_input.hash()];
+      auto build = computeBuild(manifest, invocations);
+      REQUIRE(build.ready_steps.size() == 1);
+      CHECK(build.ready_steps[0] == 0);
+      discardCleanSteps(
+          compute_clean_steps(build, invocations, manifest),
+          build);
+      REQUIRE(build.ready_steps.size() == 1);
+      CHECK(build.ready_steps[0] == 0);
+    }
   }
 
   SECTION("outputsWereChanged") {
