@@ -124,11 +124,13 @@ TEST_CASE("Manifest") {
         "build result: cat\n");
 
     CHECK(step.command == "a");
-    CHECK(step.depfile.original() == "b");
+    REQUIRE(step.depfile);
+    CHECK(step.depfile->original() == "b");
     CHECK(step.description == "d");
     CHECK(step.generator);
     CHECK(step.restat);
-    CHECK(step.rspfile.original() == "g");
+    REQUIRE(step.rspfile);
+    CHECK(step.rspfile->original() == "g");
     CHECK(step.rspfile_content == "h");
   }
 
@@ -158,7 +160,8 @@ TEST_CASE("Manifest") {
         "build out: cat_rsp in\n"
         "  rspfile=out.rsp\n");
 
-    CHECK(step.rspfile.original() == "out.rsp");
+    REQUIRE(step.rspfile);
+    CHECK(step.rspfile->original() == "out.rsp");
     CHECK(step.rspfile_content == "in");
   }
 
@@ -808,8 +811,10 @@ TEST_CASE("Manifest") {
       CHECK(step.description == "Hi new");
       CHECK(step.restat);
       CHECK(step.generator);
-      CHECK(step.depfile.original() == "new");
-      CHECK(step.rspfile.original() == "new");
+      REQUIRE(step.depfile);
+      CHECK(step.depfile->original() == "new");
+      REQUIRE(step.rspfile);
+      CHECK(step.rspfile->original() == "new");
       CHECK(step.rspfile_content == "new");
     }
   }

@@ -256,12 +256,12 @@ private:
     _lexer.readVarValue(val);
   }
 
-  Path toPathAllowEmpty(const std::string &str) throw(ParseError) {
+  Optional<Path> toPathAllowEmpty(const std::string &str) throw(ParseError) {
     try {
       if (str.empty()) {
-        return Path();
+        return Optional<Path>();
       }
-      return _paths.get(str);
+      return Optional<Path>(_paths.get(str));
     } catch (PathError &error) {
       _lexer.throwError(error.what());
     }

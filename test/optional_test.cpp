@@ -385,6 +385,24 @@ TEST_CASE("Optional") {
       });
       CHECK(flag);
     }
+
+    SECTION("UninitializedConstEach") {
+      bool flag = false;
+      const Optional<int> m1;
+      m1.each([&] (int a) {
+        flag = true;
+      });
+      CHECK(!flag);
+    }
+
+    SECTION("InitializedConstEach") {
+      bool flag = false;
+      const Optional<int> m1(1);
+      m1.each([&] (int a) {
+        flag = true;
+      });
+      CHECK(flag);
+    }
   }
 
   SECTION("Equal") {

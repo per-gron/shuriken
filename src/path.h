@@ -78,13 +78,6 @@ class Paths;
 class Path {
   friend struct std::hash<Path>;
  public:
-  Path()
-      : _canonicalized_path(nullptr),
-        _original_path(nullptr) {
-    // TODO(peck): This constructor isn't really great. It creates a broken
-    // object. Remove me.
-  }
-
   Path(const detail::CanonicalizedPath *canonicalized_path,
        const std::string *original_path)
       : _canonicalized_path(canonicalized_path),

@@ -527,8 +527,12 @@ void commandDone(
   // TODO(peck): Validate that the command did not read a file that is an output
   //   of a target that it does not depend on directly or indirectly.
 
-  deleteBuildProduct(params.file_system, step.depfile);
-  deleteBuildProduct(params.file_system, step.rspfile);
+  step.depfile.each([&](const Path &path) {
+    deleteBuildProduct(params.file_system, path);
+  });
+  step.rspfile.each([&](const Path &path) {
+    deleteBuildProduct(params.file_system, path);
+  });
 
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
@@ -600,8 +604,10 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   const auto &step_hash = params.step_hashes[step_idx];
   deleteOldOutputs(params.file_system, params.invocations, step_hash);
 
-  mkdirsForPath(params.file_system, params.invocation_log, step.rspfile);
-  params.file_system.writeFile(step.rspfile.original(), step.rspfile_content);
+  step.rspfile.each([&](const Path &rspfile) {
+    mkdirsForPath(params.file_system, params.invocation_log, rspfile);
+    params.file_system.writeFile(rspfile.original(), step.rspfile_content);
+  });
 
   for (const auto &output : step.outputs) {
     mkdirsForPath(params.file_system, params.invocation_log, output);

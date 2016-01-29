@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "hash.h"
+#include "optional.h"
 #include "path.h"
 
 namespace shk {
@@ -97,7 +98,7 @@ struct Step {
    * this file, it just removes it immediately after the build step has
    * completed.
    */
-  Path depfile;
+  Optional<Path> depfile;
 
   /**
    * If rspfile is not empty, Shuriken will write rspfile_content to the path
@@ -105,7 +106,7 @@ struct Step {
    * after the build step has finished running. Useful on Windows, where
    * commands have a rather short maximum length.
    */
-  Path rspfile;
+  Optional<Path> rspfile;
   std::string rspfile_content;
 
   Hash hash() const;

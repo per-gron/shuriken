@@ -189,6 +189,17 @@ class Optional {
   }
 
   /**
+   * Takes a functor and invokes it with the object if set. Otherwise, this
+   * is a no-op.
+   */
+  template<typename Functor>
+  void each(Functor functor) const {
+    if (isSet()) {
+      functor(*get());
+    }
+  }
+
+  /**
    * Takes two functors. The first one is called if the object is set, the
    * second one if it isn't. It returns what the invoked functor returns.
    */
