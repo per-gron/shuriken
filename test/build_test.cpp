@@ -42,8 +42,13 @@ Build computeBuild(
 }  // anonymous namespace
 
 TEST_CASE("Build") {
-  InMemoryFileSystem fs;
+  time_t time = 555;
+  const auto clock = [&time]() { return time; };
+  InMemoryFileSystem fs(clock);
   Paths paths(fs);
+  InMemoryInvocationLog log;
+  Invocations invocations;
+  Manifest manifest;
 
   const Step empty{};
 
@@ -82,7 +87,6 @@ TEST_CASE("Build") {
     dependency.dependencies = { paths.get("dependency_input") };
     dependency.outputs = { paths.get("dependency_output") };
 
-    Manifest manifest;
     manifest.steps = {
         single_output,
         single_output_b,
@@ -196,13 +200,11 @@ TEST_CASE("Build") {
     }
 
     SECTION("invalid defaults") {
-      Manifest manifest;
       manifest.defaults = { paths.get("missing") };
       CHECK_THROWS_AS(computeStepsToBuild(manifest), BuildError);
     }
 
     SECTION("defaults") {
-      Manifest manifest;
       manifest.steps = { single_output_b, multiple_outputs };
 
       manifest.defaults = { paths.get("b") };
@@ -224,7 +226,6 @@ TEST_CASE("Build") {
     }
 
     SECTION("use root steps when defaults are missing") {
-      Manifest manifest;
       manifest.steps = { single_output, single_input };
       CHECK(computeStepsToBuild(manifest) == vec({1}));
     }
@@ -262,8 +263,6 @@ TEST_CASE("Build") {
     }
 
     SECTION("ready_steps") {
-      Manifest manifest;
-
       SECTION("basic") {
         manifest.steps = { single_output };
         CHECK(computeBuild(manifest).ready_steps == vec({ 0 }));
@@ -319,8 +318,6 @@ TEST_CASE("Build") {
     }
 
     SECTION("step_nodes.should_build") {
-      Manifest manifest;
-
       Step one;
       one.outputs = { paths.get("a") };
       Step two;
@@ -350,8 +347,6 @@ TEST_CASE("Build") {
     }
 
     SECTION("dependencies") {
-      Manifest manifest;
-
       SECTION("independent") {
         manifest.steps = { single_output, single_output_b };
         const auto build = computeBuild(manifest);
@@ -441,9 +436,6 @@ TEST_CASE("Build") {
   }
 
   SECTION("computeInvocationEntry") {
-    InMemoryFileSystem fs;
-    const Clock clock = []{ return 432; };
-
     SECTION("empty") {
       const auto entry = computeInvocationEntry(
           clock, fs, CommandRunner::Result());
@@ -464,13 +456,13 @@ TEST_CASE("Build") {
 
       REQUIRE(entry.output_files.size() == 1);
       CHECK(entry.output_files[0].first == "c");
-      CHECK(entry.output_files[0].second == takeFingerprint(fs, 432, "c"));
+      CHECK(entry.output_files[0].second == takeFingerprint(fs, 555, "c"));
 
       REQUIRE(entry.input_files.size() == 2);
       CHECK(entry.input_files[0].first == "a");
-      CHECK(entry.input_files[0].second == takeFingerprint(fs, 432, "a"));
+      CHECK(entry.input_files[0].second == takeFingerprint(fs, 555, "a"));
       CHECK(entry.input_files[1].first == "b");
-      CHECK(entry.input_files[1].second == takeFingerprint(fs, 432, "b"));
+      CHECK(entry.input_files[1].second == takeFingerprint(fs, 555, "b"));
     }
 
     SECTION("missing files") {
@@ -482,11 +474,11 @@ TEST_CASE("Build") {
 
       REQUIRE(entry.output_files.size() == 1);
       CHECK(entry.output_files[0].first == "a");
-      CHECK(entry.output_files[0].second == takeFingerprint(fs, 432, "a"));
+      CHECK(entry.output_files[0].second == takeFingerprint(fs, 555, "a"));
 
       REQUIRE(entry.input_files.size() == 1);
       CHECK(entry.input_files[0].first == "b");
-      CHECK(entry.input_files[0].second == takeFingerprint(fs, 432, "b"));
+      CHECK(entry.input_files[0].second == takeFingerprint(fs, 555, "b"));
     }
   }
 
@@ -497,12 +489,6 @@ TEST_CASE("Build") {
     std::fill(hash_a.data.begin(), hash_a.data.end(), 321);
     Hash hash_c;
     std::fill(hash_a.data.begin(), hash_a.data.end(), 0);
-
-    const auto clock = []() { return 555; };
-    InMemoryFileSystem fs(clock);
-    Paths paths(fs);
-    InMemoryInvocationLog log;
-    Invocations invocations;
 
     fs.writeFile("one", "one_content");
     const auto one_fp = takeFingerprint(fs, clock() + 1, "one");
@@ -647,7 +633,54 @@ TEST_CASE("Build") {
   }
 
   SECTION("computeCleanSteps") {
-    // TODO(peck): Test this
+    SECTION("empty input") {
+      CHECK(computeCleanSteps(
+          clock,
+          fs,
+          log,
+          invocations,
+          StepHashes(),
+          Build()).empty());
+    }
+
+    SECTION("should compute clean steps") {
+      manifest.steps = { single_output_b, multiple_outputs };
+      // Add empty entry to mark clean
+      invocations.entries[single_output_b.hash()];
+
+      const auto build = computeBuild(manifest, invocations);
+      const auto clean_steps = computeCleanSteps(
+          clock,
+          fs,
+          log,
+          invocations,
+          computeStepHashes(manifest.steps),
+          build);
+
+      REQUIRE(clean_steps.size() == 2);
+      CHECK(clean_steps[0]);
+      CHECK(!clean_steps[1]);
+    }
+
+    SECTION("don't compute for steps that should not be built") {
+      manifest.steps = { single_output_b, multiple_outputs };
+      manifest.defaults = { paths.get("b") };
+      // Add empty entry to mark clean
+      invocations.entries[single_output_b.hash()];
+
+      const auto build = computeBuild(manifest, invocations);
+      const auto clean_steps = computeCleanSteps(
+          clock,
+          fs,
+          log,
+          invocations,
+          computeStepHashes(manifest.steps),
+          build);
+
+      REQUIRE(clean_steps.size() == 2);
+      CHECK(clean_steps[0]);
+      CHECK(!clean_steps[1]);
+    }
   }
 
   SECTION("discardCleanSteps") {
