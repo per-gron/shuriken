@@ -784,7 +784,68 @@ TEST_CASE("Build") {
   }
 
   SECTION("outputsWereChanged") {
-    // TODO(peck): Test this
+    Hash hash_a;
+    std::fill(hash_a.data.begin(), hash_a.data.end(), 123);
+    Hash hash_b;
+    std::fill(hash_a.data.begin(), hash_a.data.end(), 321);
+    Hash hash_c;
+    std::fill(hash_a.data.begin(), hash_a.data.end(), 0);
+
+    fs.writeFile("one", "one_content");
+    const auto one_fp = takeFingerprint(fs, clock() + 1, "one");
+    const auto one_fp_racy = takeFingerprint(fs, clock(), "one");
+    fs.writeFile("two", "two_content");
+    const auto two_fp = takeFingerprint(fs, clock() + 1, "two");
+
+
+    SECTION("no matching Invocation entry") {
+      CHECK(outputsWereChanged(fs, invocations, hash_a));
+    }
+
+    SECTION("no input or output files") {
+      invocations.entries[hash_a] = Invocations::Entry();
+      CHECK(!outputsWereChanged(fs, invocations, hash_a));
+    }
+
+    SECTION("clean input") {
+      Invocations::Entry entry;
+      entry.input_files.emplace_back(paths.get("one"), one_fp);
+      invocations.entries[hash_a] = entry;
+      CHECK(!outputsWereChanged(fs, invocations, hash_a));
+    }
+
+    SECTION("dirty input") {
+      Invocations::Entry entry;
+      entry.input_files.emplace_back(paths.get("one"), one_fp);
+      invocations.entries[hash_a] = entry;
+      fs.writeFile("one", "dirty");  // Make dirty
+      CHECK(!outputsWereChanged(fs, invocations, hash_a));
+    }
+
+    SECTION("clean output") {
+      Invocations::Entry entry;
+      entry.output_files.emplace_back(paths.get("one"), one_fp);
+      invocations.entries[hash_a] = entry;
+      CHECK(!outputsWereChanged(fs, invocations, hash_a));
+    }
+
+    SECTION("dirty output") {
+      Invocations::Entry entry;
+      entry.output_files.emplace_back(paths.get("one"), one_fp);
+      invocations.entries[hash_a] = entry;
+      fs.writeFile("one", "dirty");  // Make dirty
+      CHECK(outputsWereChanged(fs, invocations, hash_a));
+    }
+
+    SECTION("dirty input and output") {
+      Invocations::Entry entry;
+      entry.output_files.emplace_back(paths.get("one"), one_fp);
+      entry.input_files.emplace_back(paths.get("two"), two_fp);
+      invocations.entries[hash_a] = entry;
+      fs.writeFile("one", "dirty");
+      fs.writeFile("two", "dirty!");
+      CHECK(outputsWereChanged(fs, invocations, hash_a));
+    }
   }
 
   SECTION("deleteOldOutputs") {
