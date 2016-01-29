@@ -882,10 +882,9 @@ TEST_CASE("Build") {
     SECTION("initial build") {
       SECTION("empty input") {
         const auto manifest = parse("");
-        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        CHECK(build_manifest(manifest) == BuildResult::NO_WORK_TO_DO);
       }
 
-#if 0  // TODO(peck): Make this test pass
       SECTION("single successful step") {
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
         const auto manifest = parse(
@@ -895,38 +894,132 @@ TEST_CASE("Build") {
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
-#endif
 
       SECTION("multiple outputs") {
-        // TODO(peck): Test this
+        const auto cmd = dummy_runner.constructCommand({}, {"out1", "out2"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out1 out2: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
       }
 
       SECTION("single failing step") {
-        // TODO(peck): Test this
+        const auto cmd = dummy_runner.constructCommand({"nonexisting"}, {});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::FAILURE);
+      }
+
+      SECTION("failing step and successful step") {
+        const auto fail = dummy_runner.constructCommand({"nonexisting"}, {});
+        const auto success = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule success\n"
+            "  command = " + success + "\n"
+            "rule fail\n"
+            "  command = " + fail + "\n"
+            "build out: success\n"
+            "build out2: fail\n");
+        CHECK(build_manifest(manifest) == BuildResult::FAILURE);
       }
 
       SECTION("independent failing steps") {
-        // TODO(peck): Test this
+        const auto cmd = dummy_runner.constructCommand({"nonexisting"}, {});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out1: cmd\n"
+            "build out2: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::FAILURE);
       }
 
       SECTION("two independent steps") {
-        // TODO(peck): Test this
+        const auto one = dummy_runner.constructCommand({}, {"one"});
+        const auto two = dummy_runner.constructCommand({}, {"two"});
+        const auto manifest = parse(
+            "rule one\n"
+            "  command = " + one + "\n"
+            "rule two\n"
+            "  command = " + two + "\n"
+            "build one: one\n"
+            "build two: two\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, one);
+        dummy_runner.checkCommand(fs, two);
       }
 
       SECTION("two steps in a chain") {
-        // TODO(peck): Test this
+        const auto one = dummy_runner.constructCommand({}, {"one"});
+        const auto two = dummy_runner.constructCommand({"one"}, {"two"});
+        const auto manifest = parse(
+            "rule one\n"
+            "  command = " + one + "\n"
+            "rule two\n"
+            "  command = " + two + "\n"
+            "build two: two one\n"
+            "build one: one\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, one);
+        dummy_runner.checkCommand(fs, two);
       }
 
       SECTION("diamond") {
-        // TODO(peck): Test this
+        const auto one = dummy_runner.constructCommand({}, {"one"});
+        const auto two = dummy_runner.constructCommand({"one"}, {"two"});
+        const auto three = dummy_runner.constructCommand({"one"}, {"three"});
+        const auto four = dummy_runner.constructCommand({"two", "three"}, {"four"});
+        const auto manifest = parse(
+            "rule one\n"
+            "  command = " + one + "\n"
+            "rule two\n"
+            "  command = " + two + "\n"
+            "rule three\n"
+            "  command = " + three + "\n"
+            "rule four\n"
+            "  command = " + four + "\n"
+            "build three: three one\n"
+            "build four: four two three\n"
+            "build one: one\n"
+            "build two: two one\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, one);
+        dummy_runner.checkCommand(fs, two);
+        dummy_runner.checkCommand(fs, three);
+        dummy_runner.checkCommand(fs, four);
       }
 
       SECTION("first step failing in a chain") {
-        // TODO(peck): Test this
+        const auto one = dummy_runner.constructCommand({"nonexisting"}, {"one"});
+        const auto two = dummy_runner.constructCommand({}, {"two"});
+        const auto manifest = parse(
+            "rule one\n"
+            "  command = " + one + "\n"
+            "rule two\n"
+            "  command = " + two + "\n"
+            "build two: two one\n"
+            "build one: one\n");
+        CHECK(build_manifest(manifest) == BuildResult::FAILURE);
+        CHECK_THROWS(dummy_runner.checkCommand(fs, one));
+        CHECK_THROWS(dummy_runner.checkCommand(fs, two));
       }
 
       SECTION("second step failing in a chain") {
-        // TODO(peck): Test this
+        const auto one = dummy_runner.constructCommand({}, {"one"});
+        const auto two = dummy_runner.constructCommand({"nonexisting"}, {"two"});
+        const auto manifest = parse(
+            "rule one\n"
+            "  command = " + one + "\n"
+            "rule two\n"
+            "  command = " + two + "\n"
+            "build two: two one\n"
+            "build one: one\n");
+        CHECK(build_manifest(manifest) == BuildResult::FAILURE);
+        dummy_runner.checkCommand(fs, one);
+        CHECK_THROWS(dummy_runner.checkCommand(fs, two));
       }
 
       SECTION("delete depfile") {

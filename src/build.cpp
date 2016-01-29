@@ -561,8 +561,9 @@ void commandDone(
     break;
 
   case ExitStatus::FAILURE:
-    assert(params.build.remaining_failures);
-    params.build.remaining_failures--;
+    if (params.build.remaining_failures) {
+      params.build.remaining_failures--;
+    }
     break;
 
   case ExitStatus::INTERRUPTED:
@@ -698,14 +699,23 @@ BuildResult build(
       build);
   detail::enqueueBuildCommands(params);
 
+  if (command_runner.empty()) {
+    return BuildResult::NO_WORK_TO_DO;
+  }
+
   while (!command_runner.empty()) {
     if (command_runner.runCommands()) {
       build.interrupted = true;
     }
   }
 
-  // TODO(peck): Report result
-  return BuildResult::SUCCESS;
+  if (build.interrupted) {
+    return BuildResult::INTERRUPTED;
+  } else {
+    return build.remaining_failures == failures_allowed ?
+        BuildResult::SUCCESS :
+        BuildResult::FAILURE;
+  }
 }
 
 }
