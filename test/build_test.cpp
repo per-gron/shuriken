@@ -2,6 +2,8 @@
 
 #include "build.h"
 
+#include "dummy_build_status.h"
+#include "dummy_command_runner.h"
 #include "generators.h"
 #include "in_memory_file_system.h"
 #include "in_memory_invocation_log.h"
@@ -857,7 +859,176 @@ TEST_CASE("Build") {
   }
 
   SECTION("build") {
-    // TODO(peck): Test this
+    DummyBuildStatus status;
+    DummyCommandRunner dummy_runner(fs);
+
+    const auto parse = [&](const std::string &input) {
+      fs.writeFile("build.ninja", input);
+      return parseManifest(paths, fs, "build.ninja");
+    };
+
+    const auto build_manifest = [&](const Manifest &manifest) {
+      return build(
+          clock,
+          fs,
+          dummy_runner,
+          status,
+          log,
+          1,
+          manifest,
+          invocations);
+    };
+
+    SECTION("initial build") {
+      SECTION("empty input") {
+        const auto manifest = parse("");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+      }
+
+#if 0  // TODO(peck): Make this test pass
+      SECTION("single successful step") {
+        const auto cmd = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+      }
+#endif
+
+      SECTION("multiple outputs") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("single failing step") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("independent failing steps") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("two independent steps") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("two steps in a chain") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("diamond") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("first step failing in a chain") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("second step failing in a chain") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("delete depfile") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("create and delete rspfile") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("don't delete rspfile on failure") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("phony as root") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("phony as leaf") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("swallow failures") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("don't swallow too many failures") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("swallow failures but don't run dependent steps") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("order-only deps") {
+        // TODO(peck): Test this
+      }
+    }
+
+    SECTION("rebuild") {
+      SECTION("rebuild is no-op") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("order-only deps rebuild") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("always rebuild console rule") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("always rebuild steps that depend on console rule") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("rebuild when step is different") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("delete stale outputs") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("delete outputs of removed step") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("rebuild when input file changed") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("rebuild when undeclared input file changed") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("don't rebuild when declared but not used input changed") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("rebuild when output changed") {
+        // TODO(peck): Test this
+      }
+    }
+
+    SECTION("interrupted") {
+      SECTION("delete depfile and rspfile after interruption") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("stop build after interruption") {
+        // TODO(peck): Test this
+      }
+
+      SECTION("don't count interrupted command as built") {
+        // TODO(peck): Test this
+      }
+    }
+
+    SECTION("pools") {
+      // TODO(peck): Test this
+    }
   }
 }
 

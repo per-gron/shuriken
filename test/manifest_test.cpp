@@ -31,14 +31,14 @@ void verifyManifest(const Manifest &manifest) {
   }
 }
 
-Manifest parse(Paths &paths, FileSystem &file_system, const char* input) {
+Manifest parse(Paths &paths, FileSystem &file_system, const char *input) {
   file_system.writeFile("build.ninja", input);
   const auto manifest = parseManifest(paths, file_system, "build.ninja");
   verifyManifest(manifest);
   return manifest;
 }
 
-std::string parseError(Paths &paths, FileSystem &file_system, const char* input) {
+std::string parseError(Paths &paths, FileSystem &file_system, const char *input) {
   try {
     parse(paths, file_system, input);
     CHECK(!"parse should have failed");
@@ -48,7 +48,7 @@ std::string parseError(Paths &paths, FileSystem &file_system, const char* input)
   }
 }
 
-Step parseStep(Paths &paths, FileSystem &file_system, const char* input) {
+Step parseStep(Paths &paths, FileSystem &file_system, const char *input) {
   const auto manifest = parse(paths, file_system, input);
   REQUIRE(manifest.steps.size() == 1);
   return manifest.steps[0];

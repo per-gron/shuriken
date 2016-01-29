@@ -124,7 +124,14 @@ Path:
     some other path that we have seen. That means hardlink and could break the build.
 
 Large things remaining to do:
-* The actual build algorithm
+* Unit test shk::build
+* Validate that the command did not read a file that is an output
+  of a target that it does not depend on directly or indirectly.
+* Fail build on linting errors
+* Handle restat rules
+* Handle build pools
+* detail::deleteOldOutputs
+* detail::deleteStaleOutputs
 * Stat cache for use by Paths
 * Rebuild manifest
 * Limit parallelism / max load average
