@@ -23,7 +23,7 @@ Fingerprint::Stat fingerprintStat(
         !S_ISREG(result.mode) &&
         !S_ISDIR(result.mode)) {
       throw IoError(
-          "Can only fingerprint regular files, directories and links", 0);
+          "Can only fingerprint regular files, directories and links: " + path, 0);
     }
   }
 
