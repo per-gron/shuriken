@@ -360,6 +360,9 @@ bool ShurikenMain::openInvocationLog() {
 
     try {
       _invocation_log = openPersistentInvocationLog(*_file_system, path);
+      // TODO(peck): Remove me once the persistent invocation log actually exists
+      _invocation_log = std::unique_ptr<InvocationLog>(
+          new InMemoryInvocationLog());
     } catch (const IoError &io_error) {
       error("opening invocation log: %s", io_error.what());
       return false;
