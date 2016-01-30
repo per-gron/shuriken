@@ -83,6 +83,7 @@ private:
 std::unique_ptr<BuildStatus> makeTerminalBuildStatus(
     bool verbose,
     int parallelism,
+    int total_steps,
     const char *progress_status_format);
 
 }  // namespace shk

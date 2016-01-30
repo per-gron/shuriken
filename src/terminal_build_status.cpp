@@ -26,16 +26,19 @@ class TerminalBuildStatus : public BuildStatus {
   explicit TerminalBuildStatus(
       bool verbose,
       int parallelism,
+      int total_steps,
       const char *progress_status_format)
       : _verbose(verbose),
+        _total_steps(total_steps),
         _progress_status_format(progress_status_format),
         _current_rate(parallelism) {}
 
-  void planHasTotalSteps(int total) {
-    _total_steps = total;
+  ~TerminalBuildStatus() override {
+    _printer.setConsoleLocked(false);
+    _printer.printOnNewLine("");
   }
 
-  void stepStarted(const Step &step) {
+  void stepStarted(const Step &step) override {
     ++_started_steps;
 
     const auto use_console = isConsolePool(step.pool_name);
@@ -52,7 +55,7 @@ class TerminalBuildStatus : public BuildStatus {
   void stepFinished(
       const Step &step,
       bool success,
-      const std::string &output) {
+      const std::string &output) override {
     ++_finished_steps;
 
     const auto use_console = isConsolePool(step.pool_name);
@@ -92,11 +95,6 @@ class TerminalBuildStatus : public BuildStatus {
       }
       _printer.printOnNewLine(final_output);
     }
-  }
-
-  void buildFinished() {
-    _printer.setConsoleLocked(false);
-    _printer.printOnNewLine("");
   }
 
   /**
@@ -216,9 +214,9 @@ class TerminalBuildStatus : public BuildStatus {
 
   const bool _verbose;
 
-  int _started_steps;
-  int _finished_steps;
-  int _total_steps;
+  int _started_steps = 0;
+  int _finished_steps = 0;
+  const int _total_steps;
 
   /**
    * Prints progress output.
@@ -239,10 +237,12 @@ class TerminalBuildStatus : public BuildStatus {
 std::unique_ptr<BuildStatus> makeTerminalBuildStatus(
     bool verbose,
     int parallelism,
+    int total_steps,
     const char *progress_status_format) {
   return std::unique_ptr<BuildStatus>(new TerminalBuildStatus(
       verbose,
       parallelism,
+      total_steps,
       progress_status_format));
 }
 

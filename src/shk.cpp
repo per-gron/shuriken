@@ -391,6 +391,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
   const auto build_status = makeTerminalBuildStatus(
       _config.verbose,
       _config.parallelism,
+      123, // TODO(peck): Do the right thing here
       "TODO(peck)");
 
   try {
