@@ -477,7 +477,7 @@ int readFlags(int *argc, char ***argv,
 
   int opt;
   while (!options->tool &&
-         (opt = getopt_long(*argc, *argv, "f:j:k:l:nt:v:C:h", kLongOptions,
+         (opt = getopt_long(*argc, *argv, "f:j:k:l:nt:vC:h", kLongOptions,
                             NULL)) != -1) {
     switch (opt) {
       case 'f':
