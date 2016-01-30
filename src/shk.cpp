@@ -388,18 +388,23 @@ int ShurikenMain::runBuild(int argc, char **argv) {
             *_file_system,
             makeRealCommandRunner()));
 
-  const auto build_status = makeTerminalBuildStatus(
-      _config.verbose,
-      _config.parallelism,
-      123, // TODO(peck): Do the right thing here
-      "TODO(peck)");
-
   try {
     const auto result = build(
         getTime,
         *_file_system,
         *command_runner,
-        *build_status,
+        [this](int total_steps) {
+          const char * status_format = getenv("NINJA_STATUS");
+          if (!status_format) {
+            status_format = "[%s/%t] ";
+          }
+
+          return makeTerminalBuildStatus(
+              _config.verbose,
+              _config.parallelism,
+              total_steps,
+              status_format);
+        },
         *_invocation_log,
         _config.failures_allowed,
         _manifest,

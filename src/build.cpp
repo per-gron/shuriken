@@ -530,6 +530,11 @@ void commandDone(
     deleteBuildProduct(params.file_system, path);
   });
 
+  params.build_status.stepFinished(
+      step,
+      result.exit_status == ExitStatus::SUCCESS,
+      result.output);
+
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
     // TODO(peck): Do something about result.linting_errors
@@ -612,6 +617,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
 
   // TODO(peck): What about pools?
 
+  params.build_status.stepStarted(step);
   params.command_runner.invoke(
       step.command,
       isConsolePool(step.pool_name) ? UseConsole::YES : UseConsole::NO,
@@ -654,7 +660,7 @@ BuildResult build(
     const Clock &clock,
     FileSystem &file_system,
     CommandRunner &command_runner,
-    BuildStatus &build_status,
+    const MakeBuildStatus &make_build_status,
     InvocationLog &invocation_log,
     size_t failures_allowed,
     const Manifest &manifest,
@@ -683,11 +689,13 @@ BuildResult build(
 
   detail::discardCleanSteps(clean_steps, build);
 
+  const auto build_status = make_build_status(234);  // TODO(peck): Count steps
+
   detail::BuildCommandParameters params(
       clock,
       file_system,
       command_runner,
-      build_status,
+      *build_status,
       invocation_log,
       invocations,
       manifest,

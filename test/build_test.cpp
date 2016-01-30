@@ -859,7 +859,6 @@ TEST_CASE("Build") {
   }
 
   SECTION("build") {
-    DummyBuildStatus status;
     DummyCommandRunner dummy_runner(fs);
 
     const auto parse = [&](const std::string &input) {
@@ -873,7 +872,10 @@ TEST_CASE("Build") {
           clock,
           fs,
           dummy_runner,
-          status,
+          [](int total_steps) {
+            return std::unique_ptr<BuildStatus>(
+                new DummyBuildStatus());
+          },
           log,
           failures_allowed,
           manifest,

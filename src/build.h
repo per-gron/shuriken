@@ -285,6 +285,9 @@ enum class BuildResult {
   FAILURE,
 };
 
+using MakeBuildStatus = std::function<
+    std::unique_ptr<BuildStatus> (int total_steps)>;
+
 /**
  * Main entry point for performing a build.
  */
@@ -292,7 +295,7 @@ BuildResult build(
     const Clock &clock,
     FileSystem &file_system,
     CommandRunner &command_runner,
-    BuildStatus &build_status,
+    const MakeBuildStatus &make_build_status,
     InvocationLog &invocation_log,
     size_t failures_allowed,
     const Manifest &manifest,

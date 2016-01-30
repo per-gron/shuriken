@@ -23,7 +23,7 @@ namespace {
 
 class TerminalBuildStatus : public BuildStatus {
  public:
-  explicit TerminalBuildStatus(
+  TerminalBuildStatus(
       bool verbose,
       int parallelism,
       int total_steps,
