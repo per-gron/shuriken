@@ -33,8 +33,9 @@ class Stopwatch {
   /**
    * Seconds since restart() call.
    */
-  std::chrono::high_resolution_clock::duration elapsed() const {
-    return _clock() - _started;
+  double elapsed() const {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        _clock() - _started).count() / 1000.0;
   }
 
   void restart() { _started = _clock(); }

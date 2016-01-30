@@ -108,6 +108,14 @@ TEST_CASE("Step") {
       CHECK(a.hash() != b.hash());
     }
   }
+
+  SECTION("isConsolePool") {
+    CHECK(!isConsolePool(""));
+    CHECK(!isConsolePool("a"));
+    CHECK(!isConsolePool("consol"));
+    CHECK(!isConsolePool("console_"));
+    CHECK(isConsolePool("console"));
+  }
 }
 
 }  // namespace shk

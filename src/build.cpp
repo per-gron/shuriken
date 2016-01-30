@@ -51,10 +51,6 @@ Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
 
 namespace detail {
 
-bool isConsolePool(const std::string &pool_name) {
-  return pool_name == "console";
-}
-
 void markStepNodeAsDone(Build &build, StepIndex step_idx) {
   const auto &dependents = build.step_nodes[step_idx].dependents;
   for (const auto dependent_idx : dependents) {

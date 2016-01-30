@@ -112,4 +112,8 @@ struct Step {
   Hash hash() const;
 };
 
+inline bool isConsolePool(const std::string &pool_name) {
+  return pool_name == "console";
+}
+
 }  // namespace shk

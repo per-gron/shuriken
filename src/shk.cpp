@@ -388,7 +388,10 @@ int ShurikenMain::runBuild(int argc, char **argv) {
             *_file_system,
             makeRealCommandRunner()));
 
-  const auto build_status = makeTerminalBuildStatus();
+  const auto build_status = makeTerminalBuildStatus(
+      _config.verbose,
+      _config.parallelism,
+      "TODO(peck)");
 
   try {
     const auto result = build(
