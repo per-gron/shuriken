@@ -207,6 +207,13 @@ TEST_CASE("Fingerprint") {
       CHECK(!result.should_update);
     }
 
+    SECTION("missing file before and after, zero timestamp") {
+      const auto initial_fp = takeFingerprint(fs, 0, "b");
+      const auto result = fingerprintMatches(fs, "b", initial_fp);
+      CHECK(result.clean);
+      CHECK(!result.should_update);
+    }
+
     SECTION("missing file before but not after") {
       const auto initial_fp = takeFingerprint(fs, now, "b");
       fs.writeFile("b", initial_contents);

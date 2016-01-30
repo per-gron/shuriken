@@ -80,7 +80,8 @@ MatchesResult fingerprintMatches(
   MatchesResult result;
   const auto current = fingerprintStat(file_system, path);
   if (current == fp.stat &&
-      fp.stat.mtime < fp.timestamp && fp.stat.ctime < fp.timestamp) {
+      (fp.stat.mode == 0 || (
+        fp.stat.mtime < fp.timestamp && fp.stat.ctime < fp.timestamp))) {
     // The file's current stat information and the stat information of the
     // fingerprint exactly match. Furthermore, the fingerprint is strictly
     // newer than the files. This means that unless mtime/ctime has been
