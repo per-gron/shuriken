@@ -124,6 +124,8 @@ Path:
     some other path that we have seen. That means hardlink and could break the build.
 
 Large things remaining to do:
+* BuildStatus
+* Invocation log
 * Unit test shk::build
 * Validate that the command did not read a file that is an output
   of a target that it does not depend on directly or indirectly.
@@ -135,9 +137,7 @@ Large things remaining to do:
 * Actually respect when targets are specified on the command line
 * Stat cache for use by Paths
 * Rebuild manifest
-* Invocation log
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
-* BuildStatus
 * CLI tools:
   * deps
   * clean

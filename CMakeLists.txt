@@ -64,6 +64,7 @@ add_library(shklib
   src/sandbox_parser.h
   src/step.cpp
   src/step.h
+  src/stopwatch.h
   src/string_piece.h
   src/terminal_build_status.cpp
   src/terminal_build_status.h
@@ -127,6 +128,7 @@ add_executable(shk_test
   test/real_command_runner_test.cpp
   test/sandbox_parser_test.cpp
   test/step_test.cpp
+  test/stopwatch_test.cpp
   test/tracing_command_runner_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
