@@ -246,8 +246,10 @@ CleanSteps computeCleanSteps(
  * Before the actual build is performed, this function goes through the build
  * graph and removes steps that don't need to be built because they are already
  * built.
+ *
+ * Returns the number of discarded steps.
  */
-void discardCleanSteps(
+int discardCleanSteps(
     const CleanSteps &clean_steps,
     Build &build);
 
@@ -275,6 +277,8 @@ void deleteStaleOutputs(
     InvocationLog &invocation_log,
     const StepHashes &step_hashes,
     const Invocations &invocations) throw(IoError);
+
+int countStepsToBuild(const Build &build);
 
 }  // namespace detail
 

@@ -701,7 +701,7 @@ TEST_CASE("Build") {
 
     SECTION("empty input") {
       Build build;
-      discardCleanSteps(CleanSteps(), build);
+      CHECK(discardCleanSteps(CleanSteps(), build) == 0);
     }
 
     SECTION("all clean (independent)") {
@@ -711,9 +711,9 @@ TEST_CASE("Build") {
       invocations.entries[multiple_outputs.hash()];
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 2);
-      discardCleanSteps(
+      CHECK(discardCleanSteps(
           compute_clean_steps(build, invocations, manifest),
-          build);
+          build) == 2);
       CHECK(build.ready_steps.empty());
     }
 
@@ -721,9 +721,9 @@ TEST_CASE("Build") {
       manifest.steps = { single_output_b, multiple_outputs };
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 2);
-      discardCleanSteps(
+      CHECK(discardCleanSteps(
           compute_clean_steps(build, invocations, manifest),
-          build);
+          build) == 0);
       CHECK(build.ready_steps.size() == 2);
     }
 
@@ -733,9 +733,9 @@ TEST_CASE("Build") {
       invocations.entries[single_output_b.hash()];
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 2);
-      discardCleanSteps(
+      CHECK(discardCleanSteps(
           compute_clean_steps(build, invocations, manifest),
-          build);
+          build) == 1);
       CHECK(build.ready_steps.size() == 1);
     }
 
@@ -747,12 +747,14 @@ TEST_CASE("Build") {
       manifest.steps = { single_output, root };
       // Add empty entry to mark clean
       invocations.entries[single_output.hash()];
-      invocations.entries[root.hash()];
+      invocations.entries[root.hash()].input_files.emplace_back(
+          single_output.outputs[0],
+          Fingerprint());
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 1);
-      discardCleanSteps(
+      CHECK(discardCleanSteps(
           compute_clean_steps(build, invocations, manifest),
-          build);
+          build) == 2);
       CHECK(build.ready_steps.empty());
     }
 
@@ -763,9 +765,9 @@ TEST_CASE("Build") {
       auto build = computeBuild(manifest, invocations);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
-      discardCleanSteps(
+      CHECK(discardCleanSteps(
           compute_clean_steps(build, invocations, manifest),
-          build);
+          build) == 1);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 1);
     }
@@ -777,9 +779,9 @@ TEST_CASE("Build") {
       auto build = computeBuild(manifest, invocations);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
-      discardCleanSteps(
+      CHECK(discardCleanSteps(
           compute_clean_steps(build, invocations, manifest),
-          build);
+          build) == 0);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
     }
@@ -855,6 +857,10 @@ TEST_CASE("Build") {
   }
 
   SECTION("deleteStaleOutputs") {
+    // TODO(peck): Test this
+  }
+
+  SECTION("countStepsToBuild") {
     // TODO(peck): Test this
   }
 

@@ -19,7 +19,9 @@ Fingerprint::Stat fingerprintStat(
     result.mtime = stat.timestamps.mtime;
     result.ctime = stat.timestamps.ctime;
 
-    if (!S_ISLNK(result.mode) && !S_ISREG(result.mode) && !S_ISDIR(result.mode)) {
+    if (!S_ISLNK(result.mode) &&
+        !S_ISREG(result.mode) &&
+        !S_ISDIR(result.mode)) {
       throw IoError(
           "Can only fingerprint regular files, directories and links", 0);
     }

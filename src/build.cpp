@@ -444,9 +444,11 @@ CleanSteps computeCleanSteps(
   return result;
 }
 
-void discardCleanSteps(
+int discardCleanSteps(
     const CleanSteps &clean_steps,
     Build &build) {
+  int discarded_steps = 0;
+
   // This function goes through and consumes build.ready_steps. While doing that
   // it adds an element to new_ready_steps for each dirty step that it
   // encounters. When this function's search is over, it replaces
@@ -468,6 +470,7 @@ void discardCleanSteps(
     visited[step_idx] = true;
 
     if (clean_steps[step_idx]) {
+      discarded_steps++;
       markStepNodeAsDone(build, step_idx);
     } else {
       new_ready_steps.push_back(step_idx);
@@ -475,6 +478,8 @@ void discardCleanSteps(
   }
 
   build.ready_steps.swap(new_ready_steps);
+
+  return discarded_steps;
 }
 
 void deleteBuildProduct(
@@ -654,6 +659,18 @@ void deleteStaleOutputs(
   }
 }
 
+int countStepsToBuild(const Build &build) {
+  int steps = 0;
+
+  for (const auto &step_node : build.step_nodes) {
+    if (step_node.should_build) {
+      steps++;
+    }
+  }
+
+  return steps;
+}
+
 }  // namespace detail
 
 BuildResult build(
@@ -687,9 +704,10 @@ BuildResult build(
   const auto clean_steps = detail::computeCleanSteps(
       clock, file_system, invocation_log, invocations, step_hashes, build);
 
-  detail::discardCleanSteps(clean_steps, build);
+  const auto discarded_steps = detail::discardCleanSteps(clean_steps, build);
 
-  const auto build_status = make_build_status(234);  // TODO(peck): Count steps
+  const auto build_status = make_build_status(
+      countStepsToBuild(build) - discarded_steps);
 
   detail::BuildCommandParameters params(
       clock,
