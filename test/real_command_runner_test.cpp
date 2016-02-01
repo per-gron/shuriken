@@ -127,6 +127,23 @@ TEST_CASE("SubprocessSet") {
     CHECK(num_cmds == done);
   }
 
+  SECTION("DontRunCallbackFromDestructor") {
+    bool called = false;
+
+    {
+      const auto runner = makeRealCommandRunner();
+      runner->invoke(
+          "/bin/echo",
+          UseConsole::NO,
+          [&](CommandRunner::Result &&result) {
+            called = true;
+          });
+    }
+
+    CHECK(!called);
+  }
+
+
 #ifndef _WIN32
 
   SECTION("InterruptChild") {

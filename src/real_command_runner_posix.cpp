@@ -48,7 +48,7 @@ class Subprocess {
  private:
   Subprocess(const CommandRunner::Callback &callback, UseConsole use_console);
 
-  void finish();
+  void finish(bool invoke_callback);
   void start(class SubprocessSet *set, const std::string &command);
   void onPipeReady();
 
@@ -114,7 +114,7 @@ Subprocess::~Subprocess() {
   }
   // Reap child if forgotten.
   if (_pid != -1) {
-    finish();
+    finish(false);
   }
 }
 
@@ -233,7 +233,7 @@ ExitStatus computeExitStatus(int status) {
 
 }  // anonymous namespace
 
-void Subprocess::finish() {
+void Subprocess::finish(bool invoke_callback) {
   assert(_pid != -1);
   int status;
   if (waitpid(_pid, &status, 0) < 0) {
@@ -243,10 +243,12 @@ void Subprocess::finish() {
 
   const auto exit_status = computeExitStatus(status);
 
-  CommandRunner::Result result;
-  result.exit_status = exit_status;
-  result.output = std::move(_buf);
-  _callback(std::move(result));
+  if (invoke_callback) {
+    CommandRunner::Result result;
+    result.exit_status = exit_status;
+    result.output = std::move(_buf);
+    _callback(std::move(result));
+  }
 }
 
 bool Subprocess::done() const {
@@ -356,7 +358,7 @@ bool SubprocessSet::runCommands() {
     if (fds[cur_nfd++].revents) {
       (*i)->onPipeReady();
       if ((*i)->done()) {
-        (*i)->finish();
+        (*i)->finish(true);
         i = _running.erase(i);
         continue;
       }
@@ -402,7 +404,7 @@ bool SubprocessSet::runCommands() {
     if (fd >= 0 && FD_ISSET(fd, &set)) {
       (*i)->onPipeReady();
       if ((*i)->done()) {
-        (*i)->finish();
+        (*i)->finish(true);
         i = _running.erase(i);
         continue;
       }

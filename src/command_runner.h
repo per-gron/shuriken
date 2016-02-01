@@ -47,7 +47,11 @@ class CommandRunner {
    * It is legal to call invoke even from a callback of invoke (ie within a
    * runCommands invocation).
    *
-   * The callback is always invokedfrom within a runCommands call.
+   * The callback is always invoked from within a runCommands call. If the
+   * CommandRunner object is destroyed before all commands have been run,
+   * potential resources should be cleaned up but the callback is not invoked.
+   * To ensure that all callbacks are invoked, runCommands() must be called
+   * until the CommandRunner is empty().
    */
   virtual void invoke(
       const std::string &command,
