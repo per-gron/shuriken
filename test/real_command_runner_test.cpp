@@ -164,6 +164,15 @@ TEST_CASE("SubprocessSet") {
     verifyInterrupted("kill -TERM $PPID ; sleep 1");
   }
 
+  SECTION("InterruptChildWithSigHup") {
+    const auto result = runCommand("kill -HUP $$");
+    CHECK(result.exit_status == ExitStatus::INTERRUPTED);
+  }
+
+  SECTION("InterruptParentWithSigHup") {
+    verifyInterrupted("kill -HUP $PPID ; sleep 1");
+  }
+
   // A shell command to check if the current process is connected to a terminal.
   // This is different from having stdin/stdout/stderr be a terminal. (For
   // instance consider the command "yes < /dev/null > /dev/null 2>&1".

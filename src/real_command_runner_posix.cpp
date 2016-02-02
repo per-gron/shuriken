@@ -96,6 +96,7 @@ class SubprocessSet : public CommandRunner {
   static bool isInterrupted() { return _interrupted != 0; }
 
   struct sigaction _old_int_act;
+  struct sigaction _old_hup_act;
   struct sigaction _old_term_act;
   sigset_t _old_mask;
 
@@ -148,6 +149,9 @@ void Subprocess::start(SubprocessSet *set, const std::string &command) {
         break;
       }
       if (sigaction(SIGTERM, &set->_old_term_act, 0) < 0) {
+        break;
+      }
+      if (sigaction(SIGHUP, &set->_old_hup_act, 0) < 0) {
         break;
       }
       if (sigprocmask(SIG_SETMASK, &set->_old_mask, 0) < 0) {
@@ -224,7 +228,9 @@ ExitStatus computeExitStatus(int status) {
       return ExitStatus::SUCCESS;
     }
   } else if (WIFSIGNALED(status)) {
-    if (WTERMSIG(status) == SIGINT || WTERMSIG(status) == SIGTERM) {
+    if (WTERMSIG(status) == SIGINT ||
+        WTERMSIG(status) == SIGTERM ||
+        WTERMSIG(status) == SIGHUP) {
       return ExitStatus::INTERRUPTED;
     }
   }
@@ -272,6 +278,8 @@ void SubprocessSet::handlePendingInterruption() {
     _interrupted = SIGINT;
   } else if (sigismember(&pending, SIGTERM)) {
     _interrupted = SIGTERM;
+  } else if (sigismember(&pending, SIGHUP)) {
+    _interrupted = SIGHUP;
   }
 }
 
@@ -280,6 +288,7 @@ SubprocessSet::SubprocessSet() {
   sigemptyset(&set);
   sigaddset(&set, SIGINT);
   sigaddset(&set, SIGTERM);
+  sigaddset(&set, SIGHUP);
   if (sigprocmask(SIG_BLOCK, &set, &_old_mask) < 0) {
     fatal("sigprocmask: %s", strerror(errno));
   }
@@ -293,6 +302,9 @@ SubprocessSet::SubprocessSet() {
   if (sigaction(SIGTERM, &act, &_old_term_act) < 0) {
     fatal("sigaction: %s", strerror(errno));
   }
+  if (sigaction(SIGHUP, &act, &_old_hup_act) < 0) {
+    fatal("sigaction: %s", strerror(errno));
+  }
 }
 
 SubprocessSet::~SubprocessSet() {
@@ -302,6 +314,9 @@ SubprocessSet::~SubprocessSet() {
     fatal("sigaction: %s", strerror(errno));
   }
   if (sigaction(SIGTERM, &_old_term_act, 0) < 0) {
+    fatal("sigaction: %s", strerror(errno));
+  }
+  if (sigaction(SIGHUP, &_old_hup_act, 0) < 0) {
     fatal("sigaction: %s", strerror(errno));
   }
   if (sigprocmask(SIG_SETMASK, &_old_mask, 0) < 0) {
