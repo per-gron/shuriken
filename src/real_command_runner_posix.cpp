@@ -14,7 +14,6 @@
 
 #include "real_command_runner.h"
 
-#include <list>
 #include <string>
 #include <vector>
 #include <queue>
@@ -75,7 +74,7 @@ class SubprocessSet : public CommandRunner {
   void clear();
 
   size_t size() const override {
-    return _running.size();
+    return _running.size() + _finished.size();
   }
 
   bool canRunMore() const override {
@@ -83,7 +82,8 @@ class SubprocessSet : public CommandRunner {
   }
 
  private:
-  std::list<std::unique_ptr<Subprocess>> _running;
+  std::vector<std::unique_ptr<Subprocess>> _running;
+  std::vector<std::unique_ptr<Subprocess>> _finished;
 
   static void setInterruptedFlag(int signum);
   static void handlePendingInterruption();
@@ -344,6 +344,11 @@ bool SubprocessSet::runCommands() {
   vector<pollfd> fds;
   nfds_t nfds = 0;
 
+  for (const auto &subprocess : _finished) {
+    subprocess->finish(true);
+  }
+  _finished.clear();
+
   for (const auto &subprocess : _running) {
     int fd = subprocess->_fd;
     if (fd < 0) {
@@ -352,6 +357,10 @@ bool SubprocessSet::runCommands() {
     pollfd pfd = { fd, POLLIN | POLLPRI, 0 };
     fds.push_back(pfd);
     ++nfds;
+  }
+
+  if (nfds == 0) {
+    return false;
   }
 
   _interrupted = 0;
@@ -379,7 +388,7 @@ bool SubprocessSet::runCommands() {
     if (fds[cur_nfd++].revents) {
       (*i)->onPipeReady();
       if ((*i)->done()) {
-        (*i)->finish(true);
+        _finished.push_back(std::move(*i));
         i = _running.erase(i);
         continue;
       }
@@ -395,6 +404,11 @@ bool SubprocessSet::runCommands() {
   int nfds = 0;
   FD_ZERO(&set);
 
+  for (const auto &subprocess : _finished) {
+    subprocess->finish(true);
+  }
+  _finished.clear();
+
   for (const auto &subprocess : _running) {
     int fd = subprocess->_fd;
     if (fd >= 0) {
@@ -403,6 +417,10 @@ bool SubprocessSet::runCommands() {
         nfds = fd + 1;
       }
     }
+  }
+
+  if (nfds == 0) {
+    return false;
   }
 
   _interrupted = 0;
@@ -425,7 +443,7 @@ bool SubprocessSet::runCommands() {
     if (fd >= 0 && FD_ISSET(fd, &set)) {
       (*i)->onPipeReady();
       if ((*i)->done()) {
-        (*i)->finish(true);
+        _finished.push_back(std::move(*i));
         i = _running.erase(i);
         continue;
       }

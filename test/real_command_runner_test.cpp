@@ -143,7 +143,6 @@ TEST_CASE("SubprocessSet") {
     CHECK(!called);
   }
 
-
 #ifndef _WIN32
 
   SECTION("InterruptChild") {
