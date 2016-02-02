@@ -268,10 +268,11 @@ void SubprocessSet::handlePendingInterruption() {
     perror("shk: sigpending");
     return;
   }
-  if (sigismember(&pending, SIGINT))
+  if (sigismember(&pending, SIGINT)) {
     _interrupted = SIGINT;
-  else if (sigismember(&pending, SIGTERM))
+  } else if (sigismember(&pending, SIGTERM)) {
     _interrupted = SIGTERM;
+  }
 }
 
 SubprocessSet::SubprocessSet() {
