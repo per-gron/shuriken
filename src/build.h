@@ -114,12 +114,6 @@ struct Build {
   std::vector<StepIndex> ready_steps;
 
   /**
-   * interrupted is set to true when the user interrupts the build. When this
-   * has happened, no more build commands should be invoked.
-   */
-  bool interrupted = false;
-
-  /**
    * The number of commands that are allowed to fail before the build stops. A
    * value of 0 means that too many commands have failed and the build should
    * stop.

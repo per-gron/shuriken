@@ -255,7 +255,6 @@ TEST_CASE("Build") {
       const auto build = computeBuild(Manifest());
       CHECK(build.step_nodes.empty());
       CHECK(build.ready_steps.empty());
-      CHECK(build.interrupted == false);
       CHECK(build.remaining_failures == 1);
     }
 

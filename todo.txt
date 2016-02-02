@@ -124,7 +124,15 @@ Path:
     some other path that we have seen. That means hardlink and could break the build.
 
 Large things remaining to do:
-* BuildStatus
+* Don't use description when it's empty
+* Needs means to whitelist file accesses
+  * read /dev/random
+  * read/write /dev/dtracehelper
+  * Types of whitelist entries
+    - allow read/write/readwrite
+  * Other related things:
+    * For caching, some path prefixes could be given names, to handle absolute paths
+    * Might be other things where the linter can be controlled
 * Invocation log
 * Unit test shk::build
 * Validate that the command did not read a file that is an output
@@ -151,6 +159,7 @@ Large things remaining to do:
 * Caching
 * Distributed caching
 
+* Unit test BuildStatus
 * Write documentation
 * Path case folding
 * See if adding HAVE_SSSE3, HAVE_XOP, HAVE_SSE41 etc flags for blake2 makes sense

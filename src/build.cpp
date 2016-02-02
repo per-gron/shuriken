@@ -566,14 +566,11 @@ void commandDone(
     }
     break;
 
+  case ExitStatus::INTERRUPTED:
   case ExitStatus::FAILURE:
     if (params.build.remaining_failures) {
       params.build.remaining_failures--;
     }
-    break;
-
-  case ExitStatus::INTERRUPTED:
-    params.build.interrupted = true;
     break;
   }
 
@@ -598,7 +595,6 @@ void deleteOldOutputs(
 
 bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   if (params.build.ready_steps.empty() ||
-      params.build.interrupted ||
       !params.command_runner.canRunMore() ||
       params.build.remaining_failures == 0) {
     return false;
@@ -727,17 +723,13 @@ BuildResult build(
 
   while (!command_runner.empty()) {
     if (command_runner.runCommands()) {
-      build.interrupted = true;
+      return BuildResult::INTERRUPTED;
     }
   }
 
-  if (build.interrupted) {
-    return BuildResult::INTERRUPTED;
-  } else {
-    return build.remaining_failures == failures_allowed ?
-        BuildResult::SUCCESS :
-        BuildResult::FAILURE;
-  }
+  return build.remaining_failures == failures_allowed ?
+      BuildResult::SUCCESS :
+      BuildResult::FAILURE;
 }
 
 }
