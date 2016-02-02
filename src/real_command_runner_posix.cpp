@@ -194,7 +194,7 @@ void Subprocess::start(SubprocessSet *set, const std::string &command) {
 
     // If we get here, something went wrong; the execl should have
     // replaced us.
-    char* err = strerror(errno);
+    char *err = strerror(errno);
     if (write(error_pipe, err, strlen(err)) < 0) {
       // If the write fails, there's nothing we can do.
       // But this block seems necessary to silence the warning.
@@ -210,10 +210,13 @@ void Subprocess::onPipeReady() {
   ssize_t len = read(_fd, buf, sizeof(buf));
   if (len > 0) {
     _buf.append(buf, len);
-  } else {
-    if (len < 0) {
+  } else if (len < 0) {
+    if (errno == EINTR) {
+      return;
+    } else {
       fatal("read: %s", strerror(errno));
     }
+  } else {
     close(_fd);
     _fd = -1;
   }
@@ -242,8 +245,10 @@ ExitStatus computeExitStatus(int status) {
 void Subprocess::finish(bool invoke_callback) {
   assert(_pid != -1);
   int status;
-  if (waitpid(_pid, &status, 0) < 0) {
-    fatal("waitpid(%d): %s", _pid, strerror(errno));
+  while (waitpid(_pid, &status, 0) < 0) {
+    if (errno != EINTR) {
+      fatal("waitpid(%d): %s", _pid, strerror(errno));
+    }
   }
   _pid = -1;
 
