@@ -34,6 +34,8 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
     read = true;
     write = true;
     truncate_or_create = true;
+  } else {
+    throw IoError("Unsupported mode " + mode_string, 0);
   }
 
   const auto l = lookup(path);

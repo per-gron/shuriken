@@ -132,8 +132,20 @@ TEST_CASE("InMemoryFileSystem") {
     }
   }
 
+  SECTION("open with bad mode") {
+    CHECK_THROWS_AS(fs.open(abc, ""), IoError);
+  }
+
   SECTION("open for writing") {
     fs.open(abc, "w");
+
+    const auto stat = fs.stat(abc);
+    CHECK(stat.result == 0);
+    CHECK(S_ISREG(stat.metadata.mode));
+  }
+
+  SECTION("open for writing in binary") {
+    fs.open(abc, "wb");
 
     const auto stat = fs.stat(abc);
     CHECK(stat.result == 0);
