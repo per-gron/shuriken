@@ -225,8 +225,9 @@ class PersistentFileSystem : public FileSystem {
       append(buf, len);
     }
     if (ferror(f)) {
+      const auto err = errno;
       fclose(f);
-      throw IoError(strerror(errno), errno);  // XXX errno?
+      throw IoError(strerror(err), err);
     }
     fclose(f);
 #endif
