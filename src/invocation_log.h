@@ -29,6 +29,9 @@ class InvocationLog {
    * Writes an entry in the invocation log that Shuriken has created a
    * directory. This will cause Shuriken to delete the directory in subsequent
    * invocations if it cleans up the last file of that directory.
+   *
+   * It is recommended to only provide normalized paths to this method. For
+   * an explanation why, see removedDirectory.
    */
   virtual void createdDirectory(const std::string &path) throw(IoError) = 0;
 
@@ -36,6 +39,11 @@ class InvocationLog {
    * Writes an entry in the invocation log stating that Shuriken no longer is
    * responsible for the given directory. This should not be called unless the
    * given folder has been deleted in a cleanup process (or if it's gone).
+   *
+   * This method does not have any intelligence when it comes to paths; the
+   * provided path must be byte equal to the path that was previously provided
+   * to createdDirectory. For this reason it is recommended to only give
+   * normalized paths to this method and createdDirectory.
    */
   virtual void removedDirectory(const std::string &path) throw(IoError) = 0;
 

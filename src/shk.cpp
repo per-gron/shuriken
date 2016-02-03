@@ -323,13 +323,16 @@ bool ShurikenMain::readAndOpenInvocationLog() {
   InvocationLogParseResult parse_result;
 
   try {
-    parse_result = parsePersistentInvocationLog(*_file_system, path);
+    parse_result = parsePersistentInvocationLog(_paths, *_file_system, path);
     _invocations = std::move(parse_result.invocations);
     if (!parse_result.warning.empty()) {
       warning("%s", parse_result.warning.c_str());
     }
   } catch (const IoError &io_error) {
     error("loading invocation log %s: %s", path.c_str(), io_error.what());
+    return false;
+  } catch (const ParseError &parse_error) {
+    error("parsing invocation log %s: %s", path.c_str(), parse_error.what());
     return false;
   }
 
@@ -348,7 +351,10 @@ bool ShurikenMain::readAndOpenInvocationLog() {
 
     try {
       _invocation_log = openPersistentInvocationLog(
-          *_file_system, path, std::move(parse_result.path_ids));
+          *_file_system,
+          path,
+          std::move(parse_result.path_ids),
+          parse_result.entry_count);
       // TODO(peck): Remove me once the persistent invocation log actually exists
       _invocation_log = std::unique_ptr<InvocationLog>(
           new InMemoryInvocationLog());
@@ -376,9 +382,10 @@ int ShurikenMain::runBuild(int argc, char **argv) {
         getLoadAverage,
         _config.max_load_average,
         _config.parallelism,
-        makeTracingCommandRunner(
+        makeRealCommandRunner()
+        /*makeTracingCommandRunner(
             *_file_system,
-            makeRealCommandRunner()));
+            makeRealCommandRunner())*/);
 
   try {
     const auto result = build(
