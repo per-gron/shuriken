@@ -2,11 +2,12 @@
 
 namespace shk {
 
-std::pair<Invocations, std::string> parsePersistentInvocationLog(
+InvocationLogParseResult parsePersistentInvocationLog(
     FileSystem &file_system,
     const std::string &log_path) throw(IoError) {
+  InvocationLogParseResult result;
   // TODO(peck): Implement me
-  return std::make_pair(Invocations(), "");
+  return result;
 }
 
 /**
@@ -16,7 +17,9 @@ std::pair<Invocations, std::string> parsePersistentInvocationLog(
  * before, in a separate step.
  */
 std::unique_ptr<InvocationLog> openPersistentInvocationLog(
-    FileSystem &file_system, const std::string &log_path) throw(IoError) {
+    FileSystem &file_system,
+    const std::string &log_path,
+    PathIds &&path_ids) throw(IoError) {
   // TODO(peck): Implement me
   return nullptr;
 }

@@ -30,6 +30,10 @@ namespace shk {
  * When performing a no-op build, this algorithm allows Shuriken to usually not
  * have to do more than stat-ing inputs and outputs before it can decide that
  * nothing has to be done.
+ *
+ * Fingerprint objects are stored as-is to disk in the invocation log, so they
+ * must be POD objects with no pointers. Changing the contents of Fingerprint
+ * results in a breaking change to the invocation log format.
  */
 struct Fingerprint {
   /**

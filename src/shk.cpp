@@ -151,18 +151,11 @@ struct ShurikenMain {
   std::string invocationLogPath() const;
 
   /**
-   * Load the invocation log.
+   * Load the invocation log and open it for writing.
    *
    * @return false on error.
    */
-  bool readInvocations();
-
-  /**
-   * Open the invocation log for writing.
-   *
-   * @return false on error.
-   */
-  bool openInvocationLog();
+  bool readAndOpenInvocationLog();
 
   /**
    * Rebuild the manifest, if necessary.
@@ -325,30 +318,25 @@ std::string ShurikenMain::invocationLogPath() const {
   return path;
 }
 
-bool ShurikenMain::readInvocations() {
+bool ShurikenMain::readAndOpenInvocationLog() {
   const auto path = invocationLogPath();
+  InvocationLogParseResult parse_result;
+
   try {
-    std::string parse_warning;
-    std::tie(_invocations, parse_warning) =
-        parsePersistentInvocationLog(*_file_system, path);
-    if (!parse_warning.empty()) {
-      warning("%s", parse_warning.c_str());
+    parse_result = parsePersistentInvocationLog(*_file_system, path);
+    _invocations = std::move(parse_result.invocations);
+    if (!parse_result.warning.empty()) {
+      warning("%s", parse_result.warning.c_str());
     }
   } catch (const IoError &io_error) {
     error("loading invocation log %s: %s", path.c_str(), io_error.what());
     return false;
   }
 
-  return true;
-}
-
-bool ShurikenMain::openInvocationLog() {
   if (_config.dry_run) {
     _invocation_log = std::unique_ptr<InvocationLog>(
         new InMemoryInvocationLog());
   } else {
-    const auto path = invocationLogPath();
-
     try {
       mkdirsFor(*_file_system, path);
     } catch (const IoError &io_error) {
@@ -359,7 +347,8 @@ bool ShurikenMain::openInvocationLog() {
     }
 
     try {
-      _invocation_log = openPersistentInvocationLog(*_file_system, path);
+      _invocation_log = openPersistentInvocationLog(
+          *_file_system, path, std::move(parse_result.path_ids));
       // TODO(peck): Remove me once the persistent invocation log actually exists
       _invocation_log = std::unique_ptr<InvocationLog>(
           new InMemoryInvocationLog());
@@ -598,8 +587,7 @@ int real_main(int argc, char **argv) {
       return options.tool->func(argc, argv);
     }
 
-    if (!shk.readInvocations() ||
-        !shk.openInvocationLog()) {
+    if (!shk.readAndOpenInvocationLog()) {
       return 1;
     }
 
