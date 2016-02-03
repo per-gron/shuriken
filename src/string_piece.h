@@ -30,15 +30,15 @@ class StringPiece {
   /**
    * The constructors intentionally allow for implicit conversions.
    */
-  StringPiece(const std::string& str) : _str(str.data()), _len(str.size()) {}
-  StringPiece(const char* str) : _str(str), _len(strlen(str)) {}
+  StringPiece(const std::string &str) : _str(str.data()), _len(str.size()) {}
+  StringPiece(const char *str) : _str(str), _len(strlen(str)) {}
 
-  StringPiece(const char* str, size_t len) : _str(str), _len(len) {}
+  StringPiece(const char *str, size_t len) : _str(str), _len(len) {}
 
-  bool operator==(const StringPiece& other) const {
+  bool operator==(const StringPiece &other) const {
     return _len == other._len && memcmp(_str, other._str, _len) == 0;
   }
-  bool operator!=(const StringPiece& other) const {
+  bool operator!=(const StringPiece &other) const {
     return !(*this == other);
   }
 
