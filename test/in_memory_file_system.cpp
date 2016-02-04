@@ -264,6 +264,24 @@ void InMemoryFileSystem::rename(
   }
 }
 
+void InMemoryFileSystem::truncate(
+    const std::string &path, size_t size) throw(IoError) {
+  const auto l = lookup(path);
+  switch (l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+  case EntryType::FILE_DOES_NOT_EXIST:
+    throw IoError("The named file does not exist", ENOENT);
+  case EntryType::DIRECTORY:
+    throw IoError("The named file is a directory", EPERM);
+  case EntryType::FILE:
+    const auto file = l.directory->files.find(l.basename)->second;
+    file->contents.resize(size);
+    file->mtime = _clock();
+    break;
+  }
+}
+
 std::vector<DirEntry> InMemoryFileSystem::readDir(
     const std::string &path) throw(IoError) {
   std::vector<DirEntry> result;

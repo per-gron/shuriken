@@ -205,6 +205,18 @@ TEST_CASE("InMemoryFileSystem") {
     }
   }
 
+  SECTION("truncate") {
+    fs.mkdir("dir");
+    fs.writeFile("file", "sweet bananas!");
+    CHECK_THROWS_AS(fs.truncate("dir", 0), IoError);
+    CHECK_THROWS_AS(fs.truncate("missing", 0), IoError);
+    CHECK_THROWS_AS(fs.truncate("dir/missing", 0), IoError);
+    CHECK_THROWS_AS(fs.truncate("missing/a", 0), IoError);
+
+    fs.truncate("file", 5);
+    CHECK(fs.readFile("file") == "sweet");
+  }
+
   SECTION("readDir") {
     SECTION("success") {
       fs.mkdir("d");

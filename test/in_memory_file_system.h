@@ -27,6 +27,8 @@ class InMemoryFileSystem : public FileSystem {
   void rename(
       const std::string &old_path,
       const std::string &new_path) throw(IoError) override;
+  void truncate(
+      const std::string &path, size_t size) throw(IoError) override;
   std::vector<DirEntry> readDir(
       const std::string &path) throw(IoError) override;
   std::string readFile(const std::string &path) throw(IoError) override;

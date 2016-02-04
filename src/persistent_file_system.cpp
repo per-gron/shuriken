@@ -159,6 +159,11 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::rename(old_path.c_str(), new_path.c_str()));
   }
 
+  void truncate(
+      const std::string &path, size_t size) throw(IoError) override {
+    checkForMinusOne(::truncate(path.c_str(), size));
+  }
+
   std::vector<DirEntry> readDir(
       const std::string &path) throw(IoError) override {
     std::vector<DirEntry> result;

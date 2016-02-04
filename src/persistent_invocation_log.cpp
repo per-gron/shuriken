@@ -234,7 +234,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
 
   const auto mmap = file_system.mmap(log_path);
   auto piece = mmap->memory();
-  // const auto file_size = piece._len;
+  const auto file_size = piece._len;
 
   piece = parseInvocationLogSignature(piece);
 
@@ -313,9 +313,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
 
   if (piece._len != 0) {
     // Parsing failed. Truncate the file to a known valid state
-
-    // TODO(peck): Add truncate to FileSystem
-    // file_system.truncate(log_path, file_size - piece._len);
+    file_system.truncate(log_path, file_size - piece._len);
   }
 
   // Rebuild the log if there are too many dead records.

@@ -114,6 +114,8 @@ class FileSystem {
   virtual void rename(
       const std::string &old_path,
       const std::string &new_path) throw(IoError) = 0;
+  virtual void truncate(
+      const std::string &path, size_t size) throw(IoError) = 0;
   /**
    * Return the files, directories and other entries in a given directory. Fails
    * if the path does not point to a directory. The returned entries are not
