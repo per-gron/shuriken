@@ -20,7 +20,9 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
   const auto mode_string = std::string(mode);
   bool read = false;
   bool write = false;
-  bool truncate_or_create = false;
+  bool truncate = false;
+  bool create = false;
+  bool append = false;
   if (mode_string == "r") {
     read = true;
     write = false;
@@ -30,11 +32,18 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
   } else if (mode_string == "w" || mode_string == "wb") {
     read = false;
     write = true;
-    truncate_or_create = true;
+    truncate = true;
+    create = true;
   } else if (mode_string == "w+") {
     read = true;
     write = true;
-    truncate_or_create = true;
+    truncate = true;
+    create = true;
+  } else if (mode_string == "a" || mode_string == "ab") {
+    read = false;
+    write = true;
+    append = true;
+    create = true;
   } else {
     throw IoError("Unsupported mode " + mode_string, 0);
   }
@@ -46,7 +55,7 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
   case EntryType::DIRECTORY:
     throw IoError("The named file is a directory", EISDIR);
   case EntryType::FILE_DOES_NOT_EXIST:
-    if (!truncate_or_create) {
+    if (!create) {
       throw IoError("No such file or directory", ENOENT);
     }
     {
@@ -55,16 +64,16 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
       l.directory->files[l.basename] = file;
       l.directory->mtime = _clock();
       return std::unique_ptr<Stream>(
-          new InMemoryFileStream(_clock, file, read, write));
+          new InMemoryFileStream(_clock, file, read, write, append));
     }
   case EntryType::FILE:
     {
       const auto &file = l.directory->files[l.basename];
-      if (truncate_or_create) {
+      if (truncate) {
         file->contents.clear();
       }
       return std::unique_ptr<Stream>(
-          new InMemoryFileStream(_clock, file, read, write));
+          new InMemoryFileStream(_clock, file, read, write, append));
     }
   }
 }
@@ -372,10 +381,12 @@ InMemoryFileSystem::InMemoryFileStream::InMemoryFileStream(
     const std::function<time_t ()> &clock,
     const std::shared_ptr<File> &file,
     bool read,
-    bool write)
+    bool write,
+    bool append)
     : _clock(clock),
       _read(read),
       _write(write),
+      _position(append ? file->contents.size() : 0),
       _file(file) {}
 
 size_t InMemoryFileSystem::InMemoryFileStream::read(

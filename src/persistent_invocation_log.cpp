@@ -28,7 +28,7 @@ enum class InvocationLogEntryType : uint32_t {
   DELETED = 3,
 };
 
-const std::string kFileSignature = "invocations:\0\0\0\1";
+const std::string kFileSignature = "invocations:0001";
 const uint32_t kInvocationLogEntryTypeMask = 3;
 
 StringPiece advance(StringPiece piece, size_t len) {
@@ -74,7 +74,8 @@ class EntryHeader {
   Value _header;
 };
 
-void ensureEntryLen(const StringPiece &piece, size_t min_size) throw(ParseError) {
+void ensureEntryLen(
+    const StringPiece &piece, size_t min_size) throw(ParseError) {
   if (piece._len < min_size) {
     throw ParseError("invalid invocation log: encountered invalid entry");
   }
@@ -125,7 +126,9 @@ class PersistentInvocationLog : public InvocationLog {
       size_t entry_count)
       : _stream(std::move(stream)),
         _path_ids(std::move(path_ids)),
-        _entry_count(entry_count) {}
+        _entry_count(entry_count) {
+    writeHeader();
+  }
 
   void createdDirectory(const std::string &path) throw(IoError) override {
     writeHeader(sizeof(uint32_t), InvocationLogEntryType::CREATED_DIR);
@@ -179,6 +182,15 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
  private:
+  void writeHeader() {
+    if (_stream->tell() == 0) {
+      _stream->write(
+          reinterpret_cast<const uint8_t *>(kFileSignature.data()),
+          kFileSignature.size(),
+          1);
+    }
+  }
+
   template<typename T>
   void write(const T &val) {
     _stream->write(reinterpret_cast<const uint8_t *>(&val), sizeof(val), 1);

@@ -253,6 +253,27 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(S_ISREG(stat.metadata.mode));
   }
 
+  SECTION("open for appending") {
+    fs.writeFile(abc, "swe");
+    {
+      const auto stream = fs.open(abc, "ab");
+      const std::string et = "et";
+      stream->write(reinterpret_cast<const uint8_t *>(et.data()), et.size(), 1);
+    }
+
+    CHECK(fs.readFile(abc) == "sweet");
+  }
+
+  SECTION("open new file for appending") {
+    {
+      const auto stream = fs.open(abc, "ab");
+      const std::string et = "et";
+      stream->write(reinterpret_cast<const uint8_t *>(et.data()), et.size(), 1);
+    }
+
+    CHECK(fs.readFile(abc) == "et");
+  }
+
   SECTION("open for writing in binary") {
     fs.open(abc, "wb");
 

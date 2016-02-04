@@ -90,7 +90,8 @@ class InMemoryFileSystem : public FileSystem {
         const std::function<time_t ()> &clock,
         const std::shared_ptr<File> &file,
         bool read,
-        bool write);
+        bool write,
+        bool append);
 
     size_t read(
         uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override;
@@ -106,7 +107,7 @@ class InMemoryFileSystem : public FileSystem {
     const bool _read;
     const bool _write;
     bool _eof = false;
-    size_t _position = 0;
+    size_t _position;
     const std::shared_ptr<File> _file;
   };
 
