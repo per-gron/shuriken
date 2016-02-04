@@ -92,14 +92,16 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("CreatedDirectory") {
-      #if 0  // TODO(peck): Add this test
       roundtrip([](InvocationLog &log) {
         log.createdDirectory("dir");
       });
-      #endif
     }
 
     SECTION("CreatedThenDeletedDirectory") {
+      roundtrip([](InvocationLog &log) {
+        log.createdDirectory("dir");
+        log.removedDirectory("dir");
+      });
     }
 
     SECTION("Invocation") {

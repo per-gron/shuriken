@@ -47,8 +47,8 @@ namespace shk {
  *
  * There are four types of entries:
  *
- * 0. Path: The contents is a single string with a path, possibly not null
- *    terminated.
+ * 0. Path: The contents is a single null-terminated string with a path,
+ *    possibly with extra trailing \0s to ensure 4 byte alignment.
  * 1. Created directory: The contents is a single uint32_t entry id reference to
  *    a path of the created directory.
  * 2. Invocation: An Invocation entry is an on-disk representation of an

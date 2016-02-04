@@ -131,8 +131,9 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
   void createdDirectory(const std::string &path) throw(IoError) override {
+    const auto path_id = idForPath(path);
     writeHeader(sizeof(uint32_t), InvocationLogEntryType::CREATED_DIR);
-    write(idForPath(path));
+    write(path_id);
     _entry_count++;
   }
 
@@ -155,6 +156,15 @@ class PersistentInvocationLog : public InvocationLog {
         sizeof(uint32_t) +
         sizeof(PathWithFingerprint) *
             (entry.input_files.size() + entry.output_files.size());
+    const auto write_file_paths = [&](
+        const std::vector<std::pair<std::string, Fingerprint>> &files) {
+      for (const auto &file : files) {
+        idForPath(file.first);
+      }
+    };
+    write_file_paths(entry.input_files);
+    write_file_paths(entry.output_files);
+
     writeHeader(size, InvocationLogEntryType::INVOCATION);
 
     write(build_step_hash);
@@ -163,7 +173,9 @@ class PersistentInvocationLog : public InvocationLog {
     const auto write_files = [&](
         const std::vector<std::pair<std::string, Fingerprint>> &files) {
       for (const auto &file : files) {
-        write(idForPath(file.first));
+        const auto it = _path_ids.find(file.first);
+        assert(it != _path_ids.end());
+        write(it->second);
         write(file.second);
       }
     };
@@ -198,18 +210,19 @@ class PersistentInvocationLog : public InvocationLog {
 
   void writeHeader(size_t size, InvocationLogEntryType type) {
     assert((size & kInvocationLogEntryTypeMask) == 0);
-    write(size | static_cast<uint32_t>(type));
+    write(static_cast<uint32_t>(size) | static_cast<uint32_t>(type));
   }
 
   void writePath(const std::string &path) {
+    const auto path_size = path.size() + 1;
     const auto padding_bytes =
-        (4 - (path.size() & kInvocationLogEntryTypeMask)) % 4;
+        (4 - (path_size & kInvocationLogEntryTypeMask)) % 4;
     writeHeader(
-        path.size() + padding_bytes,
+        path_size + padding_bytes,
         InvocationLogEntryType::PATH);
 
     _stream->write(
-        reinterpret_cast<const uint8_t *>(path.data()), path.size(), 1);
+        reinterpret_cast<const uint8_t *>(path.data()), path_size, 1);
 
     // Ensure that the output is 4-byte aligned.
     static const char *kNullBuf = "\0\0\0";
@@ -219,6 +232,11 @@ class PersistentInvocationLog : public InvocationLog {
     _entry_count++;
   }
 
+  /**
+   * Get the id for a path. If the path is not already written, write an entry
+   * with that path. This means that this method cannot be called in the middle
+   * of writing another entry.
+   */
   size_t idForPath(const std::string &path) {
     const auto it = _path_ids.find(path);
     if (it == _path_ids.end()) {
@@ -263,7 +281,9 @@ InvocationLogParseResult parsePersistentInvocationLog(
       switch (header.entryType()) {
       case InvocationLogEntryType::PATH: {
         paths_by_id.resize(result.entry_count + 1);
-        auto path_string = entry.asString();
+        // Don't use entry.asString() because it could make the string contain
+        // trailing \0s
+        auto path_string = std::string(entry._str);
         result.path_ids[path_string] = result.entry_count;
         paths_by_id[result.entry_count] = paths.get(std::move(path_string));
         break;
