@@ -98,6 +98,9 @@ class FileSystem {
   virtual void mkdir(const std::string &path) throw(IoError) = 0;
   virtual void rmdir(const std::string &path) throw(IoError) = 0;
   virtual void unlink(const std::string &path) throw(IoError) = 0;
+  virtual void rename(
+      const std::string &old_path,
+      const std::string &new_path) throw(IoError) = 0;
   /**
    * Return the files, directories and other entries in a given directory. Fails
    * if the path does not point to a directory. The returned entries are not

@@ -22,6 +22,9 @@ class InMemoryFileSystem : public FileSystem {
   void mkdir(const std::string &path) throw(IoError) override;
   void rmdir(const std::string &path) throw(IoError) override;
   void unlink(const std::string &path) throw(IoError) override;
+  void rename(
+      const std::string &old_path,
+      const std::string &new_path) throw(IoError) override;
   std::vector<DirEntry> readDir(
       const std::string &path) throw(IoError) override;
   std::string readFile(const std::string &path) throw(IoError) override;
@@ -49,6 +52,10 @@ class InMemoryFileSystem : public FileSystem {
   struct Directory {
     Directory(time_t mtime, ino_t ino) :
         mtime(mtime), ino(ino) {}
+    Directory(const Directory &other) = default;
+    Directory(Directory &&other) = default;
+    Directory &operator=(const Directory &other) = default;
+    Directory &operator=(Directory &&other) = default;
 
     time_t mtime;
     ino_t ino;

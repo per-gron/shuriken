@@ -1,5 +1,6 @@
 #include "in_memory_file_system.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <sys/stat.h>
 
@@ -141,7 +142,7 @@ void InMemoryFileSystem::rmdir(const std::string &path) throw(IoError) {
     } else {
       l.directory->directories.erase(l.basename);
       l.directory->mtime = _clock();
-      _directories.erase(path);
+      _directories.erase(l.canonicalized);
     }
     break;
   }
@@ -159,6 +160,88 @@ void InMemoryFileSystem::unlink(const std::string &path) throw(IoError) {
   case EntryType::FILE:
     l.directory->files.erase(l.basename);
     l.directory->mtime = _clock();
+    break;
+  }
+}
+
+void InMemoryFileSystem::rename(
+    const std::string &old_path,
+    const std::string &new_path) throw(IoError) {
+  const auto old_l = lookup(old_path);
+  const auto new_l = lookup(new_path);
+
+  switch (old_l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+
+  case EntryType::FILE_DOES_NOT_EXIST:
+    throw IoError("The named file does not exist", ENOENT);
+
+  case EntryType::DIRECTORY:
+    switch (new_l.entry_type) {
+    case EntryType::DIRECTORY_DOES_NOT_EXIST:
+      throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+      break;
+    case EntryType::FILE:
+      throw IoError("The new file exists but is not a directory", ENOTDIR);
+    case EntryType::DIRECTORY:
+      if (new_path != old_path) {
+        rmdir(new_path);
+      }
+      [[clang::fallthrough]];
+    case EntryType::FILE_DOES_NOT_EXIST:
+      old_l.directory->directories.erase(old_l.basename);
+      new_l.directory->directories.insert(new_l.basename);
+      old_l.directory->mtime = _clock();
+      new_l.directory->mtime = _clock();
+
+      std::unordered_map<std::string, std::string> dirs_to_rename;
+      for (const auto &dir : _directories) {
+        const auto &dir_name = dir.first;
+        if (dir_name.size() < old_l.canonicalized.size()) {
+          continue;
+        }
+        if (std::equal(
+                dir_name.begin(),
+                dir_name.end(),
+                old_l.canonicalized.begin())) {
+          // Need to move entries in _directories around, but that cannot be
+          // done while iterating over it.
+          dirs_to_rename[dir_name] =
+              new_l.canonicalized +
+              dir_name.substr(old_l.canonicalized.size());
+        }
+      }
+
+      for (const auto &dir_to_rename : dirs_to_rename) {
+        if (dir_to_rename.first != dir_to_rename.second) {
+          const auto old_dir = std::move(_directories.find(dir_to_rename.first)->second);
+          _directories.erase(dir_to_rename.first);
+          assert(_directories.emplace(dir_to_rename.second, old_dir).second);
+        }
+      }
+      break;
+    }
+    break;
+
+  case EntryType::FILE:
+    switch (new_l.entry_type) {
+    case EntryType::DIRECTORY_DOES_NOT_EXIST:
+      throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+    case EntryType::DIRECTORY:
+      throw IoError("The new file is a directory", EISDIR);
+      break;
+    case EntryType::FILE:
+      if (new_path != old_path) {
+        unlink(new_path);
+      }
+      [[clang::fallthrough]];
+    case EntryType::FILE_DOES_NOT_EXIST:
+      const auto contents = readFile(old_path);
+      unlink(old_path);
+      writeFile(new_path, contents);
+      break;
+    }
     break;
   }
 }

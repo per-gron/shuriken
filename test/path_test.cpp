@@ -51,13 +51,18 @@ class FailingStatFileSystem : public FileSystem {
     return _fs.lstat(path);
   }
   void mkdir(const std::string &path) throw(IoError) override {
-    return _fs.mkdir(path);
+    _fs.mkdir(path);
   }
   void rmdir(const std::string &path) throw(IoError) override {
-    return _fs.rmdir(path);
+    _fs.rmdir(path);
   }
   void unlink(const std::string &path) throw(IoError) override {
-    return _fs.unlink(path);
+    _fs.unlink(path);
+  }
+  void rename(
+      const std::string &old_path,
+      const std::string &new_path) throw(IoError) override {
+    _fs.rename(old_path, new_path);
   }
   std::vector<DirEntry> readDir(
       const std::string &path) throw(IoError) override {

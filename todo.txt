@@ -163,6 +163,7 @@ Large things remaining to do:
 
 * Unit test BuildStatus
 * Write documentation
+* Fuzz test parsers (invocation log, sandbox, manifest)
 * Path case folding
 * See if adding HAVE_SSSE3, HAVE_XOP, HAVE_SSE41 etc flags for blake2 makes sense
 * Optimization opportunity: Don't calculate hashes twice for racily clean files

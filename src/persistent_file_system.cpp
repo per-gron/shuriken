@@ -108,6 +108,12 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::unlink(path.c_str()));
   }
 
+  void rename(
+      const std::string &old_path,
+      const std::string &new_path) throw(IoError) override {
+    checkForMinusOne(::rename(old_path.c_str(), new_path.c_str()));
+  }
+
   std::vector<DirEntry> readDir(
       const std::string &path) throw(IoError) override {
     std::vector<DirEntry> result;
