@@ -22,6 +22,16 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(stat.result == ENOENT);
   }
 
+  SECTION("mmap") {
+    fs.writeFile("f", "contents");
+    fs.mkdir("dir");
+    CHECK_THROWS_AS(fs.mmap("nonexisting"), IoError);
+    CHECK_THROWS_AS(fs.mmap("dir"), IoError);
+    CHECK_THROWS_AS(fs.mmap("dir/nonexisting"), IoError);
+    CHECK_THROWS_AS(fs.mmap("nonexisting/nonexisting"), IoError);
+    CHECK(fs.mmap("f")->memory().asString() == "contents");
+  }
+
   SECTION("synonyms for root") {
     CHECK(fs.stat(".").result == 0);
     CHECK(fs.stat("/").result == 0);

@@ -6,6 +6,7 @@
 
 #include "hash.h"
 #include "io_error.h"
+#include "string_piece.h"
 
 namespace shk {
 
@@ -91,8 +92,20 @@ class FileSystem {
     virtual bool eof() const = 0;
   };
 
+  class Mmap {
+   public:
+    virtual ~Mmap() = default;
+
+    virtual StringPiece memory() = 0;
+  };
+
   virtual std::unique_ptr<Stream> open(
       const std::string &path, const char *mode) throw(IoError) = 0;
+  /**
+   * Memory map a file in read only mode.
+   */
+  virtual std::unique_ptr<Mmap> mmap(
+      const std::string &path) throw(IoError) = 0;
   virtual Stat stat(const std::string &path) = 0;
   virtual Stat lstat(const std::string &path) = 0;
   virtual void mkdir(const std::string &path) throw(IoError) = 0;

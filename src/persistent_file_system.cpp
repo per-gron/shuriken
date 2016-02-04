@@ -17,7 +17,9 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/dir.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -79,13 +81,56 @@ class PersistentFileSystem : public FileSystem {
     }
 
    private:
-    FILE *_f = nullptr;
+    FILE *_f;
+  };
+
+  class FileMmap : public Mmap {
+   public:
+    FileMmap(const std::string &path) {
+      struct stat input;
+      auto ret = ::stat(path.c_str(), &input);
+      if (ret == -1) {
+        throw IoError(strerror(errno), errno);
+      }
+      _size = input.st_size;
+
+      _f = ::open(path.c_str(), O_RDONLY);
+      if (_f == -1) {
+        throw IoError(strerror(errno), errno);
+      }
+
+      _memory = ::mmap(nullptr, _size, PROT_READ, 0, _f, 0);
+    }
+
+    virtual ~FileMmap() {
+      if (_memory != MAP_FAILED) {
+        munmap(_memory, _size);
+      }
+
+      if (_f != -1) {
+        close(_f);
+      }
+    }
+
+    StringPiece memory() override {
+      return StringPiece(nullptr, 0);
+    }
+
+   private:
+    size_t _size = 0;
+    void *_memory = MAP_FAILED;
+    int _f = -1;
   };
 
  public:
   std::unique_ptr<Stream> open(
       const std::string &path, const char *mode) throw(IoError) override {
     return std::unique_ptr<Stream>(new FileStream(path, mode));
+  }
+
+  std::unique_ptr<Mmap> mmap(
+      const std::string &path) throw(IoError) override {
+    return std::unique_ptr<Mmap>(new FileMmap(path));
   }
 
   Stat stat(const std::string &path) override {

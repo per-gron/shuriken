@@ -69,6 +69,24 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
   }
 }
 
+std::unique_ptr<FileSystem::Mmap> InMemoryFileSystem::mmap(
+    const std::string &path) throw(IoError) {
+  const auto l = lookup(path);
+  switch (l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+  case EntryType::DIRECTORY:
+    throw IoError("The named file is a directory", EISDIR);
+  case EntryType::FILE_DOES_NOT_EXIST:
+    throw IoError("No such file or directory", ENOENT);
+  case EntryType::FILE: {
+    const auto &file = l.directory->files[l.basename];
+    return std::unique_ptr<Mmap>(
+        new InMemoryMmap(file));
+  }
+  }
+}
+
 Stat InMemoryFileSystem::stat(const std::string &path) {
   // Symlinks are not supported so stat is the same as lstat
   return lstat(path);
@@ -402,6 +420,13 @@ void InMemoryFileSystem::InMemoryFileStream::checkNotEof()
   if (_eof) {
     throw IoError("Attempted to write to file that is past eof", 0);
   }
+}
+
+InMemoryFileSystem::InMemoryMmap::InMemoryMmap(const std::shared_ptr<File> &file)
+    : _file(file) {}
+
+StringPiece InMemoryFileSystem::InMemoryMmap::memory() {
+  return StringPiece(_file->contents);
 }
 
 InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(

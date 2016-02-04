@@ -17,6 +17,8 @@ class InMemoryFileSystem : public FileSystem {
 
   std::unique_ptr<Stream> open(
       const std::string &path, const char *mode) throw(IoError) override;
+  std::unique_ptr<Mmap> mmap(
+      const std::string &path) throw(IoError) override;
   Stat stat(const std::string &path) override;
   Stat lstat(const std::string &path) override;
   void mkdir(const std::string &path) throw(IoError) override;
@@ -103,6 +105,16 @@ class InMemoryFileSystem : public FileSystem {
     const bool _write;
     bool _eof = false;
     size_t _position = 0;
+    const std::shared_ptr<File> _file;
+  };
+
+  class InMemoryMmap : public Mmap {
+   public:
+    InMemoryMmap(const std::shared_ptr<File> &file);
+
+    StringPiece memory() override;
+
+   private:
     const std::shared_ptr<File> _file;
   };
 

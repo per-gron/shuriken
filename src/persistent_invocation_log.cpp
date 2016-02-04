@@ -232,9 +232,8 @@ InvocationLogParseResult parsePersistentInvocationLog(
     const std::string &log_path) throw(IoError, ParseError) {
   InvocationLogParseResult result;
 
-  StringPiece piece;
-  // TODO(peck): Add mmap to FileSystem
-  // auto piece = file_system.mmap(log_path);  // TODO(peck): This won't work
+  const auto mmap = file_system.mmap(log_path);
+  auto piece = mmap->memory();
   // const auto file_size = piece._len;
 
   piece = parseInvocationLogSignature(piece);
@@ -372,8 +371,7 @@ void recompactPersistentInvocationLog(
     log->ranCommand(entry.first, log_entry);
   }
 
-  // TODO(peck): Add rename to FileSystem
-  // file_system.rename(tmp_path, log_path);
+  file_system.rename(tmp_path, log_path);
 }
 
 }  // namespace shk
