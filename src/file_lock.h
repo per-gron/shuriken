@@ -14,7 +14,8 @@ class FileLock {
   ~FileLock();
 
  private:
-  FILE * const f_;
+  const std::string _path;
+  FILE * const _f;
 };
 
 }  // namespace shk

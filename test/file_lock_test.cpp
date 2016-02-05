@@ -19,6 +19,14 @@ TEST_CASE("FileLock") {
     FileLock lock(kTestFilename1);
   }
 
+  SECTION("DeleteFileWhenDone") {
+    {
+      FileLock lock(kTestFilename1);
+    }
+    CHECK(unlink(kTestFilename1) == -1);
+    CHECK(errno == ENOENT);
+  }
+
   SECTION("LockAfterLock") {
     {
       FileLock lock(kTestFilename1);
