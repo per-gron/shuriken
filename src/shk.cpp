@@ -36,6 +36,7 @@
 #include "build_error.h"
 #include "dry_run_command_runner.h"
 #include "edit_distance.h"
+#include "file_lock.h"
 #include "in_memory_invocation_log.h"
 #include "invocations.h"
 #include "limited_command_runner.h"
@@ -183,6 +184,7 @@ struct ShurikenMain {
   const std::unique_ptr<FileSystem> _file_system;
   Paths _paths;
   Invocations _invocations;
+  std::unique_ptr<FileLock> _invocation_log_lock;
   std::unique_ptr<InvocationLog> _invocation_log;
   Manifest _manifest;
 };
@@ -320,6 +322,18 @@ std::string ShurikenMain::invocationLogPath() const {
 
 bool ShurikenMain::readAndOpenInvocationLog() {
   const auto path = invocationLogPath();
+  const auto lock_path = path + ".lock";
+
+  try {
+    _invocation_log_lock.reset(new FileLock(lock_path));
+  } catch (const IoError &io_error) {
+    error(
+        "acquiring invocation log lock %s: %s",
+        lock_path.c_str(),
+        io_error.what());
+    return false;
+  }
+
   InvocationLogParseResult parse_result;
 
   try {
