@@ -49,13 +49,16 @@ namespace shk {
  *
  * 0. Path: The contents is a single null-terminated string with a path,
  *    possibly with extra trailing \0s to ensure 4 byte alignment.
- * 1. Created directory: The contents is a single uint32_t entry id reference to
- *    a path of the created directory.
+ * 1. Created directory or Fingerprint: If the size is 4 bytes, the contents is
+ *    a single uint32_t entry id reference to a path of the created directory.
+ *    Otherwise, this entry contains a Fingerprint object (with no relation to
+ *    directories).
  * 2. Invocation: An Invocation entry is an on-disk representation of an
  *    Invocations::Entry object. It starts with a Hash object, then contains a
  *    single uint32_t with the number of output files, followed by a number of
- *    [uint32_t entry id, Fingerprint] pairs. The first pairs (the count
- *    specified in the first uint32_t) are outputs, the rest are inputs.
+ *    [uint32_t path entry id, uint32_t fingerprint entry id] pairs. The first
+ *    pairs (the count specified in the first uint32_t) are outputs, the rest are
+ *    inputs.
  * 3. Deleted entry: If the size is 4 bytes, the contents is a single uint32_t
  *    entry id reference to a directory that has been deleted. If the size is
  *    sizeof(Hash), it contains a hash of an Invocations::Entry that has been
