@@ -99,7 +99,10 @@ class PersistentFileSystem : public FileSystem {
         throw IoError(strerror(errno), errno);
       }
 
-      _memory = ::mmap(nullptr, _size, PROT_READ, 0, _f, 0);
+      _memory = ::mmap(nullptr, _size, PROT_READ, MAP_PRIVATE, _f, 0);
+      if (_memory == MAP_FAILED) {
+        throw IoError(strerror(errno), errno);
+      }
     }
 
     virtual ~FileMmap() {
@@ -113,7 +116,7 @@ class PersistentFileSystem : public FileSystem {
     }
 
     StringPiece memory() override {
-      return StringPiece(nullptr, 0);
+      return StringPiece(static_cast<const char *>(_memory), _size);
     }
 
    private:
