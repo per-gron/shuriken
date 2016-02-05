@@ -63,7 +63,7 @@ struct Fingerprint {
   /**
    * Timestamp of when the Fingerprint was taken.
    */
-  time_t timestamp;
+  time_t timestamp = 0;
   Hash hash;
 
   bool operator==(const Fingerprint &other) const;

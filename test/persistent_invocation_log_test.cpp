@@ -39,17 +39,19 @@ void roundtrip(Callback &&callback) {
       0);
   callback(*persistent_log);
   callback(in_memory_log);
-  const auto result =
-      parsePersistentInvocationLog(paths, fs, "file").invocations;
+  const auto result = parsePersistentInvocationLog(paths, fs, "file");
+  auto &invocations = result.invocations;
+
+  CHECK(result.warning == "");
 
   std::unordered_set<std::string> created_directories;
-  for (const auto &dir : result.created_directories) {
+  for (const auto &dir : invocations.created_directories) {
     created_directories.insert(dir.original());
   }
   CHECK(in_memory_log.createdDirectories() == created_directories);
 
   std::unordered_map<Hash, InvocationLog::Entry> entries;
-  for (const auto &entry : result.entries) {
+  for (const auto &entry : invocations.entries) {
     InvocationLog::Entry log_entry;
     const auto files = [&](
         const std::vector<std::pair<Path, Fingerprint>> &files) {
@@ -74,6 +76,15 @@ TEST_CASE("PersistentInvocationLog") {
   fs.writeFile("empty", "");
   fs.writeFile("invalid_header", "invocations:0000");
   fs.writeFile("just_header", "invocations:0001");
+
+  Hash hash_0;
+  std::fill(hash_0.data.begin(), hash_0.data.end(), 0);
+  Fingerprint fp_0;
+  std::fill(fp_0.hash.data.begin(), fp_0.hash.data.end(), 0);
+  fp_0.timestamp = 1;
+  Fingerprint fp_1;
+  std::fill(fp_1.hash.data.begin(), fp_1.hash.data.end(), 0);
+  fp_1.timestamp = 1;
 
   SECTION("Parsing") {
     CHECK_THROWS_AS(
@@ -104,10 +115,41 @@ TEST_CASE("PersistentInvocationLog") {
       });
     }
 
-    SECTION("Invocation") {
+    SECTION("InvocationNoFiles") {
+      roundtrip([&](InvocationLog &log) {
+        InvocationLog::Entry entry;
+        log.ranCommand(hash_0, entry);
+      });
+    }
+
+    SECTION("InvocationSingleInputFile") {
+      roundtrip([&](InvocationLog &log) {
+        InvocationLog::Entry entry;
+        entry.input_files.emplace_back("hi", fp_0);
+        log.ranCommand(hash_0, entry);
+      });
+    }
+
+    SECTION("InvocationSingleOutputFile") {
+      roundtrip([&](InvocationLog &log) {
+        InvocationLog::Entry entry;
+        entry.output_files.emplace_back("hi", fp_0);
+        log.ranCommand(hash_0, entry);
+      });
+    }
+
+    SECTION("DeletedMissingInvocation") {
+      roundtrip([&](InvocationLog &log) {
+        log.cleanedCommand(hash_0);
+      });
     }
 
     SECTION("DeletedInvocation") {
+      roundtrip([&](InvocationLog &log) {
+        InvocationLog::Entry entry;
+        log.ranCommand(hash_0, entry);
+        log.cleanedCommand(hash_0);
+      });
     }
 
     SECTION("EntryCount") {

@@ -113,11 +113,6 @@ std::vector<std::pair<Path, Fingerprint>> readFingerprints(
   return result;
 }
 
-struct PathWithFingerprint {
-  uint32_t path_id;
-  Fingerprint fingerprint;
-};
-
 class PersistentInvocationLog : public InvocationLog {
  public:
   PersistentInvocationLog(
@@ -151,10 +146,10 @@ class PersistentInvocationLog : public InvocationLog {
   void ranCommand(
       const Hash &build_step_hash,
       const Entry &entry) throw(IoError) override {
-    const auto size =
+    const uint32_t size =
         sizeof(Hash) +
         sizeof(uint32_t) +
-        sizeof(PathWithFingerprint) *
+        (sizeof(uint32_t) + sizeof(Fingerprint)) *
             (entry.input_files.size() + entry.output_files.size());
     const auto write_file_paths = [&](
         const std::vector<std::pair<std::string, Fingerprint>> &files) {
@@ -168,7 +163,7 @@ class PersistentInvocationLog : public InvocationLog {
     writeHeader(size, InvocationLogEntryType::INVOCATION);
 
     write(build_step_hash);
-    write(entry.output_files.size());
+    write(static_cast<uint32_t>(entry.output_files.size()));
 
     const auto write_files = [&](
         const std::vector<std::pair<std::string, Fingerprint>> &files) {
@@ -237,7 +232,7 @@ class PersistentInvocationLog : public InvocationLog {
    * with that path. This means that this method cannot be called in the middle
    * of writing another entry.
    */
-  size_t idForPath(const std::string &path) {
+  uint32_t idForPath(const std::string &path) {
     const auto it = _path_ids.find(path);
     if (it == _path_ids.end()) {
       const auto id = _entry_count;
@@ -281,6 +276,10 @@ InvocationLogParseResult parsePersistentInvocationLog(
       switch (header.entryType()) {
       case InvocationLogEntryType::PATH: {
         paths_by_id.resize(result.entry_count + 1);
+        if (strnlen(entry._str, entry._len) == entry._len) {
+          throw ParseError(
+              "invalid invocation log: Encountered non null terminated path");
+        }
         // Don't use entry.asString() because it could make the string contain
         // trailing \0s
         auto path_string = std::string(entry._str);
@@ -300,14 +299,18 @@ InvocationLogParseResult parsePersistentInvocationLog(
         entry = advance(entry, sizeof(hash));
         const auto outputs = read<uint32_t>(entry);
         entry = advance(entry, sizeof(outputs));
-        const auto output_size = sizeof(PathWithFingerprint) * outputs;
+        const auto output_size =
+            (sizeof(uint32_t) + sizeof(Fingerprint)) * outputs;
         if (entry._len < output_size) {
           throw ParseError("invalid invocation log: truncated invocation");
         }
 
-        result.invocations.entries[hash] = {
-            readFingerprints(paths_by_id, StringPiece(entry._str, output_size)),
-            readFingerprints(paths_by_id, advance(entry, output_size)) };
+        Invocations::Entry log_entry;
+        log_entry.output_files = readFingerprints(
+            paths_by_id, StringPiece(entry._str, output_size));
+        log_entry.input_files = readFingerprints(
+            paths_by_id, advance(entry, output_size));
+        result.invocations.entries.emplace(hash, std::move(log_entry));
         break;
       }
 
