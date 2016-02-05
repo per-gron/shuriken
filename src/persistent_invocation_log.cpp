@@ -28,7 +28,8 @@ enum class InvocationLogEntryType : uint32_t {
   DELETED = 3,
 };
 
-const std::string kFileSignature = "invocations:0001";
+const std::string kFileSignature = "invocations:";
+const uint32_t kFileVersion = 1;
 const uint32_t kInvocationLogEntryTypeMask = 3;
 
 StringPiece advance(StringPiece piece, size_t len) {
@@ -37,16 +38,22 @@ StringPiece advance(StringPiece piece, size_t len) {
 }
 
 StringPiece parseInvocationLogSignature(StringPiece piece) throw(ParseError) {
-  if (piece._len < kFileSignature.size()) {
+  const auto signature_size = kFileSignature.size() + sizeof(kFileVersion);
+  if (piece._len < signature_size) {
     throw ParseError("invalid invocation log file signature (too short)");
   }
 
   if (!std::equal(kFileSignature.begin(), kFileSignature.end(), piece._str)) {
-    throw ParseError(
-        "invalid invocation log file signature or unknown version");
+    throw ParseError("invalid invocation log file signature");
   }
 
-  return advance(piece, kFileSignature.size());
+  const auto version =
+      *reinterpret_cast<const uint32_t *>(piece._str + kFileSignature.size());
+  if (version != kFileVersion) {
+    throw ParseError("invalid invocation log file version or bad byte order");
+  }
+
+  return advance(piece, signature_size);
 }
 
 class EntryHeader {
@@ -175,8 +182,8 @@ class PersistentInvocationLog : public InvocationLog {
       }
     };
 
-    write_files(entry.input_files);
     write_files(entry.output_files);
+    write_files(entry.input_files);
 
     _entry_count++;
   }
@@ -195,6 +202,8 @@ class PersistentInvocationLog : public InvocationLog {
           reinterpret_cast<const uint8_t *>(kFileSignature.data()),
           kFileSignature.size(),
           1);
+      // The file version implicitly serves as a byte order mark
+      write(kFileVersion);
     }
   }
 
@@ -305,12 +314,9 @@ InvocationLogParseResult parsePersistentInvocationLog(
           throw ParseError("invalid invocation log: truncated invocation");
         }
 
-        Invocations::Entry log_entry;
-        log_entry.output_files = readFingerprints(
-            paths_by_id, StringPiece(entry._str, output_size));
-        log_entry.input_files = readFingerprints(
-            paths_by_id, advance(entry, output_size));
-        result.invocations.entries.emplace(hash, std::move(log_entry));
+        result.invocations.entries[hash] = {
+            readFingerprints(paths_by_id, StringPiece(entry._str, output_size)),
+            readFingerprints(paths_by_id, advance(entry, output_size)) };
         break;
       }
 
