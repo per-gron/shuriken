@@ -353,8 +353,7 @@ bool ShurikenMain::readAndOpenInvocationLog() {
       _invocation_log = openPersistentInvocationLog(
           *_file_system,
           path,
-          std::move(parse_result.path_ids),
-          parse_result.entry_count);
+          std::move(parse_result.parse_data));
       // TODO(peck): Remove me once the persistent invocation log actually exists
       _invocation_log = std::unique_ptr<InvocationLog>(
           new InMemoryInvocationLog());

@@ -76,8 +76,25 @@ namespace shk {
  * invocation log, to avoid duplication of paths in the log.
  */
 using PathIds = std::unordered_map<std::string, uint32_t>;
+/**
+ * A map of Fingerprint objects to the record id in the invocation log. Like
+ * PathIds, this object is produced when parsing the invocation log and used
+ * when writing to the invocation log, to avoid duplication of paths in the log.
+ */
+using FingerprintIds = std::unordered_map<Fingerprint, uint32_t>;
 
 struct InvocationLogParseResult {
+  /**
+   * Struct containing information that is needed when opening an invocation log
+   * for writing. Users of this API should not directly inspect objects of this
+   * class.
+   */
+  struct ParseData {
+    PathIds path_ids;
+    FingerprintIds fingerprint_ids;
+    size_t entry_count = 0;
+  };
+
   Invocations invocations;
   /**
    * If non-empty, the function that parsed the invocation logs wants to warn
@@ -85,8 +102,7 @@ struct InvocationLogParseResult {
    */
   std::string warning;
   bool needs_recompaction = false;
-  PathIds path_ids;
-  size_t entry_count = 0;
+  ParseData parse_data;
 };
 
 /**
@@ -121,8 +137,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
 std::unique_ptr<InvocationLog> openPersistentInvocationLog(
     FileSystem &file_system,
     const std::string &log_path,
-    PathIds &&path_ids,
-    size_t entry_count) throw(IoError);
+    InvocationLogParseResult::ParseData &&parse_data) throw(IoError);
 
 /**
  * Overwrite the invocation log file with a new one that contains only the

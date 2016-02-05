@@ -23,8 +23,9 @@ void checkEmpty(const InvocationLogParseResult &empty) {
   CHECK(empty.invocations.created_directories.empty());
   CHECK(empty.warning.empty());
   CHECK(!empty.needs_recompaction);
-  CHECK(empty.path_ids.empty());
-  CHECK(empty.entry_count == 0);
+  CHECK(empty.parse_data.path_ids.empty());
+  CHECK(empty.parse_data.fingerprint_ids.empty());
+  CHECK(empty.parse_data.entry_count == 0);
 }
 
 void checkMatches(const InMemoryInvocationLog &log, const Invocations &invocations) {
@@ -64,8 +65,7 @@ void roundtrip(const Callback &callback) {
   const auto persistent_log = openPersistentInvocationLog(
       fs,
       "file",
-      PathIds(),
-      0);
+      InvocationLogParseResult::ParseData());
   callback(*persistent_log);
   callback(in_memory_log);
   const auto result = parsePersistentInvocationLog(paths, fs, "file");
@@ -86,8 +86,7 @@ void multipleWriteCycles(const Callback &callback) {
     const auto persistent_log = openPersistentInvocationLog(
         fs,
         "file",
-        std::move(result.path_ids),
-        result.entry_count);
+        std::move(result.parse_data));
     callback(*persistent_log);
   }
 
@@ -104,8 +103,7 @@ void shouldEventuallyRequestRecompaction(const Callback &callback) {
     const auto persistent_log = openPersistentInvocationLog(
         fs,
         "file",
-        PathIds(),
-        0);
+        InvocationLogParseResult::ParseData());
     callback(*persistent_log);
     const auto result = parsePersistentInvocationLog(paths, fs, "file");
     if (result.needs_recompaction) {
@@ -131,8 +129,7 @@ void recompact(const Callback &callback) {
     const auto persistent_log = openPersistentInvocationLog(
         fs,
         "file",
-        std::move(result.path_ids),
-        result.entry_count);
+        std::move(result.parse_data));
     callback(*persistent_log);
   }
   recompactPersistentInvocationLog(
@@ -161,7 +158,7 @@ void warnOnTruncatedInput(const Callback &callback) {
 
     fs.unlink("file");
     const auto persistent_log = openPersistentInvocationLog(
-        fs, "file", PathIds(), 0);
+        fs, "file", InvocationLogParseResult::ParseData());
     callback(*persistent_log);
     const auto stat = fs.stat("file");
     const auto truncated_size = stat.metadata.size - i;

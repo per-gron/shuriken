@@ -98,3 +98,18 @@ MatchesResult fingerprintMatches(
     const Fingerprint &fingerprint) throw(IoError);
 
 }  // namespace shk
+
+namespace std
+{
+
+template<>
+struct hash<shk::Fingerprint> {
+  using argument_type = shk::Fingerprint;
+  using result_type = std::size_t;
+
+  result_type operator()(const argument_type &f) const {
+    return hash<shk::Hash>()(f.hash) ^ f.timestamp;
+  }
+};
+
+}  // namespace std

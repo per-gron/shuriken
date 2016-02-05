@@ -125,11 +125,11 @@ class PersistentInvocationLog : public InvocationLog {
  public:
   PersistentInvocationLog(
       std::unique_ptr<FileSystem::Stream> &&stream,
-      PathIds &&path_ids,
-      size_t entry_count)
+      InvocationLogParseResult::ParseData &&parse_data)
       : _stream(std::move(stream)),
-        _path_ids(std::move(path_ids)),
-        _entry_count(entry_count) {
+        _path_ids(std::move(parse_data.path_ids)),
+        _fingerprint_ids(std::move(parse_data.fingerprint_ids)),
+        _entry_count(parse_data.entry_count) {
     writeHeader();
   }
 
@@ -256,6 +256,7 @@ class PersistentInvocationLog : public InvocationLog {
 
   const std::unique_ptr<FileSystem::Stream> _stream;
   PathIds _path_ids;
+  FingerprintIds _fingerprint_ids;
   size_t _entry_count;
 };
 
@@ -285,8 +286,10 @@ InvocationLogParseResult parsePersistentInvocationLog(
   // "Map" from entry id to path. Entries that aren't path entries are empty
   std::vector<Optional<Path>> paths_by_id;
 
+  auto &entry_count = result.parse_data.entry_count;
+
   try {
-    for (; piece._len; result.entry_count++) {
+    for (; piece._len; entry_count++) {
       EntryHeader header(piece);
       const auto entry_size = header.entrySize();
       ensureEntryLen(piece, entry_size + sizeof(EntryHeader::Value));
@@ -294,7 +297,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
 
       switch (header.entryType()) {
       case InvocationLogEntryType::PATH: {
-        paths_by_id.resize(result.entry_count + 1);
+        paths_by_id.resize(entry_count + 1);
         if (strnlen(entry._str, entry._len) == entry._len) {
           throw ParseError(
               "invalid invocation log: Encountered non null terminated path");
@@ -302,8 +305,8 @@ InvocationLogParseResult parsePersistentInvocationLog(
         // Don't use entry.asString() because it could make the string contain
         // trailing \0s
         auto path_string = std::string(entry._str);
-        result.path_ids[path_string] = result.entry_count;
-        paths_by_id[result.entry_count] = paths.get(std::move(path_string));
+        result.parse_data.path_ids[path_string] = entry_count;
+        paths_by_id[entry_count] = paths.get(std::move(path_string));
         break;
       }
 
@@ -373,10 +376,10 @@ InvocationLogParseResult parsePersistentInvocationLog(
   const auto unique_record_count =
       result.invocations.entries.size() +
       result.invocations.created_directories.size() +
-      result.path_ids.size();
+      result.parse_data.path_ids.size();
   result.needs_recompaction = (
-      result.entry_count > kMinCompactionEntryCount &&
-      result.entry_count > unique_record_count * kCompactionRatio);
+      entry_count > kMinCompactionEntryCount &&
+      entry_count > unique_record_count * kCompactionRatio);
 
   return result;
 }
@@ -384,13 +387,11 @@ InvocationLogParseResult parsePersistentInvocationLog(
 std::unique_ptr<InvocationLog> openPersistentInvocationLog(
     FileSystem &file_system,
     const std::string &log_path,
-    PathIds &&path_ids,
-    size_t entry_count) throw(IoError) {
+    InvocationLogParseResult::ParseData &&parse_data) throw(IoError) {
   return std::unique_ptr<InvocationLog>(
       new PersistentInvocationLog(
           file_system.open(log_path, "ab"),
-          std::move(path_ids),
-          entry_count));
+          std::move(parse_data)));
 }
 
 void recompactPersistentInvocationLog(
@@ -399,7 +400,8 @@ void recompactPersistentInvocationLog(
     const std::string &log_path) throw(IoError) {
   const auto tmp_path = file_system.mkstemp("shk.tmp.log.XXXXXXXX");
   const auto log =
-      openPersistentInvocationLog(file_system, tmp_path, PathIds(), 0);
+      openPersistentInvocationLog(
+          file_system, tmp_path, InvocationLogParseResult::ParseData());
 
   for (const auto &dir : invocations.created_directories) {
     log->createdDirectory(dir.original());

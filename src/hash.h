@@ -35,4 +35,4 @@ struct hash<shk::Hash> {
   }
 };
 
-}
+}  // namespace std

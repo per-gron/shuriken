@@ -134,6 +134,7 @@ Large things remaining to do:
     * For caching, some path prefixes could be given names, to handle absolute paths
     * Might be other things where the linter can be controlled
 * Invocation log
+  * Deduplicate hashes
 * Lock invocation log when using it
 * Ocasionally recompact
 * Unit test shk::build
