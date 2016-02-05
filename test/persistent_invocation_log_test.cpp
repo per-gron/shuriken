@@ -27,28 +27,12 @@ void checkEmpty(const InvocationLogParseResult &empty) {
   CHECK(empty.entry_count == 0);
 }
 
-template<typename Callback>
-void roundtrip(Callback &&callback) {
-  InMemoryFileSystem fs;
-  Paths paths(fs);
-  InMemoryInvocationLog in_memory_log;
-  const auto persistent_log = openPersistentInvocationLog(
-      fs,
-      "file",
-      PathIds(),
-      0);
-  callback(*persistent_log);
-  callback(in_memory_log);
-  const auto result = parsePersistentInvocationLog(paths, fs, "file");
-  auto &invocations = result.invocations;
-
-  CHECK(result.warning == "");
-
+void checkMatches(const InMemoryInvocationLog &log, const Invocations &invocations) {
   std::unordered_set<std::string> created_directories;
   for (const auto &dir : invocations.created_directories) {
     created_directories.insert(dir.original());
   }
-  CHECK(in_memory_log.createdDirectories() == created_directories);
+  CHECK(log.createdDirectories() == created_directories);
 
   std::unordered_map<Hash, InvocationLog::Entry> entries;
   for (const auto &entry : invocations.entries) {
@@ -65,7 +49,146 @@ void roundtrip(Callback &&callback) {
     log_entry.input_files = files(entry.second.input_files);
     entries[entry.first] = log_entry;
   }
-  CHECK(in_memory_log.entries() == entries);
+  CHECK(log.entries() == entries);
+}
+
+/**
+ * Test that committing a set of entries to the log and reading it back does
+ * the same thing as just writing those entries to an Invocations object.
+ */
+template<typename Callback>
+void roundtrip(const Callback &callback) {
+  InMemoryFileSystem fs;
+  Paths paths(fs);
+  InMemoryInvocationLog in_memory_log;
+  const auto persistent_log = openPersistentInvocationLog(
+      fs,
+      "file",
+      PathIds(),
+      0);
+  callback(*persistent_log);
+  callback(in_memory_log);
+  const auto result = parsePersistentInvocationLog(paths, fs, "file");
+
+  CHECK(result.warning == "");
+  checkMatches(in_memory_log, result.invocations);
+}
+
+template<typename Callback>
+void multipleWriteCycles(const Callback &callback) {
+  InMemoryFileSystem fs;
+  Paths paths(fs);
+  InMemoryInvocationLog in_memory_log;
+  callback(in_memory_log);
+  for (size_t i = 0; i < 5; i++) {
+    auto result = parsePersistentInvocationLog(paths, fs, "file");
+    CHECK(result.warning == "");
+    const auto persistent_log = openPersistentInvocationLog(
+        fs,
+        "file",
+        std::move(result.path_ids),
+        result.entry_count);
+    callback(*persistent_log);
+  }
+
+  const auto result = parsePersistentInvocationLog(paths, fs, "file");
+  CHECK(result.warning == "");
+  checkMatches(in_memory_log, result.invocations);
+}
+
+template<typename Callback>
+void shouldEventuallyRequestRecompaction(const Callback &callback) {
+  InMemoryFileSystem fs;
+  Paths paths(fs);
+  for (size_t attempts = 0;; attempts++) {
+    const auto persistent_log = openPersistentInvocationLog(
+        fs,
+        "file",
+        PathIds(),
+        0);
+    callback(*persistent_log);
+    const auto result = parsePersistentInvocationLog(paths, fs, "file");
+    if (result.needs_recompaction) {
+      CHECK(attempts > 10);  // Should not immediately request recompaction
+      break;
+    }
+    if (attempts > 10000) {
+      CHECK(!"Should eventually request recompaction");
+      break;
+    }
+  }
+}
+
+template<typename Callback>
+void recompact(const Callback &callback) {
+  InMemoryFileSystem fs;
+  Paths paths(fs);
+  InMemoryInvocationLog in_memory_log;
+  callback(in_memory_log);
+  for (size_t i = 0; i < 5; i++) {
+    auto result = parsePersistentInvocationLog(paths, fs, "file");
+    CHECK(result.warning == "");
+    const auto persistent_log = openPersistentInvocationLog(
+        fs,
+        "file",
+        std::move(result.path_ids),
+        result.entry_count);
+    callback(*persistent_log);
+  }
+  recompactPersistentInvocationLog(
+      fs,
+      parsePersistentInvocationLog(paths, fs, "file").invocations,
+      "file");
+
+  const auto result = parsePersistentInvocationLog(paths, fs, "file");
+  CHECK(result.warning == "");
+  checkMatches(in_memory_log, result.invocations);
+}
+
+template<typename Callback>
+void warnOnTruncatedInput(const Callback &callback) {
+  InMemoryFileSystem fs;
+  Paths paths(fs);
+
+  const size_t kFileSignatureSize = 16;
+
+  fs.open("file", "w");  // Just to make the initial unlink work
+  size_t warnings = 0;
+
+  for (size_t i = 1;; i++) {
+    // Truncate byte by byte until only the signature is left. This should
+    // never crash or fail, only warn.
+
+    fs.unlink("file");
+    const auto persistent_log = openPersistentInvocationLog(
+        fs, "file", PathIds(), 0);
+    callback(*persistent_log);
+    const auto stat = fs.stat("file");
+    const auto truncated_size = stat.metadata.size - i;
+    if (truncated_size <= kFileSignatureSize) {
+      break;
+    }
+    fs.truncate("file", truncated_size);
+    const auto result = parsePersistentInvocationLog(paths, fs, "file");
+    if (result.warning != "") {
+      warnings++;
+    }
+
+    // parsePersistentInvocationLog should have truncated the file now
+    const auto result_after = parsePersistentInvocationLog(paths, fs, "file");
+    CHECK(result_after.warning == "");
+  }
+
+  CHECK(warnings > 0);
+}
+
+template<typename Callback>
+void writeEntries(const Callback &callback) {
+  roundtrip(callback);
+  shouldEventuallyRequestRecompaction(callback);
+  multipleWriteCycles(callback);
+  recompact(callback);
+  warnOnTruncatedInput(callback);
 }
 
 void writeFileWithHeader(
@@ -103,8 +226,7 @@ TEST_CASE("PersistentInvocationLog") {
   fp_1.timestamp = 2;
 
   SECTION("Parsing") {
-    CHECK_THROWS_AS(
-        parsePersistentInvocationLog(paths, fs, "missing"), IoError);
+    parsePersistentInvocationLog(paths, fs, "missing");
     CHECK_THROWS_AS(
         parsePersistentInvocationLog(paths, fs, "empty"), ParseError);
 
@@ -116,34 +238,36 @@ TEST_CASE("PersistentInvocationLog") {
     checkEmpty(parsePersistentInvocationLog(paths, fs, "just_header"));
   }
 
-  SECTION("Roundtrip") {
+  SECTION("Writing") {
     SECTION("Empty") {
-      roundtrip([](InvocationLog &log) {
-      });
+      const auto callback = [](InvocationLog &log) {};
+      // Don't use the shouldEventuallyRequestRecompaction test
+      roundtrip(callback);
+      multipleWriteCycles(callback);
     }
 
     SECTION("CreatedDirectory") {
-      roundtrip([](InvocationLog &log) {
+      writeEntries([](InvocationLog &log) {
         log.createdDirectory("dir");
       });
     }
 
     SECTION("CreatedThenDeletedDirectory") {
-      roundtrip([](InvocationLog &log) {
+      writeEntries([](InvocationLog &log) {
         log.createdDirectory("dir");
         log.removedDirectory("dir");
       });
     }
 
     SECTION("InvocationNoFiles") {
-      roundtrip([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log) {
         InvocationLog::Entry entry;
         log.ranCommand(hash_0, entry);
       });
     }
 
     SECTION("InvocationSingleInputFile") {
-      roundtrip([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log) {
         InvocationLog::Entry entry;
         entry.input_files.emplace_back("hi", fp_0);
         log.ranCommand(hash_0, entry);
@@ -151,7 +275,7 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("InvocationTwoInputFiles") {
-      roundtrip([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log) {
         InvocationLog::Entry entry;
         entry.input_files.emplace_back("hi", fp_0);
         entry.input_files.emplace_back("duh", fp_1);
@@ -160,7 +284,7 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("InvocationSingleOutputFile") {
-      roundtrip([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log) {
         InvocationLog::Entry entry;
         entry.output_files.emplace_back("hi", fp_0);
         log.ranCommand(hash_0, entry);
@@ -168,7 +292,7 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("InvocationTwoOutputFiles") {
-      roundtrip([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log) {
         InvocationLog::Entry entry;
         entry.output_files.emplace_back("aah", fp_0);
         entry.output_files.emplace_back("hi", fp_1);
@@ -177,7 +301,7 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("InvocationInputAndOutputFiles") {
-      roundtrip([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log) {
         InvocationLog::Entry entry;
         entry.input_files.emplace_back("aah", fp_0);
         entry.output_files.emplace_back("hi", fp_1);
@@ -186,7 +310,7 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("OverwrittenInvocation") {
-      roundtrip([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log) {
         InvocationLog::Entry entry;
         log.ranCommand(hash_0, entry);
         entry.output_files.emplace_back("hi", fp_0);
@@ -195,13 +319,13 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("DeletedMissingInvocation") {
-      roundtrip([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log) {
         log.cleanedCommand(hash_0);
       });
     }
 
     SECTION("DeletedInvocation") {
-      roundtrip([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log) {
         InvocationLog::Entry entry;
         log.ranCommand(hash_0, entry);
         log.cleanedCommand(hash_0);
@@ -209,7 +333,7 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("MixAndMatch") {
-      roundtrip([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log) {
         log.createdDirectory("dir");
         log.createdDirectory("dir_2");
         log.removedDirectory("dir");
@@ -223,22 +347,6 @@ TEST_CASE("PersistentInvocationLog") {
         log.cleanedCommand(hash_0);
       });
     }
-
-    SECTION("EntryCount") {
-    }
-
-    SECTION("PathIds") {
-    }
-
-    SECTION("WarnOnTruncatedInput") {
-    }
-
-    SECTION("RequestRecompaction") {
-    }
-  }
-
-  SECTION("Recompaction") {
-    // * Recompacting
   }
 }
 

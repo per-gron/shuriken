@@ -15,6 +15,7 @@
 #include "persistent_invocation_log.h"
 
 #include <assert.h>
+#include <errno.h>
 
 #include "optional.h"
 
@@ -266,7 +267,16 @@ InvocationLogParseResult parsePersistentInvocationLog(
     const std::string &log_path) throw(IoError, ParseError) {
   InvocationLogParseResult result;
 
-  const auto mmap = file_system.mmap(log_path);
+  std::unique_ptr<FileSystem::Mmap> mmap;
+  try {
+    mmap = file_system.mmap(log_path);
+  } catch (IoError &io_error) {
+    if (io_error.code == ENOENT) {
+      return result;
+    } else {
+      throw;
+    }
+  }
   auto piece = mmap->memory();
   const auto file_size = piece._len;
 
