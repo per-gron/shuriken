@@ -89,6 +89,7 @@ class TracingCommandRunner : public CommandRunner {
     }
     try {
       auto sandbox = parseSandbox(
+          SandboxIgnores::defaults(),
           _file_system.readFile(path));
 
       for (const auto &path : sandbox.read) {

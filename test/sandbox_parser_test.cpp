@@ -10,9 +10,10 @@ namespace {
  * Verify that a string parses with a single violation.
  */
 SandboxResult checkDisallowedAllowFiles(
+    const SandboxIgnores &ignores,
     std::string &&input,
     const std::string &violation) {
-  const auto result = parseSandbox(std::move(input));
+  const auto result = parseSandbox(ignores, std::move(input));
   REQUIRE(result.violations.size() == 1);
   CHECK(result.violations[0] == violation);
   return result;
@@ -22,11 +23,22 @@ SandboxResult checkDisallowedAllowFiles(
  * Verify that a string parses with a single violation.
  */
 void checkDisallowed(
+    const SandboxIgnores &ignores,
     std::string &&input,
     const std::string &violation) {
-  const auto result = checkDisallowedAllowFiles(std::move(input), violation);
+  const auto result = checkDisallowedAllowFiles(
+      ignores, std::move(input), violation);
   CHECK(result.created.empty());
   CHECK(result.read.empty());
+}
+
+/**
+ * Verify that a string parses with a single violation.
+ */
+void checkDisallowed(
+    std::string &&input,
+    const std::string &violation) {
+  checkDisallowed(SandboxIgnores(), std::move(input), violation);
 }
 
 /**
@@ -42,15 +54,24 @@ void checkDisallowedAction(const std::string &action, std::string &&input) {
 /**
  * Verify that a string parses with an empty result.
  */
+void checkEmpty(const SandboxIgnores &ignores, std::string &&input) {
+  CHECK(parseSandbox(
+      ignores, std::move(input)) == SandboxResult());
+}
+
+/**
+ * Verify that a string parses with an empty result.
+ */
 void checkEmpty(std::string &&input) {
-  CHECK(parseSandbox(std::move(input)) == SandboxResult());
+  checkEmpty(SandboxIgnores(), std::move(input));
 }
 
 /**
  * Verify that a string fails to parse.
  */
 void checkFailsParse(std::string &&input) {
-  CHECK_THROWS_AS(parseSandbox(std::move(input)), ParseError);
+  CHECK_THROWS_AS(
+      parseSandbox(SandboxIgnores(), std::move(input)), ParseError);
 }
 
 void comparePaths(
@@ -64,18 +85,32 @@ void comparePaths(
 }
 
 void checkResult(
+    const SandboxIgnores &ignores,
     std::string &&input,
     const std::vector<std::string> &created,
     const std::vector<std::string> &read) {
-  const auto result = parseSandbox(std::move(input));
+  const auto result = parseSandbox(ignores, std::move(input));
   comparePaths(created, result.created);
   comparePaths(read, result.read);
   CHECK(result.violations.empty());
 }
 
+void checkResult(
+    std::string &&input,
+    const std::vector<std::string> &created,
+    const std::vector<std::string> &read) {
+  checkResult(SandboxIgnores(), std::move(input), created, read);
+}
+
 }  // anomymous namespace
 
 TEST_CASE("SandboxParser") {
+  SandboxIgnores network;
+  network.network_access = { "/an/ignored/path" };
+
+  SandboxIgnores file;
+  file.file_access = { "/an/ignored/path" };
+
   SECTION("EmptyAndComments") {
     checkEmpty("");
     checkEmpty(" ");
@@ -119,9 +154,32 @@ TEST_CASE("SandboxParser") {
         {},
         { "/bin/ls" });
     checkDisallowedAllowFiles(
+        SandboxIgnores(),
         "(allow file-read-data (literal \"/a/path\"))\n"
         "(allow file-write-create (literal \"/a/path\"))\n",
         "Process created file that it had previously read from: /a/path");
+  }
+
+  SECTION("ReadIgnored") {
+    checkEmpty(
+        file,
+        "(allow file-read-data (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow file-read-metadata (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow process-exec* (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow process-exec (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow process* (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow file-read-data (literal \"/an/ignored/path\"))\n"
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n");
   }
 
   SECTION("WriteWithoutCreate") {
@@ -151,6 +209,27 @@ TEST_CASE("SandboxParser") {
         "did not create: /a/path");
   }
 
+  SECTION("WriteWithoutCreateIgnored") {
+    checkEmpty(
+        file,
+        "(allow file-write-data (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow file-write-flags (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow file-write-mode (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow file-write-owner (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow file-write-setugid (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow file-revoke (literal \"/an/ignored/path\"))");
+  }
+
   SECTION("Unlink") {
     checkDisallowed(
         "(allow file-write-unlink (literal \"/a/path\"))",
@@ -174,6 +253,29 @@ TEST_CASE("SandboxParser") {
         "(allow file-read-data (literal \"/a/path\"))\n",
         {},
         { "/a/path" });
+  }
+
+  SECTION("UnlinkIgnored") {
+    checkEmpty(
+        file,
+        "(allow file-write-unlink (literal \"/an/ignored/path\"))");
+
+    checkEmpty(
+        file,
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
+        "(allow file-write-unlink (literal \"/an/ignored/path\"))\n");
+
+    checkEmpty(
+        file,
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
+        "(allow file-write-unlink (literal \"/an/ignored/path\"))\n"
+        "(allow file-write-unlink (literal \"/an/ignored/path\"))\n");
+
+    checkEmpty(
+        file,
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
+        "(allow file-write-unlink (literal \"/an/ignored/path\"))\n"
+        "(allow file-read-data (literal \"/an/ignored/path\"))\n");
   }
 
   SECTION("Write") {
@@ -212,6 +314,37 @@ TEST_CASE("SandboxParser") {
         "(allow file-read-data (literal \"/a/path\"))\n",
         { "/a/path" },
         {});
+  }
+
+  SECTION("WriteIgnored") {
+    checkEmpty(
+        file,
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
+        "(allow file-write-data (literal \"/an/ignored/path\"))\n");
+    checkEmpty(
+        file,
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
+        "(allow file-write-flags (literal \"/an/ignored/path\"))\n");
+    checkEmpty(
+        file,
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
+        "(allow file-write-mode (literal \"/an/ignored/path\"))\n");
+    checkEmpty(
+        file,
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
+        "(allow file-write-owner (literal \"/an/ignored/path\"))\n");
+    checkEmpty(
+        file,
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
+        "(allow file-write-setugid (literal \"/an/ignored/path\"))\n");
+    checkEmpty(
+        file,
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
+        "(allow file-revoke (literal \"/an/ignored/path\"))\n");
+    checkEmpty(
+        file,
+        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
+        "(allow file-read-data (literal \"/an/ignored/path\"))\n");
   }
 
   SECTION("LiteralEscaping") {
@@ -256,12 +389,21 @@ TEST_CASE("SandboxParser") {
     checkDisallowed(
         "(allow network-outbound (literal \"/a/b\"))",
         "Process opened network connection on illegal path /a/b");
-    checkEmpty("(allow network-outbound (literal \"/private/var/run/syslog\")");
+
+    checkEmpty(
+        network, "(allow network-outbound (literal \"/an/ignored/path\")");
+    checkDisallowed(
+        "(allow file-ioctl (literal \"/an/ignored/path\"))",
+        "Process used ioctl on illegal path /an/ignored/path");
 
     checkDisallowed(
         "(allow file-ioctl (literal \"/a/b\"))",
         "Process used ioctl on illegal path /a/b");
-    checkEmpty("(allow file-ioctl (literal \"/dev/dtracehelper\")");
+
+    checkEmpty(file, "(allow file-ioctl (literal \"/an/ignored/path\")");
+    checkDisallowed(
+        "(allow network-outbound (literal \"/an/ignored/path\"))",
+        "Process opened network connection on illegal path /an/ignored/path");
   }
 
   SECTION("Disallowed") {

@@ -19,7 +19,32 @@
 #include "util.h"
 
 namespace shk {
+
+SandboxIgnores SandboxIgnores::defaults() {
+  SandboxIgnores result;
+  result.file_access = {
+      "/dev/null",
+      "/dev/random",
+      "/dev/dtracehelper",
+      "/dev/tty" };
+  result.network_access = {
+      "/private/var/run/syslog" };
+  return result;
+}
+
 namespace {
+
+bool fileAccessIgnored(
+    const SandboxIgnores &ignores,
+    const std::string &path) {
+  return ignores.file_access.count(path) != 0;
+}
+
+bool networkAccessIgnored(
+    const SandboxIgnores &ignores,
+    const std::string &path) {
+  return ignores.network_access.count(path) != 0;
+}
 
 struct ParsingContext {
   ParsingContext(char *in, const char *end)
@@ -97,8 +122,8 @@ enum class AllowToken {
   FILE_WRITE_UNLINK,
 
   // Conditionally allowed actions
-  FILE_IOCTL,  // Allowed when on /dev/dtracehelper
-  NETWORK_OUTBOUND,  // Allowed on /private/var/run/syslog
+  FILE_IOCTL,  // Allowed only when in SandboxIgnores
+  NETWORK_OUTBOUND,  // Allowed only when in SandboxIgnores
 
   // Always allowed actions
   SYSCTL_READ,
@@ -400,6 +425,7 @@ void readWhitespace(ParsingContext &context) throw(ParseError) {
 }
 
 void readAllow(
+    const SandboxIgnores &ignores,
     ParsingContext &context,
     SandboxResult &result) throw(ParseError) {
   const char *token_start = context.in;
@@ -409,22 +435,26 @@ void readAllow(
   switch (token) {
   case AllowToken::FILE_WRITE_CREATE: {
     const auto path = readLiteral(context).asString();
-    if (result.read.count(path) != 0) {
-      result.violations.emplace_back(
-          "Process created file that it had previously read from: " + path);
+    if (!fileAccessIgnored(ignores, path)) {
+      if (result.read.count(path) != 0) {
+        result.violations.emplace_back(
+            "Process created file that it had previously read from: " + path);
+      }
+      result.created.insert(path);
     }
-    result.created.insert(path);
     readToEOL(context);
     break;
   }
 
   case AllowToken::FILE_WRITE_UNLINK: {
     const auto path = readPath(context);
-    if (result.created.count(path) == 0) {
-      result.violations.emplace_back(
-          "Process unlinked file or directory that it did not create: " + path);
+    if (!fileAccessIgnored(ignores, path)) {
+      if (result.created.count(path) == 0) {
+        result.violations.emplace_back(
+            "Process unlinked file or directory that it did not create: " + path);
+      }
+      result.created.erase(path);
     }
-    result.created.erase(path);
     readToEOL(context);
     break;
   }
@@ -436,10 +466,12 @@ void readAllow(
   case AllowToken::FILE_WRITE_SETUGID:
   case AllowToken::FILE_REVOKE: {
     const auto path = readPath(context);
-    if (result.created.count(path) == 0) {
-      result.violations.emplace_back(
-          "Process performed action " + token_slice.asString() + " on file "
-          "or directory that it did not create: " + path);
+    if (!fileAccessIgnored(ignores, path)) {
+      if (result.created.count(path) == 0) {
+        result.violations.emplace_back(
+            "Process performed action " + token_slice.asString() + " on file "
+            "or directory that it did not create: " + path);
+      }
     }
     readToEOL(context);
     break;
@@ -451,32 +483,33 @@ void readAllow(
   case AllowToken::PROCESS_EXEC:
   case AllowToken::PROCESS_EXEC_STAR: {
     const auto path = readPath(context);
-    if (result.created.count(path) == 0) {
-      // It is ok for the process to read from a file it created, but only count
-      // files as read if they were not created by the process.
-      result.read.insert(path);
+    if (!fileAccessIgnored(ignores, path)) {
+      if (result.created.count(path) == 0) {
+        // It is ok for the process to read from a file it created, but only count
+        // files as read if they were not created by the process.
+        result.read.insert(path);
+      }
     }
     readToEOL(context);
     break;
   }
 
-  case AllowToken::FILE_IOCTL: {  // Allowed when on /dev/dtracehelper
-    const auto path = readLiteral(context);
-    if (path != "/dev/dtracehelper") {
+  case AllowToken::FILE_IOCTL: {
+    const auto path = readLiteral(context).asString();
+    if (!fileAccessIgnored(ignores, path)) {
       result.violations.emplace_back(
-          "Process used ioctl on illegal path " + path.asString());
+          "Process used ioctl on illegal path " + path);
     }
     readToEOL(context);
     break;
   }
 
-  case AllowToken::NETWORK_OUTBOUND: {  // Allowed on /private/var/run/syslog
+  case AllowToken::NETWORK_OUTBOUND: {
     try {
-      const auto path = readLiteral(context);
-      if (path != "/private/var/run/syslog") {
+      const auto path = readLiteral(context).asString();
+      if (!networkAccessIgnored(ignores, path)) {
         result.violations.emplace_back(
-            "Process opened network connection on illegal path " +
-            path.asString());
+            "Process opened network connection on illegal path " + path);
       }
     } catch (ParseError &) {
       // Failed to read path. Might be a network address such as
@@ -553,7 +586,10 @@ void readAllow(
   }
 }
 
-void readLine(ParsingContext &context, SandboxResult &result) throw(ParseError) {
+void readLine(
+    const SandboxIgnores &ignores,
+    ParsingContext &context,
+    SandboxResult &result) throw(ParseError) {
   if (!readOpeningParen(context)) {
     return;
   }
@@ -567,7 +603,7 @@ void readLine(ParsingContext &context, SandboxResult &result) throw(ParseError) 
     readToEOL(context);
     break;
   case StatementToken::ALLOW:
-    readAllow(context, result);
+    readAllow(ignores, context, result);
     break;
   }
 }
@@ -575,11 +611,12 @@ void readLine(ParsingContext &context, SandboxResult &result) throw(ParseError) 
 }  // anonymous namespace
 
 SandboxResult parseSandbox(
+    const SandboxIgnores &ignores,
     std::string &&contents) throw(ParseError) {
   SandboxResult result;
   ParsingContext context(&contents[0], contents.data() + contents.size());
   while (!context.atEnd()) {
-    readLine(context, result);
+    readLine(ignores, context, result);
   }
   return result;
 }

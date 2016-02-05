@@ -37,6 +37,13 @@ inline bool operator==(const SandboxResult &a, const SandboxResult &b) {
       a.violations == b.violations);
 }
 
+struct SandboxIgnores {
+  std::unordered_set<std::string> file_access;
+  std::unordered_set<std::string> network_access;
+
+  static SandboxIgnores defaults();
+};
+
 /**
  * Parse the output of the (trace "...") statement in sandboxes. This can be
  * used for dependency tracking. Please note that this parser only supports a
@@ -45,6 +52,8 @@ inline bool operator==(const SandboxResult &a, const SandboxResult &b) {
  *
  * Throws ParseError when it encounters syntax that it doesn't support.
  */
-SandboxResult parseSandbox(std::string &&contents) throw(ParseError);
+SandboxResult parseSandbox(
+    const SandboxIgnores &ignores,
+    std::string &&contents) throw(ParseError);
 
 }  // namespace shk
