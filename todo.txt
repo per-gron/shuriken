@@ -138,7 +138,6 @@ Large things remaining to do:
 * Unit test shk::build
 * Validate that the command did not read a file that is an output
   of a target that it does not depend on directly or indirectly.
-* Fail build on linting errors
 * Handle restat rules
 * Handle build pools
 * detail::deleteOldOutputs

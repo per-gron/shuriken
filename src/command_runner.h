@@ -32,7 +32,6 @@ class CommandRunner {
     std::vector<std::string> output_files;
     ExitStatus exit_status = ExitStatus::SUCCESS;
     std::string output;
-    std::vector<std::string> linting_errors;
   };
 
   using Callback = std::function<void (Result &&result)>;

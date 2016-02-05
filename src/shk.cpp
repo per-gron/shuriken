@@ -392,10 +392,9 @@ int ShurikenMain::runBuild(int argc, char **argv) {
         getLoadAverage,
         _config.max_load_average,
         _config.parallelism,
-        makeRealCommandRunner()
-        /*makeTracingCommandRunner(
+        makeTracingCommandRunner(
             *_file_system,
-            makeRealCommandRunner())*/);
+            makeRealCommandRunner()));
 
   try {
     const auto result = build(

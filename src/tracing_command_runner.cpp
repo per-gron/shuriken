@@ -99,14 +99,20 @@ class TracingCommandRunner : public CommandRunner {
         result.output_files.push_back(path);
       }
 
-      assert(result.linting_errors.empty());
-      result.linting_errors = std::move(sandbox.violations);
+      if (!sandbox.violations.empty()) {
+        for (const auto &violation : sandbox.violations) {
+          result.output += "Linting error: " + violation + "\n";
+        }
+        result.exit_status = ExitStatus::FAILURE;
+      }
     } catch (ParseError &error) {
-      result.linting_errors.emplace_back(
-          std::string("Failed to parse sandbox file: ") + error.what());
+      result.output +=
+          std::string("Failed to parse sandbox file: ") + error.what() + "\n";
+      result.exit_status = ExitStatus::FAILURE;
     } catch (IoError &error) {
-      result.linting_errors.emplace_back(
-          std::string("Failed to open sandbox file: ") + error.what());
+      result.output +=
+          std::string("Failed to open sandbox file: ") + error.what() + "\n";
+      result.exit_status = ExitStatus::FAILURE;
     }
   }
 

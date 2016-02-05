@@ -542,9 +542,6 @@ void commandDone(
 
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
-    // TODO(peck): Do something about result.linting_errors
-    assert(result.linting_errors.empty() && "There was a linting error");
-
     if (!isConsolePool(step.pool_name)) {
       // The console pool gives the command access to stdin which is clearly not
       // a deterministic source. Because of this, steps using the console pool
