@@ -551,7 +551,8 @@ void commandDone(
           computeInvocationEntry(params.clock, params.file_system, result));
     }
 
-    if (step.restat &&
+    if (false &&  // Ignore rather than trigger an assert. Remove this later
+        step.restat &&
         !outputsWereChanged(
             params.file_system,
             params.invocations,
