@@ -29,6 +29,11 @@ Missing features:
 * browse
 * urtle
 
+Errors that Shuriken does not detect:
+* Nondeterministic problems in invoked build steps
+* Build steps whose output depend on certain files *missing*
+* Build steps that read from or append to an output file
+
 Build steps in Shuriken must fulfill the following requirements:
 * Must be a pure function; given the same input must generate the same output
 * The output must be written only as files and output to stdin/stderr
@@ -174,4 +179,3 @@ To fill in the first test:
 Steal directly from Ninja:
 * Stat cache for Windows
 * getopt (for Windows only)
-* deps_log (refactor into invocation log)

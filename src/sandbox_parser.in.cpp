@@ -426,6 +426,7 @@ void readWhitespace(ParsingContext &context) throw(ParseError) {
 
 void readAllow(
     const SandboxIgnores &ignores,
+    std::unordered_set<std::string> &must_create,
     ParsingContext &context,
     SandboxResult &result) throw(ParseError) {
   const char *token_start = context.in;
@@ -434,13 +435,13 @@ void readAllow(
 
   switch (token) {
   case AllowToken::FILE_WRITE_CREATE: {
-    const auto path = readLiteral(context).asString();
+    auto path = readLiteral(context).asString();
     if (!fileAccessIgnored(ignores, path)) {
-      if (result.read.count(path) != 0) {
-        result.violations.emplace_back(
-            "Process created file that it had previously read from: " + path);
-      }
-      result.created.insert(path);
+      // Just deleting the file from the set of read files is kind of wrong but
+      // I don't think the sandbox tracing allows for sufficient precision to
+      // know when this is or is not legit.
+      result.read.erase(path);
+      result.created.insert(std::move(path));
     }
     readToEOL(context);
     break;
@@ -450,8 +451,18 @@ void readAllow(
     const auto path = readPath(context);
     if (!fileAccessIgnored(ignores, path)) {
       if (result.created.count(path) == 0) {
-        result.violations.emplace_back(
-            "Process unlinked file or directory that it did not create: " + path);
+        // Build steps must only create files, it cannot remove them (because it
+        // is not possible to clean up after that action). Because of this, it
+        // is only allowed to remove a file that a build step has previously
+        // created or to remove files that it is about to overwrite.
+        //
+        // TODO(peck): Ideally it should not be allowed to delete a file that
+        // the build step has already created but I do not know how to make that
+        // work in practice. For example, if an invocation log entry was not
+        // written for a build step, the build step should still be allowed to
+        // overwrite the outputs of the previous (possibly failed) build step
+        // invocation.
+        must_create.insert(path);
       }
       result.created.erase(path);
     }
@@ -465,13 +476,13 @@ void readAllow(
   case AllowToken::FILE_WRITE_OWNER:
   case AllowToken::FILE_WRITE_SETUGID:
   case AllowToken::FILE_REVOKE: {
-    const auto path = readPath(context);
+    auto path = readPath(context);
     if (!fileAccessIgnored(ignores, path)) {
-      if (result.created.count(path) == 0) {
-        result.violations.emplace_back(
-            "Process performed action " + token_slice.asString() + " on file "
-            "or directory that it did not create: " + path);
-      }
+      // Just deleting the file from the set of read files is kind of wrong but
+      // I don't think the sandbox tracing allows for sufficient precision to
+      // know when this is or is not legit.
+      result.read.erase(path);
+      result.created.insert(std::move(path));
     }
     readToEOL(context);
     break;
@@ -588,6 +599,7 @@ void readAllow(
 
 void readLine(
     const SandboxIgnores &ignores,
+    std::unordered_set<std::string> &must_create,
     ParsingContext &context,
     SandboxResult &result) throw(ParseError) {
   if (!readOpeningParen(context)) {
@@ -603,7 +615,7 @@ void readLine(
     readToEOL(context);
     break;
   case StatementToken::ALLOW:
-    readAllow(ignores, context, result);
+    readAllow(ignores, must_create, context, result);
     break;
   }
 }
@@ -615,8 +627,17 @@ SandboxResult parseSandbox(
     std::string &&contents) throw(ParseError) {
   SandboxResult result;
   ParsingContext context(&contents[0], contents.data() + contents.size());
+  std::unordered_set<std::string> must_create;
   while (!context.atEnd()) {
-    readLine(ignores, context, result);
+    readLine(ignores, must_create, context, result);
+  }
+
+
+  for (const auto &path : must_create) {
+    if (result.created.count(path) == 0) {
+      result.violations.emplace_back(
+          "Process unlinked file or directory that it did not create: " + path);
+    }
   }
   return result;
 }

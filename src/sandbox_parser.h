@@ -25,7 +25,9 @@ struct SandboxResult {
   /**
    * A list of human readable strings that describe things that the process did
    * that is disallowed, for example network access, mounting a file system or
-   * if it modified, moved or deleted a file that it did not create.
+   * if it moved or deleted a file that it did not create (or at least access;
+   * the underlying tooling is not precise enough to distinguish between opening
+   * for writing with or without truncation).
    */
   std::vector<std::string> violations;
 };

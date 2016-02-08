@@ -153,11 +153,13 @@ TEST_CASE("SandboxParser") {
         "(allow process* (literal \"/bin/ls\"))",
         {},
         { "/bin/ls" });
-    checkDisallowedAllowFiles(
-        SandboxIgnores(),
+
+    // Ideally this should be disallowed
+    checkResult(
         "(allow file-read-data (literal \"/a/path\"))\n"
         "(allow file-write-create (literal \"/a/path\"))\n",
-        "Process created file that it had previously read from: /a/path");
+        { "/a/path" },
+        {});
   }
 
   SECTION("ReadIgnored") {
@@ -183,30 +185,33 @@ TEST_CASE("SandboxParser") {
   }
 
   SECTION("WriteWithoutCreate") {
-    checkDisallowed(
-        "(allow file-write-data (literal \"/a/path\"))",
-        "Process performed action file-write-data on file or directory that "
-        "it did not create: /a/path");
-    checkDisallowed(
-        "(allow file-write-flags (literal \"/a/path\"))",
-        "Process performed action file-write-flags on file or directory that"
-        " it did not create: /a/path");
-    checkDisallowed(
-        "(allow file-write-mode (literal \"/a/path\"))",
-        "Process performed action file-write-mode on file or directory that "
-        "it did not create: /a/path");
-    checkDisallowed(
-        "(allow file-write-owner (literal \"/a/path\"))",
-        "Process performed action file-write-owner on file or directory that"
-        " it did not create: /a/path");
-    checkDisallowed(
-        "(allow file-write-setugid (literal \"/a/path\"))",
-        "Process performed action file-write-setugid on file or directory "
-        "that it did not create: /a/path");
-    checkDisallowed(
-        "(allow file-revoke (literal \"/a/path\"))",
-        "Process performed action file-revoke on file or directory that it "
-        "did not create: /a/path");
+    // Ideally these should all be disallowed but the sandbox tracing
+    // mechanism cannot distinguish between opening a file for wite with
+    // appending vs without append, so unfortunately it has to be allowed.
+    checkResult(
+        "(allow file-write-data (literal \"/a/path\"))\n",
+        { "/a/path" },
+        {});
+    checkResult(
+        "(allow file-write-flags (literal \"/a/path\"))\n",
+        { "/a/path" },
+        {});
+    checkResult(
+        "(allow file-write-mode (literal \"/a/path\"))\n",
+        { "/a/path" },
+        {});
+    checkResult(
+        "(allow file-write-owner (literal \"/a/path\"))\n",
+        { "/a/path" },
+        {});
+    checkResult(
+        "(allow file-write-setugid (literal \"/a/path\"))\n",
+        { "/a/path" },
+        {});
+    checkResult(
+        "(allow file-revoke (literal \"/a/path\"))\n",
+        { "/a/path" },
+        {});
   }
 
   SECTION("WriteWithoutCreateIgnored") {
