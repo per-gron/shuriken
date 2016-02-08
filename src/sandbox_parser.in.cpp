@@ -25,6 +25,7 @@ SandboxIgnores SandboxIgnores::defaults() {
   result.file_access = {
       "/dev/null",
       "/dev/random",
+      "/dev/urandom",
       "/dev/dtracehelper",
       "/dev/tty" };
   result.network_access = {
