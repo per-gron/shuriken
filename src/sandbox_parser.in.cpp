@@ -475,6 +475,7 @@ void readAllow(
   case AllowToken::FILE_WRITE_MODE:
   case AllowToken::FILE_WRITE_OWNER:
   case AllowToken::FILE_WRITE_SETUGID:
+  case AllowToken::FILE_WRITE_TIMES:
   case AllowToken::FILE_REVOKE: {
     auto path = readPath(context);
     if (!fileAccessIgnored(ignores, path)) {
@@ -557,7 +558,6 @@ void readAllow(
   case AllowToken::NETWORK_BIND:
   case AllowToken::FILE_WRITE_UNMOUNT:
   case AllowToken::FILE_WRITE_MOUNT:
-  case AllowToken::FILE_WRITE_TIMES:
   case AllowToken::SYSCTL_STAR:
   case AllowToken::SYSCTL_WRITE:
   case AllowToken::SYSTEM_STAR:

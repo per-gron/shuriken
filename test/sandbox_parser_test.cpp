@@ -209,6 +209,10 @@ TEST_CASE("SandboxParser") {
         { "/a/path" },
         {});
     checkResult(
+        "(allow file-write-times (literal \"/a/path\"))\n",
+        { "/a/path" },
+        {});
+    checkResult(
         "(allow file-revoke (literal \"/a/path\"))\n",
         { "/a/path" },
         {});
@@ -230,6 +234,9 @@ TEST_CASE("SandboxParser") {
     checkEmpty(
         file,
         "(allow file-write-setugid (literal \"/an/ignored/path\"))");
+    checkEmpty(
+        file,
+        "(allow file-write-times (literal \"/an/ignored/path\"))");
     checkEmpty(
         file,
         "(allow file-revoke (literal \"/an/ignored/path\"))");
@@ -307,6 +314,11 @@ TEST_CASE("SandboxParser") {
     checkResult(
         "(allow file-write-create (literal \"/a/path\"))\n"
         "(allow file-write-setugid (literal \"/a/path\"))\n",
+        { "/a/path" },
+        {});
+    checkResult(
+        "(allow file-write-create (literal \"/a/path\"))\n"
+        "(allow file-write-times (literal \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
@@ -418,7 +430,6 @@ TEST_CASE("SandboxParser") {
     checkDisallowedAction("network-bind", "(allow network-bind)");
     checkDisallowedAction("file-write-unmount", "(allow file-write-unmount)");
     checkDisallowedAction("file-write-mount", "(allow file-write-mount)");
-    checkDisallowedAction("file-write-times", "(allow file-write-times)");
     checkDisallowedAction("sysctl*", "(allow sysctl*)");
     checkDisallowedAction("sysctl-write", "(allow sysctl-write)");
     checkDisallowedAction("system*", "(allow system*)");
