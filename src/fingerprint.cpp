@@ -9,7 +9,12 @@ Fingerprint::Stat fingerprintStat(
     FileSystem &file_system, const std::string &path) throw(IoError) {
   Fingerprint::Stat result;
 
-  const auto stat = file_system.lstat(path);
+  // TODO(peck): It would not be correct to use lstat here because then we could
+  // report that the file is a symlink even though it points to a directory,
+  // which later on causes the build to fail when it attempts to hash the
+  // directory that is pointed to as if it were a file. Perhaps a solution to
+  // this could be to hash symlinks in a special way.
+  const auto stat = file_system.stat(path);
   if (stat.result == 0) {
     result.size = stat.metadata.size;
     result.ino = stat.metadata.ino;

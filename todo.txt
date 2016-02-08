@@ -164,6 +164,7 @@ Large things remaining to do:
 * Caching
 * Distributed caching
 
+* Hash symlinks in a special way (see fingerprintStat)
 * Unit test BuildStatus
 * Write documentation
 * Fuzz test parsers (invocation log, sandbox, manifest)
