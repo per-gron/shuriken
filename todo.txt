@@ -130,15 +130,6 @@ Path:
     some other path that we have seen. That means hardlink and could break the build.
 
 Large things remaining to do:
-* Don't use description when it's empty
-* Needs means to whitelist file accesses
-  * read /dev/random
-  * read/write /dev/dtracehelper
-  * Types of whitelist entries
-    - allow read/write/readwrite
-  * Other related things:
-    * For caching, some path prefixes could be given names, to handle absolute paths
-    * Might be other things where the linter can be controlled
 * Ocasionally recompact
 * Unit test shk::build
 * Validate that the command did not read a file that is an output

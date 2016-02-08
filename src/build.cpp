@@ -535,10 +535,12 @@ void commandDone(
     deleteBuildProduct(params.file_system, path);
   });
 
-  params.build_status.stepFinished(
-      step,
-      result.exit_status == ExitStatus::SUCCESS,
-      result.output);
+  if (!step.command.empty()) {
+    params.build_status.stepFinished(
+        step,
+        result.exit_status == ExitStatus::SUCCESS,
+        result.output);
+  }
 
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
@@ -616,7 +618,9 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
 
   // TODO(peck): What about pools?
 
-  params.build_status.stepStarted(step);
+  if (!step.command.empty()) {
+    params.build_status.stepStarted(step);
+  }
   params.command_runner.invoke(
       step.command,
       isConsolePool(step.pool_name) ? UseConsole::YES : UseConsole::NO,
@@ -653,16 +657,19 @@ void deleteStaleOutputs(
   }
 }
 
-int countStepsToBuild(const Build &build) {
-  int steps = 0;
+int countStepsToBuild(const std::vector<Step> &steps, const Build &build) {
+  int step_count = 0;
 
-  for (const auto &step_node : build.step_nodes) {
-    if (step_node.should_build) {
-      steps++;
+  assert(steps.size() == build.step_nodes.size());
+  for (size_t i = 0; i < steps.size(); i++) {
+    const auto &step_node = build.step_nodes[i];
+    const auto &step = steps[i];
+    if (step_node.should_build && !step.command.empty()) {
+      step_count++;
     }
   }
 
-  return steps;
+  return step_count;
 }
 
 }  // namespace detail
@@ -701,7 +708,7 @@ BuildResult build(
   const auto discarded_steps = detail::discardCleanSteps(clean_steps, build);
 
   const auto build_status = make_build_status(
-      countStepsToBuild(build) - discarded_steps);
+      countStepsToBuild(manifest.steps, build) - discarded_steps);
 
   detail::BuildCommandParameters params(
       clock,
