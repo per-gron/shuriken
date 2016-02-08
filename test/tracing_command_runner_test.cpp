@@ -167,6 +167,13 @@ TEST_CASE("TracingCommandRunner") {
   const auto output_path = getWorkingDir() + "/shk.test-file";
 
   SECTION("TrackInputs") {
+    const auto result = runCommand(*runner, "");
+    CHECK(result.exit_status == ExitStatus::SUCCESS);
+    CHECK(result.input_files.empty());
+    CHECK(result.output_files.empty());
+  }
+
+  SECTION("TrackInputs") {
     const auto result = runCommand(*runner, "/bin/ls /sbin");
     CHECK(contains(result.input_files, "/sbin"));
     CHECK(contains(result.input_files, "/bin/ls"));

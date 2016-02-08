@@ -41,6 +41,11 @@ class TracingCommandRunner : public CommandRunner {
       const std::string &command,
       UseConsole use_console,
       const Callback &callback) override {
+    if (command.empty()) {
+      _inner->invoke("", use_console, callback);
+      return;
+    }
+
     try {
       const auto tmp = std::make_shared<TemporaryFile>(_file_system);
 

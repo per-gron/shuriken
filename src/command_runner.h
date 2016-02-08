@@ -41,7 +41,10 @@ class CommandRunner {
   /**
    * Invoke a command. When the command is finished, callback is invoked with
    * the result. It is allowed to call invoke() and empty() from the callback,
-   * but it is not allowed to call wait() from there.
+   * but it is not allowed to call runCommands() from there.
+   *
+   * It is legal to call invoke with an empty command string. That should
+   * act as if it executed a command that does nothing.
    *
    * It is legal to call invoke even from a callback of invoke (ie within a
    * runCommands invocation).
