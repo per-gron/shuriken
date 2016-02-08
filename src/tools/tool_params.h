@@ -14,10 +14,12 @@
 
 #pragma once
 
-#include "tools/tool_params.h"
+#include "../invocations.h"
 
 namespace shk {
 
-int toolClean(int argc, char *argv[], const ToolParams &params);
+struct ToolParams {
+  const Invocations &invocations;
+};
 
 }  // namespace shk

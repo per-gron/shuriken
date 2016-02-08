@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "commands.h"
+
 namespace shk {
 #if 0
 namespace {
@@ -36,7 +38,7 @@ void printCommands(Edge *edge, std::set<Edge *> *seen) {
 }  // anonymous namespace
 #endif
 
-int toolCommands(int argc, char *argv[]) {
+int toolCommands(int argc, char *argv[], const ToolParams &params) {
 #if 0
   std::vector<Node *> nodes;
   try {

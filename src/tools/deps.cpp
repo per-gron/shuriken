@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "deps.h"
 
 namespace shk {
 
-int toolDeps(int argc, char **argv) {
+int toolDeps(int argc, char **argv, const ToolParams &params) {
 #if 0
   std::vector<Node *> nodes;
   if (argc == 0) {

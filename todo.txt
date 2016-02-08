@@ -130,6 +130,9 @@ Path:
     some other path that we have seen. That means hardlink and could break the build.
 
 Large things remaining to do:
+* Missing output file should make it count as dirty.
+* Ensure sufficient parallelism. Seems like it doesn't always invoke as many commands
+  as it can.
 * Ocasionally recompact
 * Unit test shk::build
 * Validate that the command did not read a file that is an output

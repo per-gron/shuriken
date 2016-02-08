@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "query.h"
+
 namespace shk {
 
-int toolQuery(int argc, char *argv[]) {
+int toolQuery(int argc, char *argv[], const ToolParams &params) {
 #if 0
   if (argc == 0) {
     error("expected a target to query");

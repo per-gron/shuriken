@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "clean.h"
+
 namespace shk {
 
-int toolClean(int argc, char *argv[]) {
+int toolClean(int argc, char *argv[], const ToolParams &params) {
 #if 0
   // The clean tool uses getopt, and expects argv[0] to contain the name of
   // the tool, i.e. "clean".

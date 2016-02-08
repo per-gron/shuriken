@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "targets.h"
+
 namespace shk {
 #if 0
 namespace {
@@ -80,7 +82,7 @@ int toolTargetsList(State *state) {
 }  // anonymous namespace
 #endif
 
-int toolTargets(int argc, char *argv[]) {
+int toolTargets(int argc, char *argv[], const ToolParams &params) {
 #if 0
   int depth = 1;
   if (argc >= 1) {

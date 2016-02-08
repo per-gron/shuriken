@@ -52,6 +52,7 @@
 #include "tools/query.h"
 #include "tools/recompact.h"
 #include "tools/targets.h"
+#include "tools/tool_params.h"
 #include "tracing_command_runner.h"
 #include "util.h"
 #include "version.h"
@@ -62,7 +63,7 @@ namespace {
 /**
  * The type of functions that are the entry points to tools (subcommands).
  */
-using ToolFunc = int (*)(int, char**);
+using ToolFunc = int (*)(int, char**, const ToolParams &);
 
 /**
  * Subtools, accessible via "-t foo".
@@ -82,12 +83,6 @@ struct Tool {
    * When to run the tool.
    */
   enum {
-    /**
-     * Run after parsing the command-line flags and potentially changing
-     * the current working directory (as early as possible).
-     */
-    RUN_AFTER_FLAGS,
-
     /**
      * Run after loading build.ninja.
      */
@@ -171,6 +166,10 @@ struct ShurikenMain {
 
   FileSystem &fileSystem() {
     return *_file_system;
+  }
+
+  const Invocations &invocations() const {
+    return _invocations;
   }
 
   /**
@@ -274,7 +273,7 @@ const Tool *chooseTool(const std::string &tool_name) {
       Tool::RUN_AFTER_LOAD, &toolCompilationDatabase },
     { "recompact",  "recompacts shuriken-internal data structures",
       Tool::RUN_AFTER_LOAD, &toolRecompact },
-    { NULL, NULL, Tool::RUN_AFTER_FLAGS, NULL }
+    { NULL, NULL, Tool::RUN_AFTER_LOAD, NULL }
   };
 
   if (tool_name == "list") {
@@ -577,13 +576,6 @@ int real_main(int argc, char **argv) {
     }
   }
 
-  if (options.tool && options.tool->when == Tool::RUN_AFTER_FLAGS) {
-    // None of the RUN_AFTER_FLAGS actually use a ShurikenMain, but it's needed
-    // by other tools.
-    ShurikenMain shk(config);
-    return options.tool->func(argc, argv);
-  }
-
   // Limit number of rebuilds, to prevent infinite loops.
   const int kCycleLimit = 100;
   for (int cycle = 1; cycle <= kCycleLimit; ++cycle) {
@@ -599,8 +591,10 @@ int real_main(int argc, char **argv) {
       return 1;
     }
 
+    ToolParams tool_params = { shk.invocations() };
+
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOAD) {
-      return options.tool->func(argc, argv);
+      return options.tool->func(argc, argv, tool_params);
     }
 
     if (!shk.readAndOpenInvocationLog()) {
@@ -608,7 +602,7 @@ int real_main(int argc, char **argv) {
     }
 
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOG) {
-      return options.tool->func(argc, argv);
+      return options.tool->func(argc, argv, tool_params);
     }
 
     // Attempt to rebuild the manifest before building anything else

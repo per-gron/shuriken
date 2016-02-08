@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include "tools/tool_params.h"
+
 namespace shk {
 
-int toolRecompact(int argc, char *argv[]);
+int toolRecompact(int argc, char *argv[], const ToolParams &params);
 
 }  // namespace shk

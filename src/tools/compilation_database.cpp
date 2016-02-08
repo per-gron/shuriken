@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "compilation_database.h"
+
 namespace shk {
 #if 0
 namespace {
@@ -29,7 +31,7 @@ void encodeJSONString(const char *str) {
 }  // anonymous namespace
 #endif
 
-int toolCompilationDatabase(int argc, char *argv[]) {
+int toolCompilationDatabase(int argc, char *argv[], const ToolParams &params) {
 #if 0
   bool first = true;
   std::vector<char> cwd;

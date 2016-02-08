@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "recompact.h"
+
 namespace shk {
 
-int toolRecompact(int argc, char *argv[]) {
+int toolRecompact(int argc, char *argv[], const ToolParams &params) {
 #if 0
   if (!ensureBuildDirExists()) {
     return 1;
