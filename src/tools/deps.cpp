@@ -12,51 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "deps.h"
+#include "build.h"
+#include "tools/deps.h"
 
 namespace shk {
 
 int toolDeps(int argc, char **argv, const ToolParams &params) {
-#if 0
-  std::vector<Node *> nodes;
-  if (argc == 0) {
-    for (const auto &n : _deps_log.nodes()) {
-      if (_deps_log.IsDepsEntryLiveFor(n)) {
-        nodes.push_back(n);
-      }
-    }
-  } else {
-    try {
-      nodes = collectTargetsFromArgs(argc, argv);
-    } catch (const BuildError &error) {
-      error("%s", error.what());
-      return 1;
-    }
-  }
+  const auto step_indices = computeStepsToBuild(
+      params.paths, params.manifest, argc, argv);
 
-  RealDiskInterface disk_interface;
-  for (const auto &node : nodes) {
-    DepsLog::Deps *deps = _deps_log.GetDeps(node);
-    if (!deps) {
-      printf("%s: deps not found\n", node->path().c_str());
+  for (const auto step : params.manifest.steps) {
+    const auto entry_it = params.invocations.entries.find(step.hash());
+    if (entry_it == params.invocations.entries.end()) {
+      printf("%s: invocation not found\n", step.command.c_str());
       continue;
     }
 
-    std::string err;
-    TimeStamp mtime = disk_interface.Stat(node->path(), &err);
-    if (mtime == -1) {
-      error("%s", err.c_str());  // Log and ignore Stat() errors;
+    const auto &entry = entry_it->second;
+
+    bool first = true;
+    for (const auto &output : entry.output_files) {
+      printf("%s%s", first ? "" : "\n", output.first.original().c_str());
+      first = false;
     }
+    if (first) {
+      printf("[no output file]");
+    }
+
     printf(
-        "%s: #deps %d, deps mtime %d (%s)\n",
-        node->path().c_str(), deps->node_count, deps->mtime,
-        (!mtime || mtime > deps->mtime ? "STALE":"VALID"));
-    for (int i = 0; i < deps->node_count; ++i) {
-      printf("    %s\n", deps->nodes[i]->path().c_str());
+        ": #deps %lu\n",
+        entry.input_files.size());
+    for (const auto &input : entry.input_files) {
+      printf("    %s\n", input.first.original().c_str());
     }
     printf("\n");
   }
-#endif
 
   return 0;
 }
