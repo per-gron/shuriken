@@ -61,6 +61,19 @@ std::vector<Path> interpretPaths(
   return targets;
 }
 
+std::vector<StepIndex> computeStepsToBuild(
+    Paths &paths,
+    const Manifest &manifest,
+    int argc,
+    char *argv[0]) throw(BuildError) {
+  const auto output_file_map = detail::computeOutputFileMap(manifest.steps);
+  const auto specified_outputs = interpretPaths(paths, manifest, argc, argv);
+  return detail::computeStepsToBuild(
+      manifest,
+      output_file_map,
+      specified_outputs);
+}
+
 namespace detail {
 
 void markStepNodeAsDone(Build &build, StepIndex step_idx) {

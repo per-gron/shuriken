@@ -16,6 +16,8 @@ namespace shk {
 
 using Clock = std::function<time_t ()>;
 
+using StepIndex = size_t;
+
 /**
  * Get the Path to a given output file for a step in the manifest. This handles
  * the ^ command line interface syntax.
@@ -32,9 +34,17 @@ std::vector<Path> interpretPaths(
     int argc,
     char *argv[]) throw(BuildError);
 
-namespace detail {
+/**
+ * Like detail::computeStepsToBuild, but with a more convenient interface for
+ * use by tools.
+ */
+std::vector<StepIndex> computeStepsToBuild(
+    Paths &paths,
+    const Manifest &manifest,
+    int argc,
+    char *argv[0]) throw(BuildError);
 
-using StepIndex = size_t;
+namespace detail {
 
 /**
  * Map of path => index of the step that has this file as an output.

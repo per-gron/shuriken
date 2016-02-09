@@ -215,6 +215,16 @@ TEST_CASE("Build") {
         (std::vector<StepIndex>{ 0, 2 }));
   }
 
+  SECTION("computeStepsToBuild helper") {
+
+    manifest.steps = { single_output_b, multiple_outputs };
+
+    // Kinda stupid test, yes I know. This is mostly just to get coverage, this
+    // function is simple enough that I expect it to not have significant bugs.
+    manifest.defaults = { paths.get("b") };
+    CHECK(computeStepsToBuild(paths, manifest, 0, nullptr) == vec({0}));
+  }
+
   SECTION("computeStepsToBuild") {
     SECTION("trivial") {
       CHECK(computeStepsToBuild(Manifest()).empty());
