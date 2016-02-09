@@ -94,14 +94,16 @@ class PersistentFileSystem : public FileSystem {
       }
       _size = input.st_size;
 
-      _f = ::open(path.c_str(), O_RDONLY);
-      if (_f == -1) {
-        throw IoError(strerror(errno), errno);
-      }
+      if (_size) {
+        _f = ::open(path.c_str(), O_RDONLY);
+        if (_f == -1) {
+          throw IoError(strerror(errno), errno);
+        }
 
-      _memory = ::mmap(nullptr, _size, PROT_READ, MAP_PRIVATE, _f, 0);
-      if (_memory == MAP_FAILED) {
-        throw IoError(strerror(errno), errno);
+        _memory = ::mmap(nullptr, _size, PROT_READ, MAP_PRIVATE, _f, 0);
+        if (_memory == MAP_FAILED) {
+          throw IoError(strerror(errno), errno);
+        }
       }
     }
 

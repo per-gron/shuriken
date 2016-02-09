@@ -5,8 +5,8 @@
 namespace shk {
 namespace {
 
-const char kTestFilename1[] = "fileutils-tempfile1";
-const char kTestFilename2[] = "fileutils-tempfile2";
+const char kTestFilename1[] = "filelock-tempfile1";
+const char kTestFilename2[] = "filelock-tempfile2";
 
 }  // anonymous namespace
 

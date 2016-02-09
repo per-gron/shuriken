@@ -128,6 +128,7 @@ add_executable(shk_test
   test/manifest_test.cpp
   test/optional_test.cpp
   test/path_test.cpp
+  test/persistent_file_system_test.cpp
   test/persistent_invocation_log_test.cpp
   test/properties.cpp
   test/raii_helper_test.cpp
