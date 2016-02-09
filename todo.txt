@@ -141,7 +141,6 @@ Large things remaining to do:
 * Handle build pools
 * detail::deleteOldOutputs
 * detail::deleteStaleOutputs
-* Actually respect when targets are specified on the command line
 * Stat cache for use by Paths
 * Rebuild manifest
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
@@ -158,6 +157,7 @@ Large things remaining to do:
 * Caching
 * Distributed caching
 
+* Make sure the build does the right thing even if targets are specified wrong on the command line
 * Hash symlinks in a special way (see fingerprintStat)
 * Unit test BuildStatus
 * Write documentation

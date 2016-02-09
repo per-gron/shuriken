@@ -18,9 +18,10 @@ std::vector<StepIndex> rootSteps(
 }
 
 std::vector<StepIndex> computeStepsToBuild(
-    const Manifest &manifest) throw(BuildError) {
+    const Manifest &manifest,
+    const std::vector<Path> &specified_outputs = {}) throw(BuildError) {
   return ::shk::detail::computeStepsToBuild(
-      manifest, computeOutputFileMap(manifest.steps));
+      manifest, computeOutputFileMap(manifest.steps), specified_outputs);
 }
 
 std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
@@ -38,7 +39,7 @@ Build computeBuild(
       output_file_map,
       manifest,
       allowed_failures,
-      ::shk::detail::computeStepsToBuild(manifest, output_file_map));
+      ::shk::detail::computeStepsToBuild(manifest, output_file_map, {}));
 }
 
 }  // anonymous namespace
@@ -243,6 +244,22 @@ TEST_CASE("Build") {
 
       manifest.defaults = { paths.get("b"), paths.get("c") };
       CHECK(computeStepsToBuild(manifest) == vec({0, 1}));
+    }
+
+    SECTION("specified_outputs") {
+      manifest.steps = { single_output_b, multiple_outputs };
+
+      CHECK(computeStepsToBuild(manifest, { paths.get("b") }) == vec({0}));
+      CHECK(computeStepsToBuild(manifest, { paths.get("c") }) == vec({1}));
+      CHECK(computeStepsToBuild(manifest, { paths.get("d") }) == vec({1}));
+
+      // Duplicates are ok. We could deduplicate but that would just be an
+      // unnecessary expense.
+      CHECK(computeStepsToBuild(manifest, { paths.get("d"), paths.get("c") }) ==
+          vec({1, 1}));
+
+      CHECK(computeStepsToBuild(manifest, { paths.get("b"), paths.get("c") }) ==
+          vec({0, 1}));
     }
 
     SECTION("use root steps when defaults are missing") {
@@ -901,6 +918,7 @@ TEST_CASE("Build") {
           },
           log,
           failures_allowed,
+          {},
           manifest,
           invocations);
     };

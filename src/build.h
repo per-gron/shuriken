@@ -186,7 +186,9 @@ std::vector<StepIndex> rootSteps(
     const OutputFileMap &output_file_map);
 
 /**
- * Find the steps that should be built if no steps are specifically requested.
+ * Find the steps that should be built. If there are no specified paths, this
+ * function will use defaults specified in the manifest, or find the root nodes
+ * to build.
  *
  * The returned array may contain duplicate values.
  *
@@ -194,7 +196,8 @@ std::vector<StepIndex> rootSteps(
  */
 std::vector<StepIndex> computeStepsToBuild(
     const Manifest &manifest,
-    const OutputFileMap &output_file_map) throw(BuildError);
+    const OutputFileMap &output_file_map,
+    const std::vector<Path> &specified_outputs) throw(BuildError);
 
 /**
  * Generate a string that describes a cycle, for example "a -> b -> a".
@@ -305,6 +308,7 @@ BuildResult build(
     const MakeBuildStatus &make_build_status,
     InvocationLog &invocation_log,
     size_t failures_allowed,
+    const std::vector<Path> &specified_outputs,
     const Manifest &manifest,
     const Invocations &invocations) throw(IoError, BuildError);
 

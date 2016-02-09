@@ -147,11 +147,14 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
 
 std::vector<StepIndex> computeStepsToBuild(
     const Manifest &manifest,
-    const OutputFileMap &output_file_map) throw(BuildError) {
-  if (manifest.defaults.empty()) {
-    return rootSteps(manifest.steps, output_file_map);
-  } else {
+    const OutputFileMap &output_file_map,
+    const std::vector<Path> &specified_outputs) throw(BuildError) {
+  if (!specified_outputs.empty()) {
+    return computeStepsToBuildFromPaths(specified_outputs, output_file_map);
+  } else if (!manifest.defaults.empty()) {
     return computeStepsToBuildFromPaths(manifest.defaults, output_file_map);
+  } else {
+    return rootSteps(manifest.steps, output_file_map);
   }
 }
 
@@ -693,6 +696,7 @@ BuildResult build(
     const MakeBuildStatus &make_build_status,
     InvocationLog &invocation_log,
     size_t failures_allowed,
+    const std::vector<Path> &specified_outputs,
     const Manifest &manifest,
     const Invocations &invocations) throw(IoError, BuildError) {
   // TODO(peck): Use build_status
@@ -704,7 +708,8 @@ BuildResult build(
 
   const auto output_file_map = detail::computeOutputFileMap(manifest.steps);
 
-  auto steps_to_build = detail::computeStepsToBuild(manifest, output_file_map);
+  auto steps_to_build = detail::computeStepsToBuild(
+      manifest, output_file_map, specified_outputs);
 
   auto build = detail::computeBuild(
       step_hashes,

@@ -369,9 +369,9 @@ bool ShurikenMain::readAndOpenInvocationLog() {
 }
 
 int ShurikenMain::runBuild(int argc, char **argv) {
-  std::vector<Path> targets;
+  std::vector<Path> specified_outputs;
   try {
-    targets = interpretPaths(_paths, _manifest, argc, argv);
+    specified_outputs = interpretPaths(_paths, _manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;
@@ -406,6 +406,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
         },
         *_invocation_log,
         _config.failures_allowed,
+        specified_outputs,
         _manifest,
         _invocations);
 
