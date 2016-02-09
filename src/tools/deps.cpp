@@ -30,9 +30,19 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
 
     const auto &entry = entry_it->second;
 
+    const auto file_to_str = [&](
+        const std::pair<Path, Fingerprint> &file) {
+      const auto &path = file.first.original();
+      const auto &fp = file.second;
+      const auto result = fingerprintMatches(params.file_system, path, fp);
+      return path +
+          (result.clean ? "" : " [dirty]") +
+          (result.should_update ? " [should update]" : "");
+    };
+
     bool first = true;
     for (const auto &output : entry.output_files) {
-      printf("%s%s", first ? "" : "\n", output.first.original().c_str());
+      printf("%s%s", first ? "" : "\n", file_to_str(output).c_str());
       first = false;
     }
     if (first) {
@@ -43,7 +53,7 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
         ": #deps %lu\n",
         entry.input_files.size());
     for (const auto &input : entry.input_files) {
-      printf("    %s\n", input.first.original().c_str());
+      printf("    %s\n", file_to_str(input).c_str());
     }
     printf("\n");
   }

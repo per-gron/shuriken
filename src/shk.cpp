@@ -587,7 +587,8 @@ int real_main(int argc, char **argv) {
     ToolParams tool_params = {
         shk.paths(),
         shk.invocations(),
-        shk.manifest() };
+        shk.manifest(),
+        shk.fileSystem() };
 
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOAD) {
       return options.tool->func(argc, argv, tool_params);

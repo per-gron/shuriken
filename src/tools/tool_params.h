@@ -23,6 +23,7 @@ struct ToolParams {
   Paths &paths;
   const Invocations &invocations;
   const Manifest &manifest;
+  FileSystem &file_system;
 };
 
 }  // namespace shk
