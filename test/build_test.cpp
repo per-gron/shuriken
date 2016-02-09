@@ -140,6 +140,24 @@ TEST_CASE("Build") {
     }
   }
 
+  SECTION("interpretPath") {
+    SECTION("Empty") {
+      CHECK(interpretPaths(paths, manifest, 0, nullptr).empty());
+    }
+
+    SECTION("Paths") {
+      manifest.steps = {
+          single_output,
+          single_output_b };
+
+      std::string a = "a";
+      std::string b = "b";
+      char *in[] = { &a[0], &b[0] };
+      const std::vector<Path> out = { paths.get("a"), paths.get("b") };
+      CHECK(interpretPaths(paths, manifest, 2, in) == out);
+    }
+  }
+
   SECTION("computeOutputFileMap") {
     SECTION("basics") {
       CHECK(computeOutputFileMap({}).empty());

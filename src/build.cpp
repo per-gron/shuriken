@@ -49,6 +49,18 @@ Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
   throw BuildError(error);
 }
 
+std::vector<Path> interpretPaths(
+    Paths &paths,
+    const Manifest &manifest,
+    int argc,
+    char *argv[]) throw(BuildError) {
+  std::vector<Path> targets;
+  for (int i = 0; i < argc; ++i) {
+    targets.push_back(interpretPath(paths, manifest, argv[i]));
+  }
+  return targets;
+}
+
 namespace detail {
 
 void markStepNodeAsDone(Build &build, StepIndex step_idx) {

@@ -23,6 +23,15 @@ using Clock = std::function<time_t ()>;
 Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
     throw(BuildError);
 
+/**
+ * Takes command line arguments and calls interpretPath on each of them.
+ */
+std::vector<Path> interpretPaths(
+    Paths &paths,
+    const Manifest &manifest,
+    int argc,
+    char *argv[]) throw(BuildError);
+
 namespace detail {
 
 using StepIndex = size_t;

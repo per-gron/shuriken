@@ -19,6 +19,7 @@
 namespace shk {
 
 struct ToolParams {
+  Paths &paths;
   const Invocations &invocations;
 };
 

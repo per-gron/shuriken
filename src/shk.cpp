@@ -139,9 +139,6 @@ struct ShurikenMain {
         _file_system(persistentFileSystem()),
         _paths(*_file_system) {}
 
-  std::vector<Path> interpretPaths(
-      int argc, char *argv[]) throw(BuildError);
-
   void parseManifest(const std::string &input_file) throw(IoError, ParseError);
 
   std::string invocationLogPath() const;
@@ -242,15 +239,6 @@ bool ShurikenMain::rebuildManifest(const char *input_file, std::string *err) {
   return builder.build(err);
 #endif
   return false;
-}
-
-std::vector<Path> ShurikenMain::interpretPaths(
-    int argc, char *argv[]) throw(BuildError) {
-  std::vector<Path> targets;
-  for (int i = 0; i < argc; ++i) {
-    targets.push_back(interpretPath(_paths, _manifest, argv[i]));
-  }
-  return targets;
 }
 
 /**
@@ -379,7 +367,7 @@ bool ShurikenMain::readAndOpenInvocationLog() {
 int ShurikenMain::runBuild(int argc, char **argv) {
   std::vector<Path> targets;
   try {
-    targets = interpretPaths(argc, argv);
+    targets = interpretPaths(_paths, _manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;
@@ -591,7 +579,9 @@ int real_main(int argc, char **argv) {
       return 1;
     }
 
-    ToolParams tool_params = { shk.invocations() };
+    ToolParams tool_params = {
+        shk.paths(),
+        shk.invocations() };
 
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOAD) {
       return options.tool->func(argc, argv, tool_params);
