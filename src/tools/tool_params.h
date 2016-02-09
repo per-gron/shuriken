@@ -15,12 +15,14 @@
 #pragma once
 
 #include "../invocations.h"
+#include "../manifest.h"
 
 namespace shk {
 
 struct ToolParams {
   Paths &paths;
   const Invocations &invocations;
+  const Manifest &manifest;
 };
 
 }  // namespace shk

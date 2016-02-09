@@ -169,6 +169,10 @@ struct ShurikenMain {
     return _invocations;
   }
 
+  const Manifest &manifest() const {
+    return _manifest;
+  }
+
   /**
    * Build the targets listed on the command line.
    * @return an exit code.
@@ -581,7 +585,8 @@ int real_main(int argc, char **argv) {
 
     ToolParams tool_params = {
         shk.paths(),
-        shk.invocations() };
+        shk.invocations(),
+        shk.manifest() };
 
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOAD) {
       return options.tool->func(argc, argv, tool_params);
