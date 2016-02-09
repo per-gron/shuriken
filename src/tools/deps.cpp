@@ -22,9 +22,12 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
       params.paths, params.manifest, argc, argv);
 
   for (const auto step : params.manifest.steps) {
+    if (step.phony()) {
+      continue;
+    }
+
     const auto entry_it = params.invocations.entries.find(step.hash());
     if (entry_it == params.invocations.entries.end()) {
-      printf("%s: invocation not found\n", step.command.c_str());
       continue;
     }
 
