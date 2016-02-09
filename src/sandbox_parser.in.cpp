@@ -27,7 +27,15 @@ SandboxIgnores SandboxIgnores::defaults() {
       "/dev/random",
       "/dev/urandom",
       "/dev/dtracehelper",
-      "/dev/tty" };
+      "/dev/tty",
+      "/",
+      "/usr",
+      "/etc",
+      "/Users",
+      "/Applications",
+      "/tmp",
+      "/private/tmp",
+      "/private" };
   result.network_access = {
       "/private/var/run/syslog" };
   return result;

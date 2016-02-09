@@ -33,6 +33,8 @@ Errors that Shuriken does not detect:
 * Nondeterministic problems in invoked build steps
 * Build steps whose output depend on certain files *missing*
 * Build steps that read from or append to an output file
+* Build steps that depend on the contents of system wide folders such as
+  /etc, /tmp, /Applications.
 
 Build steps in Shuriken must fulfill the following requirements:
 * Must be a pure function; given the same input must generate the same output
@@ -131,7 +133,6 @@ Path:
 
 Large things remaining to do:
 * Make sure dirty inputs and outputs cause rebuilds
-* Ignore /, /usr, /etc, /Applications, /tmp, /usr/local, /private/tmp, /Users, /private
 * Deal with depfile files: Delete them and don't treat them as outputs
 * Missing output file should make it count as dirty.
 * Ensure sufficient parallelism. Seems like it doesn't always invoke as many commands
