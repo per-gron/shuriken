@@ -51,8 +51,14 @@ namespace detail {
  *
  * This is useful for traversing the build graph in the direction of a build
  * step to a build step that it depends on.
+ *
+ * This map is configured to treat paths that are the same according to
+ * Path::isSame as equal. This is important because otherwise the lookup
+ * will miss paths that point to the same thing but with different original
+ * path strings.
  */
-using OutputFileMap = std::unordered_map<Path, StepIndex>;
+using OutputFileMap = std::unordered_map<
+    Path, StepIndex, Path::IsSameHash, Path::IsSame>;
 
 /**
  * "Map" of StepIndex => Hash of that step. The hash includes everything about

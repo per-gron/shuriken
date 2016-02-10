@@ -28,6 +28,52 @@ class FailingCommandRunner : public CommandRunner {
   bool runCommands() override { return false; }
 };
 
+/**
+ * CommandRunner that asserts that no more than the given number of commands
+ * is run at any given time. This is useful when verifying that the build does
+ * not have too much parallelism (as in so much that the build is wrong).
+ */
+class MaxCapacityCommandRunner : public CommandRunner {
+ public:
+  MaxCapacityCommandRunner(size_t max_capacity, CommandRunner &inner)
+      : _max_capacity(max_capacity), _inner(inner) {}
+
+  void invoke(
+      const std::string &command,
+      UseConsole use_console,
+      const Callback &callback) override {
+    // Don't check _inner.size() here because this method might be invoked
+    // from the callback of a successful command, at which point the command
+    // is already done but it still counts in _inner.size().
+    CHECK(_current_running_count < _max_capacity);
+    _current_running_count++;
+    _inner.invoke(
+        command,
+        use_console,
+        [this, callback](CommandRunner::Result &&result) {
+          _current_running_count--;
+          callback(std::move(result));
+        });
+  }
+
+  size_t size() const override {
+    return _inner.size();
+  }
+
+  bool canRunMore() const override {
+    return _inner.canRunMore();
+  }
+
+  bool runCommands() override {
+    return _inner.runCommands();
+  }
+
+ private:
+  size_t _current_running_count;
+  const size_t _max_capacity;
+  CommandRunner &_inner;
+};
+
 std::vector<StepIndex> rootSteps(
     const std::vector<Step> &steps) {
   return ::shk::detail::rootSteps(steps, computeOutputFileMap(steps));
@@ -97,7 +143,7 @@ TEST_CASE("Build") {
   DummyCommandRunner dummy_runner(fs);
 
   const auto build_or_rebuild_manifest = [&](
-      const Manifest &manifest,
+      const std::string &manifest,
       size_t failures_allowed,
       CommandRunner &runner) {
     return build(
@@ -111,18 +157,18 @@ TEST_CASE("Build") {
         log,
         failures_allowed,
         {},
-        manifest,
+        parse(manifest),
         log.invocations(paths));
   };
 
   const auto build_manifest = [&](
-      const Manifest &manifest,
+      const std::string &manifest,
       size_t failures_allowed = 1) {
     return build_or_rebuild_manifest(manifest, failures_allowed, dummy_runner);
   };
 
   const auto verify_noop_build = [&](
-      const Manifest &manifest,
+      const std::string &manifest,
       size_t failures_allowed = 1) {
     FailingCommandRunner failing_runner;
     CHECK(build_or_rebuild_manifest(
@@ -860,7 +906,7 @@ TEST_CASE("Build") {
       CHECK(build.ready_steps.empty());
     }
 
-    SECTION("leave clean, root dirty") {
+    SECTION("leaf clean, root dirty") {
       manifest.steps = { single_output, root };
       // Add empty entry to mark clean
       invocations.entries[single_output.hash()];
@@ -874,7 +920,7 @@ TEST_CASE("Build") {
       CHECK(build.ready_steps[0] == 1);
     }
 
-    SECTION("leave dirty, root clean") {
+    SECTION("leaf dirty, root clean") {
       manifest.steps = { single_output, root };
       // Add empty entry to mark clean
       invocations.entries[single_input.hash()];
@@ -969,72 +1015,72 @@ TEST_CASE("Build") {
   SECTION("build") {
     SECTION("initial build") {
       SECTION("empty input") {
-        const auto manifest = parse("");
+        const auto manifest = "";
         verify_noop_build(manifest);
       }
 
       SECTION("single successful step") {
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out: cmd\n");
+            "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
 
       SECTION("multiple outputs") {
         const auto cmd = dummy_runner.constructCommand({}, {"out1", "out2"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out1 out2: cmd\n");
+            "build out1 out2: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
 
       SECTION("single failing step") {
         const auto cmd = dummy_runner.constructCommand({"nonexisting"}, {});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out: cmd\n");
+            "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::FAILURE);
       }
 
       SECTION("failing step and successful step") {
         const auto fail = dummy_runner.constructCommand({"nonexisting"}, {});
         const auto success = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule success\n"
             "  command = " + success + "\n"
             "rule fail\n"
             "  command = " + fail + "\n"
             "build out: success\n"
-            "build out2: fail\n");
+            "build out2: fail\n";
         CHECK(build_manifest(manifest) == BuildResult::FAILURE);
       }
 
       SECTION("independent failing steps") {
         const auto cmd = dummy_runner.constructCommand({"nonexisting"}, {});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out1: cmd\n"
-            "build out2: cmd\n");
+            "build out2: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::FAILURE);
       }
 
       SECTION("two independent steps") {
         const auto one = dummy_runner.constructCommand({}, {"one"});
         const auto two = dummy_runner.constructCommand({}, {"two"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule one\n"
             "  command = " + one + "\n"
             "rule two\n"
             "  command = " + two + "\n"
             "build one: one\n"
-            "build two: two\n");
+            "build two: two\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, one);
         dummy_runner.checkCommand(fs, two);
@@ -1043,13 +1089,13 @@ TEST_CASE("Build") {
       SECTION("two steps in a chain") {
         const auto one = dummy_runner.constructCommand({}, {"one"});
         const auto two = dummy_runner.constructCommand({"one"}, {"two"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule one\n"
             "  command = " + one + "\n"
             "rule two\n"
             "  command = " + two + "\n"
             "build two: two one\n"
-            "build one: one\n");
+            "build one: one\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, one);
         dummy_runner.checkCommand(fs, two);
@@ -1060,7 +1106,7 @@ TEST_CASE("Build") {
         const auto two = dummy_runner.constructCommand({"one"}, {"two"});
         const auto three = dummy_runner.constructCommand({"one"}, {"three"});
         const auto four = dummy_runner.constructCommand({"two", "three"}, {"four"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule one\n"
             "  command = " + one + "\n"
             "rule two\n"
@@ -1072,7 +1118,7 @@ TEST_CASE("Build") {
             "build three: three one\n"
             "build four: four two three\n"
             "build one: one\n"
-            "build two: two one\n");
+            "build two: two one\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, one);
         dummy_runner.checkCommand(fs, two);
@@ -1083,13 +1129,13 @@ TEST_CASE("Build") {
       SECTION("first step failing in a chain") {
         const auto one = dummy_runner.constructCommand({"nonexisting"}, {"one"});
         const auto two = dummy_runner.constructCommand({}, {"two"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule one\n"
             "  command = " + one + "\n"
             "rule two\n"
             "  command = " + two + "\n"
             "build two: two one\n"
-            "build one: one\n");
+            "build one: one\n";
         CHECK(build_manifest(manifest) == BuildResult::FAILURE);
         CHECK_THROWS(dummy_runner.checkCommand(fs, one));
         CHECK_THROWS(dummy_runner.checkCommand(fs, two));
@@ -1098,13 +1144,13 @@ TEST_CASE("Build") {
       SECTION("second step failing in a chain") {
         const auto one = dummy_runner.constructCommand({}, {"one"});
         const auto two = dummy_runner.constructCommand({"nonexisting"}, {"two"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule one\n"
             "  command = " + one + "\n"
             "rule two\n"
             "  command = " + two + "\n"
             "build two: two one\n"
-            "build one: one\n");
+            "build one: one\n";
         CHECK(build_manifest(manifest) == BuildResult::FAILURE);
         dummy_runner.checkCommand(fs, one);
         CHECK_THROWS(dummy_runner.checkCommand(fs, two));
@@ -1113,11 +1159,11 @@ TEST_CASE("Build") {
 #if 0  // TODO(peck): This test does not work because deletion is not yet implemented
       SECTION("delete depfile") {
         const auto cmd = dummy_runner.constructCommand({}, {"depfile"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "  depfile = depfile\n"
-            "build out: cmd\n");
+            "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         CHECK(fs.stat("depfile").result == ENOENT);
       }
@@ -1125,11 +1171,11 @@ TEST_CASE("Build") {
 
       SECTION("don't fail if depfile is not created") {
         const auto cmd = dummy_runner.constructCommand({}, {});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "  depfile = depfile\n"
-            "build out: cmd\n");
+            "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         CHECK(fs.stat("depfile").result == ENOENT);
         dummy_runner.checkCommand(fs, cmd);
@@ -1138,12 +1184,12 @@ TEST_CASE("Build") {
 #if 0  // TODO(peck): This test does not work because deletion is not yet implemented
       SECTION("create and delete rspfile") {
         const auto cmd = dummy_runner.constructCommand({"rsp"}, {});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "  rspfile = rsp\n"
             "  rspfile_content = abc\n"
-            "build out: cmd\n");
+            "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         CHECK(fs.stat("rsp").result == ENOENT);
       }
@@ -1151,34 +1197,34 @@ TEST_CASE("Build") {
 
       SECTION("don't delete rspfile on failure") {
         const auto cmd = dummy_runner.constructCommand({"nonexisting"}, {});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "  rspfile = rsp\n"
             "  rspfile_content = abc\n"
-            "build out: cmd\n");
+            "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::FAILURE);
         CHECK(fs.readFile("rsp") == "abc");
       }
 
       SECTION("phony as root") {
         const auto one = dummy_runner.constructCommand({}, {"one"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule one\n"
             "  command = " + one + "\n"
             "build two: phony one\n"
-            "build one: one\n");
+            "build one: one\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, one);
       }
 
       SECTION("phony as leaf") {
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build one: phony\n"
-            "build two: cmd one\n");
+            "build two: cmd one\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
@@ -1195,31 +1241,31 @@ TEST_CASE("Build") {
         // for it right now.
 
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out: cmd missing\n");
+            "build out: cmd missing\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
 
       SECTION("don't fail on missing phony input") {
-        const auto manifest = parse(
-            "build out: phony missing\n");
+        const auto manifest =
+            "build out: phony missing\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
       }
 
       SECTION("swallow failures") {
         const auto fail = dummy_runner.constructCommand({"nonexisting"}, {});
         const auto succeed = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule fail\n"
             "  command = " + fail + "\n"
             "rule succeed\n"
             "  command = " + succeed + "\n"
             "build out1: fail\n"
             "build out2: fail\n"
-            "build out3: succeed\n");
+            "build out3: succeed\n";
         CHECK(build_manifest(manifest, 3) == BuildResult::FAILURE);
         dummy_runner.checkCommand(fs, succeed);
       }
@@ -1227,14 +1273,14 @@ TEST_CASE("Build") {
       SECTION("swallow failures (2)") {
         const auto fail = dummy_runner.constructCommand({"nonexisting"}, {});
         const auto succeed = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule fail\n"
             "  command = " + fail + "\n"
             "rule succeed\n"
             "  command = " + succeed + "\n"
             "build out3: succeed\n"
             "build out1: fail\n"
-            "build out2: fail\n");
+            "build out2: fail\n";
         CHECK(build_manifest(manifest, 3) == BuildResult::FAILURE);
         dummy_runner.checkCommand(fs, succeed);
       }
@@ -1243,7 +1289,7 @@ TEST_CASE("Build") {
         const auto fail = dummy_runner.constructCommand({"nonexisting"}, {});
         const auto succeed1 = dummy_runner.constructCommand({}, {"out1"});
         const auto succeed2 = dummy_runner.constructCommand({}, {"out2"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule fail\n"
             "  command = " + fail + "\n"
             "rule succeed1\n"
@@ -1253,7 +1299,7 @@ TEST_CASE("Build") {
             "build out1: fail\n"
             "build out2: fail\n"
             "build out3: succeed1\n"
-            "build out4: succeed2 out3\n");
+            "build out4: succeed2 out3\n";
         CHECK(build_manifest(manifest, 2) == BuildResult::FAILURE);
         CHECK_THROWS(dummy_runner.checkCommand(fs, succeed2));
       }
@@ -1261,13 +1307,13 @@ TEST_CASE("Build") {
       SECTION("swallow failures but don't run dependent steps") {
         const auto fail = dummy_runner.constructCommand({"nonexisting"}, {});
         const auto succeed = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule fail\n"
             "  command = " + fail + "\n"
             "rule succeed\n"
             "  command = " + succeed + "\n"
             "build out1: fail\n"
-            "build out2: succeed out1\n");
+            "build out2: succeed out1\n";
         CHECK(build_manifest(manifest, 100) == BuildResult::FAILURE);
         CHECK_THROWS(dummy_runner.checkCommand(fs, succeed));
       }
@@ -1275,13 +1321,13 @@ TEST_CASE("Build") {
       SECTION("implicit deps") {
         const auto one = dummy_runner.constructCommand({}, {"one"});
         const auto two = dummy_runner.constructCommand({"one"}, {"two"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule one\n"
             "  command = " + one + "\n"
             "rule two\n"
             "  command = " + two + "\n"
             "build two: two | one\n"
-            "build one: one\n");
+            "build one: one\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, one);
         dummy_runner.checkCommand(fs, two);
@@ -1290,13 +1336,13 @@ TEST_CASE("Build") {
       SECTION("order-only deps") {
         const auto one = dummy_runner.constructCommand({}, {"one"});
         const auto two = dummy_runner.constructCommand({"one"}, {"two"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule one\n"
             "  command = " + one + "\n"
             "rule two\n"
             "  command = " + two + "\n"
             "build two: two || one\n"
-            "build one: one\n");
+            "build one: one\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, one);
         dummy_runner.checkCommand(fs, two);
@@ -1306,10 +1352,10 @@ TEST_CASE("Build") {
     SECTION("rebuild") {
       SECTION("rebuild is no-op") {
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out: cmd\n");
+            "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
 
@@ -1318,11 +1364,11 @@ TEST_CASE("Build") {
 
       SECTION("rebuild with phony root is no-op") {
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out: cmd\n"
-            "build root: phony out\n");
+            "build root: phony out\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
 
@@ -1363,10 +1409,10 @@ TEST_CASE("Build") {
 
       SECTION("rebuild when input file changed") {
         const auto cmd = dummy_runner.constructCommand({"in"}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out: cmd in\n");
+            "build out: cmd in\n";
         fs.writeFile("in", "before");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         fs.writeFile("in", "after");
@@ -1376,10 +1422,10 @@ TEST_CASE("Build") {
 
       SECTION("rebuild when input file removed") {
         const auto cmd = dummy_runner.constructCommand({"in"}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out: cmd in\n");
+            "build out: cmd in\n";
         fs.writeFile("in", "before");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         fs.unlink("in");
@@ -1388,10 +1434,10 @@ TEST_CASE("Build") {
 
       SECTION("rebuild when undeclared input file changed") {
         const auto cmd = dummy_runner.constructCommand({"in1","in2"}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out: cmd in1\n");
+            "build out: cmd in1\n";
         fs.writeFile("in1", "input");
         fs.writeFile("in2", "before");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
@@ -1402,10 +1448,10 @@ TEST_CASE("Build") {
 
       SECTION("don't rebuild when declared but not used input changed") {
         const auto cmd = dummy_runner.constructCommand({"in"}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out: cmd unused_in\n");
+            "build out: cmd unused_in\n";
         fs.writeFile("in", "input");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         fs.writeFile("in", "after");
@@ -1415,10 +1461,10 @@ TEST_CASE("Build") {
 
       SECTION("rebuild when output changed") {
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out: cmd\n");
+            "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         fs.writeFile("out", "dirty!");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
@@ -1427,10 +1473,10 @@ TEST_CASE("Build") {
 
       SECTION("rebuild when output file removed") {
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
-            "build out: cmd\n");
+            "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         fs.unlink("out");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
@@ -1439,15 +1485,41 @@ TEST_CASE("Build") {
 
       SECTION("rebuild when output file removed with phony root") {
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest = parse(
+        const auto manifest =
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out: cmd\n"
-            "build root: phony out\n");
+            "build root: phony out\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         fs.unlink("out");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
+      }
+
+      SECTION("respect dependencies when rebuilding") {
+        // Set-up
+        const auto cmd1 = dummy_runner.constructCommand({}, {"out1"});
+        const auto cmd2 = dummy_runner.constructCommand({"out1"}, {"out2"});
+        const auto manifest =
+            "rule cmd1\n"
+            "  command = " + cmd1 + "\n"
+            "rule cmd2\n"
+            "  command = " + cmd2 + "\n"
+            "build out1: cmd1\n"
+            "build out2: cmd2 out1\n";
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd1);
+        dummy_runner.checkCommand(fs, cmd2);
+        fs.writeFile("out1", "dirty");
+
+        // Ok so here comes the test. The point of this test is that with this
+        // set-up, both commands need to be re-run, but because of their
+        // dependencies cmd1 must run strictly before cmd2.
+        MaxCapacityCommandRunner cap_runner(1, dummy_runner);
+        CHECK(build_or_rebuild_manifest(manifest, 1, cap_runner) ==
+            BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd1);
+        dummy_runner.checkCommand(fs, cmd2);
       }
     }
 
