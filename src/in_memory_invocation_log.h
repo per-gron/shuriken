@@ -1,8 +1,9 @@
-#include "invocation_log.h"
-
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+
+#include "invocation_log.h"
+#include "invocations.h"
 
 namespace shk {
 
@@ -20,6 +21,13 @@ class InMemoryInvocationLog : public InvocationLog {
   void cleanedCommand(
       const Hash &build_step_hash) throw(IoError) override;
 
+  /**
+   * Expose the contents of the in memory invocation log as an Invocations
+   * object. This emulates what would happen if the invocation log would have
+   * been read from disk.
+   */
+  Invocations invocations(Paths &paths) const;
+
   const std::unordered_set<std::string> &createdDirectories() const {
     return _created_directories;
   }
@@ -27,6 +35,7 @@ class InMemoryInvocationLog : public InvocationLog {
   const std::unordered_map<Hash, Entry> &entries() const {
     return _entries;
   }
+
 
  private:
   std::unordered_map<Hash, Entry> _entries;
