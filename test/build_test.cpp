@@ -1362,7 +1362,67 @@ TEST_CASE("Build") {
       }
 
       SECTION("rebuild when input file changed") {
-        // TODO(peck): Test this
+        const auto cmd = dummy_runner.constructCommand({"in"}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd in\n");
+        fs.writeFile("in", "before");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        fs.writeFile("in", "after");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+      }
+
+      SECTION("rebuild when input file removed") {
+        const auto cmd = dummy_runner.constructCommand({"in"}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd in\n");
+        fs.writeFile("in", "before");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        fs.unlink("in");
+        CHECK(build_manifest(manifest) == BuildResult::FAILURE);
+      }
+
+      SECTION("rebuild when undeclared input file changed") {
+        const auto cmd = dummy_runner.constructCommand({"in1","in2"}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd in1\n");
+        fs.writeFile("in1", "input");
+        fs.writeFile("in2", "before");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        fs.writeFile("in2", "after");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+      }
+
+      SECTION("don't rebuild when declared but not used input changed") {
+        const auto cmd = dummy_runner.constructCommand({"in"}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd unused_in\n");
+        fs.writeFile("in", "input");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        fs.writeFile("in", "after");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+      }
+
+      SECTION("rebuild when output changed") {
+        const auto cmd = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        fs.writeFile("out", "dirty!");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
       }
 
       SECTION("rebuild when output file removed") {
@@ -1388,18 +1448,6 @@ TEST_CASE("Build") {
         fs.unlink("out");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
-      }
-
-      SECTION("rebuild when undeclared input file changed") {
-        // TODO(peck): Test this
-      }
-
-      SECTION("don't rebuild when declared but not used input changed") {
-        // TODO(peck): Test this
-      }
-
-      SECTION("rebuild when output changed") {
-        // TODO(peck): Test this
       }
     }
 
