@@ -12,6 +12,22 @@ namespace shk {
 namespace detail {
 namespace {
 
+class FailingCommandRunner : public CommandRunner {
+ public:
+  void invoke(
+      const std::string &command,
+      UseConsole use_console,
+      const Callback &callback) override {
+    if (!command.empty()) {
+      CHECK(!"Should not be invoked");
+    }
+  }
+
+  size_t size() const override { return 0; }
+  bool canRunMore() const override { return true; }
+  bool runCommands() override { return false; }
+};
+
 std::vector<StepIndex> rootSteps(
     const std::vector<Step> &steps) {
   return ::shk::detail::rootSteps(steps, computeOutputFileMap(steps));
@@ -72,6 +88,48 @@ TEST_CASE("Build") {
 
   Step single_dependency;
   single_dependency.dependencies = { paths.get("a") };
+
+  const auto parse = [&](const std::string &input) {
+    fs.writeFile("build.ninja", input);
+    return parseManifest(paths, fs, "build.ninja");
+  };
+
+  DummyCommandRunner dummy_runner(fs);
+
+  const auto build_or_rebuild_manifest = [&](
+      const Manifest &manifest,
+      size_t failures_allowed,
+      CommandRunner &runner) {
+    return build(
+        clock,
+        fs,
+        runner,
+        [](int total_steps) {
+          return std::unique_ptr<BuildStatus>(
+              new DummyBuildStatus());
+        },
+        log,
+        failures_allowed,
+        {},
+        manifest,
+        invocations);
+  };
+
+  const auto build_manifest = [&](
+      const Manifest &manifest,
+      size_t failures_allowed = 1) {
+    return build_or_rebuild_manifest(manifest, failures_allowed, dummy_runner);
+  };
+
+  const auto verify_noop_build = [&](
+      const Manifest &manifest,
+      size_t failures_allowed = 1) {
+    FailingCommandRunner failing_runner;
+    CHECK(build_or_rebuild_manifest(
+        manifest,
+        failures_allowed,
+        failing_runner) == BuildResult::NO_WORK_TO_DO);
+  };
 
   SECTION("interpretPath") {
     Step other_input;
@@ -909,34 +967,10 @@ TEST_CASE("Build") {
   }
 
   SECTION("build") {
-    DummyCommandRunner dummy_runner(fs);
-
-    const auto parse = [&](const std::string &input) {
-      fs.writeFile("build.ninja", input);
-      return parseManifest(paths, fs, "build.ninja");
-    };
-
-    const auto build_manifest = [&](
-        const Manifest &manifest, size_t failures_allowed = 1) {
-      return build(
-          clock,
-          fs,
-          dummy_runner,
-          [](int total_steps) {
-            return std::unique_ptr<BuildStatus>(
-                new DummyBuildStatus());
-          },
-          log,
-          failures_allowed,
-          {},
-          manifest,
-          invocations);
-    };
-
     SECTION("initial build") {
       SECTION("empty input") {
         const auto manifest = parse("");
-        CHECK(build_manifest(manifest) == BuildResult::NO_WORK_TO_DO);
+        verify_noop_build(manifest);
       }
 
       SECTION("single successful step") {
@@ -1271,7 +1305,17 @@ TEST_CASE("Build") {
 
     SECTION("rebuild") {
       SECTION("rebuild is no-op") {
-        // TODO(peck): Test this
+#if 0  // TODO(peck): This test does not yet work
+        const auto cmd = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+
+        verify_noop_build(manifest);
+#endif
       }
 
       SECTION("order-only deps rebuild") {
