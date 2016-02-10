@@ -572,10 +572,15 @@ void commandDone(
 
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
-    if (!isConsolePool(step.pool_name)) {
+    if (!isConsolePool(step.pool_name) && !step.phony()) {
       // The console pool gives the command access to stdin which is clearly not
       // a deterministic source. Because of this, steps using the console pool
       // are never counted as clean.
+      //
+      // Phony steps should also not be logged. There is nothing to log then.
+      // More importantly though is that logging an empty entry for it will
+      // cause the next build to believe that this step has no inputs so it will
+      // immediately report the step as clean regardless of what it depends on.
       params.invocation_log.ranCommand(
           params.step_hashes[step_idx],
           computeInvocationEntry(params.clock, params.file_system, result));
@@ -712,8 +717,6 @@ BuildResult build(
     const std::vector<Path> &specified_outputs,
     const Manifest &manifest,
     const Invocations &invocations) throw(IoError, BuildError) {
-  // TODO(peck): Use build_status
-
   const auto step_hashes = detail::computeStepHashes(manifest.steps);
 
   detail::deleteStaleOutputs(

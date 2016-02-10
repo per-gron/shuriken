@@ -112,7 +112,7 @@ TEST_CASE("Build") {
         failures_allowed,
         {},
         manifest,
-        invocations);
+        log.invocations(paths));
   };
 
   const auto build_manifest = [&](
@@ -1305,7 +1305,6 @@ TEST_CASE("Build") {
 
     SECTION("rebuild") {
       SECTION("rebuild is no-op") {
-#if 0  // TODO(peck): This test does not yet work
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
         const auto manifest = parse(
             "rule cmd\n"
@@ -1315,7 +1314,19 @@ TEST_CASE("Build") {
         dummy_runner.checkCommand(fs, cmd);
 
         verify_noop_build(manifest);
-#endif
+      }
+
+      SECTION("rebuild with phony root is no-op") {
+        const auto cmd = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd\n"
+            "build root: phony out\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+
+        verify_noop_build(manifest);
       }
 
       SECTION("order-only deps rebuild") {
@@ -1352,6 +1363,31 @@ TEST_CASE("Build") {
 
       SECTION("rebuild when input file changed") {
         // TODO(peck): Test this
+      }
+
+      SECTION("rebuild when output file removed") {
+        const auto cmd = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        fs.unlink("out");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+      }
+
+      SECTION("rebuild when output file removed with phony root") {
+        const auto cmd = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest = parse(
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd\n"
+            "build root: phony out\n");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        fs.unlink("out");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
       }
 
       SECTION("rebuild when undeclared input file changed") {

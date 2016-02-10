@@ -161,6 +161,13 @@ Large things remaining to do:
 * Caching
 * Distributed caching
 
+* Possible optimizations
+  * Avoid the excessive duplication in the Invocations data structure by using shared_ptr
+    to const or smt
+  * Avoid the excessive stat-ing by using a stat cache pre-build
+  * Avoid the excessive fingerprint duplications in the invocation log by remembering
+    previous fingerprints somehow. Stat cache or otherwise.
+
 * Make sure the build does the right thing even if targets are specified wrong on the command line
 * Hash symlinks in a special way (see fingerprintStat)
 * Unit test BuildStatus
