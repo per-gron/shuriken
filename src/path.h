@@ -91,6 +91,23 @@ class Path {
     return _canonicalized_path == other._canonicalized_path;
   }
 
+  struct IsSame {
+    bool operator()(const Path &a, const Path &b) const {
+      return a.isSame(b);
+    }
+  };
+
+  struct IsSameHash {
+    using argument_type = shk::Path;
+    using result_type = std::size_t;
+
+    result_type operator()(const argument_type &p) const {
+      // Hash the pointer
+      auto ad = reinterpret_cast<uintptr_t>(p._canonicalized_path);
+      return static_cast<size_t>(ad ^ (ad >> 16));
+    }
+  };
+
   /**
    * The original, non-canonicalized path. Always absolute or relative to the
    * current working directory.
@@ -150,9 +167,9 @@ struct hash<shk::Path> {
   using result_type = std::size_t;
 
   result_type operator()(const argument_type &p) const {
-    // Hash the pointer
-    auto ad = reinterpret_cast<uintptr_t>(p._canonicalized_path);
-    return static_cast<size_t>(ad ^ (ad >> 16));
+    auto one = shk::Path::IsSameHash()(p);
+    auto ad = reinterpret_cast<uintptr_t>(p._original_path);
+    return static_cast<size_t>(ad ^ (ad >> 16)) ^ one;
   }
 };
 

@@ -1,3 +1,4 @@
+https://capnproto.org/language.html
 https://blake2.net/
 https://www.schneier.com/cryptography/skein/
 https://www.kernel.org/pub/software/scm/git/docs/technical/racy-git.txt
@@ -132,9 +133,7 @@ Path:
     some other path that we have seen. That means hardlink and could break the build.
 
 Large things remaining to do:
-* Make sure dirty inputs and outputs cause rebuilds
 * Deal with depfile files: Delete them and don't treat them as outputs
-* Missing output file should make it count as dirty.
 * Ensure sufficient parallelism. Seems like it doesn't always invoke as many commands
   as it can.
 * Ocasionally recompact

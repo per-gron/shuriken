@@ -323,6 +323,19 @@ TEST_CASE("Path") {
     CHECK_THROWS_AS(Paths(failing_stat_fs).get("/"), PathError);
     CHECK_THROWS_AS(Paths(failing_stat_fs).get("."), PathError);
   }
+
+  SECTION("IsSameHash") {
+    InMemoryFileSystem fs;
+    Paths paths(fs);
+    std::unordered_set<Path, Path::IsSameHash, Path::IsSame> set;
+
+    const auto a = paths.get("a/./b");
+    const auto b = paths.get("a/b");
+    set.insert(a);
+    CHECK(set.find(b) != set.end());
+    set.insert(b);
+    CHECK(set.size() == 1);
+  }
 }
 
 }  // namespace shk
