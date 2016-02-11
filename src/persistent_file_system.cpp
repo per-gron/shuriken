@@ -25,8 +25,12 @@
 
 #include <blake2.h>
 
+#include "raii_helper.h"
+
 namespace shk {
 namespace {
+
+using FileHandle = RAIIHelper<FILE, int, fclose>;
 
 class PersistentFileSystem : public FileSystem {
   template<typename T>
@@ -40,24 +44,18 @@ class PersistentFileSystem : public FileSystem {
 
   class FileStream : public FileSystem::Stream {
    public:
-    FileStream(const std::string &path, const char *mode) throw(IoError) {
-      _f = fopen(path.c_str(), mode);
-      if (!_f) {
+    FileStream(const std::string &path, const char *mode) throw(IoError)
+        : _f(fopen(path.c_str(), mode)) {
+      if (!_f.get()) {
         throw IoError(strerror(errno), errno);
       }
     }
 
-    virtual ~FileStream() {
-      if (_f) {
-        fclose(_f);
-      }
-    }
-
     size_t read(uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override {
-      auto result = fread(ptr, size, nitems, _f);
+      auto result = fread(ptr, size, nitems, _f.get());
       if (eof()) {
         return result;
-      } else if (ferror(_f) != 0) {
+      } else if (ferror(_f.get()) != 0) {
         throw IoError("Failed to read from stream", 0);
       } else {
         assert(result == nitems);
@@ -66,22 +64,22 @@ class PersistentFileSystem : public FileSystem {
     }
 
     void write(const uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override {
-      fwrite(ptr, size, nitems, _f);
-      if (ferror(_f) != 0) {
+      fwrite(ptr, size, nitems, _f.get());
+      if (ferror(_f.get()) != 0) {
         throw IoError("Failed to write to stream", 0);
       }
     }
 
     long tell() const throw(IoError) override {
-      return checkForMinusOne(ftell(_f));
+      return checkForMinusOne(ftell(_f.get()));
     }
 
     bool eof() const override {
-      return feof(_f) != 0;
+      return feof(_f.get()) != 0;
     }
 
    private:
-    FILE *_f;
+    FileHandle _f;
   };
 
   class FileMmap : public Mmap {
@@ -275,22 +273,20 @@ class PersistentFileSystem : public FileSystem {
     }
     ::CloseHandle(f);
 #else
-    FILE* f = fopen(path.c_str(), "rb");
-    if (!f) {
+    FileHandle f(fopen(path.c_str(), "rb"));
+    if (!f.get()) {
       throw IoError(strerror(errno), errno);
     }
 
     char buf[64 << 10];
     size_t len;
-    while ((len = fread(buf, 1, sizeof(buf), f)) > 0) {
+    while ((len = fread(buf, 1, sizeof(buf), f.get())) > 0) {
       append(buf, len);
     }
-    if (ferror(f)) {
+    if (ferror(f.get())) {
       const auto err = errno;
-      fclose(f);
       throw IoError(strerror(err), err);
     }
-    fclose(f);
 #endif
   }
 

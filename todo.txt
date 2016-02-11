@@ -138,7 +138,6 @@ Things to do for increased build correctness:
   of a target that it does not depend on directly or indirectly.
 
 Large things remaining to do:
-* The reported number of run commands is jumpy and does not update every time
 * Error when building core: "shk: fatal: pipe: Too many open files"
 * Deal with depfile files: Delete them and don't treat them as outputs
 * Ensure sufficient parallelism. Seems like it doesn't always invoke as many commands
