@@ -17,7 +17,7 @@ class TemporaryFile {
   ~TemporaryFile() {
     try {
       _file_system.unlink(path);
-    } catch (IoError &) {
+    } catch (const IoError &) {
       // Maybe the file is already gone, or was never created. We don't care
       // enough to make sure to clean up this temporary file.
     }
@@ -62,7 +62,7 @@ class TracingCommandRunner : public CommandRunner {
             computeResults(tmp->path, result);
             callback(std::move(result));
           });
-    } catch (IoError &error) {
+    } catch (const IoError &error) {
       _inner->invoke(
           "/bin/echo Failed to create temporary file && exit 1",
           use_console,
@@ -111,11 +111,11 @@ class TracingCommandRunner : public CommandRunner {
         }
         result.exit_status = ExitStatus::FAILURE;
       }
-    } catch (ParseError &error) {
+    } catch (const ParseError &error) {
       result.output +=
           std::string("Failed to parse sandbox file: ") + error.what() + "\n";
       result.exit_status = ExitStatus::FAILURE;
-    } catch (IoError &error) {
+    } catch (const IoError &error) {
       result.output +=
           std::string("Failed to open sandbox file: ") + error.what() + "\n";
       result.exit_status = ExitStatus::FAILURE;
