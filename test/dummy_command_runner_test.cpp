@@ -99,7 +99,7 @@ TEST_CASE("DummyCommandRunner") {
     // These are small sanity checks for this function. It is more thoroughly
     // tested by the checkCommand property based test.
 
-    SECTION("should create output file") {
+    SECTION("create output file") {
       const std::string path = "abc";
       const auto command = DummyCommandRunner::constructCommand({}, { path });
 
@@ -111,7 +111,7 @@ TEST_CASE("DummyCommandRunner") {
       CHECK(file_system.stat(path).result == 0);
     }
 
-    SECTION("should fail with missing input") {
+    SECTION("fail with missing input") {
       const std::string path = "abc";
       const auto command = DummyCommandRunner::constructCommand({ path }, {});
 
@@ -124,6 +124,22 @@ TEST_CASE("DummyCommandRunner") {
       }
 
       CHECK(exit_status != ExitStatus::SUCCESS);
+    }
+
+    SECTION("do not count finished but not yet reaped commands in size()") {
+      const std::string path = "abc";
+      const auto command = DummyCommandRunner::constructCommand({ path }, {});
+
+      bool invoked = false;
+      runner.invoke(command, UseConsole::NO, [&](CommandRunner::Result &&result) {
+        CHECK(runner.empty());
+        invoked = true;
+      });
+      while (!runner.empty()) {
+        runner.runCommands();
+      }
+
+      CHECK(invoked);
     }
   }
 

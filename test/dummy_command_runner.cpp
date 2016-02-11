@@ -118,10 +118,13 @@ bool DummyCommandRunner::canRunMore() const {
 }
 
 bool DummyCommandRunner::runCommands() {
-  for (const auto &command : _enqueued_commands) {
+  decltype(_enqueued_commands) enqueued_commands;
+  // Need to clear _enqueued_commands before invoking callbacks, to make size()
+  // report the right thing if that is called from a callback.
+  enqueued_commands.swap(_enqueued_commands);
+  for (const auto &command : enqueued_commands) {
     command.second(detail::runCommand(_file_system, command.first));
   }
-  _enqueued_commands.clear();
   return false;
 }
 

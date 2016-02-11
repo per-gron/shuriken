@@ -127,6 +127,21 @@ TEST_CASE("SubprocessSet") {
     CHECK(num_cmds == done);
   }
 
+  SECTION("SizeFromCallback") {
+    const auto runner = makeRealCommandRunner();
+
+    bool invoked = false;
+    runner->invoke("/bin/echo", UseConsole::NO, [&](CommandRunner::Result &&result) {
+      CHECK(runner->empty());
+      invoked = true;
+    });
+    while (!runner->empty()) {
+      runner->runCommands();
+    }
+
+    CHECK(invoked);
+  }
+
   SECTION("DontRunCallbackFromDestructor") {
     bool called = false;
 

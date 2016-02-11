@@ -344,10 +344,13 @@ bool SubprocessSet::runCommands() {
   vector<pollfd> fds;
   nfds_t nfds = 0;
 
-  for (const auto &subprocess : _finished) {
+  decltype(_finished) finished;
+  // Need to clear _finished before invoking callbacks, to make size() report
+  // the right thing if that is called from a callback.
+  finished.swap(_finished);
+  for (const auto &subprocess : finished) {
     subprocess->finish(true);
   }
-  _finished.clear();
 
   for (const auto &subprocess : _running) {
     int fd = subprocess->_fd;
@@ -404,10 +407,13 @@ bool SubprocessSet::runCommands() {
   int nfds = 0;
   FD_ZERO(&set);
 
-  for (const auto &subprocess : _finished) {
+  decltype(_finished) finished;
+  // Need to clear _finished before invoking callbacks, to make size() report
+  // the right thing if that is called from a callback.
+  finished.swap(_finished);
+  for (const auto &subprocess : finished) {
     subprocess->finish(true);
   }
-  _finished.clear();
 
   for (const auto &subprocess : _running) {
     int fd = subprocess->_fd;

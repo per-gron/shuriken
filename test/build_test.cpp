@@ -42,18 +42,8 @@ class MaxCapacityCommandRunner : public CommandRunner {
       const std::string &command,
       UseConsole use_console,
       const Callback &callback) override {
-    // Don't check _inner.size() here because this method might be invoked
-    // from the callback of a successful command, at which point the command
-    // is already done but it still counts in _inner.size().
-    CHECK(_current_running_count < _max_capacity);
-    _current_running_count++;
-    _inner.invoke(
-        command,
-        use_console,
-        [this, callback](CommandRunner::Result &&result) {
-          _current_running_count--;
-          callback(std::move(result));
-        });
+    CHECK(_inner.size() < _max_capacity);
+    _inner.invoke(command, use_console, callback);
   }
 
   size_t size() const override {
@@ -69,7 +59,6 @@ class MaxCapacityCommandRunner : public CommandRunner {
   }
 
  private:
-  size_t _current_running_count;
   const size_t _max_capacity;
   CommandRunner &_inner;
 };

@@ -61,7 +61,11 @@ class CommandRunner {
       const Callback &callback) = 0;
 
   /**
-   * Returns the number of currently running commands.
+   * Returns the number of currently running commands, not including commands
+   * that have finished running but haven't yet been "reaped" by runCommands.
+   * This means that it is possible to look at size() from a Callback to decide
+   * if it is appropriate to run more commands, if that depends on the number
+   * of currently running commands.
    */
   virtual size_t size() const = 0;
 
