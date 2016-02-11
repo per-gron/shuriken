@@ -91,7 +91,8 @@ Fingerprint takeFingerprint(
 
 /**
  * Like takeFingerprint, but uses old_fingerprint if possible. If
- * old_fingerprint is clean, this function returns an exact copy of it.
+ * old_fingerprint is clean and not should_update, this function returns an
+ * exact copy of it.
  *
  * This is useful when the user of the function already has a Fingerprint of a
  * file but needs to get a Fingerprint that is up to date. If old_fingerprint is

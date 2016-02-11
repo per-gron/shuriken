@@ -35,6 +35,57 @@ Fingerprint::Stat fingerprintStat(
   return result;
 }
 
+/**
+ * fingerprintMatches logic that is shared between fingerprintMatches and
+ * retakeFingerprint. If the return value MatchesResult::clean is true, then
+ * the hash output parameter is set to the hash value of the file that the
+ * function had to compute to detect if it was clean or not.
+ */
+MatchesResult fingerprintMatches(
+    FileSystem &file_system,
+    const std::string &path,
+    const Fingerprint &fp,
+    const Fingerprint::Stat &current,
+    Hash &hash) throw(IoError) {
+  MatchesResult result;
+  if (current == fp.stat &&
+      (fp.stat.mode == 0 || (
+        fp.stat.mtime < fp.timestamp && fp.stat.ctime < fp.timestamp))) {
+    // The file's current stat information and the stat information of the
+    // fingerprint exactly match. Furthermore, the fingerprint is strictly
+    // newer than the files. This means that unless mtime/ctime has been
+    // tampered with, we know for sure that the file has not been modified
+    // since the fingerprint was taken.
+    result.clean = true;
+  } else {
+    // This branch is hit either when we know for sure that the file has been
+    // touched since the fingerprint was taken (current != fp.stat) or when
+    // the file is "racily clean" (current == fp.stat but the fingerprint was
+    // taken less than one second after the file was last modified).
+    //
+    // If the file is racily clean, it is not possible to tell if the file
+    // matches the fingerprint by looking at stat information only, need to fall
+    // back on a file content comparison.
+    if (current.size == fp.stat.size && current.mode == fp.stat.mode) {
+      // If the file size or mode would have been different then we would have
+      // already known for sure that the file is different, but now they are the
+      // same. In order to know if it's dirty or not, we need to hash the file
+      // again.
+      if (S_ISDIR(fp.stat.mode)) {
+        hash = file_system.hashDir(path);
+      } else {
+        hash = file_system.hashFile(path);
+      }
+      result.clean = (hash == fp.hash);
+
+      // At this point, the fingerprint in the invocation log should be
+      // re-calculated to avoid this expensive file content check in the future.
+      result.should_update = true;
+    }
+  }
+  return result;
+}
+
 }  // anonymous namespace
 
 bool Fingerprint::Stat::operator==(const Stat &other) const {
@@ -85,51 +136,36 @@ Fingerprint retakeFingerprint(
     time_t timestamp,
     const std::string &path,
     const Fingerprint &old_fingerprint) {
-  // TODO(peck): Write proper implementation of this function.
-  return takeFingerprint(file_system, timestamp, path);
+  Fingerprint new_fingerprint;
+  new_fingerprint.timestamp = timestamp;
+  new_fingerprint.stat = fingerprintStat(file_system, path);
+  const auto result = fingerprintMatches(
+      file_system,
+      path,
+      old_fingerprint,
+      new_fingerprint.stat,
+      new_fingerprint.hash);
+  if (result.clean && !result.should_update) {
+    return old_fingerprint;
+  } else if (result.should_update) {
+    // new_fingerprint.hash has been set by fingerprintMatches
+    return new_fingerprint;
+  } else {
+    return takeFingerprint(file_system, timestamp, path);
+  }
 }
 
 MatchesResult fingerprintMatches(
     FileSystem &file_system,
     const std::string &path,
     const Fingerprint &fp) throw(IoError) {
-  MatchesResult result;
-  const auto current = fingerprintStat(file_system, path);
-  if (current == fp.stat &&
-      (fp.stat.mode == 0 || (
-        fp.stat.mtime < fp.timestamp && fp.stat.ctime < fp.timestamp))) {
-    // The file's current stat information and the stat information of the
-    // fingerprint exactly match. Furthermore, the fingerprint is strictly
-    // newer than the files. This means that unless mtime/ctime has been
-    // tampered with, we know for sure that the file has not been modified
-    // since the fingerprint was taken.
-    result.clean = true;
-  } else {
-    // This branch is hit either when we know for sure that the file has been
-    // touched since the fingerprint was taken (current != fp.stat) or when
-    // the file is "racily clean" (current == fp.stat but the fingerprint was
-    // taken less than one second after the file was last modified).
-    //
-    // If the file is racily clean, it is not possible to tell if the file
-    // matches the fingerprint by looking at stat information only, need to fall
-    // back on a file content comparison.
-    if (current.size == fp.stat.size && current.mode == fp.stat.mode) {
-      // If the file size or mode would have been different then we would have
-      // already known for sure that the file is different, but now they are the
-      // same. In order to know if it's dirty or not, we need to hash the file
-      // again.
-      if (S_ISDIR(fp.stat.mode)) {
-        result.clean = file_system.hashDir(path) == fp.hash;
-      } else {
-        result.clean = file_system.hashFile(path) == fp.hash;
-      }
-
-      // At this point, the fingerprint in the invocation log should be
-      // re-calculated to avoid this expensive file content check in the future.
-      result.should_update = true;
-    }
-  }
-  return result;
+  Hash discard;
+  return fingerprintMatches(
+      file_system,
+      path,
+      fp,
+      fingerprintStat(file_system, path),
+      discard);
 }
 
 }  // namespace shk

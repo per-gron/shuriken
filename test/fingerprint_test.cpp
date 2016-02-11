@@ -135,6 +135,58 @@ TEST_CASE("Fingerprint") {
     }
   }
 
+  SECTION("retakeFingerprint") {
+    SECTION("matching old_fingerprint (missing file)") {
+      const auto fp = takeFingerprint(fs, now, "nonexisting");
+      now++;
+      const auto new_fp = retakeFingerprint(fs, now, "nonexisting", fp);
+      CHECK(fp == new_fp);
+    }
+
+    SECTION("matching old_fingerprint (file)") {
+      fs.writeFile("b", "data");
+      now++;
+      const auto fp = takeFingerprint(fs, now, "b");
+      now++;
+      const auto new_fp = retakeFingerprint(fs, now, "b", fp);
+      CHECK(fp == new_fp);
+    }
+
+    SECTION("matching old_fingerprint (file, should_update)") {
+      fs.writeFile("b", "data");
+      const auto fp = takeFingerprint(fs, now, "b");
+      now++;
+      const auto new_fp = retakeFingerprint(fs, now, "b", fp);
+      CHECK(fp != new_fp);
+      CHECK(new_fp == takeFingerprint(fs, now, "b"));
+    }
+
+    SECTION("matching old_fingerprint (dir)") {
+      now++;
+      const auto fp = takeFingerprint(fs, now, "dir");
+      now++;
+      const auto new_fp = retakeFingerprint(fs, now, "dir", fp);
+      CHECK(fp == new_fp);
+    }
+
+    SECTION("matching old_fingerprint (dir, should_update)") {
+      const auto fp = takeFingerprint(fs, now, "dir");
+      now++;
+      const auto new_fp = retakeFingerprint(fs, now, "dir", fp);
+      CHECK(fp != new_fp);
+      CHECK(new_fp == takeFingerprint(fs, now, "dir"));
+    }
+
+    SECTION("not matching old_fingerprint") {
+      const auto fp = takeFingerprint(fs, now, "a");
+      fs.writeFile("a", "data");
+      now++;
+      const auto new_fp = retakeFingerprint(fs, now, "a", fp);
+      CHECK(fp != new_fp);
+      CHECK(new_fp == takeFingerprint(fs, now, "a"));
+    }
+  }
+
   SECTION("fingerprintMatches") {
     SECTION("no changes, fingerprint taken at the same time as file mtime") {
       const auto initial_fp = takeFingerprint(fs, now, "a");
