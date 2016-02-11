@@ -2,6 +2,10 @@
 
 namespace shk {
 
+InMemoryInvocationLog::InMemoryInvocationLog(
+    FileSystem &file_system, const Clock &clock)
+    : _fs(file_system), _clock(clock) {}
+
 void InMemoryInvocationLog::createdDirectory(const std::string &path) throw(IoError) {
   _created_directories.insert(path);
 }
@@ -11,8 +15,20 @@ void InMemoryInvocationLog::removedDirectory(const std::string &path) throw(IoEr
 }
 
 void InMemoryInvocationLog::ranCommand(
-    const Hash &build_step_hash, const Entry &entry) throw(IoError) {
-  _entries[build_step_hash] = entry;
+    const Hash &build_step_hash,
+    std::vector<std::string> &&output_files,
+    std::vector<std::string> &&input_files) throw(IoError) {
+  const auto process_paths = [&](std::vector<std::string> &&paths) {
+    std::vector<std::pair<std::string, Fingerprint>> files;
+    for (auto &&path : paths) {
+      files.emplace_back(std::move(path), takeFingerprint(_fs, _clock(), path));
+    }
+    return files;
+  };
+
+  _entries[build_step_hash] = {
+      process_paths(std::move(output_files)),
+      process_paths(std::move(input_files)) };
 }
 
 void InMemoryInvocationLog::cleanedCommand(

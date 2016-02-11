@@ -10,7 +10,7 @@ namespace shk {
 TEST_CASE("InMemoryInvocationLog") {
   InMemoryFileSystem fs;
   Paths paths(fs);
-  InMemoryInvocationLog log;
+  InMemoryInvocationLog log(fs, [] { return 0; });
 
   Hash hash;
   std::fill(hash.data.begin(), hash.data.end(), 123);
@@ -34,8 +34,7 @@ TEST_CASE("InMemoryInvocationLog") {
   }
 
   SECTION("Commands") {
-    InvocationLog::Entry entry;
-    log.ranCommand(hash, entry);
+    log.ranCommand(hash, {}, {});
     CHECK(log.entries().count(hash) == 1);
     log.cleanedCommand(hash);
     CHECK(log.entries().empty());
@@ -54,9 +53,7 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("Commands") {
-      InvocationLog::Entry entry;
-
-      log.ranCommand(hash, entry);
+      log.ranCommand(hash, {}, {});
       CHECK(log.invocations(paths).entries.size() == 1);
       CHECK(log.invocations(paths).entries.count(hash) == 1);
 

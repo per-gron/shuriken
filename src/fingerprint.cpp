@@ -80,6 +80,15 @@ Fingerprint takeFingerprint(
   return fp;
 }
 
+Fingerprint retakeFingerprint(
+    FileSystem &file_system,
+    time_t timestamp,
+    const std::string &path,
+    const Fingerprint &old_fingerprint) {
+  // TODO(peck): Write proper implementation of this function.
+  return takeFingerprint(file_system, timestamp, path);
+}
+
 MatchesResult fingerprintMatches(
     FileSystem &file_system,
     const std::string &path,

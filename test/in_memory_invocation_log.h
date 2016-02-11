@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "clock.h"
 #include "invocation_log.h"
 #include "invocations.h"
 
@@ -13,11 +14,19 @@ namespace shk {
  */
 class InMemoryInvocationLog : public InvocationLog {
  public:
+  struct Entry {
+    std::vector<std::pair<std::string, Fingerprint>> output_files;
+    std::vector<std::pair<std::string, Fingerprint>> input_files;
+  };
+
+  InMemoryInvocationLog(FileSystem &file_system, const Clock &clock);
+
   void createdDirectory(const std::string &path) throw(IoError) override;
   void removedDirectory(const std::string &path) throw(IoError) override;
   void ranCommand(
       const Hash &build_step_hash,
-      const Entry &entry) throw(IoError) override;
+      std::vector<std::string> &&output_files,
+      std::vector<std::string> &&input_files) throw(IoError) override;
   void cleanedCommand(
       const Hash &build_step_hash) throw(IoError) override;
 
@@ -38,6 +47,8 @@ class InMemoryInvocationLog : public InvocationLog {
 
 
  private:
+  FileSystem &_fs;
+  const Clock _clock;
   std::unordered_map<Hash, Entry> _entries;
   std::unordered_set<std::string> _created_directories;
 };

@@ -137,9 +137,13 @@ std::vector<std::pair<Path, Fingerprint>> readFingerprints(
 class PersistentInvocationLog : public InvocationLog {
  public:
   PersistentInvocationLog(
+      FileSystem &file_system,
+      const Clock &clock,
       std::unique_ptr<FileSystem::Stream> &&stream,
       InvocationLogParseResult::ParseData &&parse_data)
-      : _stream(std::move(stream)),
+      : _fs(file_system),
+        _clock(clock),
+        _stream(std::move(stream)),
         _path_ids(std::move(parse_data.path_ids)),
         _fingerprint_ids(std::move(parse_data.fingerprint_ids)),
         _entry_count(parse_data.entry_count) {
@@ -147,7 +151,7 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
   void createdDirectory(const std::string &path) throw(IoError) override {
-    const auto path_id = idForPath(path);
+    const auto path_id = ensurePathIsWritten(path);
     writeHeader(
         sizeof(uint32_t), InvocationLogEntryType::CREATED_DIR_OR_FINGERPRINT);
     write(path_id);
@@ -167,43 +171,38 @@ class PersistentInvocationLog : public InvocationLog {
 
   void ranCommand(
       const Hash &build_step_hash,
-      const Entry &entry) throw(IoError) override {
-    const auto total_entries =
-        entry.input_files.size() + entry.output_files.size();
+      std::vector<std::string> &&output_files,
+      std::vector<std::string> &&input_files) throw(IoError) override {
+
+    const auto total_entries = output_files.size() + input_files.size();
     const uint32_t size =
         sizeof(Hash) +
         sizeof(uint32_t) +
         sizeof(uint32_t) * 2 * total_entries;
-    const auto write_file_paths = [&](
-        const std::vector<std::pair<std::string, Fingerprint>> &files) {
-      for (const auto &file : files) {
-        idForPath(file.first);
-        idForFingerprint(file.second);
-      }
-    };
-    write_file_paths(entry.input_files);
-    write_file_paths(entry.output_files);
+
+    writePathsAndFingerprints(output_files);
+    writePathsAndFingerprints(input_files);
 
     writeHeader(size, InvocationLogEntryType::INVOCATION);
 
     write(build_step_hash);
-    write(static_cast<uint32_t>(entry.output_files.size()));
+    write(static_cast<uint32_t>(output_files.size()));
 
     const auto write_files = [&](
-        const std::vector<std::pair<std::string, Fingerprint>> &files) {
-      for (const auto &file : files) {
-        const auto path_it = _path_ids.find(file.first);
+        const std::vector<std::string> &paths) {
+      for (const auto &path : paths) {
+        const auto path_it = _path_ids.find(path);
         assert(path_it != _path_ids.end());
         write(path_it->second);
 
-        const auto fingerprint_it = _fingerprint_ids.find(file.second);
+        const auto fingerprint_it = _fingerprint_ids.find(path);
         assert(fingerprint_it != _fingerprint_ids.end());
-        write(fingerprint_it->second);
+        write(fingerprint_it->second.record_id);
       }
     };
 
-    write_files(entry.output_files);
-    write_files(entry.input_files);
+    write_files(output_files);
+    write_files(input_files);
 
     _entry_count++;
   }
@@ -216,6 +215,12 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
  private:
+  void writePathsAndFingerprints(const std::vector<std::string> &paths) {
+    for (const auto &path : paths) {
+      ensureRecentFingeprintIsWritten(path);
+    }
+  }
+
   void writeHeader() {
     if (_stream->tell() == 0) {
       _stream->write(
@@ -256,26 +261,29 @@ class PersistentInvocationLog : public InvocationLog {
     _entry_count++;
   }
 
-  void writeEntry(const Fingerprint &fingerprint) {
+  void writeEntry(const uint32_t path_id, const Fingerprint &fingerprint) {
     writeHeader(
-        sizeof(fingerprint),
+        sizeof(path_id) + sizeof(fingerprint),
         InvocationLogEntryType::CREATED_DIR_OR_FINGERPRINT);
 
+    write(path_id);
     _stream->write(
         reinterpret_cast<const uint8_t *>(&fingerprint), sizeof(fingerprint), 1);
 
     _entry_count++;
   }
 
-  template<typename T>
-  uint32_t idForEntry(
-      std::unordered_map<T, uint32_t> &entry_ids,
-      const T &entry) {
-    const auto it = entry_ids.find(entry);
-    if (it == entry_ids.end()) {
+  /**
+   * Get the id for a path. If the path is not already written, write an entry
+   * with that path. This means that this method cannot be called in the middle
+   * of writing another entry.
+   */
+  uint32_t ensurePathIsWritten(const std::string &path) {
+    const auto it = _path_ids.find(path);
+    if (it == _path_ids.end()) {
       const auto id = _entry_count;
-      writeEntry(entry);
-      entry_ids[entry] = id;
+      writeEntry(path);
+      _path_ids[path] = id;
       return id;
     } else {
       return it->second;
@@ -283,23 +291,48 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
   /**
-   * Get the id for a path. If the path is not already written, write an entry
-   * with that path. This means that this method cannot be called in the middle
-   * of writing another entry.
+   * Get the id for a fingerprint of a path. If there is no fingerprint written
+   * for the given path, just take the fingerprint. If there is a fingerprint
+   * already for that path, attempt to reuse it, in an effort to avoid
+   * re-hashing the file. This is important for performance, because otherwise
+   * the build would hash every input file for every build step, including files
+   * that are used for every build step, such as system libraries.
+   *
+   * Returns the record id of the fingerprint for the given path.
+   *
+   * Because this might write an entry to the log, this method cannot be called
+   * in the middle of writing another entry.
    */
-  uint32_t idForPath(const std::string &path) {
-    return idForEntry(_path_ids, path);
+  uint32_t ensureRecentFingeprintIsWritten(const std::string &path) {
+    const auto path_id = ensurePathIsWritten(path);
+
+    FingerprintIdsValue value;
+    value.record_id = _entry_count;
+    const auto it = _fingerprint_ids.find(path);
+    if (it == _fingerprint_ids.end()) {
+      // No prior entry for that path. Need to take fingerprint.
+      value.fingerprint = takeFingerprint(_fs, _clock(), path);
+      writeEntry(path_id, value.fingerprint);
+      _fingerprint_ids[path] = value;
+      return value.record_id;
+    } else {
+      // There is a fingerprint entry for the given path already. Find out if it
+      // can be reused or if a new fingerprint is required.
+      const auto &old_fingerprint = it->second.fingerprint;
+      value.fingerprint = retakeFingerprint(
+          _fs, _clock(), path, old_fingerprint);
+      if (old_fingerprint == value.fingerprint) {
+        return it->second.record_id;
+      } else {
+        writeEntry(path_id, value.fingerprint);
+        _fingerprint_ids[path] = value;
+        return value.record_id;
+      }
+    }
   }
 
-  /**
-   * Get the id for a path. If the path is not already written, write an entry
-   * with that path. This means that this method cannot be called in the middle
-   * of writing another entry.
-   */
-  uint32_t idForFingerprint(const Fingerprint &fingerprint) {
-    return idForEntry(_fingerprint_ids, fingerprint);
-  }
-
+  FileSystem &_fs;
+  const Clock _clock;
   const std::unique_ptr<FileSystem::Stream> _stream;
   PathIds _path_ids;
   FingerprintIds _fingerprint_ids;
@@ -363,12 +396,18 @@ InvocationLogParseResult parsePersistentInvocationLog(
         if (entry_size == sizeof(uint32_t)) {
           result.invocations.created_directories.insert(
               readPath(paths_by_id, entry));
-        } else if (entry_size == sizeof(Fingerprint)) {
-          fingerprints_by_id.resize(entry_count + 1);
-          const auto &fingerprint =
+        } else if (entry_size == sizeof(uint32_t) + sizeof(Fingerprint)) {
+          const auto path = readPath(paths_by_id, entry);
+          entry = advance(entry, sizeof(uint32_t));
+
+          FingerprintIdsValue value;
+          value.record_id = entry_count;
+          value.fingerprint =
               *reinterpret_cast<const Fingerprint *>(entry._str);
-          result.parse_data.fingerprint_ids[fingerprint] = entry_count;
-          fingerprints_by_id[entry_count] = fingerprint;
+          result.parse_data.fingerprint_ids[path.original()] = value;
+
+          fingerprints_by_id.resize(entry_count + 1);
+          fingerprints_by_id[entry_count] = value.fingerprint;
         } else {
           throw ParseError("invalid invocation log: truncated invocation");
         }
@@ -450,40 +489,44 @@ InvocationLogParseResult parsePersistentInvocationLog(
 
 std::unique_ptr<InvocationLog> openPersistentInvocationLog(
     FileSystem &file_system,
+    const Clock &clock,
     const std::string &log_path,
     InvocationLogParseResult::ParseData &&parse_data) throw(IoError) {
   return std::unique_ptr<InvocationLog>(
       new PersistentInvocationLog(
+          file_system,
+          clock,
           file_system.open(log_path, "ab"),
           std::move(parse_data)));
 }
 
 void recompactPersistentInvocationLog(
     FileSystem &file_system,
+    const Clock &clock,
     const Invocations &invocations,
     const std::string &log_path) throw(IoError) {
   const auto tmp_path = file_system.mkstemp("shk.tmp.log.XXXXXXXX");
   const auto log =
       openPersistentInvocationLog(
-          file_system, tmp_path, InvocationLogParseResult::ParseData());
+          file_system, clock, tmp_path, InvocationLogParseResult::ParseData());
 
   for (const auto &dir : invocations.created_directories) {
     log->createdDirectory(dir.original());
   }
 
   for (const auto &entry : invocations.entries) {
-    InvocationLog::Entry log_entry;
-    const auto files = [&](
+    const auto paths = [&](
         const std::vector<std::pair<Path, Fingerprint>> &files) {
-      std::vector<std::pair<std::string, Fingerprint>> result;
+      std::vector<std::string> result;
       for (const auto &file : files) {
-        result.emplace_back(file.first.original(), file.second);
+        result.push_back(file.first.original());
       }
       return result;
     };
-    log_entry.output_files = files(entry.second.output_files);
-    log_entry.input_files = files(entry.second.input_files);
-    log->ranCommand(entry.first, log_entry);
+    log->ranCommand(
+        entry.first,
+        paths(entry.second.output_files),
+        paths(entry.second.input_files));
   }
 
   file_system.rename(tmp_path, log_path);

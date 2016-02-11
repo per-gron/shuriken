@@ -348,64 +348,6 @@ Build computeBuild(
   return build;
 }
 
-/**
- * Shared logic between computeInvocationEntry and recomputeInvocationEntry.
- */
-template<typename GetPathString, typename Input>
-InvocationLog::Entry computeInvocationEntry(
-    const Clock &clock,
-    FileSystem &file_system,
-    const Input &result,
-    GetPathString &&get_path_string) throw(IoError) {
-  InvocationLog::Entry entry;
-
-  const auto add = [&](const decltype(result.output_files) &files) {
-    std::vector<std::pair<std::string, Fingerprint>> result;
-    result.reserve(files.size());
-    for (const auto &file : files) {
-      const auto path = get_path_string(file);
-      result.emplace_back(path, takeFingerprint(file_system, clock(), path));
-    }
-    return result;
-  };
-
-  entry.output_files = add(result.output_files);
-  entry.input_files = add(result.input_files);
-
-  return entry;
-}
-
-InvocationLog::Entry computeInvocationEntry(
-    const Clock &clock,
-    FileSystem &file_system,
-    const CommandRunner::Result &result) throw(IoError) {
-  return computeInvocationEntry(
-      clock,
-      file_system,
-      result,
-      [](const std::string &path) { return path; });
-}
-
-/**
- * The fingerprinting system sometimes asks for a fingerprint of a clean target
- * to be recomputed (this usually happens when the entry is "racily clean" which
- * makes it necessary to hash the file contents to detect if the file is dirty
- * or not). This function takes an Invocations::Entry, recomputes the
- * fingerprints and creates a new InvocationLog::Entry with fresh fingerprints.
- */
-InvocationLog::Entry recomputeInvocationEntry(
-    const Clock &clock,
-    FileSystem &file_system,
-    const Invocations::Entry &entry) throw(IoError) {
-  return computeInvocationEntry(
-      clock,
-      file_system,
-      entry,
-      [](const std::pair<Path, Fingerprint> &file) {
-        return file.first.original();
-      });
-}
-
 bool isClean(
     const Clock &clock,
     FileSystem &file_system,
@@ -441,8 +383,20 @@ bool isClean(
   if (clean && should_update) {
     // There is no need to update the invocation log when dirty; it will be
     // updated anyway as part of the build.
+
+    const auto paths = [](
+        const std::vector<std::pair<Path, Fingerprint>> &files) {
+      std::vector<std::string> paths;
+      for (const auto &file : files) {
+        paths.push_back(file.first.original());
+      }
+      return paths;
+    };
+
     invocation_log.ranCommand(
-        step_hash, recomputeInvocationEntry(clock, file_system, entry));
+        step_hash,
+        paths(entry.output_files),
+        paths(entry.input_files));
   }
 
   return clean;
@@ -583,7 +537,8 @@ void commandDone(
       // immediately report the step as clean regardless of what it depends on.
       params.invocation_log.ranCommand(
           params.step_hashes[step_idx],
-          computeInvocationEntry(params.clock, params.file_system, result));
+          std::move(result.output_files),
+          std::move(result.input_files));
     }
 
     if (false &&  // Ignore rather than trigger an assert. Remove this later

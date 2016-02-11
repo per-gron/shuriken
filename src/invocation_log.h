@@ -18,11 +18,6 @@ namespace shk {
  */
 class InvocationLog {
  public:
-  struct Entry {
-    std::vector<std::pair<std::string, Fingerprint>> output_files;
-    std::vector<std::pair<std::string, Fingerprint>> input_files;
-  };
-
   virtual ~InvocationLog() = default;
 
   /**
@@ -51,10 +46,14 @@ class InvocationLog {
    * Writes an entry in the invocation log that says that the build step with
    * the given hash has been successfully run with information about outputs and
    * dependencies.
+   *
+   * The InvocationLog will fingerprint the provided paths, reusing existing
+   * fingerprints if possible.
    */
   virtual void ranCommand(
       const Hash &build_step_hash,
-      const Entry &entry) throw(IoError) = 0;
+      std::vector<std::string> &&output_files,
+      std::vector<std::string> &&input_files) throw(IoError) = 0;
 
   /**
    * Writes an entry in the invocation log that says that the build step with

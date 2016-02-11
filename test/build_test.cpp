@@ -100,7 +100,7 @@ TEST_CASE("Build") {
   const auto clock = [&time]() { return time; };
   InMemoryFileSystem fs(clock);
   Paths paths(fs);
-  InMemoryInvocationLog log;
+  InMemoryInvocationLog log(fs, clock);
   Invocations invocations;
   Manifest manifest;
 
@@ -571,53 +571,6 @@ TEST_CASE("Build") {
       manifest.defaults = { paths.get("a") };
       manifest.steps = { one, two };
       CHECK_THROWS_AS(computeBuild(manifest), BuildError);
-    }
-  }
-
-  SECTION("computeInvocationEntry") {
-    SECTION("empty") {
-      const auto entry = computeInvocationEntry(
-          clock, fs, CommandRunner::Result());
-      CHECK(entry.output_files.empty());
-      CHECK(entry.input_files.empty());
-    }
-
-    SECTION("files") {
-      fs.writeFile("a", "!");
-      fs.writeFile("b", "?");
-      fs.writeFile("c", ":");
-
-      CommandRunner::Result result;
-      result.output_files = { "c" };
-      result.input_files = { "a", "b" };
-
-      const auto entry = computeInvocationEntry(clock, fs, result);
-
-      REQUIRE(entry.output_files.size() == 1);
-      CHECK(entry.output_files[0].first == "c");
-      CHECK(entry.output_files[0].second == takeFingerprint(fs, 555, "c"));
-
-      REQUIRE(entry.input_files.size() == 2);
-      CHECK(entry.input_files[0].first == "a");
-      CHECK(entry.input_files[0].second == takeFingerprint(fs, 555, "a"));
-      CHECK(entry.input_files[1].first == "b");
-      CHECK(entry.input_files[1].second == takeFingerprint(fs, 555, "b"));
-    }
-
-    SECTION("missing files") {
-      CommandRunner::Result result;
-      result.output_files = { "a" };
-      result.input_files = { "b" };
-
-      const auto entry = computeInvocationEntry(clock, fs, result);
-
-      REQUIRE(entry.output_files.size() == 1);
-      CHECK(entry.output_files[0].first == "a");
-      CHECK(entry.output_files[0].second == takeFingerprint(fs, 555, "a"));
-
-      REQUIRE(entry.input_files.size() == 1);
-      CHECK(entry.input_files[0].first == "b");
-      CHECK(entry.input_files[0].second == takeFingerprint(fs, 555, "b"));
     }
   }
 

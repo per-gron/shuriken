@@ -21,9 +21,11 @@ add_library(shklib
   src/build_config.h
   src/build_error.h
   src/build_status.h
+  src/clock.h
   src/command_runner.h
   src/dry_run_command_runner.cpp
   src/dry_run_command_runner.h
+  src/dry_run_invocation_log.h
   src/edit_distance.cpp
   src/edit_distance.h
   src/eval_env.cpp
@@ -38,8 +40,6 @@ add_library(shklib
   src/fingerprint.cpp
   src/fingerprint.h
   src/hash.h
-  src/in_memory_invocation_log.cpp
-  src/in_memory_invocation_log.h
   src/invocation_log.h
   src/invocations.h
   src/lexer.h
@@ -120,6 +120,8 @@ add_executable(shk_test
   test/in_memory_file_system.cpp
   test/in_memory_file_system.h
   test/in_memory_file_system_test.cpp
+  test/in_memory_invocation_log.cpp
+  test/in_memory_invocation_log.h
   test/in_memory_invocation_log_test.cpp
   test/lexer_test.cpp
   test/limited_command_runner_test.cpp

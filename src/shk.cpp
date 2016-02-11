@@ -35,9 +35,9 @@
 #include "build_config.h"
 #include "build_error.h"
 #include "dry_run_command_runner.h"
+#include "dry_run_invocation_log.h"
 #include "edit_distance.h"
 #include "file_lock.h"
-#include "in_memory_invocation_log.h"
 #include "invocations.h"
 #include "limited_command_runner.h"
 #include "manifest.h"
@@ -343,7 +343,7 @@ bool ShurikenMain::readAndOpenInvocationLog() {
 
   if (_config.dry_run) {
     _invocation_log = std::unique_ptr<InvocationLog>(
-        new InMemoryInvocationLog());
+        new DryRunInvocationLog());
   } else {
     try {
       mkdirsFor(*_file_system, path);
@@ -357,6 +357,7 @@ bool ShurikenMain::readAndOpenInvocationLog() {
     try {
       _invocation_log = openPersistentInvocationLog(
           *_file_system,
+          getTime,
           path,
           std::move(parse_result.parse_data));
     } catch (const IoError &io_error) {

@@ -5,6 +5,7 @@
 
 #include "build_error.h"
 #include "build_status.h"
+#include "clock.h"
 #include "command_runner.h"
 #include "file_system.h"
 #include "invocation_log.h"
@@ -13,8 +14,6 @@
 #include "step.h"
 
 namespace shk {
-
-using Clock = std::function<time_t ()>;
 
 using StepIndex = size_t;
 
@@ -233,11 +232,6 @@ Build computeBuild(
     const Manifest &manifest,
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError);
-
-InvocationLog::Entry computeInvocationEntry(
-    const Clock &clock,
-    FileSystem &file_system,
-    const CommandRunner::Result &result) throw(IoError);
 
 /**
  * Checks if a build step has already been performed and does not need to be

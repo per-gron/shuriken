@@ -1,12 +1,13 @@
 #pragma once
 
+#include <stdint.h>
+
+#include "clock.h"
 #include "file_system.h"
 #include "invocation_log.h"
 #include "invocations.h"
 #include "parse_error.h"
 #include "path.h"
-
-#include <stdint.h>
 
 namespace shk {
 
@@ -51,8 +52,9 @@ namespace shk {
  *    possibly with extra trailing \0s to ensure 4 byte alignment.
  * 1. Created directory or Fingerprint: If the size is 4 bytes, the contents is
  *    a single uint32_t entry id reference to a path of the created directory.
- *    Otherwise, this entry contains a Fingerprint object (with no relation to
- *    directories).
+ *    Otherwise, this entry contains a uint32_t entry id reference to a path of
+ *    a fingerprinted file followed by a Fingerprint object for that path (with
+ *    no relation to directories).
  * 2. Invocation: An Invocation entry is an on-disk representation of an
  *    Invocations::Entry object. It starts with a Hash object, then contains a
  *    single uint32_t with the number of output files, followed by a number of
@@ -80,11 +82,19 @@ namespace shk {
  */
 using PathIds = std::unordered_map<std::string, uint32_t>;
 /**
- * A map of Fingerprint objects to the record id in the invocation log. Like
- * PathIds, this object is produced when parsing the invocation log and used
- * when writing to the invocation log, to avoid duplication of paths in the log.
+ * A map of paths to the record id of the most recent fingerprint for that path
+ * in the invocation log. In order to be able to decide if the most recent
+ * fingerprint can be used or not, this map also contains the Fingerprint
+ * itself. Like PathIds, this object is produced when parsing the invocation log
+ * and used when writing to the invocation log, to avoid duplication in the log,
+ * and to avoid unnecessary re-hashing of file contents.
  */
-using FingerprintIds = std::unordered_map<Fingerprint, uint32_t>;
+struct FingerprintIdsValue {
+  uint32_t record_id = 0;
+  Fingerprint fingerprint;
+};
+using FingerprintIds = std::unordered_map<
+    std::string, FingerprintIdsValue>;
 
 struct InvocationLogParseResult {
   /**
@@ -139,6 +149,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
  */
 std::unique_ptr<InvocationLog> openPersistentInvocationLog(
     FileSystem &file_system,
+    const Clock &clock,
     const std::string &log_path,
     InvocationLogParseResult::ParseData &&parse_data) throw(IoError);
 
@@ -153,6 +164,7 @@ std::unique_ptr<InvocationLog> openPersistentInvocationLog(
  */
 void recompactPersistentInvocationLog(
     FileSystem &file_system,
+    const Clock &clock,
     const Invocations &invocations,
     const std::string &log_path) throw(IoError);
 

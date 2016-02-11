@@ -7,15 +7,6 @@
 #include "in_memory_invocation_log.h"
 
 namespace shk {
-
-inline bool operator==(
-    const InvocationLog::Entry &a,
-    const InvocationLog::Entry &b) {
-  return
-      std::tie(a.output_files, a.input_files) ==
-      std::tie(b.output_files, b.input_files);
-}
-
 namespace {
 
 void checkEmpty(const InvocationLogParseResult &empty) {
@@ -28,31 +19,6 @@ void checkEmpty(const InvocationLogParseResult &empty) {
   CHECK(empty.parse_data.entry_count == 0);
 }
 
-void checkMatches(const InMemoryInvocationLog &log, const Invocations &invocations) {
-  std::unordered_set<std::string> created_directories;
-  for (const auto &dir : invocations.created_directories) {
-    created_directories.insert(dir.original());
-  }
-  CHECK(log.createdDirectories() == created_directories);
-
-  std::unordered_map<Hash, InvocationLog::Entry> entries;
-  for (const auto &entry : invocations.entries) {
-    InvocationLog::Entry log_entry;
-    const auto files = [&](
-        const std::vector<std::pair<Path, Fingerprint>> &files) {
-      std::vector<std::pair<std::string, Fingerprint>> result;
-      for (const auto &file : files) {
-        result.emplace_back(file.first.original(), file.second);
-      }
-      return result;
-    };
-    log_entry.output_files = files(entry.second.output_files);
-    log_entry.input_files = files(entry.second.input_files);
-    entries[entry.first] = log_entry;
-  }
-  CHECK(log.entries() == entries);
-}
-
 /**
  * Test that committing a set of entries to the log and reading it back does
  * the same thing as just writing those entries to an Invocations object.
@@ -61,9 +27,10 @@ template<typename Callback>
 void roundtrip(const Callback &callback) {
   InMemoryFileSystem fs;
   Paths paths(fs);
-  InMemoryInvocationLog in_memory_log;
+  InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
   const auto persistent_log = openPersistentInvocationLog(
       fs,
+      [] { return 0; },
       "file",
       InvocationLogParseResult::ParseData());
   callback(*persistent_log);
@@ -71,20 +38,21 @@ void roundtrip(const Callback &callback) {
   const auto result = parsePersistentInvocationLog(paths, fs, "file");
 
   CHECK(result.warning == "");
-  checkMatches(in_memory_log, result.invocations);
+  CHECK(in_memory_log.invocations(paths) == result.invocations);
 }
 
 template<typename Callback>
 void multipleWriteCycles(const Callback &callback) {
   InMemoryFileSystem fs;
   Paths paths(fs);
-  InMemoryInvocationLog in_memory_log;
+  InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
   callback(in_memory_log);
   for (size_t i = 0; i < 5; i++) {
     auto result = parsePersistentInvocationLog(paths, fs, "file");
     CHECK(result.warning == "");
     const auto persistent_log = openPersistentInvocationLog(
         fs,
+        [] { return 0; },
         "file",
         std::move(result.parse_data));
     callback(*persistent_log);
@@ -92,7 +60,7 @@ void multipleWriteCycles(const Callback &callback) {
 
   const auto result = parsePersistentInvocationLog(paths, fs, "file");
   CHECK(result.warning == "");
-  checkMatches(in_memory_log, result.invocations);
+  CHECK(in_memory_log.invocations(paths) == result.invocations);
 }
 
 template<typename Callback>
@@ -102,6 +70,7 @@ void shouldEventuallyRequestRecompaction(const Callback &callback) {
   for (size_t attempts = 0;; attempts++) {
     const auto persistent_log = openPersistentInvocationLog(
         fs,
+        [] { return 0; },
         "file",
         InvocationLogParseResult::ParseData());
     callback(*persistent_log);
@@ -121,25 +90,27 @@ template<typename Callback>
 void recompact(const Callback &callback) {
   InMemoryFileSystem fs;
   Paths paths(fs);
-  InMemoryInvocationLog in_memory_log;
+  InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
   callback(in_memory_log);
   for (size_t i = 0; i < 5; i++) {
     auto result = parsePersistentInvocationLog(paths, fs, "file");
     CHECK(result.warning == "");
     const auto persistent_log = openPersistentInvocationLog(
         fs,
+        [] { return 0; },
         "file",
         std::move(result.parse_data));
     callback(*persistent_log);
   }
   recompactPersistentInvocationLog(
       fs,
+      [] { return 0; },
       parsePersistentInvocationLog(paths, fs, "file").invocations,
       "file");
 
   const auto result = parsePersistentInvocationLog(paths, fs, "file");
   CHECK(result.warning == "");
-  checkMatches(in_memory_log, result.invocations);
+  CHECK(in_memory_log.invocations(paths) == result.invocations);
 }
 
 template<typename Callback>
@@ -158,7 +129,7 @@ void warnOnTruncatedInput(const Callback &callback) {
 
     fs.unlink("file");
     const auto persistent_log = openPersistentInvocationLog(
-        fs, "file", InvocationLogParseResult::ParseData());
+        fs, [] { return 0; }, "file", InvocationLogParseResult::ParseData());
     callback(*persistent_log);
     const auto stat = fs.stat("file");
     const auto truncated_size = stat.metadata.size - i;
@@ -215,12 +186,6 @@ TEST_CASE("PersistentInvocationLog") {
   std::fill(hash_0.data.begin(), hash_0.data.end(), 0);
   Hash hash_1;
   std::fill(hash_0.data.begin(), hash_0.data.end(), 1);
-  Fingerprint fp_0;
-  std::fill(fp_0.hash.data.begin(), fp_0.hash.data.end(), 0);
-  fp_0.timestamp = 1;
-  Fingerprint fp_1;
-  std::fill(fp_1.hash.data.begin(), fp_1.hash.data.end(), 0);
-  fp_1.timestamp = 2;
 
   SECTION("Parsing") {
     parsePersistentInvocationLog(paths, fs, "missing");
@@ -258,60 +223,44 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("InvocationNoFiles") {
       writeEntries([&](InvocationLog &log) {
-        InvocationLog::Entry entry;
-        log.ranCommand(hash_0, entry);
+        log.ranCommand(hash_0, {}, {});
       });
     }
 
     SECTION("InvocationSingleInputFile") {
       writeEntries([&](InvocationLog &log) {
-        InvocationLog::Entry entry;
-        entry.input_files.emplace_back("hi", fp_0);
-        log.ranCommand(hash_0, entry);
+        log.ranCommand(hash_0, {}, { "hi" });
       });
     }
 
     SECTION("InvocationTwoInputFiles") {
       writeEntries([&](InvocationLog &log) {
-        InvocationLog::Entry entry;
-        entry.input_files.emplace_back("hi", fp_0);
-        entry.input_files.emplace_back("duh", fp_1);
-        log.ranCommand(hash_0, entry);
+        log.ranCommand(hash_0, {}, { "hi", "duh" });
       });
     }
 
     SECTION("InvocationSingleOutputFile") {
       writeEntries([&](InvocationLog &log) {
-        InvocationLog::Entry entry;
-        entry.output_files.emplace_back("hi", fp_0);
-        log.ranCommand(hash_0, entry);
+        log.ranCommand(hash_0, { "hi" }, {});
       });
     }
 
     SECTION("InvocationTwoOutputFiles") {
       writeEntries([&](InvocationLog &log) {
-        InvocationLog::Entry entry;
-        entry.output_files.emplace_back("aah", fp_0);
-        entry.output_files.emplace_back("hi", fp_1);
-        log.ranCommand(hash_0, entry);
+        log.ranCommand(hash_0, { "aah", "hi" }, {});
       });
     }
 
     SECTION("InvocationInputAndOutputFiles") {
       writeEntries([&](InvocationLog &log) {
-        InvocationLog::Entry entry;
-        entry.input_files.emplace_back("aah", fp_0);
-        entry.output_files.emplace_back("hi", fp_1);
-        log.ranCommand(hash_0, entry);
+        log.ranCommand(hash_0, { "aah" }, { "hi" });
       });
     }
 
     SECTION("OverwrittenInvocation") {
       writeEntries([&](InvocationLog &log) {
-        InvocationLog::Entry entry;
-        log.ranCommand(hash_0, entry);
-        entry.output_files.emplace_back("hi", fp_0);
-        log.ranCommand(hash_0, entry);
+        log.ranCommand(hash_0, {}, {});
+        log.ranCommand(hash_0, { "hi" }, {});
       });
     }
 
@@ -323,8 +272,7 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("DeletedInvocation") {
       writeEntries([&](InvocationLog &log) {
-        InvocationLog::Entry entry;
-        log.ranCommand(hash_0, entry);
+        log.ranCommand(hash_0, {}, {});
         log.cleanedCommand(hash_0);
       });
     }
@@ -335,12 +283,9 @@ TEST_CASE("PersistentInvocationLog") {
         log.createdDirectory("dir_2");
         log.removedDirectory("dir");
 
-        InvocationLog::Entry entry;
-        entry.input_files.emplace_back("aah", fp_0);
-        entry.output_files.emplace_back("hi", fp_1);
-        log.ranCommand(hash_0, entry);
+        log.ranCommand(hash_0, { "hi" }, { "aah" });
         log.cleanedCommand(hash_1);
-        log.ranCommand(hash_1, InvocationLog::Entry());
+        log.ranCommand(hash_1, {}, {});
         log.cleanedCommand(hash_0);
       });
     }

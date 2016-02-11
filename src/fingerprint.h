@@ -73,7 +73,7 @@ struct Fingerprint {
 struct MatchesResult {
   bool clean = false;
   /**
-   * Set to true if fingerprintMatch has to do an (expensive) file content
+   * Set to true if fingerprintMatch had to do an (expensive) file content
    * hashing operation in order to know if an update is required. In these
    * situations it is beneficial to recompute the fingerprint for the file.
    * There is then a good chance that hashing will no longer be needed later.
@@ -88,6 +88,21 @@ Fingerprint takeFingerprint(
     FileSystem &file_system,
     time_t timestamp,
     const std::string &path) throw(IoError);
+
+/**
+ * Like takeFingerprint, but uses old_fingerprint if possible. If
+ * old_fingerprint is clean, this function returns an exact copy of it.
+ *
+ * This is useful when the user of the function already has a Fingerprint of a
+ * file but needs to get a Fingerprint that is up to date. If old_fingerprint is
+ * clean, then this function is significantly faster than takeFingerprint,
+ * because it only has to do a stat rather than a full hash of the file.
+ */
+Fingerprint retakeFingerprint(
+    FileSystem &file_system,
+    time_t timestamp,
+    const std::string &path,
+    const Fingerprint &old_fingerprint);
 
 /**
  * Check if a file still matches a given fingerprint.
