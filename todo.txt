@@ -147,6 +147,8 @@ Large things remaining to do:
 * Unit test shk::build
 * Handle restat rules
 * Handle build pools
+* Make Ctrl-C terminate sub-processes as well
+* Handle generator rules
 * detail::deleteOldOutputs
 * detail::deleteStaleOutputs
 * Stat cache for use by Paths
