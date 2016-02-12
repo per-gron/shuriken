@@ -33,6 +33,7 @@ add_library(shklib
   src/eval_string.cpp
   src/eval_string.h
   src/exit_status.h
+  src/file_id.h
   src/file_lock.cpp
   src/file_lock.h
   src/file_system.cpp
@@ -112,6 +113,7 @@ add_executable(shk_test
   test/dummy_command_runner.h
   test/dummy_command_runner_test.cpp
   test/edit_distance_test.cpp
+  test/file_id_test.cpp
   test/file_lock_test.cpp
   test/file_system_test.cpp
   test/fingerprint_test.cpp
