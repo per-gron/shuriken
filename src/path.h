@@ -17,7 +17,9 @@
 #include <string>
 #include <unordered_set>
 
+#include "file_id.h"
 #include "file_system.h"
+#include "optional.h"
 #include "path_error.h"
 #include "string_piece.h"
 
@@ -107,6 +109,18 @@ class Path {
       return static_cast<size_t>(ad ^ (ad >> 16));
     }
   };
+
+  /**
+   * True if the file existed by the time the Path object was created.
+   */
+  bool exists() const;
+
+  /**
+   * If the file that this Path points to existed by the time the Path object
+   * was created, this returns the FileId for that file. Otherwise return an
+   * empty optional.
+   */
+  Optional<FileId> fileId() const;
 
   /**
    * The original, non-canonicalized path. Always absolute or relative to the

@@ -270,6 +270,47 @@ TEST_CASE("Path") {
     });
   }
 
+  SECTION("original") {
+    InMemoryFileSystem fs;
+    fs.open("file", "w");
+    fs.open("other_file", "w");
+    fs.mkdir("dir");
+    Paths paths(fs);
+
+    CHECK(paths.get("file").original() == "file");
+    CHECK(paths.get("dir/.").original() == "dir/.");
+    CHECK(paths.get("dir/../nonexisting").original() == "dir/../nonexisting");
+  }
+
+  SECTION("exists") {
+    InMemoryFileSystem fs;
+    fs.open("file", "w");
+    fs.open("other_file", "w");
+    fs.mkdir("dir");
+    Paths paths(fs);
+
+    CHECK(paths.get("file").exists());
+    CHECK(paths.get("dir/.").exists());
+    CHECK(!paths.get("dir/../nonexisting").exists());
+    CHECK(!paths.get("nonexisting").exists());
+  }
+
+  SECTION("fileId") {
+    InMemoryFileSystem fs;
+    fs.open("file", "w");
+    fs.open("other_file", "w");
+    fs.mkdir("dir");
+    Paths paths(fs);
+
+    const auto file = fs.stat("file").metadata;
+    const auto dir = fs.stat("dir").metadata;
+
+    CHECK(paths.get("file").fileId() == FileId(file.ino, file.dev));
+    CHECK(paths.get("dir/.").fileId() == FileId(dir.ino, dir.dev));
+    CHECK(!paths.get("dir/../nonexisting").fileId());
+    CHECK(!paths.get("nonexisting").fileId());
+  }
+
   SECTION("Paths.get") {
     InMemoryFileSystem fs;
     fs.open("file", "w");

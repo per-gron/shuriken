@@ -1,5 +1,7 @@
 #pragma once
 
+#include "file_system.h"
+
 namespace shk {
 
 /**

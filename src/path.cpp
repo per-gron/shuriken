@@ -229,6 +229,19 @@ detail::CanonicalizedPath makeCanonicalizedPath(
 
 }  // anonymous namespace
 
+bool Path::exists() const {
+  return _canonicalized_path->path.empty();
+}
+
+Optional<FileId> Path::fileId() const {
+  if (exists()) {
+    return Optional<FileId>(
+        FileId(_canonicalized_path->ino, _canonicalized_path->dev));
+  } else {
+    return Optional<FileId>();
+  }
+}
+
 Paths::Paths(FileSystem &file_system)
     : _file_system(file_system) {}
 
