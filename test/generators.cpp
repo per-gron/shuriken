@@ -50,8 +50,8 @@ rc::Gen<shk::Path> pathWithSingleComponent(const std::shared_ptr<Paths> &paths) 
   });
 }
 
-rc::Gen<std::vector<std::string>> pathStringVector() {
-  return rc::gen::container<std::vector<std::string>>(pathString());
+rc::Gen<std::unordered_set<std::string>> pathStringSet() {
+  return rc::gen::container<std::unordered_set<std::string>>(pathString());
 }
 
 rc::Gen<std::vector<Path>> pathVector(const std::shared_ptr<Paths> &paths) {

@@ -97,13 +97,8 @@ class TracingCommandRunner : public CommandRunner {
           SandboxIgnores::defaults(),
           _file_system.readFile(path));
 
-      for (const auto &path : sandbox.read) {
-        result.input_files.push_back(path);
-      }
-
-      for (const auto &path : sandbox.created) {
-        result.output_files.push_back(path);
-      }
+      result.input_files.swap(sandbox.read);
+      result.output_files.swap(sandbox.created);
 
       if (!sandbox.violations.empty()) {
         for (const auto &violation : sandbox.violations) {

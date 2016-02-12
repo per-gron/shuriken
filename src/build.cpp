@@ -535,10 +535,19 @@ void commandDone(
       // More importantly though is that logging an empty entry for it will
       // cause the next build to believe that this step has no inputs so it will
       // immediately report the step as clean regardless of what it depends on.
+
+      const auto to_vector = [](std::unordered_set<std::string> &&paths) {
+        std::vector<std::string> result;
+        for (auto &&path : paths) {
+          result.push_back(std::move(path));
+        }
+        return result;
+      };
+
       params.invocation_log.ranCommand(
           params.step_hashes[step_idx],
-          std::move(result.output_files),
-          std::move(result.input_files));
+          to_vector(std::move(result.output_files)),
+          to_vector(std::move(result.input_files)));
     }
 
     if (false &&  // Ignore rather than trigger an assert. Remove this later

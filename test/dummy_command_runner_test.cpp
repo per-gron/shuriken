@@ -9,13 +9,15 @@ namespace shk {
 
 TEST_CASE("DummyCommandRunner") {
   rc::prop("splitCommand of constructCommand should be an identity transformation", []() {
-    const auto in_inputs = *gen::pathStringVector();
-    const auto in_outputs = *gen::pathStringVector();
+    const auto in_inputs = *gen::pathStringSet();
+    const auto in_outputs = *gen::pathStringSet();
 
-    const auto command = DummyCommandRunner::constructCommand(in_inputs, in_outputs);
+    const auto command = DummyCommandRunner::constructCommand(
+        std::vector<std::string>(in_inputs.begin(), in_inputs.end()),
+        std::vector<std::string>(in_outputs.begin(), in_outputs.end()));
 
-    std::vector<std::string> out_inputs;
-    std::vector<std::string> out_outputs;
+    std::unordered_set<std::string> out_inputs;
+    std::unordered_set<std::string> out_outputs;
     std::tie(out_inputs, out_outputs) = detail::splitCommand(command);
 
     RC_ASSERT(out_inputs == in_inputs);

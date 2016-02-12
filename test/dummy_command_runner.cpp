@@ -33,7 +33,7 @@ void splitPaths(
 }
 
 std::string makeInputData(
-    FileSystem &file_system, const std::vector<std::string> &inputs) {
+    FileSystem &file_system, const std::unordered_set<std::string> &inputs) {
   std::string input_data;
   for (const auto &input : inputs) {
     input_data += input + "\n";
@@ -47,23 +47,24 @@ std::string makeInputData(
 
 namespace detail {
 
-std::pair<std::vector<std::string>, std::vector<std::string>> splitCommand(
-    const std::string &command) {
-  std::vector<std::string> inputs;
-  std::vector<std::string> outputs;
+std::pair<
+    std::unordered_set<std::string>,
+    std::unordered_set<std::string>> splitCommand(const std::string &command) {
+  std::unordered_set<std::string> inputs;
+  std::unordered_set<std::string> outputs;
 
   const auto semicolon = std::find(command.begin(), command.end(), ';');
   splitPaths(
       command.begin(),
       semicolon,
       ':',
-      std::back_inserter(inputs));
+      std::inserter(inputs, inputs.begin()));
   if (semicolon != command.end()) {
     splitPaths(
         semicolon + 1,
         command.end(),
         ':',
-        std::back_inserter(outputs));
+        std::inserter(outputs, outputs.begin()));
   }
 
   return std::make_pair(inputs, outputs);
@@ -137,8 +138,8 @@ std::string DummyCommandRunner::constructCommand(
 void DummyCommandRunner::checkCommand(
     FileSystem &file_system, const std::string &command)
         throw(IoError, std::runtime_error) {
-  std::vector<std::string> inputs;
-  std::vector<std::string> outputs;
+  std::unordered_set<std::string> inputs;
+  std::unordered_set<std::string> outputs;
   std::tie(inputs, outputs) = detail::splitCommand(command);
 
   const auto input_data = makeInputData(file_system, inputs);

@@ -14,8 +14,9 @@ namespace detail {
  *
  * This is exposed for testing purposes.
  */
-std::pair<std::vector<std::string>, std::vector<std::string>> splitCommand(
-    const std::string &command);
+std::pair<
+    std::unordered_set<std::string>,
+    std::unordered_set<std::string>> splitCommand(const std::string &command);
 
 /**
  * "Run" a given command. This reads the command's input files and writes to its

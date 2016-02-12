@@ -2,7 +2,7 @@
 
 #include <functional>
 #include <string>
-#include <vector>
+#include <unordered_set>
 
 #include "exit_status.h"
 
@@ -28,8 +28,8 @@ class CommandRunner {
   virtual ~CommandRunner() = default;
 
   struct Result {
-    std::vector<std::string> input_files;
-    std::vector<std::string> output_files;
+    std::unordered_set<std::string> input_files;
+    std::unordered_set<std::string> output_files;
     ExitStatus exit_status = ExitStatus::SUCCESS;
     std::string output;
   };
