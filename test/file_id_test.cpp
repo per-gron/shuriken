@@ -5,6 +5,15 @@
 namespace shk {
 
 TEST_CASE("FileId") {
+  SECTION("create from Stat") {
+    Stat stat;
+    stat.metadata.ino = 3;
+    stat.metadata.dev = 4;
+    const FileId id(stat);
+    CHECK(id.ino == 3);
+    CHECK(id.dev == 4);
+  }
+
   SECTION("operator==") {
     CHECK(FileId(1, 2) == FileId(1, 2));
     CHECK(!(FileId(1, 3) == FileId(1, 2)));

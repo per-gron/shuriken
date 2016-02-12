@@ -480,8 +480,36 @@ void deleteBuildProduct(
 
   // Delete all ancestor directories that have been previously created by
   // builds and that have now become empty.
+  auto dir = path.original();  // Initially point to the created file
+  for (;;) {
+    auto parent = dirname(dir);
+    if (parent == dir) {
+      // Reached root or cwd (the build directory).
+      break;
+    }
+    dir = std::move(parent);
 
-  // TODO(peck): Implement this
+    const auto stat = file_system.stat(dir);
+    if (stat.result != 0) {
+      // Can't access the directory, can't go further.
+      break;
+    }
+    if (invocations.created_directories.count(FileId(stat)) == 0) {
+      // The directory wasn't created by a prior build step.
+      break;
+    }
+    try {
+      file_system.rmdir(dir);
+      invocation_log.removedDirectory(dir);
+    } catch (const IoError &error) {
+      if (error.code == ENOTEMPTY) {
+        // The directory is not empty. Do not remove.
+        break;
+      } else {
+        throw error;
+      }
+    }
+  }
 }
 
 void mkdirsForPath(

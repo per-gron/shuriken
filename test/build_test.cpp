@@ -945,6 +945,8 @@ TEST_CASE("Build") {
   SECTION("deleteOldOutputs") {
     fs.writeFile("file", "contents");
     const auto fingerprint = takeFingerprint(fs, clock(), "file");
+    fs.mkdir("dir_single_file");
+    fs.writeFile("dir_single_file/file", "contents!");
     fs.mkdir("dir");
     fs.writeFile("dir/file2", "contents2");
     const auto fingerprint2 = takeFingerprint(fs, clock(), "dir/file2");
@@ -1012,17 +1014,17 @@ TEST_CASE("Build") {
       CHECK(fs.stat("file").result == ENOENT);
     }
 
-#if 0  // TODO(peck): Make this work
     SECTION("delete created directory") {
-      entry.output_files.emplace_back(paths.get("dir/file2"), fingerprint2);
+      entry.output_files.emplace_back(paths.get("dir_single_file/file"), fingerprint2);
       invocations.entries[hash] = entry;
 
-      invocations.created_directories.insert(paths.get("dir"));
+      invocations.created_directories.emplace(
+          FileId(fs.stat("dir_single_file")), paths.get("dir_single_file"));
 
       deleteOldOutputs(fs, invocations, log, hash);
 
-      CHECK(fs.stat("dir/file2").result == ENOENT);
-      CHECK(fs.stat("dir").result == ENOENT);
+      CHECK(fs.stat("dir_single_file/file").result == ENOTDIR);
+      CHECK(fs.stat("dir_single_file").result == ENOENT);
     }
 
     SECTION("delete created directories") {
@@ -1031,14 +1033,16 @@ TEST_CASE("Build") {
           paths.get("dir/subdir/file3"), fingerprint3);
       invocations.entries[hash] = entry;
 
-      invocations.created_directories.insert(paths.get("dir"));
-      invocations.created_directories.insert(paths.get("subdir"));
+      invocations.created_directories.emplace(
+          FileId(fs.stat("dir")), paths.get("dir"));
+      invocations.created_directories.emplace(
+          FileId(fs.stat("dir/subdir")), paths.get("dir/subdir"));
 
       deleteOldOutputs(fs, invocations, log, hash);
 
-      CHECK(fs.stat("dir/subdir/file3").result == ENOENT);
-      CHECK(fs.stat("dir/subdir").result == ENOENT);
-      CHECK(fs.stat("dir/file2").result == ENOENT);
+      CHECK(fs.stat("dir/subdir/file3").result == ENOTDIR);
+      CHECK(fs.stat("dir/subdir").result == ENOTDIR);
+      CHECK(fs.stat("dir/file2").result == ENOTDIR);
       CHECK(fs.stat("dir").result == ENOENT);
     }
 
@@ -1047,12 +1051,14 @@ TEST_CASE("Build") {
           paths.get("dir/subdir/file3"), fingerprint3);
       invocations.entries[hash] = entry;
 
-      invocations.created_directories.insert(paths.get("dir"));
-      invocations.created_directories.insert(paths.get("subdir"));
+      invocations.created_directories.emplace(
+          FileId(fs.stat("dir")), paths.get("dir"));
+      invocations.created_directories.emplace(
+          FileId(fs.stat("dir/subdir")), paths.get("dir/subdir"));
 
       deleteOldOutputs(fs, invocations, log, hash);
 
-      CHECK(fs.stat("dir/subdir/file3").result == ENOENT);
+      CHECK(fs.stat("dir/subdir/file3").result == ENOTDIR);
       CHECK(fs.stat("dir/subdir").result == ENOENT);
       CHECK(fs.stat("dir").result != ENOENT);
     }
@@ -1070,7 +1076,6 @@ TEST_CASE("Build") {
       CHECK(fs.stat("dir/subdir").result != ENOENT);
       CHECK(fs.stat("dir").result != ENOENT);
     }
-#endif
   }
 
   SECTION("deleteStaleOutputs") {
@@ -1225,7 +1230,7 @@ TEST_CASE("Build") {
         CHECK_THROWS(dummy_runner.checkCommand(fs, two));
       }
 
-#if 0  // TODO(peck): This test does not work because deletion is not yet implemented
+#if 0  // TODO(peck): Make this test work
       SECTION("don't treat depfile as output file") {
         const auto cmd = dummy_runner.constructCommand({}, { "out", "depfile" });
         const auto manifest =
@@ -1241,6 +1246,7 @@ TEST_CASE("Build") {
         REQUIRE(entry.output_files.size() == 1);
         CHECK(entry.output_files[0].first == "out");
       }
+#endif
 
       SECTION("delete depfile") {
         const auto cmd = dummy_runner.constructCommand({}, {"depfile"});
@@ -1252,7 +1258,6 @@ TEST_CASE("Build") {
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         CHECK(fs.stat("depfile").result == ENOENT);
       }
-#endif
 
       SECTION("don't fail if depfile is not created") {
         const auto cmd = dummy_runner.constructCommand({}, {});

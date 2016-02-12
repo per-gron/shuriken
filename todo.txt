@@ -65,19 +65,17 @@ Things to do for increased build correctness:
 Large things remaining to do:
 * Make sure the build folder is not always treated as an input for build steps using clang
 * Error when building core: "shk: fatal: pipe: Too many open files"
-* Deal with depfile files: Delete them and don't treat them as outputs
-* Ensure sufficient parallelism. Seems like it doesn't always invoke as many commands
-  as it can.
+* Deal with depfile files: Don't treat them as outputs
 * Ocasionally recompact
+* mkdirsForPath: Implement and test
 * Unit test shk::build
 * Handle restat rules
 * Handle build pools
 * Make Ctrl-C terminate sub-processes as well
 * Handle generator rules
-* detail::deleteOldOutputs
 * detail::deleteStaleOutputs
-* Stat cache for use by Paths
 * Rebuild manifest
+* Test to clean build steps that create directories, for example mkdir
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
 * CLI tools:
   * clean
@@ -91,6 +89,7 @@ Large things remaining to do:
 * Distributed caching
 
 * Possible optimizations
+  * Stat cache for use by Paths
   * Try reduce number of /bin/sh invocations per command. I think it's 3 now
   * Avoid the excessive duplication in the Invocations data structure by using shared_ptr
     to const or smt

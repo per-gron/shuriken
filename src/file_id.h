@@ -14,6 +14,8 @@ struct FileId {
   FileId() = default;
   FileId(ino_t ino, dev_t dev)
       : ino(ino), dev(dev) {}
+  FileId(const Stat &stat)
+      : ino(stat.metadata.ino), dev(stat.metadata.dev) {}
 
   ino_t ino = 0;
   dev_t dev = 0;
