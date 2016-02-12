@@ -394,8 +394,12 @@ InvocationLogParseResult parsePersistentInvocationLog(
 
       case InvocationLogEntryType::CREATED_DIR_OR_FINGERPRINT: {
         if (entry_size == sizeof(uint32_t)) {
-          result.invocations.created_directories.insert(
-              readPath(paths_by_id, entry));
+          const auto path = readPath(paths_by_id, entry);
+          path.fileId().each([&](const FileId file_id) {
+            // Only add the directory to the resulting Invocations object if the
+            // file exists. For more info see Invocations::created_directories
+            result.invocations.created_directories.emplace(file_id, path);
+          });
         } else if (entry_size == sizeof(uint32_t) + sizeof(Fingerprint)) {
           const auto path = readPath(paths_by_id, entry);
           entry = advance(entry, sizeof(uint32_t));
@@ -439,8 +443,10 @@ InvocationLogParseResult parsePersistentInvocationLog(
       case InvocationLogEntryType::DELETED: {
         if (entry._len == sizeof(uint32_t)) {
           // Deleted directory
-          result.invocations.created_directories.erase(
-              readPath(paths_by_id, entry));
+          const auto path = readPath(paths_by_id, entry);
+          path.fileId().each([&](const FileId file_id) {
+            result.invocations.created_directories.erase(file_id);
+          });
         } else if (entry._len == sizeof(Hash)) {
           // Deleted invocation
           result.invocations.entries.erase(read<Hash>(entry));
@@ -511,7 +517,7 @@ void recompactPersistentInvocationLog(
           file_system, clock, tmp_path, InvocationLogParseResult::ParseData());
 
   for (const auto &dir : invocations.created_directories) {
-    log->createdDirectory(dir.original());
+    log->createdDirectory(dir.second.original());
   }
 
   for (const auto &entry : invocations.entries) {

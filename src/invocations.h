@@ -1,9 +1,9 @@
 #pragma once
 
-#include <unordered_set>
 #include <unordered_map>
 #include <vector>
 
+#include "file_id.h"
 #include "fingerprint.h"
 #include "hash.h"
 #include "path.h"
@@ -35,11 +35,18 @@ struct Invocations {
   std::unordered_map<Hash, Entry> entries;
 
   /**
-   * Set of directories that Shuriken has created to make room for outputs of
-   * build steps. They are kept track of to be able to remove then when cleaning
-   * up.
+   * The directories that Shuriken has created to make room for outputs of build
+   * steps. They are kept track of to be able to remove then when cleaning up.
+   *
+   * The key is a FileId, which is used for efficient lookup when cleaning. The
+   * value is a Path, useful to know the actual path of the directory.
+   *
+   * The fact that the key is a FileId means that the directory must actually
+   * exist to be able to be here. This is okay because if the directory has been
+   * removed since it was last created by the build, it is ok (and actually
+   * desired) for Shuriken to not track it anymore.
    */
-  std::unordered_set<Path> created_directories;
+  std::unordered_map<FileId, Path> created_directories;
 };
 
 inline bool operator==(const Invocations::Entry &a, const Invocations::Entry &b) {

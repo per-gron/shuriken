@@ -40,7 +40,10 @@ Invocations InMemoryInvocationLog::invocations(Paths &paths) const {
   Invocations result;
 
   for (const auto &dir : _created_directories) {
-    result.created_directories.insert(paths.get(dir));
+    const auto path = paths.get(dir);
+    path.fileId().each([&](const FileId file_id) {
+      result.created_directories.emplace(file_id, path);
+    });
   }
 
   for (const auto &log_entry : _entries) {
