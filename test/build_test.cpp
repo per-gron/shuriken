@@ -1099,6 +1099,22 @@ TEST_CASE("Build") {
       }
 
 #if 0  // TODO(peck): This test does not work because deletion is not yet implemented
+      SECTION("don't treat depfile as output file") {
+        const auto cmd = dummy_runner.constructCommand({}, { "out", "depfile" });
+        const auto manifest =
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "  depfile = depfile\n"
+            "build out: cmd\n";
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        REQUIRE(log.entries().size() == 1);
+        const auto &entry = log.entries().begin()->second;
+        CHECK(entry.input_files.empty());
+        // depfile should not be in the list
+        REQUIRE(entry.output_files.size() == 1);
+        CHECK(entry.output_files[0].first == "out");
+      }
+
       SECTION("delete depfile") {
         const auto cmd = dummy_runner.constructCommand({}, {"depfile"});
         const auto manifest =

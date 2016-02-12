@@ -138,6 +138,7 @@ Things to do for increased build correctness:
   of a target that it does not depend on directly or indirectly.
 
 Large things remaining to do:
+* Make sure the build folder is not always treated as an input for build steps using clang
 * Error when building core: "shk: fatal: pipe: Too many open files"
 * Deal with depfile files: Delete them and don't treat them as outputs
 * Ensure sufficient parallelism. Seems like it doesn't always invoke as many commands
