@@ -283,9 +283,14 @@ bool outputsWereChanged(
     const Invocations &invocations,
     const Hash &step_hash) throw(IoError);
 
+/**
+ * Prior to invoking the command for a step, delete the files that it previously
+ * created.
+ */
 void deleteOldOutputs(
     FileSystem &file_system,
     const Invocations &invocations,
+    InvocationLog &invocation_log,
     const Hash &step_hash) throw(IoError);
 
 void deleteStaleOutputs(

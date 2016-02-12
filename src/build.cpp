@@ -1,6 +1,7 @@
 #include "build.h"
 
 #include <assert.h>
+#include <errno.h>
 
 #include "fingerprint.h"
 
@@ -466,8 +467,21 @@ int discardCleanSteps(
 
 void deleteBuildProduct(
     FileSystem &file_system,
+    const Invocations &invocations,
+    InvocationLog &invocation_log,
     Path path) throw(IoError) {
-  // TODO(peck): Implement me
+  try {
+    file_system.unlink(path.original());
+  } catch (const IoError &error) {
+    if (error.code != ENOENT) {
+      throw error;
+    }
+  }
+
+  // Delete all ancestor directories that have been previously created by
+  // builds and that have now become empty.
+
+  // TODO(peck): Implement this
 }
 
 void mkdirsForPath(
@@ -511,10 +525,20 @@ void commandDone(
   //   of a target that it does not depend on directly or indirectly.
 
   step.depfile.each([&](const Path &path) {
-    deleteBuildProduct(params.file_system, path);
+    deleteBuildProduct(
+        params.file_system,
+        params.invocations,
+        params.invocation_log,
+        path);
   });
   step.rspfile.each([&](const Path &path) {
-    deleteBuildProduct(params.file_system, path);
+    if (result.exit_status != ExitStatus::FAILURE) {
+      deleteBuildProduct(
+          params.file_system,
+          params.invocations,
+          params.invocation_log,
+          path);
+    }
   });
 
   if (!step.command.empty()) {
@@ -578,6 +602,7 @@ void commandDone(
 void deleteOldOutputs(
     FileSystem &file_system,
     const Invocations &invocations,
+    InvocationLog &invocation_log,
     const Hash &step_hash) throw(IoError) {
   const auto it = invocations.entries.find(step_hash);
   if (it == invocations.entries.end()) {
@@ -586,7 +611,11 @@ void deleteOldOutputs(
 
   const auto &entry = it->second;
   for (const auto &output : entry.output_files) {
-    deleteBuildProduct(file_system, output.first);
+    deleteBuildProduct(
+        file_system,
+        invocations,
+        invocation_log,
+        output.first);
   }
 }
 
@@ -602,7 +631,11 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   params.build.ready_steps.pop_back();
 
   const auto &step_hash = params.step_hashes[step_idx];
-  deleteOldOutputs(params.file_system, params.invocations, step_hash);
+  deleteOldOutputs(
+      params.file_system,
+      params.invocations,
+      params.invocation_log,
+      step_hash);
 
   step.rspfile.each([&](const Path &rspfile) {
     mkdirsForPath(params.file_system, params.invocation_log, rspfile);
@@ -647,7 +680,11 @@ void deleteStaleOutputs(
   for (const auto &entry : invocations.entries) {
     if (step_hashes_set.count(entry.first) == 0) {
       for (const auto &output_file : entry.second.output_files) {
-        deleteBuildProduct(file_system, output_file.first);
+        deleteBuildProduct(
+            file_system,
+            invocations,
+            invocation_log,
+            output_file.first);
       }
       invocation_log.cleanedCommand(entry.first);
     }

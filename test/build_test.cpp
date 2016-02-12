@@ -943,7 +943,134 @@ TEST_CASE("Build") {
   }
 
   SECTION("deleteOldOutputs") {
-    // TODO(peck): Test this
+    fs.writeFile("file", "contents");
+    const auto fingerprint = takeFingerprint(fs, clock(), "file");
+    fs.mkdir("dir");
+    fs.writeFile("dir/file2", "contents2");
+    const auto fingerprint2 = takeFingerprint(fs, clock(), "dir/file2");
+    fs.mkdir("dir/subdir");
+    fs.writeFile("dir/subdir/file3", "contents3");
+    const auto fingerprint3 = takeFingerprint(fs, clock(), "dir/subdir/file3");
+
+    Invocations::Entry entry;
+    Hash hash;
+    std::fill(hash.data.begin(), hash.data.end(), 123);
+
+    Invocations invocations;
+
+    SECTION("missing step") {
+      deleteOldOutputs(fs, Invocations(), log, Hash());
+    }
+
+    SECTION("empty step") {
+      invocations.entries[hash];
+      deleteOldOutputs(fs, invocations, log, hash);
+    }
+
+    SECTION("step with missing file") {
+      fs.unlink("file");
+
+      entry.output_files.emplace_back(paths.get("file"), fingerprint);
+
+      invocations.entries[hash] = entry;
+      deleteOldOutputs(fs, invocations, log, hash);
+    }
+
+    SECTION("don't delete inputs") {
+      entry.input_files.emplace_back(paths.get("file"), fingerprint);
+
+      invocations.entries[hash] = entry;
+      deleteOldOutputs(fs, invocations, log, hash);
+
+      CHECK(fs.readFile("file") == "contents");
+    }
+
+    SECTION("delete output") {
+      entry.input_files.emplace_back(paths.get("file"), fingerprint);
+
+      invocations.entries[hash] = entry;
+      deleteOldOutputs(fs, invocations, log, hash);
+
+      CHECK(fs.readFile("file") == "contents");
+    }
+
+    SECTION("delete output with mismatching fingerprint") {
+      entry.input_files.emplace_back(paths.get("file"), fingerprint2);
+
+      invocations.entries[hash] = entry;
+      deleteOldOutputs(fs, invocations, log, hash);
+
+      CHECK(fs.readFile("file") == "contents");
+    }
+
+    SECTION("delete outputs") {
+      entry.output_files.emplace_back(paths.get("file"), fingerprint);
+
+      invocations.entries[hash] = entry;
+      deleteOldOutputs(fs, invocations, log, hash);
+
+      CHECK(fs.stat("file").result == ENOENT);
+    }
+
+#if 0  // TODO(peck): Make this work
+    SECTION("delete created directory") {
+      entry.output_files.emplace_back(paths.get("dir/file2"), fingerprint2);
+      invocations.entries[hash] = entry;
+
+      invocations.created_directories.insert(paths.get("dir"));
+
+      deleteOldOutputs(fs, invocations, log, hash);
+
+      CHECK(fs.stat("dir/file2").result == ENOENT);
+      CHECK(fs.stat("dir").result == ENOENT);
+    }
+
+    SECTION("delete created directories") {
+      entry.output_files.emplace_back(paths.get("dir/file2"), fingerprint2);
+      entry.output_files.emplace_back(
+          paths.get("dir/subdir/file3"), fingerprint3);
+      invocations.entries[hash] = entry;
+
+      invocations.created_directories.insert(paths.get("dir"));
+      invocations.created_directories.insert(paths.get("subdir"));
+
+      deleteOldOutputs(fs, invocations, log, hash);
+
+      CHECK(fs.stat("dir/subdir/file3").result == ENOENT);
+      CHECK(fs.stat("dir/subdir").result == ENOENT);
+      CHECK(fs.stat("dir/file2").result == ENOENT);
+      CHECK(fs.stat("dir").result == ENOENT);
+    }
+
+    SECTION("leave created directories that aren't empty") {
+      entry.output_files.emplace_back(
+          paths.get("dir/subdir/file3"), fingerprint3);
+      invocations.entries[hash] = entry;
+
+      invocations.created_directories.insert(paths.get("dir"));
+      invocations.created_directories.insert(paths.get("subdir"));
+
+      deleteOldOutputs(fs, invocations, log, hash);
+
+      CHECK(fs.stat("dir/subdir/file3").result == ENOENT);
+      CHECK(fs.stat("dir/subdir").result == ENOENT);
+      CHECK(fs.stat("dir").result != ENOENT);
+    }
+
+    SECTION("leave directories that weren't created by previous build") {
+      entry.output_files.emplace_back(paths.get("dir/file2"), fingerprint2);
+      entry.output_files.emplace_back(
+          paths.get("dir/subdir/file3"), fingerprint3);
+      invocations.entries[hash] = entry;
+
+      deleteOldOutputs(fs, invocations, log, hash);
+
+      CHECK(fs.stat("dir/subdir/file3").result == ENOENT);
+      CHECK(fs.stat("dir/file2").result == ENOENT);
+      CHECK(fs.stat("dir/subdir").result != ENOENT);
+      CHECK(fs.stat("dir").result != ENOENT);
+    }
+#endif
   }
 
   SECTION("deleteStaleOutputs") {
