@@ -10,13 +10,6 @@
 #include "path.h"
 
 namespace shk {
-namespace {
-
-std::string dirname(const std::string &path) {
-  return basenameSplitPiece(path).first.asString();
-}
-
-}  // anonymous namespace
 
 Hash FileSystem::hashDir(const std::string &path) throw(IoError) {
   Hash hash;

@@ -33,6 +33,8 @@ namespace shk {
  */
 std::pair<StringPiece, StringPiece> basenameSplitPiece(const std::string &path);
 
+std::string dirname(const std::string &path);
+
 /**
  * Canonicalize a path like "foo/../bar.h" into just "bar.h".
  */

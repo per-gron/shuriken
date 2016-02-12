@@ -38,6 +38,10 @@ std::pair<StringPiece, StringPiece> basenameSplitPiece(
   }
 }
 
+std::string dirname(const std::string &path) {
+  return basenameSplitPiece(path).first.asString();
+}
+
 void canonicalizePath(std::string *path) throw(PathError) {
   size_t len = path->size();
   char *str = 0;

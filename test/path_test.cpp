@@ -126,6 +126,16 @@ TEST_CASE("Path") {
     });
   }
 
+  SECTION("dirname") {
+    // Not thoroughly tested because it's tested as part of basenameSplit
+    CHECK(dirname(".") == ".");
+    CHECK(dirname("/") == "/");
+    CHECK(dirname("hej") == ".");
+    CHECK(dirname("hej/a") == "hej");
+    CHECK(dirname("/hej/a") == "/hej");
+    CHECK(dirname("/hej") == "/");
+  }
+
   SECTION("canonicalizePath") {
     SECTION("Path samples") {
       CHECK("." == canonicalizePath(""));
