@@ -1,13 +1,20 @@
 #pragma once
 
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "dependency_type.h"
 #include "parse_error.h"
 
 namespace shk {
 
 struct SandboxResult {
+  /**
+   * For more info, see CommandRunner::Result.
+   */
+  using IgnoreIfDirectory = bool;
+
   /**
    * Contains the list of files that the process created and did not remove.
    * If the process creates a file and then moves it, this set contains only
@@ -21,7 +28,7 @@ struct SandboxResult {
    * added to this set: They are not seen as input dependencies even if the
    * program reads them.
    */
-  std::unordered_set<std::string> read;
+  std::unordered_map<std::string, DependencyType> read;
   /**
    * A list of human readable strings that describe things that the process did
    * that is disallowed, for example network access, mounting a file system or

@@ -3,6 +3,8 @@
 #include <list>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "file_system.h"
 
@@ -16,7 +18,8 @@ namespace detail {
  */
 std::pair<
     std::unordered_set<std::string>,
-    std::unordered_set<std::string>> splitCommand(const std::string &command);
+    std::unordered_map<std::string, DependencyType>> splitCommand(
+        const std::string &command);
 
 /**
  * "Run" a given command. This reads the command's input files and writes to its

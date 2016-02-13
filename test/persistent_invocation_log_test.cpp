@@ -19,6 +19,17 @@ void checkEmpty(const InvocationLogParseResult &empty) {
   CHECK(empty.parse_data.entry_count == 0);
 }
 
+void sortInvocations(Invocations &invocations) {
+  for (auto &entry : invocations.entries) {
+    std::sort(
+        entry.second.output_files.begin(),
+        entry.second.output_files.end());
+    std::sort(
+        entry.second.input_files.begin(),
+        entry.second.input_files.end());
+  }
+}
+
 /**
  * Test that committing a set of entries to the log and reading it back does
  * the same thing as just writing those entries to an Invocations object.
@@ -35,10 +46,14 @@ void roundtrip(const Callback &callback) {
       InvocationLogParseResult::ParseData());
   callback(*persistent_log);
   callback(in_memory_log);
-  const auto result = parsePersistentInvocationLog(paths, fs, "file");
+  auto result = parsePersistentInvocationLog(paths, fs, "file");
+  sortInvocations(result.invocations);
+
+  auto in_memory_result = in_memory_log.invocations(paths);
+  sortInvocations(in_memory_result);
 
   CHECK(result.warning == "");
-  CHECK(in_memory_log.invocations(paths) == result.invocations);
+  CHECK(in_memory_result == result.invocations);
 }
 
 template<typename Callback>
@@ -58,9 +73,14 @@ void multipleWriteCycles(const Callback &callback) {
     callback(*persistent_log);
   }
 
-  const auto result = parsePersistentInvocationLog(paths, fs, "file");
+  auto result = parsePersistentInvocationLog(paths, fs, "file");
+  sortInvocations(result.invocations);
+
+  auto in_memory_result = in_memory_log.invocations(paths);
+  sortInvocations(in_memory_result);
+
   CHECK(result.warning == "");
-  CHECK(in_memory_log.invocations(paths) == result.invocations);
+  CHECK(in_memory_result == result.invocations);
 }
 
 template<typename Callback>
@@ -108,9 +128,14 @@ void recompact(const Callback &callback) {
       parsePersistentInvocationLog(paths, fs, "file").invocations,
       "file");
 
-  const auto result = parsePersistentInvocationLog(paths, fs, "file");
+  auto result = parsePersistentInvocationLog(paths, fs, "file");
+  sortInvocations(result.invocations);
+
+  auto in_memory_result = in_memory_log.invocations(paths);
+  sortInvocations(in_memory_result);
+
   CHECK(result.warning == "");
-  CHECK(in_memory_log.invocations(paths) == result.invocations);
+  CHECK(in_memory_result == result.invocations);
 }
 
 template<typename Callback>
@@ -201,6 +226,26 @@ TEST_CASE("PersistentInvocationLog") {
   }
 
   SECTION("Writing") {
+    SECTION("InvocationIgnoreInputDirectory") {
+      fs.mkdir("dir");
+
+      const auto persistent_log = openPersistentInvocationLog(
+          fs,
+          [] { return 0; },
+          "file",
+          InvocationLogParseResult::ParseData());
+
+      persistent_log->ranCommand(
+          hash_0, {}, { { "dir", DependencyType::IGNORE_IF_DIRECTORY } });
+
+      const auto result = parsePersistentInvocationLog(paths, fs, "file");
+      CHECK(result.warning == "");
+      REQUIRE(result.invocations.entries.size() == 1);
+      CHECK(result.invocations.entries.begin()->first == hash_0);
+      CHECK(result.invocations.entries.begin()->second.output_files.empty());
+      CHECK(result.invocations.entries.begin()->second.input_files.empty());
+    }
+
     SECTION("Empty") {
       const auto callback = [](InvocationLog &log) {};
       // Don't use the shouldEventuallyRequestRecompaction test
@@ -229,13 +274,17 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("InvocationSingleInputFile") {
       writeEntries([&](InvocationLog &log) {
-        log.ranCommand(hash_0, {}, { "hi" });
+        log.ranCommand(hash_0, {}, { { "hi", DependencyType::ALWAYS } });
       });
     }
 
     SECTION("InvocationTwoInputFiles") {
       writeEntries([&](InvocationLog &log) {
-        log.ranCommand(hash_0, {}, { "hi", "duh" });
+        log.ranCommand(
+            hash_0,
+            {},
+            { { "hi", DependencyType::ALWAYS },
+              { "duh", DependencyType::ALWAYS } });
       });
     }
 
@@ -253,7 +302,7 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("InvocationInputAndOutputFiles") {
       writeEntries([&](InvocationLog &log) {
-        log.ranCommand(hash_0, { "aah" }, { "hi" });
+        log.ranCommand(hash_0, { "aah" }, { { "hi", DependencyType::ALWAYS } });
       });
     }
 
@@ -283,7 +332,7 @@ TEST_CASE("PersistentInvocationLog") {
         log.createdDirectory("dir_2");
         log.removedDirectory("dir");
 
-        log.ranCommand(hash_0, { "hi" }, { "aah" });
+        log.ranCommand(hash_0, { "hi" }, { { "aah", DependencyType::ALWAYS } });
         log.cleanedCommand(hash_1);
         log.ranCommand(hash_1, {}, {});
         log.cleanedCommand(hash_0);

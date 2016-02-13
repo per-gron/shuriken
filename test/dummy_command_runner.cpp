@@ -33,11 +33,12 @@ void splitPaths(
 }
 
 std::string makeInputData(
-    FileSystem &file_system, const std::unordered_set<std::string> &inputs) {
+    FileSystem &file_system,
+    const std::unordered_map<std::string, DependencyType> &inputs) {
   std::string input_data;
   for (const auto &input : inputs) {
-    input_data += input + "\n";
-    input_data += file_system.readFile(input);
+    input_data += input.first + "\n";
+    input_data += file_system.readFile(input.first);
     input_data += "\n";
   }
   return input_data;
@@ -49,16 +50,17 @@ namespace detail {
 
 std::pair<
     std::unordered_set<std::string>,
-    std::unordered_set<std::string>> splitCommand(const std::string &command) {
-  std::unordered_set<std::string> inputs;
+    std::unordered_map<std::string, DependencyType>> splitCommand(
+        const std::string &command) {
   std::unordered_set<std::string> outputs;
+  std::vector<std::string> input_paths;
 
   const auto semicolon = std::find(command.begin(), command.end(), ';');
   splitPaths(
       command.begin(),
       semicolon,
       ':',
-      std::inserter(inputs, inputs.begin()));
+      std::back_inserter(input_paths));
   if (semicolon != command.end()) {
     splitPaths(
         semicolon + 1,
@@ -67,14 +69,19 @@ std::pair<
         std::inserter(outputs, outputs.begin()));
   }
 
-  return std::make_pair(inputs, outputs);
+  std::unordered_map<std::string, DependencyType> inputs;
+  for (auto &&path : input_paths) {
+    inputs.emplace(std::move(path), DependencyType::ALWAYS);
+  }
+
+  return std::make_pair(outputs, inputs);
 }
 
 CommandRunner::Result runCommand(
     FileSystem &file_system,
     const std::string &command) {
   CommandRunner::Result result;
-  std::tie(result.input_files, result.output_files) = splitCommand(command);
+  std::tie(result.output_files, result.input_files) = splitCommand(command);
 
   std::string input_data;
   try {
@@ -138,9 +145,9 @@ std::string DummyCommandRunner::constructCommand(
 void DummyCommandRunner::checkCommand(
     FileSystem &file_system, const std::string &command)
         throw(IoError, std::runtime_error) {
-  std::unordered_set<std::string> inputs;
   std::unordered_set<std::string> outputs;
-  std::tie(inputs, outputs) = detail::splitCommand(command);
+  std::unordered_map<std::string, DependencyType> inputs;
+  std::tie(outputs, inputs) = detail::splitCommand(command);
 
   const auto input_data = makeInputData(file_system, inputs);
 

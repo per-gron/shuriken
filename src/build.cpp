@@ -381,23 +381,11 @@ bool isClean(
   process_files(entry.output_files);
   process_files(entry.input_files);
 
-  if (clean && should_update) {
+  if (should_update && clean) {
     // There is no need to update the invocation log when dirty; it will be
     // updated anyway as part of the build.
-
-    const auto paths = [](
-        const std::vector<std::pair<Path, Fingerprint>> &files) {
-      std::vector<std::string> paths;
-      for (const auto &file : files) {
-        paths.push_back(file.first.original());
-      }
-      return paths;
-    };
-
-    invocation_log.ranCommand(
-        step_hash,
-        paths(entry.output_files),
-        paths(entry.input_files));
+    invocation_log.relogCommand(
+        step_hash, entry.output_files, entry.input_files);
   }
 
   return clean;
@@ -588,18 +576,10 @@ void commandDone(
       // cause the next build to believe that this step has no inputs so it will
       // immediately report the step as clean regardless of what it depends on.
 
-      const auto to_vector = [](std::unordered_set<std::string> &&paths) {
-        std::vector<std::string> result;
-        for (auto &&path : paths) {
-          result.push_back(std::move(path));
-        }
-        return result;
-      };
-
       params.invocation_log.ranCommand(
           params.step_hashes[step_idx],
-          to_vector(std::move(result.output_files)),
-          to_vector(std::move(result.input_files)));
+          std::move(result.output_files),
+          std::move(result.input_files));
     }
 
     if (false &&  // Ignore rather than trigger an assert. Remove this later

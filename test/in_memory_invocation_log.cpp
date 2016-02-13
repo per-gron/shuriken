@@ -1,6 +1,35 @@
 #include "in_memory_invocation_log.h"
 
 namespace shk {
+namespace {
+
+std::vector<std::pair<std::string, Fingerprint>> processPaths(
+    FileSystem &fs,
+    const Clock &clock,
+    std::unordered_map<std::string, DependencyType> &&dependencies) {
+  std::vector<std::pair<std::string, Fingerprint>> files;
+  for (auto &&dep : dependencies) {
+    auto &&path = std::move(dep.first);
+    const auto fingerprint = takeFingerprint(fs, clock(), path);
+    if (dep.second == DependencyType::ALWAYS || !fingerprint.stat.isDir()) {
+      files.emplace_back(std::move(path), fingerprint);
+    }
+  }
+  return files;
+}
+
+std::vector<std::pair<std::string, Fingerprint>> processPaths(
+    FileSystem &fs,
+    const Clock &clock,
+    std::unordered_set<std::string> &&paths) {
+  std::vector<std::pair<std::string, Fingerprint>> files;
+  for (auto &&path : paths) {
+    files.emplace_back(std::move(path), takeFingerprint(fs, clock(), path));
+  }
+  return files;
+}
+
+}  // anonymous namespace
 
 InMemoryInvocationLog::InMemoryInvocationLog(
     FileSystem &file_system, const Clock &clock)
@@ -16,19 +45,11 @@ void InMemoryInvocationLog::removedDirectory(const std::string &path) throw(IoEr
 
 void InMemoryInvocationLog::ranCommand(
     const Hash &build_step_hash,
-    std::vector<std::string> &&output_files,
-    std::vector<std::string> &&input_files) throw(IoError) {
-  const auto process_paths = [&](std::vector<std::string> &&paths) {
-    std::vector<std::pair<std::string, Fingerprint>> files;
-    for (auto &&path : paths) {
-      files.emplace_back(std::move(path), takeFingerprint(_fs, _clock(), path));
-    }
-    return files;
-  };
-
+    std::unordered_set<std::string> &&output_files,
+    std::unordered_map<std::string, DependencyType> &&input_files) throw(IoError) {
   _entries[build_step_hash] = {
-      process_paths(std::move(output_files)),
-      process_paths(std::move(input_files)) };
+      processPaths(_fs, _clock, std::move(output_files)),
+      processPaths(_fs, _clock, std::move(input_files)) };
 }
 
 void InMemoryInvocationLog::cleanedCommand(

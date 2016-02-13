@@ -1,8 +1,11 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
+#include "dependency_type.h"
 #include "fingerprint.h"
 #include "hash.h"
 #include "io_error.h"
@@ -52,8 +55,19 @@ class InvocationLog {
    */
   virtual void ranCommand(
       const Hash &build_step_hash,
-      std::vector<std::string> &&output_files,
-      std::vector<std::string> &&input_files) throw(IoError) = 0;
+      std::unordered_set<std::string> &&output_files,
+      std::unordered_map<std::string, DependencyType> &&input_files)
+          throw(IoError) = 0;
+
+  /**
+   * Helper function that is useful when rewriting an already existing
+   * invocation log entry, for example when recompacting or when rewriting it
+   * because it is racily clean.
+   */
+  void relogCommand(
+      const Hash &build_step_hash,
+      const std::vector<std::pair<Path, Fingerprint>> &output_files,
+      const std::vector<std::pair<Path, Fingerprint>> &input_files);
 
   /**
    * Writes an entry in the invocation log that says that the build step with

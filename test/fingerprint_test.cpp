@@ -27,36 +27,42 @@ TEST_CASE("Fingerprint") {
     SECTION("equal") {
       CHECK(a == b);
       CHECK(!(a != b));
+      CHECK(!(a < b || b < a));
     }
 
     SECTION("size") {
       b.size++;
       CHECK(a != b);
       CHECK(!(a == b));
+      CHECK((a < b || b < a));
     }
 
     SECTION("ino") {
       b.ino++;
       CHECK(a != b);
       CHECK(!(a == b));
+      CHECK((a < b || b < a));
     }
 
     SECTION("mode") {
       b.mode++;
       CHECK(a != b);
       CHECK(!(a == b));
+      CHECK((a < b || b < a));
     }
 
     SECTION("mtime") {
       b.mtime++;
       CHECK(a != b);
       CHECK(!(a == b));
+      CHECK((a < b || b < a));
     }
 
     SECTION("ctime") {
       b.ctime++;
       CHECK(a != b);
       CHECK(!(a == b));
+      CHECK((a < b || b < a));
     }
   }
 
@@ -71,24 +77,28 @@ TEST_CASE("Fingerprint") {
     SECTION("equal") {
       CHECK(a == b);
       CHECK(!(a != b));
+      CHECK(!(a < b || b < a));
     }
 
     SECTION("stat") {
       b.stat.size++;
       CHECK(a != b);
       CHECK(!(a == b));
+      CHECK((a < b || b < a));
     }
 
     SECTION("timestamp") {
       b.timestamp++;
       CHECK(a != b);
       CHECK(!(a == b));
+      CHECK((a < b || b < a));
     }
 
     SECTION("hash") {
       b.hash.data[0] = 1;
       CHECK(a != b);
       CHECK(!(a == b));
+      CHECK((a < b || b < a));
     }
   }
 

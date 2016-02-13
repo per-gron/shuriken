@@ -34,10 +34,34 @@ TEST_CASE("InMemoryInvocationLog") {
   }
 
   SECTION("Commands") {
-    log.ranCommand(hash, {}, {});
-    CHECK(log.entries().count(hash) == 1);
-    log.cleanedCommand(hash);
-    CHECK(log.entries().empty());
+    SECTION("Empty") {
+      log.ranCommand(hash, {}, {});
+      CHECK(log.entries().count(hash) == 1);
+      log.cleanedCommand(hash);
+      CHECK(log.entries().empty());
+    }
+
+    SECTION("Input") {
+      fs.mkdir("dir");
+      log.ranCommand(hash, {}, { { "dir", DependencyType::ALWAYS } });
+      CHECK(log.entries().size() == 1);
+      REQUIRE(log.entries().count(hash) == 1);
+      const auto &entry = log.entries().begin()->second;
+      CHECK(entry.output_files.empty());
+      REQUIRE(entry.input_files.size() == 1);
+      REQUIRE(entry.input_files[0].first == "dir");
+    }
+
+    SECTION("IgnoreDir") {
+      fs.mkdir("dir");
+      log.ranCommand(
+          hash, {}, { { "dir", DependencyType::IGNORE_IF_DIRECTORY } });
+      CHECK(log.entries().size() == 1);
+      REQUIRE(log.entries().count(hash) == 1);
+      const auto &entry = log.entries().begin()->second;
+      CHECK(entry.output_files.empty());
+      CHECK(entry.input_files.empty());
+    }
   }
 
   SECTION("Invocations") {

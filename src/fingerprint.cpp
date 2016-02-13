@@ -109,6 +109,12 @@ bool Fingerprint::Stat::operator!=(const Stat &other) const {
   return !(*this == other);
 }
 
+bool Fingerprint::Stat::operator<(const Stat &other) const {
+  return
+      std::tie(size, ino, mode, mtime, ctime) <
+      std::tie(other.size, other.ino, other.mode, other.mtime, other.ctime);
+}
+
 bool Fingerprint::operator==(const Fingerprint &other) const {
   return (
       stat == other.stat &&
@@ -118,6 +124,12 @@ bool Fingerprint::operator==(const Fingerprint &other) const {
 
 bool Fingerprint::operator!=(const Fingerprint &other) const {
   return !(*this == other);
+}
+
+bool Fingerprint::operator<(const Fingerprint &other) const {
+  return
+      std::tie(stat, timestamp, hash) <
+      std::tie(other.stat, other.timestamp, other.hash);
 }
 
 Fingerprint takeFingerprint(

@@ -2,8 +2,10 @@
 
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
+#include "dependency_type.h"
 #include "exit_status.h"
 
 namespace shk {
@@ -28,7 +30,7 @@ class CommandRunner {
   virtual ~CommandRunner() = default;
 
   struct Result {
-    std::unordered_set<std::string> input_files;
+    std::unordered_map<std::string, DependencyType> input_files;
     std::unordered_set<std::string> output_files;
     ExitStatus exit_status = ExitStatus::SUCCESS;
     std::string output;

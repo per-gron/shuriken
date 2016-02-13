@@ -20,6 +20,10 @@ inline bool operator!=(const Hash &a, const Hash &b) {
   return !(a == b);
 }
 
+inline bool operator<(const Hash &a, const Hash &b) {
+  return a.data < b.data;
+}
+
 }  // namespace shk
 
 namespace std

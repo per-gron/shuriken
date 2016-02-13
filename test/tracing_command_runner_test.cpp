@@ -146,8 +146,7 @@ class FailingUnlinkFileSystem : public FileSystem {
 
 template<typename Container, typename Value>
 bool contains(const Container &container, const Value &value) {
-  return std::find(
-      container.begin(), container.end(), value) != container.end();
+  return container.find(value) != container.end();
 }
 
 std::string getWorkingDir() {

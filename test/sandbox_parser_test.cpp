@@ -74,7 +74,7 @@ void checkFailsParse(std::string &&input) {
       parseSandbox(SandboxIgnores(), std::move(input)), ParseError);
 }
 
-void comparePaths(
+void compareOutputPaths(
     const std::vector<std::string> &a,
     const std::unordered_set<std::string> &b) {
   std::unordered_set<std::string> a_set;
@@ -84,21 +84,31 @@ void comparePaths(
   CHECK(a_set == b);
 }
 
+void compareInputPaths(
+    const std::vector<std::pair<std::string, DependencyType>> &a,
+    const std::unordered_map<std::string, DependencyType> &b) {
+  std::unordered_map<std::string, DependencyType> a_map;
+  for (const auto &dep : a) {
+    a_map.insert(dep);
+  }
+  CHECK(a_map == b);
+}
+
 void checkResult(
     const SandboxIgnores &ignores,
     std::string &&input,
     const std::vector<std::string> &created,
-    const std::vector<std::string> &read) {
+    const std::vector<std::pair<std::string, DependencyType>> &read) {
   const auto result = parseSandbox(ignores, std::move(input));
-  comparePaths(created, result.created);
-  comparePaths(read, result.read);
+  compareOutputPaths(created, result.created);
+  compareInputPaths(read, result.read);
   CHECK(result.violations.empty());
 }
 
 void checkResult(
     std::string &&input,
     const std::vector<std::string> &created,
-    const std::vector<std::string> &read) {
+    const std::vector<std::pair<std::string, DependencyType>> &read) {
   checkResult(SandboxIgnores(), std::move(input), created, read);
 }
 
@@ -136,23 +146,33 @@ TEST_CASE("SandboxParser") {
     checkResult(
         "(allow file-read-data (literal \"/a/path\"))",
         {},
-        { "/a/path" });
+        { { "/a/path", DependencyType::ALWAYS } });
     checkResult(
         "(allow file-read-metadata (literal \"/another/path\"))",
         {},
-        { "/another/path" });
+        { { "/another/path", DependencyType::IGNORE_IF_DIRECTORY } });
+    checkResult(
+        "(allow file-read-metadata (literal \"/a/path\"))\n"
+        "(allow file-read-data (literal \"/a/path\"))",
+        {},
+        { { "/a/path", DependencyType::ALWAYS } });
+    checkResult(
+        "(allow file-read-data (literal \"/a/path\"))\n"
+        "(allow file-read-metadata (literal \"/a/path\"))",
+        {},
+        { { "/a/path", DependencyType::ALWAYS } });
     checkResult(
         "(allow process-exec* (literal \"/bin/ls\"))",
         {},
-        { "/bin/ls" });
+        { { "/bin/ls", DependencyType::ALWAYS } });
     checkResult(
         "(allow process-exec (literal \"/bin/ls\"))",
         {},
-        { "/bin/ls" });
+        { { "/bin/ls", DependencyType::ALWAYS } });
     checkResult(
         "(allow process* (literal \"/bin/ls\"))",
         {},
-        { "/bin/ls" });
+        { { "/bin/ls", DependencyType::ALWAYS } });
 
     // Ideally this should be disallowed
     checkResult(
@@ -264,7 +284,7 @@ TEST_CASE("SandboxParser") {
         "(allow file-write-unlink (literal \"/a/path\"))\n"
         "(allow file-read-data (literal \"/a/path\"))\n",
         {},
-        { "/a/path" });
+        { { "/a/path", DependencyType::ALWAYS } });
   }
 
   SECTION("UnlinkIgnored") {
@@ -368,35 +388,35 @@ TEST_CASE("SandboxParser") {
     checkResult(
         "(allow file-read-data (literal \"/a\\\"b\"))",
         {},
-        { "/a\"b" });
+        { { "/a\"b", DependencyType::ALWAYS } });
     checkResult(
         "(allow file-read-data (literal \"/a\\nb\"))",
         {},
-        { "/a\nb" });
+        { { "/a\nb", DependencyType::ALWAYS } });
     checkResult(
         "(allow file-read-data (literal \"/a\\rb\"))",
         {},
-        { "/a\rb" });
+        { { "/a\rb", DependencyType::ALWAYS } });
     checkResult(
         "(allow file-read-data (literal \"/a\\tb\"))",
         {},
-        { "/a\tb" });
+        { { "/a\tb", DependencyType::ALWAYS } });
     checkResult(
         "(allow file-read-data (literal \"/a\\x22b\"))",
         {},
-        { "/a\"b" });
+        { { "/a\"b", DependencyType::ALWAYS } });
     checkResult(
         "(allow file-read-data (literal \"/a\\1b\"))",
         {},
-        { "/a\1b" });
+        { { "/a\1b", DependencyType::ALWAYS } });
     checkResult(
         "(allow file-read-data (literal \"/a\\01b\"))",
         {},
-        { "/a\1b" });
+        { { "/a\1b", DependencyType::ALWAYS } });
     checkResult(
         "(allow file-read-data (literal \"/a\\42b\"))",
         {},
-        { "/a\"b" });
+        { { "/a\"b", DependencyType::ALWAYS } });
 
     checkFailsParse("(allow file-read-data (literal \"\\a\"))");
   }

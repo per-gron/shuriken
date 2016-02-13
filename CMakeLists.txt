@@ -23,6 +23,7 @@ add_library(shklib
   src/build_status.h
   src/clock.h
   src/command_runner.h
+  src/dependency_type.h
   src/dry_run_command_runner.cpp
   src/dry_run_command_runner.h
   src/dry_run_invocation_log.h
@@ -41,6 +42,7 @@ add_library(shklib
   src/fingerprint.cpp
   src/fingerprint.h
   src/hash.h
+  src/invocation_log.cpp
   src/invocation_log.h
   src/invocations.h
   src/lexer.h

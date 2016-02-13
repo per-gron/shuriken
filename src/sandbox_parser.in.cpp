@@ -508,7 +508,12 @@ void readAllow(
       if (result.created.count(path) == 0) {
         // It is ok for the process to read from a file it created, but only count
         // files as read if they were not created by the process.
-        result.read.insert(path);
+        const auto just_metadata = token == AllowToken::FILE_READ_METADATA;
+        if (just_metadata) {
+          result.read.emplace(path, DependencyType::IGNORE_IF_DIRECTORY);
+        } else {
+          result.read[path] = DependencyType::ALWAYS;
+        }
       }
     }
     readToEOL(context);

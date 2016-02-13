@@ -16,11 +16,17 @@ TEST_CASE("DummyCommandRunner") {
         std::vector<std::string>(in_inputs.begin(), in_inputs.end()),
         std::vector<std::string>(in_outputs.begin(), in_outputs.end()));
 
-    std::unordered_set<std::string> out_inputs;
     std::unordered_set<std::string> out_outputs;
-    std::tie(out_inputs, out_outputs) = detail::splitCommand(command);
+    std::unordered_map<std::string, DependencyType> out_inputs;
+    std::tie(out_outputs, out_inputs) = detail::splitCommand(command);
 
-    RC_ASSERT(out_inputs == in_inputs);
+    std::unordered_set<std::string> out_input_set;
+    for (const auto &dep : out_inputs) {
+      RC_ASSERT(dep.second == DependencyType::ALWAYS);
+      out_input_set.insert(dep.first);
+    }
+
+    RC_ASSERT(out_input_set == in_inputs);
     RC_ASSERT(out_outputs == out_outputs);
   });
 

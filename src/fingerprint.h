@@ -62,6 +62,7 @@ struct Fingerprint {
 
     bool operator==(const Stat &other) const;
     bool operator!=(const Stat &other) const;
+    bool operator<(const Stat &other) const;
   };
 
   Stat stat;
@@ -73,6 +74,7 @@ struct Fingerprint {
 
   bool operator==(const Fingerprint &other) const;
   bool operator!=(const Fingerprint &other) const;
+  bool operator<(const Fingerprint &other) const;
 };
 
 struct MatchesResult {
