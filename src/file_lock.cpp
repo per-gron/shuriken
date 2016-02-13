@@ -10,17 +10,18 @@ namespace shk {
 FileLock::FileLock(const std::string &path) throw(IoError)
     : _path(path),
       _f(fopen(path.c_str(), "w")) {
-  if (!_f) {
+  if (!_f.get()) {
     throw IoError(strerror(errno), errno);
   }
-  fcntl(fileno(_f.get()), F_SETFD, FD_CLOEXEC);
-  if (flock(fileno(_f), LOCK_EX | LOCK_NB) != 0) {
+  const auto descriptor = fileno(_f.get());
+  fcntl(descriptor, F_SETFD, FD_CLOEXEC);
+  if (flock(descriptor, LOCK_EX | LOCK_NB) != 0) {
     throw IoError(strerror(errno), errno);
   }
 }
 
 FileLock::~FileLock() {
-  flock(fileno(_f), LOCK_UN);
+  flock(fileno(_f.get()), LOCK_UN);
   unlink(_path.c_str());
 }
 

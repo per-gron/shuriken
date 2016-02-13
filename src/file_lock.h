@@ -5,6 +5,7 @@
 #include <string>
 
 #include "io_error.h"
+#include "raii_helper.h"
 
 namespace shk {
 
@@ -15,7 +16,8 @@ class FileLock {
 
  private:
   const std::string _path;
-  FILE * const _f;
+  using FileHandle = RAIIHelper<FILE, int, fclose>;
+  const FileHandle _f;
 };
 
 }  // namespace shk
