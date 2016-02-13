@@ -49,6 +49,7 @@ class PersistentFileSystem : public FileSystem {
       if (!_f.get()) {
         throw IoError(strerror(errno), errno);
       }
+      fcntl(fileno(_f.get()), F_SETFD, FD_CLOEXEC);
     }
 
     size_t read(uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override {
@@ -277,6 +278,7 @@ class PersistentFileSystem : public FileSystem {
     if (!f.get()) {
       throw IoError(strerror(errno), errno);
     }
+    fcntl(fileno(f.get()), F_SETFD, FD_CLOEXEC);
 
     char buf[64 << 10];
     size_t len;
