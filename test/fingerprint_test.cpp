@@ -104,6 +104,7 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.timestamp == 12345);
       CHECK(fp.hash == fs.hashFile("a"));
       CHECK(fp.stat.couldAccess());
+      CHECK(!fp.stat.isDir());
     }
 
     SECTION("missing file") {
@@ -119,6 +120,7 @@ TEST_CASE("Fingerprint") {
       std::fill(zero.data.begin(), zero.data.end(), 0);
       CHECK(fp.hash == zero);
       CHECK(!fp.stat.couldAccess());
+      CHECK(!fp.stat.isDir());
     }
 
     SECTION("directory") {
@@ -132,6 +134,7 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.timestamp == 12345);
       CHECK(fp.hash == fs.hashDir("dir"));
       CHECK(fp.stat.couldAccess());
+      CHECK(fp.stat.isDir());
     }
   }
 

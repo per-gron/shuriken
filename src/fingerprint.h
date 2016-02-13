@@ -45,15 +45,20 @@ struct Fingerprint {
     size_t size = 0;
     ino_t ino = 0;
     /**
-     * Contains only a subset of the st_mode data.
+     * Contains only a subset of the st_mode data, but it contains enough to be
+     * able to probe with S_ISDIR.
      */
     mode_t mode = 0;
     time_t mtime = 0;
     time_t ctime = 0;
 
-    bool couldAccess() const {
-      return mode != 0;
-    }
+    /**
+     * Returns true if the file was successfully stat-ed. False for example if
+     * the file does not exist.
+     */
+    bool couldAccess() const;
+
+    bool isDir() const;
 
     bool operator==(const Stat &other) const;
     bool operator!=(const Stat &other) const;

@@ -88,6 +88,14 @@ MatchesResult fingerprintMatches(
 
 }  // anonymous namespace
 
+bool Fingerprint::Stat::couldAccess() const {
+  return mode != 0;
+}
+
+bool Fingerprint::Stat::isDir() const {
+  return S_ISDIR(mode);
+}
+
 bool Fingerprint::Stat::operator==(const Stat &other) const {
   return (
       size == other.size &&
