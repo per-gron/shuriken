@@ -207,12 +207,14 @@ class PersistentFileSystem : public FileSystem {
 
   std::string mkstemp(
       std::string &&filename_template) throw(IoError) override {
-    if (::mkstemp(&filename_template[0]) == -1) {
+    const auto fd = ::mkstemp(&filename_template[0]);
+    if (fd == -1) {
       throw IoError(
           std::string("Failed to create path for temporary file: ") +
           strerror(errno),
           errno);
     }
+    close(fd);
     return filename_template;
   }
 

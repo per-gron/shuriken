@@ -68,7 +68,6 @@ Things to do for increased build correctness:
 Large things remaining to do:
 * Cache output of shk::detail::isClean; this is the main slow thing in dry runs
 * Make sure the build folder is not always treated as an input for linker build steps
-* Error when building core: "shk: fatal: pipe: Too many open files"
 * Deal with depfile files: Don't treat them as outputs
 * Ocasionally recompact
 * mkdirsForPath: Implement and test
