@@ -1,6 +1,7 @@
 #include "file_lock.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/file.h>
 #include <unistd.h>
 
@@ -12,6 +13,7 @@ FileLock::FileLock(const std::string &path) throw(IoError)
   if (!_f) {
     throw IoError(strerror(errno), errno);
   }
+  fcntl(fileno(_f.get()), F_SETFD, FD_CLOEXEC);
   if (flock(fileno(_f), LOCK_EX | LOCK_NB) != 0) {
     throw IoError(strerror(errno), errno);
   }
