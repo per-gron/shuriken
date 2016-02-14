@@ -370,6 +370,7 @@ bool isClean(
     const Clock &clock,
     FileSystem &file_system,
     InvocationLog &invocation_log,
+    const FingerprintMatches &fingerprint_matches,
     const Invocations &invocations,
     const Hash &step_hash) throw(IoError) {
   const auto it = invocations.entries.find(step_hash);
@@ -379,13 +380,9 @@ bool isClean(
 
   bool should_update = false;
   bool clean = true;
-  const auto process_files = [&](const std::vector<size_t> &files) {
-    for (const auto file_idx : files) {
-      const auto &file = invocations.fingerprints[file_idx];
-      const auto match = fingerprintMatches(
-          file_system,
-          file.first.original(),
-          file.second);
+  const auto process_files = [&](const std::vector<size_t> &fingerprints) {
+    for (const auto fingerprint_idx : fingerprints) {
+      const auto &match = fingerprint_matches[fingerprint_idx];
       if (!match.clean) {
         clean = false;
       }
@@ -422,6 +419,9 @@ CleanSteps computeCleanSteps(
 
   CleanSteps result(build.step_nodes.size(), false);
 
+  const auto fingerprint_matches = precomputeFingerprintMatches(
+      file_system, invocations.fingerprints);
+
   for (size_t i = 0; i < build.step_nodes.size(); i++) {
     const auto &step_node = build.step_nodes[i];
     if (!step_node.should_build) {
@@ -429,7 +429,12 @@ CleanSteps computeCleanSteps(
     }
     const auto &step_hash = step_hashes[i];
     result[i] = isClean(
-        clock, file_system, invocation_log, invocations, step_hash);
+        clock,
+        file_system,
+        invocation_log,
+        fingerprint_matches,
+        invocations,
+        step_hash);
   }
 
   return result;

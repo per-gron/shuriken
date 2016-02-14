@@ -261,6 +261,7 @@ bool isClean(
     const Clock &clock,
     FileSystem &file_system,
     InvocationLog &invocation_log,
+    const FingerprintMatches &fingerprint_matches,
     const Invocations &invocations,
     const Hash &step_hash) throw(IoError);
 

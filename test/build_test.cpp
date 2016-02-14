@@ -647,6 +647,7 @@ TEST_CASE("Build") {
           clock,
           fs,
           log,
+          precomputeFingerprintMatches(fs, invocations.fingerprints),
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -659,6 +660,7 @@ TEST_CASE("Build") {
           clock,
           fs,
           log,
+          precomputeFingerprintMatches(fs, invocations.fingerprints),
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -673,6 +675,7 @@ TEST_CASE("Build") {
           clock,
           fs,
           log,
+          precomputeFingerprintMatches(fs, invocations.fingerprints),
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -688,6 +691,7 @@ TEST_CASE("Build") {
           clock,
           fs,
           log,
+          precomputeFingerprintMatches(fs, invocations.fingerprints),
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -702,6 +706,7 @@ TEST_CASE("Build") {
           clock,
           fs,
           log,
+          precomputeFingerprintMatches(fs, invocations.fingerprints),
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -717,6 +722,7 @@ TEST_CASE("Build") {
           clock,
           fs,
           log,
+          precomputeFingerprintMatches(fs, invocations.fingerprints),
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -734,6 +740,7 @@ TEST_CASE("Build") {
           clock,
           fs,
           log,
+          precomputeFingerprintMatches(fs, invocations.fingerprints),
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -748,6 +755,7 @@ TEST_CASE("Build") {
           clock,
           fs,
           log,
+          precomputeFingerprintMatches(fs, invocations.fingerprints),
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -766,6 +774,7 @@ TEST_CASE("Build") {
           clock,
           fs,
           log,
+          precomputeFingerprintMatches(fs, invocations.fingerprints),
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
