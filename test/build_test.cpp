@@ -591,6 +591,42 @@ TEST_CASE("Build") {
     }
   }
 
+  SECTION("precomputeFingerprintMatches") {
+    SECTION("empty") {
+      CHECK(precomputeFingerprintMatches(fs, {}) == FingerprintMatches());
+    }
+
+    SECTION("match") {
+      fs.writeFile("a", "content");
+
+      std::vector<std::pair<Path, Fingerprint>> fingerprints;
+      fingerprints.emplace_back(
+          paths.get("a"),
+          takeFingerprint(fs, time, "a"));
+
+      const auto result = precomputeFingerprintMatches(fs, fingerprints);
+      REQUIRE(result.size() == 1);
+      CHECK(result[0].clean == true);
+      CHECK(result[0].should_update == true);
+    }
+
+    SECTION("no match") {
+      fs.writeFile("a", "content");
+
+      std::vector<std::pair<Path, Fingerprint>> fingerprints;
+      fingerprints.emplace_back(
+          paths.get("a"),
+          takeFingerprint(fs, time, "a"));
+
+      fs.writeFile("a", "content!");
+
+      const auto result = precomputeFingerprintMatches(fs, fingerprints);
+      REQUIRE(result.size() == 1);
+      CHECK(result[0].clean == false);
+      CHECK(result[0].should_update == false);
+    }
+  }
+
   SECTION("isClean") {
     Hash hash_a;
     std::fill(hash_a.data.begin(), hash_a.data.end(), 123);

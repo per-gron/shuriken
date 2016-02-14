@@ -81,6 +81,15 @@ using StepHashes = std::vector<Hash>;
 using CleanSteps = std::vector<bool>;
 
 /**
+ * "Map" of index in Invocations::fingerprints => MatchesResult with information
+ * about if each fingerprint matches or not. This is precomputed once per
+ * fingerprint to avoid having to compute if a fingerprint matches for every
+ * build step that has that fingerprint, since on average a fingerprint is
+ * typically used by quite a few steps.
+ */
+using FingerprintMatches = std::vector<MatchesResult>;
+
+/**
  * During the build, the Build object has one StepNode for each Step in the
  * Manifest. The StepNode contains information about dependencies between
  * steps in a format that is efficient when building.
@@ -232,6 +241,15 @@ Build computeBuild(
     const Manifest &manifest,
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError);
+
+/**
+ * Construct a FingerprintMatches object for use by isClean.
+ *
+ * The fingerprints parameter matches the type of Invocations::fingerprints.
+ */
+FingerprintMatches precomputeFingerprintMatches(
+    FileSystem &file_system,
+    const std::vector<std::pair<Path, Fingerprint>> &fingerprints);
 
 /**
  * Checks if a build step has already been performed and does not need to be

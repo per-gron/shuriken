@@ -350,6 +350,22 @@ Build computeBuild(
   return build;
 }
 
+FingerprintMatches precomputeFingerprintMatches(
+    FileSystem &file_system,
+    const std::vector<std::pair<Path, Fingerprint>> &fingerprints) {
+  FingerprintMatches matches;
+  matches.reserve(fingerprints.size());
+
+  for (const auto &file : fingerprints) {
+    matches.push_back(fingerprintMatches(
+        file_system,
+        file.first.original(),
+        file.second));
+  }
+
+  return matches;
+}
+
 bool isClean(
     const Clock &clock,
     FileSystem &file_system,
