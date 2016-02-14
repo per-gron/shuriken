@@ -86,6 +86,9 @@ struct MatchesResult {
    * There is then a good chance that hashing will no longer be needed later.
    */
   bool should_update = false;
+
+  bool operator==(const MatchesResult &other) const;
+  bool operator!=(const MatchesResult &other) const;
 };
 
 /**

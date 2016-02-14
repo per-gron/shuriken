@@ -200,6 +200,27 @@ TEST_CASE("Fingerprint") {
     }
   }
 
+  SECTION("MatchesResult") {
+    MatchesResult result;
+
+    SECTION("equal") {
+      CHECK(result == MatchesResult());
+      CHECK(!(result != MatchesResult()));
+    }
+
+    SECTION("clean") {
+      result.clean = !result.clean;
+      CHECK(!(result == MatchesResult()));
+      CHECK(result != MatchesResult());
+    }
+
+    SECTION("should_update") {
+      result.should_update = !result.should_update;
+      CHECK(!(result == MatchesResult()));
+      CHECK(result != MatchesResult());
+    }
+  }
+
   SECTION("fingerprintMatches") {
     SECTION("no changes, fingerprint taken at the same time as file mtime") {
       const auto initial_fp = takeFingerprint(fs, now, "a");

@@ -132,6 +132,16 @@ bool Fingerprint::operator<(const Fingerprint &other) const {
       std::tie(other.stat, other.timestamp, other.hash);
 }
 
+bool MatchesResult::operator==(const MatchesResult &other) const {
+  return
+      clean == other.clean &&
+      should_update == other.should_update;
+}
+
+bool MatchesResult::operator!=(const MatchesResult &other) const {
+  return !(*this == other);
+}
+
 Fingerprint takeFingerprint(
     FileSystem &file_system,
     time_t timestamp,
