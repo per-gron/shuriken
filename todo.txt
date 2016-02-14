@@ -69,6 +69,7 @@ Large things remaining to do:
 * Cache output of shk::detail::isClean; this is the main slow thing in dry runs
 * shk -n in core fails with "shk: build failed: Operation not permitted"
 * Make sure the build folder is not always treated as an input for linker build steps
+* Seems like should update / relogCommands doesn't work
 * Deal with depfile files: Don't treat them as outputs
 * Ocasionally recompact
 * mkdirsForPath: Implement and test

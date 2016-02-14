@@ -239,7 +239,8 @@ void visitStepInputs(
     // inputs from the last invocation rather than the ones specified in the
     // manifest.
     const auto &input_files = invocation_it->second.input_files;
-    for (const auto &input_file : input_files) {
+    for (const auto input_file_idx : input_files) {
+      const auto &input_file = invocations.fingerprints[input_file_idx];
       callback(input_file.first);
     }
   } else {
@@ -362,9 +363,9 @@ bool isClean(
 
   bool should_update = false;
   bool clean = true;
-  const auto process_files = [&](
-      const std::vector<std::pair<Path, Fingerprint>> &files) {
-    for (const auto &file : files) {
+  const auto process_files = [&](const std::vector<size_t> &files) {
+    for (const auto file_idx : files) {
+      const auto &file = invocations.fingerprints[file_idx];
       const auto match = fingerprintMatches(
           file_system,
           file.first.original(),
@@ -385,7 +386,10 @@ bool isClean(
     // There is no need to update the invocation log when dirty; it will be
     // updated anyway as part of the build.
     invocation_log.relogCommand(
-        step_hash, entry.output_files, entry.input_files);
+        step_hash,
+        invocations.fingerprints,
+        entry.output_files,
+        entry.input_files);
   }
 
   return clean;
@@ -516,7 +520,8 @@ bool outputsWereChanged(
     return true;
   }
 
-  for (const auto &file : it->second.output_files) {
+  for (const auto file_idx : it->second.output_files) {
+    const auto &file = invocations.fingerprints[file_idx];
     const auto match = fingerprintMatches(
         file_system,
         file.first.original(),
@@ -618,7 +623,8 @@ void deleteOldOutputs(
   }
 
   const auto &entry = it->second;
-  for (const auto &output : entry.output_files) {
+  for (const auto output_idx : entry.output_files) {
+    const auto &output = invocations.fingerprints[output_idx];
     deleteBuildProduct(
         file_system,
         invocations,
@@ -687,7 +693,8 @@ void deleteStaleOutputs(
 
   for (const auto &entry : invocations.entries) {
     if (step_hashes_set.count(entry.first) == 0) {
-      for (const auto &output_file : entry.second.output_files) {
+      for (const auto output_file_idx : entry.second.output_files) {
+        const auto &output_file = invocations.fingerprints[output_file_idx];
         deleteBuildProduct(
             file_system,
             invocations,

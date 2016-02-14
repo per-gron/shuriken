@@ -19,9 +19,19 @@ namespace shk {
  * Invocations is a passive dumb data object.
  */
 struct Invocations {
+  /**
+   * List of Path + Fingerprint pairs. This is just for deduplication in storage
+   * and to be in a format that is easily processable later. It only has meaning
+   * when used together with entries, which contains indices into this array.
+   */
+  std::vector<std::pair<Path, Fingerprint>> fingerprints;
+
+  /**
+   * Contains indices into the fingerprints vector.
+   */
   struct Entry {
-    std::vector<std::pair<Path, Fingerprint>> output_files;
-    std::vector<std::pair<Path, Fingerprint>> input_files;
+    std::vector<size_t> output_files;
+    std::vector<size_t> input_files;
   };
 
   /**

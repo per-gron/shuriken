@@ -32,9 +32,10 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
     }
 
     const auto &entry = entry_it->second;
+    const auto &fingerprint = params.invocations.fingerprints;
 
-    const auto file_to_str = [&](
-        const std::pair<Path, Fingerprint> &file) {
+    const auto file_to_str = [&](size_t idx) {
+      const auto &file = fingerprint[idx];
       const auto &path = file.first.original();
       const auto &fp = file.second;
       const auto result = fingerprintMatches(params.file_system, path, fp);
@@ -42,6 +43,7 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
           (result.clean ? "" : " [dirty]") +
           (result.should_update ? " [should update]" : "");
     };
+
 
     bool first = true;
     for (const auto &output : entry.output_files) {

@@ -102,9 +102,22 @@ T readEntryById(
   const auto entry_id = read<uint32_t>(piece);
   if (entry_id >= entries_by_id.size() || !entries_by_id[entry_id]) {
     throw ParseError(
-        "invalid invocation log: encountered invalid path or fingerprint ref");
+        "invalid invocation log: encountered invalid fingerprint ref");
   }
   return *entries_by_id[entry_id];
+}
+
+std::vector<size_t> readFingerprints(
+    const std::vector<Optional<size_t>> &fingerprints_by_id,
+    StringPiece piece) {
+  std::vector<size_t> result;
+  result.reserve(piece._len / sizeof(uint32_t));
+
+  for (; piece._len; piece = advance(piece, sizeof(uint32_t))) {
+    result.push_back(readEntryById(fingerprints_by_id, piece));
+  }
+
+  return result;
 }
 
 Path readPath(
@@ -116,22 +129,6 @@ Path readPath(
         "invalid invocation log: encountered invalid path ref");
   }
   return *paths_by_id[path_id];
-}
-
-std::vector<std::pair<Path, Fingerprint>> readFingerprints(
-    const std::vector<Optional<Fingerprint>> &fingerprints_by_id,
-    const std::vector<Optional<Path>> &paths_by_id,
-    StringPiece piece) {
-  std::vector<std::pair<Path, Fingerprint>> result;
-
-  while (piece._len) {
-    const auto path = readEntryById(paths_by_id, piece);
-    piece = advance(piece, sizeof(uint32_t));
-    result.emplace_back(path, readEntryById(fingerprints_by_id, piece));
-    piece = advance(piece, sizeof(uint32_t));
-  }
-
-  return result;
 }
 
 class PersistentInvocationLog : public InvocationLog {
@@ -183,7 +180,7 @@ class PersistentInvocationLog : public InvocationLog {
     const uint32_t size =
         sizeof(Hash) +
         sizeof(uint32_t) +
-        sizeof(uint32_t) * 2 * total_entries;
+        sizeof(uint32_t) * total_entries;
 
     writeHeader(size, InvocationLogEntryType::INVOCATION);
 
@@ -206,10 +203,6 @@ class PersistentInvocationLog : public InvocationLog {
  private:
   void writeFiles(const std::unordered_set<std::string> &paths) {
     for (const auto &path : paths) {
-      const auto path_it = _path_ids.find(path);
-      assert(path_it != _path_ids.end());
-      write(path_it->second);
-
       const auto fingerprint_it = _fingerprint_ids.find(path);
       assert(fingerprint_it != _fingerprint_ids.end());
       write(fingerprint_it->second.record_id);
@@ -379,11 +372,13 @@ InvocationLogParseResult parsePersistentInvocationLog(
 
   piece = parseInvocationLogSignature(piece);
 
-  // "Map" from entry id to path. Entries that aren't path entries are empty
-  std::vector<Optional<Path>> paths_by_id;
-  // "Map" from entry id to fingerprint. Entries that aren't path entries are
+  // "Map" from path entry id to path. Entries that aren't path entries are
   // empty.
-  std::vector<Optional<Fingerprint>> fingerprints_by_id;
+  std::vector<Optional<Path>> paths_by_id;
+  // "Map" from fingerprint entry id to index in Invocations::fingerprints.
+  // Indices that refer to entries that have been read but arent fingerprint
+  // entries are empty.
+  std::vector<Optional<size_t>> fingerprints_by_id;
 
   auto &entry_count = result.parse_data.entry_count;
 
@@ -428,7 +423,10 @@ InvocationLogParseResult parsePersistentInvocationLog(
           result.parse_data.fingerprint_ids[path.original()] = value;
 
           fingerprints_by_id.resize(entry_count + 1);
-          fingerprints_by_id[entry_count] = value.fingerprint;
+          fingerprints_by_id[entry_count] =
+              result.invocations.fingerprints.size();
+          result.invocations.fingerprints.emplace_back(
+              path, value.fingerprint);
         } else {
           throw ParseError("invalid invocation log: truncated invocation");
         }
@@ -440,7 +438,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
         entry = advance(entry, sizeof(hash));
         const auto outputs = read<uint32_t>(entry);
         entry = advance(entry, sizeof(outputs));
-        const auto output_size = sizeof(uint32_t) * 2 * outputs;
+        const auto output_size = sizeof(uint32_t) * outputs;
         if (entry._len < output_size) {
           throw ParseError("invalid invocation log: truncated invocation");
         }
@@ -448,11 +446,9 @@ InvocationLogParseResult parsePersistentInvocationLog(
         result.invocations.entries[hash] = {
             readFingerprints(
                 fingerprints_by_id,
-                paths_by_id,
                 StringPiece(entry._str, output_size)),
             readFingerprints(
                 fingerprints_by_id,
-                paths_by_id,
                 advance(entry, output_size)) };
         break;
       }
@@ -540,6 +536,7 @@ void recompactPersistentInvocationLog(
   for (const auto &entry : invocations.entries) {
     log->relogCommand(
         entry.first,
+        invocations.fingerprints,
         entry.second.output_files,
         entry.second.input_files);
   }

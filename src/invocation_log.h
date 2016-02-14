@@ -63,11 +63,16 @@ class InvocationLog {
    * Helper function that is useful when rewriting an already existing
    * invocation log entry, for example when recompacting or when rewriting it
    * because it is racily clean.
+   *
+   * The fingerprints parameter has the same format and purpose as
+   * Invocations::fingerprints. The output_files and input_files vectors contain
+   * indices into this array.
    */
   void relogCommand(
       const Hash &build_step_hash,
-      const std::vector<std::pair<Path, Fingerprint>> &output_files,
-      const std::vector<std::pair<Path, Fingerprint>> &input_files);
+      const std::vector<std::pair<Path, Fingerprint>> &fingerprints,
+      const std::vector<size_t> &output_files,
+      const std::vector<size_t> &input_files);
 
   /**
    * Writes an entry in the invocation log that says that the build step with

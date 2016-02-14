@@ -67,16 +67,18 @@ Invocations InMemoryInvocationLog::invocations(Paths &paths) const {
     });
   }
 
+  const auto files = [&](
+      const std::vector<std::pair<std::string, Fingerprint>> &files) {
+    std::vector<size_t> out;
+    for (const auto &file : files) {
+      out.push_back(result.fingerprints.size());
+      result.fingerprints.emplace_back(paths.get(file.first), file.second);
+    }
+    return out;
+  };
+
   for (const auto &log_entry : _entries) {
     Invocations::Entry entry;
-    const auto files = [&](
-        const std::vector<std::pair<std::string, Fingerprint>> &files) {
-      std::vector<std::pair<Path, Fingerprint>> result;
-      for (const auto &file : files) {
-        result.emplace_back(paths.get(file.first), file.second);
-      }
-      return result;
-    };
     entry.output_files = files(log_entry.second.output_files);
     entry.input_files = files(log_entry.second.input_files);
     result.entries[log_entry.first] = entry;
