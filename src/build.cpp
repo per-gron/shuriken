@@ -350,27 +350,32 @@ Build computeBuild(
   return build;
 }
 
-FingerprintMatches precomputeFingerprintMatches(
+namespace {
+
+MatchesResult checkFingerprintMatches(
     FileSystem &file_system,
-    const std::vector<std::pair<Path, Fingerprint>> &fingerprints) {
-  FingerprintMatches matches;
-  matches.reserve(fingerprints.size());
-
-  for (const auto &file : fingerprints) {
-    matches.push_back(fingerprintMatches(
-        file_system,
-        file.first.original(),
-        file.second));
+    const std::vector<std::pair<Path, Fingerprint>> &fingerprints,
+    size_t fingerprint_idx,
+    FingerprintMatchesMemo &fingerprint_matches_memo) {
+  assert(fingerprint_idx < fingerprint_matches_memo.size());
+  if (!fingerprint_matches_memo[fingerprint_idx]) {
+    const auto &file = fingerprints[fingerprint_idx];
+    fingerprint_matches_memo[fingerprint_idx] =
+        fingerprintMatches(
+            file_system,
+            file.first.original(),
+            file.second);
   }
-
-  return matches;
+  return *fingerprint_matches_memo[fingerprint_idx];
 }
+
+}  // namespace shk
 
 bool isClean(
     const Clock &clock,
     FileSystem &file_system,
     InvocationLog &invocation_log,
-    const FingerprintMatches &fingerprint_matches,
+    FingerprintMatchesMemo &fingerprint_matches_memo,
     const Invocations &invocations,
     const Hash &step_hash) throw(IoError) {
   const auto it = invocations.entries.find(step_hash);
@@ -382,7 +387,11 @@ bool isClean(
   bool clean = true;
   const auto process_files = [&](const std::vector<size_t> &fingerprints) {
     for (const auto fingerprint_idx : fingerprints) {
-      const auto &match = fingerprint_matches[fingerprint_idx];
+      const auto match = checkFingerprintMatches(
+          file_system,
+          invocations.fingerprints,
+          fingerprint_idx,
+          fingerprint_matches_memo);
       if (!match.clean) {
         clean = false;
       }
@@ -419,8 +428,8 @@ CleanSteps computeCleanSteps(
 
   CleanSteps result(build.step_nodes.size(), false);
 
-  const auto fingerprint_matches = precomputeFingerprintMatches(
-      file_system, invocations.fingerprints);
+  FingerprintMatchesMemo fingerprint_memo;
+  fingerprint_memo.resize(invocations.fingerprints.size());
 
   for (size_t i = 0; i < build.step_nodes.size(); i++) {
     const auto &step_node = build.step_nodes[i];
@@ -432,7 +441,7 @@ CleanSteps computeCleanSteps(
         clock,
         file_system,
         invocation_log,
-        fingerprint_matches,
+        fingerprint_memo,
         invocations,
         step_hash);
   }

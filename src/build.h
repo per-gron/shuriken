@@ -11,6 +11,7 @@
 #include "invocation_log.h"
 #include "invocations.h"
 #include "manifest.h"
+#include "optional.h"
 #include "step.h"
 
 namespace shk {
@@ -82,12 +83,19 @@ using CleanSteps = std::vector<bool>;
 
 /**
  * "Map" of index in Invocations::fingerprints => MatchesResult with information
- * about if each fingerprint matches or not. This is precomputed once per
- * fingerprint to avoid having to compute if a fingerprint matches for every
- * build step that has that fingerprint, since on average a fingerprint is
- * typically used by quite a few steps.
+ * about if each fingerprint matches or not. This information is computed lazily
+ * and memoized in this data structure, to avoid having to compute if a
+ * fingerprint matches for every build step that has that fingerprint, since on
+ * average a fingerprint is typically used by quite a few steps.
+ *
+ * A reason for why this is constructed lazily rather than precomputed all up
+ * front is that it is common that the manifest contains fingerprints that are
+ * no longer used. They will be removed eventually in a subsequent invocation
+ * log compaction, but until they are, it is problematic to fingerprint those,
+ * especially because it is likely that they are "should_update"/racily clean,
+ * which requires hashing their file contents to calculate the MatchesResult.
  */
-using FingerprintMatches = std::vector<MatchesResult>;
+using FingerprintMatchesMemo = std::vector<Optional<MatchesResult>>;
 
 /**
  * During the build, the Build object has one StepNode for each Step in the
@@ -243,15 +251,6 @@ Build computeBuild(
     std::vector<StepIndex> &&steps_to_build) throw(BuildError);
 
 /**
- * Construct a FingerprintMatches object for use by isClean.
- *
- * The fingerprints parameter matches the type of Invocations::fingerprints.
- */
-FingerprintMatches precomputeFingerprintMatches(
-    FileSystem &file_system,
-    const std::vector<std::pair<Path, Fingerprint>> &fingerprints);
-
-/**
  * Checks if a build step has already been performed and does not need to be
  * run again. This is not purely a read-only action: It uses fingerprints, and
  * if the fingerprint logic wants a fresher fingerprint in the invocation log
@@ -261,7 +260,7 @@ bool isClean(
     const Clock &clock,
     FileSystem &file_system,
     InvocationLog &invocation_log,
-    const FingerprintMatches &fingerprint_matches,
+    FingerprintMatchesMemo &fingerprint_matches_memo,
     const Invocations &invocations,
     const Hash &step_hash) throw(IoError);
 

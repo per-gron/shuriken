@@ -591,42 +591,6 @@ TEST_CASE("Build") {
     }
   }
 
-  SECTION("precomputeFingerprintMatches") {
-    SECTION("empty") {
-      CHECK(precomputeFingerprintMatches(fs, {}) == FingerprintMatches());
-    }
-
-    SECTION("match") {
-      fs.writeFile("a", "content");
-
-      std::vector<std::pair<Path, Fingerprint>> fingerprints;
-      fingerprints.emplace_back(
-          paths.get("a"),
-          takeFingerprint(fs, time, "a"));
-
-      const auto result = precomputeFingerprintMatches(fs, fingerprints);
-      REQUIRE(result.size() == 1);
-      CHECK(result[0].clean == true);
-      CHECK(result[0].should_update == true);
-    }
-
-    SECTION("no match") {
-      fs.writeFile("a", "content");
-
-      std::vector<std::pair<Path, Fingerprint>> fingerprints;
-      fingerprints.emplace_back(
-          paths.get("a"),
-          takeFingerprint(fs, time, "a"));
-
-      fs.writeFile("a", "content!");
-
-      const auto result = precomputeFingerprintMatches(fs, fingerprints);
-      REQUIRE(result.size() == 1);
-      CHECK(result[0].clean == false);
-      CHECK(result[0].should_update == false);
-    }
-  }
-
   SECTION("isClean") {
     Hash hash_a;
     std::fill(hash_a.data.begin(), hash_a.data.end(), 123);
@@ -641,13 +605,14 @@ TEST_CASE("Build") {
     fs.writeFile("two", "two_content");
     const auto two_fp = takeFingerprint(fs, clock() + 1, "two");
 
+    FingerprintMatchesMemo memo;
 
     SECTION("no matching Invocation entry") {
       CHECK(!isClean(
           clock,
           fs,
           log,
-          precomputeFingerprintMatches(fs, invocations.fingerprints),
+          memo,
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -660,7 +625,7 @@ TEST_CASE("Build") {
           clock,
           fs,
           log,
-          precomputeFingerprintMatches(fs, invocations.fingerprints),
+          memo,
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -671,11 +636,12 @@ TEST_CASE("Build") {
       Invocations::Entry entry;
       addInput(invocations, entry, paths.get("one"), one_fp);
       invocations.entries[hash_a] = entry;
+      memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
           clock,
           fs,
           log,
-          precomputeFingerprintMatches(fs, invocations.fingerprints),
+          memo,
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -687,11 +653,12 @@ TEST_CASE("Build") {
       addInput(invocations, entry, paths.get("one"), one_fp);
       invocations.entries[hash_a] = entry;
       fs.writeFile("one", "dirty");  // Make dirty
+      memo.resize(invocations.fingerprints.size());
       CHECK(!isClean(
           clock,
           fs,
           log,
-          precomputeFingerprintMatches(fs, invocations.fingerprints),
+          memo,
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -702,11 +669,12 @@ TEST_CASE("Build") {
       Invocations::Entry entry;
       addOutput(invocations, entry, paths.get("one"), one_fp);
       invocations.entries[hash_a] = entry;
+      memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
           clock,
           fs,
           log,
-          precomputeFingerprintMatches(fs, invocations.fingerprints),
+          memo,
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -718,11 +686,12 @@ TEST_CASE("Build") {
       addOutput(invocations, entry, paths.get("one"), one_fp);
       invocations.entries[hash_a] = entry;
       fs.writeFile("one", "dirty");  // Make dirty
+      memo.resize(invocations.fingerprints.size());
       CHECK(!isClean(
           clock,
           fs,
           log,
-          precomputeFingerprintMatches(fs, invocations.fingerprints),
+          memo,
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -736,11 +705,12 @@ TEST_CASE("Build") {
       invocations.entries[hash_a] = entry;
       fs.writeFile("one", "dirty");
       fs.writeFile("two", "dirty!");
+      memo.resize(invocations.fingerprints.size());
       CHECK(!isClean(
           clock,
           fs,
           log,
-          precomputeFingerprintMatches(fs, invocations.fingerprints),
+          memo,
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -751,11 +721,12 @@ TEST_CASE("Build") {
       Invocations::Entry entry;
       addInput(invocations, entry, paths.get("one"), one_fp_racy);
       invocations.entries[hash_a] = entry;
+      memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
           clock,
           fs,
           log,
-          precomputeFingerprintMatches(fs, invocations.fingerprints),
+          memo,
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
@@ -770,11 +741,12 @@ TEST_CASE("Build") {
       Invocations::Entry entry;
       addOutput(invocations, entry, paths.get("one"), one_fp_racy);
       invocations.entries[hash_a] = entry;
+      memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
           clock,
           fs,
           log,
-          precomputeFingerprintMatches(fs, invocations.fingerprints),
+          memo,
           invocations,
           hash_a));
       CHECK(log.createdDirectories().empty());
