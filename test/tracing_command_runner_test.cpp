@@ -3,6 +3,7 @@
 #include "persistent_file_system.h"
 #include "real_command_runner.h"
 #include "tracing_command_runner.h"
+#include "util.h"
 
 namespace shk {
 namespace {
@@ -149,13 +150,6 @@ bool contains(const Container &container, const Value &value) {
   return container.find(value) != container.end();
 }
 
-std::string getWorkingDir() {
-  char *wd = getcwd(NULL, 0);
-  std::string result = wd;
-  free(wd);
-  return result;
-}
-
 }  // anonymous namespace
 
 TEST_CASE("TracingCommandRunner") {
@@ -177,6 +171,13 @@ TEST_CASE("TracingCommandRunner") {
     CHECK(contains(result.input_files, "/sbin"));
     CHECK(contains(result.input_files, "/bin/ls"));
     CHECK(result.output_files.empty());
+  }
+
+  SECTION("IgnoreReadOfWorkingDir") {
+    std::string escaped_working_dir;
+    getShellEscapedString(getWorkingDir(), &escaped_working_dir);
+    const auto result = runCommand(*runner, "/bin/ls " + escaped_working_dir);
+    CHECK(!contains(result.input_files, getWorkingDir()));
   }
 
   SECTION("TrackOutputs") {

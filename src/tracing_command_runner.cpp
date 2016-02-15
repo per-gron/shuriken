@@ -2,8 +2,8 @@
 
 #include <assert.h>
 
-#include "util.h"
 #include "sandbox_parser.h"
+#include "util.h"
 
 namespace shk {
 namespace {
@@ -96,6 +96,13 @@ class TracingCommandRunner : public CommandRunner {
       auto sandbox = parseSandbox(
           SandboxIgnores::defaults(),
           _file_system.readFile(path));
+
+      // Linking steps tend to read the contents of the working directory for
+      // some reason, which causes them to always be treated as dirty, which
+      // obviously is not good. This is a hack to work around that, but it also
+      // means that build steps can't depend on the contents of the build
+      // directory.
+      sandbox.read.erase(getWorkingDir());
 
       result.input_files.swap(sandbox.read);
       result.output_files.swap(sandbox.created);

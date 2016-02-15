@@ -282,6 +282,13 @@ int guessParallelism() {
   }
 }
 
+std::string getWorkingDir() {
+  char *wd = getcwd(NULL, 0);
+  std::string result = wd;
+  free(wd);
+  return result;
+}
+
 #if defined(_WIN32) || defined(__CYGWIN__)
 static double calculateProcessorLoad(uint64_t idle_ticks, uint64_t total_ticks)
 {

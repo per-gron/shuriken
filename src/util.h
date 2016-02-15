@@ -76,6 +76,8 @@ int getProcessorCount();
  */
 int guessParallelism();
 
+std::string getWorkingDir();
+
 /**
  * @return the load average of the machine. A negative value is returned
  * on error.
