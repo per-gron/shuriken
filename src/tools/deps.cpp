@@ -44,10 +44,11 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
           (result.should_update ? " [should update]" : "");
     };
 
+    printf("%s\n", step.command.c_str());
 
     bool first = true;
     for (const auto &output : entry.output_files) {
-      printf("%s%s", first ? "" : "\n", file_to_str(output).c_str());
+      printf("  %s%s", first ? "" : "\n", file_to_str(output).c_str());
       first = false;
     }
     if (first) {
