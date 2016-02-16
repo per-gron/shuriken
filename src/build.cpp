@@ -694,6 +694,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
 
   if (!step.command.empty()) {
     params.build_status.stepStarted(step);
+    params.invoked_commands++;
   }
   params.command_runner.invoke(
       step.command,
@@ -801,19 +802,19 @@ BuildResult build(
       build);
   detail::enqueueBuildCommands(params);
 
-  if (command_runner.empty()) {
-    return BuildResult::NO_WORK_TO_DO;
-  }
-
   while (!command_runner.empty()) {
     if (command_runner.runCommands()) {
       return BuildResult::INTERRUPTED;
     }
   }
 
-  return build.remaining_failures == failures_allowed ?
-      BuildResult::SUCCESS :
-      BuildResult::FAILURE;
+  if (build.remaining_failures == failures_allowed) {
+    return params.invoked_commands == 0 ?
+        BuildResult::NO_WORK_TO_DO :
+        BuildResult::SUCCESS;
+  } else {
+    return BuildResult::FAILURE;
+  }
 }
 
 }

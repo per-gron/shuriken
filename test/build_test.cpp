@@ -1344,6 +1344,12 @@ TEST_CASE("Build") {
         CHECK(fs.readFile("rsp") == "abc");
       }
 
+      SECTION("just phony rule counts as no-op") {
+        const auto manifest =
+            "build one: phony\n";
+        CHECK(build_manifest(manifest) == BuildResult::NO_WORK_TO_DO);
+      }
+
       SECTION("phony as root") {
         const auto one = dummy_runner.constructCommand({}, {"one"});
         const auto manifest =
@@ -1389,7 +1395,7 @@ TEST_CASE("Build") {
       SECTION("don't fail on missing phony input") {
         const auto manifest =
             "build out: phony missing\n";
-        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        CHECK(build_manifest(manifest) == BuildResult::NO_WORK_TO_DO);
       }
 
       SECTION("swallow failures") {

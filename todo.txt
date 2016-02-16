@@ -65,12 +65,15 @@ Things to do for increased build correctness:
 * Make sure the build does the right thing even if targets are specified wrong on the command line
 * Hash symlinks in a special way (see fingerprintStat)
 
-Large things remaining to do:
-* shk -n in core fails with "shk: build failed: Operation not permitted"
-* Doesn't print "shk: no work to do"
-* Seems like should update / relogCommands doesn't work
+Aesthetic bugs:
 * Deal with depfile files: Don't treat them as outputs
-* Ocasionally recompact
+
+Large things remaining to do:
+* I think dry runs might delete things right now
+* shk -n in core fails with "shk: build failed: Operation not permitted" (might be related to dry runs deleting things)
+* "Linting error: Process unlinked file or directory that it did not create: /Users/peck/prog/client-core/vendor/boink/python/spotify/boinkc/grammar.pyc": Solve by ignoring "*.pyc" files?
+* Seems like should update / relogCommands doesn't work
+* Ocasionally recompact (and make sure that stale fingerprints aren't counted)
 * mkdirsForPath: Implement and test
 * Unit test shk::build
 * Handle restat rules
@@ -94,14 +97,15 @@ Large things remaining to do:
 
 * Possible optimizations
   * Stat cache for use by Paths
+  * Wait 1 second after a build step is done before logging it, to avoid racy clean output entries
   * Try reduce number of /bin/sh invocations per command. I think it's 3 now
-  * Avoid the excessive duplication in the Invocations data structure by using shared_ptr
-    to const or smt
-  * Avoid the excessive stat-ing by using a stat cache pre-build
   * Avoid the excessive fingerprint duplications in the invocation log by remembering
     previous fingerprints somehow. Stat cache or otherwise.
   * See if adding HAVE_SSSE3, HAVE_XOP, HAVE_SSE41 etc flags for blake2 makes sense
   * Optimization opportunity: Don't calculate hashes twice for racily clean files
+  * Building core
+    * With ninja from clean: 23m27.851s
+    * With shk from clean:
 
 * Unit test BuildStatus
 * Write documentation

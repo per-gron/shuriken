@@ -198,6 +198,11 @@ struct BuildCommandParameters {
   const Manifest &manifest;
   const StepHashes &step_hashes;
   Build &build;
+  /**
+   * The number of commands that have been run as part of the build, excluding
+   * phony build steps.
+   */
+  size_t invoked_commands = 0;
 };
 
 /**
