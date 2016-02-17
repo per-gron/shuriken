@@ -1,5 +1,7 @@
 #include <catch.hpp>
 
+#include <sys/stat.h>
+
 #include "build.h"
 
 #include "dummy_build_status.h"
@@ -1147,6 +1149,32 @@ TEST_CASE("Build") {
             "  command = " + cmd + "\n"
             "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+      }
+
+      SECTION("create directory for output") {
+        const auto cmd = dummy_runner.constructCommand({}, {"dir/out"});
+        const auto manifest =
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build dir/out: cmd\n";
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        CHECK(S_ISDIR(fs.stat("dir").metadata.mode));
+        CHECK(log.createdDirectories().count("dir") == 1);
+        dummy_runner.checkCommand(fs, cmd);
+      }
+
+      SECTION("create directories for output") {
+        const auto cmd = dummy_runner.constructCommand({}, {"dir/inner/out"});
+        const auto manifest =
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build dir/inner/out: cmd\n";
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        CHECK(S_ISDIR(fs.stat("dir").metadata.mode));
+        CHECK(S_ISDIR(fs.stat("dir/inner").metadata.mode));
+        CHECK(log.createdDirectories().count("dir") == 1);
+        CHECK(log.createdDirectories().count("dir/inner") == 1);
         dummy_runner.checkCommand(fs, cmd);
       }
 

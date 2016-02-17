@@ -537,8 +537,11 @@ void deleteBuildProduct(
 void mkdirsForPath(
     FileSystem &file_system,
     InvocationLog &invocation_log,
-    Path path) {
-  // TODO(peck): Implement me
+    Path path) throw(IoError) {
+  const auto created_dirs = mkdirsFor(file_system, path.original());
+  for (const auto &path : created_dirs) {
+    invocation_log.createdDirectory(path);
+  }
 }
 
 bool outputsWereChanged(
