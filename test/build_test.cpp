@@ -1318,7 +1318,6 @@ TEST_CASE("Build") {
         dummy_runner.checkCommand(fs, cmd);
       }
 
-#if 0  // TODO(peck): This test does not work because deletion is not yet implemented
       SECTION("create and delete rspfile") {
         const auto cmd = dummy_runner.constructCommand({"rsp"}, {});
         const auto manifest =
@@ -1330,7 +1329,6 @@ TEST_CASE("Build") {
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         CHECK(fs.stat("rsp").result == ENOENT);
       }
-#endif
 
       SECTION("don't delete rspfile on failure") {
         const auto cmd = dummy_runner.constructCommand({"nonexisting"}, {});
