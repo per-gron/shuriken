@@ -170,13 +170,19 @@ class FileSystem {
 
 /**
  * Create directory and parent directories. Like mkdir -p
+ *
+ * Returns vector of paths to directories that were created.
  */
-void mkdirs(FileSystem &file_system, const std::string &path) throw(IoError);
+std::vector<std::string> mkdirs(
+    FileSystem &file_system, const std::string &path) throw(IoError);
 
 /**
  * Make sure that there is a directory for the given path. Like
  * mkdir -p `dirname path`
+ *
+ * Returns vector of paths to directories that were created.
  */
-void mkdirsFor(FileSystem &file_system, const std::string &path) throw(IoError);
+std::vector<std::string> mkdirsFor(
+    FileSystem &file_system, const std::string &path) throw(IoError);
 
 }  // namespace shk

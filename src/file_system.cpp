@@ -42,9 +42,12 @@ void FileSystem::writeFile(
   stream->write(data, 1, contents.size());
 }
 
+namespace {
+
 void mkdirs(
     FileSystem &file_system,
-    const std::string &noncanonical_path) throw(IoError) {
+    const std::string &noncanonical_path,
+    std::vector<std::string> &created_dirs) throw(IoError) {
   auto path = noncanonical_path;
   try {
     canonicalizePath(&path);
@@ -59,8 +62,9 @@ void mkdirs(
   const auto stat = file_system.stat(path);
   if (stat.result == ENOENT || stat.result == ENOTDIR) {
     const auto dirname = shk::dirname(path);
-    mkdirs(file_system, dirname);
-    file_system.mkdir(path);
+    mkdirs(file_system, dirname, created_dirs);
+    created_dirs.push_back(path);
+    file_system.mkdir(std::move(path));
   } else if (S_ISDIR(stat.metadata.mode)) {
     // No need to do anything
   } else {
@@ -69,9 +73,20 @@ void mkdirs(
   }
 }
 
-void mkdirsFor(FileSystem &file_system, const std::string &path) throw(IoError) {
+}  // anonymous namespace
+
+std::vector<std::string> mkdirs(
+    FileSystem &file_system,
+    const std::string &noncanonical_path) throw(IoError) {
+  std::vector<std::string> created_dirs;
+  mkdirs(file_system, noncanonical_path, created_dirs);
+  return created_dirs;
+}
+
+std::vector<std::string> mkdirsFor(
+    FileSystem &file_system, const std::string &path) throw(IoError) {
   const auto dirname = shk::dirname(path);
-  mkdirs(file_system, dirname);
+  return mkdirs(file_system, dirname);
 }
 
 }  // namespace shk

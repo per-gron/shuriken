@@ -66,17 +66,19 @@ TEST_CASE("FileSystem") {
   }
 
   SECTION("mkdirs") {
-    const std::string abc = "acb";
+    const std::string abc = "abc";
 
     SECTION("single directory") {
-      mkdirs(fs, abc);
+      const auto dirs = mkdirs(fs, abc);
       CHECK(S_ISDIR(fs.stat(abc).metadata.mode));
+      CHECK(dirs == std::vector<std::string>({ abc }));
     }
 
     SECTION("already existing directory") {
       mkdirs(fs, abc);
-      mkdirs(fs, abc);  // Should be ok
+      const auto dirs = mkdirs(fs, abc);  // Should be ok
       CHECK(S_ISDIR(fs.stat(abc).metadata.mode));
+      CHECK(dirs.empty());
     }
 
     SECTION("over file") {
@@ -87,7 +89,11 @@ TEST_CASE("FileSystem") {
     SECTION("several directories") {
       const std::string dir_path = "abc/def/ghi";
       const std::string file_path = "abc/def/ghi/jkl";
-      mkdirs(fs, dir_path);
+      const auto dirs = mkdirs(fs, dir_path);
+      CHECK(dirs == std::vector<std::string>({
+          "abc",
+          "abc/def",
+          "abc/def/ghi" }));
       fs.writeFile(file_path, "hello");
     }
   }
