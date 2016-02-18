@@ -34,6 +34,7 @@
 #include "build.h"
 #include "build_config.h"
 #include "build_error.h"
+#include "delayed_invocation_log.h"
 #include "dry_run_command_runner.h"
 #include "dry_run_invocation_log.h"
 #include "edit_distance.h"
@@ -355,11 +356,13 @@ bool ShurikenMain::readAndOpenInvocationLog() {
     }
 
     try {
-      _invocation_log = openPersistentInvocationLog(
-          *_file_system,
+      _invocation_log = delayedInvocationLog(
           getTime,
-          path,
-          std::move(parse_result.parse_data));
+          openPersistentInvocationLog(
+              *_file_system,
+              getTime,
+              path,
+              std::move(parse_result.parse_data)));
     } catch (const IoError &io_error) {
       error("opening invocation log: %s", io_error.what());
       return false;

@@ -98,12 +98,9 @@ Large things remaining to do:
 
 * Possible optimizations
   * Stat cache for use by Paths
-  * Wait 1 second after a build step is done before logging it, to avoid racy clean output entries
   * Try reduce number of /bin/sh invocations per command. I think it's 3 now
-  * Avoid the excessive fingerprint duplications in the invocation log by remembering
-    previous fingerprints somehow. Stat cache or otherwise.
   * See if adding HAVE_SSSE3, HAVE_XOP, HAVE_SSE41 etc flags for blake2 makes sense
-  * Optimization opportunity: Don't calculate hashes twice for racily clean files
+  * Don't calculate hashes twice for racily clean files
   * Building core
     * With ninja from clean: 23m27.851s
     * With shk from clean: 23m57.228s
@@ -117,3 +114,6 @@ Large things remaining to do:
 To fill in the first test:
 * Generate actual DAG in gen::buildInput
 * Add assertions to the property
+
+
+0.569s -> 0.153
