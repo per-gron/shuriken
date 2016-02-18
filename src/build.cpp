@@ -714,6 +714,8 @@ void enqueueBuildCommands(BuildCommandParameters &params) throw(IoError) {
   while (enqueueBuildCommand(params)) {}
 }
 
+namespace {
+
 void deleteStaleOutputs(
     FileSystem &file_system,
     InvocationLog &invocation_log,
@@ -739,6 +741,8 @@ void deleteStaleOutputs(
     }
   }
 }
+
+}  // anonymous namespace
 
 int countStepsToBuild(const std::vector<Step> &steps, const Build &build) {
   int step_count = 0;

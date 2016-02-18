@@ -1127,10 +1127,6 @@ TEST_CASE("Build") {
     }
   }
 
-  SECTION("deleteStaleOutputs") {
-    // TODO(peck): Test this
-  }
-
   SECTION("countStepsToBuild") {
     // TODO(peck): Test this
   }
@@ -1569,7 +1565,45 @@ TEST_CASE("Build") {
       }
 
       SECTION("delete stale outputs") {
-        // TODO(peck): Test this
+        const auto cmd = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest =
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out: cmd\n";
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+
+        const auto cmd2 = dummy_runner.constructCommand({}, {"out2"});
+        const auto manifest2 =
+            "rule cmd2\n"
+            "  command = " + cmd2 + "\n"
+            "build out2: cmd2\n";
+        CHECK(build_manifest(manifest2) == BuildResult::SUCCESS);
+        CHECK_THROWS(dummy_runner.checkCommand(fs, cmd));
+        dummy_runner.checkCommand(fs, cmd2);
+      }
+
+      SECTION("delete stale outputs and their directories") {
+        const auto cmd = dummy_runner.constructCommand({}, {"dir/out"});
+        const auto manifest =
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build dir/out: cmd\n";
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+        CHECK(S_ISDIR(fs.stat("dir").metadata.mode));
+        CHECK(fs.stat("dir2").result == ENOENT);
+
+        const auto cmd2 = dummy_runner.constructCommand({}, {"dir2/out2"});
+        const auto manifest2 =
+            "rule cmd2\n"
+            "  command = " + cmd2 + "\n"
+            "build dir2/out2: cmd2\n";
+        CHECK(build_manifest(manifest2) == BuildResult::SUCCESS);
+        CHECK_THROWS(dummy_runner.checkCommand(fs, cmd));
+        dummy_runner.checkCommand(fs, cmd2);
+        CHECK(fs.stat("dir").result == ENOENT);
+        CHECK(S_ISDIR(fs.stat("dir2").metadata.mode));
       }
 
       SECTION("delete outputs of removed step") {

@@ -316,12 +316,6 @@ void deleteOldOutputs(
     InvocationLog &invocation_log,
     const Hash &step_hash) throw(IoError);
 
-void deleteStaleOutputs(
-    FileSystem &file_system,
-    InvocationLog &invocation_log,
-    const StepHashes &step_hashes,
-    const Invocations &invocations) throw(IoError);
-
 int countStepsToBuild(const Build &build);
 
 }  // namespace detail

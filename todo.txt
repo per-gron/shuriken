@@ -81,7 +81,6 @@ Large things remaining to do:
 * Handle build pools
 * Make Ctrl-C terminate sub-processes as well
 * Handle generator rules
-* detail::deleteStaleOutputs
 * Rebuild manifest
 * Test to clean build steps that create directories, for example mkdir
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
