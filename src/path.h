@@ -173,7 +173,7 @@ struct hash<shk::detail::CanonicalizedPath> {
   using result_type = std::size_t;
 
   result_type operator()(const argument_type &p) const {
-    return std::hash<std::string>()(p.path);
+    return std::hash<std::string>()(p.path) ^ p.ino;
   }
 };
 

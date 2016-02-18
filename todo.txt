@@ -113,6 +113,3 @@ Large things remaining to do:
 To fill in the first test:
 * Generate actual DAG in gen::buildInput
 * Add assertions to the property
-
-
-0.569s -> 0.153
