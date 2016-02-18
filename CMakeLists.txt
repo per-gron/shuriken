@@ -23,6 +23,8 @@ add_library(shklib
   src/build_status.h
   src/clock.h
   src/command_runner.h
+  src/delayed_invocation_log.cpp
+  src/delayed_invocation_log.h
   src/dependency_type.h
   src/dry_run_command_runner.cpp
   src/dry_run_command_runner.h
@@ -109,6 +111,7 @@ set_target_properties(shk PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk_test
   test/build_test.cpp
+  test/delayed_invocation_log_test.cpp
   test/dry_run_command_runner_test.cpp
   test/dummy_build_status.h
   test/dummy_command_runner.cpp
