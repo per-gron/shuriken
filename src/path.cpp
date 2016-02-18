@@ -148,7 +148,9 @@ void replaceBackslashes(const Iter begin, const Iter end) {
 #endif
 
 detail::CanonicalizedPath makeCanonicalizedPath(
-    FileSystem &file_system, std::string &&path) {
+    FileSystem &file_system,
+    std::unordered_map<std::string, Stat> &stat_memo,
+    std::string &&path) {
   if (path.empty()) {
     throw PathError("Empty path", path);
   }
@@ -178,13 +180,19 @@ detail::CanonicalizedPath makeCanonicalizedPath(
       pos--;
     }
 
-    StringPiece path_to_try(
+    const auto path_to_try = StringPiece(
         at_relative_root ? "." : path.c_str(),
-        pos + 1);
-    // Use stat, not lstat: the idea is to follow symlinks to the actual file to
-    // directory where this will live. Comparing links for identity does no
-    // good.
-    stat = file_system.stat(path_to_try.asString());
+        pos + 1).asString();
+    const auto it = stat_memo.find(path_to_try);
+    if (it == stat_memo.end()) {
+      // Use stat, not lstat: the idea is to follow symlinks to the actual file
+      // to directory where this will live. Comparing links for identity does no
+      // good.
+      stat = file_system.stat(path_to_try);
+      stat_memo.emplace(path_to_try, stat);
+    } else {
+      stat = it->second;
+    }
 
     if (stat.result == 0) {
       // Found an existing file or directory
@@ -256,7 +264,7 @@ Path Paths::get(const std::string &path) throw(PathError) {
 Path Paths::get(std::string &&path) throw(PathError) {
   const auto original_result = _original_paths.emplace(path);
   const auto canonicalized_result = _canonicalized_paths.insert(
-      makeCanonicalizedPath(_file_system, std::move(path)));
+      makeCanonicalizedPath(_file_system, _stat_memo, std::move(path)));
   return Path(
       &*canonicalized_result.first,
       &*original_result.first);

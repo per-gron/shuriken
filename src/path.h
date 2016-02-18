@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "file_id.h"
@@ -293,6 +294,7 @@ class Paths {
   Path get(std::string &&path) throw(PathError);
 
  private:
+  std::unordered_map<std::string, Stat> _stat_memo;
   FileSystem &_file_system;
   std::unordered_set<detail::CanonicalizedPath> _canonicalized_paths;
   std::unordered_set<std::string> _original_paths;

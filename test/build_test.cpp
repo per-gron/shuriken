@@ -151,41 +151,6 @@ TEST_CASE("Build") {
 
   DummyCommandRunner dummy_runner(fs);
 
-  const auto build_or_rebuild_manifest = [&](
-      const std::string &manifest,
-      size_t failures_allowed,
-      CommandRunner &runner) {
-    return build(
-        clock,
-        fs,
-        runner,
-        [](int total_steps) {
-          return std::unique_ptr<BuildStatus>(
-              new DummyBuildStatus());
-        },
-        log,
-        failures_allowed,
-        {},
-        parse(manifest),
-        log.invocations(paths));
-  };
-
-  const auto build_manifest = [&](
-      const std::string &manifest,
-      size_t failures_allowed = 1) {
-    return build_or_rebuild_manifest(manifest, failures_allowed, dummy_runner);
-  };
-
-  const auto verify_noop_build = [&](
-      const std::string &manifest,
-      size_t failures_allowed = 1) {
-    FailingCommandRunner failing_runner;
-    CHECK(build_or_rebuild_manifest(
-        manifest,
-        failures_allowed,
-        failing_runner) == BuildResult::NO_WORK_TO_DO);
-  };
-
   SECTION("interpretPath") {
     Step other_input;
     other_input.inputs = { paths.get("other") };
@@ -1132,6 +1097,44 @@ TEST_CASE("Build") {
   }
 
   SECTION("build") {
+    const auto build_or_rebuild_manifest = [&](
+        const std::string &manifest,
+        size_t failures_allowed,
+        CommandRunner &runner) {
+      Paths paths(fs);
+      fs.writeFile("build.ninja", manifest);
+
+      return build(
+          clock,
+          fs,
+          runner,
+          [](int total_steps) {
+            return std::unique_ptr<BuildStatus>(
+                new DummyBuildStatus());
+          },
+          log,
+          failures_allowed,
+          {},
+          parseManifest(paths, fs, "build.ninja"),
+          log.invocations(paths));
+    };
+
+    const auto build_manifest = [&](
+        const std::string &manifest,
+        size_t failures_allowed = 1) {
+      return build_or_rebuild_manifest(manifest, failures_allowed, dummy_runner);
+    };
+
+    const auto verify_noop_build = [&](
+        const std::string &manifest,
+        size_t failures_allowed = 1) {
+      FailingCommandRunner failing_runner;
+      CHECK(build_or_rebuild_manifest(
+          manifest,
+          failures_allowed,
+          failing_runner) == BuildResult::NO_WORK_TO_DO);
+    };
+
     SECTION("initial build") {
       SECTION("empty input") {
         const auto manifest = "";
