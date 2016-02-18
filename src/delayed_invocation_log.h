@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #include "clock.h"
 #include "invocation_log.h"
 
@@ -41,55 +39,8 @@ namespace shk {
  *
  * See MatchesResult::should_update in fingerprint.h
  */
-class DelayedInvocationLog : public InvocationLog {
- public:
-  DelayedInvocationLog(
-      const Clock &clock, std::unique_ptr<InvocationLog> &&inner_log);
-  ~DelayedInvocationLog();
-
-  void createdDirectory(const std::string &path) throw(IoError) override;
-
-  void removedDirectory(const std::string &path) throw(IoError) override;
-
-  void ranCommand(
-      const Hash &build_step_hash,
-      std::unordered_set<std::string> &&output_files,
-      std::unordered_map<std::string, DependencyType> &&input_files)
-          throw(IoError) override;
-
-  void cleanedCommand(
-      const Hash &build_step_hash) throw(IoError) override;
-
-  /**
-   * Write all remaining waiting entries. This method *must* be invoked last,
-   * before the object is destroyed.
-   */
-  void writeAll();
-
- private:
-  /**
-   * Writes all the delayed entries that are strictly older than the timestamp
-   * now.
-   */
-  void writeDelayedEntries(time_t now);
-
-  struct DelayedEntry {
-    time_t timestamp = 0;
-    // true if this entry is for a cleanedCommand invocation
-    bool cleaned = false;
-    Hash build_step_hash;
-    std::unordered_set<std::string> output_files;
-    std::unordered_map<std::string, DependencyType> input_files;
-  };
-
-  const Clock _clock;
-  const std::unique_ptr<InvocationLog> _inner_log;
-  /**
-   * Entries are always appended to the end of the vector. The class assumes
-   * that timestamps of the entries are non-decreasing.
-   */
-  std::vector<DelayedEntry> _delayed_entries;
-  bool _write_all_called = false;
-};
+std::unique_ptr<InvocationLog> delayedInvocationLog(
+    const Clock &clock,
+    std::unique_ptr<InvocationLog> &&inner_log);
 
 }  // namespace shk
