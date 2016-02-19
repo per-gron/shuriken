@@ -1,3 +1,9 @@
+https://www.exploit-db.com/papers/13176/
+http://shakthimaan.com/downloads/hurd/server_writer.pdf
+https://spin.atomicobject.com/2015/11/17/vagrant-osx/
+https://developer.apple.com/library/mac/technotes/tn2127/_index.html#//apple_ref/doc/uid/DTS10003591-CH1-SECTION2
+https://www.synack.com/2015/11/17/monitoring-process-creation-via-the-kernel-part-i/
+https://github.com/facebook/osquery
 https://capnproto.org/language.html
 https://blake2.net/
 https://www.schneier.com/cryptography/skein/
