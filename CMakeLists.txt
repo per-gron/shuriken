@@ -3,6 +3,9 @@ project(shk)
 
 set(SHK_COMPILER_FLAGS "-Wall -Wimplicit-fallthrough -Werror")
 
+if(APPLE)
+  add_subdirectory(src/traceexec)
+endif()
 add_subdirectory(vendor)
 
 add_custom_command(
