@@ -6,19 +6,16 @@
 #include <sys/proc.h>
 
 static int traceexec_open(dev_t dev, int flags, int devtype, struct proc *p) {
-#pragma unused(dev,flags,devtype,p)
   printf("TRACEEXEC OPENED\n");
   return 0;
 }
 
 static int traceexec_close(dev_t dev, int flags, int devtype, struct proc *p) {
-#pragma unused(dev,flags,devtype,p)
   return 0;
 }
 
 static int traceexec_ioctl(
     dev_t dev, u_long cmd, caddr_t data, int fflag, struct proc *p) {
-#pragma unused(dev,fflag,p)
   return 0;
 }
 
