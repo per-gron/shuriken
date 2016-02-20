@@ -5,6 +5,14 @@
 #include <sys/conf.h>
 #include <sys/proc.h>
 
+#include "traceexec_cmds.h"
+
+struct {
+  uint32_t major;
+  uint32_t minor;
+  uint32_t micro;
+} traceexec_version = { .major = 1, .minor = 0, .micro = 0 };
+
 static int traceexec_open(dev_t dev, int flags, int devtype, struct proc *p) {
   printf("TRACEEXEC OPENED\n");
   return 0;
@@ -16,7 +24,13 @@ static int traceexec_close(dev_t dev, int flags, int devtype, struct proc *p) {
 
 static int traceexec_ioctl(
     dev_t dev, u_long cmd, caddr_t data, int fflag, struct proc *p) {
-  return 0;
+  switch (cmd) {
+  case TRACEEXEC_GET_VERSION:
+    copyout(&traceexec_version, (user_addr_t)data, sizeof(traceexec_version));
+    return 0;
+  default:
+    return ENOTTY;
+  }
 }
 
 static struct cdevsw traceexec_cdevsw =
