@@ -151,6 +151,6 @@ add_executable(shk_test
   test/tracing_command_runner_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
-target_include_directories(shklib PUBLIC vendor/rapidcheck/extras/catch/include)
+target_include_directories(shk_test PUBLIC vendor/rapidcheck/extras/catch/include)
 target_link_libraries(shk_test shklib catch rapidcheck)
 set_target_properties(shk_test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
