@@ -16,6 +16,19 @@ namespace traceexec {
 
 using FdHelper = util::RAIIHelper<int, int, close, -1>;
 
+namespace {
+
+void sendKextCommand(
+    const TraceexecSocket &socket,
+    TraceexecSetopt command) throw(TraceexecError) {
+  int result = getsockopt(socket.get(), SYSPROTO_CONTROL, command, NULL, NULL);
+  if (result) {
+    throw TraceexecError(std::string("traceexec: setsockopt failed"));
+  }
+}
+
+}  // anonymous namespace
+
 bool Version::isCompatible(uint32_t major, uint32_t minor) const {
   return
       Version::major == major &&
@@ -66,6 +79,15 @@ Version getKextVersion(const TraceexecSocket &fd) throw(TraceexecError) {
   }
 
   return version;
+}
+
+TraceexecSocket openSocket() throw(TraceexecError) {
+  auto socket = openSocketNoVersionCheck();
+  if (!getKextVersion(socket).isCompatible(1, 0)) {
+    throw TraceexecError("traceexec: incompatible kernel extension version");
+  }
+  sendKextCommand(socket, kTraceexecStartTracing);
+  return socket;
 }
 
 }  // namespace traceexec

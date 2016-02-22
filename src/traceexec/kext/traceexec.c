@@ -36,8 +36,6 @@ errno_t traceexec_getopt(
     int opt,
     void *data,
     size_t *len) {
-  printf("traceexec_getopt opt is %d, len %lu\n", opt, *len);
-
   switch (opt) {
   case kTraceexecGetVersion:
     if (*len != sizeof(traceexec_version)) {
@@ -55,7 +53,6 @@ errno_t traceexec_connect(
     kern_ctl_ref ctlref,
     struct sockaddr_ctl *sac,
     void **unitinfo) {
-  printf("traceexec_connect called\n");
   return 0;
 }
 
@@ -63,7 +60,6 @@ errno_t traceexec_disconnect(
     kern_ctl_ref ctlref,
     unsigned int unit,
     void *unitinfo) {
-  printf("traceexec_disconnect called\n");
   return 0;
 }
 

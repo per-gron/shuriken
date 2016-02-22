@@ -38,7 +38,7 @@ struct Version {
 
 /**
  * Open a socket to the traceexec kernel extension, without doing a version
- * check.
+ * check or starting to trace the process.
  */
 TraceexecSocket openSocketNoVersionCheck() throw(TraceexecError);
 

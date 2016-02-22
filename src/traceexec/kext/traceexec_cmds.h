@@ -3,5 +3,10 @@
 static const char *kTraceexecControlName = "com.spotify.traceexec";
 
 enum TraceexecGetopt {
-  kTraceexecGetVersion
+  kTraceexecGetVersion,
+};
+
+enum TraceexecSetopt {
+  kTraceexecStartTracing,
+  kTraceexecStopTracing,
 };
