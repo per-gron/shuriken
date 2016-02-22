@@ -16,7 +16,7 @@ namespace traceexec {
 
 using FdHelper = util::RAIIHelper<int, int, close, -1>;
 
-util::RAIIHelper<int, int, close, -1> openSocket() throw(TraceexecError) {
+TraceexecSocket openSocketNoVersionCheck() throw(TraceexecError) {
   auto fd = FdHelper(socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL));
 
   if (!fd) {
@@ -48,10 +48,8 @@ util::RAIIHelper<int, int, close, -1> openSocket() throw(TraceexecError) {
   return fd;
 }
 
-Version getKextVersion() throw(TraceexecError) {
+Version getKextVersion(const TraceexecSocket &fd) throw(TraceexecError) {
   Version version;
-
-  const auto fd = openSocket();
 
   socklen_t len = sizeof(version);
   int result = getsockopt(

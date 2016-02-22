@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include <traceexec/traceexec_error.h>
+#include <traceexec/traceexec.h>
 
 /**
  * This header contains declarations for things that are private to the
@@ -21,10 +21,16 @@ struct Version {
 };
 
 /**
+ * Open a socket to the traceexec kernel extension, without doing a version
+ * check.
+ */
+TraceexecSocket openSocketNoVersionCheck() throw(TraceexecError);
+
+/**
  * Get the version of the kernel extension. Throws TraceexecError if the version
  * extension is not loaded or if the version can't be retrieved for some other
  * reason.
  */
-Version getKextVersion() throw(TraceexecError);
+Version getKextVersion(const TraceexecSocket &fd) throw(TraceexecError);
 
 }

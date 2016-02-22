@@ -6,7 +6,7 @@
 namespace traceexec {
 
 TEST_CASE("Version") {
-  const auto version = getKextVersion();
+  const auto version = getKextVersion(openSocketNoVersionCheck());
   CHECK(version.major == 1);
   CHECK(version.minor == 0);
   CHECK(version.micro == 0);
