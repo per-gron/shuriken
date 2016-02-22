@@ -8,15 +8,19 @@
 #include <sys/socket.h>
 #include <sys/sys_domain.h>
 
+#include <util/raii_helper.h>
+
 #include "traceexec_cmds.h"
 
 namespace traceexec {
 
+using FdHelper = util::RAIIHelper<int, int, close, -1>;
+
 Version getKextVersion() throw(TraceexecError) {
   Version version;
 
-  int fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
-  if (fd == -1) {
+  const auto fd = FdHelper(socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL));
+  if (!fd) {
     throw TraceexecError(
         std::string("failed to open socket: ") + strerror(errno));
   }
@@ -30,27 +34,24 @@ Version getKextVersion() throw(TraceexecError) {
     ctl_info info;
     memset(&info, 0, sizeof(info));
     strncpy(info.ctl_name, kTraceexecControlName, sizeof(info.ctl_name));
-    if (ioctl(fd, CTLIOCGINFO, &info)) {
-      close(fd);
+    if (ioctl(fd.get(), CTLIOCGINFO, &info)) {
       throw TraceexecError("traceexec kernel extension not loaded\n");
     }
     addr.sc_id = info.ctl_id;
     addr.sc_unit = 0;
   }
 
-  int result = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
+  int result = connect(fd.get(), (struct sockaddr *)&addr, sizeof(addr));
   if (result) {
-    close(fd);
     fprintf(stderr, "connect failed %d\n", result);
   }
 
   if (!result) {
-    result = setsockopt(fd, SYSPROTO_CONTROL, kTraceexecGetVersion, NULL, 0);
+    result = setsockopt(fd.get(), SYSPROTO_CONTROL, kTraceexecGetVersion, NULL, 0);
     if (result) {
       fprintf(stderr, "setsockopt failed on kTraceexecGetVersion call - result was %d\n", result);
     }
   }
-  close(fd);
 
   return version;
 }
