@@ -4,8 +4,9 @@
 #include <stdexcept>
 #include <string>
 
+#include <util/raii_helper.h>
+
 #include "io_error.h"
-#include "raii_helper.h"
 
 namespace shk {
 

@@ -57,7 +57,6 @@ add_library(shklib
   src/persistent_file_system.h
   src/persistent_invocation_log.cpp
   src/persistent_invocation_log.h
-  src/raii_helper.h
   src/real_command_runner.h
   src/real_command_runner_posix.cpp
   src/rule.cpp
@@ -93,7 +92,7 @@ add_library(shklib
   sandbox_parser.cpp)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC src)
-target_link_libraries(shklib utf8proc blake2)
+target_link_libraries(shklib utf8proc blake2 util)
 set_target_properties(shklib PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk
@@ -133,7 +132,6 @@ add_executable(shk_test
   test/persistent_file_system_test.cpp
   test/persistent_invocation_log_test.cpp
   test/properties.cpp
-  test/raii_helper_test.cpp
   test/real_command_runner_test.cpp
   test/sandbox_parser_test.cpp
   test/step_test.cpp

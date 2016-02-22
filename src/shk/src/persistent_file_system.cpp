@@ -25,7 +25,7 @@
 
 #include <blake2.h>
 
-#include "raii_helper.h"
+#include <util/raii_helper.h>
 
 namespace shk {
 namespace {
