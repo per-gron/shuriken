@@ -8,6 +8,12 @@
 
 static kern_ctl_ref traceexec_kctlref = 0;
 
+struct {
+  uint32_t major;
+  uint32_t minor;
+  uint32_t micro;
+} traceexec_version = { 1, 0, 0 };
+
 errno_t traceexec_setopt(
     kern_ctl_ref ctlref,
     unsigned int unit,
@@ -15,22 +21,34 @@ errno_t traceexec_setopt(
     int opt,
     void *data,
     size_t len) {
-  int error = EINVAL;
-  printf("traceexec_setopt opt is %d\n", opt);
+  printf("traceexec_setopt opt is %d, len %lu\n", opt, len);
 
-/*
   switch (opt) {
-  case kEPCommand1:
-    error = Do_First_Thing();
-    break;
-
-  case kEPCommand2:
-    error = Do_Command2();
-      break;
+  default:
+    return EINVAL;
   }
-*/
+}
 
-  return error;
+errno_t traceexec_getopt(
+    kern_ctl_ref kctlref,
+    u_int32_t unit,
+    void *unitinfo,
+    int opt,
+    void *data,
+    size_t *len) {
+  printf("traceexec_getopt opt is %d, len %lu\n", opt, *len);
+
+  switch (opt) {
+  case kTraceexecGetVersion:
+    if (*len != sizeof(traceexec_version)) {
+      return EINVAL;
+    }
+    memcpy(data, &traceexec_version, sizeof(traceexec_version));
+    return 0;
+
+  default:
+    return EINVAL;
+  }
 }
 
 errno_t traceexec_connect(
@@ -58,6 +76,7 @@ kern_return_t traceexec_start(kmod_info_t * ki, void *d) {
   bzero(&ep_ctl, sizeof(ep_ctl));
   strncpy(ep_ctl.ctl_name, kTraceexecControlName, sizeof(ep_ctl.ctl_name));
   ep_ctl.ctl_setopt = traceexec_setopt;
+  ep_ctl.ctl_getopt = traceexec_getopt;
   ep_ctl.ctl_connect = traceexec_connect;
   ep_ctl.ctl_disconnect = traceexec_disconnect;
   if (ctl_register(&ep_ctl, &traceexec_kctlref) != 0) {

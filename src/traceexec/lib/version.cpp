@@ -47,7 +47,8 @@ Version getKextVersion() throw(TraceexecError) {
   }
 
   if (!result) {
-    result = setsockopt(fd.get(), SYSPROTO_CONTROL, kTraceexecGetVersion, NULL, 0);
+    socklen_t len = sizeof(version);
+    result = getsockopt(fd.get(), SYSPROTO_CONTROL, kTraceexecGetVersion, &version, &len);
     if (result) {
       fprintf(stderr, "setsockopt failed on kTraceexecGetVersion call - result was %d\n", result);
     }

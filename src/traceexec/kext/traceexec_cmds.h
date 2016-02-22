@@ -2,6 +2,6 @@
 
 static const char *kTraceexecControlName = "com.spotify.traceexec";
 
-enum TraceexecCommand {
+enum TraceexecGetopt {
   kTraceexecGetVersion
 };
