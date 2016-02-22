@@ -40,13 +40,13 @@ struct Version {
  * Open a socket to the traceexec kernel extension, without doing a version
  * check or starting to trace the process.
  */
-TraceexecSocket openSocketNoVersionCheck() throw(TraceexecError);
+Socket openSocketNoVersionCheck() throw(TraceexecError);
 
 /**
  * Get the version of the kernel extension. Throws TraceexecError if the version
  * extension is not loaded or if the version can't be retrieved for some other
  * reason.
  */
-Version getKextVersion(const TraceexecSocket &fd) throw(TraceexecError);
+Version getKextVersion(const Socket &fd) throw(TraceexecError);
 
 }

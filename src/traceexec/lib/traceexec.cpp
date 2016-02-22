@@ -19,7 +19,7 @@ using FdHelper = util::RAIIHelper<int, int, close, -1>;
 namespace {
 
 void sendKextCommand(
-    const TraceexecSocket &socket,
+    const Socket &socket,
     TraceexecSetopt command) throw(TraceexecError) {
   int result = getsockopt(socket.get(), SYSPROTO_CONTROL, command, NULL, NULL);
   if (result) {
@@ -35,7 +35,7 @@ bool Version::isCompatible(uint32_t major, uint32_t minor) const {
       Version::minor >= minor;
 }
 
-TraceexecSocket openSocketNoVersionCheck() throw(TraceexecError) {
+Socket openSocketNoVersionCheck() throw(TraceexecError) {
   auto fd = FdHelper(socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL));
 
   if (!fd) {
@@ -67,7 +67,7 @@ TraceexecSocket openSocketNoVersionCheck() throw(TraceexecError) {
   return fd;
 }
 
-Version getKextVersion(const TraceexecSocket &fd) throw(TraceexecError) {
+Version getKextVersion(const Socket &fd) throw(TraceexecError) {
   Version version;
 
   socklen_t len = sizeof(version);
@@ -81,7 +81,7 @@ Version getKextVersion(const TraceexecSocket &fd) throw(TraceexecError) {
   return version;
 }
 
-TraceexecSocket openSocket() throw(TraceexecError) {
+Socket openSocket() throw(TraceexecError) {
   auto socket = openSocketNoVersionCheck();
   if (!getKextVersion(socket).isCompatible(1, 0)) {
     throw TraceexecError("traceexec: incompatible kernel extension version");
