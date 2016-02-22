@@ -30,7 +30,7 @@
 namespace shk {
 namespace {
 
-using FileHandle = RAIIHelper<FILE, int, fclose>;
+using FileHandle = util::RAIIHelper<FILE, int, fclose>;
 
 class PersistentFileSystem : public FileSystem {
   template<typename T>

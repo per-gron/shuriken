@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace shk {
+namespace util {
 
 template<typename T, typename Return, Return (Free)(T *)>
 class RAIIHelper {
@@ -32,4 +32,4 @@ class RAIIHelper {
   T * obj_;
 };
 
-}  // namespace
+}  // namespace util

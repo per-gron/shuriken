@@ -2,7 +2,7 @@
 
 #include <util/raii_helper.h>
 
-namespace shk {
+namespace util {
 namespace {
 
 int *gPtr = nullptr;
@@ -49,4 +49,4 @@ TEST_CASE("RAIIHelper") {
   }
 }
 
-}  // namespace shk
+}  // namespace util
