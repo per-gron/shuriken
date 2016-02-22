@@ -6,9 +6,6 @@ namespace util {
 namespace {
 
 int gVal = 0;
-bool isGValPtr(int *ptr) {
-  return ptr != &gVal;
-}
 
 int *gPtr = nullptr;
 
@@ -50,9 +47,9 @@ TEST_CASE("RAIIHelper") {
 
   SECTION("OperatorBool") {
     int an_int = 0;
-    RAIIHelper<int *, void, mockFree, isGValPtr> empty(&gVal);
+    RAIIHelper<int *, void, mockFree, &gVal> empty(&gVal);
     CHECK(!empty);
-    RAIIHelper<int *, void, mockFree, isGValPtr> not_empty(&an_int);
+    RAIIHelper<int *, void, mockFree, &gVal> not_empty(&an_int);
     CHECK(!!not_empty);
   }
 
@@ -61,7 +58,7 @@ TEST_CASE("RAIIHelper") {
       int an_int = 0;
 
       {
-        RAIIHelper<int *, void, mockFree, isGValPtr> helper(&an_int);
+        RAIIHelper<int *, void, mockFree, &gVal> helper(&an_int);
       }
 
       CHECK(gPtr == &an_int);
@@ -72,7 +69,7 @@ TEST_CASE("RAIIHelper") {
       gPtr = &an_int;
 
       {
-        RAIIHelper<int *, void, mockFree, isGValPtr> helper(&gVal);
+        RAIIHelper<int *, void, mockFree, &gVal> helper(&gVal);
       }
 
       CHECK(gPtr == &an_int);

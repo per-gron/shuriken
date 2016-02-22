@@ -4,16 +4,11 @@
 
 namespace util {
 
-template<typename T>
-bool isNonZero(T val) {
-  return val;
-}
-
 template<
     typename T,
     typename Return,
     Return (Free)(T),
-    bool (Predicate)(T) = isNonZero>
+    T EmptyValue = nullptr>
 class RAIIHelper {
  public:
   RAIIHelper(T obj)
@@ -24,17 +19,17 @@ class RAIIHelper {
 
   RAIIHelper(RAIIHelper &&other)
       : _obj(other._obj) {
-    other._obj = nullptr;
+    other._obj = EmptyValue;
   }
 
   ~RAIIHelper() {
-    if (Predicate(_obj)) {
+    if (_obj != EmptyValue) {
       Free(_obj);
     }
   }
 
   explicit operator bool() const {
-    return Predicate(_obj);
+    return _obj != EmptyValue;
   }
 
   T get() const {
