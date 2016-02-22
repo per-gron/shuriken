@@ -16,10 +16,9 @@ namespace traceexec {
 
 using FdHelper = util::RAIIHelper<int, int, close, -1>;
 
-Version getKextVersion() throw(TraceexecError) {
-  Version version;
+util::RAIIHelper<int, int, close, -1> openSocket() throw(TraceexecError) {
+  auto fd = FdHelper(socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL));
 
-  const auto fd = FdHelper(socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL));
   if (!fd) {
     throw TraceexecError(
         std::string("failed to open socket: ") + strerror(errno));
@@ -43,15 +42,23 @@ Version getKextVersion() throw(TraceexecError) {
 
   int result = connect(fd.get(), (struct sockaddr *)&addr, sizeof(addr));
   if (result) {
-    fprintf(stderr, "connect failed %d\n", result);
+    throw TraceexecError(std::string("traceexec connect failed"));
   }
 
-  if (!result) {
-    socklen_t len = sizeof(version);
-    result = getsockopt(fd.get(), SYSPROTO_CONTROL, kTraceexecGetVersion, &version, &len);
-    if (result) {
-      fprintf(stderr, "setsockopt failed on kTraceexecGetVersion call - result was %d\n", result);
-    }
+  return fd;
+}
+
+Version getKextVersion() throw(TraceexecError) {
+  Version version;
+
+  const auto fd = openSocket();
+
+  socklen_t len = sizeof(version);
+  int result = getsockopt(
+      fd.get(), SYSPROTO_CONTROL, kTraceexecGetVersion, &version, &len);
+  if (result) {
+    throw TraceexecError(std::string(
+        "getsockopt failed when retrieving kernel extension version"));
   }
 
   return version;
