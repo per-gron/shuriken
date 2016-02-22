@@ -5,6 +5,11 @@
 namespace util {
 namespace {
 
+int gVal = 0;
+bool isGValPtr(int *ptr) {
+  return ptr != &gVal;
+}
+
 int *gPtr = nullptr;
 
 void mockFree(int *ptr) {
@@ -30,6 +35,40 @@ TEST_CASE("RAIIHelper") {
     }
 
     CHECK(gPtr == &an_int);
+  }
+
+  SECTION("DoesNotInvokeFreeOnDestructionWhenEmpty") {
+    int an_int = 0;
+    gPtr = &an_int;
+
+    {
+      RAIIHelper<int *, void, mockFree> helper(nullptr);
+    }
+
+    CHECK(gPtr == &an_int);
+  }
+
+  SECTION("EmptyPredicate") {
+    SECTION("InvokesFreeOnDestruction") {
+      int an_int = 0;
+
+      {
+        RAIIHelper<int *, void, mockFree, isGValPtr> helper(&an_int);
+      }
+
+      CHECK(gPtr == &an_int);
+    }
+
+    SECTION("DoesNotInvokeFreeOnDestructionWhenEmpty") {
+      int an_int = 0;
+      gPtr = &an_int;
+
+      {
+        RAIIHelper<int *, void, mockFree, isGValPtr> helper(&gVal);
+      }
+
+      CHECK(gPtr == &an_int);
+    }
   }
 
   SECTION("DoesNotInvokeFreeBeforeDestruction") {

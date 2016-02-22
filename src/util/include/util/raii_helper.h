@@ -4,7 +4,16 @@
 
 namespace util {
 
-template<typename T, typename Return, Return (Free)(T)>
+template<typename T>
+bool isNonZero(T val) {
+  return val;
+}
+
+template<
+    typename T,
+    typename Return,
+    Return (Free)(T),
+    bool (Predicate)(T) = isNonZero>
 class RAIIHelper {
  public:
   RAIIHelper(T obj)
@@ -19,7 +28,7 @@ class RAIIHelper {
   }
 
   ~RAIIHelper() {
-    if (obj_) {
+    if (Predicate(obj_)) {
       Free(obj_);
     }
   }
