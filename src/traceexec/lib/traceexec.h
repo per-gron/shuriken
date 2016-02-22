@@ -4,6 +4,14 @@
 
 #include <traceexec/traceexec_error.h>
 
+/**
+ * This header contains declarations for things that are private to the
+ * traceexec userspace support library. It mainly exists for unit testing
+ * purposes.
+ *
+ * The public interface is declared in the ../include/ directory.
+ */
+
 namespace traceexec {
 
 struct Version {
