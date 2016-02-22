@@ -1,3 +1,7 @@
 #pragma once
 
-#define TRACEEXEC_GET_VERSION 0
+static const char *kTraceexecControlName = "com.spotify.traceexec";
+
+enum TraceexecCommand {
+  kTraceexecGetVersion
+};
