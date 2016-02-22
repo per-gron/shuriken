@@ -17,28 +17,32 @@ template<
 class RAIIHelper {
  public:
   RAIIHelper(T obj)
-      : obj_(obj) {}
+      : _obj(obj) {}
 
   RAIIHelper(const RAIIHelper &) = delete;
   RAIIHelper &operator=(const RAIIHelper &) = delete;
 
   RAIIHelper(RAIIHelper &&other)
-      : obj_(other.obj_) {
-    other.obj_ = nullptr;
+      : _obj(other._obj) {
+    other._obj = nullptr;
   }
 
   ~RAIIHelper() {
-    if (Predicate(obj_)) {
-      Free(obj_);
+    if (Predicate(_obj)) {
+      Free(_obj);
     }
   }
 
+  explicit operator bool() const {
+    return Predicate(_obj);
+  }
+
   T get() const {
-    return obj_;
+    return _obj;
   }
 
  private:
-  T obj_;
+  T _obj;
 };
 
 }  // namespace util

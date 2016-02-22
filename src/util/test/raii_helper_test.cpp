@@ -48,6 +48,14 @@ TEST_CASE("RAIIHelper") {
     CHECK(gPtr == &an_int);
   }
 
+  SECTION("OperatorBool") {
+    int an_int = 0;
+    RAIIHelper<int *, void, mockFree, isGValPtr> empty(&gVal);
+    CHECK(!empty);
+    RAIIHelper<int *, void, mockFree, isGValPtr> not_empty(&an_int);
+    CHECK(!!not_empty);
+  }
+
   SECTION("EmptyPredicate") {
     SECTION("InvokesFreeOnDestruction") {
       int an_int = 0;
