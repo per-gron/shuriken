@@ -4,10 +4,10 @@
 
 namespace util {
 
-template<typename T, typename Return, Return (Free)(T *)>
+template<typename T, typename Return, Return (Free)(T)>
 class RAIIHelper {
  public:
-  RAIIHelper(T *obj)
+  RAIIHelper(T obj)
       : obj_(obj) {}
 
   RAIIHelper(const RAIIHelper &) = delete;
@@ -24,12 +24,12 @@ class RAIIHelper {
     }
   }
 
-  T *get() const {
+  T get() const {
     return obj_;
   }
 
  private:
-  T * obj_;
+  T obj_;
 };
 
 }  // namespace util
