@@ -15,9 +15,25 @@
 namespace traceexec {
 
 struct Version {
+  Version() = default;
+  Version(uint32_t major, uint32_t minor, uint32_t micro)
+      : major(major), minor(minor), micro(micro) {}
+
   uint32_t major = 0;
   uint32_t minor = 0;
   uint32_t micro = 0;
+
+  /**
+   * Following semver semantics, check if the version is compatible with a given
+   * version. For example:
+   *
+   * Version({ 1, 2, 0 }).isCompatible(1, 0) == true
+   * Version({ 1, 2, 0 }).isCompatible(1, 2) == true
+   * Version({ 1, 2, 0 }).isCompatible(1, 3) == false
+   * Version({ 1, 2, 0 }).isCompatible(2, 0) == false
+   * Version({ 2, 0, 0 }).isCompatible(1, 0) == false
+   */
+  bool isCompatible(uint32_t major, uint32_t minor) const;
 };
 
 /**

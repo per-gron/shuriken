@@ -16,6 +16,12 @@ namespace traceexec {
 
 using FdHelper = util::RAIIHelper<int, int, close, -1>;
 
+bool Version::isCompatible(uint32_t major, uint32_t minor) const {
+  return
+      Version::major == major &&
+      Version::minor >= minor;
+}
+
 TraceexecSocket openSocketNoVersionCheck() throw(TraceexecError) {
   auto fd = FdHelper(socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL));
 
