@@ -20,6 +20,10 @@ TEST_CASE("Version") {
     CHECK(version.minor == 0);
     CHECK(version.micro == 0);
   }
+
+  SECTION("startTracing") {
+    startTracing();
+  }
 }
 
 }  // namespace shk

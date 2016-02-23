@@ -18,7 +18,7 @@ using Socket = util::RAIIHelper<int, int, close, -1>;
  * extension's version is not compatible with this library or if the operation
  * fails for some other reason.
  */
-Socket openSocket() throw(TraceexecError);
+Socket startTracing() throw(TraceexecError);
 
 enum class EventType {
   FILE_READ_METADATA,
@@ -104,24 +104,5 @@ class Parser {
 
 std::unique_ptr<Parser> makeParser(
     const std::function<void (Event &&event)> &on_event);
-
-/**
- * Ask the kernel to stop tracing a process and to send an event that indicates
- * that tracing has stopped. This is a useful operation to do for example if the
- * traced process has exited and the code that is interested in tracing it wants
- * to make sure to receive all events. It avoid the race that would occur if the
- * user of this API would just close the tracing socket as soon as the traced
- * process exits: There could be pending events that would then be lost.
- *
- * stopTracing takes a file descriptor as a parameter as returned by openSocket.
- * It is an error to use it with any other file descriptor.
- *
- * If stopTracing is called multiple times for a single socket, the calls that
- * follow the first one has no effect.
- *
- * It is not necessary to call stopTracing from a resource leak perspective:
- * Closing the file descriptor is all that is needed to reclaim resources.
- */
-void stopTracing(int fd) throw(TraceexecError);
 
 }  // namespace traceexec

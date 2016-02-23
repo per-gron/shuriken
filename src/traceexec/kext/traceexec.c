@@ -21,9 +21,15 @@ errno_t traceexec_setopt(
     int opt,
     void *data,
     size_t len) {
-  printf("traceexec_setopt opt is %d, len %lu\n", opt, len);
-
   switch (opt) {
+  case kTraceexecStartTracing:
+    printf("traceexec_setopt: start tracing, len %lu\n", len);
+    return 0;
+
+  case kTraceexecStopTracing:
+    printf("traceexec_setopt: stop tracing, len %lu\n", len);
+    return 0;
+
   default:
     return EINVAL;
   }

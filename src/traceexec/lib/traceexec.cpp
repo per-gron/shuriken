@@ -21,7 +21,7 @@ namespace {
 void sendKextCommand(
     const Socket &socket,
     TraceexecSetopt command) throw(TraceexecError) {
-  int result = getsockopt(socket.get(), SYSPROTO_CONTROL, command, NULL, NULL);
+  int result = setsockopt(socket.get(), SYSPROTO_CONTROL, command, NULL, 0);
   if (result) {
     throw TraceexecError(std::string("traceexec: setsockopt failed"));
   }
@@ -81,7 +81,7 @@ Version getKextVersion(const Socket &fd) throw(TraceexecError) {
   return version;
 }
 
-Socket openSocket() throw(TraceexecError) {
+Socket startTracing() throw(TraceexecError) {
   auto socket = openSocketNoVersionCheck();
   if (!getKextVersion(socket).isCompatible(1, 0)) {
     throw TraceexecError("traceexec: incompatible kernel extension version");

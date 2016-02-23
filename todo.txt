@@ -1,3 +1,5 @@
+http://stackoverflow.com/questions/27234987/how-to-detect-application-terminate-in-kernel-extension-mac-os-x
+https://github.com/gdbinit/santa
 https://www.exploit-db.com/papers/13176/
 http://shakthimaan.com/downloads/hurd/server_writer.pdf
 https://spin.atomicobject.com/2015/11/17/vagrant-osx/
