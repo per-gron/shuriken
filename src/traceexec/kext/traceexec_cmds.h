@@ -8,5 +8,4 @@ enum TraceexecGetopt {
 
 enum TraceexecSetopt {
   kTraceexecStartTracing,
-  kTraceexecStopTracing,
 };
