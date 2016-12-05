@@ -70,20 +70,6 @@ typedef int bool;
 #define F_UNLINKFROM    57              /* SPI: open a file relative to fd (must be a dir) */
 #define F_CHECK_OPENEVT 58              /* SPI: if a process is marked OPENEVT, or in O_EVTONLY on opens of this vnode */
 
-
-#ifndef RAW_VERSION1
-typedef struct {
-        int             version_no;
-        int             thread_count;
-        uint64_t        TOD_secs;
-  uint32_t        TOD_usecs;
-} RAW_header;
-
-#define RAW_VERSION0    0x55aa0000
-#define RAW_VERSION1    0x55aa0101
-#endif
-
-
 #define MAXINDEX 2048
 
 typedef struct LibraryRange {
@@ -921,16 +907,8 @@ int set_remove_flag = 1;
 
 int BC_flag = 0;
 
-char *RAW_file = (char *)0;
-int   RAW_flag = 0;
-int   RAW_fd = 0;
-
 uint64_t sample_TOD_secs;
 uint32_t sample_TOD_usecs;
-
-double  bias_now = 0.0;
-double start_time = 0.0;
-double end_time = 999999999999.9;
 
 
 void set_numbufs();
@@ -1022,7 +1000,7 @@ void getdivisor()
 int
 exit_usage(char *myname) {
 
-  fprintf(stderr, "Usage: %s [-e] [-w] [-f mode] [-b] [-t seconds] [-R rawfile [-S start_time] [-E end_time]] [pid | cmd [pid | cmd] ...]\n", myname);
+  fprintf(stderr, "Usage: %s [-e] [-w] [-f mode] [-b] [-t seconds] [pid | cmd [pid | cmd] ...]\n", myname);
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
   fprintf(stderr, "        and exclude fs_usage by default\n");
   fprintf(stderr, "  -w    force wider, detailed, output\n");
@@ -1031,9 +1009,6 @@ exit_usage(char *myname) {
   fprintf(stderr, "          mode = \"pathname\" Show only pathname-related events\n");
   fprintf(stderr, "          mode = \"exec\"     Show only exec and spawn events\n");
   fprintf(stderr, "  -t    specifies timeout in seconds (for use in automated tools)\n");
-  fprintf(stderr, "  -R    specifies a raw trace file to process\n");
-  fprintf(stderr, "  -S    if -R is specified, selects a start point in microseconds\n");
-  fprintf(stderr, "  -E    if -R is specified, selects an end point in microseconds\n");
   fprintf(stderr, "  pid   selects process(s) to sample\n");
   fprintf(stderr, "  cmd   selects process(s) matching command string to sample\n");
   fprintf(stderr, "\n%s will handle a maximum list of %d pids.\n\n", myname, MAX_PIDS);
@@ -2094,28 +2069,13 @@ main(argc, argv)
       stop_at_time = time(NULL) + strtoul(optarg, NULL, 10);
       break;
 
-         case 'R':
-       RAW_flag = 1;
-       RAW_file = optarg;
-       break;
-           
-         case 'S':
-       start_time = atof(optarg);
-       break;
-
-         case 'E':
-       end_time = atof(optarg);
-       break;
-
          default:
      exit_usage(myname);     
          }
   }
-  if (!RAW_flag) {
-    if ( geteuid() != 0 ) {
-      fprintf(stderr, "'fs_usage' must be run as root...\n");
-      exit(1);
-    }
+  if ( geteuid() != 0 ) {
+    fprintf(stderr, "'fs_usage' must be run as root...\n");
+    exit(1);
   }
         argc -= optind;
         argv += optind;
@@ -2134,32 +2094,30 @@ main(argc, argv)
     argc--;
     argv++;
   }
-  if (!RAW_flag) {
-    struct sigaction osa;
-    int num_cpus;
-    size_t  len;
+  struct sigaction osa;
+  int num_cpus;
+  size_t  len;
 
-    /* set up signal handlers */
-    signal(SIGINT, leave);
-    signal(SIGQUIT, leave);
-    signal(SIGPIPE, leave);
+  /* set up signal handlers */
+  signal(SIGINT, leave);
+  signal(SIGQUIT, leave);
+  signal(SIGPIPE, leave);
 
-    sigaction(SIGHUP, (struct sigaction *)NULL, &osa);
+  sigaction(SIGHUP, (struct sigaction *)NULL, &osa);
 
-    if (osa.sa_handler == SIG_DFL)
-      signal(SIGHUP, leave);
-    signal(SIGTERM, leave);
-    /*
-     * grab the number of cpus
-     */
-    mib[0] = CTL_HW;
-    mib[1] = HW_NCPU;
-    mib[2] = 0;
-    len = sizeof(num_cpus);
+  if (osa.sa_handler == SIG_DFL)
+    signal(SIGHUP, leave);
+  signal(SIGTERM, leave);
+  /*
+   * grab the number of cpus
+   */
+  mib[0] = CTL_HW;
+  mib[1] = HW_NCPU;
+  mib[2] = 0;
+  len = sizeof(num_cpus);
 
-    sysctl(mib, 2, &num_cpus, &len, NULL, 0);
-    num_events = EVENT_BASE * num_cpus;
-  }
+  sysctl(mib, 2, &num_cpus, &len, NULL, 0);
+  num_events = EVENT_BASE * num_cpus;
 
   if ((my_buffer = malloc(num_events * sizeof(kd_buf))) == (char *)0)
     quit("can't allocate memory for tracing info\n");
@@ -2172,34 +2130,31 @@ main(argc, argv)
 
   SortFrameworkAddresses();
 
-  if (!RAW_flag) {
+  set_remove();
+  set_numbufs(num_events);
+  set_init();
 
-    set_remove();
-    set_numbufs(num_events);
-    set_init();
-
-    if (exclude_pids == 0) {
-      for (i = 0; i < num_of_pids; i++)
-        set_pidcheck(pids[i], 1);
-    } else {
-      for (i = 0; i < num_of_pids; i++)
-        set_pidexclude(pids[i], 1);
-    }
-    if (select_pid_mode && !one_good_pid) {
-      /* 
-       *  An attempt to restrict output to a given
-       *  pid or command has failed. Exit gracefully
-       */
-      set_remove();
-      exit_usage(myname);
-    }
-
-    set_filter();
-
-    set_enable(1);
-
-    init_arguments_buffer();
+  if (exclude_pids == 0) {
+    for (i = 0; i < num_of_pids; i++)
+      set_pidcheck(pids[i], 1);
+  } else {
+    for (i = 0; i < num_of_pids; i++)
+      set_pidexclude(pids[i], 1);
   }
+  if (select_pid_mode && !one_good_pid) {
+    /*
+     *  An attempt to restrict output to a given
+     *  pid or command has failed. Exit gracefully
+     */
+    set_remove();
+    exit_usage(myname);
+  }
+
+  set_filter();
+
+  set_enable(1);
+
+  init_arguments_buffer();
   getdivisor();
 
   init_tables();
@@ -2208,8 +2163,7 @@ main(argc, argv)
    * main loop
    */
   while (stop_at_time == 0 || last_time < stop_at_time) {
-    if (!RAW_flag)    
-      usleep(1000 * usleep_ms);
+    usleep(1000 * usleep_ms);
 
     sample_sc();
 
@@ -2456,56 +2410,45 @@ sample_sc()
   size_t needed;
   uint32_t my_buffer_size = 0;
 
-  if (!RAW_flag)
-    get_bufinfo(&bufinfo);
-  else
-    my_buffer_size = num_events * sizeof(kd_buf);
+  get_bufinfo(&bufinfo);
 
   if (need_new_map) {
           read_command_map();
           need_new_map = 0;
   }
-  if (!RAW_flag) {
-    needed = bufinfo.nkdbufs * sizeof(kd_buf);
+  needed = bufinfo.nkdbufs * sizeof(kd_buf);
 
-    mib[0] = CTL_KERN;
-    mib[1] = KERN_KDEBUG;
-    mib[2] = KERN_KDREADTR;   
-    mib[3] = 0;
-    mib[4] = 0;
-    mib[5] = 0;   /* no flags */
+  mib[0] = CTL_KERN;
+  mib[1] = KERN_KDEBUG;
+  mib[2] = KERN_KDREADTR;
+  mib[3] = 0;
+  mib[4] = 0;
+  mib[5] = 0;   /* no flags */
 
-    if (sysctl(mib, 3, my_buffer, &needed, NULL, 0) < 0)
-      quit("trace facility failure, KERN_KDREADTR\n");
-    count = needed;
+  if (sysctl(mib, 3, my_buffer, &needed, NULL, 0) < 0)
+    quit("trace facility failure, KERN_KDREADTR\n");
+  count = needed;
 
-    if (count > (num_events / 8)) {
-      if (usleep_ms > USLEEP_BEHIND)
-        usleep_ms = USLEEP_BEHIND;
-      else if (usleep_ms > USLEEP_MIN)
-        usleep_ms /= 2;
+  if (count > (num_events / 8)) {
+    if (usleep_ms > USLEEP_BEHIND)
+      usleep_ms = USLEEP_BEHIND;
+    else if (usleep_ms > USLEEP_MIN)
+      usleep_ms /= 2;
 
-    } else  if (count < (num_events / 16)) {
-      if (usleep_ms < USLEEP_MAX)
-                    usleep_ms *= 2;
-    }
+  } else  if (count < (num_events / 16)) {
+    if (usleep_ms < USLEEP_MAX)
+                  usleep_ms *= 2;
+  }
 
-    if (bufinfo.flags & KDBG_WRAPPED) {
-      fprintf(stderr, "fs_usage: buffer overrun, events generated too quickly: %d\n", count);
+  if (bufinfo.flags & KDBG_WRAPPED) {
+    fprintf(stderr, "fs_usage: buffer overrun, events generated too quickly: %d\n", count);
 
-      delete_all_events();
+    delete_all_events();
 
-      need_new_map = 1;
-    
-      set_enable(0);
-      set_enable(1);
-    }
-  } else {
-    int bytes_read;
+    need_new_map = 1;
 
-                if ((bytes_read = read(RAW_fd, my_buffer, my_buffer_size)) < sizeof(kd_buf))
-      exit(0);
-    count = bytes_read / sizeof(kd_buf);
+    set_enable(0);
+    set_enable(1);
   }
   kd = (kd_buf *)my_buffer;
 #if 0
@@ -2530,7 +2473,7 @@ sample_sc()
 
     now = kdbg_get_timestamp(&kd[i]);
 
-    if (i == 0 && !RAW_flag) {
+    if (i == 0) {
 
       curr_time = time((long *)0);
       /*
@@ -2544,9 +2487,7 @@ sample_sc()
         bias_secs = curr_time - secs;
       }
     }
-    if (RAW_flag && bias_now == 0.0)
-      bias_now = now;
-        
+
     switch (type) {
         
     case TRACE_DATA_NEWTHREAD:
@@ -2833,17 +2774,12 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
     break;
   }
 
-  if ((type & CLASS_MASK) == FILEMGR_BASE &&
-      (!RAW_flag || (now >= start_time && now <= end_time))) {
+  if ((type & CLASS_MASK) == FILEMGR_BASE) {
 
     filemgr_in_progress++;
     ti->in_filemgr = 1;
 
-    if (RAW_flag) {
-      l_usecs = (long long)((now - bias_now) / divisor);
-      l_usecs += (sample_TOD_secs * 1000000) + sample_TOD_usecs;
-    } else
-      l_usecs = (long long)(now / divisor);
+    l_usecs = (long long)(now / divisor);
     secs = l_usecs / 1000000;
     curr_time = bias_secs + secs;
        
@@ -3116,16 +3052,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   if (format == FMT_IOCTL && ti->arg2 == 0xc030581d)
     return;
 
-  if (RAW_flag) {
-    l_usecs = (long long)((now - bias_now) / divisor);
-
-    if ((double)l_usecs < start_time || (double)l_usecs > end_time)
-      return;
-
-    l_usecs += (sample_TOD_secs * 1000000) + sample_TOD_usecs;
-  }
-  else
-    l_usecs = (long long)(now / divisor);
+  l_usecs = (long long)(now / divisor);
   secs = l_usecs / 1000000;
   curr_time = bias_secs + secs;
 
@@ -4234,82 +4161,31 @@ void read_command_map()
 
   delete_all_map_entries();
 
-  if (!RAW_flag) {
+  total_threads = bufinfo.nkdthreads;
+  size = bufinfo.nkdthreads * sizeof(kd_threadmap);
 
-    total_threads = bufinfo.nkdthreads;
-    size = bufinfo.nkdthreads * sizeof(kd_threadmap);
+  if (size) {
+    if ((mapptr = (kd_threadmap *) malloc(size))) {
+      int mib[6];
 
-    if (size) {
-      if ((mapptr = (kd_threadmap *) malloc(size))) {
-        int mib[6];
+      bzero (mapptr, size);
+      /*
+       * Now read the threadmap
+       */
+      mib[0] = CTL_KERN;
+      mib[1] = KERN_KDEBUG;
+      mib[2] = KERN_KDTHRMAP;
+      mib[3] = 0;
+      mib[4] = 0;
+      mib[5] = 0;   /* no flags */
 
-        bzero (mapptr, size);
+      if (sysctl(mib, 3, mapptr, &size, NULL, 0) < 0) {
         /*
-         * Now read the threadmap
+         * This is not fatal -- just means I cant map command strings
          */
-        mib[0] = CTL_KERN;
-        mib[1] = KERN_KDEBUG;
-        mib[2] = KERN_KDTHRMAP;
-        mib[3] = 0;
-        mib[4] = 0;
-        mib[5] = 0;   /* no flags */
-
-        if (sysctl(mib, 3, mapptr, &size, NULL, 0) < 0) {
-          /*
-           * This is not fatal -- just means I cant map command strings
-           */
-          free(mapptr);
-          return;
-        }
+        free(mapptr);
+        return;
       }
-    }
-  } else {
-    RAW_header  header;
-    off_t offset;
-
-    RAW_fd = open(RAW_file, O_RDONLY);
-
-    if (RAW_fd < 0) {
-      perror("Can't open RAW file");
-      exit(1);
-    }
-    if (read(RAW_fd, &header, sizeof(RAW_header)) != sizeof(RAW_header)) {
-      perror("read failed");
-      exit(2);
-    }
-    if (header.version_no != RAW_VERSION1) {
-      header.version_no = RAW_VERSION0;
-      header.TOD_secs = time((long *)0);
-      header.TOD_usecs = 0;
-
-      lseek(RAW_fd, (off_t)0, SEEK_SET);
-
-      if (read(RAW_fd, &header.thread_count, sizeof(int)) != sizeof(int)) {
-        perror("read failed");
-        exit(2);
-      }
-    }
-    sample_TOD_secs = header.TOD_secs;
-    sample_TOD_usecs = header.TOD_usecs;
-
-    total_threads = header.thread_count;
-    size = total_threads * sizeof(kd_threadmap);
-
-    if (size) {
-      if ((mapptr = (kd_threadmap *) malloc(size))) {
-        bzero (mapptr, size);
-
-        if (read(RAW_fd, mapptr, size) != size) {
-          free(mapptr);
-          return;
-        }
-      }
-    }
-    if (header.version_no != RAW_VERSION0) {
-      offset = lseek(RAW_fd, (off_t)0, SEEK_CUR);
-      offset = (offset + (4095)) & ~4095;
-
-      lseek(RAW_fd, offset, SEEK_SET);
     }
   }
   for (i = 0; i < total_threads; i++)
