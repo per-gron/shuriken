@@ -1108,13 +1108,6 @@ void get_screenwidth()
 }
 
 
-void sigwinch()
-{
-        if (!wideflag)
-          get_screenwidth();
-}
-
-
 void getdivisor()
 {
   struct mach_timebase_info mti;
@@ -2309,7 +2302,6 @@ main(argc, argv)
     sysctl(mib, 2, &num_cpus, &len, NULL, 0);
     num_events = EVENT_BASE * num_cpus;
   }
-  signal(SIGWINCH, sigwinch);
 
   if ((my_buffer = malloc(num_events * sizeof(kd_buf))) == (char *)0)
     quit("can't allocate memory for tracing info\n");
