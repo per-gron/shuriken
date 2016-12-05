@@ -887,7 +887,6 @@ int    pids[MAX_PIDS];
 
 int    num_of_pids = 0;
 int    exclude_pids = 0;
-int    exclude_default_pids = 1;
 
 
 struct kinfo_proc *kp_buffer = 0;
@@ -2066,7 +2065,6 @@ main(argc, argv)
 
                 case 'e':
         exclude_pids = 1;
-        exclude_default_pids = 0;
         break;
 
                 case 'w':
@@ -2124,21 +2122,11 @@ main(argc, argv)
 
   /*
    * when excluding, fs_usage should be the first in line for pids[]
-   * 
-   * the !exclude_pids && argc == 0 catches the exclude_default_pids
-   * case below where exclude_pids is later set and the fs_usage PID
-   * needs to make it into pids[] 
    */
   if (exclude_pids || (!exclude_pids && argc == 0)) {
     if (num_of_pids < (MAX_PIDS - 1))
       pids[num_of_pids++] = getpid();
   }
-
-  /*
-   * If we process any list of pids/cmds, then turn off the defaults
-   */
-  if (argc > 0)
-    exclude_default_pids = 0;
 
   while (argc > 0 && num_of_pids < (MAX_PIDS - 1)) {
     select_pid_mode++;
@@ -2146,28 +2134,6 @@ main(argc, argv)
     argc--;
     argv++;
   }
-  /*
-   * Exclude a set of default pids
-   */
-  if (exclude_default_pids) {
-    argtopid("Terminal");
-    argtopid("telnetd");
-    argtopid("telnet");
-    argtopid("sshd");
-    argtopid("rlogind");
-    argtopid("tcsh");
-    argtopid("csh");
-    argtopid("sh");
-    exclude_pids = 1;
-  }
-#if 0
-  for (i = 0; i < num_of_pids; i++) {
-    if (exclude_pids)
-      fprintf(stderr, "exclude pid %d\n", pids[i]);
-    else
-      fprintf(stderr, "pid %d\n", pids[i]);
-  }
-#endif
   if (!RAW_flag) {
     struct sigaction osa;
     int num_cpus;
