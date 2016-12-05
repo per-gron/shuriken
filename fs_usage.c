@@ -245,11 +245,10 @@ int     argmax = 0;
 int usleep_ms = USLEEP_MIN;
 
 /*
- * Network only or filesystem only output filter
+ * Filesystem only output filter
  * Default of zero means report all activity - no filtering
  */
 #define FILESYS_FILTER    0x01
-#define NETWORK_FILTER    0x02
 #define EXEC_FILTER   0x08
 #define PATHNAME_FILTER   0x10
 #define DEFAULT_DO_NOT_FILTER  0x00
@@ -1029,7 +1028,6 @@ exit_usage(char *myname) {
   fprintf(stderr, "        and exclude fs_usage by default\n");
   fprintf(stderr, "  -w    force wider, detailed, output\n");
   fprintf(stderr, "  -f    output is based on the mode provided\n");
-  fprintf(stderr, "          mode = \"network\"  Show network-related events\n");
   fprintf(stderr, "          mode = \"filesys\"  Show filesystem-related events\n");
   fprintf(stderr, "          mode = \"pathname\" Show only pathname-related events\n");
   fprintf(stderr, "          mode = \"exec\"     Show only exec and spawn events\n");
@@ -2082,9 +2080,7 @@ main(argc, argv)
         break;
 
          case 'f':
-       if (!strcmp(optarg, "network"))
-         filter_mode |= NETWORK_FILTER;
-       else if (!strcmp(optarg, "filesys"))
+       if (!strcmp(optarg, "filesys"))
          filter_mode |= FILESYS_FILTER;
        else if (!strcmp(optarg, "exec"))
          filter_mode |= EXEC_FILTER;
@@ -4786,7 +4782,6 @@ SortFrameworkAddresses()
  * exec   show exec/posix_spawn
  * pathname show events with a pathname and close()
  * filesys  show filesystem events
- * network  show network events
  *
  * filters may be combined; default is all filters on
  */
@@ -4830,10 +4825,7 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
       if (error == 0)
         fs_usage_fd_clear(ti->thread,fd);
       
-      if (network_fd_isset) {
-        if (filter_mode & NETWORK_FILTER)
-          ret = 1;
-      } else
+      if (!network_fd_isset)
         if (filter_mode & FILESYS_FILTER)
           ret = 1;
       break;
@@ -4848,10 +4840,7 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
       fd = ti->arg1;
       network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
 
-      if (network_fd_isset) {
-        if (filter_mode & NETWORK_FILTER)
-          ret = 1;
-      } else
+      if (!network_fd_isset)
         if (filter_mode & FILESYS_FILTER)
           ret = 1;  
       break;
@@ -4863,8 +4852,6 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
 
       if (error == 0)
         fs_usage_fd_set(ti->thread, fd);
-      if (filter_mode & NETWORK_FILTER)
-        ret = 1;
       break;
 
   case BSC_recvfrom:
@@ -4883,18 +4870,6 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
 
       if (error == 0)
         fs_usage_fd_set(ti->thread, fd);
-      if (filter_mode & NETWORK_FILTER)
-        ret = 1;
-      break;
-
-  case BSC_select:
-  case BSC_select_nocancel:
-  case BSC_socketpair:
-      /*
-       * Cannot determine info about file descriptors
-       */
-      if (filter_mode & NETWORK_FILTER)
-        ret = 1;
       break;
 
   case BSC_dup:
