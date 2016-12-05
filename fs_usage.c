@@ -256,8 +256,6 @@ int usleep_ms = USLEEP_MIN;
 
 int filter_mode = DEFAULT_DO_NOT_FILTER;
 
-boolean_t show_cachehits = FALSE;
-
 #define NFS_DEV -1
 #define CS_DEV  -2
 
@@ -595,7 +593,6 @@ int   quit();
 #define FMT_SOCKET  4
 #define FMT_PGIN  5
 #define FMT_PGOUT 6
-#define FMT_CACHEHIT  7
 #define FMT_LSEEK 9
 #define FMT_PREAD 10
 #define FMT_FTRUNC  11
@@ -1036,7 +1033,6 @@ exit_usage(char *myname) {
   fprintf(stderr, "          mode = \"filesys\"  Show filesystem-related events\n");
   fprintf(stderr, "          mode = \"pathname\" Show only pathname-related events\n");
   fprintf(stderr, "          mode = \"exec\"     Show only exec and spawn events\n");
-  fprintf(stderr, "          mode = \"cachehit\" In addition, show cache hits\n");
   fprintf(stderr, "  -t    specifies timeout in seconds (for use in automated tools)\n");
   fprintf(stderr, "  -R    specifies a raw trace file to process\n");
   fprintf(stderr, "  -S    if -R is specified, selects a start point in microseconds\n");
@@ -2090,8 +2086,6 @@ main(argc, argv)
          filter_mode |= NETWORK_FILTER;
        else if (!strcmp(optarg, "filesys"))
          filter_mode |= FILESYS_FILTER;
-       else if (!strcmp(optarg, "cachehit"))
-         show_cachehits = TRUE;
        else if (!strcmp(optarg, "exec"))
          filter_mode |= EXEC_FILTER;
        else if (!strcmp(optarg, "pathname"))
@@ -2800,8 +2794,6 @@ sample_sc()
            exit_event("PAGE_IN_FILE", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN, (double)now);
          else if (kd[i].arg4 == DBG_PAGEIND_FAULT)
            exit_event("PAGE_IN_ANON", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN, (double)now);
-         else if (kd[i].arg4 == DBG_CACHE_HIT_FAULT)
-           exit_event("CACHE_HIT", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_CACHEHIT, (double)now);
          else {
            if ((ti = find_event(thread, type)))
              delete_event(ti);
@@ -3268,16 +3260,6 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
           case FMT_PGIN:
       /*
        * pagein
-       */
-      user_addr = ((uint64_t)arg2 << 32) | (uint32_t)arg3;
-
-            lookup_name(user_addr, &framework_type, &framework_name);
-      clen += clip_64bit(" A=", user_addr);
-      break;
-
-          case FMT_CACHEHIT:
-      /*
-       * cache hit
        */
       user_addr = ((uint64_t)arg2 << 32) | (uint32_t)arg3;
 
@@ -4800,14 +4782,13 @@ SortFrameworkAddresses()
 
 /*
  * meaning of filter flags:
- * cachehit turn on display of CACHE_HIT events (which are filtered out by default)
  *
  * exec   show exec/posix_spawn
  * pathname show events with a pathname and close()
  * filesys  show filesystem events
  * network  show network events
  *
- * filters may be combined; default is all filters on (except cachehit)
+ * filters may be combined; default is all filters on
  */
 int
 check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_name)
@@ -4815,12 +4796,6 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
   int ret = 0;
   int network_fd_isset = 0;
   unsigned int fd;
-
-  /* cachehit is special -- it's not on by default */
-  if (sc_name[0] == 'C' && !strcmp(sc_name, "CACHE_HIT")) {
-    if (show_cachehits) return 1;
-    else return 0;
-  }
 
   if (filter_mode == DEFAULT_DO_NOT_FILTER)
     return(1);
