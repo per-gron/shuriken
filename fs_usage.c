@@ -252,7 +252,6 @@ int usleep_ms = USLEEP_MIN;
 #define NETWORK_FILTER    0x02
 #define EXEC_FILTER   0x08
 #define PATHNAME_FILTER   0x10
-#define DISKIO_FILTER 0x20
 #define DEFAULT_DO_NOT_FILTER  0x00
 
 int filter_mode = DEFAULT_DO_NOT_FILTER;
@@ -262,53 +261,12 @@ boolean_t show_cachehits = FALSE;
 #define NFS_DEV -1
 #define CS_DEV  -2
 
-struct diskrec {
-        struct diskrec *next;
-        char *diskname;
-        int   dev;
-};
-
-struct diskio {
-        struct diskio *next;
-        struct diskio *prev;
-        int  type;
-        int  bp;
-        int  dev;
-        int  blkno;
-        int  iosize;
-        int  io_errno;
-        int  is_meta;
-  uint64_t   vnodeid;
-        uintptr_t  issuing_thread;
-        uintptr_t  completion_thread;
-        char issuing_command[MAXCOMLEN + 1];
-        double issued_time;
-        double completed_time;
-    uint32_t bc_info;
-};
-
-struct diskrec *disk_list = NULL;
-struct diskio *free_diskios = NULL;
-struct diskio *busy_diskios = NULL;
-
-
-struct diskio *insert_diskio();
-struct diskio *find_diskio(int);
-struct diskio *complete_diskio();
-void      free_diskio();
-void    print_diskio();
-
 int   check_filter_mode(struct th_info *, int, int, int, char *);
-void            format_print(struct th_info *, char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, double, double, int, char *, struct diskio *);
+void            format_print(struct th_info *, char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, double, double, int, char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, char *, double);
 void    enter_event(uintptr_t, int, kd_buf *, char *, double);
 void            exit_event(char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, double);
 void    extend_syscall(uintptr_t, int, kd_buf *);
-
-char           *generate_cs_disk_name(int, char *s);
-char           *find_disk_name(int);
-void    cache_disk_names();
-void    recache_disk_names();
 
 void    lookup_name(uint64_t user_addr, char **type, char **name);
 int     ReadSharedCacheMap(const char *, LibraryRange *, char *);
@@ -376,58 +334,9 @@ int   quit();
 #define SPEC_unmap_info 0x3060004
 #define proc_exit 0x4010004
 
-#define BC_IO_HIT       0x03070010
-#define BC_IO_HIT_STALLED   0x03070020
-#define BC_IO_MISS        0x03070040
-#define BC_IO_MISS_CUT_THROUGH  0x03070080
-#define BC_PLAYBACK_IO      0x03070100
-#define BC_STR(s) ( \
-  (s == BC_IO_HIT) ? "HIT" : \
-  (s == BC_IO_HIT_STALLED) ? "STALL" : \
-  (s == BC_IO_MISS) ? "MISS" : \
-  (s == BC_IO_MISS_CUT_THROUGH) ? "CUT" : \
-  (s == BC_PLAYBACK_IO) ? "PLBK" : \
-  (s == 0x0) ? "NONE" : "UNKN" )
-
 #ifndef DKIO_NOCACHE
 #define DKIO_NOCACHE  0x80
 #endif
-
-#define P_DISKIO_READ   (DKIO_READ << 2)
-#define P_DISKIO_ASYNC    (DKIO_ASYNC << 2)
-#define P_DISKIO_META   (DKIO_META << 2)
-#define P_DISKIO_PAGING   (DKIO_PAGING << 2)
-#define P_DISKIO_THROTTLE (DKIO_THROTTLE << 2)
-#define P_DISKIO_PASSIVE  (DKIO_PASSIVE << 2)
-#define P_DISKIO_NOCACHE  (DKIO_NOCACHE << 2)
-#define P_DISKIO_TIER_MASK  (DKIO_TIER_MASK << 2)
-#define P_DISKIO_TIER_SHIFT (DKIO_TIER_SHIFT + 2)
-
-#define P_DISKIO  (FSDBG_CODE(DBG_DKRW, 0))
-#define P_DISKIO_DONE (P_DISKIO | (DKIO_DONE << 2))
-#define P_DISKIO_TYPE (P_DISKIO | P_DISKIO_READ | P_DISKIO_META | P_DISKIO_PAGING)
-#define P_DISKIO_MASK (CSC_MASK | 0x4)
-
-#define P_WrData  (P_DISKIO)
-#define P_RdData  (P_DISKIO | P_DISKIO_READ)
-#define P_WrMeta  (P_DISKIO | P_DISKIO_META)
-#define P_RdMeta  (P_DISKIO | P_DISKIO_META | P_DISKIO_READ)
-#define P_PgOut   (P_DISKIO | P_DISKIO_PAGING)
-#define P_PgIn    (P_DISKIO | P_DISKIO_PAGING | P_DISKIO_READ)
-
-#define P_CS_Class    0x0a000000  // DBG_CORESTORAGE
-#define P_CS_Type_Mask    0xfffffff0
-#define P_CS_IO_Done    0x00000004
-
-#define P_CS_ReadChunk    0x0a000200  // chopped up request
-#define P_CS_WriteChunk   0x0a000210
-#define P_CS_MetaRead   0x0a000300  // meta data
-#define P_CS_MetaWrite    0x0a000310
-#define P_CS_TransformRead  0x0a000500  // background transform
-#define P_CS_TransformWrite 0x0a000510
-#define P_CS_MigrationRead  0x0a000600  // composite disk block migration
-#define P_CS_MigrationWrite 0x0a000610
-#define P_CS_SYNC_DISK    0x0a010000
 
 #define MSC_map_fd   0x010c00ac
 
@@ -687,7 +596,6 @@ int   quit();
 #define FMT_PGIN  5
 #define FMT_PGOUT 6
 #define FMT_CACHEHIT  7
-#define FMT_DISKIO  8
 #define FMT_LSEEK 9
 #define FMT_PREAD 10
 #define FMT_FTRUNC  11
@@ -716,8 +624,6 @@ int   quit();
 #define FMT_IOCTL_SYNC  34
 #define FMT_MOUNT 35
 #define FMT_UNMOUNT 36
-#define FMT_DISKIO_CS 37
-#define FMT_SYNC_DISK_CS  38
 #define FMT_IOCTL_UNMAP 39
 #define FMT_UNMAP_INFO  40
 #define FMT_HFS_update  41
@@ -1130,9 +1036,7 @@ exit_usage(char *myname) {
   fprintf(stderr, "          mode = \"filesys\"  Show filesystem-related events\n");
   fprintf(stderr, "          mode = \"pathname\" Show only pathname-related events\n");
   fprintf(stderr, "          mode = \"exec\"     Show only exec and spawn events\n");
-  fprintf(stderr, "          mode = \"diskio\"   Show only disk I/O events\n");
   fprintf(stderr, "          mode = \"cachehit\" In addition, show cache hits\n");
-  fprintf(stderr, "  -b    annotate disk I/O events with BootCache info (if available)\n");
   fprintf(stderr, "  -t    specifies timeout in seconds (for use in automated tools)\n");
   fprintf(stderr, "  -R    specifies a raw trace file to process\n");
   fprintf(stderr, "  -S    if -R is specified, selects a start point in microseconds\n");
@@ -2192,8 +2096,6 @@ main(argc, argv)
          filter_mode |= EXEC_FILTER;
        else if (!strcmp(optarg, "pathname"))
          filter_mode |= PATHNAME_FILTER;
-       else if (!strcmp(optarg, "diskio"))
-         filter_mode |= DISKIO_FILTER;
        break;
              
     case 'b':
@@ -2313,8 +2215,6 @@ main(argc, argv)
     }
 
   SortFrameworkAddresses();
-
-        cache_disk_names();
 
   if (!RAW_flag) {
 
@@ -2666,7 +2566,6 @@ sample_sc()
     int secs;
     long curr_time;
     th_info_t ti;
-                struct diskio  *dio;
 
 
     thread  = kd[i].arg5;
@@ -2691,72 +2590,7 @@ sample_sc()
     }
     if (RAW_flag && bias_now == 0.0)
       bias_now = now;
-    
-    if ((type & P_DISKIO_MASK) == P_DISKIO) {
-      insert_diskio(type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, thread, (double)now);
-      continue;
-    }
-    if ((type & P_DISKIO_MASK) == P_DISKIO_DONE) {
-      if ((dio = complete_diskio(kd[i].arg1, kd[i].arg4, kd[i].arg3, thread, (double)now))) {
-        dio->vnodeid = kd[i].arg2;
-        print_diskio(dio);
-        free_diskio(dio);
-      }
-      continue;
-    }
-
-    if ((type & CLASS_MASK) == P_CS_Class) {
-
-        // the usual DBG_FUNC_START/END does not work for i/o since it will
-        // return on a different thread, this code uses the P_CS_IO_Done (0x4) bit
-        // instead. the trace command doesn't know how handle either method
-        // (unmatched start/end or 0x4) but works a little better this way.
-
-        int cs_type = type & P_CS_Type_Mask;   // strip out the done bit
-        bool start = (type & P_CS_IO_Done) != P_CS_IO_Done;
-
-        switch (cs_type) {
         
-        case P_CS_ReadChunk:
-        case P_CS_WriteChunk:
-        case P_CS_MetaRead:
-        case P_CS_MetaWrite:
-      if (start) {
-          insert_diskio(cs_type, kd[i].arg2, kd[i].arg1, kd[i].arg3, kd[i].arg4, thread, (double)now);
-      } else {
-          if ((dio = complete_diskio(kd[i].arg2, kd[i].arg4, kd[i].arg3, thread, (double)now))) {
-            print_diskio(dio);
-            free_diskio(dio);
-          }
-      }
-      continue;
-
-        case P_CS_TransformRead:
-        case P_CS_TransformWrite:
-        case P_CS_MigrationRead:
-        case P_CS_MigrationWrite:
-      if (start) {
-          insert_diskio(cs_type, kd[i].arg2, CS_DEV, kd[i].arg3, kd[i].arg4, thread, (double)now);
-      } else {
-          if ((dio = complete_diskio(kd[i].arg2, kd[i].arg4, kd[i].arg3, thread, (double)now))) {
-            print_diskio(dio);
-            free_diskio(dio);
-          }
-      }
-      continue;
-      
-        case P_CS_SYNC_DISK:
-      if (start) {
-          enter_event(thread, cs_type, &kd[i], NULL, (double)now);
-      } else {
-          exit_event("  SyncCacheCS", thread, cs_type, kd[i].arg1, 0, 0, 0, FMT_SYNC_DISK_CS, (double)now);
-      }
-      continue;
-        }
-        
-        continue; // ignore other cs timestamps
-    }
-    
     switch (type) {
         
     case TRACE_DATA_NEWTHREAD:
@@ -2824,15 +2658,6 @@ sample_sc()
                     mark_thread_waited(thread);
         continue;
       
-    case BC_IO_HIT:
-    case BC_IO_HIT_STALLED:
-    case BC_IO_MISS:
-    case BC_IO_MISS_CUT_THROUGH:
-    case BC_PLAYBACK_IO:
-      if ((dio = find_diskio(kd[i].arg1)) != NULL)
-        dio->bc_info = type;
-      continue;
-
     case HFS_modify_block_end:
          if ((ti = find_event(thread, 0))) {
                  if (ti->nameptr)
@@ -2945,7 +2770,7 @@ sample_sc()
 
     case SPEC_unmap_info:
          if (check_filter_mode(NULL, SPEC_unmap_info, 0, 0, "SPEC_unmap_info"))
-           format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_UNMAP_INFO, now, now, 0, "", NULL);
+           format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_UNMAP_INFO, now, now, 0, "");
          continue;
 
     case SPEC_ioctl:
@@ -3130,7 +2955,6 @@ enter_event(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
 
   switch (type) {
 
-  case P_CS_SYNC_DISK:
   case MACH_pageout:
   case MACH_vmfault:
   case MSC_map_fd:
@@ -3237,7 +3061,7 @@ exit_event(char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t 
   ti->nameptr = 0;
 
   if (check_filter_mode(ti, type, arg1, arg2, sc_name))
-          format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, now, ti->stime, ti->waited, (char *)&ti->lookups[0].pathname[0], NULL);
+          format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, now, ti->stime, ti->waited, (char *)&ti->lookups[0].pathname[0]);
 
   switch (type) {
 
@@ -3307,7 +3131,7 @@ int clip_64bit(char *s, uint64_t value)
 
 void
 format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
-       int format, double now, double stime, int waited, char *pathname, struct diskio *dio)
+       int format, double now, double stime, int waited, char *pathname)
 {
         int secs;
   int usecs;
@@ -3327,7 +3151,6 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   char *p1;
   char *p2;
   char buf[MAXWIDTH];
-  char cs_diskname[32];
 
   static char timestamp[32];
   static int  last_timestamp = -1;
@@ -3354,14 +3177,10 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
   class = type >> 24;
 
-  if (dio)
-          command_name = dio->issuing_command;
-  else {
-    threadmap_t tme;
+  threadmap_t tme;
 
-    if ((tme = find_map_entry(thread)))
-            command_name = tme->tm_command;
-  }
+  if ((tme = find_map_entry(thread)))
+          command_name = tme->tm_command;
   if (last_timestamp != curr_time) {
           timestamp_len = sprintf(timestamp, "%-8.8s", &(ctime(&curr_time)[11]));
     last_timestamp = curr_time;
@@ -3502,45 +3321,6 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
       break;
           }
-
-          case FMT_DISKIO:
-            /*
-       * physical disk I/O
-       */
-            if (dio->io_errno)
-              clen += printf(" D=0x%8.8x  [%3d]", dio->blkno, dio->io_errno);
-      else {
-        if (BC_flag)
-          clen += printf(" D=0x%8.8x  B=0x%-6x BC:%s /dev/%s ", dio->blkno, dio->iosize, BC_STR(dio->bc_info), find_disk_name(dio->dev));
-        else
-          clen += printf(" D=0x%8.8x  B=0x%-6x /dev/%s ", dio->blkno, dio->iosize, find_disk_name(dio->dev));
-
-        if (dio->is_meta) {
-          if (!(type & P_DISKIO_READ))
-                  pathname = find_meta_name(dio->blkno);
-        } else
-                pathname = find_vnode_name(dio->vnodeid);
-        nopadding = 1;
-      }
-      break;
-
-          case FMT_DISKIO_CS:
-            /*
-       * physical disk I/O
-       */
-            if (dio->io_errno)
-              clen += printf(" D=0x%8.8x  [%3d]", dio->blkno, dio->io_errno);
-      else
-              clen += printf(" D=0x%8.8x  B=0x%-6x /dev/%s", dio->blkno, dio->iosize, generate_cs_disk_name(dio->dev, &cs_diskname[0]));
-      break;
-
-          case FMT_SYNC_DISK_CS:
-            /*
-       * physical disk sync cache
-       */
-      clen += printf("                          /dev/%s", generate_cs_disk_name(arg1, &cs_diskname[0]));
-
-      break;
 
           case FMT_MSYNC:
           {
@@ -3749,44 +3529,8 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       break;
           }
 
-          case FMT_IOCTL_SYNC:
-          {
-      /*
-       * ioctl
-       */
-      clen += printf(" <DKIOCSYNCHRONIZE>  B=%d /dev/%s", arg3, find_disk_name(arg1));
-
-      break;
-          }
-
-          case FMT_IOCTL_SYNCCACHE:
-          {
-      /*
-       * ioctl
-       */
-      clen += printf(" <DKIOCSYNCHRONIZECACHE>  /dev/%s", find_disk_name(arg1));
-
-      break;
-          }
-
-          case FMT_IOCTL_UNMAP:
-          {
-      /*
-       * ioctl
-       */
-      clen += printf(" <DKIOCUNMAP>             /dev/%s", find_disk_name(arg1));
-
-      break;
-          }
-
-          case FMT_UNMAP_INFO:
-          {
-      clen += printf(" D=0x%8.8x  B=0x%-6x /dev/%s", arg2, arg3, find_disk_name(arg1));
-
-      break;
-          }
-
           case FMT_SELECT:
+          {
       /*
        * select
        */
@@ -3796,6 +3540,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
               clen += printf("        S=%-3d", arg2);
 
       break;
+          }
 
           case FMT_LSEEK:
           case FMT_PREAD:
@@ -5048,297 +4793,6 @@ SortFrameworkAddresses()
   qsort(frameworkInfo, numFrameworks, sizeof(LibraryInfo), compareFrameworkAddress);
 }
 
-
-struct diskio *insert_diskio(int type, int bp, int dev, int blkno, int io_size, uintptr_t thread, double curtime)
-{
-  struct diskio *dio;
-  threadmap_t tme;
-    
-  if ((dio = free_diskios))
-    free_diskios = dio->next;
-  else {
-    if ((dio = (struct diskio *)malloc(sizeof(struct diskio))) == NULL)
-      return (NULL);
-  }
-  dio->prev = NULL;
-    
-  dio->type = type;
-  dio->bp = bp;
-  dio->dev = dev;
-  dio->blkno = blkno;
-  dio->iosize = io_size;
-  dio->issued_time = curtime;
-  dio->issuing_thread = thread;
-  
-  dio->bc_info = 0x0;
-  
-  if ((tme = find_map_entry(thread))) {
-    strncpy(dio->issuing_command, tme->tm_command, MAXCOMLEN);
-    dio->issuing_command[MAXCOMLEN] = '\0';
-  } else
-    strcpy(dio->issuing_command, "");
-    
-  dio->next = busy_diskios;
-  if (dio->next)
-    dio->next->prev = dio;
-  busy_diskios = dio;
-
-  return (dio);
-}
-
-struct diskio *find_diskio(int bp) {
-  struct diskio *dio;
-    
-  for (dio = busy_diskios; dio; dio = dio->next) {
-    if (dio->bp == bp)
-      return (dio);
-  }
-  
-  return NULL;
-}
-
-
-struct diskio *complete_diskio(int bp, int io_errno, int resid, uintptr_t thread, double curtime)
-{
-  struct diskio *dio;
-  
-  if ((dio = find_diskio(bp)) == NULL) return NULL;
-  
-  if (dio == busy_diskios) {
-    if ((busy_diskios = dio->next))
-      dio->next->prev = NULL;
-  } else {
-    if (dio->next)
-      dio->next->prev = dio->prev;
-    dio->prev->next = dio->next;
-  }
-
-  dio->iosize -= resid;
-  dio->io_errno = io_errno;
-  dio->completed_time = curtime;
-  dio->completion_thread = thread;
-  
-  return dio;
-}
-
-
-void free_diskio(struct diskio *dio)
-{
-  dio->next = free_diskios;
-  free_diskios = dio;
-}
-
-
-void print_diskio(struct diskio *dio)
-{
-  char  *p = NULL;
-  int   len = 0;
-  int   type;
-  int   format = FMT_DISKIO;
-  char  buf[64];
-
-  type = dio->type;
-  dio->is_meta = 0;
-
-  if ((type & P_CS_Class) == P_CS_Class) {
-
-    switch (type) {
-
-    case P_CS_ReadChunk:
-      p = "    RdChunkCS";
-      len = 13;
-      format = FMT_DISKIO_CS;
-      break;
-    case P_CS_WriteChunk:
-      p = "    WrChunkCS";
-      len = 13;
-      format = FMT_DISKIO_CS;
-      break;
-    case P_CS_MetaRead:
-      p = "  RdMetaCS";
-      len = 10;
-      format = FMT_DISKIO_CS;
-      break;
-    case P_CS_MetaWrite:
-      p = "  WrMetaCS";
-      len = 10;
-      format = FMT_DISKIO_CS;
-      break;
-    case P_CS_TransformRead:
-      p = "  RdBgTfCS";
-      len = 10;
-      break;
-    case P_CS_TransformWrite:
-      p = "  WrBgTfCS";
-      len = 10;
-      break;
-    case P_CS_MigrationRead:
-      p = "  RdBgMigrCS";
-      len = 12;
-      break;
-    case P_CS_MigrationWrite:
-      p = "  WrBgMigrCS";
-      len = 12;
-      break;
-    }
-    strncpy(buf, p, len);
-  } else {
-
-    switch (type & P_DISKIO_TYPE) {
-
-    case P_RdMeta:
-            dio->is_meta = 1;
-      p = "  RdMeta";
-      len = 8;
-      break;
-    case P_WrMeta:
-            dio->is_meta = 1;
-      p = "  WrMeta";
-      len = 8;
-      break;
-    case P_RdData:
-      p = "  RdData";
-      len = 8;
-      break;
-    case P_WrData:
-      p = "  WrData";
-      len = 8;
-      break;        
-    case P_PgIn:
-      p = "  PgIn";
-      len = 6;
-      break;
-    case P_PgOut:
-      p = "  PgOut";
-      len = 7;
-      break;
-    default:
-      p = "  ";
-      len = 2;
-      break;
-    }
-    strncpy(buf, p, len);
-
-    buf[len++] = '[';
-    
-    if (type & P_DISKIO_ASYNC)
-      buf[len++] = 'A';
-    else
-      buf[len++] = 'S';
-
-    if (type & P_DISKIO_NOCACHE)
-      buf[len++] = 'N';
-
-    int tier = (type & P_DISKIO_TIER_MASK) >> P_DISKIO_TIER_SHIFT;
-    if (tier > 0) {
-      buf[len++] = 'T';
-      if (tier > 0 && tier < 10)
-        buf[len++] = '0' + tier;
-    }
-
-    if (type & P_DISKIO_PASSIVE)
-      buf[len++] = 'P';
-
-
-    buf[len++] = ']';
-  }
-  buf[len] = 0;
-
-  if (check_filter_mode(NULL, type, 0, 0, buf))
-    format_print(NULL, buf, dio->issuing_thread, type, 0, 0, 0, 0, format, dio->completed_time, dio->issued_time, 1, "", dio);
-}
-
-
-void cache_disk_names()
-{
-  struct stat    st;
-  DIR            *dirp = NULL;
-  struct dirent  *dir;
-  struct diskrec *dnp;
-
-
-  if ((dirp = opendir("/dev")) == NULL)
-    return;
-        
-  while ((dir = readdir(dirp)) != NULL) {
-    char nbuf[MAXPATHLEN];
-        
-    if (dir->d_namlen < 5 || strncmp("disk", dir->d_name, 4))
-      continue;
-
-    snprintf(nbuf, MAXPATHLEN, "%s/%s", "/dev", dir->d_name);
-        
-    if (stat(nbuf, &st) < 0)
-      continue;
-
-    if ((dnp = (struct diskrec *)malloc(sizeof(struct diskrec))) == NULL)
-      continue;
-            
-    if ((dnp->diskname = (char *)malloc(dir->d_namlen + 1)) == NULL) {
-      free(dnp);
-      continue;
-    }
-    strncpy(dnp->diskname, dir->d_name, dir->d_namlen);
-    dnp->diskname[dir->d_namlen] = 0;
-    dnp->dev = st.st_rdev;
-        
-    dnp->next = disk_list;
-    disk_list = dnp;
-  }
-  (void) closedir(dirp);
-}
-
-
-void recache_disk_names()
-{
-  struct diskrec *dnp, *next_dnp;
-
-  for (dnp = disk_list; dnp; dnp = next_dnp) {
-    next_dnp = dnp->next;
-
-    free(dnp->diskname);
-    free(dnp);
-  }
-  disk_list = NULL;
-
-  cache_disk_names();
-}
-
-
-char *find_disk_name(int dev)
-{
-  struct diskrec *dnp;
-  int i;
-    
-  if (dev == NFS_DEV)
-    return ("NFS");
-        
-  if (dev == CS_DEV)
-    return ("CS");
-        
-  for (i = 0; i < 2; i++) {
-    for (dnp = disk_list; dnp; dnp = dnp->next) {
-      if (dnp->dev == dev)
-        return (dnp->diskname);
-    }
-    recache_disk_names();
-  }
-  return ("NOTFOUND");
-}
-
-
-char *generate_cs_disk_name(int dev, char *s)
-{
-  if (dev == -1)
-    return ("UNKNOWN");
-  
-  sprintf(s, "disk%ds%d", (dev >> 16) & 0xffff, dev & 0xffff);
-
-  return (s);
-}
-
-
-
 /*
  * ret = 1 means print the entry
  * ret = 0 means don't print the entry
@@ -5350,7 +4804,6 @@ char *generate_cs_disk_name(int dev, char *s)
  *
  * exec   show exec/posix_spawn
  * pathname show events with a pathname and close()
- * diskio show disk I/Os
  * filesys  show filesystem events
  * network  show network events
  *
@@ -5371,11 +4824,6 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
 
   if (filter_mode == DEFAULT_DO_NOT_FILTER)
     return(1);
-  
-  if (filter_mode & DISKIO_FILTER) {
-    if ((type & P_DISKIO_MASK) == P_DISKIO)
-      return 1;
-  }
   
   if (filter_mode & EXEC_FILTER) {
     if (type == BSC_execve || type == BSC_posix_spawn)
