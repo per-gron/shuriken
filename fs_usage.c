@@ -211,7 +211,6 @@ meta_info_t     m_info_hash[VN_HASH_SIZE];
 
 int  filemgr_in_progress = 0;
 int  need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
-int  bias_secs = 0;  /* TODO(peck): No need to keep time */
 long last_time;
 int  wideflag = 0;
 int  columns = 0;
@@ -247,7 +246,7 @@ int   check_filter_mode(struct th_info *, int, int, int, char *);
 void            format_print(struct th_info *, char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, double, double, int, char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, char *, double);
 void    enter_event(uintptr_t, int, kd_buf *, char *, double);
-void            exit_event(char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, double);
+void            exit_event(char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int);
 void    extend_syscall(uintptr_t, int, kd_buf *);
 
 void    lookup_name(uint64_t user_addr, char **type, char **name);
@@ -2247,7 +2246,6 @@ set_filter(void)
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_MACH,DBG_MACH_EXCP_SC)); //0x010c
 
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_FSRW)); //0x0301
-  // setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_DKRW)); //0x0302
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_IOCTL)); //0x0306
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_BOOTCACHE)); //0x0307
 
@@ -2255,9 +2253,6 @@ set_filter(void)
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_BSD,DBG_BSD_PROC)); //0x0401
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_BSD,DBG_BSD_SC_EXTENDED_INFO)); //0x040e
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_BSD,DBG_BSD_SC_EXTENDED_INFO2)); //0x040f
-
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_CORESTORAGE,DBG_CS_IO)); //0x0a00
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_CORESTORAGE, 1)); //0x0a01 for P_SCCS_SYNC_DIS
 
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(FILEMGR_CLASS, 0)); //Carbon File Manager
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(FILEMGR_CLASS, 1)); //Carbon File Manager
@@ -2448,33 +2443,12 @@ sample_sc()
     int type;
     int index;
     uintptr_t *sargptr;
-    uint64_t now;
-    long long l_usecs;
-    int secs;
-    long curr_time;
     th_info_t ti;
 
 
     thread  = kd[i].arg5;
     debugid = kd[i].debugid;
     type    = kd[i].debugid & DBG_FUNC_MASK;
-
-    now = kdbg_get_timestamp(&kd[i]);
-
-    if (i == 0) {
-
-      curr_time = time((long *)0);
-      /*
-       * Compute bias seconds after each trace buffer read.
-       * This helps resync timestamps with the system clock
-       * in the event of a system sleep.
-       */
-      if (bias_secs == 0 || curr_time < last_time || curr_time > (last_time + 2)) {
-        l_usecs = (long long)(now / divisor);
-        secs = l_usecs / 1000000;
-        bias_secs = curr_time - secs;
-      }
-    }
 
     switch (type) {
         
@@ -2508,11 +2482,11 @@ sample_sc()
     case TRACE_STRING_EXEC:
         if ((ti = find_event(thread, BSC_execve))) {
           if (ti->lookups[0].pathname[0])
-            exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, FMT_DEFAULT, (double)now);
+            exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, FMT_DEFAULT);
 
         } else if ((ti = find_event(thread, BSC_posix_spawn))) {
           if (ti->lookups[0].pathname[0])
-            exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, FMT_DEFAULT, (double)now);
+            exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, FMT_DEFAULT);
         }
         if ((ti = find_event(thread, TRACE_DATA_EXEC)) == (struct th_info *)0)
           continue;
@@ -2642,11 +2616,11 @@ sample_sc()
     switch (type) {
 
     case Throttled:
-         exit_event("  THROTTLED", thread, type, 0, 0, 0, 0, FMT_DEFAULT, (double)now);
+         exit_event("  THROTTLED", thread, type, 0, 0, 0, 0, FMT_DEFAULT);
          continue;
 
     case HFS_update:
-         exit_event("  HFS_update", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_HFS_update, (double)now);
+         exit_event("  HFS_update", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_HFS_update);
          continue;
 
     case SPEC_unmap_info:
@@ -2656,11 +2630,11 @@ sample_sc()
 
     case SPEC_ioctl:
          if (kd[i].arg2 == DKIOCSYNCHRONIZECACHE)
-           exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_SYNCCACHE, (double)now);
+           exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_SYNCCACHE);
          else if (kd[i].arg2 == DKIOCUNMAP)
-           exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_UNMAP, (double)now);
+           exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_UNMAP);
          else if (kd[i].arg2 == DKIOCSYNCHRONIZE && (debugid & DBG_FUNC_ALL) == DBG_FUNC_NONE)
-           exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_IOCTL_SYNC, (double)now);
+           exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_IOCTL_SYNC);
          else {
            if ((ti = find_event(thread, type)))
              delete_event(ti);
@@ -2669,18 +2643,18 @@ sample_sc()
 
     case MACH_pageout:
          if (kd[i].arg2) 
-           exit_event("PAGE_OUT_ANON", thread, type, 0, kd[i].arg1, 0, 0, FMT_PGOUT, (double)now);
+           exit_event("PAGE_OUT_ANON", thread, type, 0, kd[i].arg1, 0, 0, FMT_PGOUT);
          else
-           exit_event("PAGE_OUT_FILE", thread, type, 0, kd[i].arg1, 0, 0, FMT_PGOUT, (double)now);
+           exit_event("PAGE_OUT_FILE", thread, type, 0, kd[i].arg1, 0, 0, FMT_PGOUT);
          continue;
 
     case MACH_vmfault:
          if (kd[i].arg4 == DBG_PAGEIN_FAULT)
-           exit_event("PAGE_IN", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN, (double)now);
+           exit_event("PAGE_IN", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN);
          else if (kd[i].arg4 == DBG_PAGEINV_FAULT)
-           exit_event("PAGE_IN_FILE", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN, (double)now);
+           exit_event("PAGE_IN_FILE", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN);
          else if (kd[i].arg4 == DBG_PAGEIND_FAULT)
-           exit_event("PAGE_IN_ANON", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN, (double)now);
+           exit_event("PAGE_IN_ANON", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN);
          else {
            if ((ti = find_event(thread, type)))
              delete_event(ti);
@@ -2688,7 +2662,7 @@ sample_sc()
          continue;
 
     case MSC_map_fd:
-         exit_event("map_fd", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_FD, (double)now);
+         exit_event("map_fd", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_FD);
          continue;
           
     case BSC_mmap_extended:
@@ -2707,7 +2681,7 @@ sample_sc()
 
       if (bsd_syscalls[index].sc_name) {
         exit_event(bsd_syscalls[index].sc_name, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4,
-             bsd_syscalls[index].sc_format, (double)now);
+             bsd_syscalls[index].sc_format);
 
         if (type == BSC_exit)
           delete_map_entry(thread);
@@ -2719,7 +2693,7 @@ sample_sc()
 
       if (filemgr_calls[index].fm_name) {
         exit_event(filemgr_calls[index].fm_name, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4,
-             FMT_DEFAULT, (double)now);
+             FMT_DEFAULT);
       }
     }
   }
@@ -2732,10 +2706,6 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
 {
   th_info_t ti;
   threadmap_t tme;
-  int secs;
-  int usecs;
-  long long l_usecs;
-  long curr_time;
   int clen = 0;
   int tsclen = 0;
   int nmclen = 0;
@@ -2763,18 +2733,7 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
     filemgr_in_progress++;
     ti->in_filemgr = 1;
 
-    l_usecs = (long long)(now / divisor);
-    secs = l_usecs / 1000000;
-    curr_time = bias_secs + secs;
-       
-    sprintf(buf, "%-8.8s", &(ctime(&curr_time)[11]));
-    tsclen = strlen(buf);
-
-    if (columns > MAXCOLS || wideflag) {
-      usecs = l_usecs - (long long)((long long)secs * 1000000);
-      sprintf(&buf[tsclen], ".%06ld", (long)usecs);
-      tsclen = strlen(buf);
-    }
+    tsclen = strlen(buf);  /* TODO(peck): I think this is empty */
 
     /*
      * Print timestamp column
@@ -2923,7 +2882,7 @@ extend_syscall(uintptr_t thread, int type, kd_buf *kd)
 
 void
 exit_event(char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
-     int format, double now)
+     int format)
 {
         th_info_t ti;
       
@@ -3005,11 +2964,7 @@ void
 format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
        int format, double now, double stime, int waited, char *pathname)
 {
-        int secs;
-  int usecs;
   int nopadding = 0;
-  long long l_usecs;
-  long curr_time;
   char *command_name;
   int in_filemgr = 0;
   int len = 0;
@@ -3034,26 +2989,17 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   if (format == FMT_IOCTL && ti->arg2 == 0xc030581d)
     return;
 
-  l_usecs = (long long)(now / divisor);
-  secs = l_usecs / 1000000;
-  curr_time = bias_secs + secs;
-
   class = type >> 24;
 
   threadmap_t tme;
 
   if ((tme = find_map_entry(thread)))
           command_name = tme->tm_command;
-  if (last_timestamp != curr_time) {
-          timestamp_len = sprintf(timestamp, "%-8.8s", &(ctime(&curr_time)[11]));
-    last_timestamp = curr_time;
-  }
   if (columns > MAXCOLS || wideflag) {
           int usec;
 
     tlen = timestamp_len;
     nopadding = 0;
-    usec = (l_usecs - (long long)((long long)secs * 1000000));
 
     sprintf(&timestamp[tlen], ".%06ld", (long)usec);
     tlen += 7;
