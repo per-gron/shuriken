@@ -873,10 +873,6 @@ int set_remove_flag = 1;
 
 int BC_flag = 0;
 
-uint64_t sample_TOD_secs;
-uint32_t sample_TOD_usecs;
-
-
 void set_numbufs();
 void set_filter();
 void set_init();
@@ -2944,13 +2940,8 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   if ((tme = find_map_entry(thread)))
           command_name = tme->tm_command;
   if (columns > MAXCOLS || wideflag) {
-          int usec;
-
     tlen = timestamp_len;
     nopadding = 0;
-
-    sprintf(&timestamp[tlen], ".%06ld", (long)usec);
-    tlen += 7;
 
     timestamp[tlen] = '\0';
 
@@ -3803,7 +3794,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
           p2 = "  ";
 
   if (columns > MAXCOLS || wideflag)
-          printf("%s%s %s.%d\n", p1, pathname, p2, command_name, (int)thread);
+          printf("%s%s %s %s.%d\n", p1, pathname, p2, command_name, (int)thread);
   else
           printf("%s%s %-12.12s\n", p1, pathname, p2, command_name);
 }
