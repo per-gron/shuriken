@@ -87,7 +87,6 @@ cc -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRI
 #define NUMPARMS 23
 #define PATHLENGTH (NUMPARMS*sizeof(uintptr_t))
 
-#define MAXCOLS 132
 #define MAX_WIDE_MODE_COLS (PATHLENGTH + 80)
 #define MAXWIDTH MAX_WIDE_MODE_COLS + 64
 
@@ -176,7 +175,6 @@ meta_info_t     m_info_hash[VN_HASH_SIZE];
 int  filemgr_in_progress = 0;
 int  need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
 long last_time;
-int  columns = MAX_WIDE_MODE_COLS;  /* TODO(peck): Remove me. It should always be MAX_WIDE_MODE_COLS */
 
 int  one_good_pid = 0;    /* Used to fail gracefully when bad pids given */
 int  select_pid_mode = 0;  /* Flag set indicates that output is restricted
@@ -905,23 +903,6 @@ char *s;
     fprintf(stderr, "%s", s);
 
   exit(1);
-}
-
-
-void get_screenwidth()
-{
-        struct winsize size;
-
-  columns = MAXCOLS;
-
-  if (isatty(1)) {
-          if (ioctl(1, TIOCGWINSZ, &size) != -1) {
-            columns = size.ws_col;
-
-      if (columns > MAXWIDTH)
-              columns = MAXWIDTH;
-    }
-  }
 }
 
 
@@ -1959,7 +1940,6 @@ main(argc, argv)
     fprintf(stderr, "Could not re-execute: %d\n", errno);
     exit(1);
   }
-  get_screenwidth();
 
   /*
    * get our name
@@ -2620,7 +2600,6 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name)
 {
   th_info_t ti;
   threadmap_t tme;
-  int clen = 0;
   int tsclen = 0;
   int nmclen = 0;
   int argsclen = 0;
@@ -2661,26 +2640,8 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name)
 
       sprintf(buf, "(%d, 0x%lx, 0x%lx, 0x%lx)", (short)kd->arg1, kd->arg2, kd->arg3, kd->arg4);
       argsclen = strlen(buf);
-           
-      /*
-       * Calculate white space out to command
-       */
-      clen = columns - (tsclen + nmclen + argsclen + 20 + 11);
 
-      if (clen > 0) {
-        printf("%s", buf);   /* print the kdargs */
-        memset(buf, ' ', clen);
-        buf[clen] = '\0';
-        printf("%s", buf);
-      }
-      else if ((argsclen + clen) > 0) {
-        /*
-         * no room so wipe out the kdargs
-         */
-        memset(buf, ' ', (argsclen + clen));
-        buf[argsclen + clen] = '\0';
-        printf("%s", buf);
-      }
+      printf("%s", buf);   /* print the kdargs */
       printf("%s.%d\n", tme->tm_command, (int)thread); 
     } else
       printf("  %-24.24s (%5d, %#lx, 0x%lx, 0x%lx)\n",         name, (short)kd->arg1, kd->arg2, kd->arg3, kd->arg4);
@@ -2875,7 +2836,6 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   char *command_name;
   int in_filemgr = 0;
   int len = 0;
-  int clen = 0;
   int tlen = 0;
   int class;
   uint64_t user_addr;
@@ -2915,11 +2875,11 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   }
 
   if (class == FILEMGR_CLASS)
-          clen = printf("%s  %-20.20s", timestamp, sc_name);
+          printf("%s  %-20.20s", timestamp, sc_name);
   else if (in_filemgr)
-          clen = printf("%s    %-15.15s", timestamp, sc_name);
+          printf("%s    %-15.15s", timestamp, sc_name);
   else
-          clen = printf("%s  %-17.17s", timestamp, sc_name);
+          printf("%s  %-17.17s", timestamp, sc_name);
        
 
   framework_name = NULL;
@@ -2938,9 +2898,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * calls with no fd or pathname (i.e.  sync)
        */
       if (arg1)
-              clen += printf("      [%3d]       ", arg1);
+              printf("      [%3d]       ", arg1);
       else
-              clen += printf("                  ");
+              printf("                  ");
       break;
 
           case FMT_FD:
@@ -2948,9 +2908,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * fd based system call... no I/O
        */
       if (arg1)
-              clen += printf(" F=%-3d[%3d]", ti->arg1, arg1);
+              printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
-              clen += printf(" F=%-3d", ti->arg1);
+              printf(" F=%-3d", ti->arg1);
       break;
 
           case FMT_FD_2:
@@ -2958,9 +2918,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * accept, dup, dup2
        */
       if (arg1)
-              clen += printf(" F=%-3d[%3d]", ti->arg1, arg1);
+              printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
-              clen += printf(" F=%-3d  F=%-3d", ti->arg1, arg2);
+              printf(" F=%-3d  F=%-3d", ti->arg1, arg2);
       break;
 
           case FMT_FD_IO:
@@ -2968,9 +2928,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * system calls with fd's that return an I/O completion count
        */
       if (arg1)
-              clen += printf(" F=%-3d[%3d]", ti->arg1, arg1);
+              printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
-              clen += printf(" F=%-3d  B=0x%-6x", ti->arg1, arg2);
+              printf(" F=%-3d  B=0x%-6x", ti->arg1, arg2);
       break;
 
           case FMT_HFS_update:
@@ -2995,7 +2955,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       if (sflag & 0x02)
         sbuf[5] = 'm';
 
-      clen += printf("            (%s) ", sbuf);
+      printf("            (%s) ", sbuf);
 
       pathname = find_vnode_name(arg1);
       nopadding = 1;
@@ -3031,14 +2991,14 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
               buf[mlen - 3] = '\0';
 
       if (arg1)
-              clen += printf("      [%3d]", arg1);
+              printf("      [%3d]", arg1);
 
       user_addr = (((off_t)(unsigned int)(ti->arg4)) << 32) | (unsigned int)(ti->arg1);
-      clen += clip_64bit(" A=", user_addr);
+      clip_64bit(" A=", user_addr);
 
       user_size = (((off_t)(unsigned int)(ti->arg5)) << 32) | (unsigned int)(ti->arg2);
 
-            clen += printf("  B=0x%-16qx  <%s>", user_size, buf);
+            printf("  B=0x%-16qx  <%s>", user_size, buf);
 
       break;
           }
@@ -3068,9 +3028,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
               buf[mlen - 3] = '\0';
 
       if (arg1)
-              clen += printf(" F=%-3d[%3d]  <%s>", ti->arg1, arg1, buf);
+              printf(" F=%-3d[%3d]  <%s>", ti->arg1, arg1, buf);
       else
-              clen += printf(" F=%-3d  <%s>", ti->arg1, buf);
+              printf(" F=%-3d  <%s>", ti->arg1, buf);
 
       break;
           }
@@ -3084,9 +3044,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       int  fd = -1;
 
       if (arg1)
-              clen += printf(" F=%-3d[%3d]", ti->arg1, arg1);
+              printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
-              clen += printf(" F=%-3d", ti->arg1);
+              printf(" F=%-3d", ti->arg1);
 
       switch(ti->arg2) {
 
@@ -3186,11 +3146,11 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       }
       if (p) {
         if (fd == -1)
-          clen += printf(" <%s>", p);
+          printf(" <%s>", p);
         else
-          clen += printf(" <%s> F=%d", p, fd);
+          printf(" <%s> F=%d", p, fd);
       } else
-              clen += printf(" <CMD=%d>", ti->arg2);
+              printf(" <CMD=%d>", ti->arg2);
 
       break;
           }
@@ -3201,11 +3161,11 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * ioctl
        */
       if (arg1)
-              clen += printf(" F=%-3d[%3d]", ti->arg1, arg1);
+              printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
-              clen += printf(" F=%-3d", ti->arg1);
+              printf(" F=%-3d", ti->arg1);
 
-            clen += printf(" <CMD=0x%x>", ti->arg2);
+            printf(" <CMD=0x%x>", ti->arg2);
 
       break;
           }
@@ -3216,9 +3176,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * select
        */
       if (arg1)
-              clen += printf("      [%3d]", arg1);
+              printf("      [%3d]", arg1);
       else
-              clen += printf("        S=%-3d", arg2);
+              printf("        S=%-3d", arg2);
 
       break;
           }
@@ -3228,15 +3188,15 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       /*
        * pread, pwrite, lseek
        */
-      clen += printf(" F=%-3d", ti->arg1);
+      printf(" F=%-3d", ti->arg1);
 
       if (arg1)
-              clen += printf("[%3d]  ", arg1);
+              printf("[%3d]  ", arg1);
       else {
               if (format == FMT_PREAD)
-                clen += printf("  B=0x%-8x ", arg2);
+                printf("  B=0x%-8x ", arg2);
         else
-                clen += printf("  ");
+                printf("  ");
       } 
       if (format == FMT_PREAD)
               offset_reassembled = (((off_t)(unsigned int)(ti->arg3)) << 32) | (unsigned int)(ti->arg4);
@@ -3246,7 +3206,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 #else
               offset_reassembled = (((off_t)(unsigned int)(arg3)) << 32) | (unsigned int)(arg2);
 #endif
-      clen += clip_64bit("O=", offset_reassembled);
+      clip_64bit("O=", offset_reassembled);
 
       if (format == FMT_LSEEK) {
               char *mode;
@@ -3260,7 +3220,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
         else
                 mode = "UNKNOWN";
         
-        clen += printf(" <%s>", mode);
+        printf(" <%s>", mode);
       }
       break;
 
@@ -3268,36 +3228,36 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       /*
        * mmap
        */
-      clen += printf(" F=%-3d  ", ti->arg1);
+      printf(" F=%-3d  ", ti->arg1);
 
       if (arg1)
-              clen += printf("[%3d]  ", arg1);
+              printf("[%3d]  ", arg1);
       else {
 
               user_addr = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
 
-        clen += clip_64bit("A=", user_addr);
+        clip_64bit("A=", user_addr);
 
               offset_reassembled = (((off_t)(unsigned int)(ti->arg6)) << 32) | (unsigned int)(ti->arg7);
 
-        clen += clip_64bit("O=", offset_reassembled);
+        clip_64bit("O=", offset_reassembled);
 
               user_size = (((off_t)(unsigned int)(ti->arg4)) << 32) | (unsigned int)(ti->arg5);
 
-        clen += printf("B=0x%-16qx", user_size);
+        printf("B=0x%-16qx", user_size);
         
-        clen += printf(" <");
+        printf(" <");
 
         if (ti->arg8 & PROT_READ)
-                clen += printf("READ");
+                printf("READ");
 
         if (ti->arg8 & PROT_WRITE)
-                clen += printf("|WRITE");
+                printf("|WRITE");
 
         if (ti->arg8 & PROT_EXEC)
-                clen += printf("|EXEC");
+                printf("|EXEC");
 
-        clen += printf(">");
+        printf(">");
       }
       break;
 
@@ -3307,19 +3267,19 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * ftruncate, truncate
        */
       if (format == FMT_FTRUNC)
-              clen += printf(" F=%-3d", ti->arg1);
+              printf(" F=%-3d", ti->arg1);
       else
-              clen += printf("      ");
+              printf("      ");
 
       if (arg1)
-              clen += printf("[%3d]", arg1);
+              printf("[%3d]", arg1);
 
 #ifdef __ppc__
       offset_reassembled = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
 #else
       offset_reassembled = (((off_t)(unsigned int)(ti->arg3)) << 32) | (unsigned int)(ti->arg2);
 #endif
-      clen += clip_64bit("  O=", offset_reassembled);
+      clip_64bit("  O=", offset_reassembled);
 
       nopadding = 1;
       break;
@@ -3334,12 +3294,12 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
       if (format == FMT_FCHFLAGS) {
               if (arg1)
-                clen += printf(" F=%-3d[%3d]", ti->arg1, arg1);
+                printf(" F=%-3d[%3d]", ti->arg1, arg1);
         else
-                clen += printf(" F=%-3d", ti->arg1);
+                printf(" F=%-3d", ti->arg1);
       } else {
               if (arg1)
-                clen += printf(" [%3d] ", arg1);
+                printf(" [%3d] ", arg1);
       }
       buf[mlen++] = ' ';
       buf[mlen++] = '<';
@@ -3374,7 +3334,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
               memset(&buf[mlen], ' ', 19 - mlen);
         mlen = 19;
       }
-      clen += printf("%s", buf);
+      printf("%s", buf);
 
       nopadding = 1;
       break;
@@ -3394,14 +3354,14 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
       if (format == FMT_FCHMOD || format == FMT_FCHMOD_EXT) {
               if (arg1)
-                clen += printf(" F=%-3d[%3d] ", ti->arg1, arg1);
+                printf(" F=%-3d[%3d] ", ti->arg1, arg1);
         else
-                clen += printf(" F=%-3d ", ti->arg1);
+                printf(" F=%-3d ", ti->arg1);
       } else {
               if (arg1)
-                clen += printf(" [%3d] ", arg1);
+                printf(" [%3d] ", arg1);
         else  
-                clen += printf(" ");
+                printf(" ");
       }
       if (format == FMT_UMASK)
         mode = ti->arg1;
@@ -3413,9 +3373,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       get_mode_string(mode, &buf[0]);
 
       if (arg1 == 0)
-              clen += printf("<%s>      ", buf);
+              printf("<%s>      ", buf);
       else
-              clen += printf("<%s>", buf);
+              printf("<%s>", buf);
       break;
           }
 
@@ -3439,9 +3399,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
               mode[3] = 'F';
 
             if (arg1)
-              clen += printf("      [%3d] (%s)   ", arg1, mode);
+              printf("      [%3d] (%s)   ", arg1, mode);
       else
-              clen += printf("            (%s)   ", mode);
+              printf("            (%s)   ", mode);
 
       nopadding = 1;
       break;
@@ -3450,9 +3410,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
           case FMT_MOUNT:
           {
             if (arg1)
-              clen += printf("      [%3d] <FLGS=0x%x> ", arg1, ti->arg3);
+              printf("      [%3d] <FLGS=0x%x> ", arg1, ti->arg3);
             else
-              clen += printf("     <FLGS=0x%x> ", ti->arg3);
+              printf("     <FLGS=0x%x> ", ti->arg3);
 
             nopadding = 1;
             break;
@@ -3468,9 +3428,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
               mountflag = "";
 
             if (arg1)
-              clen += printf("      [%3d] %s  ", arg1, mountflag);
+              printf("      [%3d] %s  ", arg1, mountflag);
             else
-              clen += printf("     %s         ", mountflag);
+              printf("     %s         ", mountflag);
 
             nopadding = 1;
             break;
@@ -3508,9 +3468,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
               mode[5] = 'E';
 
             if (arg1)
-              clen += printf("      [%3d] (%s) ", arg1, mode);
+              printf("      [%3d] (%s) ", arg1, mode);
       else
-              clen += printf(" F=%-3d      (%s) ", arg2, mode);
+              printf(" F=%-3d      (%s) ", arg2, mode);
 
       nopadding = 1;
       break;
@@ -3580,9 +3540,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       }
 
       if (arg1)
-              clen += printf("      [%3d] <%s, %s, 0x%x>", arg1, domain, type, ti->arg3);
+              printf("      [%3d] <%s, %s, 0x%x>", arg1, domain, type, ti->arg3);
       else
-              clen += printf(" F=%-3d      <%s, %s, 0x%x>", arg2, domain, type, ti->arg3);
+              printf(" F=%-3d      <%s, %s, 0x%x>", arg2, domain, type, ti->arg3);
       break;
           }
 
@@ -3603,9 +3563,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
               op = "UNKNOWN";
 
       if (arg1)
-              clen += printf("      [%3d] P=0x%8.8x  <%s>", arg1, ti->arg2, op);
+              printf("      [%3d] P=0x%8.8x  <%s>", arg1, ti->arg2, op);
       else
-              clen += printf("            P=0x%8.8x  <%s>", ti->arg2, op);
+              printf("            P=0x%8.8x  <%s>", ti->arg2, op);
       break;
           }
 
@@ -3614,9 +3574,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * aio_return   [errno]   AIOCBP   IOSIZE
        */
       if (arg1)
-              clen += printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
+              printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
       else
-              clen += printf("            P=0x%8.8x  B=0x%-8x", ti->arg1, arg2);
+              printf("            P=0x%8.8x  B=0x%-8x", ti->arg1, arg2);
       break;
 
           case FMT_AIO_SUSPEND:
@@ -3624,9 +3584,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * aio_suspend    [errno]   NENTS
        */
       if (arg1)
-              clen += printf("      [%3d] N=%d", arg1, ti->arg2);
+              printf("      [%3d] N=%d", arg1, ti->arg2);
       else
-              clen += printf("            N=%d", ti->arg2);
+              printf("            N=%d", ti->arg2);
       break;
 
           case FMT_AIO_CANCEL:
@@ -3635,14 +3595,14 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        */
       if (ti->arg2) {
               if (arg1)
-                clen += printf("      [%3d] P=0x%8.8x", arg1, ti->arg2);
+                printf("      [%3d] P=0x%8.8x", arg1, ti->arg2);
         else
-                clen += printf("            P=0x%8.8x", ti->arg2);
+                printf("            P=0x%8.8x", ti->arg2);
       } else {
               if (arg1)
-                clen += printf(" F=%-3d[%3d]", ti->arg1, arg1);
+                printf(" F=%-3d[%3d]", ti->arg1, arg1);
         else
-                clen += printf(" F=%-3d", ti->arg1);
+                printf(" F=%-3d", ti->arg1);
       }
       break;
 
@@ -3651,9 +3611,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * aio_error, aio_read, aio_write [errno]  AIOCBP
        */
       if (arg1)
-              clen += printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
+              printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
       else
-              clen += printf("            P=0x%8.8x", ti->arg1);
+              printf("            P=0x%8.8x", ti->arg1);
       break;
 
           case FMT_LIO_LISTIO:
@@ -3671,22 +3631,14 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
               op = "UNKNOWN";
 
       if (arg1)
-              clen += printf("      [%3d] N=%d  <%s>", arg1, ti->arg3, op);
+              printf("      [%3d] N=%d  <%s>", arg1, ti->arg3, op);
       else
-              clen += printf("            N=%d  <%s>", ti->arg3, op);
+              printf("            N=%d  <%s>", ti->arg3, op);
       break;
           }
 
     }
   }
-
-  /*
-   * Calculate space available to print pathname
-   */
-  clen =  columns - (clen + 14 + 20 + 11);
-
-  if (class != FILEMGR_CLASS && !nopadding)
-          clen -= 3;
 
   if (framework_name)
           len = sprintf(&buf[0], " %s %s ", framework_type, framework_name);
@@ -3715,30 +3667,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   } else
           len = 0;
 
-  if (clen > len) {
-          /* 
-     * Add null padding if column length
-     * is wider than the pathname length.
-     */
-          memset(&buf[len], ' ', clen - len);
-    buf[clen] = '\0';
-
-    pathname = buf;
-
-  } else if (clen == len) {
-          pathname = buf;
-
-  } else if ((clen > 0) && (clen < len)) {
-          /*
-     * This prints the tail end of the pathname
-     */
-          buf[len-clen] = ' ';
-
-    pathname = &buf[len - clen];
-
-  } else {
-          pathname = "";
-  }
+  pathname = buf;
   
   if (class != FILEMGR_CLASS && !nopadding)
           p1 = "   ";
