@@ -101,25 +101,25 @@ struct lookup {
 
 struct th_info {
   th_info_t  next;
-        uintptr_t  thread;
-        uintptr_t  child_thread;
+  uintptr_t  thread;
+  uintptr_t  child_thread;
 
-        int  in_filemgr;
+  int  in_filemgr;
   int  in_hfs_update;
-        int  pid;
-        int  type;
-        int  arg1;
-        int  arg2;
-        int  arg3;
-        int  arg4;
-        int  arg5;
-        int  arg6;
-        int  arg7;
-        int  arg8;
-        int  waited;
+  int  pid;
+  int  type;
+  int  arg1;
+  int  arg2;
+  int  arg3;
+  int  arg4;
+  int  arg5;
+  int  arg6;
+  int  arg7;
+  int  arg8;
+  int  waited;
   uint64_t  vnodeid;
-        char      *nameptr;
-        uintptr_t *pathptr;
+  char      *nameptr;
+  uintptr_t *pathptr;
   int  pn_scall_index;
   int  pn_work_index;
   struct lookup lookups[MAX_PATHNAMES];
@@ -149,9 +149,9 @@ struct vnode_info {
 typedef struct meta_info * meta_info_t;
 
 struct meta_info {
-        meta_info_t     m_next;
-        uint64_t        m_blkno;
-        char            *m_nameptr;
+  meta_info_t     m_next;
+  uint64_t        m_blkno;
+  char            *m_nameptr;
 };
 
 #define HASH_SIZE       1024
@@ -172,16 +172,16 @@ vnode_info_t  vn_info_hash[VN_HASH_SIZE];
 meta_info_t     m_info_hash[VN_HASH_SIZE];
 
 
-int  filemgr_in_progress = 0;
-int  need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
+int filemgr_in_progress = 0;
+int need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
 long last_time;
 
-int  one_good_pid = 0;    /* Used to fail gracefully when bad pids given */
-int  select_pid_mode = 0;  /* Flag set indicates that output is restricted
+int one_good_pid = 0;    /* Used to fail gracefully when bad pids given */
+int select_pid_mode = 0;  /* Flag set indicates that output is restricted
             to selected pids or commands */
 
-char  *arguments = 0;
-int     argmax = 0;
+char *arguments = 0;
+int argmax = 0;
 
 
 #define USLEEP_MIN  1
@@ -203,41 +203,41 @@ int filter_mode = DEFAULT_DO_NOT_FILTER;
 #define NFS_DEV -1
 #define CS_DEV  -2
 
-int   check_filter_mode(struct th_info *, int, int, int, char *);
-void            format_print(struct th_info *, char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, int, char *);
+int     check_filter_mode(struct th_info *, int, int, int, char *);
+void    format_print(struct th_info *, char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, int, char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, char *);
 void    enter_event(uintptr_t, int, kd_buf *, char *);
-void            exit_event(char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int);
+void    exit_event(char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int);
 void    extend_syscall(uintptr_t, int, kd_buf *);
 
 void    fs_usage_fd_set(uintptr_t, unsigned int);
-int   fs_usage_fd_isset(uintptr_t, unsigned int);
+int     fs_usage_fd_isset(uintptr_t, unsigned int);
 void    fs_usage_fd_clear(uintptr_t, unsigned int);
 
 void    init_arguments_buffer();
-int         get_real_command_name(int, char *, int);
+int     get_real_command_name(int, char *, int);
 
 void    delete_all_events();
 void    delete_event(th_info_t);
-th_info_t   add_event(uintptr_t, int);
+th_info_t add_event(uintptr_t, int);
 th_info_t find_event(uintptr_t, int);
 
 void    read_command_map();
 void    delete_all_map_entries();
-void            create_map_entry(uintptr_t, int, char *);
+void    create_map_entry(uintptr_t, int, char *);
 void    delete_map_entry(uintptr_t);
-threadmap_t   find_map_entry(uintptr_t);
+threadmap_t find_map_entry(uintptr_t);
 
-char    *add_vnode_name(uint64_t, char *);
-char    *find_vnode_name(uint64_t);
-void            add_meta_name(uint64_t, char *);
+char   *add_vnode_name(uint64_t, char *);
+char   *find_vnode_name(uint64_t);
+void    add_meta_name(uint64_t, char *);
 
 void    getdivisor();
 void    argtopid();
 void    set_remove();
 void    set_pidcheck();
 void    set_pidexclude();
-int   quit();
+int     quit();
 
 
 #define CLASS_MASK  0xff000000
@@ -809,10 +809,10 @@ int filemgr_call_types[] = {
 
 
 #define MAX_PIDS 256
-int    pids[MAX_PIDS];
+int pids[MAX_PIDS];
 
-int    num_of_pids = 0;
-int    exclude_pids = 0;
+int num_of_pids = 0;
+int exclude_pids = 0;
 
 
 struct kinfo_proc *kp_buffer = 0;
@@ -830,7 +830,7 @@ double divisor = 0.0;       /* Trace divisor converts to microseconds */
 
 int mib[6];
 size_t needed;
-char  *my_buffer;
+char *my_buffer;
 
 kbufinfo_t bufinfo = {0, 0, 0, 0, 0};
 
@@ -860,7 +860,7 @@ int quit();
 
 void leave()      /* exit under normal conditions -- INT handler */
 {
-        int i;
+  int i;
   void set_enable();
   void set_pidcheck();
   void set_pidexclude();
@@ -871,12 +871,11 @@ void leave()      /* exit under normal conditions -- INT handler */
   set_enable(0);
 
   if (exclude_pids == 0) {
-          for (i = 0; i < num_of_pids; i++)
-            set_pidcheck(pids[i], 0);
-  }
-  else {
-          for (i = 0; i < num_of_pids; i++)
-            set_pidexclude(pids[i], 0);
+    for (i = 0; i < num_of_pids; i++)
+      set_pidcheck(pids[i], 0);
+  } else {
+    for (i = 0; i < num_of_pids; i++)
+      set_pidexclude(pids[i], 0);
   }
   set_remove();
 
@@ -884,21 +883,20 @@ void leave()      /* exit under normal conditions -- INT handler */
 }
 
 
-int
-quit(s)
+int quit(s)
 char *s;
 {
-        if (trace_enabled)
-         set_enable(0);
+  if (trace_enabled)
+    set_enable(0);
 
   /* 
    * This flag is turned off when calling
    * quit() due to a set_remove() failure.
    */
   if (set_remove_flag)
-          set_remove();
+    set_remove();
 
-        fprintf(stderr, "fs_usage: ");
+  fprintf(stderr, "fs_usage: ");
   if (s)
     fprintf(stderr, "%s", s);
 
@@ -938,39 +936,36 @@ exit_usage(char *myname) {
 
 
 int filemgr_index(type) {
+  if (type & 0x10000)
+    return (((type >> 2) & 0x3fff) + 256);
 
-        if (type & 0x10000)
-          return (((type >> 2) & 0x3fff) + 256);
-
-        return (((type >> 2) & 0x3fff));
+  return (((type >> 2) & 0x3fff));
 }
 
 
 void init_tables(void)
-{ int i;
-        int type; 
-        int code; 
-
+{
+  int i;
+  int type;
+  int code;
 
   for (i = 0; i < MAX_BSD_SYSCALL; i++) {
-          bsd_syscalls[i].sc_name = NULL;
-          bsd_syscalls[i].sc_format = FMT_DEFAULT;
+    bsd_syscalls[i].sc_name = NULL;
+    bsd_syscalls[i].sc_format = FMT_DEFAULT;
   }
 
   for (i = 0; i < MAX_FILEMGR; i++) {
-          filemgr_calls[i].fm_name = NULL;
+    filemgr_calls[i].fm_name = NULL;
   }
 
   for (i = 0; (type = bsd_syscall_types[i]); i++) {
-
-          code = BSC_INDEX(type);
+    code = BSC_INDEX(type);
 
     if (code >= MAX_BSD_SYSCALL) {
-            printf("BSD syscall init (%x):  type exceeds table size\n", type);
-            continue;
+      printf("BSD syscall init (%x):  type exceeds table size\n", type);
+      continue;
     }
     switch (type) {
-
         case BSC_sendfile:
           bsd_syscalls[code].sc_name = "sendfile";
           bsd_syscalls[code].sc_format = FMT_FD;    /* this should be changed to FMT_SENDFILE */
