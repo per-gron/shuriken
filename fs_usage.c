@@ -210,8 +210,8 @@ meta_info_t     m_info_hash[VN_HASH_SIZE];
 
 
 int  filemgr_in_progress = 0;
-int  need_new_map = 1;
-int  bias_secs = 0;
+int  need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
+int  bias_secs = 0;  /* TODO(peck): No need to keep time */
 long last_time;
 int  wideflag = 0;
 int  include_waited_flag = 0;
@@ -2135,8 +2135,9 @@ main(argc, argv)
   set_init();
 
   if (exclude_pids == 0) {
-    for (i = 0; i < num_of_pids; i++)
+    for (i = 0; i < num_of_pids; i++) {
       set_pidcheck(pids[i], 1);
+    }
   } else {
     for (i = 0; i < num_of_pids; i++)
       set_pidexclude(pids[i], 1);
@@ -4394,6 +4395,7 @@ argtopid(char *str)
 
 
 
+/* TODO(peck): This seems to be used by pagein events, which we don't care about */
 void
 lookup_name(uint64_t user_addr, char **type, char **name) 
 {       
@@ -4747,6 +4749,7 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
  * simply not resolve the command name.
  */
 
+/* TODO(peck): We don't need to track command names really */
 void
 init_arguments_buffer()
 {
@@ -4769,6 +4772,7 @@ init_arguments_buffer()
 }
 
 
+/* TODO(peck): We don't need to track command names really */
 int
 get_real_command_name(int pid, char *cbuf, int csize)
 {
