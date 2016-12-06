@@ -3708,7 +3708,7 @@ add_vnode_name(uint64_t vn_id, char *pathname) {
   }
   strcpy(vn->vn_pathname, pathname);
 
-  return (&vn->vn_pathname);
+  return &vn->vn_pathname;
 }
 
 
@@ -3721,9 +3721,9 @@ find_vnode_name(uint64_t vn_id) {
 
   for (vn = vn_info_hash[hashid]; vn; vn = vn->vn_next) {
     if (vn->vn_id == vn_id)
-      return (vn->vn_pathname);
+      return vn->vn_pathname;
   }
-  return ("");
+  return "";
 }
 
 
@@ -3738,29 +3738,29 @@ delete_event(th_info_t ti_to_delete) {
   if ((ti = th_info_hash[hashid])) {
     if (ti == ti_to_delete)
       th_info_hash[hashid] = ti->next;
-                else {
-                        ti_prev = ti;
+    else {
+      ti_prev = ti;
 
       for (ti = ti->next; ti; ti = ti->next) {
-                                if (ti == ti_to_delete) {
+        if (ti == ti_to_delete) {
           ti_prev->next = ti->next;
-                                        break;
-                                }
-                                ti_prev = ti;
-      }
-                }
-                if (ti) {
-                        ti->next = th_info_freelist;
-                        th_info_freelist = ti;
-                }
+          break;
         }
+        ti_prev = ti;
+      }
+    }
+    if (ti) {
+      ti->next = th_info_freelist;
+      th_info_freelist = ti;
+    }
+  }
 }
 
 th_info_t
 add_event(uintptr_t thread, int type) {
   th_info_t ti;
-  int   i;
-  int   hashid;
+  int i;
+  int hashid;
 
   if ((ti = th_info_freelist))
     th_info_freelist = ti->next;
@@ -3786,27 +3786,27 @@ add_event(uintptr_t thread, int type) {
   for (i = 0; i < MAX_PATHNAMES; i++)
     ti->lookups[i].pathname[0] = 0;
 
-  return (ti);
+  return ti;
 }
 
 th_info_t
 find_event(uintptr_t thread, int type) {
-        th_info_t ti;
-  int   hashid;
+  th_info_t ti;
+  int hashid;
 
   hashid = thread & HASH_MASK;
 
   for (ti = th_info_hash[hashid]; ti; ti = ti->next) {
     if (ti->thread == thread) {
-            if (type == ti->type)
-              return (ti);
+      if (type == ti->type)
+        return ti;
       if (ti->in_filemgr) {
-              if (type == -1)
-                return (ti);
+        if (type == -1)
+          return ti;
         continue;
       }
       if (type == 0)
-              return (ti);
+        return ti;
     }
   }
   return ((th_info_t) 0);
@@ -3814,24 +3814,23 @@ find_event(uintptr_t thread, int type) {
 
 void
 delete_all_events() {
-        th_info_t ti = 0;
-        th_info_t ti_next = 0;
-        int             i;
+  th_info_t ti = 0;
+  th_info_t ti_next = 0;
+  int             i;
 
-        for (i = 0; i < HASH_SIZE; i++) {
-
-                for (ti = th_info_hash[i]; ti; ti = ti_next) {
-                        ti_next = ti->next;
-                        ti->next = th_info_freelist;
-                        th_info_freelist = ti;
-                }
-                th_info_hash[i] = 0;
-        }
+  for (i = 0; i < HASH_SIZE; i++) {
+    for (ti = th_info_hash[i]; ti; ti = ti_next) {
+      ti_next = ti->next;
+      ti->next = th_info_freelist;
+      th_info_freelist = ti;
+    }
+    th_info_hash[i] = 0;
+  }
 }
 
 void read_command_map()
 {
-  size_t  size;
+  size_t size;
   int i;
   int total_threads = 0;
   kd_threadmap *mapptr = 0;
@@ -3868,51 +3867,50 @@ void read_command_map()
   for (i = 0; i < total_threads; i++)
     create_map_entry(mapptr[i].thread, mapptr[i].valid, &mapptr[i].command[0]);
 
-        free(mapptr);
+  free(mapptr);
 }
 
 
 void delete_all_map_entries()
 {
-  threadmap_t     tme = 0;
-        threadmap_t     tme_next = 0;
-  int             i;
+  threadmap_t tme = 0;
+  threadmap_t tme_next = 0;
+  int i;
 
   for (i = 0; i < HASH_SIZE; i++) {
-
     for (tme = threadmap_hash[i]; tme; tme = tme_next) {
-                        if (tme->tm_setptr)
+      if (tme->tm_setptr)
         free(tme->tm_setptr);
       tme_next = tme->tm_next;
-                        tme->tm_next = threadmap_freelist;
+      tme->tm_next = threadmap_freelist;
       threadmap_freelist = tme;
-                }
-                threadmap_hash[i] = 0;
+    }
+    threadmap_hash[i] = 0;
   }
 }
 
 
 void create_map_entry(uintptr_t thread, int pid, char *command)
 {
-        threadmap_t     tme;
-        int             hashid;
+  threadmap_t tme;
+  int hashid;
 
-        if ((tme = threadmap_freelist))
-                threadmap_freelist = tme->tm_next;
-        else
-                tme = (threadmap_t)malloc(sizeof(struct threadmap));
+  if ((tme = threadmap_freelist))
+    threadmap_freelist = tme->tm_next;
+  else
+    tme = (threadmap_t)malloc(sizeof(struct threadmap));
 
-        tme->tm_thread  = thread;
+  tme->tm_thread  = thread;
   tme->tm_setsize = 0;
   tme->tm_setptr  = 0;
 
-        (void)strncpy (tme->tm_command, command, MAXCOMLEN);
-        tme->tm_command[MAXCOMLEN] = '\0';
+  (void)strncpy (tme->tm_command, command, MAXCOMLEN);
+  tme->tm_command[MAXCOMLEN] = '\0';
 
-        hashid = thread & HASH_MASK;
+  hashid = thread & HASH_MASK;
 
-        tme->tm_next = threadmap_hash[hashid];
-        threadmap_hash[hashid] = tme;
+  tme->tm_next = threadmap_hash[hashid];
+  threadmap_hash[hashid] = tme;
 
   if (pid != 0 && pid != 1) {
     if (!strncmp(command, "LaunchCFMA", 10))
@@ -3924,47 +3922,47 @@ void create_map_entry(uintptr_t thread, int pid, char *command)
 threadmap_t
 find_map_entry(uintptr_t thread)
 {
-        threadmap_t     tme;
-        int     hashid;
+  threadmap_t tme;
+  int hashid;
 
   hashid = thread & HASH_MASK;
 
-        for (tme = threadmap_hash[hashid]; tme; tme = tme->tm_next) {
+  for (tme = threadmap_hash[hashid]; tme; tme = tme->tm_next) {
     if (tme->tm_thread == thread)
-      return (tme);
+      return tme;
   }
-        return (0);
+  return 0;
 }
 
 
 void
 delete_map_entry(uintptr_t thread)
 {
-        threadmap_t     tme = 0;
-        threadmap_t     tme_prev;
-        int             hashid;
+  threadmap_t tme = 0;
+  threadmap_t tme_prev;
+  int hashid;
 
-        hashid = thread & HASH_MASK;
+  hashid = thread & HASH_MASK;
 
-        if ((tme = threadmap_hash[hashid])) {
-                if (tme->tm_thread == thread)
+  if ((tme = threadmap_hash[hashid])) {
+    if (tme->tm_thread == thread)
       threadmap_hash[hashid] = tme->tm_next;
-                else {
-                        tme_prev = tme;
+    else {
+      tme_prev = tme;
 
       for (tme = tme->tm_next; tme; tme = tme->tm_next) {
-                                if (tme->tm_thread == thread) {
-                                        tme_prev->tm_next = tme->tm_next;
-                                        break;
+        if (tme->tm_thread == thread) {
+          tme_prev->tm_next = tme->tm_next;
+          break;
         }
-                                tme_prev = tme;
+        tme_prev = tme;
       }
     }
-                if (tme) {
+    if (tme) {
       if (tme->tm_setptr)
         free(tme->tm_setptr);
 
-                        tme->tm_next = threadmap_freelist;
+      tme->tm_next = threadmap_freelist;
       threadmap_freelist = tme;
     }
   }
@@ -4022,7 +4020,7 @@ fs_usage_fd_isset(uintptr_t thread, unsigned int fd)
     if (tme->tm_setptr && fd < tme->tm_setsize)
       ret = tme->tm_setptr[fd/FS_USAGE_NFDBITS] & (1 << (fd % FS_USAGE_NFDBITS));
   }
-  return (ret);
+  return ret;
 }
     
 
@@ -4042,31 +4040,31 @@ fs_usage_fd_clear(uintptr_t thread, unsigned int fd)
 void
 argtopid(char *str)
 {
-        char *cp;
-        int ret;
+  char *cp;
+  int ret;
   int i;
 
-        ret = (int)strtol(str, &cp, 10);
+  ret = (int)strtol(str, &cp, 10);
 
-        if (cp == str || *cp) {
-    /*
-     * Assume this is a command string and find matching pids
-     */
-          if (!kp_buffer)
-            find_proc_names();
+  if (cp == str || *cp) {
+  /*
+   * Assume this is a command string and find matching pids
+   */
+  if (!kp_buffer)
+    find_proc_names();
 
-          for (i = 0; i < kp_nentries && num_of_pids < (MAX_PIDS - 1); i++) {
-      if (kp_buffer[i].kp_proc.p_stat == 0)
-        continue;
-      else {
-        if (!strncmp(str, kp_buffer[i].kp_proc.p_comm,
-               sizeof(kp_buffer[i].kp_proc.p_comm) -1))
-          pids[num_of_pids++] = kp_buffer[i].kp_proc.p_pid;
+  for (i = 0; i < kp_nentries && num_of_pids < (MAX_PIDS - 1); i++) {
+    if (kp_buffer[i].kp_proc.p_stat == 0)
+      continue;
+    else {
+      if (!strncmp(str, kp_buffer[i].kp_proc.p_comm,
+            sizeof(kp_buffer[i].kp_proc.p_comm) -1))
+        pids[num_of_pids++] = kp_buffer[i].kp_proc.p_pid;
       }
     }
   }
   else if (num_of_pids < (MAX_PIDS - 1))
-          pids[num_of_pids++] = ret;
+    pids[num_of_pids++] = ret;
 }
 
 /*
@@ -4091,66 +4089,65 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
   unsigned int fd;
 
   if (filter_mode == DEFAULT_DO_NOT_FILTER)
-    return(1);
+    return 1;
   
   if (filter_mode & EXEC_FILTER) {
     if (type == BSC_execve || type == BSC_posix_spawn)
-      return(1);
+      return 1;
   }
 
   if (filter_mode & PATHNAME_FILTER) {
-            if (ti && ti->lookups[0].pathname[0])
-              return(1);
-      if (type == BSC_close || type == BSC_close_nocancel ||
-        type == BSC_guarded_close_np)
-              return(1);
+    if (ti && ti->lookups[0].pathname[0])
+      return 1;
+    if (type == BSC_close || type == BSC_close_nocancel ||
+      type == BSC_guarded_close_np)
+    return 1;
   }
 
   if (ti == (struct th_info *)0) {
     if (filter_mode & FILESYS_FILTER)
-      return(1);
-    return(0);
+      return 1;
+    return 0;
   }
 
   switch (type) {
-
   case BSC_close:
   case BSC_close_nocancel:
   case BSC_guarded_close_np:
-      fd = ti->arg1;
-      network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
+    fd = ti->arg1;
+    network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
 
-      if (error == 0)
-        fs_usage_fd_clear(ti->thread,fd);
-      
-      if (!network_fd_isset)
-        if (filter_mode & FILESYS_FILTER)
-          ret = 1;
-      break;
+    if (error == 0)
+      fs_usage_fd_clear(ti->thread,fd);
+
+    if (!network_fd_isset)
+      if (filter_mode & FILESYS_FILTER)
+        ret = 1;
+    break;
 
   case BSC_read:
   case BSC_write:
   case BSC_read_nocancel:
   case BSC_write_nocancel:
-      /*
-       * we don't care about error in these cases
-       */
-      fd = ti->arg1;
-      network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
+    /*
+     * we don't care about error in these cases
+     */
+    fd = ti->arg1;
+    network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
 
-      if (!network_fd_isset)
-        if (filter_mode & FILESYS_FILTER)
-          ret = 1;  
-      break;
+    if (!network_fd_isset)
+      if (filter_mode & FILESYS_FILTER)
+        ret = 1;
+    break;
 
   case BSC_accept:
   case BSC_accept_nocancel:
   case BSC_socket:
-      fd = retval;
+    fd = retval;
 
-      if (error == 0)
-        fs_usage_fd_set(ti->thread, fd);
-      break;
+    if (error == 0)
+      fs_usage_fd_set(ti->thread, fd);
+    break;
 
   case BSC_recvfrom:
   case BSC_sendto:
@@ -4164,33 +4161,33 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
   case BSC_recvmsg_nocancel:
   case BSC_sendmsg_nocancel:
   case BSC_connect_nocancel:
-      fd = ti->arg1;
+    fd = ti->arg1;
 
-      if (error == 0)
-        fs_usage_fd_set(ti->thread, fd);
-      break;
+    if (error == 0)
+      fs_usage_fd_set(ti->thread, fd);
+    break;
 
   case BSC_dup:
   case BSC_dup2:
-      /*
-       * We track these cases for fd state only
-       */
-      fd = ti->arg1;
-      network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
+    /*
+     * We track these cases for fd state only
+     */
+    fd = ti->arg1;
+    network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
 
-      if (error == 0 && network_fd_isset) {
-        /*
-         * then we are duping a socket descriptor
-         */
-        fd = retval;  /* the new fd */
-        fs_usage_fd_set(ti->thread, fd);
-      }
-      break;
+    if (error == 0 && network_fd_isset) {
+      /*
+       * then we are duping a socket descriptor
+       */
+      fd = retval;  /* the new fd */
+      fs_usage_fd_set(ti->thread, fd);
+    }
+    break;
 
   default:
-      if (filter_mode & FILESYS_FILTER)
-        ret = 1;
-      break;
+    if (filter_mode & FILESYS_FILTER)
+      ret = 1;
+    break;
   }
 
   return(ret);
@@ -4207,8 +4204,8 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
 void
 init_arguments_buffer()
 {
-  int     mib[2];
-  size_t  size;
+  int mib[2];
+  size_t size;
 
   mib[0] = CTL_KERN;
   mib[1] = KERN_ARGMAX;
@@ -4233,17 +4230,17 @@ get_real_command_name(int pid, char *cbuf, int csize)
   /*
    * Get command and arguments.
    */
-  char  *cp;
+  char *cp;
   int mib[4];
-  char    *command_beg, *command, *command_end;
+  char *command_beg, *command, *command_end;
 
   if (cbuf == NULL)
-    return(0);
+    return 0;
 
   if (arguments)
     bzero(arguments, argmax);
   else
-    return(0);
+    return 0;
 
   /*
    * A sysctl() is made to find out the full path that the command
@@ -4255,7 +4252,7 @@ get_real_command_name(int pid, char *cbuf, int csize)
   mib[3] = 0;
 
   if (sysctl(mib, 3, arguments, (size_t *)&argmax, NULL, 0) < 0)
-    return(0);
+    return 0;
 
   /*
    * Skip the saved exec_path
@@ -4269,7 +4266,7 @@ get_real_command_name(int pid, char *cbuf, int csize)
     }
   }
   if (cp == &arguments[argmax])
-    return(0);
+    return 0;
 
   /*
    * Skip trailing '\0' characters
@@ -4283,7 +4280,7 @@ get_real_command_name(int pid, char *cbuf, int csize)
     }
   }
   if (cp == &arguments[argmax])
-    return(0);
+    return 0;
 
   command_beg = cp;
   /*
@@ -4316,5 +4313,5 @@ get_real_command_name(int pid, char *cbuf, int csize)
   (void) strncpy(cbuf, (char *)command, csize);
   cbuf[csize-1] = '\0';
 
-  return(1);
+  return 1;
 }
