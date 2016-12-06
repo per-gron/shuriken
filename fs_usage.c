@@ -232,7 +232,6 @@ char   *add_vnode_name(uint64_t, char *);
 char   *find_vnode_name(uint64_t);
 void    add_meta_name(uint64_t, char *);
 
-void    getdivisor();
 void    argtopid();
 void    set_remove();
 void    set_pidcheck();
@@ -826,8 +825,6 @@ int num_events = EVENT_BASE;
 #define DBG_FUNC_ALL  (DBG_FUNC_START | DBG_FUNC_END)
 #define DBG_FUNC_MASK 0xfffffffc
 
-double divisor = 0.0;       /* Trace divisor converts to microseconds */
-
 int mib[6];
 size_t needed;
 char *my_buffer;
@@ -902,17 +899,6 @@ char *s;
 
   exit(1);
 }
-
-
-void getdivisor()
-{
-  struct mach_timebase_info mti;
-
-  mach_timebase_info(&mti);
-
-  divisor = ((double)mti.denom / (double)mti.numer) * 1000;
-}
-
 
 int
 exit_usage(char *myname) {
@@ -2050,7 +2036,6 @@ main(argc, argv)
   set_enable(1);
 
   init_arguments_buffer();
-  getdivisor();
 
   init_tables();
 
@@ -4118,7 +4103,7 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
     network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
 
     if (error == 0)
-      fs_usage_fd_clear(ti->thread,fd);
+      fs_usage_fd_clear(ti->thread, fd);
 
     if (!network_fd_isset)
       if (filter_mode & FILESYS_FILTER)
@@ -4190,7 +4175,7 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
     break;
   }
 
-  return(ret);
+  return ret;
 }
 
 /*
@@ -4297,7 +4282,7 @@ get_real_command_name(int pid, char *cbuf, int csize)
     }
   }
   if (cp == &arguments[argmax])
-    return(0);
+    return 0;
 
   command_end = command = cp;
 
