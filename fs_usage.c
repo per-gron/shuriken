@@ -101,18 +101,6 @@ char *frameworkType[] = {
   "<LINKEDIT>",
 };
 
-
-typedef struct LibraryInfo {
-  uint64_t b_address;
-  uint64_t e_address;
-  int  r_type;
-  char     *name;
-} LibraryInfo;
-
-LibraryInfo frameworkInfo[MAXINDEX];
-int numFrameworks = 0;
-
-
 /* 
  * MAXCOLS controls when extra data kicks in.
  * MAX_WIDE_MODE_COLS controls -w mode to get even wider data in path.
@@ -249,10 +237,6 @@ void    enter_event(uintptr_t, int, kd_buf *, char *, double);
 void            exit_event(char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int);
 void    extend_syscall(uintptr_t, int, kd_buf *);
 
-void    lookup_name(uint64_t user_addr, char **type, char **name);
-int     ReadSharedCacheMap(const char *, LibraryRange *, char *);
-void    SortFrameworkAddresses();
-
 void    fs_usage_fd_set(uintptr_t, unsigned int);
 int   fs_usage_fd_isset(uintptr_t, unsigned int);
 void    fs_usage_fd_clear(uintptr_t, unsigned int);
@@ -296,7 +280,6 @@ int   quit();
 #define TRACE_STRING_EXEC      0x07010008
 #endif
 
-#define MACH_vmfault    0x01300008
 #define MACH_pageout    0x01300004
 //#define VFS_LOOKUP      0x03010090
 #define VFS_ALIAS_VP    0x03010094
@@ -570,8 +553,6 @@ int   quit();
 #define FMT_FD_IO 2
 #define FMT_FD_2  3
 #define FMT_SOCKET  4
-#define FMT_PGIN  5
-#define FMT_PGOUT 6
 #define FMT_LSEEK 9
 #define FMT_PREAD 10
 #define FMT_FTRUNC  11
@@ -2112,14 +2093,6 @@ main(argc, argv)
   if ((my_buffer = malloc(num_events * sizeof(kd_buf))) == (char *)0)
     quit("can't allocate memory for tracing info\n");
 
-    ReadSharedCacheMap("/var/db/dyld/dyld_shared_cache_i386.map", &framework32, "/var/db/dyld/dyld_shared_cache_i386");
-
-    if (0 == ReadSharedCacheMap("/var/db/dyld/dyld_shared_cache_x86_64h.map", &framework64h, "/var/db/dyld/dyld_shared_cache_x86_64h")){
-        ReadSharedCacheMap("/var/db/dyld/dyld_shared_cache_x86_64.map", &framework64, "/var/db/dyld/dyld_shared_cache_x86_64");
-    }
-
-  SortFrameworkAddresses();
-
   set_remove();
   set_numbufs(num_events);
   set_init();
@@ -2642,23 +2615,10 @@ sample_sc()
          continue;
 
     case MACH_pageout:
-         if (kd[i].arg2) 
-           exit_event("PAGE_OUT_ANON", thread, type, 0, kd[i].arg1, 0, 0, FMT_PGOUT);
-         else
-           exit_event("PAGE_OUT_FILE", thread, type, 0, kd[i].arg1, 0, 0, FMT_PGOUT);
-         continue;
-
     case MACH_vmfault:
-         if (kd[i].arg4 == DBG_PAGEIN_FAULT)
-           exit_event("PAGE_IN", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN);
-         else if (kd[i].arg4 == DBG_PAGEINV_FAULT)
-           exit_event("PAGE_IN_FILE", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN);
-         else if (kd[i].arg4 == DBG_PAGEIND_FAULT)
-           exit_event("PAGE_IN_ANON", thread, type, 0, kd[i].arg1, kd[i].arg2, 0, FMT_PGIN);
-         else {
+            // TODO(peck): what about deleting all of the events?
            if ((ti = find_event(thread, type)))
              delete_event(ti);
-         }
          continue;
 
     case MSC_map_fd:
@@ -3072,23 +3032,6 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
               clen += printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
               clen += printf(" F=%-3d  B=0x%-6x", ti->arg1, arg2);
-      break;
-
-          case FMT_PGIN:
-      /*
-       * pagein
-       */
-      user_addr = ((uint64_t)arg2 << 32) | (uint32_t)arg3;
-
-            lookup_name(user_addr, &framework_type, &framework_name);
-      clen += clip_64bit(" A=", user_addr);
-      break;
-
-          case FMT_PGOUT:
-      /*
-       * pageout
-       */
-            clen += printf("      B=0x%-8x", arg2);
       break;
 
           case FMT_HFS_update:
@@ -4303,228 +4246,6 @@ argtopid(char *str)
   }
   else if (num_of_pids < (MAX_PIDS - 1))
           pids[num_of_pids++] = ret;
-}
-
-
-
-/* TODO(peck): This seems to be used by pagein events, which we don't care about */
-void
-lookup_name(uint64_t user_addr, char **type, char **name) 
-{       
-        int i;
-  int start, last;
-  
-  *name = NULL;
-  *type = NULL;
-
-  if (numFrameworks) {
-
-    if ((user_addr >= framework32.b_address && user_addr < framework32.e_address) ||
-            (user_addr >= framework64.b_address && user_addr < framework64.e_address) ||
-            (user_addr >= framework64h.b_address && user_addr < framework64h.e_address)) {
-            
-      start = 0;
-      last  = numFrameworks;
-
-      for (i = numFrameworks / 2; start < last; i = start + ((last - start) / 2)) {
-        if (user_addr > frameworkInfo[i].e_address)
-          start = i+1;
-        else
-          last = i;
-      }
-      if (start < numFrameworks &&
-          user_addr >= frameworkInfo[start].b_address && user_addr < frameworkInfo[start].e_address) {
-        *type = frameworkType[frameworkInfo[start].r_type];
-        *name = frameworkInfo[start].name;
-      }
-    }
-  }
-}
-
-
-/*
- * Comparison routines for sorting
- */
-static int compareFrameworkAddress(const void  *aa, const void *bb)
-{
-  LibraryInfo *a = (LibraryInfo *)aa;
-  LibraryInfo *b = (LibraryInfo *)bb;
-
-  if (a->b_address < b->b_address) return -1;
-  if (a->b_address == b->b_address) return 0;
-  return 1;
-}
-
-
-int scanline(char *inputstring, char **argv, int maxtokens)
-{
-  int n = 0;
-  char **ap = argv, *p, *val;
-
-  for (p = inputstring; n < maxtokens && p != NULL; ) {
-
-    while ((val = strsep(&p, " \t")) != NULL && *val == '\0');
-
-    *ap++ = val;
-    n++;
-  }
-  *ap = 0;
-
-  return n;
-}
-
-
-int ReadSharedCacheMap(const char *path, LibraryRange *lr, char *linkedit_name)
-{
-  uint64_t  b_address, e_address;
-  char  buf[1024];
-  char  *fnp;
-  FILE  *fd;
-  char  frameworkName[256];
-  char  *tokens[64];
-  int ntokens;
-  int type;
-  int linkedit_found = 0;
-  char  *substring, *ptr;
-
-  bzero(buf, sizeof(buf));
-  bzero(tokens, sizeof(tokens));
-
-  lr->b_address = 0;
-  lr->e_address = 0;
-
-  if ((fd = fopen(path, "r")) == 0)
-    return 0;
-
-  while (fgets(buf, 1023, fd)) {
-    if (strncmp(buf, "mapping", 7))
-      break;
-  }
-  buf[strlen(buf)-1] = 0;
-  
-  frameworkName[0] = 0;
-
-  for (;;) {
-    /*
-     * Extract lib name from path name
-     */
-    if ((substring = strrchr(buf, '.')))
-    {   
-      /*
-       * There is a ".": name is whatever is between the "/" around the "." 
-       */
-      while ( *substring != '/')        /* find "/" before "." */
-        substring--;
-      substring++;
-
-      strncpy(frameworkName, substring, 256);           /* copy path from "/" */
-      frameworkName[255] = 0;
-      substring = frameworkName;
-
-      while ( *substring != '/' && *substring)    /* find "/" after "." and stop string there */
-        substring++;
-      *substring = 0;
-    }
-    else 
-    {
-      /*
-       * No ".": take segment after last "/"
-       */
-      ptr = buf;
-      substring = ptr;
-
-      while (*ptr)  {
-        if (*ptr == '/')
-          substring = ptr + 1;
-        ptr++;
-      }
-      strncpy(frameworkName, substring, 256);
-      frameworkName[255] = 0;
-    }
-    fnp = (char *)malloc(strlen(frameworkName) + 1);
-    strcpy(fnp, frameworkName);
-
-    while (fgets(buf, 1023, fd) && numFrameworks < (MAXINDEX - 2)) {
-      /*
-       * Get rid of EOL
-       */
-      buf[strlen(buf)-1] = 0;
-
-      ntokens = scanline(buf, tokens, 64);
-
-      if (ntokens < 4)
-        continue;
-
-      if (strncmp(tokens[0], "__TEXT", 6) == 0)
-        type = TEXT_R;
-      else if (strncmp(tokens[0], "__DATA", 6) == 0)
-        type = DATA_R;
-      else if (strncmp(tokens[0], "__OBJC", 6) == 0)
-        type = OBJC_R;
-      else if (strncmp(tokens[0], "__IMPORT", 8) == 0)
-        type = IMPORT_R;
-      else if (strncmp(tokens[0], "__UNICODE", 9) == 0)
-        type = UNICODE_R;
-      else if (strncmp(tokens[0], "__IMAGE", 7) == 0)
-        type = IMAGE_R;
-      else if (strncmp(tokens[0], "__LINKEDIT", 10) == 0)
-        type = LINKEDIT_R;
-      else
-        type = -1;
-
-      if (type == LINKEDIT_R && linkedit_found)
-        break;
-
-      if (type != -1) {
-        b_address = strtoull(tokens[1], 0, 16);
-        e_address = strtoull(tokens[3], 0, 16);
-
-        frameworkInfo[numFrameworks].b_address  = b_address;
-        frameworkInfo[numFrameworks].e_address  = e_address;
-        frameworkInfo[numFrameworks].r_type = type;
-        
-        if (type == LINKEDIT_R) {
-          frameworkInfo[numFrameworks].name = linkedit_name;
-          linkedit_found = 1;
-        } else
-          frameworkInfo[numFrameworks].name = fnp;
-#if 0
-        printf("%s(%d): %qx-%qx\n", frameworkInfo[numFrameworks].name, type, b_address, e_address);
-#endif
-        if (lr->b_address == 0 || b_address < lr->b_address)
-          lr->b_address = b_address;
-
-        if (lr->e_address == 0 || e_address > lr->e_address)
-          lr->e_address = e_address;
-
-        numFrameworks++;
-      }
-      if (type == LINKEDIT_R)
-        break;
-    }
-    if (fgets(buf, 1023, fd) == 0)
-      break;
-
-    buf[strlen(buf)-1] = 0;
-  }
-  fclose(fd);
-
-#if 0
-  printf("%s range, %qx-%qx\n", path, lr->b_address, lr->e_address);
-#endif
-  return 1;
-}
-
-
-void
-SortFrameworkAddresses()
-{
-
-  frameworkInfo[numFrameworks].b_address = frameworkInfo[numFrameworks - 1].b_address + 0x800000;
-  frameworkInfo[numFrameworks].e_address = frameworkInfo[numFrameworks].b_address;
-  frameworkInfo[numFrameworks].name = (char *)0;
-
-  qsort(frameworkInfo, numFrameworks, sizeof(LibraryInfo), compareFrameworkAddress);
 }
 
 /*
