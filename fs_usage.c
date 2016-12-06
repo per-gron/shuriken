@@ -214,7 +214,6 @@ int  need_new_map = 1;  /* TODO(peck): This should be treated as an error instea
 int  bias_secs = 0;  /* TODO(peck): No need to keep time */
 long last_time;
 int  wideflag = 0;
-int  include_waited_flag = 0;
 int  columns = 0;
 
 int  one_good_pid = 0;    /* Used to fail gracefully when bad pids given */
@@ -266,7 +265,6 @@ void    delete_all_events();
 void    delete_event(th_info_t);
 th_info_t   add_event(uintptr_t, int);
 th_info_t find_event(uintptr_t, int);
-void    mark_thread_waited(uintptr_t);
 
 void    read_command_map();
 void    delete_all_map_entries();
@@ -301,9 +299,6 @@ int   quit();
 
 #define MACH_vmfault    0x01300008
 #define MACH_pageout    0x01300004
-#define MACH_sched      0x01400000
-#define MACH_stkhandoff 0x01400008
-#define MACH_idle 0x01400024
 //#define VFS_LOOKUP      0x03010090
 #define VFS_ALIAS_VP    0x03010094
 
@@ -2048,10 +2043,6 @@ main(argc, argv)
           columns = MAX_WIDE_MODE_COLS;
         break;
 
-      case 'W':
-        include_waited_flag = 1;
-        break;
-
          case 'f':
        if (!strcmp(optarg, "filesys"))
          filter_mode |= FILESYS_FILTER;
@@ -2254,10 +2245,6 @@ set_filter(void)
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_TRACE,DBG_TRACE_STRING));
 
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_MACH,DBG_MACH_EXCP_SC)); //0x010c
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_MACH,DBG_MACH_VM)); //0x0130
-
-  if (include_waited_flag)
-    setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_MACH,DBG_MACH_SCHED)); //0x0140
 
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_FSRW)); //0x0301
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_DKRW)); //0x0302
@@ -2552,12 +2539,6 @@ sample_sc()
           continue;
         break;
 
-    case MACH_idle:
-    case MACH_sched:
-    case MACH_stkhandoff:
-                    mark_thread_waited(thread);
-        continue;
-      
     case HFS_modify_block_end:
          if ((ti = find_event(thread, 0))) {
                  if (ti->nameptr)
@@ -2848,8 +2829,6 @@ enter_event(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
 
   switch (type) {
 
-  case MACH_pageout:
-  case MACH_vmfault:
   case MSC_map_fd:
   case SPEC_ioctl:
   case Throttled:
@@ -4139,21 +4118,6 @@ delete_all_events() {
                 th_info_hash[i] = 0;
         }
 }
-
-
-void
-mark_thread_waited(uintptr_t thread) {
-        th_info_t ti;
-  int   hashid;
-
-  hashid = thread & HASH_MASK;
-
-  for (ti = th_info_hash[hashid]; ti; ti = ti->next) {
-    if (ti->thread == thread)
-      ti->waited = 1;
-  }
-}
-
 
 void read_command_map()
 {
