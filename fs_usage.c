@@ -26,8 +26,6 @@
 cc -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRIVATE -D__APPLE_PRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.c
 */
 
-typedef int bool;
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
