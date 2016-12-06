@@ -2247,7 +2247,7 @@ set_filter(void)
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_MACH,DBG_MACH_EXCP_SC)); //0x010c
 
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_FSRW)); //0x0301
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_DKRW)); //0x0302
+  // setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_DKRW)); //0x0302
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_IOCTL)); //0x0306
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_BOOTCACHE)); //0x0307
 
