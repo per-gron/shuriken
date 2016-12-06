@@ -141,7 +141,6 @@ struct th_info {
         int  arg7;
         int  arg8;
         int  waited;
-        double stime;
   uint64_t  vnodeid;
         char      *nameptr;
         uintptr_t *pathptr;
@@ -231,9 +230,9 @@ int filter_mode = DEFAULT_DO_NOT_FILTER;
 #define CS_DEV  -2
 
 int   check_filter_mode(struct th_info *, int, int, int, char *);
-void            format_print(struct th_info *, char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, double, double, int, char *);
-void    enter_event_now(uintptr_t, int, kd_buf *, char *, double);
-void    enter_event(uintptr_t, int, kd_buf *, char *, double);
+void            format_print(struct th_info *, char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, int, char *);
+void    enter_event_now(uintptr_t, int, kd_buf *, char *);
+void    enter_event(uintptr_t, int, kd_buf *, char *);
 void            exit_event(char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int);
 void    extend_syscall(uintptr_t, int, kd_buf *);
 
@@ -272,6 +271,7 @@ int   quit();
 #define BSC_INDEX(type) ((type >> 2) & 0x3fff)
 
 
+#define MACH_vmfault    0x01300008
 #define MACH_pageout    0x01300004
 #define VFS_ALIAS_VP    0x03010094
 
@@ -2571,7 +2571,7 @@ sample_sc()
       } else
               p = NULL;
 
-      enter_event(thread, type, &kd[i], p, (double)now);
+      enter_event(thread, type, &kd[i], p);
       continue;
     }
 
@@ -2587,7 +2587,7 @@ sample_sc()
 
     case SPEC_unmap_info:
          if (check_filter_mode(NULL, SPEC_unmap_info, 0, 0, "SPEC_unmap_info"))
-           format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_UNMAP_INFO, now, now, 0, "");
+           format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_UNMAP_INFO, 0, "");
          continue;
 
     case SPEC_ioctl:
@@ -2651,7 +2651,7 @@ sample_sc()
 
 
 void
-enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
+enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name)
 {
   th_info_t ti;
   threadmap_t tme;
@@ -2664,7 +2664,6 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
   if ((ti = add_event(thread, type)) == NULL)
     return;
 
-  ti->stime  = now;
   ti->arg1   = kd->arg1;
   ti->arg2   = kd->arg2;
   ti->arg3   = kd->arg3;
@@ -2731,7 +2730,7 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
 
 
 void
-enter_event(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
+enter_event(uintptr_t thread, int type, kd_buf *kd, char *name)
 {
   int index;
 
@@ -2741,7 +2740,7 @@ enter_event(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
   case SPEC_ioctl:
   case Throttled:
   case HFS_update:
-    enter_event_now(thread, type, kd, name, now);
+    enter_event_now(thread, type, kd, name);
     return;
 
   }
@@ -2751,7 +2750,7 @@ enter_event(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
       return;
 
     if (bsd_syscalls[index].sc_name)
-      enter_event_now(thread, type, kd, name, now);
+      enter_event_now(thread, type, kd, name);
     return;
   }
   if ((type & CLASS_MASK) == FILEMGR_BASE) {
@@ -2760,7 +2759,7 @@ enter_event(uintptr_t thread, int type, kd_buf *kd, char *name, double now)
       return;
          
     if (filemgr_calls[index].fm_name)
-      enter_event_now(thread, type, kd, name, now);
+      enter_event_now(thread, type, kd, name);
     return;
   }
 }
@@ -2841,7 +2840,7 @@ exit_event(char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t 
   ti->nameptr = 0;
 
   if (check_filter_mode(ti, type, arg1, arg2, sc_name))
-          format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, now, ti->stime, ti->waited, (char *)&ti->lookups[0].pathname[0]);
+          format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, ti->waited, (char *)&ti->lookups[0].pathname[0]);
 
   switch (type) {
 
@@ -2911,7 +2910,7 @@ int clip_64bit(char *s, uint64_t value)
 
 void
 format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
-       int format, double now, double stime, int waited, char *pathname)
+       int format, int waited, char *pathname)
 {
   int nopadding = 0;
   char *command_name;
@@ -3793,16 +3792,6 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
           pathname = "";
   }
   
-  /*
-   * fudge some additional system call overhead 
-   * that currently isn't tracked... this also
-   * insures that we see a minimum of 1 us for 
-   * an elapsed time
-   */
-  usecs = (unsigned long)(((now - stime) + (divisor-1)) / divisor);
-  secs = usecs / 1000000;
-  usecs -= secs * 1000000;
-
   if (class != FILEMGR_CLASS && !nopadding)
           p1 = "   ";
   else
@@ -3814,9 +3803,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
           p2 = "  ";
 
   if (columns > MAXCOLS || wideflag)
-          printf("%s%s %3ld.%06ld%s %s.%d\n", p1, pathname, (unsigned long)secs, (unsigned long)usecs, p2, command_name, (int)thread);
+          printf("%s%s %s.%d\n", p1, pathname, p2, command_name, (int)thread);
   else
-          printf("%s%s %3ld.%06ld%s %-12.12s\n", p1, pathname, (unsigned long)secs, (unsigned long)usecs, p2, command_name);
+          printf("%s%s %-12.12s\n", p1, pathname, p2, command_name);
 }
 
 
