@@ -2353,97 +2353,119 @@ sample_sc()
     type    = kd[i].debugid & DBG_FUNC_MASK;
 
     switch (type) {
-        
     case TRACE_DATA_NEWTHREAD:
-        if (kd[i].arg1) {
-          if ((ti = add_event(thread, TRACE_DATA_NEWTHREAD)) == NULL)
-            continue;
-          ti->child_thread = kd[i].arg1;
-          ti->pid = kd[i].arg2;
-          /* TODO(peck): Removeme */
-          /* printf("newthread PID %d (thread = %d, child_thread = %d)\n", (int)ti->pid, (int)thread, ti->child_thread); */
-        }
-        continue;
+      if (kd[i].arg1) {
+        if ((ti = add_event(thread, TRACE_DATA_NEWTHREAD)) == NULL)
+          continue;
+        ti->child_thread = kd[i].arg1;
+        ti->pid = kd[i].arg2;
+        /* TODO(peck): Removeme */
+        /* printf("newthread PID %d (thread = %d, child_thread = %d)\n", (int)ti->pid, (int)thread, ti->child_thread); */
+      }
+      continue;
 
     case TRACE_STRING_NEWTHREAD:
-        if ((ti = find_event(thread, TRACE_DATA_NEWTHREAD)) == (struct th_info *)0)
-                continue;
-
-        create_map_entry(ti->child_thread, ti->pid, (char *)&kd[i].arg1);
-
-        delete_event(ti);
+      if ((ti = find_event(thread, TRACE_DATA_NEWTHREAD)) == (struct th_info *)0)
         continue;
+
+      create_map_entry(ti->child_thread, ti->pid, (char *)&kd[i].arg1);
+
+      delete_event(ti);
+      continue;
   
     case TRACE_DATA_EXEC:
-        if ((ti = add_event(thread, TRACE_DATA_EXEC)) == NULL)
-                continue;
+      if ((ti = add_event(thread, TRACE_DATA_EXEC)) == NULL)
+        continue;
 
-        ti->pid = kd[i].arg1;
-        continue;     
+      ti->pid = kd[i].arg1;
+      continue;
 
     case TRACE_STRING_EXEC:
-        if ((ti = find_event(thread, BSC_execve))) {
-          if (ti->lookups[0].pathname[0])
-            exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, FMT_DEFAULT);
-
-        } else if ((ti = find_event(thread, BSC_posix_spawn))) {
-          if (ti->lookups[0].pathname[0])
-            exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, FMT_DEFAULT);
-        }
-        if ((ti = find_event(thread, TRACE_DATA_EXEC)) == (struct th_info *)0)
-          continue;
-
-        create_map_entry(thread, ti->pid, (char *)&kd[i].arg1);
-
-        delete_event(ti);
+      if ((ti = find_event(thread, BSC_execve))) {
+        if (ti->lookups[0].pathname[0])
+          exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, FMT_DEFAULT);
+      } else if ((ti = find_event(thread, BSC_posix_spawn))) {
+        if (ti->lookups[0].pathname[0])
+          exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, FMT_DEFAULT);
+      }
+      if ((ti = find_event(thread, TRACE_DATA_EXEC)) == (struct th_info *)0)
         continue;
+
+      create_map_entry(thread, ti->pid, (char *)&kd[i].arg1);
+
+      delete_event(ti);
+      continue;
 
     case BSC_thread_terminate:
-        delete_map_entry(thread);
-        continue;
+      delete_map_entry(thread);
+      continue;
 
     case BSC_exit:
-        continue;
+      continue;
 
     case proc_exit:
-        kd[i].arg1 = kd[i].arg2 >> 8;
-        type = BSC_exit;
-        break;
+      kd[i].arg1 = kd[i].arg2 >> 8;
+      type = BSC_exit;
+      break;
 
     case BSC_mmap:
-        if (kd[i].arg4 & MAP_ANON)
-          continue;
-        break;
+      if (kd[i].arg4 & MAP_ANON)
+        continue;
+      break;
 
     case HFS_modify_block_end:
-         if ((ti = find_event(thread, 0))) {
-                 if (ti->nameptr)
-                   add_meta_name(kd[i].arg2, ti->nameptr);
-         }
-         continue;
+     if ((ti = find_event(thread, 0))) {
+       if (ti->nameptr)
+         add_meta_name(kd[i].arg2, ti->nameptr);
+      }
+     continue;
 
     case VFS_ALIAS_VP:
-         add_vnode_name(kd[i].arg2, find_vnode_name(kd[i].arg1));
-         continue;
+      add_vnode_name(kd[i].arg2, find_vnode_name(kd[i].arg1));
+      continue;
 
     case VFS_LOOKUP:
-        if ((ti = find_event(thread, 0)) == (struct th_info *)0)
-                continue;
+      if ((ti = find_event(thread, 0)) == (struct th_info *)0)
+        continue;
 
-        if (debugid & DBG_FUNC_START) {
+      if (debugid & DBG_FUNC_START) {
 
-          if (ti->in_hfs_update) {
-            ti->pn_work_index = (MAX_PATHNAMES - 1);
-          } else {
-            if (ti->pn_scall_index < MAX_SCALL_PATHNAMES)
-              ti->pn_work_index = ti->pn_scall_index;
-            else
-              continue;
-          }
-          sargptr = &ti->lookups[ti->pn_work_index].pathname[0];
+        if (ti->in_hfs_update) {
+          ti->pn_work_index = (MAX_PATHNAMES - 1);
+        } else {
+          if (ti->pn_scall_index < MAX_SCALL_PATHNAMES)
+            ti->pn_work_index = ti->pn_scall_index;
+          else
+            continue;
+        }
+        sargptr = &ti->lookups[ti->pn_work_index].pathname[0];
 
-          ti->vnodeid = kd[i].arg1;
-          
+        ti->vnodeid = kd[i].arg1;
+
+        *sargptr++ = kd[i].arg2;
+        *sargptr++ = kd[i].arg3;
+        *sargptr++ = kd[i].arg4;
+        /*
+         * NULL terminate the 'string'
+         */
+        *sargptr = 0;
+
+        ti->pathptr = sargptr;
+      } else {
+        sargptr = ti->pathptr;
+
+        /*
+         * We don't want to overrun our pathname buffer if the
+         * kernel sends us more VFS_LOOKUP entries than we can
+         * handle and we only handle 2 pathname lookups for
+         * a given system call
+         */
+        if (sargptr == 0)
+          continue;
+
+        if ((uintptr_t)sargptr < (uintptr_t)&ti->lookups[ti->pn_work_index].pathname[NUMPARMS]) {
+
+          *sargptr++ = kd[i].arg1;
           *sargptr++ = kd[i].arg2;
           *sargptr++ = kd[i].arg3;
           *sargptr++ = kd[i].arg4;
@@ -2451,122 +2473,96 @@ sample_sc()
            * NULL terminate the 'string'
            */
           *sargptr = 0;
-
-          ti->pathptr = sargptr;
-        } else {
-                sargptr = ti->pathptr;
-
-          /*
-           * We don't want to overrun our pathname buffer if the
-           * kernel sends us more VFS_LOOKUP entries than we can
-           * handle and we only handle 2 pathname lookups for
-           * a given system call
-           */
-          if (sargptr == 0)
-            continue;
-
-          if ((uintptr_t)sargptr < (uintptr_t)&ti->lookups[ti->pn_work_index].pathname[NUMPARMS]) {
-
-            *sargptr++ = kd[i].arg1;
-            *sargptr++ = kd[i].arg2;
-            *sargptr++ = kd[i].arg3;
-            *sargptr++ = kd[i].arg4;
-            /*
-             * NULL terminate the 'string'
-             */
-            *sargptr = 0;
-          }
         }
-        if (debugid & DBG_FUNC_END) {
+      }
+      if (debugid & DBG_FUNC_END) {
 
-          ti->nameptr = add_vnode_name(ti->vnodeid, &ti->lookups[ti->pn_work_index].pathname[0]);
+        ti->nameptr = add_vnode_name(ti->vnodeid, &ti->lookups[ti->pn_work_index].pathname[0]);
 
-          if (ti->pn_work_index == ti->pn_scall_index) {
-              
-            ti->pn_scall_index++;
+        if (ti->pn_work_index == ti->pn_scall_index) {
 
-            if (ti->pn_scall_index < MAX_SCALL_PATHNAMES)
-              ti->pathptr = &ti->lookups[ti->pn_scall_index].pathname[0];
-            else
-              ti->pathptr = 0;
-          }
-        } else
-          ti->pathptr = sargptr;
+          ti->pn_scall_index++;
 
-        continue;
+          if (ti->pn_scall_index < MAX_SCALL_PATHNAMES)
+            ti->pathptr = &ti->lookups[ti->pn_scall_index].pathname[0];
+          else
+            ti->pathptr = 0;
+        }
+      } else
+        ti->pathptr = sargptr;
+
+      continue;
     }
 
     if (debugid & DBG_FUNC_START) {
-            char * p;
+      char *p;
 
       if ((type & CLASS_MASK) == FILEMGR_BASE) {
-
         index = filemgr_index(type);
 
         if (index >= MAX_FILEMGR)
-                continue;
+          continue;
 
         if ((p = filemgr_calls[index].fm_name) == NULL)
-                continue; 
-      } else
-              p = NULL;
+          continue;
+      } else {
+        p = NULL;
+      }
 
       enter_event(thread, type, &kd[i], p);
       continue;
     }
 
     switch (type) {
-
     case Throttled:
-         exit_event("  THROTTLED", thread, type, 0, 0, 0, 0, FMT_DEFAULT);
-         continue;
+       exit_event("  THROTTLED", thread, type, 0, 0, 0, 0, FMT_DEFAULT);
+       continue;
 
     case HFS_update:
-         exit_event("  HFS_update", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_HFS_update);
-         continue;
+       exit_event("  HFS_update", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_HFS_update);
+       continue;
 
     case SPEC_unmap_info:
-         if (check_filter_mode(NULL, SPEC_unmap_info, 0, 0, "SPEC_unmap_info"))
-           format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_UNMAP_INFO, 0, "");
-         continue;
+     if (check_filter_mode(NULL, SPEC_unmap_info, 0, 0, "SPEC_unmap_info"))
+       format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_UNMAP_INFO, 0, "");
+     continue;
 
     case SPEC_ioctl:
-         if (kd[i].arg2 == DKIOCSYNCHRONIZECACHE)
-           exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_SYNCCACHE);
-         else if (kd[i].arg2 == DKIOCUNMAP)
-           exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_UNMAP);
-         else if (kd[i].arg2 == DKIOCSYNCHRONIZE && (debugid & DBG_FUNC_ALL) == DBG_FUNC_NONE)
-           exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_IOCTL_SYNC);
-         else {
-           if ((ti = find_event(thread, type)))
-             delete_event(ti);
-         }
-         continue;
+     if (kd[i].arg2 == DKIOCSYNCHRONIZECACHE)
+       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_SYNCCACHE);
+     else if (kd[i].arg2 == DKIOCUNMAP)
+       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_UNMAP);
+     else if (kd[i].arg2 == DKIOCSYNCHRONIZE && (debugid & DBG_FUNC_ALL) == DBG_FUNC_NONE)
+       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_IOCTL_SYNC);
+     else {
+       if ((ti = find_event(thread, type)))
+         delete_event(ti);
+     }
+     continue;
 
     case MACH_pageout:
     case MACH_vmfault:
-            // TODO(peck): what about deleting all of the events?
-           if ((ti = find_event(thread, type)))
-             delete_event(ti);
-         continue;
+      /* TODO(peck): what about deleting all of the events? */
+      if ((ti = find_event(thread, type)))
+        delete_event(ti);
+      continue;
 
     case MSC_map_fd:
-         exit_event("map_fd", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_FD);
-         continue;
+      exit_event("map_fd", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_FD);
+      continue;
           
     case BSC_mmap_extended:
     case BSC_mmap_extended2:
     case BSC_msync_extended:
     case BSC_pread_extended:
     case BSC_pwrite_extended:
-         extend_syscall(thread, type, &kd[i]);
-         continue;
+      extend_syscall(thread, type, &kd[i]);
+      continue;
     }
 
     if ((type & CSC_MASK) == BSC_BASE) {
-
-            if ((index = BSC_INDEX(type)) >= MAX_BSD_SYSCALL)
-              continue;
+      if ((index = BSC_INDEX(type)) >= MAX_BSD_SYSCALL)
+        continue;
 
       if (bsd_syscalls[index].sc_name) {
         exit_event(bsd_syscalls[index].sc_name, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4,
@@ -2578,7 +2574,7 @@ sample_sc()
     } else if ((type & CLASS_MASK) == FILEMGR_BASE) {
     
       if ((index = filemgr_index(type)) >= MAX_FILEMGR)
-              continue;
+        continue;
 
       if (filemgr_calls[index].fm_name) {
         exit_event(filemgr_calls[index].fm_name, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4,
