@@ -176,8 +176,7 @@ meta_info_t     m_info_hash[VN_HASH_SIZE];
 int  filemgr_in_progress = 0;
 int  need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
 long last_time;
-int  wideflag = 0;
-int  columns = 0;
+int  columns = MAX_WIDE_MODE_COLS;  /* TODO(peck): Remove me. It should always be MAX_WIDE_MODE_COLS */
 
 int  one_good_pid = 0;    /* Used to fail gracefully when bad pids given */
 int  select_pid_mode = 0;  /* Flag set indicates that output is restricted
@@ -939,10 +938,9 @@ void getdivisor()
 int
 exit_usage(char *myname) {
 
-  fprintf(stderr, "Usage: %s [-e] [-w] [-f mode] [-b] [-t seconds] [pid | cmd [pid | cmd] ...]\n", myname);
+  fprintf(stderr, "Usage: %s [-e] [-f mode] [-b] [-t seconds] [pid | cmd [pid | cmd] ...]\n", myname);
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
   fprintf(stderr, "        and exclude fs_usage by default\n");
-  fprintf(stderr, "  -w    force wider, detailed, output\n");
   fprintf(stderr, "  -f    output is based on the mode provided\n");
   fprintf(stderr, "          mode = \"filesys\"  Show filesystem-related events\n");
   fprintf(stderr, "          mode = \"pathname\" Show only pathname-related events\n");
@@ -1981,12 +1979,6 @@ main(argc, argv)
         exclude_pids = 1;
         break;
 
-                case 'w':
-        wideflag = 1;
-        if ((uint)columns < MAX_WIDE_MODE_COLS)
-          columns = MAX_WIDE_MODE_COLS;
-        break;
-
          case 'f':
        if (!strcmp(optarg, "filesys"))
          filter_mode |= FILESYS_FILTER;
@@ -2673,10 +2665,7 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name)
       /*
        * Calculate white space out to command
        */
-      if (columns > MAXCOLS || wideflag) {
-        clen = columns - (tsclen + nmclen + argsclen + 20 + 11);
-      } else
-        clen = columns - (tsclen + nmclen + argsclen + 12);
+      clen = columns - (tsclen + nmclen + argsclen + 20 + 11);
 
       if (clen > 0) {
         printf("%s", buf);   /* print the kdargs */
@@ -2692,10 +2681,7 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name)
         buf[argsclen + clen] = '\0';
         printf("%s", buf);
       }
-      if (columns > MAXCOLS || wideflag)
-        printf("%s.%d\n", tme->tm_command, (int)thread); 
-      else
-        printf("%-12.12s\n", tme->tm_command); 
+      printf("%s.%d\n", tme->tm_command, (int)thread); 
     } else
       printf("  %-24.24s (%5d, %#lx, 0x%lx, 0x%lx)\n",         name, (short)kd->arg1, kd->arg2, kd->arg3, kd->arg4);
   }
@@ -2916,22 +2902,19 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
   if ((tme = find_map_entry(thread)))
           command_name = tme->tm_command;
-  if (columns > MAXCOLS || wideflag) {
-    tlen = timestamp_len;
-    nopadding = 0;
+  tlen = timestamp_len;
+  nopadding = 0;
 
-    timestamp[tlen] = '\0';
+  timestamp[tlen] = '\0';
 
-    if (filemgr_in_progress) {
-            if (class != FILEMGR_CLASS) {
-              if (find_event(thread, -1))
-                in_filemgr = 1;
-      }
+  if (filemgr_in_progress) {
+          if (class != FILEMGR_CLASS) {
+            if (find_event(thread, -1))
+              in_filemgr = 1;
     }
-  } else
-          nopadding = 1;
+  }
 
-  if ((class == FILEMGR_CLASS) && (columns > MAXCOLS || wideflag))
+  if (class == FILEMGR_CLASS)
           clen = printf("%s  %-20.20s", timestamp, sc_name);
   else if (in_filemgr)
           clen = printf("%s    %-15.15s", timestamp, sc_name);
@@ -2941,7 +2924,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
   framework_name = NULL;
 
-  if (columns > MAXCOLS || wideflag) {
+  if (1) {  /* TODO(peck): Clean me up */
 
           off_t offset_reassembled = 0LL;
     
@@ -3700,10 +3683,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   /*
    * Calculate space available to print pathname
    */
-  if (columns > MAXCOLS || wideflag)
-          clen =  columns - (clen + 14 + 20 + 11);
-  else
-          clen =  columns - (clen + 14 + 12);
+  clen =  columns - (clen + 14 + 20 + 11);
 
   if (class != FILEMGR_CLASS && !nopadding)
           clen -= 3;
@@ -3770,10 +3750,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   else
           p2 = "  ";
 
-  if (columns > MAXCOLS || wideflag)
-          printf("%s%s %s %s.%d\n", p1, pathname, p2, command_name, (int)thread);
-  else
-          printf("%s%s %-12.12s\n", p1, pathname, p2, command_name);
+  printf("%s%s %s %s.%d\n", p1, pathname, p2, command_name, (int)thread);
 }
 
 
