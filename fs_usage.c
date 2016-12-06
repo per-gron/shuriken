@@ -2497,6 +2497,8 @@ sample_sc()
             continue;
           ti->child_thread = kd[i].arg1;
           ti->pid = kd[i].arg2;
+          /* TODO(peck): Removeme */
+          /* printf("newthread PID %d (thread = %d, child_thread = %d)\n", (int)ti->pid, (int)thread, ti->child_thread); */
         }
         continue;
 
