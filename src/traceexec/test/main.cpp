@@ -1,6 +1,8 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 
+#include <sys/stat.h>
+
 #include "traceexec.h"
 
 namespace traceexec {
@@ -23,6 +25,8 @@ TEST_CASE("Version") {
 
   SECTION("startTracing") {
     startTracing();
+    struct stat s;
+    stat("/blaha", &s);
   }
 }
 
