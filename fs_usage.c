@@ -2690,52 +2690,52 @@ extend_syscall(uintptr_t thread, int type, kd_buf *kd)
 
   switch (type) {
   case BSC_mmap_extended:
-      if ((ti = find_event(thread, BSC_mmap)) == (struct th_info *)0)
-        return;
-      ti->arg8   = ti->arg3;  /* save protection */
-      ti->arg1   = kd->arg1;  /* the fd */
-      ti->arg3   = kd->arg2;  /* bottom half address */
-      ti->arg5   = kd->arg3;  /* bottom half size */     
-      break;
-  case BSC_mmap_extended2:
-      if ((ti = find_event(thread, BSC_mmap)) == (struct th_info *)0)
-        return;
-      ti->arg2   = kd->arg1;  /* top half address */
-      ti->arg4   = kd->arg2;  /* top half size */
-      ti->arg6   = kd->arg3;  /* top half file offset */
-      ti->arg7   = kd->arg4;  /* bottom half file offset */
-      break;
-  case BSC_msync_extended:
-      if ((ti = find_event(thread, BSC_msync)) == (struct th_info *)0) {
-        if ((ti = find_event(thread, BSC_msync_nocancel)) == (struct th_info *)0)
-          return;
-      }
-      ti->arg4   = kd->arg1;  /* top half address */
-      ti->arg5   = kd->arg2;  /* top half size */
-      break;
-  case BSC_pread_extended:
-      if ((ti = find_event(thread, BSC_pread)) == (struct th_info *)0) {
-        if ((ti = find_event(thread, BSC_pread_nocancel)) == (struct th_info *)0)
-          return;
-      }
-      ti->arg1   = kd->arg1;  /* the fd */
-      ti->arg2   = kd->arg2;  /* nbytes */
-      ti->arg3   = kd->arg3;  /* top half offset */
-      ti->arg4   = kd->arg4;  /* bottom half offset */     
-      break;
-  case BSC_pwrite_extended:
-      if ((ti = find_event(thread, BSC_pwrite)) == (struct th_info *)0) {
-        if ((ti = find_event(thread, BSC_pwrite_nocancel)) == (struct th_info *)0)
-          return;
-      }
-      ti->arg1   = kd->arg1;  /* the fd */
-      ti->arg2   = kd->arg2;  /* nbytes */
-      ti->arg3   = kd->arg3;  /* top half offset */
-      ti->arg4   = kd->arg4;  /* bottom half offset */
-      break;
-  default:
+    if ((ti = find_event(thread, BSC_mmap)) == (struct th_info *)0)
       return;
-       }
+    ti->arg8   = ti->arg3;  /* save protection */
+    ti->arg1   = kd->arg1;  /* the fd */
+    ti->arg3   = kd->arg2;  /* bottom half address */
+    ti->arg5   = kd->arg3;  /* bottom half size */
+    break;
+  case BSC_mmap_extended2:
+    if ((ti = find_event(thread, BSC_mmap)) == (struct th_info *)0)
+      return;
+    ti->arg2   = kd->arg1;  /* top half address */
+    ti->arg4   = kd->arg2;  /* top half size */
+    ti->arg6   = kd->arg3;  /* top half file offset */
+    ti->arg7   = kd->arg4;  /* bottom half file offset */
+    break;
+  case BSC_msync_extended:
+    if ((ti = find_event(thread, BSC_msync)) == (struct th_info *)0) {
+      if ((ti = find_event(thread, BSC_msync_nocancel)) == (struct th_info *)0)
+        return;
+    }
+    ti->arg4   = kd->arg1;  /* top half address */
+    ti->arg5   = kd->arg2;  /* top half size */
+    break;
+  case BSC_pread_extended:
+    if ((ti = find_event(thread, BSC_pread)) == (struct th_info *)0) {
+      if ((ti = find_event(thread, BSC_pread_nocancel)) == (struct th_info *)0)
+        return;
+    }
+    ti->arg1   = kd->arg1;  /* the fd */
+    ti->arg2   = kd->arg2;  /* nbytes */
+    ti->arg3   = kd->arg3;  /* top half offset */
+    ti->arg4   = kd->arg4;  /* bottom half offset */
+    break;
+  case BSC_pwrite_extended:
+    if ((ti = find_event(thread, BSC_pwrite)) == (struct th_info *)0) {
+      if ((ti = find_event(thread, BSC_pwrite_nocancel)) == (struct th_info *)0)
+        return;
+    }
+    ti->arg1   = kd->arg1;  /* the fd */
+    ti->arg2   = kd->arg2;  /* nbytes */
+    ti->arg3   = kd->arg3;  /* top half offset */
+    ti->arg4   = kd->arg4;  /* bottom half offset */
+    break;
+  default:
+    return;
+  }
 }
 
 
@@ -2743,15 +2743,15 @@ void
 exit_event(char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
      int format)
 {
-        th_info_t ti;
+  th_info_t ti;
       
   if ((ti = find_event(thread, type)) == (struct th_info *)0)
-          return;
+    return;
 
   ti->nameptr = 0;
 
   if (check_filter_mode(ti, type, arg1, arg2, sc_name))
-          format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, ti->waited, (char *)&ti->lookups[0].pathname[0]);
+    format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, ti->waited, (char *)&ti->lookups[0].pathname[0]);
 
   switch (type) {
 
@@ -2760,10 +2760,10 @@ exit_event(char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t 
     break;
   }
   if ((type & CLASS_MASK) == FILEMGR_BASE) {
-          ti->in_filemgr = 0;
+    ti->in_filemgr = 0;
 
     if (filemgr_in_progress > 0)
-            filemgr_in_progress--;
+      filemgr_in_progress--;
   }
   delete_event(ti);
 }
@@ -2772,18 +2772,18 @@ exit_event(char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t 
 void
 get_mode_nibble(char * buf, int smode, int special, char x_on, char x_off)
 {
-        if (smode & 04)
-          buf[0] = 'r';
-        if (smode & 02)
-          buf[1] = 'w';
+  if (smode & 04)
+    buf[0] = 'r';
+  if (smode & 02)
+    buf[1] = 'w';
   if (smode & 01) {
-          if (special)
-            buf[2] = x_on;
+    if (special)
+      buf[2] = x_on;
     else 
-            buf[2] = 'x';
+      buf[2] = 'x';
   } else {
-          if (special)
-            buf[2] = x_off;
+    if (special)
+      buf[2] = x_off;
   }
 }
 
@@ -2791,7 +2791,7 @@ get_mode_nibble(char * buf, int smode, int special, char x_on, char x_off)
 void
 get_mode_string(int mode, char *buf)
 {
-        memset(buf, '-', 9);
+  memset(buf, '-', 9);
   buf[9] = '\0';
 
   get_mode_nibble(&buf[6], mode, (mode & 01000), 't', 'T');
@@ -2802,20 +2802,20 @@ get_mode_string(int mode, char *buf)
 
 int clip_64bit(char *s, uint64_t value)
 {
-        int clen = 0;
+  int clen = 0;
 
   if ( (value & 0xff00000000000000LL) )
-          clen = printf("%s0x%16.16qx", s, value);
+    clen = printf("%s0x%16.16qx", s, value);
   else if ( (value & 0x00ff000000000000LL) )
-          clen = printf("%s0x%14.14qx  ", s, value);
+    clen = printf("%s0x%14.14qx  ", s, value);
   else if ( (value & 0x0000ff0000000000LL) )
-          clen = printf("%s0x%12.12qx    ", s, value);
+    clen = printf("%s0x%12.12qx    ", s, value);
   else if ( (value & 0x000000ff00000000LL) )
-          clen = printf("%s0x%10.10qx      ", s, value);
+    clen = printf("%s0x%10.10qx      ", s, value);
   else
-          clen = printf("%s0x%8.8qx        ", s, value);
+    clen = printf("%s0x%8.8qx        ", s, value);
   
-  return (clen);
+  return clen;
 }
 
 
@@ -2838,8 +2838,8 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   char buf[MAXWIDTH];
 
   static char timestamp[32];
-  static int  last_timestamp = -1;
-  static int  timestamp_len = 0;
+  static int last_timestamp = -1;
+  static int timestamp_len = 0;
 
   command_name = "";
 
@@ -2859,75 +2859,73 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   timestamp[tlen] = '\0';
 
   if (filemgr_in_progress) {
-          if (class != FILEMGR_CLASS) {
-            if (find_event(thread, -1))
-              in_filemgr = 1;
+    if (class != FILEMGR_CLASS) {
+      if (find_event(thread, -1))
+        in_filemgr = 1;
     }
   }
 
   if (class == FILEMGR_CLASS)
-          printf("%s  %-20.20s", timestamp, sc_name);
+    printf("%s  %-20.20s", timestamp, sc_name);
   else if (in_filemgr)
-          printf("%s    %-15.15s", timestamp, sc_name);
+    printf("%s    %-15.15s", timestamp, sc_name);
   else
-          printf("%s  %-17.17s", timestamp, sc_name);
+    printf("%s  %-17.17s", timestamp, sc_name);
        
 
   framework_name = NULL;
 
   if (1) {  /* TODO(peck): Clean me up */
-
-          off_t offset_reassembled = 0LL;
+    off_t offset_reassembled = 0LL;
     
     switch (format) {
-
-        case FMT_AT:
-        case FMT_RENAMEAT:
-          case FMT_DEFAULT:
+    case FMT_AT:
+    case FMT_RENAMEAT:
+    case FMT_DEFAULT:
       /*
        * pathname based system calls or 
        * calls with no fd or pathname (i.e.  sync)
        */
       if (arg1)
-              printf("      [%3d]       ", arg1);
+        printf("      [%3d]       ", arg1);
       else
-              printf("                  ");
+        printf("                  ");
       break;
 
-          case FMT_FD:
+    case FMT_FD:
       /*
        * fd based system call... no I/O
        */
       if (arg1)
-              printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
-              printf(" F=%-3d", ti->arg1);
+        printf(" F=%-3d", ti->arg1);
       break;
 
-          case FMT_FD_2:
+    case FMT_FD_2:
       /*
        * accept, dup, dup2
        */
       if (arg1)
-              printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
-              printf(" F=%-3d  F=%-3d", ti->arg1, arg2);
+        printf(" F=%-3d  F=%-3d", ti->arg1, arg2);
       break;
 
-          case FMT_FD_IO:
+    case FMT_FD_IO:
       /*
        * system calls with fd's that return an I/O completion count
        */
       if (arg1)
-              printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
-              printf(" F=%-3d  B=0x%-6x", ti->arg1, arg2);
+        printf(" F=%-3d  B=0x%-6x", ti->arg1, arg2);
       break;
 
-          case FMT_HFS_update:
-          {
+    case FMT_HFS_update:
+    {
       char sbuf[7];
-      int  sflag = (int)arg2;
+      int sflag = (int)arg2;
 
       memset(sbuf, '_', 6);
       sbuf[6] = '\0';
@@ -2952,95 +2950,94 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       nopadding = 1;
 
       break;
-          }
+    }
 
-          case FMT_MSYNC:
-          {
+    case FMT_MSYNC:
+    {
       /*
        * msync
        */
-      int  mlen = 0;
+      int mlen = 0;
 
       buf[0] = '\0';
 
       if (ti->arg3 & MS_ASYNC)
-              mlen += sprintf(&buf[mlen], "MS_ASYNC | ");
+        mlen += sprintf(&buf[mlen], "MS_ASYNC | ");
       else
-              mlen += sprintf(&buf[mlen], "MS_SYNC | ");
+        mlen += sprintf(&buf[mlen], "MS_SYNC | ");
 
       if (ti->arg3 & MS_INVALIDATE)
-              mlen += sprintf(&buf[mlen], "MS_INVALIDATE | ");
+        mlen += sprintf(&buf[mlen], "MS_INVALIDATE | ");
       if (ti->arg3 & MS_KILLPAGES)
-              mlen += sprintf(&buf[mlen], "MS_KILLPAGES | ");
+        mlen += sprintf(&buf[mlen], "MS_KILLPAGES | ");
       if (ti->arg3 & MS_DEACTIVATE)
-              mlen += sprintf(&buf[mlen], "MS_DEACTIVATE | ");
+        mlen += sprintf(&buf[mlen], "MS_DEACTIVATE | ");
 
       if (ti->arg3 & ~(MS_ASYNC | MS_SYNC | MS_INVALIDATE | MS_KILLPAGES | MS_DEACTIVATE))
-              mlen += sprintf(&buf[mlen], "UNKNOWN | ");
+        mlen += sprintf(&buf[mlen], "UNKNOWN | ");
       
       if (mlen)
-              buf[mlen - 3] = '\0';
+        buf[mlen - 3] = '\0';
 
       if (arg1)
-              printf("      [%3d]", arg1);
+        printf("      [%3d]", arg1);
 
       user_addr = (((off_t)(unsigned int)(ti->arg4)) << 32) | (unsigned int)(ti->arg1);
       clip_64bit(" A=", user_addr);
 
       user_size = (((off_t)(unsigned int)(ti->arg5)) << 32) | (unsigned int)(ti->arg2);
 
-            printf("  B=0x%-16qx  <%s>", user_size, buf);
+      printf("  B=0x%-16qx  <%s>", user_size, buf);
 
       break;
-          }
+    }
 
-          case FMT_FLOCK:
-          {
+    case FMT_FLOCK:
+    {
       /*
        * flock
        */
-      int  mlen = 0;
+      int mlen = 0;
 
       buf[0] = '\0';
 
       if (ti->arg2 & LOCK_SH)
-              mlen += sprintf(&buf[mlen], "LOCK_SH | ");
+        mlen += sprintf(&buf[mlen], "LOCK_SH | ");
       if (ti->arg2 & LOCK_EX)
-              mlen += sprintf(&buf[mlen], "LOCK_EX | ");
+        mlen += sprintf(&buf[mlen], "LOCK_EX | ");
       if (ti->arg2 & LOCK_NB)
-              mlen += sprintf(&buf[mlen], "LOCK_NB | ");
+        mlen += sprintf(&buf[mlen], "LOCK_NB | ");
       if (ti->arg2 & LOCK_UN)
-              mlen += sprintf(&buf[mlen], "LOCK_UN | ");
+        mlen += sprintf(&buf[mlen], "LOCK_UN | ");
 
       if (ti->arg2 & ~(LOCK_SH | LOCK_EX | LOCK_NB | LOCK_UN))
-              mlen += sprintf(&buf[mlen], "UNKNOWN | ");
+        mlen += sprintf(&buf[mlen], "UNKNOWN | ");
       
       if (mlen)
-              buf[mlen - 3] = '\0';
+        buf[mlen - 3] = '\0';
 
       if (arg1)
-              printf(" F=%-3d[%3d]  <%s>", ti->arg1, arg1, buf);
+        printf(" F=%-3d[%3d]  <%s>", ti->arg1, arg1, buf);
       else
-              printf(" F=%-3d  <%s>", ti->arg1, buf);
+        printf(" F=%-3d  <%s>", ti->arg1, buf);
 
       break;
-          }
+    }
 
-          case FMT_FCNTL:
-          {
+    case FMT_FCNTL:
+    {
       /*
        * fcntl
        */
       char *p = NULL;
-      int  fd = -1;
+      int fd = -1;
 
       if (arg1)
-              printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
-              printf(" F=%-3d", ti->arg1);
+        printf(" F=%-3d", ti->arg1);
 
-      switch(ti->arg2) {
-
+      switch (ti->arg2) {
       case F_DUPFD:
         p = "DUPFD";
         break;
@@ -3122,16 +3119,16 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
       case F_NOCACHE:
         if (ti->arg3)
-                p = "CACHING OFF";
+          p = "CACHING OFF";
         else
-                p = "CACHING ON";
+          p = "CACHING ON";
         break;
 
       case F_GLOBAL_NOCACHE:
         if (ti->arg3)
-                p = "CACHING OFF (GLOBAL)";
+          p = "CACHING OFF (GLOBAL)";
         else
-                p = "CACHING ON (GLOBAL)";
+          p = "CACHING ON (GLOBAL)";
         break;
 
       }
@@ -3141,98 +3138,95 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
         else
           printf(" <%s> F=%d", p, fd);
       } else
-              printf(" <CMD=%d>", ti->arg2);
+        printf(" <CMD=%d>", ti->arg2);
 
       break;
-          }
+    }
 
-          case FMT_IOCTL:
-          {
+    case FMT_IOCTL:
+    {
       /*
        * ioctl
        */
       if (arg1)
-              printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        printf(" F=%-3d[%3d]", ti->arg1, arg1);
       else
-              printf(" F=%-3d", ti->arg1);
+        printf(" F=%-3d", ti->arg1);
 
-            printf(" <CMD=0x%x>", ti->arg2);
+      printf(" <CMD=0x%x>", ti->arg2);
 
       break;
-          }
+    }
 
-          case FMT_SELECT:
-          {
+    case FMT_SELECT:
+    {
       /*
        * select
        */
       if (arg1)
-              printf("      [%3d]", arg1);
+        printf("      [%3d]", arg1);
       else
-              printf("        S=%-3d", arg2);
+        printf("        S=%-3d", arg2);
 
       break;
-          }
+    }
 
-          case FMT_LSEEK:
-          case FMT_PREAD:
+    case FMT_LSEEK:
+    case FMT_PREAD:
       /*
        * pread, pwrite, lseek
        */
       printf(" F=%-3d", ti->arg1);
 
       if (arg1)
-              printf("[%3d]  ", arg1);
+        printf("[%3d]  ", arg1);
       else {
-              if (format == FMT_PREAD)
-                printf("  B=0x%-8x ", arg2);
+        if (format == FMT_PREAD)
+          printf("  B=0x%-8x ", arg2);
         else
-                printf("  ");
-      } 
+          printf("  ");
+      }
       if (format == FMT_PREAD)
-              offset_reassembled = (((off_t)(unsigned int)(ti->arg3)) << 32) | (unsigned int)(ti->arg4);
+        offset_reassembled = (((off_t)(unsigned int)(ti->arg3)) << 32) | (unsigned int)(ti->arg4);
       else
 #ifdef __ppc__
-              offset_reassembled = (((off_t)(unsigned int)(arg2)) << 32) | (unsigned int)(arg3);
+        offset_reassembled = (((off_t)(unsigned int)(arg2)) << 32) | (unsigned int)(arg3);
 #else
-              offset_reassembled = (((off_t)(unsigned int)(arg3)) << 32) | (unsigned int)(arg2);
+        offset_reassembled = (((off_t)(unsigned int)(arg3)) << 32) | (unsigned int)(arg2);
 #endif
       clip_64bit("O=", offset_reassembled);
 
       if (format == FMT_LSEEK) {
-              char *mode;
+        char *mode;
 
         if (ti->arg4 == SEEK_SET)
-                mode = "SEEK_SET";
+          mode = "SEEK_SET";
         else if (ti->arg4 == SEEK_CUR)
-                mode = "SEEK_CUR";
+          mode = "SEEK_CUR";
         else if (ti->arg4 == SEEK_END)
-                mode = "SEEK_END";
+          mode = "SEEK_END";
         else
-                mode = "UNKNOWN";
+          mode = "UNKNOWN";
         
         printf(" <%s>", mode);
       }
       break;
 
-          case FMT_MMAP:
+    case FMT_MMAP:
       /*
        * mmap
        */
       printf(" F=%-3d  ", ti->arg1);
 
       if (arg1)
-              printf("[%3d]  ", arg1);
+        printf("[%3d]  ", arg1);
       else {
-
-              user_addr = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
+        user_addr = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
 
         clip_64bit("A=", user_addr);
-
               offset_reassembled = (((off_t)(unsigned int)(ti->arg6)) << 32) | (unsigned int)(ti->arg7);
 
         clip_64bit("O=", offset_reassembled);
-
               user_size = (((off_t)(unsigned int)(ti->arg4)) << 32) | (unsigned int)(ti->arg5);
 
         printf("B=0x%-16qx", user_size);
@@ -3240,30 +3234,30 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
         printf(" <");
 
         if (ti->arg8 & PROT_READ)
-                printf("READ");
+          printf("READ");
 
         if (ti->arg8 & PROT_WRITE)
-                printf("|WRITE");
+          printf("|WRITE");
 
         if (ti->arg8 & PROT_EXEC)
-                printf("|EXEC");
+          printf("|EXEC");
 
         printf(">");
       }
       break;
 
-          case FMT_TRUNC:
-          case FMT_FTRUNC:
+    case FMT_TRUNC:
+    case FMT_FTRUNC:
       /*
        * ftruncate, truncate
        */
       if (format == FMT_FTRUNC)
-              printf(" F=%-3d", ti->arg1);
+        printf(" F=%-3d", ti->arg1);
       else
-              printf("      ");
+        printf("      ");
 
       if (arg1)
-              printf("[%3d]", arg1);
+        printf("[%3d]", arg1);
 
 #ifdef __ppc__
       offset_reassembled = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
@@ -3275,103 +3269,103 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       nopadding = 1;
       break;
 
-          case FMT_FCHFLAGS:
-          case FMT_CHFLAGS:
-          {
+    case FMT_FCHFLAGS:
+    case FMT_CHFLAGS:
+    {
       /*
        * fchflags, chflags
        */
       int mlen = 0;
 
       if (format == FMT_FCHFLAGS) {
-              if (arg1)
-                printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        if (arg1)
+          printf(" F=%-3d[%3d]", ti->arg1, arg1);
         else
-                printf(" F=%-3d", ti->arg1);
+          printf(" F=%-3d", ti->arg1);
       } else {
-              if (arg1)
-                printf(" [%3d] ", arg1);
+        if (arg1)
+          printf(" [%3d] ", arg1);
       }
       buf[mlen++] = ' ';
       buf[mlen++] = '<';
 
       if (ti->arg2 & UF_NODUMP)
-              mlen += sprintf(&buf[mlen], "UF_NODUMP | ");
+        mlen += sprintf(&buf[mlen], "UF_NODUMP | ");
       if (ti->arg2 & UF_IMMUTABLE)
-              mlen += sprintf(&buf[mlen], "UF_IMMUTABLE | ");
+        mlen += sprintf(&buf[mlen], "UF_IMMUTABLE | ");
       if (ti->arg2 & UF_APPEND)
-              mlen += sprintf(&buf[mlen], "UF_APPEND | ");
+        mlen += sprintf(&buf[mlen], "UF_APPEND | ");
       if (ti->arg2 & UF_OPAQUE)
-              mlen += sprintf(&buf[mlen], "UF_OPAQUE | ");
+        mlen += sprintf(&buf[mlen], "UF_OPAQUE | ");
       if (ti->arg2 & SF_ARCHIVED)
-              mlen += sprintf(&buf[mlen], "SF_ARCHIVED | ");
+        mlen += sprintf(&buf[mlen], "SF_ARCHIVED | ");
       if (ti->arg2 & SF_IMMUTABLE)
-              mlen += sprintf(&buf[mlen], "SF_IMMUTABLE | ");
+        mlen += sprintf(&buf[mlen], "SF_IMMUTABLE | ");
       if (ti->arg2 & SF_APPEND)
-              mlen += sprintf(&buf[mlen], "SF_APPEND | ");
+        mlen += sprintf(&buf[mlen], "SF_APPEND | ");
       
       if (ti->arg2 == 0)
-              mlen += sprintf(&buf[mlen], "CLEAR_ALL_FLAGS | ");
+        mlen += sprintf(&buf[mlen], "CLEAR_ALL_FLAGS | ");
       else if (ti->arg2 & ~(UF_NODUMP | UF_IMMUTABLE | UF_APPEND | SF_ARCHIVED | SF_IMMUTABLE | SF_APPEND))
-              mlen += sprintf(&buf[mlen], "UNKNOWN | ");
+        mlen += sprintf(&buf[mlen], "UNKNOWN | ");
 
       if (mlen >= 3)
-              mlen -= 3;
+        mlen -= 3;
 
       buf[mlen++] = '>';
       buf[mlen] = '\0';
 
       if (mlen < 19) {
-              memset(&buf[mlen], ' ', 19 - mlen);
+        memset(&buf[mlen], ' ', 19 - mlen);
         mlen = 19;
       }
       printf("%s", buf);
 
       nopadding = 1;
       break;
-          }
+    }
 
-          case FMT_UMASK:
-          case FMT_FCHMOD:
-          case FMT_FCHMOD_EXT:
-          case FMT_CHMOD:
-          case FMT_CHMOD_EXT:
-        case FMT_CHMODAT:
-          {
+    case FMT_UMASK:
+    case FMT_FCHMOD:
+    case FMT_FCHMOD_EXT:
+    case FMT_CHMOD:
+    case FMT_CHMOD_EXT:
+    case FMT_CHMODAT:
+    {
       /*
        * fchmod, fchmod_extended, chmod, chmod_extended
        */
-      int  mode;
+      int mode;
 
       if (format == FMT_FCHMOD || format == FMT_FCHMOD_EXT) {
-              if (arg1)
-                printf(" F=%-3d[%3d] ", ti->arg1, arg1);
+        if (arg1)
+          printf(" F=%-3d[%3d] ", ti->arg1, arg1);
         else
-                printf(" F=%-3d ", ti->arg1);
+          printf(" F=%-3d ", ti->arg1);
       } else {
-              if (arg1)
-                printf(" [%3d] ", arg1);
+        if (arg1)
+          printf(" [%3d] ", arg1);
         else  
-                printf(" ");
+          printf(" ");
       }
       if (format == FMT_UMASK)
         mode = ti->arg1;
       else if (format == FMT_FCHMOD || format == FMT_CHMOD || format == FMT_CHMODAT)
-              mode = ti->arg2;
+        mode = ti->arg2;
       else
-              mode = ti->arg4;
+        mode = ti->arg4;
 
       get_mode_string(mode, &buf[0]);
 
       if (arg1 == 0)
-              printf("<%s>      ", buf);
+        printf("<%s>      ", buf);
       else
-              printf("<%s>", buf);
+        printf("<%s>", buf);
       break;
-          }
+    }
 
-          case FMT_ACCESS:
-          {
+    case FMT_ACCESS:
+    {
       /*
        * access
        */
@@ -3381,94 +3375,94 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       mode[4] = '\0';
 
       if (ti->arg2 & R_OK)
-              mode[0] = 'R';
+        mode[0] = 'R';
       if (ti->arg2 & W_OK)
-              mode[1] = 'W';
+        mode[1] = 'W';
       if (ti->arg2 & X_OK)
-              mode[2] = 'X';
+        mode[2] = 'X';
       if (ti->arg2 == F_OK)
-              mode[3] = 'F';
+        mode[3] = 'F';
 
-            if (arg1)
-              printf("      [%3d] (%s)   ", arg1, mode);
+      if (arg1)
+        printf("      [%3d] (%s)   ", arg1, mode);
       else
-              printf("            (%s)   ", mode);
+        printf("            (%s)   ", mode);
 
       nopadding = 1;
       break;
-          }
+    }
 
-          case FMT_MOUNT:
-          {
-            if (arg1)
-              printf("      [%3d] <FLGS=0x%x> ", arg1, ti->arg3);
-            else
-              printf("     <FLGS=0x%x> ", ti->arg3);
+    case FMT_MOUNT:
+    {
+      if (arg1)
+        printf("      [%3d] <FLGS=0x%x> ", arg1, ti->arg3);
+      else
+        printf("     <FLGS=0x%x> ", ti->arg3);
 
-            nopadding = 1;
-            break;
-          }
+      nopadding = 1;
+      break;
+    }
 
-          case FMT_UNMOUNT:
-          {
-            char *mountflag;
-            
-            if (ti->arg2 & MNT_FORCE)
-              mountflag = "<FORCE>";
-            else
-              mountflag = "";
+    case FMT_UNMOUNT:
+    {
+      char *mountflag;
 
-            if (arg1)
-              printf("      [%3d] %s  ", arg1, mountflag);
-            else
-              printf("     %s         ", mountflag);
+      if (ti->arg2 & MNT_FORCE)
+        mountflag = "<FORCE>";
+      else
+        mountflag = "";
 
-            nopadding = 1;
-            break;
-          }
+      if (arg1)
+        printf("      [%3d] %s  ", arg1, mountflag);
+      else
+        printf("     %s         ", mountflag);
 
-        case FMT_OPENAT:
-          case FMT_OPEN:
-          {
+      nopadding = 1;
+      break;
+    }
+
+    case FMT_OPENAT:
+    case FMT_OPEN:
+    {
       /*
        * open
        */
-            char mode[7];
+      char mode[7];
       
       memset(mode, '_', 6);
       mode[6] = '\0';
 
       if (ti->arg2 & O_RDWR) {
-              mode[0] = 'R';
-              mode[1] = 'W';
+        mode[0] = 'R';
+        mode[1] = 'W';
       } else if (ti->arg2 & O_WRONLY)
-              mode[1] = 'W';
+        mode[1] = 'W';
       else
-              mode[0] = 'R';
+        mode[0] = 'R';
 
       if (ti->arg2 & O_CREAT)
-              mode[2] = 'C';
+        mode[2] = 'C';
         
       if (ti->arg2 & O_APPEND)
-              mode[3] = 'A';
+        mode[3] = 'A';
         
       if (ti->arg2 & O_TRUNC)
-              mode[4] = 'T';
+        mode[4] = 'T';
         
       if (ti->arg2 & O_EXCL)
-              mode[5] = 'E';
+        mode[5] = 'E';
 
-            if (arg1)
-              printf("      [%3d] (%s) ", arg1, mode);
+      if (arg1)
+        printf("      [%3d] (%s) ", arg1, mode);
       else
-              printf(" F=%-3d      (%s) ", arg2, mode);
+        printf(" F=%-3d      (%s) ", arg2, mode);
 
       nopadding = 1;
       break;
-          }
+    }
 
-          case FMT_SOCKET:
-          {
+    case FMT_SOCKET:
+    {
       /*
        * socket
        * 
@@ -3531,32 +3525,32 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       }
 
       if (arg1)
-              printf("      [%3d] <%s, %s, 0x%x>", arg1, domain, type, ti->arg3);
+        printf("      [%3d] <%s, %s, 0x%x>", arg1, domain, type, ti->arg3);
       else
-              printf(" F=%-3d      <%s, %s, 0x%x>", arg2, domain, type, ti->arg3);
+        printf(" F=%-3d      <%s, %s, 0x%x>", arg2, domain, type, ti->arg3);
       break;
-          }
+    }
 
-          case FMT_AIO_FSYNC:
-          {
+    case FMT_AIO_FSYNC:
+    {
       /*
        * aio_fsync    [errno]   AIOCBP   OP
        */
       char *op;
 
       if (ti->arg1 == O_SYNC || ti->arg1 == 0)
-              op = "AIO_FSYNC";
+        op = "AIO_FSYNC";
 #if O_DSYNC
       else if (ti->arg1 == O_DSYNC)
-              op = "AIO_DSYNC";
+        op = "AIO_DSYNC";
 #endif      
       else
-              op = "UNKNOWN";
+        op = "UNKNOWN";
 
       if (arg1)
-              printf("      [%3d] P=0x%8.8x  <%s>", arg1, ti->arg2, op);
+        printf("      [%3d] P=0x%8.8x  <%s>", arg1, ti->arg2, op);
       else
-              printf("            P=0x%8.8x  <%s>", ti->arg2, op);
+        printf("            P=0x%8.8x  <%s>", ti->arg2, op);
       break;
           }
 
@@ -3565,86 +3559,85 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * aio_return   [errno]   AIOCBP   IOSIZE
        */
       if (arg1)
-              printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
+        printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
       else
-              printf("            P=0x%8.8x  B=0x%-8x", ti->arg1, arg2);
+        printf("            P=0x%8.8x  B=0x%-8x", ti->arg1, arg2);
       break;
 
-          case FMT_AIO_SUSPEND:
+    case FMT_AIO_SUSPEND:
       /*
        * aio_suspend    [errno]   NENTS
        */
       if (arg1)
-              printf("      [%3d] N=%d", arg1, ti->arg2);
+        printf("      [%3d] N=%d", arg1, ti->arg2);
       else
-              printf("            N=%d", ti->arg2);
+        printf("            N=%d", ti->arg2);
       break;
 
-          case FMT_AIO_CANCEL:
+    case FMT_AIO_CANCEL:
       /*
        * aio_cancel     [errno]   FD or AIOCBP (if non-null)
        */
       if (ti->arg2) {
-              if (arg1)
-                printf("      [%3d] P=0x%8.8x", arg1, ti->arg2);
+        if (arg1)
+          printf("      [%3d] P=0x%8.8x", arg1, ti->arg2);
         else
-                printf("            P=0x%8.8x", ti->arg2);
+          printf("            P=0x%8.8x", ti->arg2);
       } else {
-              if (arg1)
-                printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        if (arg1)
+          printf(" F=%-3d[%3d]", ti->arg1, arg1);
         else
-                printf(" F=%-3d", ti->arg1);
+          printf(" F=%-3d", ti->arg1);
       }
       break;
 
-          case FMT_AIO:
+    case FMT_AIO:
       /*
        * aio_error, aio_read, aio_write [errno]  AIOCBP
        */
       if (arg1)
-              printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
+        printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
       else
-              printf("            P=0x%8.8x", ti->arg1);
+        printf("            P=0x%8.8x", ti->arg1);
       break;
 
-          case FMT_LIO_LISTIO:
-          {
+    case FMT_LIO_LISTIO:
+    {
       /*
        * lio_listio   [errno]   NENTS  MODE
        */
       char *op;
 
       if (ti->arg1 == LIO_NOWAIT)
-              op = "LIO_NOWAIT";
+        op = "LIO_NOWAIT";
       else if (ti->arg1 == LIO_WAIT)
-              op = "LIO_WAIT";
+        op = "LIO_WAIT";
       else
-              op = "UNKNOWN";
+        op = "UNKNOWN";
 
       if (arg1)
-              printf("      [%3d] N=%d  <%s>", arg1, ti->arg3, op);
+        printf("      [%3d] N=%d  <%s>", arg1, ti->arg3, op);
       else
-              printf("            N=%d  <%s>", ti->arg3, op);
+        printf("            N=%d  <%s>", ti->arg3, op);
       break;
-          }
-
+    }
     }
   }
 
   if (framework_name)
-          len = sprintf(&buf[0], " %s %s ", framework_type, framework_name);
+    len = sprintf(&buf[0], " %s %s ", framework_type, framework_name);
   else if (*pathname != '\0') {
     switch(format) {
-      case FMT_AT:
-      case FMT_OPENAT:
-      case FMT_CHMODAT:
-        len = sprintf(&buf[0], " [%d]/%s ", ti->arg1, pathname);
-        break;
-      case FMT_RENAMEAT:
-        len = sprintf(&buf[0], " [%d]/%s ", ti->arg3, pathname);
-        break;
-      default:
-        len = sprintf(&buf[0], " %s ", pathname);
+    case FMT_AT:
+    case FMT_OPENAT:
+    case FMT_CHMODAT:
+      len = sprintf(&buf[0], " [%d]/%s ", ti->arg1, pathname);
+      break;
+    case FMT_RENAMEAT:
+      len = sprintf(&buf[0], " [%d]/%s ", ti->arg3, pathname);
+      break;
+    default:
+      len = sprintf(&buf[0], " %s ", pathname);
     }
 
     if (format == FMT_MOUNT && ti->lookups[1].pathname[0]) {
@@ -3656,19 +3649,19 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       len = len + 2 + len2;
     }
   } else
-          len = 0;
+    len = 0;
 
   pathname = buf;
   
   if (class != FILEMGR_CLASS && !nopadding)
-          p1 = "   ";
+    p1 = "   ";
   else
-          p1 = "";
+    p1 = "";
          
   if (waited)
-          p2 = " W";
+    p2 = " W";
   else
-          p2 = "  ";
+    p2 = "  ";
 
   printf("%s%s %s %s.%d\n", p1, pathname, p2, command_name, (int)thread);
 }
@@ -3677,7 +3670,7 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 void
 add_meta_name(uint64_t blockno, char *pathname) {
   meta_info_t mi;
-  int   hashid;
+  int hashid;
 
   hashid = blockno & VN_HASH_MASK;
 
