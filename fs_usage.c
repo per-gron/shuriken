@@ -257,7 +257,6 @@ threadmap_t   find_map_entry(uintptr_t);
 
 char    *add_vnode_name(uint64_t, char *);
 char    *find_vnode_name(uint64_t);
-char            *find_meta_name(uint64_t);
 void            add_meta_name(uint64_t, char *);
 
 void    getdivisor();
@@ -273,15 +272,7 @@ int   quit();
 #define BSC_INDEX(type) ((type >> 2) & 0x3fff)
 
 
-#if 0
-#define TRACE_DATA_NEWTHREAD   0x07000004
-#define TRACE_DATA_EXEC        0x07000008
-#define TRACE_STRING_NEWTHREAD 0x07010004
-#define TRACE_STRING_EXEC      0x07010008
-#endif
-
 #define MACH_pageout    0x01300004
-//#define VFS_LOOKUP      0x03010090
 #define VFS_ALIAS_VP    0x03010094
 
 #define BSC_thread_terminate    0x040c05a4
@@ -2407,9 +2398,7 @@ sample_sc()
     set_enable(1);
   }
   kd = (kd_buf *)my_buffer;
-#if 0
-  fprintf(stderr, "READTR returned %d items\n", count);
-#endif
+
   for (i = 0; i < count; i++) {
     uint32_t debugid;
     uintptr_t thread;
@@ -3851,21 +3840,6 @@ add_meta_name(uint64_t blockno, char *pathname) {
   }
   mi->m_nameptr = pathname;
 }
-
-char *
-find_meta_name(uint64_t blockno) {
-  meta_info_t mi;
-  int   hashid;
-
-  hashid = blockno & VN_HASH_MASK;
-
-  for (mi = m_info_hash[hashid]; mi; mi = mi->m_next) {
-    if (mi->m_blkno == blockno)
-      return (mi->m_nameptr);
-  }
-  return ("");
-}
-
 
 char *
 add_vnode_name(uint64_t vn_id, char *pathname) {
