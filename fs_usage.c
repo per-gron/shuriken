@@ -70,16 +70,6 @@ cc -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRI
 
 #define MAXINDEX 2048
 
-typedef struct LibraryRange {
-  uint64_t b_address;
-  uint64_t e_address;
-} LibraryRange;
-
-LibraryRange framework32 = {0,0};
-LibraryRange framework64 = {0,0};
-LibraryRange framework64h = {0,0};
-
-
 #define TEXT_R    0
 #define DATA_R    1
 #define OBJC_R    2
@@ -87,17 +77,6 @@ LibraryRange framework64h = {0,0};
 #define UNICODE_R 4
 #define IMAGE_R   5
 #define LINKEDIT_R  6
-
-
-char *frameworkType[] = {
-  "<TEXT>    ",
-  "<DATA>    ",
-  "<OBJC>    ",
-  "<IMPORT>  ",
-  "<UNICODE> ",
-  "<IMAGE>   ",
-  "<LINKEDIT>",
-};
 
 /* 
  * MAXCOLS controls when extra data kicks in.
@@ -117,7 +96,7 @@ char *frameworkType[] = {
 
 typedef struct th_info *th_info_t;
 
-struct  lookup {
+struct lookup {
   uintptr_t pathname[NUMPARMS + 1]; /* add room for null terminator */
 };
 
