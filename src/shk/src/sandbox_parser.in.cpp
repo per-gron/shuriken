@@ -548,7 +548,23 @@ void readAllow(
   }
 
   case AllowToken::SYSCTL_READ:
-  case AllowToken::PROCESS_FORK: {
+  case AllowToken::PROCESS_FORK:
+  case AllowToken::MACH_STAR:
+  case AllowToken::MACH_PER_USER_LOOKUP:
+  case AllowToken::MACH_BOOTSTRAP:
+  case AllowToken::MACH_LOOKUP:
+  case AllowToken::MACH_PRIV_STAR:
+  case AllowToken::MACH_PRIV_HOST_PORT:
+  case AllowToken::MACH_PRIV_TASK_PORT:
+  case AllowToken::MACH_TASK_NAME:
+  case AllowToken::IPC_STAR:
+  case AllowToken::IPC_POSIX_STAR:
+  case AllowToken::IPC_POSIX_SEM:
+  case AllowToken::IPC_POSIX_SHM:
+  case AllowToken::IPC_SYSV_STAR:
+  case AllowToken::IPC_SYSV_MSG:
+  case AllowToken::IPC_SYSV_SEM:
+  case AllowToken::IPC_SYSV_SHM: {
     // Allowed
     readToEOL(context);
     break;
@@ -586,23 +602,7 @@ void readAllow(
   case AllowToken::SYSTEM_SOCKET:
   case AllowToken::SYSTEM_SWAP:
   case AllowToken::SYSTEM_WRITE_BOOTSTRAP:
-  case AllowToken::JOB_CREATION:
-  case AllowToken::IPC_STAR:
-  case AllowToken::IPC_POSIX_STAR:
-  case AllowToken::IPC_POSIX_SEM:
-  case AllowToken::IPC_POSIX_SHM:
-  case AllowToken::IPC_SYSV_STAR:
-  case AllowToken::IPC_SYSV_MSG:
-  case AllowToken::IPC_SYSV_SEM:
-  case AllowToken::IPC_SYSV_SHM:
-  case AllowToken::MACH_STAR:
-  case AllowToken::MACH_PER_USER_LOOKUP:
-  case AllowToken::MACH_BOOTSTRAP:
-  case AllowToken::MACH_LOOKUP:
-  case AllowToken::MACH_PRIV_STAR:
-  case AllowToken::MACH_PRIV_HOST_PORT:
-  case AllowToken::MACH_PRIV_TASK_PORT:
-  case AllowToken::MACH_TASK_NAME: {
+  case AllowToken::JOB_CREATION: {
     result.violations.emplace_back(
         "Process performed disallowed action " + token_slice.asString());
     readToEOL(context);

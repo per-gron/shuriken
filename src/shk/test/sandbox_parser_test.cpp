@@ -448,6 +448,25 @@ TEST_CASE("SandboxParser") {
         "Process opened network connection on illegal path /an/ignored/path");
   }
 
+  SECTION("Allowed") {
+    checkEmpty(file, "(allow ipc*)");
+    checkEmpty(file, "(allow ipc-posix*)");
+    checkEmpty(file, "(allow ipc-posix-sem)");
+    checkEmpty(file, "(allow ipc-posix-shm)");
+    checkEmpty(file, "(allow ipc-sysv*)");
+    checkEmpty(file, "(allow ipc-sysv-msg)");
+    checkEmpty(file, "(allow ipc-sysv-sem)");
+    checkEmpty(file, "(allow ipc-sysv-shm)");
+    checkEmpty(file, "(allow mach*)");
+    checkEmpty(file, "(allow mach-per-user-lookup)");
+    checkEmpty(file, "(allow mach-bootstrap)");
+    checkEmpty(file, "(allow mach-lookup)");
+    checkEmpty(file, "(allow mach-priv*)");
+    checkEmpty(file, "(allow mach-priv-host-port)");
+    checkEmpty(file, "(allow mach-priv-task-port)");
+    checkEmpty(file, "(allow mach-task-name)");
+}
+
   SECTION("Disallowed") {
     checkDisallowedAction("signal", "(allow signal)");
     checkDisallowedAction("network*", "(allow network*)");
@@ -470,22 +489,6 @@ TEST_CASE("SandboxParser") {
     checkDisallowedAction("system-swap", "(allow system-swap)");
     checkDisallowedAction("system-write-bootstrap", "(allow system-write-bootstrap)");
     checkDisallowedAction("job-creation", "(allow job-creation)");
-    checkDisallowedAction("ipc*", "(allow ipc*)");
-    checkDisallowedAction("ipc-posix*", "(allow ipc-posix*)");
-    checkDisallowedAction("ipc-posix-sem", "(allow ipc-posix-sem)");
-    checkDisallowedAction("ipc-posix-shm", "(allow ipc-posix-shm)");
-    checkDisallowedAction("ipc-sysv*", "(allow ipc-sysv*)");
-    checkDisallowedAction("ipc-sysv-msg", "(allow ipc-sysv-msg)");
-    checkDisallowedAction("ipc-sysv-sem", "(allow ipc-sysv-sem)");
-    checkDisallowedAction("ipc-sysv-shm", "(allow ipc-sysv-shm)");
-    checkDisallowedAction("mach*", "(allow mach*)");
-    checkDisallowedAction("mach-per-user-lookup", "(allow mach-per-user-lookup)");
-    checkDisallowedAction("mach-bootstrap", "(allow mach-bootstrap)");
-    checkDisallowedAction("mach-lookup", "(allow mach-lookup)");
-    checkDisallowedAction("mach-priv*", "(allow mach-priv*)");
-    checkDisallowedAction("mach-priv-host-port", "(allow mach-priv-host-port)");
-    checkDisallowedAction("mach-priv-task-port", "(allow mach-priv-task-port)");
-    checkDisallowedAction("mach-task-name", "(allow mach-task-name)");
   }
 
   SECTION("InvalidSyntax") {
