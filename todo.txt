@@ -104,7 +104,7 @@ Large things remaining to do:
 * Caching
 * Distributed caching
 * Use ktrace instead of sandbox-exec, to avoid file descriptor leak. Or possibly: Try to reuse
-  the sandbox-exec processes to reduce leakage.
+  the sandbox-exec processes to reduce leakage. ACTUALLY: It might be fixed in latest OS X.
 
 * Possible optimizations
   * Stat cache for use by Paths

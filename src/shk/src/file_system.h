@@ -57,11 +57,16 @@ struct DirEntry {
   Type type = Type::UNKNOWN;
   std::string name;
 
-  /**
-   * Comparison operator so that DirEntry objects can be conveniently sorted.
-   */
   inline bool operator<(const DirEntry &other) const {
     return std::tie(name, type) < std::tie(other.name, other.type);
+  }
+
+  inline bool operator==(const DirEntry &other) const {
+    return std::tie(name, type) == std::tie(other.name, other.type);
+  }
+
+  inline bool operator!=(const DirEntry &other) const {
+    return !(*this == other);
   }
 };
 

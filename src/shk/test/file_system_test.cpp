@@ -25,6 +25,11 @@ TEST_CASE("FileSystem") {
     CHECK(!(r < r));
     CHECK(!(r < r_copy));
     CHECK(!(d < d));
+
+    CHECK(r_copy == r);
+    CHECK(!(r_copy != r));
+    CHECK(!(r == d));
+    CHECK(r != d);
   }
 
   SECTION("hashDir") {
