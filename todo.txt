@@ -73,12 +73,12 @@ Things to do for increased build correctness:
 * Shield commands from env vars
 * Make sure the build does the right thing even if targets are specified wrong on the command line
 * Hash symlinks in a special way (see fingerprintStat)
+* Perhaps introduce an opt-in strict linting mode? I had to re-enable mach calls and ipc.
 
 Aesthetic bugs:
 * Deal with depfile files: Don't treat them as outputs
 
 Large things remaining to do:
-* Seems like sandboxd leaks file descriptors .. :-(
 * I think dry runs might delete things right now. Also I think it creates directories.
 * shk -n in core fails with "shk: build failed: Operation not permitted" (might be related to dry runs deleting things)
 * "Linting error: Process unlinked file or directory that it did not create: /Users/peck/prog/client-core/vendor/boink/python/spotify/boinkc/grammar.pyc": Solve by ignoring "*.pyc" files? Or is this the tracer race?
@@ -103,6 +103,8 @@ Large things remaining to do:
   * recompact
 * Caching
 * Distributed caching
+* Use ktrace instead of sandbox-exec, to avoid file descriptor leak. Or possibly: Try to reuse
+  the sandbox-exec processes to reduce leakage.
 
 * Possible optimizations
   * Stat cache for use by Paths
