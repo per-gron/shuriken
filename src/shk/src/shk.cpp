@@ -36,6 +36,7 @@
 #include "build_error.h"
 #include "delayed_invocation_log.h"
 #include "dry_run_command_runner.h"
+#include "dry_run_file_system.h"
 #include "dry_run_invocation_log.h"
 #include "edit_distance.h"
 #include "file_lock.h"
@@ -394,7 +395,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
   try {
     const auto result = build(
         getTime,
-        *_file_system,
+        _config.dry_run ? *dryRunFileSystem(*_file_system) : *_file_system,
         *command_runner,
         [this](int total_steps) {
           const char * status_format = getenv("NINJA_STATUS");
