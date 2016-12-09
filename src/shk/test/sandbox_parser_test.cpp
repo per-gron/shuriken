@@ -144,40 +144,45 @@ TEST_CASE("SandboxParser") {
 
   SECTION("Read") {
     checkResult(
+        "(allow file-read-data (path \"/a/path\"))",
+        {},
+        { { "/a/path", DependencyType::ALWAYS } });
+    // literal is old syntax
+    checkResult(
         "(allow file-read-data (literal \"/a/path\"))",
         {},
         { { "/a/path", DependencyType::ALWAYS } });
     checkResult(
-        "(allow file-read-metadata (literal \"/another/path\"))",
+        "(allow file-read-metadata (path \"/another/path\"))",
         {},
         { { "/another/path", DependencyType::IGNORE_IF_DIRECTORY } });
     checkResult(
-        "(allow file-read-metadata (literal \"/a/path\"))\n"
-        "(allow file-read-data (literal \"/a/path\"))",
+        "(allow file-read-metadata (path \"/a/path\"))\n"
+        "(allow file-read-data (path \"/a/path\"))",
         {},
         { { "/a/path", DependencyType::ALWAYS } });
     checkResult(
-        "(allow file-read-data (literal \"/a/path\"))\n"
-        "(allow file-read-metadata (literal \"/a/path\"))",
+        "(allow file-read-data (path \"/a/path\"))\n"
+        "(allow file-read-metadata (path \"/a/path\"))",
         {},
         { { "/a/path", DependencyType::ALWAYS } });
     checkResult(
-        "(allow process-exec* (literal \"/bin/ls\"))",
+        "(allow process-exec* (path \"/bin/ls\"))",
         {},
         { { "/bin/ls", DependencyType::ALWAYS } });
     checkResult(
-        "(allow process-exec (literal \"/bin/ls\"))",
+        "(allow process-exec (path \"/bin/ls\"))",
         {},
         { { "/bin/ls", DependencyType::ALWAYS } });
     checkResult(
-        "(allow process* (literal \"/bin/ls\"))",
+        "(allow process* (path \"/bin/ls\"))",
         {},
         { { "/bin/ls", DependencyType::ALWAYS } });
 
     // Ideally this should be disallowed
     checkResult(
-        "(allow file-read-data (literal \"/a/path\"))\n"
-        "(allow file-write-create (literal \"/a/path\"))\n",
+        "(allow file-read-data (path \"/a/path\"))\n"
+        "(allow file-write-create (path \"/a/path\"))\n",
         { "/a/path" },
         {});
   }
@@ -185,23 +190,23 @@ TEST_CASE("SandboxParser") {
   SECTION("ReadIgnored") {
     checkEmpty(
         file,
-        "(allow file-read-data (literal \"/an/ignored/path\"))");
+        "(allow file-read-data (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow file-read-metadata (literal \"/an/ignored/path\"))");
+        "(allow file-read-metadata (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow process-exec* (literal \"/an/ignored/path\"))");
+        "(allow process-exec* (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow process-exec (literal \"/an/ignored/path\"))");
+        "(allow process-exec (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow process* (literal \"/an/ignored/path\"))");
+        "(allow process* (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow file-read-data (literal \"/an/ignored/path\"))\n"
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n");
+        "(allow file-read-data (path \"/an/ignored/path\"))\n"
+        "(allow file-write-create (path \"/an/ignored/path\"))\n");
   }
 
   SECTION("WriteWithoutCreate") {
@@ -209,31 +214,31 @@ TEST_CASE("SandboxParser") {
     // mechanism cannot distinguish between opening a file for wite with
     // appending vs without append, so unfortunately it has to be allowed.
     checkResult(
-        "(allow file-write-data (literal \"/a/path\"))\n",
+        "(allow file-write-data (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-flags (literal \"/a/path\"))\n",
+        "(allow file-write-flags (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-mode (literal \"/a/path\"))\n",
+        "(allow file-write-mode (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-owner (literal \"/a/path\"))\n",
+        "(allow file-write-owner (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-setugid (literal \"/a/path\"))\n",
+        "(allow file-write-setugid (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-times (literal \"/a/path\"))\n",
+        "(allow file-write-times (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-revoke (literal \"/a/path\"))\n",
+        "(allow file-revoke (path \"/a/path\"))\n",
         { "/a/path" },
         {});
   }
@@ -241,48 +246,48 @@ TEST_CASE("SandboxParser") {
   SECTION("WriteWithoutCreateIgnored") {
     checkEmpty(
         file,
-        "(allow file-write-data (literal \"/an/ignored/path\"))");
+        "(allow file-write-data (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow file-write-flags (literal \"/an/ignored/path\"))");
+        "(allow file-write-flags (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow file-write-mode (literal \"/an/ignored/path\"))");
+        "(allow file-write-mode (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow file-write-owner (literal \"/an/ignored/path\"))");
+        "(allow file-write-owner (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow file-write-setugid (literal \"/an/ignored/path\"))");
+        "(allow file-write-setugid (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow file-write-times (literal \"/an/ignored/path\"))");
+        "(allow file-write-times (path \"/an/ignored/path\"))");
     checkEmpty(
         file,
-        "(allow file-revoke (literal \"/an/ignored/path\"))");
+        "(allow file-revoke (path \"/an/ignored/path\"))");
   }
 
   SECTION("Unlink") {
     checkDisallowed(
-        "(allow file-write-unlink (literal \"/a/path\"))",
+        "(allow file-write-unlink (path \"/a/path\"))",
         "Process unlinked file or directory that it did not create: "
         "/a/path");
 
     checkEmpty(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-write-unlink (literal \"/a/path\"))\n");
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-write-unlink (path \"/a/path\"))\n");
 
     checkDisallowed(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-write-unlink (literal \"/a/path\"))\n"
-        "(allow file-write-unlink (literal \"/a/path\"))\n",
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-write-unlink (path \"/a/path\"))\n"
+        "(allow file-write-unlink (path \"/a/path\"))\n",
         "Process unlinked file or directory that it did not create: "
         "/a/path");
 
     checkResult(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-write-unlink (literal \"/a/path\"))\n"
-        "(allow file-read-data (literal \"/a/path\"))\n",
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-write-unlink (path \"/a/path\"))\n"
+        "(allow file-read-data (path \"/a/path\"))\n",
         {},
         { { "/a/path", DependencyType::ALWAYS } });
   }
@@ -290,65 +295,65 @@ TEST_CASE("SandboxParser") {
   SECTION("UnlinkIgnored") {
     checkEmpty(
         file,
-        "(allow file-write-unlink (literal \"/an/ignored/path\"))");
+        "(allow file-write-unlink (path \"/an/ignored/path\"))");
 
     checkEmpty(
         file,
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
-        "(allow file-write-unlink (literal \"/an/ignored/path\"))\n");
+        "(allow file-write-create (path \"/an/ignored/path\"))\n"
+        "(allow file-write-unlink (path \"/an/ignored/path\"))\n");
 
     checkEmpty(
         file,
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
-        "(allow file-write-unlink (literal \"/an/ignored/path\"))\n"
-        "(allow file-write-unlink (literal \"/an/ignored/path\"))\n");
+        "(allow file-write-create (path \"/an/ignored/path\"))\n"
+        "(allow file-write-unlink (path \"/an/ignored/path\"))\n"
+        "(allow file-write-unlink (path \"/an/ignored/path\"))\n");
 
     checkEmpty(
         file,
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
-        "(allow file-write-unlink (literal \"/an/ignored/path\"))\n"
-        "(allow file-read-data (literal \"/an/ignored/path\"))\n");
+        "(allow file-write-create (path \"/an/ignored/path\"))\n"
+        "(allow file-write-unlink (path \"/an/ignored/path\"))\n"
+        "(allow file-read-data (path \"/an/ignored/path\"))\n");
   }
 
   SECTION("Write") {
     checkResult(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-write-data (literal \"/a/path\"))\n",
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-write-data (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-write-flags (literal \"/a/path\"))\n",
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-write-flags (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-write-mode (literal \"/a/path\"))\n",
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-write-mode (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-write-owner (literal \"/a/path\"))\n",
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-write-owner (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-write-setugid (literal \"/a/path\"))\n",
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-write-setugid (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-write-times (literal \"/a/path\"))\n",
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-write-times (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-revoke (literal \"/a/path\"))\n",
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-revoke (path \"/a/path\"))\n",
         { "/a/path" },
         {});
     checkResult(
-        "(allow file-write-create (literal \"/a/path\"))\n"
-        "(allow file-read-data (literal \"/a/path\"))\n",
+        "(allow file-write-create (path \"/a/path\"))\n"
+        "(allow file-read-data (path \"/a/path\"))\n",
         { "/a/path" },
         {});
   }
@@ -356,90 +361,90 @@ TEST_CASE("SandboxParser") {
   SECTION("WriteIgnored") {
     checkEmpty(
         file,
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
-        "(allow file-write-data (literal \"/an/ignored/path\"))\n");
+        "(allow file-write-create (path \"/an/ignored/path\"))\n"
+        "(allow file-write-data (path \"/an/ignored/path\"))\n");
     checkEmpty(
         file,
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
-        "(allow file-write-flags (literal \"/an/ignored/path\"))\n");
+        "(allow file-write-create (path \"/an/ignored/path\"))\n"
+        "(allow file-write-flags (path \"/an/ignored/path\"))\n");
     checkEmpty(
         file,
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
-        "(allow file-write-mode (literal \"/an/ignored/path\"))\n");
+        "(allow file-write-create (path \"/an/ignored/path\"))\n"
+        "(allow file-write-mode (path \"/an/ignored/path\"))\n");
     checkEmpty(
         file,
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
-        "(allow file-write-owner (literal \"/an/ignored/path\"))\n");
+        "(allow file-write-create (path \"/an/ignored/path\"))\n"
+        "(allow file-write-owner (path \"/an/ignored/path\"))\n");
     checkEmpty(
         file,
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
-        "(allow file-write-setugid (literal \"/an/ignored/path\"))\n");
+        "(allow file-write-create (path \"/an/ignored/path\"))\n"
+        "(allow file-write-setugid (path \"/an/ignored/path\"))\n");
     checkEmpty(
         file,
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
-        "(allow file-revoke (literal \"/an/ignored/path\"))\n");
+        "(allow file-write-create (path \"/an/ignored/path\"))\n"
+        "(allow file-revoke (path \"/an/ignored/path\"))\n");
     checkEmpty(
         file,
-        "(allow file-write-create (literal \"/an/ignored/path\"))\n"
-        "(allow file-read-data (literal \"/an/ignored/path\"))\n");
+        "(allow file-write-create (path \"/an/ignored/path\"))\n"
+        "(allow file-read-data (path \"/an/ignored/path\"))\n");
   }
 
   SECTION("LiteralEscaping") {
     checkResult(
-        "(allow file-read-data (literal \"/a\\\"b\"))",
+        "(allow file-read-data (path \"/a\\\"b\"))",
         {},
         { { "/a\"b", DependencyType::ALWAYS } });
     checkResult(
-        "(allow file-read-data (literal \"/a\\nb\"))",
+        "(allow file-read-data (path \"/a\\nb\"))",
         {},
         { { "/a\nb", DependencyType::ALWAYS } });
     checkResult(
-        "(allow file-read-data (literal \"/a\\rb\"))",
+        "(allow file-read-data (path \"/a\\rb\"))",
         {},
         { { "/a\rb", DependencyType::ALWAYS } });
     checkResult(
-        "(allow file-read-data (literal \"/a\\tb\"))",
+        "(allow file-read-data (path \"/a\\tb\"))",
         {},
         { { "/a\tb", DependencyType::ALWAYS } });
     checkResult(
-        "(allow file-read-data (literal \"/a\\x22b\"))",
+        "(allow file-read-data (path \"/a\\x22b\"))",
         {},
         { { "/a\"b", DependencyType::ALWAYS } });
     checkResult(
-        "(allow file-read-data (literal \"/a\\1b\"))",
+        "(allow file-read-data (path \"/a\\1b\"))",
         {},
         { { "/a\1b", DependencyType::ALWAYS } });
     checkResult(
-        "(allow file-read-data (literal \"/a\\01b\"))",
+        "(allow file-read-data (path \"/a\\01b\"))",
         {},
         { { "/a\1b", DependencyType::ALWAYS } });
     checkResult(
-        "(allow file-read-data (literal \"/a\\42b\"))",
+        "(allow file-read-data (path \"/a\\42b\"))",
         {},
         { { "/a\"b", DependencyType::ALWAYS } });
 
-    checkFailsParse("(allow file-read-data (literal \"\\a\"))");
+    checkFailsParse("(allow file-read-data (path \"\\a\"))");
   }
 
   SECTION("PartiallyDisallowed") {
     checkDisallowedAction("network-outbound", "(allow network-outbound (remote tcp4 \"*:80\"))");
     checkDisallowed(
-        "(allow network-outbound (literal \"/a/b\"))",
+        "(allow network-outbound (path \"/a/b\"))",
         "Process opened network connection on illegal path /a/b");
 
     checkEmpty(
-        network, "(allow network-outbound (literal \"/an/ignored/path\")");
+        network, "(allow network-outbound (path \"/an/ignored/path\")");
     checkDisallowed(
-        "(allow file-ioctl (literal \"/an/ignored/path\"))",
+        "(allow file-ioctl (path \"/an/ignored/path\"))",
         "Process used ioctl on illegal path /an/ignored/path");
 
     checkDisallowed(
-        "(allow file-ioctl (literal \"/a/b\"))",
+        "(allow file-ioctl (path \"/a/b\"))",
         "Process used ioctl on illegal path /a/b");
 
-    checkEmpty(file, "(allow file-ioctl (literal \"/an/ignored/path\")");
+    checkEmpty(file, "(allow file-ioctl (path \"/an/ignored/path\")");
     checkDisallowed(
-        "(allow network-outbound (literal \"/an/ignored/path\"))",
+        "(allow network-outbound (path \"/an/ignored/path\"))",
         "Process opened network connection on illegal path /an/ignored/path");
   }
 

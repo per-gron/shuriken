@@ -297,8 +297,8 @@ void readLiteralPrefix(ParsingContext &context) throw(ParseError) {
   char *q;
   for (;;) {
     /*!re2c
-    [ ]+"("[ ]*"literal"[ ]+"\"" { break; }
-    [^] { parseError(context, "Encountered unexpected token; expected (literal"); }
+    [ ]+"("[ ]*("literal"|"path")[ ]+"\"" { break; }
+    [^] { parseError(context, "Encountered unexpected token; expected (literal or (path"); }
     */
   }
   context.in = p;
