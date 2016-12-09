@@ -1,6 +1,7 @@
 #include <catch.hpp>
 
 #include <fcntl.h>
+#include <unistd.h>
 
 #include "persistent_file_system.h"
 

@@ -1,5 +1,7 @@
 #include <catch.hpp>
 
+#include <unistd.h>
+
 #include "file_lock.h"
 
 namespace shk {
