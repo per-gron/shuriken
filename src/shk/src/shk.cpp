@@ -150,7 +150,7 @@ struct ShurikenMain {
    *
    * @return false on error.
    */
-  bool readInvocationLog();
+  bool readInvocationLog(bool will_run_tool);
 
   /**
    * Open the invocation log for writing. Must be called after successfully
@@ -322,7 +322,7 @@ std::string ShurikenMain::invocationLogPath() const {
   return path;
 }
 
-bool ShurikenMain::readInvocationLog() {
+bool ShurikenMain::readInvocationLog(bool will_run_tool) {
   const auto path = invocationLogPath();
   const auto lock_path = path + ".lock";
 
@@ -351,6 +351,20 @@ bool ShurikenMain::readInvocationLog() {
   } catch (const ParseError &parse_error) {
     error("parsing invocation log %s: %s", path.c_str(), parse_error.what());
     return false;
+  }
+
+  // Don't recompact if we're running a tool. This is partly to avoid unexpected
+  // behavior, but mostly to avoid recompacting if the recompact tool is already
+  // going to do it.
+  if (!will_run_tool && parse_result.needs_recompaction) {
+    printf("recompacting build log...\n");
+    try {
+      recompactPersistentInvocationLog(
+          *_file_system, getTime, _invocations, path);
+    } catch (const IoError &err) {
+      error("failed recompaction: %s", err.what());
+      return false;
+    }
   }
 
   return true;
@@ -617,7 +631,7 @@ int real_main(int argc, char **argv) {
       return options.tool->func(argc, argv, tool_params);
     }
 
-    if (!shk.readInvocationLog()) {
+    if (!shk.readInvocationLog(!!options.tool)) {
       return 1;
     }
 

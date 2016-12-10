@@ -84,7 +84,7 @@ Large things remaining to do:
 * "shk: build failed: dependency cycle: vendor/rapidcheck/librapidcheck.a -> /Users/peck/prog/buildsystem/shk/build.shk/vendor/rapidcheck/CMakeFiles/rapidcheck.dir/src/BeforeMinimalTestCase.cpp.o -> /Users/peck/prog/buildsystem/shk/build.shk/vendor/rapidcheck/CMakeFiles/rapidcheck.dir/src/BeforeMinimalTestCase.cpp.o -> vendor/rapidcheck/librapidcheck.a"
   (happened after re-cmake I think. might or might not be because of that)
 * Seems like should update / relogCommands doesn't work
-* Ocasionally recompact (and make sure that stale fingerprints aren't counted)
+* When recompacting: Make sure that stale fingerprints aren't counted (what does this mean??)
 * Unit test shk::build
 * Handle restat rules
 * Handle build pools
