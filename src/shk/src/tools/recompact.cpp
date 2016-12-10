@@ -1,34 +1,21 @@
-// Copyright 2011 Google Inc. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #include "recompact.h"
+
+#include "persistent_invocation_log.h"
+#include "util.h"
 
 namespace shk {
 
 int toolRecompact(int argc, char *argv[], const ToolParams &params) {
-#if 0
-  if (!ensureBuildDirExists()) {
-    return 1;
-  }
-
   try {
-    _deps_log.recompact(path);
-  } catch (const IoError &error) {
-    error("failed recompaction: %s", error.what());
+    recompactPersistentInvocationLog(
+        params.file_system,
+        params.clock,
+        params.invocations,
+        params.invocation_log_path);
+  } catch (const IoError &err) {
+    error("failed recompaction: %s", err.what());
     return 1;
   }
-#endif
 
   return 0;
 }

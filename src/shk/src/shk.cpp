@@ -91,7 +91,7 @@ struct Tool {
     RUN_AFTER_LOAD,
 
     /**
-     * Run after loading the invocation log.
+     * Run after reading (but not opening for writing) the invocation log.
      */
     RUN_AFTER_LOG,
   } when;
@@ -275,7 +275,7 @@ const Tool *chooseTool(const std::string &tool_name) {
     { "compdb",  "dump JSON compilation database to stdout",
       Tool::RUN_AFTER_LOAD, &toolCompilationDatabase },
     { "recompact",  "recompacts shuriken-internal data structures",
-      Tool::RUN_AFTER_LOAD, &toolRecompact },
+      Tool::RUN_AFTER_LOG, &toolRecompact },
     { NULL, NULL, Tool::RUN_AFTER_LOAD, NULL }
   };
 
@@ -610,7 +610,8 @@ int real_main(int argc, char **argv) {
         shk.paths(),
         shk.invocations(),
         shk.manifest(),
-        shk.fileSystem() };
+        shk.fileSystem(),
+        shk.invocationLogPath() };
 
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOAD) {
       return options.tool->func(argc, argv, tool_params);
@@ -620,12 +621,15 @@ int real_main(int argc, char **argv) {
       return 1;
     }
 
-    if (!shk.openInvocationLog()) {
-      return 1;
-    }
-
     if (options.tool && options.tool->when == Tool::RUN_AFTER_LOG) {
       return options.tool->func(argc, argv, tool_params);
+    }
+
+    // It is necessary to open the invocation log after running the tools,
+    // because the recompact tool will unlink and recreate the invocation
+    // log file.
+    if (!shk.openInvocationLog()) {
+      return 1;
     }
 
     // Attempt to rebuild the manifest before building anything else

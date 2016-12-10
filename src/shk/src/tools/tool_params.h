@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "../clock.h"
 #include "../invocations.h"
 #include "../manifest.h"
@@ -26,6 +28,7 @@ struct ToolParams {
   const Invocations &invocations;
   const Manifest &manifest;
   FileSystem &file_system;
+  std::string invocation_log_path;
 };
 
 }  // namespace shk
