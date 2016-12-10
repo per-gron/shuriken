@@ -146,11 +146,19 @@ struct ShurikenMain {
   std::string invocationLogPath() const;
 
   /**
-   * Load the invocation log and open it for writing.
+   * Load the invocation log.
    *
    * @return false on error.
    */
-  bool readAndOpenInvocationLog();
+  bool readInvocationLog();
+
+  /**
+   * Open the invocation log for writing. Must be called after successfully
+   * calling readInvocationLog.
+   *
+   * @return false on error.
+   */
+  bool openInvocationLog();
 
   /**
    * Rebuild the manifest, if necessary.
@@ -186,6 +194,7 @@ struct ShurikenMain {
   const std::unique_ptr<FileSystem> _file_system;
   Paths _paths;
   Invocations _invocations;
+  InvocationLogParseResult::ParseData _invocation_parse_data;
   std::unique_ptr<FileLock> _invocation_log_lock;
   std::unique_ptr<InvocationLog> _invocation_log;
   Manifest _manifest;
@@ -313,7 +322,7 @@ std::string ShurikenMain::invocationLogPath() const {
   return path;
 }
 
-bool ShurikenMain::readAndOpenInvocationLog() {
+bool ShurikenMain::readInvocationLog() {
   const auto path = invocationLogPath();
   const auto lock_path = path + ".lock";
 
@@ -332,6 +341,7 @@ bool ShurikenMain::readAndOpenInvocationLog() {
   try {
     parse_result = parsePersistentInvocationLog(_paths, *_file_system, path);
     _invocations = std::move(parse_result.invocations);
+    _invocation_parse_data =  std::move(parse_result.parse_data);
     if (!parse_result.warning.empty()) {
       warning("%s", parse_result.warning.c_str());
     }
@@ -342,6 +352,12 @@ bool ShurikenMain::readAndOpenInvocationLog() {
     error("parsing invocation log %s: %s", path.c_str(), parse_error.what());
     return false;
   }
+
+  return true;
+}
+
+bool ShurikenMain::openInvocationLog() {
+  const auto path = invocationLogPath();
 
   if (_config.dry_run) {
     _invocation_log = std::unique_ptr<InvocationLog>(
@@ -363,7 +379,7 @@ bool ShurikenMain::readAndOpenInvocationLog() {
               *_file_system,
               getTime,
               path,
-              std::move(parse_result.parse_data)));
+              std::move(_invocation_parse_data)));
     } catch (const IoError &io_error) {
       error("opening invocation log: %s", io_error.what());
       return false;
@@ -590,6 +606,7 @@ int real_main(int argc, char **argv) {
     }
 
     ToolParams tool_params = {
+        getTime,
         shk.paths(),
         shk.invocations(),
         shk.manifest(),
@@ -599,7 +616,11 @@ int real_main(int argc, char **argv) {
       return options.tool->func(argc, argv, tool_params);
     }
 
-    if (!shk.readAndOpenInvocationLog()) {
+    if (!shk.readInvocationLog()) {
+      return 1;
+    }
+
+    if (!shk.openInvocationLog()) {
       return 1;
     }
 

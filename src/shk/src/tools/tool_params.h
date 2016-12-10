@@ -14,12 +14,14 @@
 
 #pragma once
 
+#include "../clock.h"
 #include "../invocations.h"
 #include "../manifest.h"
 
 namespace shk {
 
 struct ToolParams {
+  Clock clock;
   Paths &paths;
   const Invocations &invocations;
   const Manifest &manifest;

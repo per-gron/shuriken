@@ -79,8 +79,6 @@ Aesthetic bugs:
 * Deal with depfile files: Don't treat them as outputs
 
 Large things remaining to do:
-* I think dry runs might delete things right now. Also I think it creates directories.
-* shk -n in core fails with "shk: build failed: Operation not permitted" (might be related to dry runs deleting things)
 * "Linting error: Process unlinked file or directory that it did not create: /Users/peck/prog/client-core/vendor/boink/python/spotify/boinkc/grammar.pyc": Solve by ignoring "*.pyc" files? Or is this the tracer race?
 * "shk: build failed: dependency cycle: bindings/objc/libSpotifyObjC.a -> bindings/objc/CMakeFiles/SpotifyObjC.dir/Sources/SPTEntityLookupResponse.m.o -> /Users/peck/prog/client-core/build.ninja/bindings/objc/CMakeFiles/SpotifyObjC.dir/Sources/SPTEntityLookupResponse.m.o -> bindings/objc/libSpotifyObjC.a"
 * Seems like should update / relogCommands doesn't work
