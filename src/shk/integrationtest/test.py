@@ -7,10 +7,7 @@ import shutil
 import subprocess
 import unittest
 
-def with_testdir(function):
-  return with_specific_testdir(re.sub(r'^test_', '', function.__name__))
-
-def with_specific_testdir(dir):
+def with_testdir(dir):
   tempdir = os.path.join(os.path.dirname(__file__), 'tmpdir')
   def wrap(function):
     def decorator(*args, **kwargs):
@@ -48,29 +45,29 @@ class IntegrationTest(unittest.TestCase):
     self.assertRegexpMatches(output, r'targets')
     self.assertRegexpMatches(output, r'recompact')
 
-  @with_testdir
+  @with_testdir('no_manifest')
   def test_no_manifest(self):
     output = subprocess.check_output(shk + '; exit 0', stderr=subprocess.STDOUT, shell=True)
     self.assertRegexpMatches(output, r'error: loading \'build\.ninja\'')
 
-  @with_testdir
+  @with_testdir('simple_build')
   def test_simple_build(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'data')
 
-  @with_specific_testdir('simple_build')
+  @with_testdir('simple_build')
   def test_simple_rebuild(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     output = subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'data')
     self.assertRegexpMatches(output, 'no work to do')
 
-  @with_specific_testdir('simple_build')
+  @with_testdir('simple_build')
   def test_simple_noop_build(self):
     subprocess.check_output(shk + ' -n', stderr=subprocess.STDOUT, shell=True)
     self.assertFalse(os.path.exists('out'))
 
-  @with_specific_testdir('append_output')
+  @with_testdir('append_output')
   def test_delete_before_rebuilding(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'hello')
@@ -79,13 +76,18 @@ class IntegrationTest(unittest.TestCase):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'changed')
 
-  @with_specific_testdir('simple_build')
+  @with_testdir('simple_build')
   def test_specify_manifest(self):
     os.rename('build.ninja', 'manifest.ninja')
     subprocess.check_output(shk + ' -f manifest.ninja', stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'data')
 
-  @with_specific_testdir('simple_build')
+  @with_testdir('target_in_subdir')
+  def test_target_in_subdir(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertEqual(read_file('dir/out'), 'hello')
+
+  @with_testdir('simple_build')
   def test_full_clean(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertTrue(os.path.exists('out'))
@@ -95,14 +97,14 @@ class IntegrationTest(unittest.TestCase):
     self.assertFalse(os.path.exists('.shk_log'))
     self.assertRegexpMatches(output, r'cleaned 2 files\.')
 
-  @with_specific_testdir('simple_build')
+  @with_testdir('simple_build')
   def test_full_clean_again(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     subprocess.check_output(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
     output = subprocess.check_output(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
     self.assertRegexpMatches(output, r'cleaned 0 files\.')
 
-  @with_specific_testdir('simple_build')
+  @with_testdir('simple_build')
   def test_single_target_clean(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertTrue(os.path.exists('out'))
