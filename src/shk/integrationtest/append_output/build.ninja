@@ -1,0 +1,4 @@
+rule APPEND
+  command = echo hello >> $out
+
+build out: APPEND

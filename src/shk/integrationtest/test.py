@@ -70,5 +70,11 @@ class IntegrationTest(unittest.TestCase):
     subprocess.check_output(shk + ' -n', stderr=subprocess.STDOUT, shell=True)
     self.assertFalse(os.path.exists('out'))
 
+  @with_specific_testdir('append_output')
+  def test_delete_before_rebuilding(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertEqual(read_file('out'), 'hello\n')
+
 if __name__ == '__main__':
     unittest.main()

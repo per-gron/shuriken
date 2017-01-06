@@ -83,7 +83,6 @@ Large things remaining to do:
 * "shk: build failed: dependency cycle: bindings/objc/libSpotifyObjC.a -> bindings/objc/CMakeFiles/SpotifyObjC.dir/Sources/SPTEntityLookupResponse.m.o -> /Users/peck/prog/client-core/build.ninja/bindings/objc/CMakeFiles/SpotifyObjC.dir/Sources/SPTEntityLookupResponse.m.o -> bindings/objc/libSpotifyObjC.a"
 * "shk: build failed: dependency cycle: vendor/rapidcheck/librapidcheck.a -> /Users/peck/prog/buildsystem/shk/build.shk/vendor/rapidcheck/CMakeFiles/rapidcheck.dir/src/BeforeMinimalTestCase.cpp.o -> /Users/peck/prog/buildsystem/shk/build.shk/vendor/rapidcheck/CMakeFiles/rapidcheck.dir/src/BeforeMinimalTestCase.cpp.o -> vendor/rapidcheck/librapidcheck.a"
   (happened after re-cmake I think. might or might not be because of that)
-* When recompacting: Make sure that stale fingerprints aren't counted (what does this mean??)
 * Unit test shk::build
 * Handle restat rules. OR: Make it the default somehow. Shuriken will not just stat but even hash all output files.
 * Handle build pools
