@@ -76,5 +76,11 @@ class IntegrationTest(unittest.TestCase):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'hello\n')
 
+  @with_specific_testdir('simple_build')
+  def test_specify_manifest(self):
+    os.rename('build.ninja', 'manifest.ninja')
+    subprocess.check_output(shk + ' -f manifest.ninja', stderr=subprocess.STDOUT, shell=True)
+    self.assertEqual(read_file('out'), 'data')
+
 if __name__ == '__main__':
     unittest.main()
