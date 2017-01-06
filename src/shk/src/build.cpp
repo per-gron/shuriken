@@ -496,7 +496,10 @@ void deleteBuildProduct(
     file_system.unlink(path.original());
   } catch (const IoError &error) {
     if (error.code != ENOENT) {
-      throw error;
+      throw IoError(
+          std::string("Failed to unlink build product ") +
+          path.original() + ": " + error.what(),
+          error.code);
     }
   }
 
