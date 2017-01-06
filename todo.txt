@@ -90,7 +90,16 @@ Large things remaining to do:
 * Handle generator rules
 * Rebuild manifest
 * Test to clean build steps that create directories, for example mkdir
+  -> this should happen both implicitly, when the manifest changes, and for explicit cleans
+    @with_testdir('mkdir')
+    def test_clean_mkdir_build(self):
+      subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+      self.assertTrue(os.path.isdir('out'))
+      subprocess.check_call(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
+      self.assertFalse(os.path.exists('out'))
+
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
+  -> this can be seen when building and then cleaning; not all is cleaned
 * CLI tools:
   * commands
   * graph (graphviz)

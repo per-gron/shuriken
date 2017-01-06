@@ -55,6 +55,11 @@ class IntegrationTest(unittest.TestCase):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'data')
 
+  @with_testdir('mkdir')
+  def test_mkdir_build(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertTrue(os.path.isdir('out'))
+
   @with_testdir('simple_build')
   def test_simple_rebuild(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)

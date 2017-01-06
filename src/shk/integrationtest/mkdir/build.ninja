@@ -1,0 +1,4 @@
+rule MKDIR
+  command = mkdir $out
+
+build out: MKDIR
