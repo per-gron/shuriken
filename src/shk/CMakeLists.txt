@@ -24,6 +24,8 @@ add_library(shklib
   src/dry_run_file_system.cpp
   src/dry_run_file_system.h
   src/dry_run_invocation_log.h
+  src/dummy_build_status.h
+  src/dummy_invocation_log.h
   src/edit_distance.cpp
   src/edit_distance.h
   src/eval_env.cpp
@@ -108,7 +110,6 @@ add_executable(shk_test
   test/delayed_invocation_log_test.cpp
   test/dry_run_command_runner_test.cpp
   test/dry_run_file_system_test.cpp
-  test/dummy_build_status.h
   test/dummy_command_runner.cpp
   test/dummy_command_runner.h
   test/dummy_command_runner_test.cpp
