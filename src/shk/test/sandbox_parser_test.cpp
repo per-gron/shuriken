@@ -147,6 +147,10 @@ TEST_CASE("SandboxParser") {
         "(allow file-read-data (path \"/a/path\"))",
         {},
         { { "/a/path", DependencyType::ALWAYS } });
+    checkResult(
+        "(allow file-read-xattr (path \"/a/path\"))",
+        {},
+        { { "/a/path", DependencyType::ALWAYS } });
     // literal is old syntax
     checkResult(
         "(allow file-read-data (literal \"/a/path\"))",
@@ -239,6 +243,14 @@ TEST_CASE("SandboxParser") {
         {});
     checkResult(
         "(allow file-revoke (path \"/a/path\"))\n",
+        { "/a/path" },
+        {});
+    checkResult(
+        "(allow file-write-xattr (path \"/a/path\"))\n",
+        { "/a/path" },
+        {});
+    checkResult(
+        "(allow file-ioctl-write-xattr (path \"/a/path\"))\n",
         { "/a/path" },
         {});
   }

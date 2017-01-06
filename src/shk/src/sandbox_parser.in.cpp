@@ -129,6 +129,9 @@ enum class AllowToken {
   FILE_WRITE_SETUGID,
   FILE_REVOKE,
   FILE_WRITE_UNLINK,
+  FILE_IOCTL_WRITE_XATTR,
+  FILE_WRITE_XATTR,
+  FILE_READ_XATTR,
 
   // Conditionally allowed actions
   FILE_IOCTL,  // Allowed only when in SandboxIgnores
@@ -148,9 +151,6 @@ enum class AllowToken {
   NETWORK_STAR,
   NETWORK_INBOUND,
   NETWORK_BIND,
-
-  FILE_IOCTL_WRITE_XATTR,  // Not supported initially
-  FILE_READ_XATTR,  // Not supported initially
 
   FILE_WRITE_UNMOUNT,
   FILE_WRITE_MOUNT,
@@ -226,6 +226,7 @@ AllowToken readAllowToken(ParsingContext &context) throw(ParseError) {
     "network-inbound"        { token = AllowToken::NETWORK_INBOUND;        break; }
     "network-bind"           { token = AllowToken::NETWORK_BIND;           break; }
     "file-ioctl-write-xattr" { token = AllowToken::FILE_IOCTL_WRITE_XATTR; break; }
+    "file-write-xattr"       { token = AllowToken::FILE_WRITE_XATTR;       break; }
     "file-read-xattr"        { token = AllowToken::FILE_READ_XATTR;        break; }
     "file-write-unmount"     { token = AllowToken::FILE_WRITE_UNMOUNT;     break; }
     "file-write-mount"       { token = AllowToken::FILE_WRITE_MOUNT;       break; }
@@ -485,7 +486,10 @@ void readAllow(
   case AllowToken::FILE_WRITE_OWNER:
   case AllowToken::FILE_WRITE_SETUGID:
   case AllowToken::FILE_WRITE_TIMES:
-  case AllowToken::FILE_REVOKE: {
+  case AllowToken::FILE_REVOKE:
+  // Warning: xattrs are not picked up properly by the dependency tracking.
+  case AllowToken::FILE_IOCTL_WRITE_XATTR:
+  case AllowToken::FILE_WRITE_XATTR: {
     auto path = readPath(context);
     if (!fileAccessIgnored(ignores, path)) {
       // Just deleting the file from the set of read files is kind of wrong but
@@ -502,7 +506,9 @@ void readAllow(
   case AllowToken::FILE_READ_DATA:
   case AllowToken::PROCESS_STAR:
   case AllowToken::PROCESS_EXEC:
-  case AllowToken::PROCESS_EXEC_STAR: {
+  case AllowToken::PROCESS_EXEC_STAR:
+  // Warning: xattrs are not picked up properly by the dependency tracking.
+  case AllowToken::FILE_READ_XATTR: {
     const auto path = readPath(context);
     if (!fileAccessIgnored(ignores, path)) {
       if (result.created.count(path) == 0) {
@@ -566,18 +572,6 @@ void readAllow(
   case AllowToken::IPC_SYSV_SEM:
   case AllowToken::IPC_SYSV_SHM: {
     // Allowed
-    readToEOL(context);
-    break;
-  }
-
-  case AllowToken::FILE_IOCTL_WRITE_XATTR:
-  case AllowToken::FILE_READ_XATTR: {
-    // In order to support this, the build system would need to include xattrs
-    // in the build step dirtiness calculations.
-    result.violations.emplace_back(
-        "Process performed unsupported action " + token_slice.asString() +
-        ". If this affects you, please report this to the project maintainers, "
-        "this can be fixed.");
     readToEOL(context);
     break;
   }
