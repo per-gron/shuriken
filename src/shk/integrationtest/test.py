@@ -8,19 +8,23 @@ import subprocess
 import unittest
 
 def with_testdir(function):
-  dir = re.sub(r'^test_', '', function.__name__)
+  return with_specific_testdir(re.sub(r'^test_', '', function.__name__))
+
+def with_specific_testdir(dir):
   tempdir = os.path.join(os.path.dirname(__file__), 'tmpdir')
-  def decorator(*args, **kwargs):
-    shutil.copytree(dir, tempdir)
-    cwd = os.getcwd()
-    os.chdir(tempdir)
-    try:
-      result = function(*args, **kwargs)
-    finally:
-      os.chdir(cwd)
-      shutil.rmtree(tempdir)
-    return result
-  return decorator
+  def wrap(function):
+    def decorator(*args, **kwargs):
+      shutil.copytree(dir, tempdir)
+      cwd = os.getcwd()
+      os.chdir(tempdir)
+      try:
+        result = function(*args, **kwargs)
+      finally:
+        os.chdir(cwd)
+        shutil.rmtree(tempdir)
+      return result
+    return decorator
+  return wrap
 
 shk = os.environ['SHK_PATH']
 
@@ -34,6 +38,16 @@ class IntegrationTest(unittest.TestCase):
     output = subprocess.check_output(shk + ' -h; exit 0', stderr=subprocess.STDOUT, shell=True)
     self.assertRegexpMatches(output, r'usage: shk')
 
+  def test_printtools(self):
+    output = subprocess.check_output(shk + ' -t list; exit 0', stderr=subprocess.STDOUT, shell=True)
+    self.assertRegexpMatches(output, r'shk subtools:')
+    self.assertRegexpMatches(output, r'clean')
+    self.assertRegexpMatches(output, r'commands')
+    self.assertRegexpMatches(output, r'deps')
+    self.assertRegexpMatches(output, r'query')
+    self.assertRegexpMatches(output, r'targets')
+    self.assertRegexpMatches(output, r'recompact')
+
   @with_testdir
   def test_no_manifest(self):
     output = subprocess.check_output(shk + '; exit 0', stderr=subprocess.STDOUT, shell=True)
@@ -43,6 +57,18 @@ class IntegrationTest(unittest.TestCase):
   def test_simple_build(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'data')
+
+  @with_specific_testdir('simple_build')
+  def test_simple_rebuild(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    output = subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertEqual(read_file('out'), 'data')
+    self.assertRegexpMatches(output, 'no work to do')
+
+  @with_specific_testdir('simple_build')
+  def test_simple_noop_build(self):
+    subprocess.check_output(shk + ' -n', stderr=subprocess.STDOUT, shell=True)
+    self.assertFalse(os.path.exists('out'))
 
 if __name__ == '__main__':
     unittest.main()
