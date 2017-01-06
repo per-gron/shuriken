@@ -68,6 +68,22 @@ class IntegrationTest(unittest.TestCase):
     self.assertEqual(read_file('out'), 'data')
     self.assertRegexpMatches(output, 'no work to do')
 
+  @with_testdir('target_in_subdir')
+  def test_rebuild_with_moved_target(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertEqual(read_file('dir/out'), 'hello')
+
+    # Change the manifest
+    manifest = read_file('build.ninja')
+    with open('build.ninja', 'w') as f:
+      f.write(manifest.replace('dir/out', 'dir2/out'))
+
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    # Since the target has moved, the old output should have been removed,
+    # including its directory that was created by the build system.
+    self.assertFalse(os.path.exists('dir'))
+    self.assertEqual(read_file('dir2/out'), 'hello')
+
   @with_testdir('simple_build')
   def test_noop_rebuild_after_touching_input(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
