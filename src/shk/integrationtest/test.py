@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import unittest
 
 def with_testdir(dir):
@@ -65,6 +66,14 @@ class IntegrationTest(unittest.TestCase):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     output = subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'data')
+    self.assertRegexpMatches(output, 'no work to do')
+
+  @with_testdir('simple_build')
+  def test_noop_rebuild_after_touching_input(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    time.sleep(1)  # Wait, because the fs mtime only has second resolution
+    os.utime('in', None)  # Touch the input file
+    output = subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertRegexpMatches(output, 'no work to do')
 
   @with_testdir('simple_build')
