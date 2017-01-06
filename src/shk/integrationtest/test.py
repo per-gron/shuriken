@@ -73,8 +73,11 @@ class IntegrationTest(unittest.TestCase):
   @with_specific_testdir('append_output')
   def test_delete_before_rebuilding(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertEqual(read_file('out'), 'hello')
+    with open('in', 'w') as f:
+      f.write('changed')
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
-    self.assertEqual(read_file('out'), 'hello\n')
+    self.assertEqual(read_file('out'), 'changed')
 
   @with_specific_testdir('simple_build')
   def test_specify_manifest(self):

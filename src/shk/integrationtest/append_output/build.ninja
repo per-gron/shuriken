@@ -1,4 +1,4 @@
 rule APPEND
-  command = echo hello >> $out
+  command = cat $in >> $out
 
-build out: APPEND
+build out: APPEND in
