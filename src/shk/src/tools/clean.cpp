@@ -14,54 +14,89 @@
 
 #include "clean.h"
 
+#include <errno.h>
+
+#include "../build.h"
+#include "../cleaning_file_system.h"
+#include "../dry_run_command_runner.h"
+#include "../dummy_build_status.h"
+#include "../dummy_invocation_log.h"
+#include "../util.h"
+
 namespace shk {
 
+/**
+ * Tool for cleaning files that have been generated as part of building with
+ * shk. It works by doing a build with a file system that doesn't create
+ * things but does remove things, and a dummy command runner.
+ *
+ * The reason it's done this way is that it allows us to re-use the dependency
+ * tracking code of the build system, used when cleaning only certain targets.
+ */
 int toolClean(int argc, char *argv[], const ToolParams &params) {
-#if 0
-  // The clean tool uses getopt, and expects argv[0] to contain the name of
-  // the tool, i.e. "clean".
-  argc++;
-  argv--;
+  std::vector<Path> specified_outputs;
+  try {
+    specified_outputs = interpretPaths(
+        params.paths, params.manifest, argc, argv);
+  } catch (const BuildError &build_error) {
+    error("%s", build_error.what());
+    return 1;
+  }
 
-  bool clean_rules = false;
+  DummyInvocationLog invocation_log;
+  CleaningFileSystem cleaning_file_system(params.file_system);
 
-  optind = 1;
-  int opt;
-  while ((opt = getopt(argc, argv, const_cast<char*>("hr"))) != -1) {
-    switch (opt) {
-    case 'r':
-      clean_rules = true;
+  try {
+    const auto result = build(
+        params.clock,
+        cleaning_file_system,
+        *makeDryRunCommandRunner(),
+        [](int total_steps) {
+          return std::unique_ptr<BuildStatus>(new DummyBuildStatus);
+        },
+        invocation_log,
+        1,
+        specified_outputs,
+        params.manifest,
+        params.invocations);
+
+    switch (result) {
+    case BuildResult::NO_WORK_TO_DO:
+    case BuildResult::SUCCESS:
       break;
-    case 'h':
-    default:
-      printf(
-          "usage: ninja -t clean [options] [targets]\n"
-          "\n"
-          "options:\n"
-          "  -r     interpret targets as a list of rules to clean instead\n");
-    return 1;
+    case BuildResult::INTERRUPTED:
+      printf("shk: clean interrupted by user.\n");
+      return 2;
+    case BuildResult::FAILURE:
+      // Should not happen; we're using the dry run command runner
+      printf("shk: clean failed: internal error.\n");
+      return 1;
     }
-  }
-  argv += optind;
-  argc -= optind;
-
-  if (clean_rules && argc == 0) {
-    error("expected a rule to clean");
+  } catch (const IoError &io_error) {
+    printf("shk: clean failed: %s\n", io_error.what());
+    return 1;
+  } catch (const BuildError &build_error) {
+    printf("shk: clean failed: %s\n", build_error.what());
     return 1;
   }
 
-  Cleaner cleaner(&_state, _config);
-  if (argc >= 1) {
-    if (clean_rules) {
-      return cleaner.cleanRules(argc, argv);
-    } else {
-      return cleaner.cleanTargets(argc, argv);
+  if (specified_outputs.empty()) {
+    // Clean up the invocation log only if we're cleaning everything
+    try {
+      // Use cleaning_file_system to make sure the file is counted
+      cleaning_file_system.unlink(params.invocation_log_path);
+    } catch (const IoError &io_error) {
+      if (io_error.code == ENOENT) {
+        // We don't care
+      } else {
+        printf("shk: failed to clean invocation log: %s\n", io_error.what());
+        return 1;
+      }
     }
-  } else {
-    return cleaner.cleanAll();
   }
 
-#endif
+  printf("shk: cleaned %d files.\n", cleaning_file_system.getRemovedCount());
+
   return 0;
 }
 

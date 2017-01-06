@@ -263,7 +263,7 @@ bool ShurikenMain::rebuildManifest(const char *input_file, std::string *err) {
 const Tool *chooseTool(const std::string &tool_name) {
   static const Tool kTools[] = {
     { "clean", "clean built files",
-      Tool::RUN_AFTER_LOAD, &toolClean },
+      Tool::RUN_AFTER_LOG, &toolClean },
     { "commands", "list all commands required to rebuild given targets",
       Tool::RUN_AFTER_LOAD, &toolCommands },
     { "deps", "show dependencies stored in the invocation log",
