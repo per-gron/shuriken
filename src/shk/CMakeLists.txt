@@ -145,3 +145,9 @@ set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shk_test PUBLIC "${CMAKE_SOURCE_DIR}/vendor/rapidcheck/extras/catch/include")
 target_link_libraries(shk_test shklib catch rapidcheck)
 set_target_properties(shk_test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
+
+add_test(NAME unit COMMAND shk_test)
+add_test(
+  NAME integration
+  WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/integrationtest
+  COMMAND env SHK_PATH=${CMAKE_CURRENT_BINARY_DIR}/shk python ${CMAKE_CURRENT_LIST_DIR}/integrationtest/test.py)
