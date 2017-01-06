@@ -1,4 +1,4 @@
 rule MKDIR
-  command = mkdir $out
+  command = mkdir `cat $in`
 
-build out: MKDIR
+build out: MKDIR dir_name
