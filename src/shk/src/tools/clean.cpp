@@ -95,7 +95,8 @@ int toolClean(int argc, char *argv[], const ToolParams &params) {
     }
   }
 
-  printf("shk: cleaned %d files.\n", cleaning_file_system.getRemovedCount());
+  int count = cleaning_file_system.getRemovedCount();
+  printf("shk: cleaned %d file%s.\n", count, count == 1 ? "" : "s");
 
   return 0;
 }

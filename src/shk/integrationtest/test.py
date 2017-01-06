@@ -85,5 +85,32 @@ class IntegrationTest(unittest.TestCase):
     subprocess.check_output(shk + ' -f manifest.ninja', stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'data')
 
+  @with_specific_testdir('simple_build')
+  def test_full_clean(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertTrue(os.path.exists('out'))
+    self.assertTrue(os.path.exists('.shk_log'))
+    output = subprocess.check_output(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
+    self.assertFalse(os.path.exists('out'))
+    self.assertFalse(os.path.exists('.shk_log'))
+    self.assertRegexpMatches(output, r'cleaned 2 files\.')
+
+  @with_specific_testdir('simple_build')
+  def test_full_clean_again(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    subprocess.check_output(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
+    output = subprocess.check_output(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
+    self.assertRegexpMatches(output, r'cleaned 0 files\.')
+
+  @with_specific_testdir('simple_build')
+  def test_single_target_clean(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertTrue(os.path.exists('out'))
+    self.assertTrue(os.path.exists('.shk_log'))
+    output = subprocess.check_output(shk + ' -t clean out', stderr=subprocess.STDOUT, shell=True)
+    self.assertFalse(os.path.exists('out'))
+    self.assertTrue(os.path.exists('.shk_log'))
+    self.assertRegexpMatches(output, r'cleaned 1 file\.')
+
 if __name__ == '__main__':
     unittest.main()

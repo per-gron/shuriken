@@ -92,7 +92,6 @@ Large things remaining to do:
 * Test to clean build steps that create directories, for example mkdir
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
 * CLI tools:
-  * clean
   * commands
   * graph (graphviz)
   * query
