@@ -716,16 +716,18 @@ void enqueueBuildCommands(BuildCommandParameters &params) throw(IoError) {
 
 namespace {
 
+/**
+ * Delete files that were written by build steps that aren't present in the
+ * manifest anymore.
+ */
 void deleteStaleOutputs(
     FileSystem &file_system,
     InvocationLog &invocation_log,
     const StepHashes &step_hashes,
     const Invocations &invocations) throw(IoError) {
-  std::unordered_set<Hash> step_hashes_set;
-  std::copy(
+  std::unordered_set<Hash> step_hashes_set(
       step_hashes.begin(),
-      step_hashes.end(),
-      std::inserter(step_hashes_set, step_hashes_set.begin()));
+      step_hashes.end());
 
   for (const auto &entry : invocations.entries) {
     if (step_hashes_set.count(entry.first) == 0) {
