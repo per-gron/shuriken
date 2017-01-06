@@ -58,6 +58,13 @@ TEST_CASE("PersistentFileSystem") {
     }
   }
 
+  SECTION("stat") {
+    SECTION("return value for nonexisting file") {
+      const auto stat = fs->stat("this_file_does_not_exist_1243542");
+      CHECK(stat.result == ENOENT);
+    }
+  }
+
   unlink(kTestFilename1);
   unlink(kTestFilename2);
 }

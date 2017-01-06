@@ -300,7 +300,7 @@ class PersistentFileSystem : public FileSystem {
     struct stat input;
     auto ret = fn(path.c_str(), &input);
     if (ret == -1) {
-      result.result = ret;
+      result.result = errno;
     } else {
       result.result = 0;
       result.metadata.ino = input.st_ino;
