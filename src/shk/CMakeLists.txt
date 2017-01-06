@@ -15,6 +15,8 @@ add_library(shklib
   src/build_error.h
   src/build_status.h
   src/clock.h
+  src/cleaning_file_system.cpp
+  src/cleaning_file_system.h
   src/command_runner.h
   src/delayed_invocation_log.cpp
   src/delayed_invocation_log.h
@@ -107,6 +109,7 @@ set_target_properties(shk PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk_test
   test/build_test.cpp
+  test/cleaning_file_system_test.cpp
   test/delayed_invocation_log_test.cpp
   test/dry_run_command_runner_test.cpp
   test/dry_run_file_system_test.cpp
