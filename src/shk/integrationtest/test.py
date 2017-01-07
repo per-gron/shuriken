@@ -237,13 +237,18 @@ class IntegrationTest(unittest.TestCase):
     self.assertRegexpMatches(output, r'cleaned 1 file\.')
 
   @with_testdir('generator_cmdline')
-  def test_single_target_clean(self):
+  def test_generator_cmdline(self):
     # Generator rules should not be rebuilt because the command line changed.
     # This is how Ninja does it and Shuriken matches that behavior.
     manifest = read_file('build.ninja')
     write_file('build.ninja', manifest.replace('[[GENERATOR_LINE]]', 'before'))
     run_cmd(shk)
     write_file('build.ninja', manifest.replace('[[GENERATOR_LINE]]', 'after'))
+    output = run_cmd(shk)
+    self.assertRegexpMatches(output, 'no work to do')
+
+  @with_testdir('generator')
+  def test_generator_basic(self):
     output = run_cmd(shk)
     self.assertRegexpMatches(output, 'no work to do')
 

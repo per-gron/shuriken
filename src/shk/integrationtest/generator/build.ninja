@@ -1,0 +1,9 @@
+rule GENERATE
+  command = cp $in $out
+  generator = 1
+
+build build.ninja: GENERATE build.ninja.in
+
+build all: phony
+
+default all
