@@ -217,10 +217,13 @@ OutputFileMap computeOutputFileMap(
  * is an input to some other step. This is the set of steps that are built if
  * there are no default statements in the manifest and no steps where
  * specifically requested to be built.
+ *
+ * A BuildError is thrown if there are build steps, but none can be identified
+ * as root. This happens when there is a cyclic dependency.
  */
 std::vector<StepIndex> rootSteps(
     const std::vector<Step> &steps,
-    const OutputFileMap &output_file_map);
+    const OutputFileMap &output_file_map) throw(BuildError);
 
 /**
  * Find the steps that should be built. If there are no specified paths, this

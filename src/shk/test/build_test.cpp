@@ -291,6 +291,14 @@ TEST_CASE("Build") {
     CHECK(
         rootSteps({ single_dependency, single_output, multiple_outputs }) ==
         (std::vector<StepIndex>{ 0, 2 }));
+
+    Step one;
+    one.outputs = { paths.get("a") };
+    one.inputs = { paths.get("b") };
+    Step two;
+    two.inputs = { paths.get("a") };
+    two.outputs = { paths.get("b") };
+    CHECK_THROWS_AS(rootSteps({ one, two }), BuildError);  // Cycle
   }
 
   SECTION("computeStepsToBuild helper") {
@@ -542,6 +550,19 @@ TEST_CASE("Build") {
     }
 
     SECTION("Dependency cycle") {
+      Step one;
+      one.outputs = { paths.get("a") };
+      one.inputs = { paths.get("b") };
+      Step two;
+      two.inputs = { paths.get("a") };
+      two.outputs = { paths.get("b") };
+
+      Manifest manifest;
+      manifest.steps = { one, two };
+      CHECK_THROWS_AS(computeBuild(manifest), BuildError);
+    }
+
+    SECTION("Dependency cycle with specified target") {
       Step one;
       one.outputs = { paths.get("a") };
       one.inputs = { paths.get("b") };

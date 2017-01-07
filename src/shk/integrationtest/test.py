@@ -120,6 +120,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertEqual(read_file('out'), 'changed')
 
   @with_testdir('cyclic_dependency')
+  def test_cyclic_dependency(self):
+    output = run_cmd(shk + '; exit 0')
+    self.assertRegexpMatches(output, r'cyclic dependency\?')
+
+  @with_testdir('cyclic_dependency')
   def test_cyclic_dependency_specified_target(self):
     output = run_cmd(shk + ' out; exit 0')
     self.assertRegexpMatches(output, r'dependency cycle: in -> out -> in$')

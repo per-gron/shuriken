@@ -108,7 +108,7 @@ OutputFileMap computeOutputFileMap(
 
 std::vector<StepIndex> rootSteps(
     const std::vector<Step> &steps,
-    const OutputFileMap &output_file_map) {
+    const OutputFileMap &output_file_map) throw(BuildError) {
   std::vector<StepIndex> result;
   // Assume that all steps are roots until we find some step that has an input
   // that is in a given step's list of outputs. Such steps are not roots.
@@ -135,6 +135,12 @@ std::vector<StepIndex> rootSteps(
       result.push_back(i);
     }
   }
+
+  if (result.empty() && !steps.empty()) {
+    throw BuildError(
+        "could not determine root nodes of build graph, cyclic dependency?");
+  }
+
   return result;
 }
 
