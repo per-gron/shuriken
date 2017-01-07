@@ -184,6 +184,13 @@ class IntegrationTest(unittest.TestCase):
     self.assertTrue(os.path.exists('a'))
     self.assertTrue(os.path.exists('b'))
 
+  @with_testdir('absolute_vs_relative_paths')
+  def test_symlink_step_outputs(self):
+    manifest = read_file('build.ninja').replace('[[THIS_DIR]]', os.getcwd())
+    write_file('build.ninja', manifest)
+    output = run_cmd_expect_fail(shk)
+    self.assertRegexpMatches(output, r'Multiple rules generate .*/out')
+
   @with_testdir('simple_build')
   def test_specify_manifest(self):
     os.rename('build.ninja', 'manifest.ninja')

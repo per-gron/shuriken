@@ -1,0 +1,5 @@
+rule WRITE
+  command = echo hej > $out
+
+build out: WRITE
+build [[THIS_DIR]]/out: WRITE
