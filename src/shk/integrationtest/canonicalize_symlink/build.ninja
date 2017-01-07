@@ -1,0 +1,7 @@
+rule COPY
+  command = cp $in $out
+
+build a/out: COPY in
+
+# because one/symlink is a symlink, one/symlink/../out actually points to a/out
+build one/symlink/../out: COPY in

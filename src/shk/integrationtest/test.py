@@ -164,6 +164,13 @@ class IntegrationTest(unittest.TestCase):
     output = run_cmd_expect_fail(shk)
     self.assertRegexpMatches(output, r'Multiple rules generate [ab]/out')
 
+  @with_testdir('canonicalize_symlink')
+  def test_symlink_step_outputs(self):
+    # Test that paths are not canonicalized without consulting the file system
+    run_cmd('ln -s ../a/b one/symlink')
+    output = run_cmd_expect_fail(shk)
+    self.assertRegexpMatches(output, r'Multiple rules generate (one/symlink/\.\.|a)/out')
+
   @with_testdir('simple_build')
   def test_specify_manifest(self):
     os.rename('build.ninja', 'manifest.ninja')
