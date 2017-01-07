@@ -92,8 +92,15 @@ TEST_CASE("Step") {
     }
 
     SECTION("Generator") {
-      // Generator is not significant for the build results
       b.generator = !b.generator;
+      CHECK(a.hash() != b.hash());
+    }
+
+    SECTION("GeneratorCommandline") {
+      // Generator rules don't include the command line when calculating
+      // dirtiness
+      a.generator = b.generator = true;
+      b.command = a.command + "somethingelse";
       CHECK(a.hash() == b.hash());
     }
 

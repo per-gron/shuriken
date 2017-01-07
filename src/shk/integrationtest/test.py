@@ -75,7 +75,7 @@ class IntegrationTest(unittest.TestCase):
   def test_mkdir_rebuild(self):
     run_cmd(shk)
     write_file('dir_name', 'new_dir')
-    subprocess.check_call(shk, stderr=subprocess.STDOUT, shell=True)
+    run_cmd(shk)
     self.assertTrue(os.path.isdir('new_dir'))
 
   @with_testdir('simple_build')
@@ -235,6 +235,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertFalse(os.path.exists('out'))
     self.assertTrue(os.path.exists('.shk_log'))
     self.assertRegexpMatches(output, r'cleaned 1 file\.')
+
+  @with_testdir('generator_cmdline')
+  def test_single_target_clean(self):
+    # Generator rules should not be rebuilt because the command line changed.
+    # This is how Ninja does it and Shuriken matches that behavior.
+    manifest = read_file('build.ninja')
+    write_file('build.ninja', manifest.replace('[[GENERATOR_LINE]]', 'before'))
+    run_cmd(shk)
+    write_file('build.ninja', manifest.replace('[[GENERATOR_LINE]]', 'after'))
+    output = run_cmd(shk)
+    self.assertRegexpMatches(output, 'no work to do')
 
 if __name__ == '__main__':
     unittest.main()

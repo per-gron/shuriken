@@ -1,0 +1,5 @@
+rule GENERATE
+  command = echo [[GENERATOR_LINE]] > $out
+  generator = 1
+
+build out: GENERATE

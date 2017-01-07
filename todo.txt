@@ -89,6 +89,7 @@ Large things remaining to do:
 * Make Ctrl-C terminate sub-processes as well
 * Handle generator rules
 * Rebuild manifest
+* Don't clean things written by generator rules
 * Test to clean build steps that create directories, for example mkdir
   -> this should happen both implicitly, when the manifest changes, and for explicit cleans
     @with_testdir('mkdir')
