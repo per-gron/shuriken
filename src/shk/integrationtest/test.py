@@ -142,6 +142,28 @@ class IntegrationTest(unittest.TestCase):
     output = run_cmd_expect_fail(shk)
     self.assertRegexpMatches(output, r'Multiple rules generate (a/\.\./)?out')
 
+  @with_testdir('link_duplicate_step_outputs')
+  def test_symlink_duplicate_step_outputs(self):
+    os.symlink('a', 'b')
+    output = run_cmd_expect_fail(shk)
+    self.assertRegexpMatches(output, r'Multiple rules generate [ab]/out')
+
+  @with_testdir('link_duplicate_step_outputs')
+  def test_hardlink_duplicate_step_outputs(self):
+    os.mkdir('b')
+    write_file('a/out', '')
+    os.link('a/out', 'b/out')
+    output = run_cmd_expect_fail(shk)
+    self.assertRegexpMatches(output, r'Multiple rules generate [ab]/out')
+
+  @with_testdir('link_duplicate_step_outputs')
+  def test_symlink_step_outputs(self):
+    os.mkdir('b')
+    write_file('a/out', '')
+    run_cmd('ln -s ../a/out b/out')
+    output = run_cmd_expect_fail(shk)
+    self.assertRegexpMatches(output, r'Multiple rules generate [ab]/out')
+
   @with_testdir('simple_build')
   def test_specify_manifest(self):
     os.rename('build.ninja', 'manifest.ninja')

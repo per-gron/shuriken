@@ -1,0 +1,5 @@
+rule COPY
+  command = cp $in $out
+
+build a/out: COPY in
+build b/out: COPY in
