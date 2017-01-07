@@ -1,0 +1,8 @@
+rule COPY
+  command = cp $in $out
+
+rule SYMLINK
+  command = ln -s $in $out
+
+build a: COPY in
+build b: SYMLINK a

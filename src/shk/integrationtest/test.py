@@ -171,6 +171,12 @@ class IntegrationTest(unittest.TestCase):
     output = run_cmd_expect_fail(shk)
     self.assertRegexpMatches(output, r'Multiple rules generate (one/symlink/\.\.|a)/out')
 
+  @with_testdir('symlink')
+  def test_symlink(self):
+    run_cmd(shk)
+    self.assertTrue(os.path.exists('a'))
+    self.assertTrue(os.path.exists('b'))
+
   @with_testdir('simple_build')
   def test_specify_manifest(self):
     os.rename('build.ninja', 'manifest.ninja')
