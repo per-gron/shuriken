@@ -37,10 +37,13 @@ def write_file(path, contents):
 def run_cmd(cmd):
   return subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
 
+def run_cmd_expect_fail(cmd):
+  return run_cmd(cmd + '; if [ $? -eq 0 ]; then exit 1; else exit 0; fi')
+
 class IntegrationTest(unittest.TestCase):
 
   def test_printusage(self):
-    output = run_cmd(shk + ' -h; exit 0')
+    output = run_cmd_expect_fail(shk + ' -h')
     self.assertRegexpMatches(output, r'usage: shk')
 
   def test_printtools(self):
@@ -55,7 +58,7 @@ class IntegrationTest(unittest.TestCase):
 
   @with_testdir('no_manifest')
   def test_no_manifest(self):
-    output = run_cmd(shk + '; exit 0')
+    output = run_cmd_expect_fail(shk)
     self.assertRegexpMatches(output, r'error: loading \'build\.ninja\'')
 
   @with_testdir('simple_build')
@@ -121,12 +124,12 @@ class IntegrationTest(unittest.TestCase):
 
   @with_testdir('cyclic_dependency')
   def test_cyclic_dependency(self):
-    output = run_cmd(shk + '; exit 0')
+    output = run_cmd_expect_fail(shk)
     self.assertRegexpMatches(output, r'cyclic dependency\?')
 
   @with_testdir('cyclic_dependency')
   def test_cyclic_dependency_specified_target(self):
-    output = run_cmd(shk + ' out; exit 0')
+    output = run_cmd_expect_fail(shk + ' out')
     self.assertRegexpMatches(output, r'dependency cycle: in -> out -> in$')
 
   @with_testdir('simple_build')

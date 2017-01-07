@@ -118,6 +118,7 @@ Large things remaining to do:
     self.assertFalse(os.path.exists('out'))
     self.assertTrue(os.path.isdir('new_dir'))
 * Write some integration tests that use hardlinks and symlinks
+* Write some integration tests that check the stuff explained in path.h
 
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
   -> this can be seen when building and then cleaning; not all is cleaned
