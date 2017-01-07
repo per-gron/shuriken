@@ -295,6 +295,7 @@ class Paths {
 
  private:
   std::unordered_map<std::string, Stat> _stat_memo;
+  std::unordered_map<std::string, Stat> _lstat_memo;
   FileSystem &_file_system;
   std::unordered_set<detail::CanonicalizedPath> _canonicalized_paths;
   std::unordered_set<std::string> _original_paths;

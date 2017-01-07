@@ -147,9 +147,25 @@ void replaceBackslashes(const Iter begin, const Iter end) {
 }
 #endif
 
+Stat memoedStat(
+    FileSystem &file_system,
+    std::unordered_map<std::string, Stat> &stat_memo,
+    const std::string &path,
+    bool lstat) {
+  const auto it = stat_memo.find(path);
+  if (it == stat_memo.end()) {
+    Stat stat = lstat ? file_system.lstat(path) : file_system.stat(path);
+    stat_memo.emplace(path, stat);
+    return stat;
+  } else {
+    return it->second;
+  }
+}
+
 detail::CanonicalizedPath makeCanonicalizedPath(
     FileSystem &file_system,
     std::unordered_map<std::string, Stat> &stat_memo,
+    std::unordered_map<std::string, Stat> &lstat_memo,
     std::string &&path) {
   if (path.empty()) {
     throw PathError("Empty path", path);
@@ -169,6 +185,17 @@ detail::CanonicalizedPath makeCanonicalizedPath(
   bool at_root = false;
   bool at_relative_root = false;
   for (;;) {
+    // Use lstat only for the final, component in a path. A build step's output
+    // is allowed be a symlink to another build step's output.
+    //
+    // Other than that final component, the idea is to follow symlinks to the
+    // actual file to directory where this will live. Comparing links for
+    // identity does no good.
+    //
+    // Because paths to directories can end with slashes, this check needs to
+    // be done before we overwrite the pos variable below.
+    const bool use_lstat = pos == path.size() - 1;
+
     // Discard any trailing slashes. They have no semantic meaning.
     while (path[pos] == '/') {
       if (pos == 0) {
@@ -183,21 +210,17 @@ detail::CanonicalizedPath makeCanonicalizedPath(
     const auto path_to_try = StringPiece(
         at_relative_root ? "." : path.c_str(),
         pos + 1).asString();
-    const auto it = stat_memo.find(path_to_try);
-    if (it == stat_memo.end()) {
-      // Use stat, not lstat: the idea is to follow symlinks to the actual file
-      // to directory where this will live. Comparing links for identity does no
-      // good.
-      stat = file_system.stat(path_to_try);
-      stat_memo.emplace(path_to_try, stat);
-    } else {
-      stat = it->second;
-    }
+    stat = memoedStat(
+        file_system,
+        use_lstat ? lstat_memo : stat_memo,
+        path_to_try,
+        use_lstat);
 
     if (stat.result == 0) {
       // Found an existing file or directory
       if (pos != path.size() - 1 && !S_ISDIR(stat.metadata.mode)) {
-        // This is not the final path component, so it has to be a directory.
+        // This is not the final path component (or there are slashes after the
+        // actual path name), so it has to be a directory.
         throw PathError(
             "Encountered file in a directory component of a path", path);
       }
@@ -264,7 +287,8 @@ Path Paths::get(const std::string &path) throw(PathError) {
 Path Paths::get(std::string &&path) throw(PathError) {
   const auto original_result = _original_paths.emplace(path);
   const auto canonicalized_result = _canonicalized_paths.insert(
-      makeCanonicalizedPath(_file_system, _stat_memo, std::move(path)));
+      makeCanonicalizedPath(
+          _file_system, _stat_memo, _lstat_memo, std::move(path)));
   return Path(
       &*canonicalized_result.first,
       &*original_result.first);

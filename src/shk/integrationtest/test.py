@@ -177,6 +177,13 @@ class IntegrationTest(unittest.TestCase):
     self.assertTrue(os.path.exists('a'))
     self.assertTrue(os.path.exists('b'))
 
+  @with_testdir('symlink')
+  def test_symlink_rebuild(self):
+    run_cmd(shk)
+    run_cmd(shk)
+    self.assertTrue(os.path.exists('a'))
+    self.assertTrue(os.path.exists('b'))
+
   @with_testdir('simple_build')
   def test_specify_manifest(self):
     os.rename('build.ninja', 'manifest.ninja')

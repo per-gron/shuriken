@@ -51,7 +51,7 @@ class FailingStatFileSystem : public FileSystem {
     return stat;
   }
   Stat lstat(const std::string &path) override {
-    return _fs.lstat(path);
+    return stat(path);
   }
   void mkdir(const std::string &path) throw(IoError) override {
     _fs.mkdir(path);
