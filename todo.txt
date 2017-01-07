@@ -108,15 +108,6 @@ Large things remaining to do:
     self.assertFalse(os.path.exists('dir'))
     self.assertFalse(os.path.exists('.shk_log'))
     self.assertRegexpMatches(output, r'cleaned 3 files\.')
-* Test that directories created by build steps are cleaned implicitly when the target changes
-  @with_testdir('mkdir')
-  def test_mkdir_rebuild(self):
-    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
-    with open('dir_name', 'w') as f:
-      f.write('new_dir')
-    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
-    self.assertFalse(os.path.exists('out'))
-    self.assertTrue(os.path.isdir('new_dir'))
 
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
   -> this can be seen when building and then cleaning; not all is cleaned

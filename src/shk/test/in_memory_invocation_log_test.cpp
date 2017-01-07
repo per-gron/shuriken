@@ -62,6 +62,29 @@ TEST_CASE("InMemoryInvocationLog") {
       CHECK(entry.output_files.empty());
       CHECK(entry.input_files.empty());
     }
+
+    SECTION("OutputDir") {
+      fs.mkdir("dir");
+      log.ranCommand(hash, { "dir" }, {});
+      CHECK(log.entries().size() == 1);
+      REQUIRE(log.entries().count(hash) == 1);
+      const auto &entry = log.entries().begin()->second;
+      CHECK(entry.output_files.empty());
+      CHECK(entry.input_files.empty());
+      CHECK(log.createdDirectories().count("dir"));
+    }
+
+    SECTION("OutputDirAndFile") {
+      fs.mkdir("dir");
+      log.ranCommand(hash, { "dir", "file" }, {});
+      CHECK(log.entries().size() == 1);
+      REQUIRE(log.entries().count(hash) == 1);
+      const auto &entry = log.entries().begin()->second;
+      REQUIRE(entry.output_files.size() == 1);
+      REQUIRE(entry.output_files[0].first == "file");
+      CHECK(entry.input_files.empty());
+      CHECK(log.createdDirectories().count("dir"));
+    }
   }
 
   SECTION("Invocations") {

@@ -52,6 +52,9 @@ class InvocationLog {
    *
    * The InvocationLog will fingerprint the provided paths, reusing existing
    * fingerprints if possible.
+   *
+   * Output files that are directories are treated the same as calling
+   * createdDirectory. For more info, see Invocations::created_directories.
    */
   virtual void ranCommand(
       const Hash &build_step_hash,

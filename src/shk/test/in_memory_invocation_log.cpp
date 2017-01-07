@@ -3,7 +3,7 @@
 namespace shk {
 namespace {
 
-std::vector<std::pair<std::string, Fingerprint>> processPaths(
+std::vector<std::pair<std::string, Fingerprint>> processInputPaths(
     FileSystem &fs,
     const Clock &clock,
     std::unordered_map<std::string, DependencyType> &&dependencies) {
@@ -18,7 +18,7 @@ std::vector<std::pair<std::string, Fingerprint>> processPaths(
   return files;
 }
 
-std::vector<std::pair<std::string, Fingerprint>> processPaths(
+std::vector<std::pair<std::string, Fingerprint>> processOutputPaths(
     FileSystem &fs,
     const Clock &clock,
     std::unordered_set<std::string> &&paths) {
@@ -47,9 +47,23 @@ void InMemoryInvocationLog::ranCommand(
     const Hash &build_step_hash,
     std::unordered_set<std::string> &&output_files,
     std::unordered_map<std::string, DependencyType> &&input_files) throw(IoError) {
+  auto output_file_fingerprints = processOutputPaths(_fs, _clock, std::move(output_files));
+
+  auto files_end = std::partition(
+      output_file_fingerprints.begin(),
+      output_file_fingerprints.end(),
+      [](const std::pair<std::string, Fingerprint> &x) {
+        return !x.second.stat.isDir();
+      });
+
+  for (auto it = files_end; it != output_file_fingerprints.end(); ++it) {
+    createdDirectory(it->first);
+  }
+  output_file_fingerprints.erase(files_end, output_file_fingerprints.end());
+
   _entries[build_step_hash] = {
-      processPaths(_fs, _clock, std::move(output_files)),
-      processPaths(_fs, _clock, std::move(input_files)) };
+      output_file_fingerprints,
+      processInputPaths(_fs, _clock, std::move(input_files)) };
 }
 
 void InMemoryInvocationLog::cleanedCommand(

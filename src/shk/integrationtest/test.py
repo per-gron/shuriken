@@ -71,6 +71,13 @@ class IntegrationTest(unittest.TestCase):
     run_cmd(shk)
     self.assertTrue(os.path.isdir('out'))
 
+  @with_testdir('mkdir')
+  def test_mkdir_rebuild(self):
+    run_cmd(shk)
+    write_file('dir_name', 'new_dir')
+    subprocess.check_call(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertTrue(os.path.isdir('new_dir'))
+
   @with_testdir('simple_build')
   def test_simple_rebuild(self):
     run_cmd(shk)

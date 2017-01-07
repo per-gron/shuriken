@@ -48,6 +48,22 @@ struct Invocations {
    * The directories that Shuriken has created to make room for outputs of build
    * steps. They are kept track of to be able to remove then when cleaning up.
    *
+   * In addition to directories that are created by Shuriken explicitly to make
+   * place for build targets, this also contains directories that have been
+   * created by build steps. This might seem surprising at first. The rationale
+   * is this:
+   *
+   * Shuriken treats directories similarly to how git does it: Shuriken is all
+   * about files. Directories are just there to contain the files, and are not
+   * part of the build product. They exist or don't exist rather arbitrarily,
+   * but if they have files, they must exist. If a build depends on a directory
+   * existing, a workaround is to create a dummy empty file in it.
+   *
+   * The reason for this design is that unlike files, which can be cleaned up
+   * without deleting other build outputs, directories can't just be removed
+   * without potentially removing other things as well. This assymetry makes it
+   * pretty hard to allow directories to be treated as build step outputs.
+   *
    * The key is a FileId, which is used for efficient lookup when cleaning. The
    * value is a Path, useful to know the actual path of the directory.
    *

@@ -57,8 +57,7 @@ void roundtrip(const Callback &callback) {
 }
 
 template<typename Callback>
-void multipleWriteCycles(const Callback &callback) {
-  InMemoryFileSystem fs;
+void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
   Paths paths(fs);
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
   callback(in_memory_log);
@@ -179,7 +178,7 @@ template<typename Callback>
 void writeEntries(const Callback &callback) {
   roundtrip(callback);
   shouldEventuallyRequestRecompaction(callback);
-  multipleWriteCycles(callback);
+  multipleWriteCycles(callback, InMemoryFileSystem());
   recompact(callback);
   warnOnTruncatedInput(callback);
 }
@@ -250,7 +249,7 @@ TEST_CASE("PersistentInvocationLog") {
       const auto callback = [](InvocationLog &log) {};
       // Don't use the shouldEventuallyRequestRecompaction test
       roundtrip(callback);
-      multipleWriteCycles(callback);
+      multipleWriteCycles(callback, InMemoryFileSystem());
     }
 
     SECTION("CreatedDirectory") {
@@ -292,6 +291,27 @@ TEST_CASE("PersistentInvocationLog") {
       writeEntries([&](InvocationLog &log) {
         log.ranCommand(hash_0, { "hi" }, {});
       });
+    }
+
+    SECTION("InvocationSingleInputDir") {
+      fs.mkdir("dir");
+      multipleWriteCycles([&](InvocationLog &log) {
+        log.ranCommand(hash_0, {}, { { "dir", DependencyType::ALWAYS } });
+      }, fs);
+    }
+
+    SECTION("InvocationSingleOutputDir") {
+      fs.mkdir("dir");
+      multipleWriteCycles([&](InvocationLog &log) {
+        log.ranCommand(hash_0, { "dir" }, {});
+      }, fs);
+    }
+
+    SECTION("InvocationSingleOutputFileAndDir") {
+      fs.mkdir("dir");
+      multipleWriteCycles([&](InvocationLog &log) {
+        log.ranCommand(hash_0, { "dir", "hi" }, {});
+      }, fs);
     }
 
     SECTION("InvocationTwoOutputFiles") {
