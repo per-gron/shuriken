@@ -125,12 +125,17 @@ class IntegrationTest(unittest.TestCase):
   @with_testdir('cyclic_dependency')
   def test_cyclic_dependency(self):
     output = run_cmd_expect_fail(shk)
-    self.assertRegexpMatches(output, r'cyclic dependency\?')
+    self.assertRegexpMatches(output, r'Cyclic dependency\?')
 
   @with_testdir('cyclic_dependency')
   def test_cyclic_dependency_specified_target(self):
     output = run_cmd_expect_fail(shk + ' out')
-    self.assertRegexpMatches(output, r'dependency cycle: in -> out -> in$')
+    self.assertRegexpMatches(output, r'Dependency cycle: in -> out -> in$')
+
+  @with_testdir('duplicate_step_outputs')
+  def test_duplicate_step_outputs(self):
+    output = run_cmd_expect_fail(shk)
+    self.assertRegexpMatches(output, r'Multiple rules generate out')
 
   @with_testdir('simple_build')
   def test_specify_manifest(self):

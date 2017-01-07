@@ -204,7 +204,7 @@ TEST_CASE("Build") {
         CHECK(!"Should throw");
       } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
-            "unknown target 'clean', did you mean 'shk -t clean'?"));
+            "Unknown target 'clean', did you mean 'shk -t clean'?"));
       }
     }
 
@@ -214,7 +214,7 @@ TEST_CASE("Build") {
         CHECK(!"Should throw");
       } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
-            "unknown target 'help', did you mean 'shk -h'?"));
+            "Unknown target 'help', did you mean 'shk -h'?"));
       }
     }
   }

@@ -41,7 +41,7 @@ Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
   }
 
   // Not found
-  std::string error = "unknown target '" + path + "'";
+  std::string error = "Unknown target '" + path + "'";
   if (path == "clean") {
     error += ", did you mean 'shk -t clean'?";
   } else if (path == "help") {
@@ -138,7 +138,7 @@ std::vector<StepIndex> rootSteps(
 
   if (result.empty() && !steps.empty()) {
     throw BuildError(
-        "could not determine root nodes of build graph, cyclic dependency?");
+        "Could not determine root nodes of build graph. Cyclic dependency?");
   }
 
   return result;
@@ -157,7 +157,7 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
     const auto it = output_file_map.find(default_path);
     if (it == output_file_map.end()) {
       throw BuildError(
-          "specified target does not exist: " + default_path.original());
+          "Specified target does not exist: " + default_path.original());
     }
     // This may result in duplicate values in result, which is ok
     result.push_back(it->second);
@@ -276,7 +276,7 @@ void visitStep(
     StepIndex idx) throw(BuildError) {
   auto &step_node = build.step_nodes[idx];
   if (step_node.currently_visited) {
-    throw BuildError("dependency cycle: " + cycleErrorMessage(cycle));
+    throw BuildError("Dependency cycle: " + cycleErrorMessage(cycle));
   }
 
   if (step_node.should_build) {
