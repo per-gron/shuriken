@@ -137,6 +137,11 @@ class IntegrationTest(unittest.TestCase):
     output = run_cmd_expect_fail(shk)
     self.assertRegexpMatches(output, r'Multiple rules generate out')
 
+  @with_testdir('canonicalized_duplicate_step_outputs')
+  def test_canonicalized_duplicate_step_outputs(self):
+    output = run_cmd_expect_fail(shk)
+    self.assertRegexpMatches(output, r'Multiple rules generate (a/\.\./)?out')
+
   @with_testdir('simple_build')
   def test_specify_manifest(self):
     os.rename('build.ninja', 'manifest.ninja')
