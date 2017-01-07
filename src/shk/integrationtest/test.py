@@ -116,6 +116,11 @@ class IntegrationTest(unittest.TestCase):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'changed')
 
+  @with_testdir('cyclic_dependency')
+  def test_cyclic_dependency_specified_target(self):
+    output = subprocess.check_output(shk + ' out; exit 0', stderr=subprocess.STDOUT, shell=True)
+    self.assertRegexpMatches(output, r'dependency cycle: in -> out -> in$')
+
   @with_testdir('simple_build')
   def test_specify_manifest(self):
     os.rename('build.ninja', 'manifest.ninja')
