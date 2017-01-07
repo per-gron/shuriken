@@ -30,6 +30,10 @@ def read_file(path):
   with open(path) as f:
     return f.read()
 
+def write_file(path, contents):
+  with open(path, 'w') as f:
+    f.write(contents)
+
 class IntegrationTest(unittest.TestCase):
 
   def test_printusage(self):
@@ -75,8 +79,7 @@ class IntegrationTest(unittest.TestCase):
 
     # Change the manifest
     manifest = read_file('build.ninja')
-    with open('build.ninja', 'w') as f:
-      f.write(manifest.replace('dir/out', 'dir2/out'))
+    write_file('build.ninja', manifest.replace('dir/out', 'dir2/out'))
 
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     # Since the target has moved, the old output should have been removed,
@@ -101,8 +104,15 @@ class IntegrationTest(unittest.TestCase):
   def test_delete_before_rebuilding(self):
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'hello')
-    with open('in', 'w') as f:
-      f.write('changed')
+    write_file('in', 'changed')
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertEqual(read_file('out'), 'changed')
+
+  @with_testdir('undeclared_dependency')
+  def test_undeclared_dependency(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertEqual(read_file('out'), 'input_file')
+    write_file('in', 'changed')
     subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
     self.assertEqual(read_file('out'), 'changed')
 

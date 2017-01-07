@@ -97,6 +97,28 @@ Large things remaining to do:
       self.assertTrue(os.path.isdir('out'))
       subprocess.check_call(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
       self.assertFalse(os.path.exists('out'))
+* Test that directories created by the build system are cleaned
+  @with_testdir('target_in_subdir')
+  def test_full_clean_with_created_dirs(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertTrue(os.path.exists('dir/out'))
+    self.assertTrue(os.path.exists('.shk_log'))
+    output = subprocess.check_output(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
+    self.assertFalse(os.path.exists('dir/out'))
+    self.assertFalse(os.path.exists('dir'))
+    self.assertFalse(os.path.exists('.shk_log'))
+    self.assertRegexpMatches(output, r'cleaned 3 files\.')
+* Test that directories created by build steps are cleaned implicitly when the target changes
+  @with_testdir('mkdir')
+  def test_mkdir_rebuild(self):
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    with open('dir_name', 'w') as f:
+      f.write('new_dir')
+    subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+    self.assertFalse(os.path.exists('out'))
+    self.assertTrue(os.path.isdir('new_dir'))
+* Write some integration tests that use hardlinks and symlinks
+* Write integration test that checks something about undeclared cyclic dependencies
 
 * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
   -> this can be seen when building and then cleaning; not all is cleaned

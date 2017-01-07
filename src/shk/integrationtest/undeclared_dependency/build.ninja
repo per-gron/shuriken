@@ -1,0 +1,4 @@
+rule WRITE
+  command = cp in $out
+
+build out: WRITE
