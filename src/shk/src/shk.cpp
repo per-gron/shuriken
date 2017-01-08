@@ -138,8 +138,11 @@ struct ShurikenMain {
   ShurikenMain(
       const BuildConfig &config)
       : _config(config),
-        _file_system(persistentFileSystem()),
-        _paths(*_file_system) {}
+        _real_file_system(persistentFileSystem()),
+        _dry_run_file_system(dryRunFileSystem(*_real_file_system)),
+        _file_system(config.dry_run ?
+            *_dry_run_file_system : *_real_file_system),
+        _paths(_file_system) {}
 
   void parseManifest(const std::string &input_file) throw(IoError, ParseError);
 
@@ -172,7 +175,7 @@ struct ShurikenMain {
   }
 
   FileSystem &fileSystem() {
-    return *_file_system;
+    return _file_system;
   }
 
   const Invocations &invocations() const {
@@ -191,7 +194,9 @@ struct ShurikenMain {
 
  private:
   const BuildConfig _config;
-  const std::unique_ptr<FileSystem> _file_system;
+  const std::unique_ptr<FileSystem> _real_file_system;
+  const std::unique_ptr<FileSystem> _dry_run_file_system;
+  FileSystem &_file_system;
   Paths _paths;
   Invocations _invocations;
   InvocationLogParseResult::ParseData _invocation_parse_data;
@@ -312,7 +317,7 @@ const Tool *chooseTool(const std::string &tool_name) {
 void ShurikenMain::parseManifest(
     const std::string &input_file) throw(IoError, ParseError) {
   _indexed_manifest = IndexedManifest(
-      ::shk::parseManifest(_paths, *_file_system, input_file));
+      ::shk::parseManifest(_paths, _file_system, input_file));
 }
 
 std::string ShurikenMain::invocationLogPath() const {
@@ -340,7 +345,7 @@ bool ShurikenMain::readInvocationLog(bool will_run_tool) {
   InvocationLogParseResult parse_result;
 
   try {
-    parse_result = parsePersistentInvocationLog(_paths, *_file_system, path);
+    parse_result = parsePersistentInvocationLog(_paths, _file_system, path);
     _invocations = std::move(parse_result.invocations);
     _invocation_parse_data =  std::move(parse_result.parse_data);
     if (!parse_result.warning.empty()) {
@@ -361,7 +366,7 @@ bool ShurikenMain::readInvocationLog(bool will_run_tool) {
     printf("recompacting build log...\n");
     try {
       recompactPersistentInvocationLog(
-          *_file_system, getTime, _invocations, path);
+          _file_system, getTime, _invocations, path);
     } catch (const IoError &err) {
       error("failed recompaction: %s", err.what());
       return false;
@@ -379,7 +384,7 @@ bool ShurikenMain::openInvocationLog() {
         new DryRunInvocationLog());
   } else {
     try {
-      mkdirsFor(*_file_system, path);
+      mkdirsFor(_file_system, path);
     } catch (const IoError &io_error) {
       error(
           "creating directory for invocation log %s: %s",
@@ -391,7 +396,7 @@ bool ShurikenMain::openInvocationLog() {
       _invocation_log = delayedInvocationLog(
           getTime,
           openPersistentInvocationLog(
-              *_file_system,
+              _file_system,
               getTime,
               path,
               std::move(_invocation_parse_data)));
@@ -421,16 +426,12 @@ int ShurikenMain::runBuild(int argc, char **argv) {
         _config.max_load_average,
         _config.parallelism,
         makeTracingCommandRunner(
-            *_file_system,
+            _file_system,
             makeRealCommandRunner()));
-
-  const auto dry_run_file_system = dryRunFileSystem(*_file_system);
-  auto &file_system =
-      _config.dry_run ? *dry_run_file_system : *_file_system;
 
   try {
     deleteStaleOutputs(
-        file_system,
+        _file_system,
         *_invocation_log,
         _indexed_manifest.step_hashes,
         _invocations);
@@ -442,7 +443,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
   try {
     const auto result = build(
         getTime,
-        file_system,
+        _file_system,
         *command_runner,
         [this](int total_steps) {
           const char * status_format = getenv("NINJA_STATUS");
