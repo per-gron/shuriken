@@ -192,6 +192,13 @@ struct ShurikenMain {
    */
   int runBuild(int argc, char **argv);
 
+  /**
+   * Lower level than the other runBuild method: Used both for the main build
+   * and for rebuilding the manifest.
+   */
+  BuildResult runBuild(
+      const std::vector<Path> &specified_outputs) throw(BuildError, IoError);
+
  private:
   const BuildConfig _config;
   const std::unique_ptr<FileSystem> _real_file_system;
@@ -236,29 +243,31 @@ void usage(const BuildConfig &config) {
  * Returns true if the manifest was rebuilt.
  */
 bool ShurikenMain::rebuildManifest(const char *input_file, std::string *err) {
-#if 0  // TODO(peck): Implement me
   const auto path = _paths.get(input_file);
 
-  Node *node = _state.lookupNode(path);
-  if (!node) {
+  if (_indexed_manifest.output_file_map.count(path) == 0) {
+    // No rule generates the manifest file. There is nothing to do.
     return false;
   }
 
-  Builder builder(&_state, _config, &_deps_log, &_disk_interface);
-  if (!builder.addTarget(node, err)) {
+  try {
+    const auto result = runBuild({ path });
+    switch (result) {
+    case BuildResult::NO_WORK_TO_DO:
+      return false;
+    case BuildResult::SUCCESS:
+      return true;
+    case BuildResult::INTERRUPTED:
+      *err = "build interrupted by user.";
+      return false;
+    case BuildResult::FAILURE:
+      *err = "subcommand(s) failed.";
+      return false;
+    }
+  } catch (const BuildError &build_error) {
+    *err = std::string("BuildError: ") + build_error.what();
     return false;
   }
-
-  if (builder.alreadyUpToDate()) {
-    return false;  // Not an error, but we didn't rebuild.
-  }
-
-  // Even if the manifest was cleaned by a restat rule, claim that it was
-  // rebuilt.  Not doing so can lead to crashes, see
-  // https://github.com/ninja-build/ninja/issues/874
-  return builder.build(err);
-#endif
-  return false;
 }
 
 /**
@@ -409,16 +418,8 @@ bool ShurikenMain::openInvocationLog() {
   return true;
 }
 
-int ShurikenMain::runBuild(int argc, char **argv) {
-  std::vector<Path> specified_outputs;
-  try {
-    specified_outputs = interpretPaths(
-        _paths, _indexed_manifest.manifest, argc, argv);
-  } catch (const BuildError &build_error) {
-    error("%s", build_error.what());
-    return 1;
-  }
-
+BuildResult ShurikenMain::runBuild(
+    const std::vector<Path> &specified_outputs) throw(BuildError, IoError) {
   const auto command_runner = _config.dry_run ?
       makeDryRunCommandRunner() :
       makeLimitedCommandRunner(
@@ -428,6 +429,38 @@ int ShurikenMain::runBuild(int argc, char **argv) {
         makeTracingCommandRunner(
             _file_system,
             makeRealCommandRunner()));
+
+  return build(
+      getTime,
+      _file_system,
+      *command_runner,
+      [this](int total_steps) {
+        const char * status_format = getenv("NINJA_STATUS");
+        if (!status_format) {
+          status_format = "[%s/%t] ";
+        }
+
+        return makeTerminalBuildStatus(
+            _config.verbose,
+            _config.parallelism,
+            total_steps,
+            status_format);
+      },
+      *_invocation_log,
+      _config.failures_allowed,
+      specified_outputs,
+      _indexed_manifest,
+      _invocations);
+}
+
+int ShurikenMain::runBuild(int argc, char **argv) {
+  std::vector<Path> specified_outputs;
+  try {
+    specified_outputs = interpretPaths(_paths, _indexed_manifest.manifest, argc, argv);
+  } catch (const BuildError &build_error) {
+    error("%s", build_error.what());
+    return 1;
+  }
 
   try {
     deleteStaleOutputs(
@@ -441,27 +474,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
   }
 
   try {
-    const auto result = build(
-        getTime,
-        _file_system,
-        *command_runner,
-        [this](int total_steps) {
-          const char * status_format = getenv("NINJA_STATUS");
-          if (!status_format) {
-            status_format = "[%s/%t] ";
-          }
-
-          return makeTerminalBuildStatus(
-              _config.verbose,
-              _config.parallelism,
-              total_steps,
-              status_format);
-        },
-        *_invocation_log,
-        _config.failures_allowed,
-        specified_outputs,
-        _indexed_manifest,
-        _invocations);
+    const auto result = runBuild(specified_outputs);
 
     switch (result) {
     case BuildResult::NO_WORK_TO_DO:
