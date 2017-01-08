@@ -12,6 +12,8 @@ def with_testdir(dir):
   tempdir = os.path.join(os.path.dirname(__file__), 'tmpdir')
   def wrap(function):
     def decorator(*args, **kwargs):
+      if os.path.exists(tempdir):
+        shutil.rmtree(tempdir)
       shutil.copytree(dir, tempdir)
       cwd = os.getcwd()
       os.chdir(tempdir)
