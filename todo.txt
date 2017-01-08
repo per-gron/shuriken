@@ -87,7 +87,6 @@ Large things remaining to do:
 * Handle restat rules. OR: Make it the default somehow. Shuriken will not just stat but even hash all output files.
 * Handle build pools
 * Make Ctrl-C terminate sub-processes as well
-* Test that dry runs don't actually generate the manifest
 * Don't clean things written by generator rules
 * Test to clean build steps that create directories, for example mkdir
   -> this should happen both implicitly, when the manifest changes, and for explicit cleans

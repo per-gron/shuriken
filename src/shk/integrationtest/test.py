@@ -284,5 +284,13 @@ class IntegrationTest(unittest.TestCase):
     self.assertRegexpMatches(run_cmd(shk), 'no work to do')
     self.assertEqual(read_file('build.ninja'), manifest)
 
+  @with_testdir('generator')
+  def test_generator_update_dry_run(self):
+    self.assertRegexpMatches(run_cmd(shk), 'no work to do')
+    original_manifest = read_file('build.ninja')
+    manifest = original_manifest + '\nbuild new: phony\n'
+    write_file('build.ninja.in', manifest.replace('[[GENERATOR_LINE]]', 'before'))
+    self.assertEqual(read_file('build.ninja'), original_manifest)
+
 if __name__ == '__main__':
     unittest.main()
