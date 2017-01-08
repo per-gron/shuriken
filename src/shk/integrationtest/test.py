@@ -218,6 +218,14 @@ class IntegrationTest(unittest.TestCase):
     self.assertFalse(os.path.exists('out'))
 
   @with_testdir('simple_build')
+  def test_removed_target_outputs_not_removed_in_dry_run(self):
+    run_cmd(shk)
+    self.assertTrue(os.path.exists('out'))
+    write_file('build.ninja', '')
+    run_cmd(shk + ' -n')
+    self.assertTrue(os.path.exists('out'))
+
+  @with_testdir('simple_build')
   def test_full_clean(self):
     run_cmd(shk)
     self.assertTrue(os.path.exists('out'))

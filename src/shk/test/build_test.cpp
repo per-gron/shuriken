@@ -151,6 +151,34 @@ TEST_CASE("Build") {
 
   DummyCommandRunner dummy_runner(fs);
 
+  const auto build_or_rebuild_manifest = [&](
+      const std::string &manifest,
+      size_t failures_allowed,
+      CommandRunner &runner) {
+    Paths paths(fs);
+    fs.writeFile("build.ninja", manifest);
+
+    return build(
+        clock,
+        fs,
+        runner,
+        [](int total_steps) {
+          return std::unique_ptr<BuildStatus>(
+              new DummyBuildStatus());
+        },
+        log,
+        failures_allowed,
+        {},
+        parseManifest(paths, fs, "build.ninja"),
+        log.invocations(paths));
+  };
+
+  const auto build_manifest = [&](
+      const std::string &manifest,
+      size_t failures_allowed = 1) {
+    return build_or_rebuild_manifest(manifest, failures_allowed, dummy_runner);
+  };
+
   SECTION("interpretPath") {
     Step other_input;
     other_input.inputs = { paths.get("other") };
@@ -1075,35 +1103,78 @@ TEST_CASE("Build") {
     // TODO(peck): Test this
   }
 
-  SECTION("build") {
-    const auto build_or_rebuild_manifest = [&](
-        const std::string &manifest,
-        size_t failures_allowed,
-        CommandRunner &runner) {
+  SECTION("deleteStaleOutputs") {
+    const auto delete_stale_outputs = [&](
+        const std::string &manifest) {
       Paths paths(fs);
-      fs.writeFile("build.ninja", manifest);
 
-      return build(
-          clock,
+      const IndexedManifest indexed_manifest(parse(manifest));
+
+      deleteStaleOutputs(
           fs,
-          runner,
-          [](int total_steps) {
-            return std::unique_ptr<BuildStatus>(
-                new DummyBuildStatus());
-          },
           log,
-          failures_allowed,
-          {},
-          parseManifest(paths, fs, "build.ninja"),
+          indexed_manifest.step_hashes,
           log.invocations(paths));
     };
 
-    const auto build_manifest = [&](
-        const std::string &manifest,
-        size_t failures_allowed = 1) {
-      return build_or_rebuild_manifest(manifest, failures_allowed, dummy_runner);
-    };
+    SECTION("delete stale outputs") {
+      const auto cmd = dummy_runner.constructCommand({}, {"out"});
+      const auto manifest =
+          "rule cmd\n"
+          "  command = " + cmd + "\n"
+          "build out: cmd\n";
+      CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+      dummy_runner.checkCommand(fs, cmd);
 
+      const auto cmd2 = dummy_runner.constructCommand({}, {"out2"});
+      const auto manifest2 =
+          "rule cmd2\n"
+          "  command = " + cmd2 + "\n"
+          "build out2: cmd2\n";
+      delete_stale_outputs(manifest2);
+      CHECK_THROWS(dummy_runner.checkCommand(fs, cmd));
+      CHECK_THROWS(dummy_runner.checkCommand(fs, cmd2));
+    }
+
+    SECTION("delete stale outputs and their directories") {
+      const auto cmd = dummy_runner.constructCommand({}, {"dir/out"});
+      const auto manifest =
+          "rule cmd\n"
+          "  command = " + cmd + "\n"
+          "build dir/out: cmd\n";
+      CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+      dummy_runner.checkCommand(fs, cmd);
+      CHECK(S_ISDIR(fs.stat("dir").metadata.mode));
+      CHECK(fs.stat("dir2").result == ENOENT);
+
+      const auto cmd2 = dummy_runner.constructCommand({}, {"dir2/out2"});
+      const auto manifest2 =
+          "rule cmd2\n"
+          "  command = " + cmd2 + "\n"
+          "build dir2/out2: cmd2\n";
+      delete_stale_outputs(manifest2);
+      CHECK_THROWS(dummy_runner.checkCommand(fs, cmd));
+      CHECK_THROWS(dummy_runner.checkCommand(fs, cmd2));
+      CHECK(fs.stat("dir").result == ENOENT);
+      CHECK(fs.stat("dir2").result == ENOENT);
+    }
+
+    SECTION("delete outputs of removed step") {
+      const auto cmd = dummy_runner.constructCommand({}, {"out"});
+      const auto manifest =
+          "rule cmd\n"
+          "  command = " + cmd + "\n"
+          "build out: cmd\n";
+      CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+      dummy_runner.checkCommand(fs, cmd);
+
+      const auto manifest2 = "";
+      delete_stale_outputs(manifest2);
+      CHECK_THROWS(dummy_runner.checkCommand(fs, cmd));
+    }
+  }
+
+  SECTION("build") {
     const auto verify_noop_build = [&](
         const std::string &manifest,
         size_t failures_allowed = 1) {
@@ -1543,52 +1614,6 @@ TEST_CASE("Build") {
       }
 
       SECTION("rebuild when step failed linting") {
-        // TODO(peck): Test this
-      }
-
-      SECTION("delete stale outputs") {
-        const auto cmd = dummy_runner.constructCommand({}, {"out"});
-        const auto manifest =
-            "rule cmd\n"
-            "  command = " + cmd + "\n"
-            "build out: cmd\n";
-        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        dummy_runner.checkCommand(fs, cmd);
-
-        const auto cmd2 = dummy_runner.constructCommand({}, {"out2"});
-        const auto manifest2 =
-            "rule cmd2\n"
-            "  command = " + cmd2 + "\n"
-            "build out2: cmd2\n";
-        CHECK(build_manifest(manifest2) == BuildResult::SUCCESS);
-        CHECK_THROWS(dummy_runner.checkCommand(fs, cmd));
-        dummy_runner.checkCommand(fs, cmd2);
-      }
-
-      SECTION("delete stale outputs and their directories") {
-        const auto cmd = dummy_runner.constructCommand({}, {"dir/out"});
-        const auto manifest =
-            "rule cmd\n"
-            "  command = " + cmd + "\n"
-            "build dir/out: cmd\n";
-        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        dummy_runner.checkCommand(fs, cmd);
-        CHECK(S_ISDIR(fs.stat("dir").metadata.mode));
-        CHECK(fs.stat("dir2").result == ENOENT);
-
-        const auto cmd2 = dummy_runner.constructCommand({}, {"dir2/out2"});
-        const auto manifest2 =
-            "rule cmd2\n"
-            "  command = " + cmd2 + "\n"
-            "build dir2/out2: cmd2\n";
-        CHECK(build_manifest(manifest2) == BuildResult::SUCCESS);
-        CHECK_THROWS(dummy_runner.checkCommand(fs, cmd));
-        dummy_runner.checkCommand(fs, cmd2);
-        CHECK(fs.stat("dir").result == ENOENT);
-        CHECK(S_ISDIR(fs.stat("dir2").metadata.mode));
-      }
-
-      SECTION("delete outputs of removed step") {
         // TODO(peck): Test this
       }
 

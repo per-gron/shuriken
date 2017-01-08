@@ -424,10 +424,25 @@ int ShurikenMain::runBuild(int argc, char **argv) {
             *_file_system,
             makeRealCommandRunner()));
 
+  const auto dry_run_file_system = dryRunFileSystem(*_file_system);
+  auto &file_system =
+      _config.dry_run ? *dry_run_file_system : *_file_system;
+
+  try {
+    deleteStaleOutputs(
+        file_system,
+        *_invocation_log,
+        _indexed_manifest.step_hashes,
+        _invocations);
+  } catch (const IoError &io_error) {
+    printf("shk: failed to clean stale outputs: %s\n", io_error.what());
+    return 1;
+  }
+
   try {
     const auto result = build(
         getTime,
-        _config.dry_run ? *dryRunFileSystem(*_file_system) : *_file_system,
+        file_system,
         *command_runner,
         [this](int total_steps) {
           const char * status_format = getenv("NINJA_STATUS");

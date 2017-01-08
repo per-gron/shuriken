@@ -695,38 +695,6 @@ void enqueueBuildCommands(BuildCommandParameters &params) throw(IoError) {
   while (enqueueBuildCommand(params)) {}
 }
 
-namespace {
-
-/**
- * Delete files that were written by build steps that aren't present in the
- * manifest anymore.
- */
-void deleteStaleOutputs(
-    FileSystem &file_system,
-    InvocationLog &invocation_log,
-    const StepHashes &step_hashes,
-    const Invocations &invocations) throw(IoError) {
-  std::unordered_set<Hash> step_hashes_set(
-      step_hashes.begin(),
-      step_hashes.end());
-
-  for (const auto &entry : invocations.entries) {
-    if (step_hashes_set.count(entry.first) == 0) {
-      for (const auto output_file_idx : entry.second.output_files) {
-        const auto &output_file = invocations.fingerprints[output_file_idx];
-        deleteBuildProduct(
-            file_system,
-            invocations,
-            invocation_log,
-            output_file.first);
-      }
-      invocation_log.cleanedCommand(entry.first);
-    }
-  }
-}
-
-}  // anonymous namespace
-
 int countStepsToBuild(const std::vector<Step> &steps, const Build &build) {
   int step_count = 0;
 
@@ -744,6 +712,29 @@ int countStepsToBuild(const std::vector<Step> &steps, const Build &build) {
 
 }  // namespace detail
 
+void deleteStaleOutputs(
+    FileSystem &file_system,
+    InvocationLog &invocation_log,
+    const StepHashes &step_hashes,
+    const Invocations &invocations) throw(IoError) {
+  std::unordered_set<Hash> step_hashes_set(
+      step_hashes.begin(), step_hashes.end());
+
+  for (const auto &entry : invocations.entries) {
+    if (step_hashes_set.count(entry.first) == 0) {
+      for (const auto output_file_idx : entry.second.output_files) {
+        const auto &output_file = invocations.fingerprints[output_file_idx];
+        detail::deleteBuildProduct(
+            file_system,
+            invocations,
+            invocation_log,
+            output_file.first);
+      }
+      invocation_log.cleanedCommand(entry.first);
+    }
+  }
+}
+
 BuildResult build(
     const Clock &clock,
     FileSystem &file_system,
@@ -757,9 +748,6 @@ BuildResult build(
   const auto &step_hashes = indexed_manifest.step_hashes;
   const auto &output_file_map = indexed_manifest.output_file_map;
   const auto &manifest = indexed_manifest.manifest;
-
-  detail::deleteStaleOutputs(
-      file_system, invocation_log, step_hashes, invocations);
 
   auto steps_to_build = detail::computeStepsToBuild(
       manifest, output_file_map, specified_outputs);

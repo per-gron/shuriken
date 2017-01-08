@@ -303,7 +303,19 @@ using MakeBuildStatus = std::function<
     std::unique_ptr<BuildStatus> (int total_steps)>;
 
 /**
+ * Delete files that were written by build steps that aren't present in the
+ * manifest anymore.
+ */
+void deleteStaleOutputs(
+    FileSystem &file_system,
+    InvocationLog &invocation_log,
+    const StepHashes &step_hashes,
+    const Invocations &invocations) throw(IoError);
+
+/**
  * Main entry point for performing a build.
+ *
+ * This function does not delete stale outputs. See deleteStaleOutputs.
  */
 BuildResult build(
     const Clock &clock,

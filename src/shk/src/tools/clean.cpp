@@ -47,6 +47,17 @@ int toolClean(int argc, char *argv[], const ToolParams &params) {
   CleaningFileSystem cleaning_file_system(params.file_system);
 
   try {
+    deleteStaleOutputs(
+        params.file_system,
+        invocation_log,
+        params.indexed_manifest.step_hashes,
+        params.invocations);
+  } catch (const IoError &io_error) {
+    printf("shk: failed to clean stale outputs: %s\n", io_error.what());
+    return 1;
+  }
+
+  try {
     const auto result = build(
         params.clock,
         cleaning_file_system,
