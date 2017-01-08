@@ -63,6 +63,7 @@ StepHashes computeStepHashes(const std::vector<Step> &steps);
  * that an IndexedManifest can be reused between different builds.
  */
 struct IndexedManifest {
+  IndexedManifest() = default;
   IndexedManifest(Manifest &&manifest);
 
   OutputFileMap output_file_map;

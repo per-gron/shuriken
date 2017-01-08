@@ -39,7 +39,7 @@ std::vector<Path> interpretPaths(
  */
 std::vector<StepIndex> computeStepsToBuild(
     Paths &paths,
-    const Manifest &manifest,
+    const IndexedManifest &indexed_manifest,
     int argc,
     char *argv[0]) throw(BuildError);
 
@@ -313,7 +313,7 @@ BuildResult build(
     InvocationLog &invocation_log,
     size_t failures_allowed,
     const std::vector<Path> &specified_outputs,
-    const Manifest &manifest,
+    const IndexedManifest &indexed_manifest,
     const Invocations &invocations) throw(IoError, BuildError);
 
 }  // namespace shk

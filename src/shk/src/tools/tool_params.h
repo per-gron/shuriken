@@ -18,7 +18,7 @@
 
 #include "../clock.h"
 #include "../invocations.h"
-#include "../manifest.h"
+#include "../indexed_manifest.h"
 
 namespace shk {
 
@@ -26,7 +26,7 @@ struct ToolParams {
   Clock clock;
   Paths &paths;
   const Invocations &invocations;
-  const Manifest &manifest;
+  const IndexedManifest &indexed_manifest;
   FileSystem &file_system;
   std::string invocation_log_path;
 };

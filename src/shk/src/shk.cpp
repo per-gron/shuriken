@@ -40,9 +40,9 @@
 #include "dry_run_invocation_log.h"
 #include "edit_distance.h"
 #include "file_lock.h"
+#include "indexed_manifest.h"
 #include "invocations.h"
 #include "limited_command_runner.h"
-#include "manifest.h"
 #include "persistent_file_system.h"
 #include "persistent_invocation_log.h"
 #include "real_command_runner.h"
@@ -179,8 +179,8 @@ struct ShurikenMain {
     return _invocations;
   }
 
-  const Manifest &manifest() const {
-    return _manifest;
+  const IndexedManifest &indexedManifest() const {
+    return _indexed_manifest;
   }
 
   /**
@@ -197,7 +197,7 @@ struct ShurikenMain {
   InvocationLogParseResult::ParseData _invocation_parse_data;
   std::unique_ptr<FileLock> _invocation_log_lock;
   std::unique_ptr<InvocationLog> _invocation_log;
-  Manifest _manifest;
+  IndexedManifest _indexed_manifest;
 };
 
 /**
@@ -311,13 +311,14 @@ const Tool *chooseTool(const std::string &tool_name) {
 
 void ShurikenMain::parseManifest(
     const std::string &input_file) throw(IoError, ParseError) {
-  _manifest = ::shk::parseManifest(_paths, *_file_system, input_file);
+  _indexed_manifest = IndexedManifest(
+      ::shk::parseManifest(_paths, *_file_system, input_file));
 }
 
 std::string ShurikenMain::invocationLogPath() const {
   std::string path = ".shk_log";
-  if (!_manifest.build_dir.empty()) {
-    path = _manifest.build_dir + "/" + path;
+  if (!_indexed_manifest.manifest.build_dir.empty()) {
+    path = _indexed_manifest.manifest.build_dir + "/" + path;
   }
   return path;
 }
@@ -406,7 +407,8 @@ bool ShurikenMain::openInvocationLog() {
 int ShurikenMain::runBuild(int argc, char **argv) {
   std::vector<Path> specified_outputs;
   try {
-    specified_outputs = interpretPaths(_paths, _manifest, argc, argv);
+    specified_outputs = interpretPaths(
+        _paths, _indexed_manifest.manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;
@@ -442,7 +444,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
         *_invocation_log,
         _config.failures_allowed,
         specified_outputs,
-        _manifest,
+        _indexed_manifest,
         _invocations);
 
     switch (result) {
@@ -623,7 +625,7 @@ int real_main(int argc, char **argv) {
         getTime,
         shk.paths(),
         shk.invocations(),
-        shk.manifest(),
+        shk.indexedManifest(),
         shk.fileSystem(),
         shk.invocationLogPath() };
 

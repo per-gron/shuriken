@@ -75,6 +75,10 @@ TEST_CASE("IndexedManifest") {
         (StepHashes{ single_output.hash(), single_input.hash() }));
   }
 
+  SECTION("DefaultConstructor") {
+    IndexedManifest indexed_manifest;
+  }
+
   SECTION("Constructor") {
     Manifest manifest;
     manifest.steps = { single_output };

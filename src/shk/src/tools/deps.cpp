@@ -19,9 +19,9 @@ namespace shk {
 
 int toolDeps(int argc, char **argv, const ToolParams &params) {
   const auto step_indices = computeStepsToBuild(
-      params.paths, params.manifest, argc, argv);
+      params.paths, params.indexed_manifest, argc, argv);
 
-  for (const auto step : params.manifest.steps) {
+  for (const auto step : params.indexed_manifest.manifest.steps) {
     if (step.phony()) {
       continue;
     }

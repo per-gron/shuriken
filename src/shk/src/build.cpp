@@ -64,14 +64,14 @@ std::vector<Path> interpretPaths(
 
 std::vector<StepIndex> computeStepsToBuild(
     Paths &paths,
-    const Manifest &manifest,
+    const IndexedManifest &indexed_manifest,
     int argc,
     char *argv[0]) throw(BuildError) {
-  const auto output_file_map = detail::computeOutputFileMap(manifest.steps);
-  const auto specified_outputs = interpretPaths(paths, manifest, argc, argv);
+  const auto specified_outputs = interpretPaths(
+      paths, indexed_manifest.manifest, argc, argv);
   return detail::computeStepsToBuild(
-      manifest,
-      output_file_map,
+      indexed_manifest.manifest,
+      indexed_manifest.output_file_map,
       specified_outputs);
 }
 
@@ -752,14 +752,14 @@ BuildResult build(
     InvocationLog &invocation_log,
     size_t failures_allowed,
     const std::vector<Path> &specified_outputs,
-    const Manifest &manifest,
+    const IndexedManifest &indexed_manifest,
     const Invocations &invocations) throw(IoError, BuildError) {
-  const auto step_hashes = detail::computeStepHashes(manifest.steps);
+  const auto &step_hashes = indexed_manifest.step_hashes;
+  const auto &output_file_map = indexed_manifest.output_file_map;
+  const auto &manifest = indexed_manifest.manifest;
 
   detail::deleteStaleOutputs(
       file_system, invocation_log, step_hashes, invocations);
-
-  const auto output_file_map = detail::computeOutputFileMap(manifest.steps);
 
   auto steps_to_build = detail::computeStepsToBuild(
       manifest, output_file_map, specified_outputs);
