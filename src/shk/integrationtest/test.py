@@ -210,6 +210,14 @@ class IntegrationTest(unittest.TestCase):
     self.assertEqual(read_file('dir/out'), 'hello')
 
   @with_testdir('simple_build')
+  def test_removed_target_outputs_removed(self):
+    run_cmd(shk)
+    self.assertTrue(os.path.exists('out'))
+    write_file('build.ninja', '')
+    run_cmd(shk)
+    self.assertFalse(os.path.exists('out'))
+
+  @with_testdir('simple_build')
   def test_full_clean(self):
     run_cmd(shk)
     self.assertTrue(os.path.exists('out'))
@@ -218,6 +226,14 @@ class IntegrationTest(unittest.TestCase):
     self.assertFalse(os.path.exists('out'))
     self.assertFalse(os.path.exists('.shk_log'))
     self.assertRegexpMatches(output, r'cleaned 2 files\.')
+
+  @with_testdir('simple_build')
+  def test_clean_removed_target_outputs_removed(self):
+    run_cmd(shk)
+    self.assertTrue(os.path.exists('out'))
+    write_file('build.ninja', '')
+    run_cmd(shk + ' -t clean')
+    self.assertFalse(os.path.exists('out'))
 
   @with_testdir('simple_build')
   def test_full_clean_again(self):
