@@ -237,39 +237,6 @@ TEST_CASE("Build") {
     }
   }
 
-  SECTION("computeOutputFileMap") {
-    SECTION("basics") {
-      CHECK(computeOutputFileMap({}).empty());
-      CHECK(computeOutputFileMap({ empty }).empty());
-      CHECK(computeOutputFileMap({ single_input }).empty());
-      CHECK(computeOutputFileMap({ single_implicit_input }).empty());
-      CHECK(computeOutputFileMap({ single_dependency }).empty());
-    }
-
-    SECTION("single output") {
-      const auto map = computeOutputFileMap({ single_output });
-      CHECK(map.size() == 1);
-      const auto it = map.find(paths.get("a"));
-      REQUIRE(it != map.end());
-      CHECK(it->second == 0);
-    }
-
-    SECTION("multiple outputs") {
-      auto map = computeOutputFileMap({
-          single_output, single_output_b, multiple_outputs });
-      CHECK(map.size() == 4);
-      CHECK(map[paths.get("a")] == 0);
-      CHECK(map[paths.get("b")] == 1);
-      CHECK(map[paths.get("c")] == 2);
-      CHECK(map[paths.get("d")] == 2);
-    }
-
-    SECTION("duplicate outputs") {
-      CHECK_THROWS_AS(
-          computeOutputFileMap({ single_output, single_output }), BuildError);
-    }
-  }
-
   SECTION("rootSteps") {
     CHECK(rootSteps({}).empty());
     CHECK(rootSteps({ single_output }) == std::vector<StepIndex>{ 0 });
@@ -369,16 +336,6 @@ TEST_CASE("Build") {
         cycleErrorMessage({ paths.get("a") }) == "a -> a");
     CHECK(
         cycleErrorMessage({ paths.get("a"), paths.get("b") }) == "a -> b -> a");
-  }
-
-  SECTION("computeStepHashes") {
-    CHECK(computeStepHashes({}).empty());
-    CHECK(
-        computeStepHashes({ single_output }) ==
-        StepHashes{ single_output.hash() });
-    CHECK(
-        computeStepHashes({ single_output, single_input }) ==
-        (StepHashes{ single_output.hash(), single_input.hash() }));
   }
 
   SECTION("computeBuild") {

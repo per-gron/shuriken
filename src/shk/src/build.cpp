@@ -89,23 +89,6 @@ void markStepNodeAsDone(Build &build, StepIndex step_idx) {
   }
 }
 
-OutputFileMap computeOutputFileMap(
-    const std::vector<Step> &steps) throw(BuildError) {
-  OutputFileMap result;
-
-  for (size_t i = 0; i < steps.size(); i++) {
-    const auto &step = steps[i];
-    for (const auto &output : step.outputs) {
-      const auto ins = result.emplace(output, i);
-      if (!ins.second) {
-        throw BuildError("Multiple rules generate " + output.original());
-      }
-    }
-  }
-
-  return result;
-}
-
 std::vector<StepIndex> rootSteps(
     const std::vector<Step> &steps,
     const OutputFileMap &output_file_map) throw(BuildError) {
@@ -315,17 +298,6 @@ void visitStep(
         cycle.pop_back();
       });
   step_node.currently_visited = false;
-}
-
-StepHashes computeStepHashes(const std::vector<Step> &steps) {
-  StepHashes hashes;
-  hashes.reserve(steps.size());
-
-  for (const auto &step : steps) {
-    hashes.push_back(step.hash());
-  }
-
-  return hashes;
 }
 
 Build computeBuild(

@@ -8,6 +8,7 @@
 #include "clock.h"
 #include "command_runner.h"
 #include "file_system.h"
+#include "indexed_manifest.h"
 #include "invocation_log.h"
 #include "invocations.h"
 #include "manifest.h"
@@ -15,8 +16,6 @@
 #include "step.h"
 
 namespace shk {
-
-using StepIndex = size_t;
 
 /**
  * Get the Path to a given output file for a step in the manifest. This handles
@@ -45,27 +44,6 @@ std::vector<StepIndex> computeStepsToBuild(
     char *argv[0]) throw(BuildError);
 
 namespace detail {
-
-/**
- * Map of path => index of the step that has this file as an output.
- *
- * This is useful for traversing the build graph in the direction of a build
- * step to a build step that it depends on.
- *
- * This map is configured to treat paths that are the same according to
- * Path::isSame as equal. This is important because otherwise the lookup
- * will miss paths that point to the same thing but with different original
- * path strings.
- */
-using OutputFileMap = std::unordered_map<
-    Path, StepIndex, Path::IsSameHash, Path::IsSame>;
-
-/**
- * "Map" of StepIndex => Hash of that step. The hash includes everything about
- * that step but not information about its dependencies.
- */
-using StepHashes = std::vector<Hash>;
-
 /**
  * "Map" of StepIndex => bool that indicates if the Step has been built before
  * and at the time the build was started, its direct inputs and outputs were
@@ -206,13 +184,6 @@ struct BuildCommandParameters {
 };
 
 /**
- * Throws BuildError if there exists an output file that more than one step
- * generates.
- */
-OutputFileMap computeOutputFileMap(
-    const std::vector<Step> &steps) throw(BuildError);
-
-/**
  * Compute the "root steps," that is the steps that don't have an output that
  * is an input to some other step. This is the set of steps that are built if
  * there are no default statements in the manifest and no steps where
@@ -244,8 +215,6 @@ std::vector<StepIndex> computeStepsToBuild(
  * cycle must be a non-empty vector.
  */
 std::string cycleErrorMessage(const std::vector<Path> &cycle);
-
-StepHashes computeStepHashes(const std::vector<Step> &steps);
 
 /**
  * Create a Build object suitable for use as a starting point for the build.

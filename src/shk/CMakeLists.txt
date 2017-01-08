@@ -43,6 +43,8 @@ add_library(shklib
   src/fingerprint.cpp
   src/fingerprint.h
   src/hash.h
+  src/indexed_manifest.cpp
+  src/indexed_manifest.h
   src/invocation_log.cpp
   src/invocation_log.h
   src/invocations.h
@@ -129,6 +131,7 @@ add_executable(shk_test
   test/in_memory_invocation_log.cpp
   test/in_memory_invocation_log.h
   test/in_memory_invocation_log_test.cpp
+  test/indexed_manifest_test.cpp
   test/lexer_test.cpp
   test/limited_command_runner_test.cpp
   test/line_printer_test.cpp
