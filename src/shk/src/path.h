@@ -71,6 +71,11 @@ inline bool operator!=(const CanonicalizedPath &a, const CanonicalizedPath &b) {
   return !(a == b);
 }
 
+struct StatMemo {
+  std::unordered_map<std::string, Stat> stat;
+  std::unordered_map<std::string, Stat> lstat;
+};
+
 }  // namespace detail
 
 class Paths;
@@ -290,12 +295,16 @@ class Paths {
  public:
   Paths(FileSystem &file_system);
 
+  /**
+   * The get methods of Paths constructs a Path object from a given path. It
+   * consults the file system and will either create a new Path object or re-use
+   * an already existing one.
+   */
   Path get(const std::string &path) throw(PathError);
   Path get(std::string &&path) throw(PathError);
 
  private:
-  std::unordered_map<std::string, Stat> _stat_memo;
-  std::unordered_map<std::string, Stat> _lstat_memo;
+  detail::StatMemo _stat_memo;
   FileSystem &_file_system;
   std::unordered_set<detail::CanonicalizedPath> _canonicalized_paths;
   std::unordered_set<std::string> _original_paths;

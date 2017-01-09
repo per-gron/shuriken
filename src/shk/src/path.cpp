@@ -149,13 +149,14 @@ void replaceBackslashes(const Iter begin, const Iter end) {
 
 Stat memoedStat(
     FileSystem &file_system,
-    std::unordered_map<std::string, Stat> &stat_memo,
+    detail::StatMemo &stat_memo,
     const std::string &path,
     bool lstat) {
-  const auto it = stat_memo.find(path);
-  if (it == stat_memo.end()) {
+  auto &memo = lstat ? stat_memo.lstat : stat_memo.stat;
+  const auto it = memo.find(path);
+  if (it == memo.end()) {
     Stat stat = lstat ? file_system.lstat(path) : file_system.stat(path);
-    stat_memo.emplace(path, stat);
+    memo.emplace(path, stat);
     return stat;
   } else {
     return it->second;
@@ -164,8 +165,7 @@ Stat memoedStat(
 
 detail::CanonicalizedPath makeCanonicalizedPath(
     FileSystem &file_system,
-    std::unordered_map<std::string, Stat> &stat_memo,
-    std::unordered_map<std::string, Stat> &lstat_memo,
+    detail::StatMemo &stat_memo,
     std::string &&path) {
   if (path.empty()) {
     throw PathError("Empty path", path);
@@ -212,7 +212,7 @@ detail::CanonicalizedPath makeCanonicalizedPath(
         pos + 1).asString();
     stat = memoedStat(
         file_system,
-        use_lstat ? lstat_memo : stat_memo,
+        stat_memo,
         path_to_try,
         use_lstat);
 
@@ -288,7 +288,7 @@ Path Paths::get(std::string &&path) throw(PathError) {
   const auto original_result = _original_paths.emplace(path);
   const auto canonicalized_result = _canonicalized_paths.insert(
       makeCanonicalizedPath(
-          _file_system, _stat_memo, _lstat_memo, std::move(path)));
+          _file_system, _stat_memo, std::move(path)));
   return Path(
       &*canonicalized_result.first,
       &*original_result.first);
