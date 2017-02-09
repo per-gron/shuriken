@@ -14,6 +14,7 @@
 
 #include "path.h"
 
+#include <errno.h>
 #include <sys/stat.h>
 
 namespace shk {
@@ -147,26 +148,45 @@ void replaceBackslashes(const Iter begin, const Iter end) {
 }
 #endif
 
-Stat memoedStat(
-    FileSystem &file_system,
-    detail::StatMemo &stat_memo,
-    const std::string &path,
-    bool lstat) {
-  auto &memo = lstat ? stat_memo.lstat : stat_memo.stat;
-  const auto it = memo.find(path);
-  if (it == memo.end()) {
-    Stat stat = lstat ? file_system.lstat(path) : file_system.stat(path);
-    memo.emplace(path, stat);
-    return stat;
-  } else {
-    return it->second;
+/**
+ * Helper class for doing stat calls in a memoized fashion.
+ */
+class Stater {
+ public:
+  Stater(detail::StatMemo &memo, FileSystem &file_system)
+      : _memo(memo),
+        _file_system(file_system) {}
+
+  Stat stat(const std::string &path) {
+    return stat(path, _memo.stat, &FileSystem::stat);
   }
-}
+
+  Stat lstat(const std::string &path) {
+    return stat(path, _memo.lstat, &FileSystem::lstat);
+  }
+
+ private:
+  Stat stat(
+      const std::string &path,
+      std::unordered_map<std::string, Stat> &memo,
+      Stat (FileSystem::*stat_fn)(const std::string &)) {
+    const auto it = memo.find(path);
+    if (it == memo.end()) {
+      Stat stat = (_file_system.*stat_fn)(path);
+      memo.emplace(path, stat);
+      return stat;
+    } else {
+      return it->second;
+    }
+  }
+
+  detail::StatMemo &_memo;
+  FileSystem &_file_system;
+};
 
 detail::CanonicalizedPath makeCanonicalizedPath(
-    FileSystem &file_system,
-    detail::StatMemo &stat_memo,
-    std::string &&path) {
+    Stater stater,
+    std::string &&path) throw(PathError) {
   if (path.empty()) {
     throw PathError("Empty path", path);
   }
@@ -210,11 +230,7 @@ detail::CanonicalizedPath makeCanonicalizedPath(
     const auto path_to_try = StringPiece(
         at_relative_root ? "." : path.c_str(),
         pos + 1).asString();
-    stat = memoedStat(
-        file_system,
-        stat_memo,
-        path_to_try,
-        use_lstat);
+    stat = use_lstat ? stater.lstat(path_to_try) : stater.stat(path_to_try);
 
     if (stat.result == 0) {
       // Found an existing file or directory
@@ -285,10 +301,10 @@ Path Paths::get(const std::string &path) throw(PathError) {
 }
 
 Path Paths::get(std::string &&path) throw(PathError) {
+  auto stater = Stater(_stat_memo, _file_system);
   const auto original_result = _original_paths.emplace(path);
   const auto canonicalized_result = _canonicalized_paths.insert(
-      makeCanonicalizedPath(
-          _file_system, _stat_memo, std::move(path)));
+      makeCanonicalizedPath(stater, std::move(path)));
   return Path(
       &*canonicalized_result.first,
       &*original_result.first);
