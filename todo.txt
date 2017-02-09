@@ -74,6 +74,10 @@ Things to do for increased build correctness:
 * Make sure the build does the right thing even if targets are specified wrong on the command line
 * Hash symlinks in a special way (see fingerprintStat)
 * Perhaps introduce an opt-in strict linting mode? I had to re-enable mach calls and ipc.
+* Keep a map of files that have been read so far by the build. If any step
+  writes to any of those file, there is a dependency error in the build.
+  (Is this generic enough? Can it be made to always find this error instead of
+  just sometimes?)
 
 Aesthetic bugs:
 * Deal with depfile files: Don't treat them as outputs
