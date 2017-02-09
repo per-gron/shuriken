@@ -576,7 +576,7 @@ void commandDone(
     }
   });
 
-  if (!step.command.empty()) {
+  if (!step.phony()) {
     params.build_status.stepFinished(
         step,
         result.exit_status == ExitStatus::SUCCESS,
@@ -676,7 +676,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
 
   // TODO(peck): What about pools?
 
-  if (!step.command.empty()) {
+  if (!step.phony()) {
     params.build_status.stepStarted(step);
     params.invoked_commands++;
   }
@@ -702,7 +702,7 @@ int countStepsToBuild(const std::vector<Step> &steps, const Build &build) {
   for (size_t i = 0; i < steps.size(); i++) {
     const auto &step_node = build.step_nodes[i];
     const auto &step = steps[i];
-    if (step_node.should_build && !step.command.empty()) {
+    if (step_node.should_build && !step.phony()) {
       step_count++;
     }
   }
