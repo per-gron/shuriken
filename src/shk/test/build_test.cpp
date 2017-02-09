@@ -127,21 +127,27 @@ TEST_CASE("Build") {
   const Step empty{};
 
   Step single_output;
+  single_output.command = "cmd";
   single_output.outputs = { paths.get("a") };
 
   Step single_output_b;
+  single_output_b.command = "cmd";
   single_output_b.outputs = { paths.get("b") };
 
   Step multiple_outputs;
+  multiple_outputs.command = "cmd";
   multiple_outputs.outputs = { paths.get("c"), paths.get("d") };
 
   Step single_input;
+  single_input.command = "cmd";
   single_input.inputs = { paths.get("a") };
 
   Step single_implicit_input;
+  single_implicit_input.command = "cmd";
   single_implicit_input.implicit_inputs = { paths.get("a") };
 
   Step single_dependency;
+  single_dependency.command = "cmd";
   single_dependency.dependencies = { paths.get("a") };
 
   const auto parse = [&](const std::string &input) {
@@ -799,7 +805,7 @@ TEST_CASE("Build") {
 
     SECTION("empty input") {
       Build build;
-      CHECK(discardCleanSteps(CleanSteps(), build) == 0);
+      CHECK(discardCleanSteps({}, CleanSteps(), build) == 0);
     }
 
     SECTION("all clean (independent)") {
@@ -810,6 +816,7 @@ TEST_CASE("Build") {
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
+          manifest.steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
@@ -820,6 +827,7 @@ TEST_CASE("Build") {
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
+          manifest.steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 0);
       CHECK(build.ready_steps.size() == 2);
@@ -832,14 +840,31 @@ TEST_CASE("Build") {
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
+          manifest.steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       CHECK(build.ready_steps.size() == 1);
     }
 
-    Step root;
+    Step root;  // depends on the single_output step
+    root.command = "cmd";
     root.inputs = { paths.get("a") };
     root.outputs = { paths.get("b") };
+
+    Step phony;
+    phony.outputs = { paths.get("a") };
+
+    SECTION("phony step") {
+      manifest.steps = { phony };
+      auto build = computeBuild(manifest, invocations);
+      REQUIRE(build.ready_steps.size() == 1);
+      CHECK(build.ready_steps[0] == 0);
+      CHECK(discardCleanSteps(
+          manifest.steps,
+          compute_clean_steps(build, invocations, manifest),
+          build) == 1);
+      CHECK(build.ready_steps.empty());
+    }
 
     SECTION("all clean") {
       manifest.steps = { single_output, root };
@@ -853,6 +878,7 @@ TEST_CASE("Build") {
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 1);
       CHECK(discardCleanSteps(
+          manifest.steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
@@ -866,6 +892,7 @@ TEST_CASE("Build") {
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
+          manifest.steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       REQUIRE(build.ready_steps.size() == 1);
@@ -880,10 +907,25 @@ TEST_CASE("Build") {
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
+          manifest.steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 0);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
+    }
+
+    SECTION("leaf phony, root clean") {
+      manifest.steps = { phony, root };
+      // Add empty entry to mark clean
+      invocations.entries[root.hash()];
+      auto build = computeBuild(manifest, invocations);
+      REQUIRE(build.ready_steps.size() == 1);
+      CHECK(build.ready_steps[0] == 1);
+      CHECK(discardCleanSteps(
+          manifest.steps,
+          compute_clean_steps(build, invocations, manifest),
+          build) == 1);
+      CHECK(build.ready_steps.empty());
     }
   }
 

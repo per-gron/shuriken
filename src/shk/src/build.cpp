@@ -428,6 +428,7 @@ CleanSteps computeCleanSteps(
 }
 
 int discardCleanSteps(
+    const std::vector<Step> &steps,
     const CleanSteps &clean_steps,
     Build &build) {
   int discarded_steps = 0;
@@ -452,7 +453,7 @@ int discardCleanSteps(
     }
     visited[step_idx] = true;
 
-    if (clean_steps[step_idx]) {
+    if (clean_steps[step_idx] || steps[step_idx].phony()) {
       discarded_steps++;
       markStepNodeAsDone(build, step_idx);
     } else {
@@ -763,7 +764,8 @@ BuildResult build(
   const auto clean_steps = detail::computeCleanSteps(
       clock, file_system, invocation_log, invocations, step_hashes, build);
 
-  const auto discarded_steps = detail::discardCleanSteps(clean_steps, build);
+  const auto discarded_steps = detail::discardCleanSteps(
+      indexed_manifest.manifest.steps, clean_steps, build);
 
   const auto build_status = make_build_status(
       countStepsToBuild(manifest.steps, build) - discarded_steps);

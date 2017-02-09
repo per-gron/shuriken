@@ -115,6 +115,13 @@ class IntegrationTest(unittest.TestCase):
     run_cmd(shk + ' -n')
     self.assertFalse(os.path.exists('out'))
 
+  @with_testdir('simple_build')
+  def test_phony_dependency_rebuild(self):
+    manifest = read_file('build.ninja') + 'build in: phony\n'
+    write_file('build.ninja', manifest)
+    run_cmd(shk)
+    self.assertRegexpMatches(run_cmd(shk), 'no work to do')
+
   @with_testdir('append_output')
   def test_delete_before_rebuilding(self):
     run_cmd(shk)

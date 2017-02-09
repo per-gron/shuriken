@@ -261,6 +261,7 @@ CleanSteps computeCleanSteps(
  * Returns the number of discarded steps.
  */
 int discardCleanSteps(
+    const std::vector<Step> &steps,
     const CleanSteps &clean_steps,
     Build &build);
 
