@@ -19,6 +19,10 @@ using StepIndex = size_t;
 /**
  * Map of path => index of the step that has this file as an output.
  *
+ * Please note that this map contains only files that are in the Manifest; it
+ * does not have output files that may have been created but that are not
+ * declared.
+ *
  * This is useful for traversing the build graph in the direction of a build
  * step to a build step that it depends on.
  *
