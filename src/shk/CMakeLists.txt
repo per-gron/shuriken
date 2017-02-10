@@ -13,7 +13,6 @@ add_library(shklib
   src/build.cpp
   src/build_config.h
   src/build_error.h
-  src/build_status.h
   src/clock.h
   src/cmd/command_runner.h
   src/cmd/dry_run_command_runner.cpp
@@ -26,7 +25,6 @@ add_library(shklib
   src/cmd/tracing_command_runner.cpp
   src/cmd/tracing_command_runner.h
   src/dependency_type.h
-  src/dummy_build_status.h
   src/edit_distance.cpp
   src/edit_distance.h
   src/exit_status.h
@@ -47,8 +45,6 @@ add_library(shklib
   src/fs/persistent_file_system.cpp
   src/fs/persistent_file_system.h
   src/hash.h
-  src/line_printer.cpp
-  src/line_printer.h
   src/manifest/eval_env.cpp
   src/manifest/eval_env.h
   src/manifest/eval_string.cpp
@@ -74,10 +70,14 @@ add_library(shklib
   src/log/persistent_invocation_log.h
   src/optional.h
   src/parse_error.h
-  src/stopwatch.h
+  src/status/build_status.h
+  src/status/dummy_build_status.h
+  src/status/line_printer.cpp
+  src/status/line_printer.h
+  src/status/stopwatch.h
+  src/status/terminal_build_status.cpp
+  src/status/terminal_build_status.h
   src/string_piece.h
-  src/terminal_build_status.cpp
-  src/terminal_build_status.h
   src/tools/clean.cpp
   src/tools/clean.h
   src/tools/compilation_database.cpp
@@ -134,7 +134,6 @@ add_executable(shk_test
   test/in_memory_invocation_log.cpp
   test/in_memory_invocation_log.h
   test/in_memory_invocation_log_test.cpp
-  test/line_printer_test.cpp
   test/log/delayed_invocation_log_test.cpp
   test/log/persistent_invocation_log_test.cpp
   test/main.cpp
@@ -144,7 +143,8 @@ add_executable(shk_test
   test/manifest/step_test.cpp
   test/optional_test.cpp
   test/properties.cpp
-  test/stopwatch_test.cpp
+  test/status/line_printer_test.cpp
+  test/status/stopwatch_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shk_test PUBLIC "${CMAKE_SOURCE_DIR}/vendor/rapidcheck/extras/catch/include")

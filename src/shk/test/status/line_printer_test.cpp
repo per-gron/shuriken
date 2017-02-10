@@ -14,7 +14,7 @@
 
 #include <catch.hpp>
 
-#include "line_printer.h"
+#include "status/line_printer.h"
 
 namespace shk {
 

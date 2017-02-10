@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "build_error.h"
-#include "build_status.h"
 #include "clock.h"
 #include "cmd/command_runner.h"
 #include "fs/file_system.h"
@@ -14,6 +13,7 @@
 #include "manifest/manifest.h"
 #include "manifest/step.h"
 #include "optional.h"
+#include "status/build_status.h"
 
 namespace shk {
 

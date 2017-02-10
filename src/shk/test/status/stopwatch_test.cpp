@@ -1,6 +1,6 @@
 #include <catch.hpp>
 
-#include "stopwatch.h"
+#include "status/stopwatch.h"
 
 namespace shk {
 

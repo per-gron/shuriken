@@ -47,7 +47,7 @@
 #include "log/invocations.h"
 #include "log/persistent_invocation_log.h"
 #include "manifest/indexed_manifest.h"
-#include "terminal_build_status.h"
+#include "status/terminal_build_status.h"
 #include "tools/clean.h"
 #include "tools/compilation_database.h"
 #include "tools/deps.h"

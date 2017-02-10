@@ -14,8 +14,8 @@
 
 #include "terminal_build_status.h"
 
-#include "line_printer.h"
 #include "manifest/step.h"
+#include "status/line_printer.h"
 #include "util.h"
 
 namespace shk {

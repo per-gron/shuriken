@@ -2,9 +2,9 @@
 #include <rapidcheck/catch.h>
 
 #include "build.h"
-#include "build_status.h"
 #include "fs/path.h"
 #include "manifest/step.h"
+#include "status/build_status.h"
 
 #include "dummy_command_runner.h"
 #include "generators.h"

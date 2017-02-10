@@ -17,8 +17,8 @@
 #include <memory>
 #include <queue>
 
-#include "build_status.h"
-#include "stopwatch.h"
+#include "status/build_status.h"
+#include "status/stopwatch.h"
 
 namespace shk {
 namespace detail {
