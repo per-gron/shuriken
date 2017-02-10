@@ -2,11 +2,12 @@
 
 #include <stdexcept>
 
-#include "../in_memory_file_system.h"
-#include "../in_memory_invocation_log.h"
+#include "fs/path.h"
 #include "log/delayed_invocation_log.h"
 #include "log/persistent_invocation_log.h"
-#include "path.h"
+
+#include "../in_memory_file_system.h"
+#include "../in_memory_invocation_log.h"
 
 namespace shk {
 

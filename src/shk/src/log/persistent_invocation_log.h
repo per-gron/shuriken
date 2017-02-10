@@ -3,11 +3,11 @@
 #include <stdint.h>
 
 #include "clock.h"
-#include "file_system.h"
+#include "fs/file_system.h"
+#include "fs/path.h"
 #include "log/invocation_log.h"
 #include "log/invocations.h"
 #include "parse_error.h"
-#include "path.h"
 
 namespace shk {
 

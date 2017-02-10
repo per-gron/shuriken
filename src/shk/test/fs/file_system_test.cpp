@@ -2,8 +2,9 @@
 
 #include <sys/stat.h>
 
-#include "file_system.h"
-#include "in_memory_file_system.h"
+#include "fs/file_system.h"
+
+#include "../in_memory_file_system.h"
 
 namespace shk {
 

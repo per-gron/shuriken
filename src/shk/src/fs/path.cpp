@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "path.h"
+#include "fs/path.h"
 
 #include <errno.h>
 #include <sys/stat.h>

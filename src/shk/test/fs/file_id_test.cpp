@@ -1,6 +1,6 @@
 #include <catch.hpp>
 
-#include "file_id.h"
+#include "fs/file_id.h"
 
 namespace shk {
 

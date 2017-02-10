@@ -1,4 +1,4 @@
-#include "fingerprint.h"
+#include "fs/fingerprint.h"
 
 #include <sys/stat.h>
 

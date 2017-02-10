@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "command_runner.h"
-#include "file_system.h"
+#include "fs/file_system.h"
 
 namespace shk {
 

@@ -2,7 +2,7 @@
 
 #include <unistd.h>
 
-#include "file_lock.h"
+#include "fs/file_lock.h"
 
 namespace shk {
 namespace {

@@ -1,4 +1,4 @@
-#include "file_lock.h"
+#include "fs/file_lock.h"
 
 #include <errno.h>
 #include <fcntl.h>

@@ -1,7 +1,7 @@
 #include <catch.hpp>
 #include <rapidcheck/catch.h>
 
-#include "path.h"
+#include "fs/path.h"
 
 namespace shk {
 

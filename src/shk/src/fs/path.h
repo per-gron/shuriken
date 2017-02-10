@@ -18,10 +18,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "file_id.h"
-#include "file_system.h"
+#include "fs/file_id.h"
+#include "fs/file_system.h"
+#include "fs/path_error.h"
 #include "optional.h"
-#include "path_error.h"
 #include "string_piece.h"
 
 namespace shk {

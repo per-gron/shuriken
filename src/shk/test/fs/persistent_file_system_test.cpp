@@ -3,7 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "persistent_file_system.h"
+#include "fs/persistent_file_system.h"
 
 namespace shk {
 namespace {

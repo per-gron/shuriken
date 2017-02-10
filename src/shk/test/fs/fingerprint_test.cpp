@@ -2,9 +2,9 @@
 
 #include <sys/stat.h>
 
-#include "fingerprint.h"
+#include "fs/fingerprint.h"
 
-#include "in_memory_file_system.h"
+#include "../in_memory_file_system.h"
 
 namespace shk {
 

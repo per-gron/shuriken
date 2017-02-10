@@ -5,7 +5,7 @@
 
 #include <sys/types.h>
 
-#include "file_system.h"
+#include "fs/file_system.h"
 #include "hash.h"
 
 namespace shk {
@@ -125,8 +125,7 @@ MatchesResult fingerprintMatches(
 
 }  // namespace shk
 
-namespace std
-{
+namespace std {
 
 template<>
 struct hash<shk::Fingerprint> {

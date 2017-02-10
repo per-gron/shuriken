@@ -15,14 +15,10 @@ add_library(shklib
   src/build_error.h
   src/build_status.h
   src/clock.h
-  src/cleaning_file_system.cpp
-  src/cleaning_file_system.h
   src/command_runner.h
   src/dependency_type.h
   src/dry_run_command_runner.cpp
   src/dry_run_command_runner.h
-  src/dry_run_file_system.cpp
-  src/dry_run_file_system.h
   src/dummy_build_status.h
   src/edit_distance.cpp
   src/edit_distance.h
@@ -31,13 +27,22 @@ add_library(shklib
   src/eval_string.cpp
   src/eval_string.h
   src/exit_status.h
-  src/file_id.h
-  src/file_lock.cpp
-  src/file_lock.h
-  src/file_system.cpp
-  src/file_system.h
-  src/fingerprint.cpp
-  src/fingerprint.h
+  src/fs/cleaning_file_system.cpp
+  src/fs/cleaning_file_system.h
+  src/fs/dry_run_file_system.cpp
+  src/fs/dry_run_file_system.h
+  src/fs/file_id.h
+  src/fs/file_lock.cpp
+  src/fs/file_lock.h
+  src/fs/file_system.cpp
+  src/fs/file_system.h
+  src/fs/fingerprint.cpp
+  src/fs/fingerprint.h
+  src/fs/path.cpp
+  src/fs/path.h
+  src/fs/path_error.h
+  src/fs/persistent_file_system.cpp
+  src/fs/persistent_file_system.h
   src/hash.h
   src/indexed_manifest.cpp
   src/indexed_manifest.h
@@ -60,11 +65,6 @@ add_library(shklib
   src/manifest.h
   src/optional.h
   src/parse_error.h
-  src/path.cpp
-  src/path.h
-  src/path_error.h
-  src/persistent_file_system.cpp
-  src/persistent_file_system.h
   src/real_command_runner.h
   src/real_command_runner_posix.cpp
   src/rule.cpp
@@ -109,17 +109,19 @@ set_target_properties(shk PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk_test
   test/build_test.cpp
-  test/cleaning_file_system_test.cpp
   test/dry_run_command_runner_test.cpp
-  test/dry_run_file_system_test.cpp
   test/dummy_command_runner.cpp
   test/dummy_command_runner.h
   test/dummy_command_runner_test.cpp
   test/edit_distance_test.cpp
-  test/file_id_test.cpp
-  test/file_lock_test.cpp
-  test/file_system_test.cpp
-  test/fingerprint_test.cpp
+  test/fs/cleaning_file_system_test.cpp
+  test/fs/dry_run_file_system_test.cpp
+  test/fs/file_id_test.cpp
+  test/fs/file_lock_test.cpp
+  test/fs/file_system_test.cpp
+  test/fs/fingerprint_test.cpp
+  test/fs/path_test.cpp
+  test/fs/persistent_file_system_test.cpp
   test/generators.cpp
   test/generators.h
   test/in_memory_file_system.cpp
@@ -137,8 +139,6 @@ add_executable(shk_test
   test/main.cpp
   test/manifest_test.cpp
   test/optional_test.cpp
-  test/path_test.cpp
-  test/persistent_file_system_test.cpp
   test/properties.cpp
   test/real_command_runner_test.cpp
   test/sandbox_parser_test.cpp

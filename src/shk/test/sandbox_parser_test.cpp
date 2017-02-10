@@ -1,6 +1,6 @@
 #include <catch.hpp>
 
-#include "path.h"
+#include "fs/path.h"
 #include "sandbox_parser.h"
 
 namespace shk {

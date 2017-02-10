@@ -1,9 +1,9 @@
 #include <catch.hpp>
 
+#include "fs/path.h"
 #include "in_memory_file_system.h"
 #include "in_memory_invocation_log.h"
 #include "log/invocations.h"
-#include "path.h"
 
 namespace shk {
 

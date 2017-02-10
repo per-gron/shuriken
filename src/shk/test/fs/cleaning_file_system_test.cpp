@@ -3,8 +3,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "in_memory_file_system.h"
-#include "cleaning_file_system.h"
+#include "fs/cleaning_file_system.h"
+
+#include "../in_memory_file_system.h"
 
 namespace shk {
 

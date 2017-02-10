@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "file_system.h"
+#include "fs/file_system.h"
 
 namespace shk {
 namespace detail {

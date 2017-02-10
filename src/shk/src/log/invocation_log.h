@@ -6,10 +6,10 @@
 #include <vector>
 
 #include "dependency_type.h"
-#include "fingerprint.h"
+#include "fs/fingerprint.h"
+#include "fs/path.h"
 #include "hash.h"
 #include "io_error.h"
-#include "path.h"
 
 namespace shk {
 

@@ -5,7 +5,7 @@
 
 #include "hash.h"
 #include "optional.h"
-#include "path.h"
+#include "fs/path.h"
 
 namespace shk {
 

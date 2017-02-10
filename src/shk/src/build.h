@@ -7,7 +7,7 @@
 #include "build_status.h"
 #include "clock.h"
 #include "command_runner.h"
-#include "file_system.h"
+#include "fs/file_system.h"
 #include "indexed_manifest.h"
 #include "log/invocation_log.h"
 #include "log/invocations.h"

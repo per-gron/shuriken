@@ -13,7 +13,7 @@
 // limitations under the License.
 
 
-#include "dry_run_file_system.h"
+#include "fs/dry_run_file_system.h"
 
 namespace shk {
 namespace {

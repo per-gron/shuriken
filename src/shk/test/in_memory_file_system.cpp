@@ -6,7 +6,7 @@
 
 #include <blake2.h>
 
-#include "path.h"
+#include "fs/path.h"
 
 namespace shk {
 

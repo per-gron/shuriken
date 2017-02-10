@@ -3,7 +3,7 @@
 
 #include "build.h"
 #include "build_status.h"
-#include "path.h"
+#include "fs/path.h"
 #include "step.h"
 
 #include "dummy_command_runner.h"

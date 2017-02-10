@@ -1,10 +1,10 @@
 #include <catch.hpp>
 #include <rapidcheck/catch.h>
 
-#include "path.h"
+#include "fs/path.h"
 
-#include "generators.h"
-#include "in_memory_file_system.h"
+#include "../generators.h"
+#include "../in_memory_file_system.h"
 
 namespace shk {
 namespace {

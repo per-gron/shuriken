@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "file_system.h"
+#include "fs/file_system.h"
 #include "parse_error.h"
 #include "step.h"
 

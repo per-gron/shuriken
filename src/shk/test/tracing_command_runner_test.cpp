@@ -1,6 +1,6 @@
 #include <catch.hpp>
 
-#include "persistent_file_system.h"
+#include "fs/persistent_file_system.h"
 #include "real_command_runner.h"
 #include "tracing_command_runner.h"
 #include "util.h"

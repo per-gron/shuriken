@@ -1,6 +1,6 @@
 #include <catch.hpp>
 
-#include "path.h"
+#include "fs/path.h"
 #include "step.h"
 
 #include "in_memory_file_system.h"

@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <errno.h>
 
-#include "fingerprint.h"
+#include "fs/fingerprint.h"
 
 namespace shk {
 

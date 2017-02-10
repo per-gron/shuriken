@@ -4,8 +4,8 @@
 #include <vector>
 
 #include "build_error.h"
+#include "fs/path.h"
 #include "manifest.h"
-#include "path.h"
 
 namespace shk {
 

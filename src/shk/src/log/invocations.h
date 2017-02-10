@@ -3,10 +3,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "file_id.h"
-#include "fingerprint.h"
+#include "fs/file_id.h"
+#include "fs/fingerprint.h"
+#include "fs/path.h"
 #include "hash.h"
-#include "path.h"
 
 namespace shk {
 
