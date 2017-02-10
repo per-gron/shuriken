@@ -95,14 +95,6 @@ Large things remaining to do:
 * Handle build pools
 * Fix cleaning:
   * Don't clean things written by generator rules
-  * Test to clean build steps that create directories, for example mkdir
-    -> this should happen both implicitly, when the manifest changes, and for explicit cleans
-      @with_testdir('mkdir')
-      def test_clean_mkdir_build(self):
-        subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
-        self.assertTrue(os.path.isdir('out'))
-        subprocess.check_call(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
-        self.assertFalse(os.path.exists('out'))
   * Test that directories created by the build system are cleaned
     @with_testdir('target_in_subdir')
     def test_full_clean_with_created_dirs(self):

@@ -52,7 +52,6 @@ class IntegrationTest(unittest.TestCase):
     output = run_cmd(shk + ' -t list; exit 0')
     self.assertRegexpMatches(output, r'shk subtools:')
     self.assertRegexpMatches(output, r'clean')
-    self.assertRegexpMatches(output, r'commands')
     self.assertRegexpMatches(output, r'deps')
     self.assertRegexpMatches(output, r'query')
     self.assertRegexpMatches(output, r'targets')
