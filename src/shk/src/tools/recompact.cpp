@@ -1,6 +1,6 @@
 #include "recompact.h"
 
-#include "persistent_invocation_log.h"
+#include "log/persistent_invocation_log.h"
 #include "util.h"
 
 namespace shk {

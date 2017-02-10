@@ -1,10 +1,10 @@
 #include <catch.hpp>
 
+#include "log/persistent_invocation_log.h"
 #include "path.h"
-#include "persistent_invocation_log.h"
 
-#include "in_memory_file_system.h"
-#include "in_memory_invocation_log.h"
+#include "../in_memory_file_system.h"
+#include "../in_memory_invocation_log.h"
 
 namespace shk {
 namespace {

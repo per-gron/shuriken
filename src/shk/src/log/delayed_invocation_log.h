@@ -1,7 +1,7 @@
 #pragma once
 
 #include "clock.h"
-#include "invocation_log.h"
+#include "log/invocation_log.h"
 
 namespace shk {
 

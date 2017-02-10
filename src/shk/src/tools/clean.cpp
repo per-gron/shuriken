@@ -20,7 +20,7 @@
 #include "../cleaning_file_system.h"
 #include "../dry_run_command_runner.h"
 #include "../dummy_build_status.h"
-#include "../dummy_invocation_log.h"
+#include "../log/dummy_invocation_log.h"
 #include "../util.h"
 
 namespace shk {

@@ -18,16 +18,12 @@ add_library(shklib
   src/cleaning_file_system.cpp
   src/cleaning_file_system.h
   src/command_runner.h
-  src/delayed_invocation_log.cpp
-  src/delayed_invocation_log.h
   src/dependency_type.h
   src/dry_run_command_runner.cpp
   src/dry_run_command_runner.h
   src/dry_run_file_system.cpp
   src/dry_run_file_system.h
-  src/dry_run_invocation_log.h
   src/dummy_build_status.h
-  src/dummy_invocation_log.h
   src/edit_distance.cpp
   src/edit_distance.h
   src/eval_env.cpp
@@ -45,15 +41,21 @@ add_library(shklib
   src/hash.h
   src/indexed_manifest.cpp
   src/indexed_manifest.h
-  src/invocation_log.cpp
-  src/invocation_log.h
-  src/invocations.h
   src/lexer.h
   src/limited_command_runner.cpp
   src/limited_command_runner.h
   src/line_printer.cpp
   src/line_printer.h
   src/io_error.h
+  src/log/delayed_invocation_log.cpp
+  src/log/delayed_invocation_log.h
+  src/log/dry_run_invocation_log.h
+  src/log/dummy_invocation_log.h
+  src/log/invocation_log.cpp
+  src/log/invocation_log.h
+  src/log/invocations.h
+  src/log/persistent_invocation_log.cpp
+  src/log/persistent_invocation_log.h
   src/manifest.cpp
   src/manifest.h
   src/optional.h
@@ -63,8 +65,6 @@ add_library(shklib
   src/path_error.h
   src/persistent_file_system.cpp
   src/persistent_file_system.h
-  src/persistent_invocation_log.cpp
-  src/persistent_invocation_log.h
   src/real_command_runner.h
   src/real_command_runner_posix.cpp
   src/rule.cpp
@@ -110,7 +110,6 @@ set_target_properties(shk PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 add_executable(shk_test
   test/build_test.cpp
   test/cleaning_file_system_test.cpp
-  test/delayed_invocation_log_test.cpp
   test/dry_run_command_runner_test.cpp
   test/dry_run_file_system_test.cpp
   test/dummy_command_runner.cpp
@@ -133,12 +132,13 @@ add_executable(shk_test
   test/lexer_test.cpp
   test/limited_command_runner_test.cpp
   test/line_printer_test.cpp
+  test/log/delayed_invocation_log_test.cpp
+  test/log/persistent_invocation_log_test.cpp
   test/main.cpp
   test/manifest_test.cpp
   test/optional_test.cpp
   test/path_test.cpp
   test/persistent_file_system_test.cpp
-  test/persistent_invocation_log_test.cpp
   test/properties.cpp
   test/real_command_runner_test.cpp
   test/sandbox_parser_test.cpp

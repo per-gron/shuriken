@@ -4,8 +4,8 @@
 
 #include "clock.h"
 #include "file_system.h"
-#include "invocation_log.h"
-#include "invocations.h"
+#include "log/invocation_log.h"
+#include "log/invocations.h"
 #include "parse_error.h"
 #include "path.h"
 
