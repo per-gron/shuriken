@@ -5,8 +5,8 @@
 #include <vector>
 
 #include "fs/file_system.h"
+#include "manifest/step.h"
 #include "parse_error.h"
-#include "step.h"
 
 namespace shk {
 

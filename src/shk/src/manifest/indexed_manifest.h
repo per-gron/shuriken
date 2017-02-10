@@ -5,7 +5,7 @@
 
 #include "build_error.h"
 #include "fs/path.h"
-#include "manifest.h"
+#include "manifest/manifest.h"
 
 namespace shk {
 

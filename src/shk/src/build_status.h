@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "step.h"
+#include "manifest/step.h"
 
 namespace shk {
 

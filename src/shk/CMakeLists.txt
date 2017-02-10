@@ -1,7 +1,7 @@
 add_custom_command(
   OUTPUT lexer.cpp
-  COMMAND re2c -b -i --no-generation-date -o lexer.cpp ${CMAKE_CURRENT_LIST_DIR}/src/lexer.in.cpp
-  DEPENDS src/lexer.in.cpp re2c)
+  COMMAND re2c -b -i --no-generation-date -o lexer.cpp ${CMAKE_CURRENT_LIST_DIR}/src/manifest/lexer.in.cpp
+  DEPENDS src/manifest/lexer.in.cpp re2c)
 
 add_custom_command(
   OUTPUT sandbox_parser.cpp
@@ -22,10 +22,6 @@ add_library(shklib
   src/dummy_build_status.h
   src/edit_distance.cpp
   src/edit_distance.h
-  src/eval_env.cpp
-  src/eval_env.h
-  src/eval_string.cpp
-  src/eval_string.h
   src/exit_status.h
   src/fs/cleaning_file_system.cpp
   src/fs/cleaning_file_system.h
@@ -44,13 +40,23 @@ add_library(shklib
   src/fs/persistent_file_system.cpp
   src/fs/persistent_file_system.h
   src/hash.h
-  src/indexed_manifest.cpp
-  src/indexed_manifest.h
-  src/lexer.h
   src/limited_command_runner.cpp
   src/limited_command_runner.h
   src/line_printer.cpp
   src/line_printer.h
+  src/manifest/eval_env.cpp
+  src/manifest/eval_env.h
+  src/manifest/eval_string.cpp
+  src/manifest/eval_string.h
+  src/manifest/indexed_manifest.cpp
+  src/manifest/indexed_manifest.h
+  src/manifest/lexer.h
+  src/manifest/manifest.cpp
+  src/manifest/manifest.h
+  src/manifest/rule.cpp
+  src/manifest/rule.h
+  src/manifest/step.cpp
+  src/manifest/step.h
   src/io_error.h
   src/log/delayed_invocation_log.cpp
   src/log/delayed_invocation_log.h
@@ -61,17 +67,11 @@ add_library(shklib
   src/log/invocations.h
   src/log/persistent_invocation_log.cpp
   src/log/persistent_invocation_log.h
-  src/manifest.cpp
-  src/manifest.h
   src/optional.h
   src/parse_error.h
   src/real_command_runner.h
   src/real_command_runner_posix.cpp
-  src/rule.cpp
-  src/rule.h
   src/sandbox_parser.h
-  src/step.cpp
-  src/step.h
   src/stopwatch.h
   src/string_piece.h
   src/terminal_build_status.cpp
@@ -130,19 +130,19 @@ add_executable(shk_test
   test/in_memory_invocation_log.cpp
   test/in_memory_invocation_log.h
   test/in_memory_invocation_log_test.cpp
-  test/indexed_manifest_test.cpp
-  test/lexer_test.cpp
   test/limited_command_runner_test.cpp
   test/line_printer_test.cpp
   test/log/delayed_invocation_log_test.cpp
   test/log/persistent_invocation_log_test.cpp
   test/main.cpp
-  test/manifest_test.cpp
+  test/manifest/indexed_manifest_test.cpp
+  test/manifest/lexer_test.cpp
+  test/manifest/manifest_test.cpp
+  test/manifest/step_test.cpp
   test/optional_test.cpp
   test/properties.cpp
   test/real_command_runner_test.cpp
   test/sandbox_parser_test.cpp
-  test/step_test.cpp
   test/stopwatch_test.cpp
   test/tracing_command_runner_test.cpp
   test/util_test.cpp)

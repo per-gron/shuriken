@@ -18,8 +18,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "eval_env.h"
-#include "lexer.h"
+#include "manifest/eval_env.h"
+#include "manifest/lexer.h"
 #include "version.h"
 
 namespace shk {

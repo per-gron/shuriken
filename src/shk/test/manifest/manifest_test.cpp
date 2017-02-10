@@ -17,9 +17,9 @@
 
 #include <catch.hpp>
 
-#include "manifest.h"
+#include "manifest/manifest.h"
 
-#include "in_memory_file_system.h"
+#include "../in_memory_file_system.h"
 
 namespace shk {
 namespace {

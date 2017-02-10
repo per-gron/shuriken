@@ -1,4 +1,4 @@
-#include "indexed_manifest.h"
+#include "manifest/indexed_manifest.h"
 
 namespace shk {
 namespace detail {

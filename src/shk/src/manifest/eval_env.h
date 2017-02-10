@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "eval_string.h"
-#include "rule.h"
+#include "manifest/eval_string.h"
+#include "manifest/rule.h"
 #include "string_piece.h"
 
 namespace shk {

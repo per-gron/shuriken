@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "lexer.h"
+#include "manifest/lexer.h"
 
 #include <stdio.h>
 
-#include "eval_env.h"
-#include "eval_string.h"
+#include "manifest/eval_env.h"
+#include "manifest/eval_string.h"
 #include "util.h"
 
 namespace shk {

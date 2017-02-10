@@ -1,9 +1,9 @@
 #include <catch.hpp>
 
 #include "fs/path.h"
-#include "step.h"
+#include "manifest/step.h"
 
-#include "in_memory_file_system.h"
+#include "../in_memory_file_system.h"
 
 namespace shk {
 

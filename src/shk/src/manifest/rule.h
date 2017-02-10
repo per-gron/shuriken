@@ -16,7 +16,7 @@
 
 #include <unordered_map>
 
-#include "eval_string.h"
+#include "manifest/eval_string.h"
 
 namespace shk {
 

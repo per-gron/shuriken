@@ -1,8 +1,8 @@
 #include <catch.hpp>
 
-#include "indexed_manifest.h"
+#include "manifest/indexed_manifest.h"
 
-#include "in_memory_file_system.h"
+#include "../in_memory_file_system.h"
 
 namespace shk {
 namespace detail {

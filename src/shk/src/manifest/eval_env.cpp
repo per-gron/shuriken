@@ -14,8 +14,8 @@
 
 #include <assert.h>
 
-#include "eval_env.h"
 #include "fs/path.h"
+#include "manifest/eval_env.h"
 #include "util.h"
 
 namespace shk {

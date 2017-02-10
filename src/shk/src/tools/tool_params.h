@@ -17,8 +17,8 @@
 #include <string>
 
 #include "../clock.h"
-#include "../indexed_manifest.h"
 #include "../log/invocations.h"
+#include "../manifest/indexed_manifest.h"
 
 namespace shk {
 

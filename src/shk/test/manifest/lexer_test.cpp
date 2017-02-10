@@ -14,8 +14,8 @@
 
 #include <catch.hpp>
 
-#include "eval_env.h"
-#include "lexer.h"
+#include "manifest/eval_env.h"
+#include "manifest/lexer.h"
 
 namespace shk {
 namespace {
