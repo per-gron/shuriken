@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "sandbox_parser.h"
+#include "cmd/sandbox_parser.h"
 
 #include "parse_error.h"
 #include "string_piece.h"

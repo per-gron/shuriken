@@ -1,8 +1,9 @@
 #include <catch.hpp>
 
-#include "dummy_command_runner.h"
-#include "in_memory_file_system.h"
-#include "limited_command_runner.h"
+#include "cmd/limited_command_runner.h"
+
+#include "../in_memory_file_system.h"
+#include "../dummy_command_runner.h"
 
 namespace shk {
 

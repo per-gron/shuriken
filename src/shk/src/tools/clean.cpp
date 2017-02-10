@@ -17,7 +17,7 @@
 #include <errno.h>
 
 #include "../build.h"
-#include "../dry_run_command_runner.h"
+#include "../cmd/dry_run_command_runner.h"
 #include "../dummy_build_status.h"
 #include "../fs/cleaning_file_system.h"
 #include "../log/dummy_invocation_log.h"

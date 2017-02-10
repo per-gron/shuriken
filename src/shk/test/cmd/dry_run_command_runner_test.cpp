@@ -1,6 +1,6 @@
 #include <catch.hpp>
 
-#include "dry_run_command_runner.h"
+#include "cmd/dry_run_command_runner.h"
 
 namespace shk {
 

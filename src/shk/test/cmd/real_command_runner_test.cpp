@@ -14,7 +14,7 @@
 
 #include <catch.hpp>
 
-#include "real_command_runner.h"
+#include "cmd/real_command_runner.h"
 
 #include <string>
 

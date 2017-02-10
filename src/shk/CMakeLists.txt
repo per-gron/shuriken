@@ -5,8 +5,8 @@ add_custom_command(
 
 add_custom_command(
   OUTPUT sandbox_parser.cpp
-  COMMAND re2c -b -i --no-generation-date -o sandbox_parser.cpp ${CMAKE_CURRENT_LIST_DIR}/src/sandbox_parser.in.cpp
-  DEPENDS src/sandbox_parser.in.cpp re2c)
+  COMMAND re2c -b -i --no-generation-date -o sandbox_parser.cpp ${CMAKE_CURRENT_LIST_DIR}/src/cmd/sandbox_parser.in.cpp
+  DEPENDS src/cmd/sandbox_parser.in.cpp re2c)
 
 add_library(shklib
   src/build.h
@@ -15,10 +15,17 @@ add_library(shklib
   src/build_error.h
   src/build_status.h
   src/clock.h
-  src/command_runner.h
+  src/cmd/command_runner.h
+  src/cmd/dry_run_command_runner.cpp
+  src/cmd/dry_run_command_runner.h
+  src/cmd/limited_command_runner.cpp
+  src/cmd/limited_command_runner.h
+  src/cmd/real_command_runner.h
+  src/cmd/real_command_runner_posix.cpp
+  src/cmd/sandbox_parser.h
+  src/cmd/tracing_command_runner.cpp
+  src/cmd/tracing_command_runner.h
   src/dependency_type.h
-  src/dry_run_command_runner.cpp
-  src/dry_run_command_runner.h
   src/dummy_build_status.h
   src/edit_distance.cpp
   src/edit_distance.h
@@ -40,8 +47,6 @@ add_library(shklib
   src/fs/persistent_file_system.cpp
   src/fs/persistent_file_system.h
   src/hash.h
-  src/limited_command_runner.cpp
-  src/limited_command_runner.h
   src/line_printer.cpp
   src/line_printer.h
   src/manifest/eval_env.cpp
@@ -69,9 +74,6 @@ add_library(shklib
   src/log/persistent_invocation_log.h
   src/optional.h
   src/parse_error.h
-  src/real_command_runner.h
-  src/real_command_runner_posix.cpp
-  src/sandbox_parser.h
   src/stopwatch.h
   src/string_piece.h
   src/terminal_build_status.cpp
@@ -88,8 +90,6 @@ add_library(shklib
   src/tools/recompact.h
   src/tools/targets.cpp
   src/tools/targets.h
-  src/tracing_command_runner.cpp
-  src/tracing_command_runner.h
   src/util.cpp
   src/util.h
   src/version.cpp
@@ -109,7 +109,11 @@ set_target_properties(shk PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk_test
   test/build_test.cpp
-  test/dry_run_command_runner_test.cpp
+  test/cmd/dry_run_command_runner_test.cpp
+  test/cmd/limited_command_runner_test.cpp
+  test/cmd/real_command_runner_test.cpp
+  test/cmd/sandbox_parser_test.cpp
+  test/cmd/tracing_command_runner_test.cpp
   test/dummy_command_runner.cpp
   test/dummy_command_runner.h
   test/dummy_command_runner_test.cpp
@@ -130,7 +134,6 @@ add_executable(shk_test
   test/in_memory_invocation_log.cpp
   test/in_memory_invocation_log.h
   test/in_memory_invocation_log_test.cpp
-  test/limited_command_runner_test.cpp
   test/line_printer_test.cpp
   test/log/delayed_invocation_log_test.cpp
   test/log/persistent_invocation_log_test.cpp
@@ -141,10 +144,7 @@ add_executable(shk_test
   test/manifest/step_test.cpp
   test/optional_test.cpp
   test/properties.cpp
-  test/real_command_runner_test.cpp
-  test/sandbox_parser_test.cpp
   test/stopwatch_test.cpp
-  test/tracing_command_runner_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shk_test PUBLIC "${CMAKE_SOURCE_DIR}/vendor/rapidcheck/extras/catch/include")

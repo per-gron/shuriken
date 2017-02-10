@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "command_runner.h"
+#include "cmd/command_runner.h"
 
 namespace shk {
 

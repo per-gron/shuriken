@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "limited_command_runner.h"
+#include "cmd/limited_command_runner.h"
 
 namespace shk {
 namespace {

@@ -1,7 +1,7 @@
 #include <catch.hpp>
 
+#include "cmd/sandbox_parser.h"
 #include "fs/path.h"
-#include "sandbox_parser.h"
 
 namespace shk {
 namespace {

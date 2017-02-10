@@ -6,7 +6,7 @@
 #include "build_error.h"
 #include "build_status.h"
 #include "clock.h"
-#include "command_runner.h"
+#include "cmd/command_runner.h"
 #include "fs/file_system.h"
 #include "log/invocation_log.h"
 #include "log/invocations.h"

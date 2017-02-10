@@ -1,8 +1,8 @@
-#include "tracing_command_runner.h"
+#include "cmd/tracing_command_runner.h"
 
 #include <assert.h>
 
-#include "sandbox_parser.h"
+#include "cmd/sandbox_parser.h"
 #include "util.h"
 
 namespace shk {

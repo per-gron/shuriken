@@ -1,8 +1,8 @@
 #include <catch.hpp>
 
+#include "cmd/real_command_runner.h"
+#include "cmd/tracing_command_runner.h"
 #include "fs/persistent_file_system.h"
-#include "real_command_runner.h"
-#include "tracing_command_runner.h"
 #include "util.h"
 
 namespace shk {
