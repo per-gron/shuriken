@@ -78,8 +78,6 @@ add_library(shklib
   src/terminal_build_status.h
   src/tools/clean.cpp
   src/tools/clean.h
-  src/tools/commands.cpp
-  src/tools/commands.h
   src/tools/compilation_database.cpp
   src/tools/compilation_database.h
   src/tools/deps.cpp

@@ -48,7 +48,6 @@
 #include "real_command_runner.h"
 #include "terminal_build_status.h"
 #include "tools/clean.h"
-#include "tools/commands.h"
 #include "tools/compilation_database.h"
 #include "tools/deps.h"
 #include "tools/query.h"
@@ -278,8 +277,6 @@ const Tool *chooseTool(const std::string &tool_name) {
   static const Tool kTools[] = {
     { "clean", "clean built files",
       Tool::RUN_AFTER_LOG, &toolClean },
-    { "commands", "list all commands required to rebuild given targets",
-      Tool::RUN_AFTER_LOAD, &toolCommands },
     { "deps", "show dependencies stored in the invocation log",
       Tool::RUN_AFTER_LOG, &toolDeps },
     { "query", "show inputs/outputs for a path",
