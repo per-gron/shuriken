@@ -103,28 +103,28 @@ struct lookup {
 };
 
 struct th_info {
-  th_info_t  next;
-  uintptr_t  thread;
-  uintptr_t  child_thread;
+  th_info_t next;
+  uintptr_t thread;
+  uintptr_t child_thread;
 
-  int  in_filemgr;
-  int  in_hfs_update;
-  int  pid;
-  int  type;
-  int  arg1;
-  int  arg2;
-  int  arg3;
-  int  arg4;
-  int  arg5;
-  int  arg6;
-  int  arg7;
-  int  arg8;
-  int  waited;
-  uint64_t  vnodeid;
+  int in_filemgr;
+  int in_hfs_update;
+  int pid;
+  int type;
+  int arg1;
+  int arg2;
+  int arg3;
+  int arg4;
+  int arg5;
+  int arg6;
+  int arg7;
+  int arg8;
+  int waited;
+  uint64_t vnodeid;
   const char *nameptr;
   uintptr_t *pathptr;
-  int  pn_scall_index;
-  int  pn_work_index;
+  int pn_scall_index;
+  int pn_work_index;
   struct lookup lookups[MAX_PATHNAMES];
 };
 
@@ -135,30 +135,30 @@ struct threadmap {
   threadmap_t tm_next;
 
   uintptr_t tm_thread;
-  unsigned int  tm_setsize; /* this is a bit count */
-  unsigned long  *tm_setptr;  /* file descripter bitmap */
-  char    tm_command[MAXCOMLEN + 1];
+  unsigned int tm_setsize; /* this is a bit count */
+  unsigned long *tm_setptr;  /* file descripter bitmap */
+  char tm_command[MAXCOMLEN + 1];
 };
 
 
 typedef struct vnode_info * vnode_info_t;
 
 struct vnode_info {
-  vnode_info_t  vn_next;
-  uint64_t  vn_id;
+  vnode_info_t vn_next;
+  uint64_t vn_id;
   uintptr_t vn_pathname[NUMPARMS + 1];
 };
 
 typedef struct meta_info * meta_info_t;
 
 struct meta_info {
-  meta_info_t     m_next;
-  uint64_t        m_blkno;
-  const char     *m_nameptr;
+  meta_info_t m_next;
+  uint64_t m_blkno;
+  const char *m_nameptr;
 };
 
-#define HASH_SIZE       1024
-#define HASH_MASK       (HASH_SIZE - 1)
+#define HASH_SIZE 1024
+#define HASH_MASK (HASH_SIZE - 1)
 
 th_info_t th_info_hash[HASH_SIZE];
 th_info_t th_info_freelist;
@@ -167,12 +167,12 @@ threadmap_t threadmap_hash[HASH_SIZE];
 threadmap_t threadmap_freelist;
 
 
-#define VN_HASH_SHIFT   3
-#define VN_HASH_SIZE  16384
-#define VN_HASH_MASK  (VN_HASH_SIZE - 1)
+#define VN_HASH_SHIFT 3
+#define VN_HASH_SIZE 16384
+#define VN_HASH_MASK (VN_HASH_SIZE - 1)
 
-vnode_info_t  vn_info_hash[VN_HASH_SIZE];
-meta_info_t     m_info_hash[VN_HASH_SIZE];
+vnode_info_t vn_info_hash[VN_HASH_SIZE];
+meta_info_t m_info_hash[VN_HASH_SIZE];
 
 
 int filemgr_in_progress = 0;
@@ -187,24 +187,24 @@ char *arguments = 0;
 int argmax = 0;
 
 
-#define USLEEP_MIN  1
+#define USLEEP_MIN 1
 #define USLEEP_BEHIND 2
-#define USLEEP_MAX  32
+#define USLEEP_MAX 32
 int usleep_ms = USLEEP_MIN;
 
 /*
  * Filesystem only output filter
  * Default of zero means report all activity - no filtering
  */
-#define FILESYS_FILTER    0x01
-#define EXEC_FILTER   0x08
-#define PATHNAME_FILTER   0x10
-#define DEFAULT_DO_NOT_FILTER  0x00
+#define FILESYS_FILTER 0x01
+#define EXEC_FILTER 0x08
+#define PATHNAME_FILTER 0x10
+#define DEFAULT_DO_NOT_FILTER 0x00
 
 int filter_mode = DEFAULT_DO_NOT_FILTER;
 
 #define NFS_DEV -1
-#define CS_DEV  -2
+#define CS_DEV -2
 
 extern "C" int reexec_to_match_kernel();
 
