@@ -1579,7 +1579,6 @@ void format_print(
     case Fmt::MOUNT:
     case Fmt::UNMOUNT:
     case Fmt::LIO_LISTIO:
-    case Fmt::SOCKET:
     case Fmt::AIO:
     case Fmt::AIO_RETURN:
     case Fmt::AIO_CANCEL:
