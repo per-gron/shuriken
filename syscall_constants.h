@@ -1,5 +1,9 @@
 #pragma once
 
+static constexpr int CLASS_MASK = 0xff000000;
+static constexpr int CSC_MASK = 0xffff0000;
+#define BSC_INDEX(type) ((type >> 2) & 0x3fff)
+
 static constexpr int MSC_map_fd = 0x010c00ac;
 
 static constexpr int BSC_BASE = 0x040C0000;
