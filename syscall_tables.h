@@ -110,10 +110,10 @@ std::array<bsd_syscall, MAX_BSD_SYSCALL> make_bsd_syscall_table() {
     { BSC_fsetxattr, "fsetxattr", Fmt::FD },
     { BSC_fremovexattr, "fremovexattr", Fmt::FD },
     { BSC_flistxattr, "flistxattr", Fmt::FD },
-    { BSC_fstat, "fstat", Fmt::FD },
-    { BSC_fstat64, "fstat64", Fmt::FD },
-    { BSC_fstat_extended, "fstat_extended", Fmt::FD },
-    { BSC_fstat64_extended, "fstat64_extended", Fmt::FD },
+    { BSC_fstat, "fstat", Fmt::FD },  // TODO(peck): Handle this as read metadata
+    { BSC_fstat64, "fstat64", Fmt::FD },  // TODO(peck): Handle this as read metadata
+    { BSC_fstat_extended, "fstat_extended", Fmt::FD },  // TODO(peck): Handle this as read metadata
+    { BSC_fstat64_extended, "fstat64_extended", Fmt::FD },  // TODO(peck): Handle this as read metadata
     { BSC_lstat, "lstat", Fmt::DEFAULT },
     { BSC_lstat64, "lstat64", Fmt::DEFAULT },
     { BSC_lstat_extended, "lstat_extended", Fmt::DEFAULT },
@@ -129,7 +129,7 @@ std::array<bsd_syscall, MAX_BSD_SYSCALL> make_bsd_syscall_table() {
     { BSC_fchmod_extended, "fchmod_extended", Fmt::FCHMOD_EXT },
     { BSC_chown, "chown", Fmt::DEFAULT },
     { BSC_lchown, "lchown", Fmt::DEFAULT },
-    { BSC_fchown, "fchown", Fmt::FD },
+    { BSC_fchown, "fchown", Fmt::FD },  // TODO(peck): Handle this as write metadata
     { BSC_access, "access", Fmt::ACCESS },
     { BSC_access_extended, "access_extended", Fmt::DEFAULT },
     { BSC_chdir, "chdir", Fmt::DEFAULT },
@@ -145,7 +145,7 @@ std::array<bsd_syscall, MAX_BSD_SYSCALL> make_bsd_syscall_table() {
     { BSC_fchflags, "fchflags", Fmt::FCHFLAGS },
     { BSC_fchdir, "fchdir", Fmt::FD },
     { BSC_pthread_fchdir, "pthread_fchdir", Fmt::FD },
-    { BSC_futimes, "futimes", Fmt::FD },
+    { BSC_futimes, "futimes", Fmt::FD },  // TODO(peck): Handle this as write metadata
     { BSC_sync, "sync", Fmt::DEFAULT },
     { BSC_symlink, "symlink", Fmt::DEFAULT },
     { BSC_readlink, "readlink", Fmt::DEFAULT },
@@ -183,7 +183,7 @@ std::array<bsd_syscall, MAX_BSD_SYSCALL> make_bsd_syscall_table() {
     { BSC_setattrlist, "setattrlist", Fmt::DEFAULT },
     { BSC_fgetattrlist, "fgetattrlist", Fmt::FD },
     { BSC_fsetattrlist, "fsetattrlist", Fmt::FD },
-    { BSC_getdirentriesattr, "getdirentriesattr", Fmt::FD },
+    { BSC_getdirentriesattr, "getdirentriesattr", Fmt::FD },  // TODO(peck):: Handle this as read metadata
     { BSC_exchangedata, "exchangedata", Fmt::DEFAULT },
     { BSC_rename, "rename", Fmt::DEFAULT },
     { BSC_copyfile, "copyfile", Fmt::DEFAULT },
