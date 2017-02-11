@@ -23,10 +23,11 @@
  */
 
 /*
-cc -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRIVATE -D__APPLE_PRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.cpp
+clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRIVATE -D__APPLE_PRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.cpp
 */
 
 #include <array>
+#include <tuple>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -566,179 +567,189 @@ struct bsd_syscall {
   const char *sc_name = nullptr;
   int sc_format = FMT_DEFAULT;
 };
-static std::array<bsd_syscall, MAX_BSD_SYSCALL> bsd_syscalls{};
 
+std::array<bsd_syscall, MAX_BSD_SYSCALL> make_bsd_syscall_table() {
+  static const std::tuple<int, const char *, int> bsd_syscall_table[] = {
+    { BSC_sendfile, "sendfile", FMT_FD /* this should be changed to FMT_SENDFILE once we add an extended info trace event */ },
+    { BSC_recvmsg, "recvmsg", FMT_FD_IO },
+    { BSC_recvmsg_nocancel, "recvmsg", FMT_FD_IO },
+    { BSC_sendmsg, "sendmsg", FMT_FD_IO },
+    { BSC_sendmsg_nocancel, "sendmsg", FMT_FD_IO },
+    { BSC_recvfrom, "recvfrom", FMT_FD_IO },
+    { BSC_recvfrom_nocancel, "recvfrom", FMT_FD_IO },
+    { BSC_sendto, "sendto", FMT_FD_IO },
+    { BSC_sendto_nocancel, "sendto", FMT_FD_IO },
+    { BSC_select, "select", FMT_SELECT },
+    { BSC_select_nocancel, "select", FMT_SELECT },
+    { BSC_accept, "accept", FMT_FD_2 },
+    { BSC_accept_nocancel, "accept", FMT_FD_2 },
+    { BSC_socket, "socket", FMT_SOCKET },
+    { BSC_connect, "connect", FMT_FD },
+    { BSC_connect_nocancel, "connect", FMT_FD },
+    { BSC_bind, "bind", FMT_FD },
+    { BSC_listen, "listen", FMT_FD },
+    { BSC_mmap, "mmap", FMT_MMAP },
+    { BSC_socketpair, "socketpair", FMT_DEFAULT },
+    { BSC_getxattr, "getxattr", FMT_DEFAULT },
+    { BSC_setxattr, "setxattr", FMT_DEFAULT },
+    { BSC_removexattr, "removexattr", FMT_DEFAULT },
+    { BSC_listxattr, "listxattr", FMT_DEFAULT },
+    { BSC_stat, "stat", FMT_DEFAULT },
+    { BSC_stat64, "stat64", FMT_DEFAULT },
+    { BSC_stat_extended, "stat_extended", FMT_DEFAULT },
+    { BSC_stat64_extended, "stat_extended64", FMT_DEFAULT },
+    { BSC_mount, "mount", FMT_MOUNT },
+    { BSC_unmount, "unmount", FMT_UNMOUNT },
+    { BSC_exit, "exit", FMT_DEFAULT },
+    { BSC_execve, "execve", FMT_DEFAULT },
+    { BSC_posix_spawn, "posix_spawn", FMT_DEFAULT },
+    { BSC_open, "open", FMT_OPEN },
+    { BSC_open_nocancel, "open", FMT_OPEN },
+    { BSC_open_extended, "open_extended", FMT_OPEN },
+    { BSC_guarded_open_np, "guarded_open_np", FMT_OPEN },
+    { BSC_open_dprotected_np, "open_dprotected", FMT_OPEN },
+    { BSC_dup, "dup", FMT_FD_2 },
+    { BSC_dup2, "dup2", FMT_FD_2 },
+    { BSC_close, "close", FMT_FD },
+    { BSC_close_nocancel, "close", FMT_FD },
+    { BSC_guarded_close_np, "guarded_close_np", FMT_FD },
+    { BSC_read, "read", FMT_FD_IO },
+    { BSC_read_nocancel, "read", FMT_FD_IO },
+    { BSC_write, "write", FMT_FD_IO },
+    { BSC_write_nocancel, "write", FMT_FD_IO },
+    { BSC_fgetxattr, "fgetxattr", FMT_FD },
+    { BSC_fsetxattr, "fsetxattr", FMT_FD },
+    { BSC_fremovexattr, "fremovexattr", FMT_FD },
+    { BSC_flistxattr, "flistxattr", FMT_FD },
+    { BSC_fstat, "fstat", FMT_FD },
+    { BSC_fstat64, "fstat64", FMT_FD },
+    { BSC_fstat_extended, "fstat_extended", FMT_FD },
+    { BSC_fstat64_extended, "fstat64_extended", FMT_FD },
+    { BSC_lstat, "lstat", FMT_DEFAULT },
+    { BSC_lstat64, "lstat64", FMT_DEFAULT },
+    { BSC_lstat_extended, "lstat_extended", FMT_DEFAULT },
+    { BSC_lstat64_extended, "lstat_extended64", FMT_DEFAULT },
+    { BSC_link, "link", FMT_DEFAULT },
+    { BSC_unlink, "unlink", FMT_DEFAULT },
+    { BSC_mknod, "mknod", FMT_DEFAULT },
+    { BSC_umask, "umask", FMT_UMASK },
+    { BSC_umask_extended, "umask_extended", FMT_UMASK },
+    { BSC_chmod, "chmod", FMT_CHMOD },
+    { BSC_chmod_extended, "chmod_extended", FMT_CHMOD_EXT },
+    { BSC_fchmod, "fchmod", FMT_FCHMOD },
+    { BSC_fchmod_extended, "fchmod_extended", FMT_FCHMOD_EXT },
+    { BSC_chown, "chown", FMT_DEFAULT },
+    { BSC_lchown, "lchown", FMT_DEFAULT },
+    { BSC_fchown, "fchown", FMT_FD },
+    { BSC_access, "access", FMT_ACCESS },
+    { BSC_access_extended, "access_extended", FMT_DEFAULT },
+    { BSC_chdir, "chdir", FMT_DEFAULT },
+    { BSC_pthread_chdir, "pthread_chdir", FMT_DEFAULT },
+    { BSC_chroot, "chroot", FMT_DEFAULT },
+    { BSC_utimes, "utimes", FMT_DEFAULT },
+    { BSC_delete, "delete-Carbon", FMT_DEFAULT },
+    { BSC_undelete, "undelete", FMT_DEFAULT },
+    { BSC_revoke, "revoke", FMT_DEFAULT },
+    { BSC_fsctl, "fsctl", FMT_DEFAULT },
+    { BSC_ffsctl, "ffsctl", FMT_FD },
+    { BSC_chflags, "chflags", FMT_CHFLAGS },
+    { BSC_fchflags, "fchflags", FMT_FCHFLAGS },
+    { BSC_fchdir, "fchdir", FMT_FD },
+    { BSC_pthread_fchdir, "pthread_fchdir", FMT_FD },
+    { BSC_futimes, "futimes", FMT_FD },
+    { BSC_sync, "sync", FMT_DEFAULT },
+    { BSC_symlink, "symlink", FMT_DEFAULT },
+    { BSC_readlink, "readlink", FMT_DEFAULT },
+    { BSC_fsync, "fsync", FMT_FD },
+    { BSC_fsync_nocancel, "fsync", FMT_FD },
+    { BSC_fdatasync, "fdatasync", FMT_FD },
+    { BSC_readv, "readv", FMT_FD_IO },
+    { BSC_readv_nocancel, "readv", FMT_FD_IO },
+    { BSC_writev, "writev", FMT_FD_IO },
+    { BSC_writev_nocancel, "writev", FMT_FD_IO },
+    { BSC_pread, "pread", FMT_PREAD },
+    { BSC_pread_nocancel, "pread", FMT_PREAD },
+    { BSC_pwrite, "pwrite", FMT_PREAD },
+    { BSC_pwrite_nocancel, "pwrite", FMT_PREAD },
+    { BSC_mkdir, "mkdir", FMT_DEFAULT },
+    { BSC_mkdir_extended, "mkdir_extended", FMT_DEFAULT },
+    { BSC_mkfifo, "mkfifo", FMT_DEFAULT },
+    { BSC_mkfifo_extended, "mkfifo_extended", FMT_DEFAULT },
+    { BSC_rmdir, "rmdir", FMT_DEFAULT },
+    { BSC_statfs, "statfs", FMT_DEFAULT },
+    { BSC_statfs64, "statfs64", FMT_DEFAULT },
+    { BSC_getfsstat, "getfsstat", FMT_DEFAULT },
+    { BSC_getfsstat64, "getfsstat64", FMT_DEFAULT },
+    { BSC_fstatfs, "fstatfs", FMT_FD },
+    { BSC_fstatfs64, "fstatfs64", FMT_FD },
+    { BSC_pathconf, "pathconf", FMT_DEFAULT },
+    { BSC_fpathconf, "fpathconf", FMT_FD },
+    { BSC_getdirentries, "getdirentries", FMT_FD_IO },
+    { BSC_getdirentries64, "getdirentries64", FMT_FD_IO },
+    { BSC_lseek, "lseek", FMT_LSEEK },
+    { BSC_truncate, "truncate", FMT_TRUNC },
+    { BSC_ftruncate, "ftruncate", FMT_FTRUNC },
+    { BSC_flock, "flock", FMT_FLOCK },
+    { BSC_getattrlist, "getattrlist", FMT_DEFAULT },
+    { BSC_setattrlist, "setattrlist", FMT_DEFAULT },
+    { BSC_fgetattrlist, "fgetattrlist", FMT_FD },
+    { BSC_fsetattrlist, "fsetattrlist", FMT_FD },
+    { BSC_getdirentriesattr, "getdirentriesattr", FMT_FD },
+    { BSC_exchangedata, "exchangedata", FMT_DEFAULT },
+    { BSC_rename, "rename", FMT_DEFAULT },
+    { BSC_copyfile, "copyfile", FMT_DEFAULT },
+    { BSC_checkuseraccess, "checkuseraccess", FMT_DEFAULT },
+    { BSC_searchfs, "searchfs", FMT_DEFAULT },
+    { BSC_aio_fsync, "aio_fsync", FMT_AIO_FSYNC },
+    { BSC_aio_return, "aio_return", FMT_AIO_RETURN },
+    { BSC_aio_suspend, "aio_suspend", FMT_AIO_SUSPEND },
+    { BSC_aio_suspend_nocancel, "aio_suspend", FMT_AIO_SUSPEND },
+    { BSC_aio_cancel,  "aio_cancel", FMT_AIO_CANCEL },
+    { BSC_aio_error, "aio_error", FMT_AIO },
+    { BSC_aio_read, "aio_read", FMT_AIO },
+    { BSC_aio_write, "aio_write", FMT_AIO },
+    { BSC_lio_listio, "lio_listio", FMT_LIO_LISTIO },
+    { BSC_msync, "msync", FMT_MSYNC },
+    { BSC_msync_nocancel, "msync", FMT_MSYNC },
+    { BSC_fcntl, "fcntl", FMT_FCNTL },
+    { BSC_fcntl_nocancel, "fcntl", FMT_FCNTL },
+    { BSC_ioctl, "ioctl", FMT_IOCTL },
+    { BSC_fsgetpath, "fsgetpath", FMT_DEFAULT },
+    { BSC_getattrlistbulk, "getattrlistbulk", FMT_DEFAULT },
+    { BSC_openat, "openat", FMT_OPENAT },
+    { BSC_openat_nocancel, "openat", FMT_OPENAT },
+    { BSC_renameat, "renameat", FMT_RENAMEAT },
+    { BSC_chmodat, "chmodat", FMT_CHMODAT },
+    { BSC_chownat, "chownat", FMT_AT },
+    { BSC_fstatat, "fstatat", FMT_AT },
+    { BSC_fstatat64, "fstatat64", FMT_AT },
+    { BSC_linkat, "linkat", FMT_AT },
+    { BSC_unlinkat, "unlinkat", FMT_AT },
+    { BSC_readlinkat, "readlinkat", FMT_AT },
+    { BSC_symlinkat, "symlinkat", FMT_AT },
+    { BSC_mkdirat, "mkdirat", FMT_AT },
+    { BSC_getattrlistat, "getattrlistat", FMT_AT },
+  };
 
-int bsd_syscall_types[] = {
-  BSC_recvmsg,
-  BSC_recvmsg_nocancel,
-  BSC_sendmsg,
-  BSC_sendmsg_nocancel,
-  BSC_recvfrom,
-  BSC_recvfrom_nocancel,
-  BSC_accept,
-  BSC_accept_nocancel,
-  BSC_select,
-  BSC_select_nocancel,
-  BSC_socket,
-  BSC_connect,
-  BSC_connect_nocancel,
-  BSC_bind,
-  BSC_listen,
-  BSC_sendto,
-  BSC_sendto_nocancel,
-  BSC_socketpair,
-  BSC_read,
-  BSC_read_nocancel,
-  BSC_write,
-  BSC_write_nocancel,
-  BSC_open,
-  BSC_open_nocancel,
-  BSC_close,
-  BSC_close_nocancel,
-  BSC_link,
-  BSC_unlink,
-  BSC_chdir,
-  BSC_fchdir,
-  BSC_mknod,
-  BSC_chmod,
-  BSC_chown,
-  BSC_access,
-  BSC_chflags,
-  BSC_fchflags,
-  BSC_sync,
-  BSC_dup,
-  BSC_revoke,
-  BSC_symlink,
-  BSC_readlink,
-  BSC_exit,
-  BSC_execve,
-  BSC_posix_spawn,
-  BSC_umask,
-  BSC_chroot,
-  BSC_dup2,
-  BSC_fsync,
-  BSC_fsync_nocancel,
-  BSC_readv,
-  BSC_readv_nocancel,
-  BSC_writev,
-  BSC_writev_nocancel,
-  BSC_fchown,
-  BSC_fchmod,
-  BSC_rename,
-  BSC_mkfifo,
-  BSC_mkdir,
-  BSC_rmdir,
-  BSC_utimes,
-  BSC_futimes,
-  BSC_pread,
-  BSC_pread_nocancel,
-  BSC_pwrite,
-  BSC_pwrite_nocancel,
-  BSC_statfs,
-  BSC_fstatfs,
-  BSC_fdatasync,
-  BSC_stat,
-  BSC_fstat,
-  BSC_lstat,
-  BSC_mount,
-  BSC_unmount,
-  BSC_pathconf,
-  BSC_fpathconf,
-  BSC_getdirentries,
-  BSC_mmap,
-  BSC_lseek,
-  BSC_truncate,
-  BSC_ftruncate,
-  BSC_flock,
-  BSC_undelete,
-  BSC_open_dprotected_np,
-  BSC_getattrlist,
-  BSC_setattrlist,
-  BSC_fgetattrlist,
-  BSC_fsetattrlist,
-  BSC_getdirentriesattr,
-  BSC_exchangedata,
-  BSC_checkuseraccess,
-  BSC_searchfs,
-  BSC_delete,
-  BSC_copyfile,
-  BSC_getxattr,
-  BSC_fgetxattr,
-  BSC_setxattr,
-  BSC_fsetxattr,
-  BSC_removexattr,
-  BSC_fremovexattr,
-  BSC_listxattr,
-  BSC_flistxattr,
-  BSC_fsctl,
-  BSC_ffsctl,
-  BSC_open_extended,
-  BSC_umask_extended,
-  BSC_stat_extended,
-  BSC_lstat_extended,
-  BSC_fstat_extended,
-  BSC_chmod_extended,
-  BSC_fchmod_extended,
-  BSC_access_extended,
-  BSC_mkfifo_extended,
-  BSC_mkdir_extended,
-  BSC_aio_fsync,
-  BSC_aio_return,
-  BSC_aio_suspend,
-  BSC_aio_suspend_nocancel,
-  BSC_aio_cancel,
-  BSC_aio_error,
-  BSC_aio_read,
-  BSC_aio_write,
-  BSC_lio_listio,
-  BSC_lchown,
-  BSC_sendfile,
-  BSC_msync,
-  BSC_msync_nocancel,
-  BSC_fcntl,
-  BSC_fcntl_nocancel,
-  BSC_ioctl,
-  BSC_stat64,
-  BSC_fstat64,
-  BSC_lstat64,
-  BSC_stat64_extended,
-  BSC_lstat64_extended,
-  BSC_fstat64_extended,
-  BSC_getdirentries64,
-  BSC_statfs64,
-  BSC_fstatfs64,
-  BSC_pthread_chdir,
-  BSC_pthread_fchdir,
-  BSC_getfsstat,
-  BSC_getfsstat64,
-  BSC_guarded_open_np,
-  BSC_guarded_close_np,
-  BSC_fsgetpath,
-  BSC_getattrlistbulk,
-  BSC_openat,
-  BSC_openat_nocancel,
-  BSC_renameat,
-  BSC_chmodat,
-  BSC_chownat,
-  BSC_fstatat,
-  BSC_fstatat64,
-  BSC_linkat,
-  BSC_unlinkat,
-  BSC_readlinkat,
-  BSC_symlinkat,
-  BSC_mkdirat,
-  BSC_getattrlistat,
-  0
-};
+  std::array<bsd_syscall, MAX_BSD_SYSCALL> result;
+  for (auto syscall_descriptor : bsd_syscall_table) {
+    int code = BSC_INDEX(std::get<0>(syscall_descriptor));
 
+    auto &syscall = result.at(code);
+    syscall.sc_name = std::get<1>(syscall_descriptor);
+    syscall.sc_format = std::get<2>(syscall_descriptor);
+  }
+  return result;
+}
+
+static const auto bsd_syscalls = make_bsd_syscall_table();
 
 #define MAX_FILEMGR 512
 
 struct filemgr_call {
   const char *fm_name = nullptr;
 };
-std::array<filemgr_call, MAX_FILEMGR> filemgr_calls{};
+static std::array<filemgr_call, MAX_FILEMGR> filemgr_calls{};
 
 
 int filemgr_call_types[] = {
@@ -929,683 +940,6 @@ int filemgr_index(int type) {
 
 
 void init_tables(void) {
-  for (int i = 0, type; (type = bsd_syscall_types[i]); i++) {
-    int code = BSC_INDEX(type);
-
-    if (code >= MAX_BSD_SYSCALL) {
-      printf("BSD syscall init (%x):  type exceeds table size\n", type);
-      continue;
-    }
-    switch (type) {
-      case BSC_sendfile:
-        bsd_syscalls[code].sc_name = "sendfile";
-        bsd_syscalls[code].sc_format = FMT_FD;    /* this should be changed to FMT_SENDFILE */
-        break;            /* once we add an extended info trace event */
-      
-      case BSC_recvmsg:
-      case BSC_recvmsg_nocancel:
-        bsd_syscalls[code].sc_name = "recvmsg";
-        bsd_syscalls[code].sc_format = FMT_FD_IO;
-        break;
-
-      case BSC_sendmsg:
-      case BSC_sendmsg_nocancel:
-        bsd_syscalls[code].sc_name = "sendmsg";
-        bsd_syscalls[code].sc_format = FMT_FD_IO;
-        break;
-
-      case BSC_recvfrom:
-      case BSC_recvfrom_nocancel:
-        bsd_syscalls[code].sc_name = "recvfrom";
-        bsd_syscalls[code].sc_format = FMT_FD_IO;
-        break;
-
-      case BSC_sendto:
-      case BSC_sendto_nocancel:
-        bsd_syscalls[code].sc_name = "sendto";
-        bsd_syscalls[code].sc_format = FMT_FD_IO;
-        break;
-
-      case BSC_select:
-      case BSC_select_nocancel:
-        bsd_syscalls[code].sc_name = "select";
-        bsd_syscalls[code].sc_format = FMT_SELECT;
-        break;
-      
-      case BSC_accept:
-      case BSC_accept_nocancel:
-        bsd_syscalls[code].sc_name = "accept";
-        bsd_syscalls[code].sc_format = FMT_FD_2;
-        break;
-      
-      case BSC_socket:
-        bsd_syscalls[code].sc_name = "socket";
-        bsd_syscalls[code].sc_format = FMT_SOCKET;
-        break;
-
-      case BSC_connect:
-      case BSC_connect_nocancel:
-        bsd_syscalls[code].sc_name = "connect";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_bind:
-        bsd_syscalls[code].sc_name = "bind";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_listen:
-        bsd_syscalls[code].sc_name = "listen";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_mmap:
-        bsd_syscalls[code].sc_name = "mmap";
-        bsd_syscalls[code].sc_format = FMT_MMAP;
-        break;
-      
-      case BSC_socketpair:
-        bsd_syscalls[code].sc_name = "socketpair";
-        break;
-      
-      case BSC_getxattr:
-        bsd_syscalls[code].sc_name = "getxattr";
-        break;
-                  
-      case BSC_setxattr:
-        bsd_syscalls[code].sc_name = "setxattr";
-        break;
-                  
-      case BSC_removexattr:
-        bsd_syscalls[code].sc_name = "removexattr";
-        break;
-                  
-      case BSC_listxattr:
-        bsd_syscalls[code].sc_name = "listxattr";
-        break;
-                  
-      case BSC_stat:
-        bsd_syscalls[code].sc_name = "stat";
-        break;
-                  
-      case BSC_stat64:
-        bsd_syscalls[code].sc_name = "stat64";
-        break;
-                  
-      case BSC_stat_extended:
-        bsd_syscalls[code].sc_name = "stat_extended";
-        break;
-                  
-      case BSC_stat64_extended:
-        bsd_syscalls[code].sc_name = "stat_extended64";
-        break;
-
-      case BSC_mount:
-        bsd_syscalls[code].sc_name = "mount";
-        bsd_syscalls[code].sc_format = FMT_MOUNT;
-        break;
-
-      case BSC_unmount:
-        bsd_syscalls[code].sc_name = "unmount";
-        bsd_syscalls[code].sc_format = FMT_UNMOUNT;
-        break;
-
-      case BSC_exit:
-        bsd_syscalls[code].sc_name = "exit";
-        break;
-
-      case BSC_execve:
-        bsd_syscalls[code].sc_name = "execve";
-        break;
-                  
-      case BSC_posix_spawn:
-        bsd_syscalls[code].sc_name = "posix_spawn";
-        break;
-                  
-      case BSC_open:
-      case BSC_open_nocancel:
-        bsd_syscalls[code].sc_name = "open";
-        bsd_syscalls[code].sc_format = FMT_OPEN;
-        break;
-
-      case BSC_open_extended:
-        bsd_syscalls[code].sc_name = "open_extended";
-        bsd_syscalls[code].sc_format = FMT_OPEN;
-        break;
-
-      case BSC_guarded_open_np:
-        bsd_syscalls[code].sc_name = "guarded_open_np";
-        bsd_syscalls[code].sc_format = FMT_OPEN;
-        break;
-
-      case BSC_open_dprotected_np:
-        bsd_syscalls[code].sc_name = "open_dprotected";
-        bsd_syscalls[code].sc_format = FMT_OPEN;
-        break;
-
-      case BSC_dup:
-        bsd_syscalls[code].sc_name = "dup";
-        bsd_syscalls[code].sc_format = FMT_FD_2;
-        break;
-
-      case BSC_dup2:
-        bsd_syscalls[code].sc_name = "dup2";
-        bsd_syscalls[code].sc_format = FMT_FD_2;
-        break;        
-
-      case BSC_close:
-      case BSC_close_nocancel:
-        bsd_syscalls[code].sc_name = "close";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_guarded_close_np:
-        bsd_syscalls[code].sc_name = "guarded_close_np";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_read:
-      case BSC_read_nocancel:
-        bsd_syscalls[code].sc_name = "read";
-        bsd_syscalls[code].sc_format = FMT_FD_IO;
-        break;
-
-      case BSC_write:
-      case BSC_write_nocancel:
-        bsd_syscalls[code].sc_name = "write";
-        bsd_syscalls[code].sc_format = FMT_FD_IO;
-        break;
-
-      case BSC_fgetxattr:
-        bsd_syscalls[code].sc_name = "fgetxattr";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_fsetxattr:
-        bsd_syscalls[code].sc_name = "fsetxattr";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_fremovexattr:
-        bsd_syscalls[code].sc_name = "fremovexattr";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_flistxattr:
-        bsd_syscalls[code].sc_name = "flistxattr";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_fstat:
-        bsd_syscalls[code].sc_name = "fstat";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_fstat64:
-        bsd_syscalls[code].sc_name = "fstat64";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_fstat_extended:
-        bsd_syscalls[code].sc_name = "fstat_extended";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_fstat64_extended:
-        bsd_syscalls[code].sc_name = "fstat64_extended";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_lstat:
-        bsd_syscalls[code].sc_name = "lstat";
-        break;
-
-      case BSC_lstat64:
-        bsd_syscalls[code].sc_name = "lstat64";
-        break;
-
-      case BSC_lstat_extended:
-        bsd_syscalls[code].sc_name = "lstat_extended";
-        break;
-
-      case BSC_lstat64_extended:
-        bsd_syscalls[code].sc_name = "lstat_extended64";
-        break;
-
-      case BSC_link:
-        bsd_syscalls[code].sc_name = "link";
-        break;
-
-      case BSC_unlink:
-        bsd_syscalls[code].sc_name = "unlink";
-        break;
-
-      case BSC_mknod:
-        bsd_syscalls[code].sc_name = "mknod";
-        break;
-
-      case BSC_umask:
-        bsd_syscalls[code].sc_name = "umask";
-        bsd_syscalls[code].sc_format = FMT_UMASK;
-        break;
-
-      case BSC_umask_extended:
-        bsd_syscalls[code].sc_name = "umask_extended";
-        bsd_syscalls[code].sc_format = FMT_UMASK;
-        break;
-
-      case BSC_chmod:
-        bsd_syscalls[code].sc_name = "chmod";
-        bsd_syscalls[code].sc_format = FMT_CHMOD;
-        break;
-
-      case BSC_chmod_extended:
-        bsd_syscalls[code].sc_name = "chmod_extended";
-        bsd_syscalls[code].sc_format = FMT_CHMOD_EXT;
-        break;
-
-      case BSC_fchmod:
-        bsd_syscalls[code].sc_name = "fchmod";
-        bsd_syscalls[code].sc_format = FMT_FCHMOD;
-        break;
-
-      case BSC_fchmod_extended:
-        bsd_syscalls[code].sc_name = "fchmod_extended";
-        bsd_syscalls[code].sc_format = FMT_FCHMOD_EXT;
-        break;
-
-      case BSC_chown:
-        bsd_syscalls[code].sc_name = "chown";
-        break;
-
-      case BSC_lchown:
-        bsd_syscalls[code].sc_name = "lchown";
-        break;
-
-      case BSC_fchown:
-        bsd_syscalls[code].sc_name = "fchown";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_access:
-        bsd_syscalls[code].sc_name = "access";
-        bsd_syscalls[code].sc_format = FMT_ACCESS;
-        break;
-
-      case BSC_access_extended:
-        bsd_syscalls[code].sc_name = "access_extended";
-        break;
-
-      case BSC_chdir:
-        bsd_syscalls[code].sc_name = "chdir";
-        break;
-                  
-      case BSC_pthread_chdir:
-        bsd_syscalls[code].sc_name = "pthread_chdir";
-        break;
-                  
-      case BSC_chroot:
-        bsd_syscalls[code].sc_name = "chroot";
-        break;
-                  
-      case BSC_utimes:
-        bsd_syscalls[code].sc_name = "utimes";
-        break;
-                  
-      case BSC_delete:
-        bsd_syscalls[code].sc_name = "delete-Carbon";
-        break;
-                  
-      case BSC_undelete:
-        bsd_syscalls[code].sc_name = "undelete";
-        break;
-                  
-      case BSC_revoke:
-        bsd_syscalls[code].sc_name = "revoke";
-        break;
-                  
-      case BSC_fsctl:
-        bsd_syscalls[code].sc_name = "fsctl";
-        break;
-                  
-      case BSC_ffsctl:
-        bsd_syscalls[code].sc_name = "ffsctl";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-                  
-      case BSC_chflags:
-        bsd_syscalls[code].sc_name = "chflags";
-        bsd_syscalls[code].sc_format = FMT_CHFLAGS;
-        break;
-                  
-      case BSC_fchflags:
-        bsd_syscalls[code].sc_name = "fchflags";
-        bsd_syscalls[code].sc_format = FMT_FCHFLAGS;
-        break;
-                  
-      case BSC_fchdir:
-        bsd_syscalls[code].sc_name = "fchdir";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-                  
-      case BSC_pthread_fchdir:
-        bsd_syscalls[code].sc_name = "pthread_fchdir";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-                  
-      case BSC_futimes:
-        bsd_syscalls[code].sc_name = "futimes";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_sync:
-        bsd_syscalls[code].sc_name = "sync";
-        break;
-
-      case BSC_symlink:
-        bsd_syscalls[code].sc_name = "symlink";
-        break;
-
-      case BSC_readlink:
-        bsd_syscalls[code].sc_name = "readlink";
-        break;
-
-      case BSC_fsync:
-      case BSC_fsync_nocancel:
-        bsd_syscalls[code].sc_name = "fsync";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_fdatasync:
-        bsd_syscalls[code].sc_name = "fdatasync";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_readv:
-      case BSC_readv_nocancel:
-        bsd_syscalls[code].sc_name = "readv";
-        bsd_syscalls[code].sc_format = FMT_FD_IO;
-        break;
-
-      case BSC_writev:
-      case BSC_writev_nocancel:
-        bsd_syscalls[code].sc_name = "writev";
-        bsd_syscalls[code].sc_format = FMT_FD_IO;
-        break;
-
-      case BSC_pread:
-      case BSC_pread_nocancel:
-        bsd_syscalls[code].sc_name = "pread";
-        bsd_syscalls[code].sc_format = FMT_PREAD;
-        break;
-
-      case BSC_pwrite:
-      case BSC_pwrite_nocancel:
-        bsd_syscalls[code].sc_name = "pwrite";
-        bsd_syscalls[code].sc_format = FMT_PREAD;
-        break;
-
-      case BSC_mkdir:
-        bsd_syscalls[code].sc_name = "mkdir";
-        break;
-                  
-      case BSC_mkdir_extended:
-        bsd_syscalls[code].sc_name = "mkdir_extended";
-        break;
-                  
-      case BSC_mkfifo:
-        bsd_syscalls[code].sc_name = "mkfifo";
-        break;
-
-      case BSC_mkfifo_extended:
-        bsd_syscalls[code].sc_name = "mkfifo_extended";
-        break;
-
-      case BSC_rmdir:
-        bsd_syscalls[code].sc_name = "rmdir";
-        break;
-
-      case BSC_statfs:
-        bsd_syscalls[code].sc_name = "statfs";
-        break;
-
-      case BSC_statfs64:
-        bsd_syscalls[code].sc_name = "statfs64";
-        break;
-
-      case BSC_getfsstat:
-        bsd_syscalls[code].sc_name = "getfsstat";
-        break;
-
-      case BSC_getfsstat64:
-        bsd_syscalls[code].sc_name = "getfsstat64";
-        break;
-
-      case BSC_fstatfs:
-        bsd_syscalls[code].sc_name = "fstatfs";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_fstatfs64:
-        bsd_syscalls[code].sc_name = "fstatfs64";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_pathconf:
-        bsd_syscalls[code].sc_name = "pathconf";
-        break;
-
-      case BSC_fpathconf:
-        bsd_syscalls[code].sc_name = "fpathconf";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_getdirentries:
-        bsd_syscalls[code].sc_name = "getdirentries";
-        bsd_syscalls[code].sc_format = FMT_FD_IO;
-        break;
-
-      case BSC_getdirentries64:
-        bsd_syscalls[code].sc_name = "getdirentries64";
-        bsd_syscalls[code].sc_format = FMT_FD_IO;
-        break;
-
-      case BSC_lseek:
-        bsd_syscalls[code].sc_name = "lseek";
-        bsd_syscalls[code].sc_format = FMT_LSEEK;
-        break;
-
-      case BSC_truncate:
-        bsd_syscalls[code].sc_name = "truncate";
-        bsd_syscalls[code].sc_format = FMT_TRUNC;
-        break;
-
-      case BSC_ftruncate:
-        bsd_syscalls[code].sc_name = "ftruncate";
-        bsd_syscalls[code].sc_format = FMT_FTRUNC;
-        break;
-
-      case BSC_flock:
-        bsd_syscalls[code].sc_name = "flock";
-        bsd_syscalls[code].sc_format = FMT_FLOCK;
-        break;
-
-      case BSC_getattrlist:
-        bsd_syscalls[code].sc_name = "getattrlist";
-        break;
-
-      case BSC_setattrlist:
-        bsd_syscalls[code].sc_name = "setattrlist";
-        break;
-
-      case BSC_fgetattrlist:
-        bsd_syscalls[code].sc_name = "fgetattrlist";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_fsetattrlist:
-        bsd_syscalls[code].sc_name = "fsetattrlist";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_getdirentriesattr:
-        bsd_syscalls[code].sc_name = "getdirentriesattr";
-        bsd_syscalls[code].sc_format = FMT_FD;
-        break;
-
-      case BSC_exchangedata:
-        bsd_syscalls[code].sc_name = "exchangedata";
-        break;
-                  
-      case BSC_rename:
-        bsd_syscalls[code].sc_name = "rename";
-        break;
-
-      case BSC_copyfile:
-        bsd_syscalls[code].sc_name = "copyfile";
-        break;
-
-      case BSC_checkuseraccess:
-        bsd_syscalls[code].sc_name = "checkuseraccess";
-        break;
-
-      case BSC_searchfs:
-        bsd_syscalls[code].sc_name = "searchfs";
-        break;
-
-      case BSC_aio_fsync:
-        bsd_syscalls[code].sc_name = "aio_fsync";
-        bsd_syscalls[code].sc_format = FMT_AIO_FSYNC;
-        break;
-
-      case BSC_aio_return:
-        bsd_syscalls[code].sc_name = "aio_return";
-        bsd_syscalls[code].sc_format = FMT_AIO_RETURN;
-        break;
-
-      case BSC_aio_suspend:
-      case BSC_aio_suspend_nocancel:
-        bsd_syscalls[code].sc_name = "aio_suspend";
-        bsd_syscalls[code].sc_format = FMT_AIO_SUSPEND;
-        break;
-
-      case BSC_aio_cancel:
-        bsd_syscalls[code].sc_name = "aio_cancel";
-        bsd_syscalls[code].sc_format = FMT_AIO_CANCEL;
-        break;
-
-      case BSC_aio_error:
-        bsd_syscalls[code].sc_name = "aio_error";
-        bsd_syscalls[code].sc_format = FMT_AIO;
-        break;
-
-      case BSC_aio_read:
-        bsd_syscalls[code].sc_name = "aio_read";
-        bsd_syscalls[code].sc_format = FMT_AIO;
-        break;
-
-      case BSC_aio_write:
-        bsd_syscalls[code].sc_name = "aio_write";
-        bsd_syscalls[code].sc_format = FMT_AIO;
-        break;
-
-      case BSC_lio_listio:
-        bsd_syscalls[code].sc_name = "lio_listio";
-        bsd_syscalls[code].sc_format = FMT_LIO_LISTIO;
-        break;
-
-      case BSC_msync:
-      case BSC_msync_nocancel:
-        bsd_syscalls[code].sc_name = "msync";
-        bsd_syscalls[code].sc_format = FMT_MSYNC;
-        break;
-
-      case BSC_fcntl:
-      case BSC_fcntl_nocancel:
-        bsd_syscalls[code].sc_name = "fcntl";
-        bsd_syscalls[code].sc_format = FMT_FCNTL;
-        break;
-
-      case BSC_ioctl:
-        bsd_syscalls[code].sc_name = "ioctl";
-        bsd_syscalls[code].sc_format = FMT_IOCTL;
-        break;
-
-      case BSC_fsgetpath:
-        bsd_syscalls[code].sc_name = "fsgetpath";
-        break;
-        
-      case BSC_getattrlistbulk:
-        bsd_syscalls[code].sc_name = "getattrlistbulk";
-        break;
-        
-      case BSC_openat:
-        bsd_syscalls[code].sc_name = "openat";
-        bsd_syscalls[code].sc_format = FMT_OPENAT;
-        break;
-        
-      case BSC_openat_nocancel:
-        bsd_syscalls[code].sc_name = "openat_nocanel";
-        bsd_syscalls[code].sc_format = FMT_OPENAT;
-        break;
-      
-      case BSC_renameat:
-        bsd_syscalls[code].sc_name = "renameat";
-        bsd_syscalls[code].sc_format = FMT_RENAMEAT;
-        break;
-        
-        case BSC_chmodat:
-        bsd_syscalls[code].sc_name = "chmodat";
-        bsd_syscalls[code].sc_format = FMT_CHMODAT;
-        break;
-        
-        case BSC_chownat:
-        bsd_syscalls[code].sc_name = "chownat";
-        bsd_syscalls[code].sc_format = FMT_AT;
-        break;
-        
-        case BSC_fstatat:
-        bsd_syscalls[code].sc_name = "fstatat";
-        bsd_syscalls[code].sc_format = FMT_AT;
-        break;
-        
-      case BSC_fstatat64:
-        bsd_syscalls[code].sc_name = "fstatat64";
-        bsd_syscalls[code].sc_format = FMT_AT;
-        break;
-        
-      case BSC_linkat:
-        bsd_syscalls[code].sc_name = "linkat";
-        bsd_syscalls[code].sc_format = FMT_AT;
-        break;
-        
-      case BSC_unlinkat:
-        bsd_syscalls[code].sc_name = "unlinkat";
-        bsd_syscalls[code].sc_format = FMT_AT;
-        break;
-        
-        case BSC_readlinkat:
-        bsd_syscalls[code].sc_name = "readlinkat";
-        bsd_syscalls[code].sc_format = FMT_AT;
-        break;
-        
-      case BSC_symlinkat:
-        bsd_syscalls[code].sc_name = "symlinkat";
-        bsd_syscalls[code].sc_format = FMT_AT;
-        break;
-        
-        case BSC_mkdirat:
-        bsd_syscalls[code].sc_name = "mkdirat";
-        bsd_syscalls[code].sc_format = FMT_AT;
-        break;
-        
-        case BSC_getattrlistat:
-        bsd_syscalls[code].sc_name = "getattrlistat";
-        bsd_syscalls[code].sc_format = FMT_AT;
-        break;
-    }
-  }
-
   for (int i = 0, type; (type = filemgr_call_types[i]); i++) {
     const char *p;
 
