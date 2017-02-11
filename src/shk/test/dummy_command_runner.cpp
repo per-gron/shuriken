@@ -112,7 +112,7 @@ DummyCommandRunner::DummyCommandRunner(FileSystem &file_system)
 
 void DummyCommandRunner::invoke(
     const std::string &command,
-    UseConsole use_console,
+    const std::string &pool_name,
     const Callback &callback) {
   _enqueued_commands.emplace_back(command, callback);
 }

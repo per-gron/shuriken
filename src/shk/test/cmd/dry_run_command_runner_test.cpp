@@ -12,7 +12,7 @@ TEST_CASE("DryRunCommandRunner") {
   CHECK(!runner->runCommands());
 
   bool invoked = false;
-  runner->invoke("cmd", UseConsole::NO, [&invoked](
+  runner->invoke("cmd", "a_pool", [&invoked](
       CommandRunner::Result &&result) {
     invoked = true;
   });

@@ -36,14 +36,14 @@ const char* kSimpleCommand = "ls /";
 
 CommandRunner::Result runCommand(
     const std::string &command,
-    UseConsole use_console = UseConsole::NO) {
+    const std::string &pool_name = "a_pool") {
   CommandRunner::Result result;
   const auto runner = makeRealCommandRunner();
 
   bool did_finish = false;
   runner->invoke(
       command,
-      use_console,
+      pool_name,
       [&](CommandRunner::Result &&result_) {
         result = std::move(result_);
         did_finish = true;
@@ -65,7 +65,7 @@ void verifyInterrupted(const std::string &command) {
   const auto runner = makeRealCommandRunner();
   runner->invoke(
       command,
-      UseConsole::NO,
+      "",
       [](CommandRunner::Result &&result) {
       });
 
@@ -108,12 +108,12 @@ TEST_CASE("SubprocessSet") {
     size_t done = 0;
     runner->invoke(
         "/bin/echo",
-        UseConsole::NO,
+        "a_pool",
         [&](CommandRunner::Result &&result) {
           for (size_t i = 0; i < num_cmds; i++) {
             runner->invoke(
                 "/bin/echo",
-                UseConsole::NO,
+                "a_pool",
                 [&](CommandRunner::Result &&result) {
                   done++;
                 });
@@ -131,7 +131,7 @@ TEST_CASE("SubprocessSet") {
     const auto runner = makeRealCommandRunner();
 
     bool invoked = false;
-    runner->invoke("/bin/echo", UseConsole::NO, [&](CommandRunner::Result &&result) {
+    runner->invoke("/bin/echo", "a_pool", [&](CommandRunner::Result &&result) {
       CHECK(runner->empty());
       invoked = true;
     });
@@ -149,7 +149,7 @@ TEST_CASE("SubprocessSet") {
       const auto runner = makeRealCommandRunner();
       runner->invoke(
           "/bin/echo",
-          UseConsole::NO,
+          "a_pool",
           [&](CommandRunner::Result &&result) {
             called = true;
           });
@@ -201,7 +201,7 @@ TEST_CASE("SubprocessSet") {
       // Also check that the current process is connected to a terminal.
       const auto result = runCommand(
           "test -t 0 -a -t 1 -a -t 2 && " + kIsConnectedToTerminal,
-          UseConsole::YES);
+          "console");
       CHECK(result.exit_status == ExitStatus::SUCCESS);
     }
   }
@@ -242,7 +242,7 @@ TEST_CASE("SubprocessSet") {
     for (int i = 0; i < 3; ++i) {
       runner->invoke(
           kCommands[i],
-          UseConsole::NO,
+          "",
           [i, &processes_done, &finished_processes](
               CommandRunner::Result &&result) {
             CHECK(result.exit_status == ExitStatus::SUCCESS);
@@ -288,7 +288,7 @@ TEST_CASE("SubprocessSet") {
     for (size_t i = 0; i < kNumProcs; ++i) {
       runner->invoke(
           "/bin/echo",
-          UseConsole::NO,
+          "pool",
           [&](CommandRunner::Result &&result) {
             CHECK(ExitStatus::SUCCESS == result.exit_status§);
             CHECK("" != result.output);

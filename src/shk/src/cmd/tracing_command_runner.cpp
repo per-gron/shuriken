@@ -39,10 +39,10 @@ class TracingCommandRunner : public CommandRunner {
 
   void invoke(
       const std::string &command,
-      UseConsole use_console,
+      const std::string &pool_name,
       const Callback &callback) override {
     if (command.empty()) {
-      _inner->invoke("", use_console, callback);
+      _inner->invoke("", pool_name, callback);
       return;
     }
 
@@ -57,7 +57,7 @@ class TracingCommandRunner : public CommandRunner {
       _inner->invoke(
           "/usr/bin/sandbox-exec -p '(version 1)(trace \"" +
               tmp->path + "\")' /bin/sh -c " + escaped_command,
-          use_console,
+          pool_name,
           [this, tmp, callback](CommandRunner::Result &&result) {
             computeResults(tmp->path, result);
             callback(std::move(result));
@@ -65,7 +65,7 @@ class TracingCommandRunner : public CommandRunner {
     } catch (const IoError &error) {
       _inner->invoke(
           "/bin/echo Failed to create temporary file && exit 1",
-          use_console,
+          pool_name,
           callback);
     }
   }

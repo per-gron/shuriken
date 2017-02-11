@@ -22,7 +22,7 @@ TEST_CASE("LimitedCommandRunner") {
   SECTION("ForwardedMethods") {
     CHECK(runner->size() == 0);
     bool callback_called = false;
-    runner->invoke(cmd, UseConsole::NO, [&](CommandRunner::Result &&) {
+    runner->invoke(cmd, "a_pool", [&](CommandRunner::Result &&) {
       callback_called = true;
     });
     CHECK(runner->size() == 1);
@@ -34,9 +34,9 @@ TEST_CASE("LimitedCommandRunner") {
 
   SECTION("Parallelism") {
     CHECK(runner->canRunMore());
-    runner->invoke(cmd, UseConsole::NO, [&](CommandRunner::Result &&) {});
+    runner->invoke(cmd, "a_pool", [&](CommandRunner::Result &&) {});
     CHECK(runner->canRunMore());
-    runner->invoke(cmd, UseConsole::NO, [&](CommandRunner::Result &&) {});
+    runner->invoke(cmd, "a_pool", [&](CommandRunner::Result &&) {});
     CHECK(!runner->canRunMore());
   }
 
@@ -46,7 +46,7 @@ TEST_CASE("LimitedCommandRunner") {
   }
 
   SECTION("LoadAverageWhenEmpty") {
-    runner->invoke(cmd, UseConsole::NO, [&](CommandRunner::Result &&) {});
+    runner->invoke(cmd, "a_pool", [&](CommandRunner::Result &&) {});
     CHECK(runner->canRunMore());
     current_load_average = 0.5;
     CHECK(!runner->canRunMore());

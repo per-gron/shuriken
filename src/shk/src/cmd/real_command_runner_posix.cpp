@@ -28,9 +28,15 @@
 #include <string.h>
 #include <sys/wait.h>
 
+#include "manifest/step.h"
 #include "util.h"
 
 namespace shk {
+
+enum class UseConsole {
+  NO,
+  YES,
+};
 
 /**
  * Subprocess wraps a single async subprocess.  It is entirely
@@ -68,7 +74,7 @@ class SubprocessSet : public CommandRunner {
 
   void invoke(
       const std::string &command,
-      UseConsole use_console,
+      const std::string &pool_name,
       const Callback &callback) override;
   bool runCommands() override;
   void clear();
@@ -331,8 +337,10 @@ SubprocessSet::~SubprocessSet() {
 
 void SubprocessSet::invoke(
     const std::string &command,
-    UseConsole use_console,
+    const std::string &pool_name,
     const CommandRunner::Callback &callback) {
+  auto use_console =
+      isConsolePool(pool_name) ? UseConsole::YES : UseConsole::NO;
   auto subprocess = std::unique_ptr<Subprocess>(
       new Subprocess(callback, use_console));
   subprocess->start(this, command);

@@ -19,7 +19,7 @@ class FailingCommandRunner : public CommandRunner {
  public:
   void invoke(
       const std::string &command,
-      UseConsole use_console,
+      const std::string &pool_name,
       const Callback &callback) override {
     if (!command.empty()) {
       CHECK(!"Should not be invoked");
@@ -43,10 +43,10 @@ class MaxCapacityCommandRunner : public CommandRunner {
 
   void invoke(
       const std::string &command,
-      UseConsole use_console,
+      const std::string &pool_name,
       const Callback &callback) override {
     CHECK(_inner.size() < _max_capacity);
-    _inner.invoke(command, use_console, callback);
+    _inner.invoke(command, pool_name, callback);
   }
 
   size_t size() const override {

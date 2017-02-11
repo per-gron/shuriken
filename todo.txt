@@ -93,25 +93,7 @@ Large things remaining to do:
     (happened after re-cmake I think. might or might not be because of that)
 * Handle restat rules. OR: Make it the default somehow. Shuriken will not just stat but even hash all output files.
 * Handle build pools
-* Fix cleaning:
-  * Don't clean things written by generator rules
-  * Test that directories created by the build system are cleaned
-    @with_testdir('target_in_subdir')
-    def test_full_clean_with_created_dirs(self):
-      subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
-      self.assertTrue(os.path.exists('dir/out'))
-      self.assertTrue(os.path.exists('.shk_log'))
-      output = subprocess.check_output(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
-      self.assertFalse(os.path.exists('dir/out'))
-      self.assertFalse(os.path.exists('dir'))
-      self.assertFalse(os.path.exists('.shk_log'))
-      self.assertRegexpMatches(output, r'cleaned 3 files\.')
-
-* CLI tools:
-  * graph (graphviz)
-  * query
-  * targets
-  * compdb
+  * Idea: Do pooling with a PooledCommandRunner, to separate it from build.cpp
 * Caching
 * Distributed caching
 * Use ktrace instead of sandbox-exec, to avoid file descriptor leak. Or possibly: Try to reuse
@@ -135,3 +117,25 @@ Large things remaining to do:
 To fill in the first test:
 * Generate actual DAG in gen::buildInput
 * Add assertions to the property
+
+
+
+Can be done later:
+* Fix cleaning:
+  * Don't clean things written by generator rules
+  * Test that directories created by the build system are cleaned
+    @with_testdir('target_in_subdir')
+    def test_full_clean_with_created_dirs(self):
+      subprocess.check_output(shk, stderr=subprocess.STDOUT, shell=True)
+      self.assertTrue(os.path.exists('dir/out'))
+      self.assertTrue(os.path.exists('.shk_log'))
+      output = subprocess.check_output(shk + ' -t clean', stderr=subprocess.STDOUT, shell=True)
+      self.assertFalse(os.path.exists('dir/out'))
+      self.assertFalse(os.path.exists('dir'))
+      self.assertFalse(os.path.exists('.shk_log'))
+      self.assertRegexpMatches(output, r'cleaned 3 files\.')
+* CLI tools:
+  * graph (graphviz)
+  * query
+  * targets
+  * compdb

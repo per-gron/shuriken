@@ -10,11 +10,6 @@
 
 namespace shk {
 
-enum class UseConsole {
-  NO,
-  YES,
-};
-
 /**
  * A CommandRunner is responsible for invoking build commands, for detecting
  * which files the command read and wrote to, verifying that the command did
@@ -59,7 +54,7 @@ class CommandRunner {
    */
   virtual void invoke(
       const std::string &command,
-      UseConsole use_console,
+      const std::string &pool_name,
       const Callback &callback) = 0;
 
   /**

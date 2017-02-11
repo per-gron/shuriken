@@ -9,7 +9,7 @@ class DryRunCommandRunner : public CommandRunner {
  public:
   void invoke(
       const std::string &command,
-      UseConsole use_console,
+      const std::string &pool_name,
       const Callback &callback) override {
     _enqueued_commands.push_back(callback);
   }

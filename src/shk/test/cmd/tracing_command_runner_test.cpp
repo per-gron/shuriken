@@ -16,7 +16,7 @@ CommandRunner::Result runCommand(
   bool did_finish = false;
   runner.invoke(
       command,
-      UseConsole::NO,
+      "a_pool",
       [&](CommandRunner::Result &&result_) {
         result = std::move(result_);
         did_finish = true;
@@ -239,7 +239,7 @@ TEST_CASE("TracingCommandRunner") {
 
     runner->invoke(
         "/bin/echo",
-        UseConsole::NO,
+        "a_pool",
         CommandRunner::noopCallback);
   }
 
@@ -248,14 +248,14 @@ TEST_CASE("TracingCommandRunner") {
 
     runner->invoke(
         "/bin/echo",
-        UseConsole::NO,
+        "a_pool",
         CommandRunner::noopCallback);
 
     CHECK(runner->size() == 1);
 
     runner->invoke(
         "/bin/echo",
-        UseConsole::NO,
+        "a_pool",
         CommandRunner::noopCallback);
 
     CHECK(runner->size() == 2);

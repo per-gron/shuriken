@@ -683,7 +683,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   }
   params.command_runner.invoke(
       step.command,
-      isConsolePool(step.pool_name) ? UseConsole::YES : UseConsole::NO,
+      step.pool_name,
       [&params, step_idx](CommandRunner::Result &&result) {
         commandDone(params, step_idx, std::move(result));
       });
