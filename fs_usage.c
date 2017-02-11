@@ -842,8 +842,6 @@ kbufinfo_t bufinfo = {0, 0, 0, 0, 0};
 int trace_enabled = 0;
 int set_remove_flag = 1;
 
-int BC_flag = 0;
-
 void set_numbufs();
 void set_filter();
 void set_init();
@@ -903,7 +901,7 @@ char *s;
 int
 exit_usage(char *myname) {
 
-  fprintf(stderr, "Usage: %s [-e] [-f mode] [-b] [pid | cmd [pid | cmd] ...]\n", myname);
+  fprintf(stderr, "Usage: %s [-e] [-f mode] [pid | cmd [pid | cmd] ...]\n", myname);
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
   fprintf(stderr, "        and exclude fs_usage by default\n");
   fprintf(stderr, "  -f    output is based on the mode provided\n");
@@ -1945,10 +1943,6 @@ main(argc, argv)
        else if (!strcmp(optarg, "pathname"))
          filter_mode |= PATHNAME_FILTER;
        break;
-             
-    case 'b':
-      BC_flag = 1;
-      break;
 
     default:
       exit_usage(myname);     
