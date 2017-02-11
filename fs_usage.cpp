@@ -23,8 +23,10 @@
  */
 
 /*
-cc -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRIVATE -D__APPLE_PRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.cpp
+cc -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRIVATE -D__APPLE_PRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.cpp
 */
+
+#include <array>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -560,9 +562,11 @@ int     quit(const char *s);
 #define MAX_BSD_SYSCALL 526
 
 struct bsd_syscall {
-  const char *sc_name;
-  int sc_format;
-} bsd_syscalls[MAX_BSD_SYSCALL];
+  static_assert(FMT_DEFAULT == 0, "bsd_syscall should be all zeros by default");
+  const char *sc_name = nullptr;
+  int sc_format = FMT_DEFAULT;
+};
+static std::array<bsd_syscall, MAX_BSD_SYSCALL> bsd_syscalls{};
 
 
 int bsd_syscall_types[] = {
@@ -732,8 +736,9 @@ int bsd_syscall_types[] = {
 #define MAX_FILEMGR 512
 
 struct filemgr_call {
-  const char *fm_name;
-} filemgr_calls[MAX_FILEMGR];
+  const char *fm_name = nullptr;
+};
+std::array<filemgr_call, MAX_FILEMGR> filemgr_calls{};
 
 
 int filemgr_call_types[] = {
@@ -924,15 +929,6 @@ int filemgr_index(int type) {
 
 
 void init_tables(void) {
-  for (int i = 0; i < MAX_BSD_SYSCALL; i++) {
-    bsd_syscalls[i].sc_name = NULL;
-    bsd_syscalls[i].sc_format = FMT_DEFAULT;
-  }
-
-  for (int i = 0; i < MAX_FILEMGR; i++) {
-    filemgr_calls[i].fm_name = NULL;
-  }
-
   for (int i = 0, type; (type = bsd_syscall_types[i]); i++) {
     int code = BSC_INDEX(type);
 
