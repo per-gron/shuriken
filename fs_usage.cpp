@@ -1445,7 +1445,6 @@ void format_print(
       break;
     }
 
-    case Fmt::UMASK:
     case Fmt::FCHMOD:
     case Fmt::FCHMOD_EXT:
     case Fmt::CHMOD:
@@ -1470,9 +1469,7 @@ void format_print(
           printf(" ");
         }
       }
-      if (format == Fmt::UMASK) {
-        mode = ti->arg1;
-      } else if (format == Fmt::FCHMOD || format == Fmt::CHMOD || format == Fmt::CHMODAT) {
+      if (format == Fmt::FCHMOD || format == Fmt::CHMOD || format == Fmt::CHMODAT) {
         mode = ti->arg2;
       } else {
         mode = ti->arg4;
@@ -1575,9 +1572,6 @@ void format_print(
     case Fmt::MSYNC:
     case Fmt::LSEEK:
     case Fmt::PREAD:
-    case Fmt::MMAP:
-    case Fmt::MOUNT:
-    case Fmt::UNMOUNT:
     case Fmt::LIO_LISTIO:
     case Fmt::AIO:
     case Fmt::AIO_RETURN:
@@ -1605,15 +1599,6 @@ void format_print(
       break;
     default:
       len = sprintf(&buf[0], " %s ", pathname);
-    }
-
-    if (format == Fmt::MOUNT && ti->lookups[1].pathname[0]) {
-      int len2;
-
-      memset(&buf[len], ' ', 2);
-
-      len2 = sprintf(&buf[len+2], " %s ", (char *)&ti->lookups[1].pathname[0]);
-      len = len + 2 + len2;
     }
   } else {
     len = 0;
