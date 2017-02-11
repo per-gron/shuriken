@@ -19,6 +19,8 @@ add_library(shklib
   src/cmd/dry_run_command_runner.h
   src/cmd/limited_command_runner.cpp
   src/cmd/limited_command_runner.h
+  src/cmd/pooled_command_runner.cpp
+  src/cmd/pooled_command_runner.h
   src/cmd/real_command_runner.h
   src/cmd/real_command_runner_posix.cpp
   src/cmd/sandbox_parser.h
@@ -111,6 +113,7 @@ add_executable(shk_test
   test/build_test.cpp
   test/cmd/dry_run_command_runner_test.cpp
   test/cmd/limited_command_runner_test.cpp
+  test/cmd/pooled_command_runner_test.cpp
   test/cmd/real_command_runner_test.cpp
   test/cmd/sandbox_parser_test.cpp
   test/cmd/tracing_command_runner_test.cpp
