@@ -558,14 +558,14 @@ int     quit();
 #define MAX_BSD_SYSCALL 526
 
 struct bsd_syscall {
-        char  *sc_name;
-        int sc_format;
+  char  *sc_name;
+  int sc_format;
 } bsd_syscalls[MAX_BSD_SYSCALL];
 
 
 int bsd_syscall_types[] = {
-        BSC_recvmsg,
-        BSC_recvmsg_nocancel,
+  BSC_recvmsg,
+  BSC_recvmsg_nocancel,
   BSC_sendmsg,
   BSC_sendmsg_nocancel,
   BSC_recvfrom,
@@ -730,12 +730,12 @@ int bsd_syscall_types[] = {
 #define MAX_FILEMGR 512
 
 struct filemgr_call {
-        char  *fm_name;
+  char *fm_name;
 } filemgr_calls[MAX_FILEMGR];
 
 
 int filemgr_call_types[] = {
-        FILEMGR_PBGETCATALOGINFO,
+  FILEMGR_PBGETCATALOGINFO,
   FILEMGR_PBGETCATALOGINFOBULK,
   FILEMGR_PBCREATEFILEUNICODE,
   FILEMGR_PBCREATEDIRECTORYUNICODE,
@@ -853,8 +853,7 @@ int quit();
  *  signal handlers
  */
 
-void leave()      /* exit under normal conditions -- INT handler */
-{
+void leave() {      /* exit under normal conditions -- INT handler */
   int i;
   void set_enable();
   void set_pidcheck();
@@ -866,11 +865,13 @@ void leave()      /* exit under normal conditions -- INT handler */
   set_enable(0);
 
   if (exclude_pids == 0) {
-    for (i = 0; i < num_of_pids; i++)
+    for (i = 0; i < num_of_pids; i++) {
       set_pidcheck(pids[i], 0);
+    }
   } else {
-    for (i = 0; i < num_of_pids; i++)
+    for (i = 0; i < num_of_pids; i++) {
       set_pidexclude(pids[i], 0);
+    }
   }
   set_remove();
 
@@ -878,28 +879,28 @@ void leave()      /* exit under normal conditions -- INT handler */
 }
 
 
-int quit(s)
-char *s;
-{
-  if (trace_enabled)
+int quit(char *s) {
+  if (trace_enabled) {
     set_enable(0);
+  }
 
   /* 
    * This flag is turned off when calling
    * quit() due to a set_remove() failure.
    */
-  if (set_remove_flag)
+  if (set_remove_flag) {
     set_remove();
+  }
 
   fprintf(stderr, "fs_usage: ");
-  if (s)
+  if (s) {
     fprintf(stderr, "%s", s);
+  }
 
   exit(1);
 }
 
-int
-exit_usage(char *myname) {
+int exit_usage(char *myname) {
 
   fprintf(stderr, "Usage: %s [-e] [-f mode] [pid | cmd [pid | cmd] ...]\n", myname);
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
@@ -919,15 +920,15 @@ exit_usage(char *myname) {
 
 
 int filemgr_index(type) {
-  if (type & 0x10000)
+  if (type & 0x10000) {
     return (((type >> 2) & 0x3fff) + 256);
+  }
 
   return (((type >> 2) & 0x3fff));
 }
 
 
-void init_tables(void)
-{
+void init_tables(void) {
   int i;
   int type;
   int code;
@@ -949,603 +950,603 @@ void init_tables(void)
       continue;
     }
     switch (type) {
-        case BSC_sendfile:
-          bsd_syscalls[code].sc_name = "sendfile";
-          bsd_syscalls[code].sc_format = FMT_FD;    /* this should be changed to FMT_SENDFILE */
-          break;            /* once we add an extended info trace event */
-        
-        case BSC_recvmsg:
-        case BSC_recvmsg_nocancel:
-          bsd_syscalls[code].sc_name = "recvmsg";
-          bsd_syscalls[code].sc_format = FMT_FD_IO;
-          break;
-
-        case BSC_sendmsg:
-        case BSC_sendmsg_nocancel:
-          bsd_syscalls[code].sc_name = "sendmsg";
-          bsd_syscalls[code].sc_format = FMT_FD_IO;
-          break;
-
-        case BSC_recvfrom:
-        case BSC_recvfrom_nocancel:
-          bsd_syscalls[code].sc_name = "recvfrom";
-          bsd_syscalls[code].sc_format = FMT_FD_IO;
-          break;
-
-        case BSC_sendto:
-        case BSC_sendto_nocancel:
-          bsd_syscalls[code].sc_name = "sendto";
-          bsd_syscalls[code].sc_format = FMT_FD_IO;
-          break;
-
-        case BSC_select:
-        case BSC_select_nocancel:
-          bsd_syscalls[code].sc_name = "select";
-          bsd_syscalls[code].sc_format = FMT_SELECT;
-          break;
-        
-        case BSC_accept:
-        case BSC_accept_nocancel:
-          bsd_syscalls[code].sc_name = "accept";
-          bsd_syscalls[code].sc_format = FMT_FD_2;
-          break;
-        
-        case BSC_socket:
-          bsd_syscalls[code].sc_name = "socket";
-          bsd_syscalls[code].sc_format = FMT_SOCKET;
-          break;
-
-        case BSC_connect:
-        case BSC_connect_nocancel:
-          bsd_syscalls[code].sc_name = "connect";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_bind:
-          bsd_syscalls[code].sc_name = "bind";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_listen:
-          bsd_syscalls[code].sc_name = "listen";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_mmap:
-          bsd_syscalls[code].sc_name = "mmap";
-          bsd_syscalls[code].sc_format = FMT_MMAP;
-          break;
-        
-        case BSC_socketpair:
-          bsd_syscalls[code].sc_name = "socketpair";
-          break;
-        
-        case BSC_getxattr:
-          bsd_syscalls[code].sc_name = "getxattr";
-          break;
-                    
-        case BSC_setxattr:
-          bsd_syscalls[code].sc_name = "setxattr";
-          break;
-                    
-        case BSC_removexattr:
-          bsd_syscalls[code].sc_name = "removexattr";
-          break;
-                    
-        case BSC_listxattr:
-          bsd_syscalls[code].sc_name = "listxattr";
-          break;
-                    
-        case BSC_stat:
-          bsd_syscalls[code].sc_name = "stat";
-          break;
-                    
-        case BSC_stat64:
-          bsd_syscalls[code].sc_name = "stat64";
-          break;
-                    
-        case BSC_stat_extended:
-          bsd_syscalls[code].sc_name = "stat_extended";
-          break;
-                    
-        case BSC_stat64_extended:
-          bsd_syscalls[code].sc_name = "stat_extended64";
-          break;
-
-        case BSC_mount:
-          bsd_syscalls[code].sc_name = "mount";
-          bsd_syscalls[code].sc_format = FMT_MOUNT;
-          break;
-
-        case BSC_unmount:
-          bsd_syscalls[code].sc_name = "unmount";
-          bsd_syscalls[code].sc_format = FMT_UNMOUNT;
-          break;
-
-        case BSC_exit:
-          bsd_syscalls[code].sc_name = "exit";
-          break;
-
-        case BSC_execve:
-          bsd_syscalls[code].sc_name = "execve";
-          break;
-                    
-        case BSC_posix_spawn:
-          bsd_syscalls[code].sc_name = "posix_spawn";
-          break;
-                    
-        case BSC_open:
-        case BSC_open_nocancel:
-          bsd_syscalls[code].sc_name = "open";
-          bsd_syscalls[code].sc_format = FMT_OPEN;
-          break;
-
-        case BSC_open_extended:
-          bsd_syscalls[code].sc_name = "open_extended";
-          bsd_syscalls[code].sc_format = FMT_OPEN;
-          break;
-
-        case BSC_guarded_open_np:
-          bsd_syscalls[code].sc_name = "guarded_open_np";
-          bsd_syscalls[code].sc_format = FMT_OPEN;
-          break;
-
-        case BSC_open_dprotected_np:
-          bsd_syscalls[code].sc_name = "open_dprotected";
-          bsd_syscalls[code].sc_format = FMT_OPEN;
-          break;
-
-        case BSC_dup:
-          bsd_syscalls[code].sc_name = "dup";
-          bsd_syscalls[code].sc_format = FMT_FD_2;
-          break;
-
-        case BSC_dup2:
-          bsd_syscalls[code].sc_name = "dup2";
-          bsd_syscalls[code].sc_format = FMT_FD_2;
-          break;        
-
-        case BSC_close:
-        case BSC_close_nocancel:
-          bsd_syscalls[code].sc_name = "close";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_guarded_close_np:
-          bsd_syscalls[code].sc_name = "guarded_close_np";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_read:
-        case BSC_read_nocancel:
-          bsd_syscalls[code].sc_name = "read";
-          bsd_syscalls[code].sc_format = FMT_FD_IO;
-          break;
-
-        case BSC_write:
-        case BSC_write_nocancel:
-          bsd_syscalls[code].sc_name = "write";
-          bsd_syscalls[code].sc_format = FMT_FD_IO;
-          break;
-
-        case BSC_fgetxattr:
-          bsd_syscalls[code].sc_name = "fgetxattr";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_fsetxattr:
-          bsd_syscalls[code].sc_name = "fsetxattr";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_fremovexattr:
-          bsd_syscalls[code].sc_name = "fremovexattr";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_flistxattr:
-          bsd_syscalls[code].sc_name = "flistxattr";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_fstat:
-          bsd_syscalls[code].sc_name = "fstat";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_fstat64:
-          bsd_syscalls[code].sc_name = "fstat64";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_fstat_extended:
-          bsd_syscalls[code].sc_name = "fstat_extended";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_fstat64_extended:
-          bsd_syscalls[code].sc_name = "fstat64_extended";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_lstat:
-          bsd_syscalls[code].sc_name = "lstat";
-          break;
-
-        case BSC_lstat64:
-          bsd_syscalls[code].sc_name = "lstat64";
-          break;
-
-        case BSC_lstat_extended:
-          bsd_syscalls[code].sc_name = "lstat_extended";
-          break;
-
-        case BSC_lstat64_extended:
-          bsd_syscalls[code].sc_name = "lstat_extended64";
-          break;
-
-        case BSC_link:
-          bsd_syscalls[code].sc_name = "link";
-          break;
-
-        case BSC_unlink:
-          bsd_syscalls[code].sc_name = "unlink";
-          break;
-
-        case BSC_mknod:
-          bsd_syscalls[code].sc_name = "mknod";
-          break;
-
-        case BSC_umask:
-          bsd_syscalls[code].sc_name = "umask";
-          bsd_syscalls[code].sc_format = FMT_UMASK;
-          break;
-
-        case BSC_umask_extended:
-          bsd_syscalls[code].sc_name = "umask_extended";
-          bsd_syscalls[code].sc_format = FMT_UMASK;
-          break;
-
-        case BSC_chmod:
-          bsd_syscalls[code].sc_name = "chmod";
-          bsd_syscalls[code].sc_format = FMT_CHMOD;
-          break;
-
-        case BSC_chmod_extended:
-          bsd_syscalls[code].sc_name = "chmod_extended";
-          bsd_syscalls[code].sc_format = FMT_CHMOD_EXT;
-          break;
-
-        case BSC_fchmod:
-          bsd_syscalls[code].sc_name = "fchmod";
-          bsd_syscalls[code].sc_format = FMT_FCHMOD;
-          break;
-
-        case BSC_fchmod_extended:
-          bsd_syscalls[code].sc_name = "fchmod_extended";
-          bsd_syscalls[code].sc_format = FMT_FCHMOD_EXT;
-          break;
-
-        case BSC_chown:
-          bsd_syscalls[code].sc_name = "chown";
-          break;
-
-        case BSC_lchown:
-          bsd_syscalls[code].sc_name = "lchown";
-          break;
-
-        case BSC_fchown:
-          bsd_syscalls[code].sc_name = "fchown";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_access:
-          bsd_syscalls[code].sc_name = "access";
-          bsd_syscalls[code].sc_format = FMT_ACCESS;
-          break;
-
-        case BSC_access_extended:
-          bsd_syscalls[code].sc_name = "access_extended";
-          break;
-
-        case BSC_chdir:
-          bsd_syscalls[code].sc_name = "chdir";
-          break;
-                    
-        case BSC_pthread_chdir:
-          bsd_syscalls[code].sc_name = "pthread_chdir";
-          break;
-                    
-        case BSC_chroot:
-          bsd_syscalls[code].sc_name = "chroot";
-          break;
-                    
-        case BSC_utimes:
-          bsd_syscalls[code].sc_name = "utimes";
-          break;
-                    
-        case BSC_delete:
-          bsd_syscalls[code].sc_name = "delete-Carbon";
-          break;
-                    
-        case BSC_undelete:
-          bsd_syscalls[code].sc_name = "undelete";
-          break;
-                    
-        case BSC_revoke:
-          bsd_syscalls[code].sc_name = "revoke";
-          break;
-                    
-        case BSC_fsctl:
-          bsd_syscalls[code].sc_name = "fsctl";
-          break;
-                    
-        case BSC_ffsctl:
-          bsd_syscalls[code].sc_name = "ffsctl";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-                    
-        case BSC_chflags:
-          bsd_syscalls[code].sc_name = "chflags";
-          bsd_syscalls[code].sc_format = FMT_CHFLAGS;
-          break;
-                    
-        case BSC_fchflags:
-          bsd_syscalls[code].sc_name = "fchflags";
-          bsd_syscalls[code].sc_format = FMT_FCHFLAGS;
-          break;
-                    
-        case BSC_fchdir:
-          bsd_syscalls[code].sc_name = "fchdir";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-                    
-        case BSC_pthread_fchdir:
-          bsd_syscalls[code].sc_name = "pthread_fchdir";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-                    
-        case BSC_futimes:
-          bsd_syscalls[code].sc_name = "futimes";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_sync:
-          bsd_syscalls[code].sc_name = "sync";
-          break;
-
-        case BSC_symlink:
-          bsd_syscalls[code].sc_name = "symlink";
-          break;
-
-        case BSC_readlink:
-          bsd_syscalls[code].sc_name = "readlink";
-          break;
-
-        case BSC_fsync:
-        case BSC_fsync_nocancel:
-          bsd_syscalls[code].sc_name = "fsync";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_fdatasync:
-          bsd_syscalls[code].sc_name = "fdatasync";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_readv:
-        case BSC_readv_nocancel:
-          bsd_syscalls[code].sc_name = "readv";
-          bsd_syscalls[code].sc_format = FMT_FD_IO;
-          break;
-
-        case BSC_writev:
-        case BSC_writev_nocancel:
-          bsd_syscalls[code].sc_name = "writev";
-          bsd_syscalls[code].sc_format = FMT_FD_IO;
-          break;
-
-        case BSC_pread:
-        case BSC_pread_nocancel:
-          bsd_syscalls[code].sc_name = "pread";
-          bsd_syscalls[code].sc_format = FMT_PREAD;
-          break;
-
-        case BSC_pwrite:
-        case BSC_pwrite_nocancel:
-          bsd_syscalls[code].sc_name = "pwrite";
-          bsd_syscalls[code].sc_format = FMT_PREAD;
-          break;
-
-        case BSC_mkdir:
-          bsd_syscalls[code].sc_name = "mkdir";
-          break;
-                    
-        case BSC_mkdir_extended:
-          bsd_syscalls[code].sc_name = "mkdir_extended";
-          break;
-                    
-        case BSC_mkfifo:
-          bsd_syscalls[code].sc_name = "mkfifo";
-          break;
-
-        case BSC_mkfifo_extended:
-          bsd_syscalls[code].sc_name = "mkfifo_extended";
-          break;
-
-        case BSC_rmdir:
-          bsd_syscalls[code].sc_name = "rmdir";
-          break;
-
-        case BSC_statfs:
-          bsd_syscalls[code].sc_name = "statfs";
-          break;
-
-        case BSC_statfs64:
-          bsd_syscalls[code].sc_name = "statfs64";
-          break;
-
-        case BSC_getfsstat:
-          bsd_syscalls[code].sc_name = "getfsstat";
-          break;
-
-        case BSC_getfsstat64:
-          bsd_syscalls[code].sc_name = "getfsstat64";
-          break;
-
-        case BSC_fstatfs:
-          bsd_syscalls[code].sc_name = "fstatfs";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_fstatfs64:
-          bsd_syscalls[code].sc_name = "fstatfs64";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_pathconf:
-          bsd_syscalls[code].sc_name = "pathconf";
-          break;
-
-        case BSC_fpathconf:
-          bsd_syscalls[code].sc_name = "fpathconf";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_getdirentries:
-          bsd_syscalls[code].sc_name = "getdirentries";
-          bsd_syscalls[code].sc_format = FMT_FD_IO;
-          break;
-
-        case BSC_getdirentries64:
-          bsd_syscalls[code].sc_name = "getdirentries64";
-          bsd_syscalls[code].sc_format = FMT_FD_IO;
-          break;
-
-        case BSC_lseek:
-          bsd_syscalls[code].sc_name = "lseek";
-          bsd_syscalls[code].sc_format = FMT_LSEEK;
-          break;
-
-        case BSC_truncate:
-          bsd_syscalls[code].sc_name = "truncate";
-          bsd_syscalls[code].sc_format = FMT_TRUNC;
-          break;
-
-        case BSC_ftruncate:
-          bsd_syscalls[code].sc_name = "ftruncate";
-          bsd_syscalls[code].sc_format = FMT_FTRUNC;
-          break;
-
-        case BSC_flock:
-          bsd_syscalls[code].sc_name = "flock";
-          bsd_syscalls[code].sc_format = FMT_FLOCK;
-          break;
-
-        case BSC_getattrlist:
-          bsd_syscalls[code].sc_name = "getattrlist";
-          break;
-
-        case BSC_setattrlist:
-          bsd_syscalls[code].sc_name = "setattrlist";
-          break;
-
-        case BSC_fgetattrlist:
-          bsd_syscalls[code].sc_name = "fgetattrlist";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_fsetattrlist:
-          bsd_syscalls[code].sc_name = "fsetattrlist";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_getdirentriesattr:
-          bsd_syscalls[code].sc_name = "getdirentriesattr";
-          bsd_syscalls[code].sc_format = FMT_FD;
-          break;
-
-        case BSC_exchangedata:
-          bsd_syscalls[code].sc_name = "exchangedata";
-          break;
-                    
-        case BSC_rename:
-          bsd_syscalls[code].sc_name = "rename";
-          break;
-
-        case BSC_copyfile:
-          bsd_syscalls[code].sc_name = "copyfile";
-          break;
-
-        case BSC_checkuseraccess:
-          bsd_syscalls[code].sc_name = "checkuseraccess";
-          break;
-
-        case BSC_searchfs:
-          bsd_syscalls[code].sc_name = "searchfs";
-          break;
-
-        case BSC_aio_fsync:
-          bsd_syscalls[code].sc_name = "aio_fsync";
-          bsd_syscalls[code].sc_format = FMT_AIO_FSYNC;
-          break;
-
-        case BSC_aio_return:
-          bsd_syscalls[code].sc_name = "aio_return";
-          bsd_syscalls[code].sc_format = FMT_AIO_RETURN;
-          break;
-
-        case BSC_aio_suspend:
-        case BSC_aio_suspend_nocancel:
-          bsd_syscalls[code].sc_name = "aio_suspend";
-          bsd_syscalls[code].sc_format = FMT_AIO_SUSPEND;
-          break;
-
-        case BSC_aio_cancel:
-          bsd_syscalls[code].sc_name = "aio_cancel";
-          bsd_syscalls[code].sc_format = FMT_AIO_CANCEL;
-          break;
-
-        case BSC_aio_error:
-          bsd_syscalls[code].sc_name = "aio_error";
-          bsd_syscalls[code].sc_format = FMT_AIO;
-          break;
-
-        case BSC_aio_read:
-          bsd_syscalls[code].sc_name = "aio_read";
-          bsd_syscalls[code].sc_format = FMT_AIO;
-          break;
-
-        case BSC_aio_write:
-          bsd_syscalls[code].sc_name = "aio_write";
-          bsd_syscalls[code].sc_format = FMT_AIO;
-          break;
-
-        case BSC_lio_listio:
-          bsd_syscalls[code].sc_name = "lio_listio";
-          bsd_syscalls[code].sc_format = FMT_LIO_LISTIO;
-          break;
-
-        case BSC_msync:
-        case BSC_msync_nocancel:
-          bsd_syscalls[code].sc_name = "msync";
-          bsd_syscalls[code].sc_format = FMT_MSYNC;
-          break;
-
-        case BSC_fcntl:
-        case BSC_fcntl_nocancel:
-          bsd_syscalls[code].sc_name = "fcntl";
-          bsd_syscalls[code].sc_format = FMT_FCNTL;
-          break;
-
-        case BSC_ioctl:
-          bsd_syscalls[code].sc_name = "ioctl";
-          bsd_syscalls[code].sc_format = FMT_IOCTL;
-          break;
-
-        case BSC_fsgetpath:
-          bsd_syscalls[code].sc_name = "fsgetpath";
-          break;
+      case BSC_sendfile:
+        bsd_syscalls[code].sc_name = "sendfile";
+        bsd_syscalls[code].sc_format = FMT_FD;    /* this should be changed to FMT_SENDFILE */
+        break;            /* once we add an extended info trace event */
+      
+      case BSC_recvmsg:
+      case BSC_recvmsg_nocancel:
+        bsd_syscalls[code].sc_name = "recvmsg";
+        bsd_syscalls[code].sc_format = FMT_FD_IO;
+        break;
+
+      case BSC_sendmsg:
+      case BSC_sendmsg_nocancel:
+        bsd_syscalls[code].sc_name = "sendmsg";
+        bsd_syscalls[code].sc_format = FMT_FD_IO;
+        break;
+
+      case BSC_recvfrom:
+      case BSC_recvfrom_nocancel:
+        bsd_syscalls[code].sc_name = "recvfrom";
+        bsd_syscalls[code].sc_format = FMT_FD_IO;
+        break;
+
+      case BSC_sendto:
+      case BSC_sendto_nocancel:
+        bsd_syscalls[code].sc_name = "sendto";
+        bsd_syscalls[code].sc_format = FMT_FD_IO;
+        break;
+
+      case BSC_select:
+      case BSC_select_nocancel:
+        bsd_syscalls[code].sc_name = "select";
+        bsd_syscalls[code].sc_format = FMT_SELECT;
+        break;
+      
+      case BSC_accept:
+      case BSC_accept_nocancel:
+        bsd_syscalls[code].sc_name = "accept";
+        bsd_syscalls[code].sc_format = FMT_FD_2;
+        break;
+      
+      case BSC_socket:
+        bsd_syscalls[code].sc_name = "socket";
+        bsd_syscalls[code].sc_format = FMT_SOCKET;
+        break;
+
+      case BSC_connect:
+      case BSC_connect_nocancel:
+        bsd_syscalls[code].sc_name = "connect";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_bind:
+        bsd_syscalls[code].sc_name = "bind";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_listen:
+        bsd_syscalls[code].sc_name = "listen";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_mmap:
+        bsd_syscalls[code].sc_name = "mmap";
+        bsd_syscalls[code].sc_format = FMT_MMAP;
+        break;
+      
+      case BSC_socketpair:
+        bsd_syscalls[code].sc_name = "socketpair";
+        break;
+      
+      case BSC_getxattr:
+        bsd_syscalls[code].sc_name = "getxattr";
+        break;
+                  
+      case BSC_setxattr:
+        bsd_syscalls[code].sc_name = "setxattr";
+        break;
+                  
+      case BSC_removexattr:
+        bsd_syscalls[code].sc_name = "removexattr";
+        break;
+                  
+      case BSC_listxattr:
+        bsd_syscalls[code].sc_name = "listxattr";
+        break;
+                  
+      case BSC_stat:
+        bsd_syscalls[code].sc_name = "stat";
+        break;
+                  
+      case BSC_stat64:
+        bsd_syscalls[code].sc_name = "stat64";
+        break;
+                  
+      case BSC_stat_extended:
+        bsd_syscalls[code].sc_name = "stat_extended";
+        break;
+                  
+      case BSC_stat64_extended:
+        bsd_syscalls[code].sc_name = "stat_extended64";
+        break;
+
+      case BSC_mount:
+        bsd_syscalls[code].sc_name = "mount";
+        bsd_syscalls[code].sc_format = FMT_MOUNT;
+        break;
+
+      case BSC_unmount:
+        bsd_syscalls[code].sc_name = "unmount";
+        bsd_syscalls[code].sc_format = FMT_UNMOUNT;
+        break;
+
+      case BSC_exit:
+        bsd_syscalls[code].sc_name = "exit";
+        break;
+
+      case BSC_execve:
+        bsd_syscalls[code].sc_name = "execve";
+        break;
+                  
+      case BSC_posix_spawn:
+        bsd_syscalls[code].sc_name = "posix_spawn";
+        break;
+                  
+      case BSC_open:
+      case BSC_open_nocancel:
+        bsd_syscalls[code].sc_name = "open";
+        bsd_syscalls[code].sc_format = FMT_OPEN;
+        break;
+
+      case BSC_open_extended:
+        bsd_syscalls[code].sc_name = "open_extended";
+        bsd_syscalls[code].sc_format = FMT_OPEN;
+        break;
+
+      case BSC_guarded_open_np:
+        bsd_syscalls[code].sc_name = "guarded_open_np";
+        bsd_syscalls[code].sc_format = FMT_OPEN;
+        break;
+
+      case BSC_open_dprotected_np:
+        bsd_syscalls[code].sc_name = "open_dprotected";
+        bsd_syscalls[code].sc_format = FMT_OPEN;
+        break;
+
+      case BSC_dup:
+        bsd_syscalls[code].sc_name = "dup";
+        bsd_syscalls[code].sc_format = FMT_FD_2;
+        break;
+
+      case BSC_dup2:
+        bsd_syscalls[code].sc_name = "dup2";
+        bsd_syscalls[code].sc_format = FMT_FD_2;
+        break;        
+
+      case BSC_close:
+      case BSC_close_nocancel:
+        bsd_syscalls[code].sc_name = "close";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_guarded_close_np:
+        bsd_syscalls[code].sc_name = "guarded_close_np";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_read:
+      case BSC_read_nocancel:
+        bsd_syscalls[code].sc_name = "read";
+        bsd_syscalls[code].sc_format = FMT_FD_IO;
+        break;
+
+      case BSC_write:
+      case BSC_write_nocancel:
+        bsd_syscalls[code].sc_name = "write";
+        bsd_syscalls[code].sc_format = FMT_FD_IO;
+        break;
+
+      case BSC_fgetxattr:
+        bsd_syscalls[code].sc_name = "fgetxattr";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_fsetxattr:
+        bsd_syscalls[code].sc_name = "fsetxattr";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_fremovexattr:
+        bsd_syscalls[code].sc_name = "fremovexattr";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_flistxattr:
+        bsd_syscalls[code].sc_name = "flistxattr";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_fstat:
+        bsd_syscalls[code].sc_name = "fstat";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_fstat64:
+        bsd_syscalls[code].sc_name = "fstat64";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_fstat_extended:
+        bsd_syscalls[code].sc_name = "fstat_extended";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_fstat64_extended:
+        bsd_syscalls[code].sc_name = "fstat64_extended";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_lstat:
+        bsd_syscalls[code].sc_name = "lstat";
+        break;
+
+      case BSC_lstat64:
+        bsd_syscalls[code].sc_name = "lstat64";
+        break;
+
+      case BSC_lstat_extended:
+        bsd_syscalls[code].sc_name = "lstat_extended";
+        break;
+
+      case BSC_lstat64_extended:
+        bsd_syscalls[code].sc_name = "lstat_extended64";
+        break;
+
+      case BSC_link:
+        bsd_syscalls[code].sc_name = "link";
+        break;
+
+      case BSC_unlink:
+        bsd_syscalls[code].sc_name = "unlink";
+        break;
+
+      case BSC_mknod:
+        bsd_syscalls[code].sc_name = "mknod";
+        break;
+
+      case BSC_umask:
+        bsd_syscalls[code].sc_name = "umask";
+        bsd_syscalls[code].sc_format = FMT_UMASK;
+        break;
+
+      case BSC_umask_extended:
+        bsd_syscalls[code].sc_name = "umask_extended";
+        bsd_syscalls[code].sc_format = FMT_UMASK;
+        break;
+
+      case BSC_chmod:
+        bsd_syscalls[code].sc_name = "chmod";
+        bsd_syscalls[code].sc_format = FMT_CHMOD;
+        break;
+
+      case BSC_chmod_extended:
+        bsd_syscalls[code].sc_name = "chmod_extended";
+        bsd_syscalls[code].sc_format = FMT_CHMOD_EXT;
+        break;
+
+      case BSC_fchmod:
+        bsd_syscalls[code].sc_name = "fchmod";
+        bsd_syscalls[code].sc_format = FMT_FCHMOD;
+        break;
+
+      case BSC_fchmod_extended:
+        bsd_syscalls[code].sc_name = "fchmod_extended";
+        bsd_syscalls[code].sc_format = FMT_FCHMOD_EXT;
+        break;
+
+      case BSC_chown:
+        bsd_syscalls[code].sc_name = "chown";
+        break;
+
+      case BSC_lchown:
+        bsd_syscalls[code].sc_name = "lchown";
+        break;
+
+      case BSC_fchown:
+        bsd_syscalls[code].sc_name = "fchown";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_access:
+        bsd_syscalls[code].sc_name = "access";
+        bsd_syscalls[code].sc_format = FMT_ACCESS;
+        break;
+
+      case BSC_access_extended:
+        bsd_syscalls[code].sc_name = "access_extended";
+        break;
+
+      case BSC_chdir:
+        bsd_syscalls[code].sc_name = "chdir";
+        break;
+                  
+      case BSC_pthread_chdir:
+        bsd_syscalls[code].sc_name = "pthread_chdir";
+        break;
+                  
+      case BSC_chroot:
+        bsd_syscalls[code].sc_name = "chroot";
+        break;
+                  
+      case BSC_utimes:
+        bsd_syscalls[code].sc_name = "utimes";
+        break;
+                  
+      case BSC_delete:
+        bsd_syscalls[code].sc_name = "delete-Carbon";
+        break;
+                  
+      case BSC_undelete:
+        bsd_syscalls[code].sc_name = "undelete";
+        break;
+                  
+      case BSC_revoke:
+        bsd_syscalls[code].sc_name = "revoke";
+        break;
+                  
+      case BSC_fsctl:
+        bsd_syscalls[code].sc_name = "fsctl";
+        break;
+                  
+      case BSC_ffsctl:
+        bsd_syscalls[code].sc_name = "ffsctl";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+                  
+      case BSC_chflags:
+        bsd_syscalls[code].sc_name = "chflags";
+        bsd_syscalls[code].sc_format = FMT_CHFLAGS;
+        break;
+                  
+      case BSC_fchflags:
+        bsd_syscalls[code].sc_name = "fchflags";
+        bsd_syscalls[code].sc_format = FMT_FCHFLAGS;
+        break;
+                  
+      case BSC_fchdir:
+        bsd_syscalls[code].sc_name = "fchdir";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+                  
+      case BSC_pthread_fchdir:
+        bsd_syscalls[code].sc_name = "pthread_fchdir";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+                  
+      case BSC_futimes:
+        bsd_syscalls[code].sc_name = "futimes";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_sync:
+        bsd_syscalls[code].sc_name = "sync";
+        break;
+
+      case BSC_symlink:
+        bsd_syscalls[code].sc_name = "symlink";
+        break;
+
+      case BSC_readlink:
+        bsd_syscalls[code].sc_name = "readlink";
+        break;
+
+      case BSC_fsync:
+      case BSC_fsync_nocancel:
+        bsd_syscalls[code].sc_name = "fsync";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_fdatasync:
+        bsd_syscalls[code].sc_name = "fdatasync";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_readv:
+      case BSC_readv_nocancel:
+        bsd_syscalls[code].sc_name = "readv";
+        bsd_syscalls[code].sc_format = FMT_FD_IO;
+        break;
+
+      case BSC_writev:
+      case BSC_writev_nocancel:
+        bsd_syscalls[code].sc_name = "writev";
+        bsd_syscalls[code].sc_format = FMT_FD_IO;
+        break;
+
+      case BSC_pread:
+      case BSC_pread_nocancel:
+        bsd_syscalls[code].sc_name = "pread";
+        bsd_syscalls[code].sc_format = FMT_PREAD;
+        break;
+
+      case BSC_pwrite:
+      case BSC_pwrite_nocancel:
+        bsd_syscalls[code].sc_name = "pwrite";
+        bsd_syscalls[code].sc_format = FMT_PREAD;
+        break;
+
+      case BSC_mkdir:
+        bsd_syscalls[code].sc_name = "mkdir";
+        break;
+                  
+      case BSC_mkdir_extended:
+        bsd_syscalls[code].sc_name = "mkdir_extended";
+        break;
+                  
+      case BSC_mkfifo:
+        bsd_syscalls[code].sc_name = "mkfifo";
+        break;
+
+      case BSC_mkfifo_extended:
+        bsd_syscalls[code].sc_name = "mkfifo_extended";
+        break;
+
+      case BSC_rmdir:
+        bsd_syscalls[code].sc_name = "rmdir";
+        break;
+
+      case BSC_statfs:
+        bsd_syscalls[code].sc_name = "statfs";
+        break;
+
+      case BSC_statfs64:
+        bsd_syscalls[code].sc_name = "statfs64";
+        break;
+
+      case BSC_getfsstat:
+        bsd_syscalls[code].sc_name = "getfsstat";
+        break;
+
+      case BSC_getfsstat64:
+        bsd_syscalls[code].sc_name = "getfsstat64";
+        break;
+
+      case BSC_fstatfs:
+        bsd_syscalls[code].sc_name = "fstatfs";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_fstatfs64:
+        bsd_syscalls[code].sc_name = "fstatfs64";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_pathconf:
+        bsd_syscalls[code].sc_name = "pathconf";
+        break;
+
+      case BSC_fpathconf:
+        bsd_syscalls[code].sc_name = "fpathconf";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_getdirentries:
+        bsd_syscalls[code].sc_name = "getdirentries";
+        bsd_syscalls[code].sc_format = FMT_FD_IO;
+        break;
+
+      case BSC_getdirentries64:
+        bsd_syscalls[code].sc_name = "getdirentries64";
+        bsd_syscalls[code].sc_format = FMT_FD_IO;
+        break;
+
+      case BSC_lseek:
+        bsd_syscalls[code].sc_name = "lseek";
+        bsd_syscalls[code].sc_format = FMT_LSEEK;
+        break;
+
+      case BSC_truncate:
+        bsd_syscalls[code].sc_name = "truncate";
+        bsd_syscalls[code].sc_format = FMT_TRUNC;
+        break;
+
+      case BSC_ftruncate:
+        bsd_syscalls[code].sc_name = "ftruncate";
+        bsd_syscalls[code].sc_format = FMT_FTRUNC;
+        break;
+
+      case BSC_flock:
+        bsd_syscalls[code].sc_name = "flock";
+        bsd_syscalls[code].sc_format = FMT_FLOCK;
+        break;
+
+      case BSC_getattrlist:
+        bsd_syscalls[code].sc_name = "getattrlist";
+        break;
+
+      case BSC_setattrlist:
+        bsd_syscalls[code].sc_name = "setattrlist";
+        break;
+
+      case BSC_fgetattrlist:
+        bsd_syscalls[code].sc_name = "fgetattrlist";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_fsetattrlist:
+        bsd_syscalls[code].sc_name = "fsetattrlist";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_getdirentriesattr:
+        bsd_syscalls[code].sc_name = "getdirentriesattr";
+        bsd_syscalls[code].sc_format = FMT_FD;
+        break;
+
+      case BSC_exchangedata:
+        bsd_syscalls[code].sc_name = "exchangedata";
+        break;
+                  
+      case BSC_rename:
+        bsd_syscalls[code].sc_name = "rename";
+        break;
+
+      case BSC_copyfile:
+        bsd_syscalls[code].sc_name = "copyfile";
+        break;
+
+      case BSC_checkuseraccess:
+        bsd_syscalls[code].sc_name = "checkuseraccess";
+        break;
+
+      case BSC_searchfs:
+        bsd_syscalls[code].sc_name = "searchfs";
+        break;
+
+      case BSC_aio_fsync:
+        bsd_syscalls[code].sc_name = "aio_fsync";
+        bsd_syscalls[code].sc_format = FMT_AIO_FSYNC;
+        break;
+
+      case BSC_aio_return:
+        bsd_syscalls[code].sc_name = "aio_return";
+        bsd_syscalls[code].sc_format = FMT_AIO_RETURN;
+        break;
+
+      case BSC_aio_suspend:
+      case BSC_aio_suspend_nocancel:
+        bsd_syscalls[code].sc_name = "aio_suspend";
+        bsd_syscalls[code].sc_format = FMT_AIO_SUSPEND;
+        break;
+
+      case BSC_aio_cancel:
+        bsd_syscalls[code].sc_name = "aio_cancel";
+        bsd_syscalls[code].sc_format = FMT_AIO_CANCEL;
+        break;
+
+      case BSC_aio_error:
+        bsd_syscalls[code].sc_name = "aio_error";
+        bsd_syscalls[code].sc_format = FMT_AIO;
+        break;
+
+      case BSC_aio_read:
+        bsd_syscalls[code].sc_name = "aio_read";
+        bsd_syscalls[code].sc_format = FMT_AIO;
+        break;
+
+      case BSC_aio_write:
+        bsd_syscalls[code].sc_name = "aio_write";
+        bsd_syscalls[code].sc_format = FMT_AIO;
+        break;
+
+      case BSC_lio_listio:
+        bsd_syscalls[code].sc_name = "lio_listio";
+        bsd_syscalls[code].sc_format = FMT_LIO_LISTIO;
+        break;
+
+      case BSC_msync:
+      case BSC_msync_nocancel:
+        bsd_syscalls[code].sc_name = "msync";
+        bsd_syscalls[code].sc_format = FMT_MSYNC;
+        break;
+
+      case BSC_fcntl:
+      case BSC_fcntl_nocancel:
+        bsd_syscalls[code].sc_name = "fcntl";
+        bsd_syscalls[code].sc_format = FMT_FCNTL;
+        break;
+
+      case BSC_ioctl:
+        bsd_syscalls[code].sc_name = "ioctl";
+        bsd_syscalls[code].sc_format = FMT_IOCTL;
+        break;
+
+      case BSC_fsgetpath:
+        bsd_syscalls[code].sc_name = "fsgetpath";
+        break;
         
       case BSC_getattrlistbulk:
         bsd_syscalls[code].sc_name = "getattrlistbulk";
@@ -1619,283 +1620,283 @@ void init_tables(void)
   }
 
   for (i = 0; (type = filemgr_call_types[i]); i++) {
-          char * p;
+    char *p;
 
-          code = filemgr_index(type);
+    code = filemgr_index(type);
 
     if (code >= MAX_FILEMGR) {
-            printf("FILEMGR call init (%x):  type exceeds table size\n", type);
-            continue;
+      printf("FILEMGR call init (%x):  type exceeds table size\n", type);
+      continue;
     }
     switch (type) {
 
-        case FILEMGR_PBGETCATALOGINFO:
-          p = "GetCatalogInfo";
-          break;
-
-        case FILEMGR_PBGETCATALOGINFOBULK:
-          p = "GetCatalogInfoBulk";
-          break;
-
-        case FILEMGR_PBCREATEFILEUNICODE:
-          p = "CreateFileUnicode";
-          break;
-
-        case FILEMGR_PBCREATEDIRECTORYUNICODE:
-          p = "CreateDirectoryUnicode";
-          break;
-
-        case FILEMGR_PBCREATEFORK:
-          p = "PBCreateFork";
-          break;
-
-        case FILEMGR_PBDELETEFORK:
-          p = "PBDeleteFork";
-          break;
-
-        case FILEMGR_PBITERATEFORK:
-          p = "PBIterateFork";
-          break;
-
-        case FILEMGR_PBOPENFORK:
-          p = "PBOpenFork";
-          break;
-
-        case FILEMGR_PBREADFORK:
-          p = "PBReadFork";
-          break;
-
-        case FILEMGR_PBWRITEFORK:
-          p = "PBWriteFork";
-          break;
-
-        case FILEMGR_PBALLOCATEFORK:
-          p = "PBAllocateFork";
-          break;
-
-        case FILEMGR_PBDELETEOBJECT:
-          p = "PBDeleteObject";
-          break;
-
-        case FILEMGR_PBEXCHANGEOBJECT:
-          p = "PBExchangeObject";
-          break;
-
-        case FILEMGR_PBGETFORKCBINFO:
-          p = "PBGetForkCBInfo";
-          break;
-
-        case FILEMGR_PBGETVOLUMEINFO:
-          p = "PBGetVolumeInfo";
-          break;
-    
-        case FILEMGR_PBMAKEFSREF:
-          p = "PBMakeFSRef";
-          break;
-
-        case FILEMGR_PBMAKEFSREFUNICODE:
-          p = "PBMakeFSRefUnicode";
-          break;
-
-        case FILEMGR_PBMOVEOBJECT:
-          p = "PBMoveObject";
-          break;
-
-        case FILEMGR_PBOPENITERATOR:
-          p = "PBOpenIterator";
-          break;
-
-        case FILEMGR_PBRENAMEUNICODE:
-          p = "PBRenameUnicode";
-          break;
-
-        case FILEMGR_PBSETCATALOGINFO:
-          p = "SetCatalogInfo";
-          break;
-
-        case FILEMGR_PBSETVOLUMEINFO:
-          p = "SetVolumeInfo";
-          break;
-
-        case FILEMGR_FSREFMAKEPATH:
-          p = "FSRefMakePath";
-          break;
-
-        case FILEMGR_FSPATHMAKEREF:
-          p = "FSPathMakeRef";
-          break;
-
-        case FILEMGR_PBGETCATINFO:
-          p = "GetCatInfo";
-          break;
-
-        case FILEMGR_PBGETCATINFOLITE:
-          p = "GetCatInfoLite";
-          break;
-
-        case FILEMGR_PBHGETFINFO:
-          p = "PBHGetFInfo";
-          break;
-
-        case FILEMGR_PBXGETVOLINFO:
-          p = "PBXGetVolInfo";
-          break;
-
-        case FILEMGR_PBHCREATE:
-          p = "PBHCreate";
-          break;
-
-        case FILEMGR_PBHOPENDF:
-          p = "PBHOpenDF";
-          break;
-
-        case FILEMGR_PBHOPENRF:
-          p = "PBHOpenRF";
-          break;
-
-        case FILEMGR_PBHGETDIRACCESS:
-          p = "PBHGetDirAccess";
-          break;
-
-        case FILEMGR_PBHSETDIRACCESS:
-          p = "PBHSetDirAccess";
-          break;
-
-        case FILEMGR_PBHMAPID:
-          p = "PBHMapID";
-          break;
-
-        case FILEMGR_PBHMAPNAME:
-          p = "PBHMapName";
-          break;
-
-        case FILEMGR_PBCLOSE:
-          p = "PBClose";
-          break;
-
-        case FILEMGR_PBFLUSHFILE:
-          p = "PBFlushFile";
-          break;
-
-        case FILEMGR_PBGETEOF:
-          p = "PBGetEOF";
-          break;
-
-        case FILEMGR_PBSETEOF:
-          p = "PBSetEOF";
-          break;
-
-        case FILEMGR_PBGETFPOS:
-          p = "PBGetFPos";
-          break;
-
-        case FILEMGR_PBREAD:
-          p = "PBRead";
-          break;
-
-        case FILEMGR_PBWRITE:
-          p = "PBWrite";
-          break;
-
-        case FILEMGR_PBGETFCBINFO:
-          p = "PBGetFCBInfo";
-          break;
-
-        case FILEMGR_PBSETFINFO:
-          p = "PBSetFInfo";
-          break;
-
-        case FILEMGR_PBALLOCATE:
-          p = "PBAllocate";
-          break;
-
-        case FILEMGR_PBALLOCCONTIG:
-          p = "PBAllocContig";
-          break;
-
-        case FILEMGR_PBSETFPOS:
-          p = "PBSetFPos";
-          break;
-
-        case FILEMGR_PBSETCATINFO:
-          p = "PBSetCatInfo";
-          break;
-
-        case FILEMGR_PBGETVOLPARMS:
-          p = "PBGetVolParms";
-          break;
-
-        case FILEMGR_PBSETVINFO:
-          p = "PBSetVInfo";
-          break;
-
-        case FILEMGR_PBMAKEFSSPEC:
-          p = "PBMakeFSSpec";
-          break;
-
-        case FILEMGR_PBHGETVINFO:
-          p = "PBHGetVInfo";
-          break;
-
-        case FILEMGR_PBCREATEFILEIDREF:
-          p = "PBCreateFileIDRef";
-          break;
-
-        case FILEMGR_PBDELETEFILEIDREF:
-          p = "PBDeleteFileIDRef";
-          break;
-
-        case FILEMGR_PBRESOLVEFILEIDREF:
-          p = "PBResolveFileIDRef";
-          break;
-
-        case FILEMGR_PBFLUSHVOL:
-          p = "PBFlushVol";
-          break;
-
-        case FILEMGR_PBHRENAME:
-          p = "PBHRename";
-          break;
-
-        case FILEMGR_PBCATMOVE:
-          p = "PBCatMove";
-          break;
-
-        case FILEMGR_PBEXCHANGEFILES:
-          p = "PBExchangeFiles";
-          break;
-
-        case FILEMGR_PBHDELETE:
-          p = "PBHDelete";
-          break;
-
-        case FILEMGR_PBDIRCREATE:
-          p = "PBDirCreate";
-          break;
-
-        case FILEMGR_PBCATSEARCH:
-          p = "PBCatSearch";
-          break;
-
-        case FILEMGR_PBHSETFLOCK:
-          p = "PBHSetFlock";
-          break;
-
-        case FILEMGR_PBHRSTFLOCK:
-          p = "PBHRstFLock";
-          break;
-
-        case FILEMGR_PBLOCKRANGE:
-          p = "PBLockRange";
-          break;
-
-        case FILEMGR_PBUNLOCKRANGE:
-          p = "PBUnlockRange";
-          break;
-
-        default:
-          p = NULL;
-          break;
+      case FILEMGR_PBGETCATALOGINFO:
+        p = "GetCatalogInfo";
+        break;
+
+      case FILEMGR_PBGETCATALOGINFOBULK:
+        p = "GetCatalogInfoBulk";
+        break;
+
+      case FILEMGR_PBCREATEFILEUNICODE:
+        p = "CreateFileUnicode";
+        break;
+
+      case FILEMGR_PBCREATEDIRECTORYUNICODE:
+        p = "CreateDirectoryUnicode";
+        break;
+
+      case FILEMGR_PBCREATEFORK:
+        p = "PBCreateFork";
+        break;
+
+      case FILEMGR_PBDELETEFORK:
+        p = "PBDeleteFork";
+        break;
+
+      case FILEMGR_PBITERATEFORK:
+        p = "PBIterateFork";
+        break;
+
+      case FILEMGR_PBOPENFORK:
+        p = "PBOpenFork";
+        break;
+
+      case FILEMGR_PBREADFORK:
+        p = "PBReadFork";
+        break;
+
+      case FILEMGR_PBWRITEFORK:
+        p = "PBWriteFork";
+        break;
+
+      case FILEMGR_PBALLOCATEFORK:
+        p = "PBAllocateFork";
+        break;
+
+      case FILEMGR_PBDELETEOBJECT:
+        p = "PBDeleteObject";
+        break;
+
+      case FILEMGR_PBEXCHANGEOBJECT:
+        p = "PBExchangeObject";
+        break;
+
+      case FILEMGR_PBGETFORKCBINFO:
+        p = "PBGetForkCBInfo";
+        break;
+
+      case FILEMGR_PBGETVOLUMEINFO:
+        p = "PBGetVolumeInfo";
+        break;
+  
+      case FILEMGR_PBMAKEFSREF:
+        p = "PBMakeFSRef";
+        break;
+
+      case FILEMGR_PBMAKEFSREFUNICODE:
+        p = "PBMakeFSRefUnicode";
+        break;
+
+      case FILEMGR_PBMOVEOBJECT:
+        p = "PBMoveObject";
+        break;
+
+      case FILEMGR_PBOPENITERATOR:
+        p = "PBOpenIterator";
+        break;
+
+      case FILEMGR_PBRENAMEUNICODE:
+        p = "PBRenameUnicode";
+        break;
+
+      case FILEMGR_PBSETCATALOGINFO:
+        p = "SetCatalogInfo";
+        break;
+
+      case FILEMGR_PBSETVOLUMEINFO:
+        p = "SetVolumeInfo";
+        break;
+
+      case FILEMGR_FSREFMAKEPATH:
+        p = "FSRefMakePath";
+        break;
+
+      case FILEMGR_FSPATHMAKEREF:
+        p = "FSPathMakeRef";
+        break;
+
+      case FILEMGR_PBGETCATINFO:
+        p = "GetCatInfo";
+        break;
+
+      case FILEMGR_PBGETCATINFOLITE:
+        p = "GetCatInfoLite";
+        break;
+
+      case FILEMGR_PBHGETFINFO:
+        p = "PBHGetFInfo";
+        break;
+
+      case FILEMGR_PBXGETVOLINFO:
+        p = "PBXGetVolInfo";
+        break;
+
+      case FILEMGR_PBHCREATE:
+        p = "PBHCreate";
+        break;
+
+      case FILEMGR_PBHOPENDF:
+        p = "PBHOpenDF";
+        break;
+
+      case FILEMGR_PBHOPENRF:
+        p = "PBHOpenRF";
+        break;
+
+      case FILEMGR_PBHGETDIRACCESS:
+        p = "PBHGetDirAccess";
+        break;
+
+      case FILEMGR_PBHSETDIRACCESS:
+        p = "PBHSetDirAccess";
+        break;
+
+      case FILEMGR_PBHMAPID:
+        p = "PBHMapID";
+        break;
+
+      case FILEMGR_PBHMAPNAME:
+        p = "PBHMapName";
+        break;
+
+      case FILEMGR_PBCLOSE:
+        p = "PBClose";
+        break;
+
+      case FILEMGR_PBFLUSHFILE:
+        p = "PBFlushFile";
+        break;
+
+      case FILEMGR_PBGETEOF:
+        p = "PBGetEOF";
+        break;
+
+      case FILEMGR_PBSETEOF:
+        p = "PBSetEOF";
+        break;
+
+      case FILEMGR_PBGETFPOS:
+        p = "PBGetFPos";
+        break;
+
+      case FILEMGR_PBREAD:
+        p = "PBRead";
+        break;
+
+      case FILEMGR_PBWRITE:
+        p = "PBWrite";
+        break;
+
+      case FILEMGR_PBGETFCBINFO:
+        p = "PBGetFCBInfo";
+        break;
+
+      case FILEMGR_PBSETFINFO:
+        p = "PBSetFInfo";
+        break;
+
+      case FILEMGR_PBALLOCATE:
+        p = "PBAllocate";
+        break;
+
+      case FILEMGR_PBALLOCCONTIG:
+        p = "PBAllocContig";
+        break;
+
+      case FILEMGR_PBSETFPOS:
+        p = "PBSetFPos";
+        break;
+
+      case FILEMGR_PBSETCATINFO:
+        p = "PBSetCatInfo";
+        break;
+
+      case FILEMGR_PBGETVOLPARMS:
+        p = "PBGetVolParms";
+        break;
+
+      case FILEMGR_PBSETVINFO:
+        p = "PBSetVInfo";
+        break;
+
+      case FILEMGR_PBMAKEFSSPEC:
+        p = "PBMakeFSSpec";
+        break;
+
+      case FILEMGR_PBHGETVINFO:
+        p = "PBHGetVInfo";
+        break;
+
+      case FILEMGR_PBCREATEFILEIDREF:
+        p = "PBCreateFileIDRef";
+        break;
+
+      case FILEMGR_PBDELETEFILEIDREF:
+        p = "PBDeleteFileIDRef";
+        break;
+
+      case FILEMGR_PBRESOLVEFILEIDREF:
+        p = "PBResolveFileIDRef";
+        break;
+
+      case FILEMGR_PBFLUSHVOL:
+        p = "PBFlushVol";
+        break;
+
+      case FILEMGR_PBHRENAME:
+        p = "PBHRename";
+        break;
+
+      case FILEMGR_PBCATMOVE:
+        p = "PBCatMove";
+        break;
+
+      case FILEMGR_PBEXCHANGEFILES:
+        p = "PBExchangeFiles";
+        break;
+
+      case FILEMGR_PBHDELETE:
+        p = "PBHDelete";
+        break;
+
+      case FILEMGR_PBDIRCREATE:
+        p = "PBDirCreate";
+        break;
+
+      case FILEMGR_PBCATSEARCH:
+        p = "PBCatSearch";
+        break;
+
+      case FILEMGR_PBHSETFLOCK:
+        p = "PBHSetFlock";
+        break;
+
+      case FILEMGR_PBHRSTFLOCK:
+        p = "PBHRstFLock";
+        break;
+
+      case FILEMGR_PBLOCKRANGE:
+        p = "PBLockRange";
+        break;
+
+      case FILEMGR_PBUNLOCKRANGE:
+        p = "PBUnlockRange";
+        break;
+
+      default:
+        p = NULL;
+        break;
     }
     filemgr_calls[code].fm_name = p;
   }
@@ -1903,14 +1904,10 @@ void init_tables(void)
 
 
 
-int
-main(argc, argv)
-  int argc;
-  char  *argv[];
-{
-  char  *myname = "fs_usage";
-  int     i;
-  char    ch;
+int main(int argc, char *argv[]) {
+  char *myname = "fs_usage";
+  int i;
+  char ch;
 
   if (0 != reexec_to_match_kernel()) {
     fprintf(stderr, "Could not re-execute: %d\n", errno);
@@ -1921,34 +1918,35 @@ main(argc, argv)
    * get our name
    */
   if (argc > 0) {
-    if ((myname = rindex(argv[0], '/')) == 0)
+    if ((myname = rindex(argv[0], '/')) == 0) {
       myname = argv[0];
-    else
+    } else {
       myname++;
+    }
   }
   
   while ((ch = getopt(argc, argv, "bewf:R:S:E:t:W")) != EOF) {
 
     switch(ch) {
-
-                case 'e':
+      case 'e':
         exclude_pids = 1;
         break;
 
-         case 'f':
-       if (!strcmp(optarg, "filesys"))
-         filter_mode |= FILESYS_FILTER;
-       else if (!strcmp(optarg, "exec"))
-         filter_mode |= EXEC_FILTER;
-       else if (!strcmp(optarg, "pathname"))
-         filter_mode |= PATHNAME_FILTER;
-       break;
+      case 'f':
+        if (!strcmp(optarg, "filesys")) {
+          filter_mode |= FILESYS_FILTER;
+        } else if (!strcmp(optarg, "exec")) {
+          filter_mode |= EXEC_FILTER;
+        } else if (!strcmp(optarg, "pathname")) {
+          filter_mode |= PATHNAME_FILTER;
+        }
+        break;
 
     default:
       exit_usage(myname);     
     }
   }
-  if ( geteuid() != 0 ) {
+  if (geteuid() != 0) {
     fprintf(stderr, "'fs_usage' must be run as root...\n");
     exit(1);
   }
@@ -1959,8 +1957,9 @@ main(argc, argv)
    * when excluding, fs_usage should be the first in line for pids[]
    */
   if (exclude_pids || (!exclude_pids && argc == 0)) {
-    if (num_of_pids < (MAX_PIDS - 1))
+    if (num_of_pids < (MAX_PIDS - 1)) {
       pids[num_of_pids++] = getpid();
+    }
   }
 
   while (argc > 0 && num_of_pids < (MAX_PIDS - 1)) {
@@ -1994,8 +1993,9 @@ main(argc, argv)
   sysctl(mib, 2, &num_cpus, &len, NULL, 0);
   num_events = EVENT_BASE * num_cpus;
 
-  if ((my_buffer = malloc(num_events * sizeof(kd_buf))) == (char *)0)
+  if ((my_buffer = malloc(num_events * sizeof(kd_buf))) == (char *)0) {
     quit("can't allocate memory for tracing info\n");
+  }
 
   set_remove();
   set_numbufs(num_events);
@@ -2006,8 +2006,9 @@ main(argc, argv)
       set_pidcheck(pids[i], 1);
     }
   } else {
-    for (i = 0; i < num_of_pids; i++)
+    for (i = 0; i < num_of_pids; i++) {
       set_pidexclude(pids[i], 1);
+    }
   }
   if (select_pid_mode && !one_good_pid) {
     /*
@@ -2039,10 +2040,8 @@ main(argc, argv)
 }
 
 
-void
-find_proc_names()
-{
-        size_t      bufSize = 0;
+void find_proc_names() {
+  size_t bufSize = 0;
   struct kinfo_proc *kp;
 
   mib[0] = CTL_KERN;
@@ -2050,23 +2049,24 @@ find_proc_names()
   mib[2] = KERN_PROC_ALL;
   mib[3] = 0;
 
-  if (sysctl(mib, 4, NULL, &bufSize, NULL, 0) < 0)
+  if (sysctl(mib, 4, NULL, &bufSize, NULL, 0) < 0) {
     quit("trace facility failure, KERN_PROC_ALL\n");
+  }
 
-  if ((kp = (struct kinfo_proc *)malloc(bufSize)) == (struct kinfo_proc *)0)
+  if ((kp = (struct kinfo_proc *)malloc(bufSize)) == (struct kinfo_proc *)0) {
     quit("can't allocate memory for proc buffer\n");
+  }
   
-  if (sysctl(mib, 4, kp, &bufSize, NULL, 0) < 0)
+  if (sysctl(mib, 4, kp, &bufSize, NULL, 0) < 0) {
     quit("trace facility failure, KERN_PROC_ALL\n");
 
-        kp_nentries = bufSize/ sizeof(struct kinfo_proc);
+    kp_nentries = bufSize/ sizeof(struct kinfo_proc);
+  }
   kp_buffer = kp;
 }
 
 
-void
-set_enable(int val) 
-{
+void set_enable(int val) {
   mib[0] = CTL_KERN;
   mib[1] = KERN_KDEBUG;
   mib[2] = KERN_KDENABLE;   /* protocol */
@@ -2074,18 +2074,18 @@ set_enable(int val)
   mib[4] = 0;
   mib[5] = 0;           /* no flags */
 
-  if (sysctl(mib, 4, NULL, &needed, NULL, 0) < 0)
+  if (sysctl(mib, 4, NULL, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDENABLE\n");
+  }
 
-  if (val)
+  if (val) {
     trace_enabled = 1;
-  else
+  } else {
     trace_enabled = 0;
+  }
 }
 
-void
-set_numbufs(int nbufs) 
-{
+void set_numbufs(int nbufs) {
   mib[0] = CTL_KERN;
   mib[1] = KERN_KDEBUG;
   mib[2] = KERN_KDSETBUF;
@@ -2093,8 +2093,9 @@ set_numbufs(int nbufs)
   mib[4] = 0;
   mib[5] = 0;           /* no flags */
 
-  if (sysctl(mib, 4, NULL, &needed, NULL, 0) < 0)
+  if (sysctl(mib, 4, NULL, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDSETBUF\n");
+  }
 
   mib[0] = CTL_KERN;
   mib[1] = KERN_KDEBUG;
@@ -2103,16 +2104,15 @@ set_numbufs(int nbufs)
   mib[4] = 0;
   mib[5] = 0;           /* no flags */
 
-  if (sysctl(mib, 3, NULL, &needed, NULL, 0) < 0)
+  if (sysctl(mib, 3, NULL, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDSETUP\n");
+  }
 }
 
 #define ENCODE_CSC_LOW(class, subclass) \
   ( (uint16_t) ( ((class) & 0xff) << 8 ) | ((subclass) & 0xff) )
 
-void
-set_filter(void)
-{
+void set_filter() {
   uint8_t type_filter_bitmap[KDBG_TYPEFILTER_BITMAP_SIZE];
   bzero(type_filter_bitmap, sizeof(type_filter_bitmap));
 
@@ -2141,10 +2141,8 @@ set_filter(void)
   }
 }
 
-void
-set_pidcheck(int pid, int on_off) 
-{
-        kd_regtype kr;
+void set_pidcheck(int pid, int on_off)  {
+  kd_regtype kr;
 
   kr.type = KDBG_TYPENONE;
   kr.value1 = pid;
@@ -2158,20 +2156,20 @@ set_pidcheck(int pid, int on_off)
   mib[5] = 0;
 
   if (sysctl(mib, 3, &kr, &needed, NULL, 0) < 0) {
-          if (on_off == 1)
-            fprintf(stderr, "pid %d does not exist\n", pid);
-  } else
+    if (on_off == 1) {
+      fprintf(stderr, "pid %d does not exist\n", pid);
+    }
+  } else {
     one_good_pid++;
+  }
 }
 
 /* 
  * on_off == 0 turns off pid exclusion
  * on_off == 1 turns on pid exclusion
  */
-void
-set_pidexclude(int pid, int on_off) 
-{
-        kd_regtype kr;
+void set_pidexclude(int pid, int on_off)  {
+  kd_regtype kr;
 
   one_good_pid++;
 
@@ -2187,15 +2185,14 @@ set_pidexclude(int pid, int on_off)
   mib[5] = 0;
 
   if (sysctl(mib, 3, &kr, &needed, NULL, 0) < 0) {
-          if (on_off == 1)
-              fprintf(stderr, "pid %d does not exist\n", pid);
+    if (on_off == 1) {
+      fprintf(stderr, "pid %d does not exist\n", pid);
+    }
   }
 }
 
-void
-get_bufinfo(kbufinfo_t *val)
-{
-        needed = sizeof (*val);
+void get_bufinfo(kbufinfo_t *val) {
+  needed = sizeof (*val);
   mib[0] = CTL_KERN;
   mib[1] = KERN_KDEBUG;
   mib[2] = KERN_KDGETBUF;   
@@ -2203,15 +2200,13 @@ get_bufinfo(kbufinfo_t *val)
   mib[4] = 0;
   mib[5] = 0;   /* no flags */
 
-  if (sysctl(mib, 3, val, &needed, 0, 0) < 0)
-    quit("trace facility failure, KERN_KDGETBUF\n");  
-
+  if (sysctl(mib, 3, val, &needed, 0, 0) < 0) {
+    quit("trace facility failure, KERN_KDGETBUF\n");
+  }
 }
 
-void
-set_remove() 
-{
-        errno = 0;
+void set_remove()  {
+  errno = 0;
 
   mib[0] = CTL_KERN;
   mib[1] = KERN_KDEBUG;
@@ -2223,16 +2218,16 @@ set_remove()
   if (sysctl(mib, 3, NULL, &needed, NULL, 0) < 0) {
     set_remove_flag = 0;
 
-    if (errno == EBUSY)
+    if (errno == EBUSY) {
       quit("the trace facility is currently in use...\n          fs_usage, sc_usage, and latency use this feature.\n\n");
-    else
+    } else {
       quit("trace facility failure, KERN_KDREMOVE\n");
+    }
   }
 }
 
-void
-set_init() 
-{       kd_regtype kr;
+void set_init() {
+  kd_regtype kr;
 
   kr.type = KDBG_RANGETYPE;
   kr.value1 = 0;
@@ -2246,8 +2241,9 @@ set_init()
   mib[4] = 0;
   mib[5] = 0;   /* no flags */
 
-  if (sysctl(mib, 3, &kr, &needed, NULL, 0) < 0)
+  if (sysctl(mib, 3, &kr, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDSETREG\n");
+  }
 
   mib[0] = CTL_KERN;
   mib[1] = KERN_KDEBUG;
@@ -2256,14 +2252,13 @@ set_init()
   mib[4] = 0;
   mib[5] = 0;   /* no flags */
 
-  if (sysctl(mib, 3, NULL, &needed, NULL, 0) < 0)
+  if (sysctl(mib, 3, NULL, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDSETUP\n");
+  }
 }
 
 
-void
-sample_sc()
-{
+void sample_sc() {
   kd_buf *kd;
   int i, count;
   size_t needed;
@@ -2272,8 +2267,8 @@ sample_sc()
   get_bufinfo(&bufinfo);
 
   if (need_new_map) {
-          read_command_map();
-          need_new_map = 0;
+    read_command_map();
+    need_new_map = 0;
   }
   needed = bufinfo.nkdbufs * sizeof(kd_buf);
 
@@ -2284,19 +2279,22 @@ sample_sc()
   mib[4] = 0;
   mib[5] = 0;   /* no flags */
 
-  if (sysctl(mib, 3, my_buffer, &needed, NULL, 0) < 0)
+  if (sysctl(mib, 3, my_buffer, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDREADTR\n");
+  }
   count = needed;
 
   if (count > (num_events / 8)) {
-    if (usleep_ms > USLEEP_BEHIND)
+    if (usleep_ms > USLEEP_BEHIND) {
       usleep_ms = USLEEP_BEHIND;
-    else if (usleep_ms > USLEEP_MIN)
+    } else if (usleep_ms > USLEEP_MIN) {
       usleep_ms /= 2;
+    }
 
-  } else  if (count < (num_events / 16)) {
-    if (usleep_ms < USLEEP_MAX)
-                  usleep_ms *= 2;
+  } else if (count < (num_events / 16)) {
+    if (usleep_ms < USLEEP_MAX) {
+      usleep_ms *= 2;
+    }
   }
 
   if (bufinfo.flags & KDBG_WRAPPED) {
@@ -2327,8 +2325,9 @@ sample_sc()
     switch (type) {
     case TRACE_DATA_NEWTHREAD:
       if (kd[i].arg1) {
-        if ((ti = add_event(thread, TRACE_DATA_NEWTHREAD)) == NULL)
+        if ((ti = add_event(thread, TRACE_DATA_NEWTHREAD)) == NULL) {
           continue;
+        }
         ti->child_thread = kd[i].arg1;
         ti->pid = kd[i].arg2;
         /* TODO(peck): Removeme */
@@ -2337,8 +2336,9 @@ sample_sc()
       continue;
 
     case TRACE_STRING_NEWTHREAD:
-      if ((ti = find_event(thread, TRACE_DATA_NEWTHREAD)) == (struct th_info *)0)
+      if ((ti = find_event(thread, TRACE_DATA_NEWTHREAD)) == (struct th_info *)0) {
         continue;
+      }
 
       create_map_entry(ti->child_thread, ti->pid, (char *)&kd[i].arg1);
 
@@ -2346,22 +2346,26 @@ sample_sc()
       continue;
   
     case TRACE_DATA_EXEC:
-      if ((ti = add_event(thread, TRACE_DATA_EXEC)) == NULL)
+      if ((ti = add_event(thread, TRACE_DATA_EXEC)) == NULL) {
         continue;
+      }
 
       ti->pid = kd[i].arg1;
       continue;
 
     case TRACE_STRING_EXEC:
       if ((ti = find_event(thread, BSC_execve))) {
-        if (ti->lookups[0].pathname[0])
+        if (ti->lookups[0].pathname[0]) {
           exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, FMT_DEFAULT);
+        }
       } else if ((ti = find_event(thread, BSC_posix_spawn))) {
-        if (ti->lookups[0].pathname[0])
+        if (ti->lookups[0].pathname[0]) {
           exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, FMT_DEFAULT);
+        }
       }
-      if ((ti = find_event(thread, TRACE_DATA_EXEC)) == (struct th_info *)0)
+      if ((ti = find_event(thread, TRACE_DATA_EXEC)) == (struct th_info *)0) {
         continue;
+      }
 
       create_map_entry(thread, ti->pid, (char *)&kd[i].arg1);
 
@@ -2381,8 +2385,9 @@ sample_sc()
       break;
 
     case BSC_mmap:
-      if (kd[i].arg4 & MAP_ANON)
+      if (kd[i].arg4 & MAP_ANON) {
         continue;
+      }
       break;
 
     case HFS_modify_block_end:
@@ -2397,18 +2402,20 @@ sample_sc()
       continue;
 
     case VFS_LOOKUP:
-      if ((ti = find_event(thread, 0)) == (struct th_info *)0)
+      if ((ti = find_event(thread, 0)) == (struct th_info *)0) {
         continue;
+      }
 
       if (debugid & DBG_FUNC_START) {
 
         if (ti->in_hfs_update) {
           ti->pn_work_index = (MAX_PATHNAMES - 1);
         } else {
-          if (ti->pn_scall_index < MAX_SCALL_PATHNAMES)
+          if (ti->pn_scall_index < MAX_SCALL_PATHNAMES) {
             ti->pn_work_index = ti->pn_scall_index;
-          else
+          } else {
             continue;
+          }
         }
         sargptr = &ti->lookups[ti->pn_work_index].pathname[0];
 
@@ -2432,8 +2439,9 @@ sample_sc()
          * handle and we only handle 2 pathname lookups for
          * a given system call
          */
-        if (sargptr == 0)
+        if (sargptr == 0) {
           continue;
+        }
 
         if ((uintptr_t)sargptr < (uintptr_t)&ti->lookups[ti->pn_work_index].pathname[NUMPARMS]) {
 
@@ -2455,13 +2463,15 @@ sample_sc()
 
           ti->pn_scall_index++;
 
-          if (ti->pn_scall_index < MAX_SCALL_PATHNAMES)
+          if (ti->pn_scall_index < MAX_SCALL_PATHNAMES) {
             ti->pathptr = &ti->lookups[ti->pn_scall_index].pathname[0];
-          else
+          } else {
             ti->pathptr = 0;
+          }
         }
-      } else
+      } else {
         ti->pathptr = sargptr;
+      }
 
       continue;
     }
@@ -2472,11 +2482,13 @@ sample_sc()
       if ((type & CLASS_MASK) == FILEMGR_BASE) {
         index = filemgr_index(type);
 
-        if (index >= MAX_FILEMGR)
+        if (index >= MAX_FILEMGR) {
           continue;
+        }
 
-        if ((p = filemgr_calls[index].fm_name) == NULL)
+        if ((p = filemgr_calls[index].fm_name) == NULL) {
           continue;
+        }
       } else {
         p = NULL;
       }
@@ -2500,23 +2512,25 @@ sample_sc()
      continue;
 
     case SPEC_ioctl:
-     if (kd[i].arg2 == DKIOCSYNCHRONIZECACHE)
+     if (kd[i].arg2 == DKIOCSYNCHRONIZECACHE) {
        exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_SYNCCACHE);
-     else if (kd[i].arg2 == DKIOCUNMAP)
+     } else if (kd[i].arg2 == DKIOCUNMAP) {
        exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_UNMAP);
-     else if (kd[i].arg2 == DKIOCSYNCHRONIZE && (debugid & DBG_FUNC_ALL) == DBG_FUNC_NONE)
+     } else if (kd[i].arg2 == DKIOCSYNCHRONIZE && (debugid & DBG_FUNC_ALL) == DBG_FUNC_NONE) {
        exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_IOCTL_SYNC);
-     else {
-       if ((ti = find_event(thread, type)))
+     } else {
+       if ((ti = find_event(thread, type))) {
          delete_event(ti);
+       }
      }
      continue;
 
     case MACH_pageout:
     case MACH_vmfault:
       /* TODO(peck): what about deleting all of the events? */
-      if ((ti = find_event(thread, type)))
+      if ((ti = find_event(thread, type))) {
         delete_event(ti);
+      }
       continue;
 
     case MSC_map_fd:
@@ -2533,20 +2547,23 @@ sample_sc()
     }
 
     if ((type & CSC_MASK) == BSC_BASE) {
-      if ((index = BSC_INDEX(type)) >= MAX_BSD_SYSCALL)
+      if ((index = BSC_INDEX(type)) >= MAX_BSD_SYSCALL) {
         continue;
+      }
 
       if (bsd_syscalls[index].sc_name) {
         exit_event(bsd_syscalls[index].sc_name, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4,
              bsd_syscalls[index].sc_format);
 
-        if (type == BSC_exit)
+        if (type == BSC_exit) {
           delete_map_entry(thread);
+        }
       }
     } else if ((type & CLASS_MASK) == FILEMGR_BASE) {
     
-      if ((index = filemgr_index(type)) >= MAX_FILEMGR)
+      if ((index = filemgr_index(type)) >= MAX_FILEMGR) {
         continue;
+      }
 
       if (filemgr_calls[index].fm_name) {
         exit_event(filemgr_calls[index].fm_name, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4,
@@ -2558,9 +2575,7 @@ sample_sc()
 }
 
 
-void
-enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name)
-{
+void enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name) {
   th_info_t ti;
   threadmap_t tme;
   int tsclen = 0;
@@ -2568,8 +2583,9 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name)
   int argsclen = 0;
   char buf[MAXWIDTH];
 
-  if ((ti = add_event(thread, type)) == NULL)
+  if ((ti = add_event(thread, type)) == NULL) {
     return;
+  }
 
   ti->arg1   = kd->arg1;
   ti->arg2   = kd->arg2;
@@ -2577,7 +2593,6 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name)
   ti->arg4   = kd->arg4;
 
   switch (type) {
-
   case HFS_update:
     ti->in_hfs_update = 1;
     break;
@@ -2606,15 +2621,14 @@ enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name)
 
       printf("%s", buf);   /* print the kdargs */
       printf("%s.%d\n", tme->tm_command, (int)thread); 
-    } else
+    } else {
       printf("  %-24.24s (%5d, %#lx, 0x%lx, 0x%lx)\n",         name, (short)kd->arg1, kd->arg2, kd->arg3, kd->arg4);
+    }
   }
 }
 
 
-void
-enter_event(uintptr_t thread, int type, kd_buf *kd, char *name)
-{
+void enter_event(uintptr_t thread, int type, kd_buf *kd, char *name) {
   int index;
 
   switch (type) {
@@ -2629,20 +2643,24 @@ enter_event(uintptr_t thread, int type, kd_buf *kd, char *name)
   }
   if ((type & CSC_MASK) == BSC_BASE) {
 
-    if ((index = BSC_INDEX(type)) >= MAX_BSD_SYSCALL)
+    if ((index = BSC_INDEX(type)) >= MAX_BSD_SYSCALL) {
       return;
+    }
 
-    if (bsd_syscalls[index].sc_name)
+    if (bsd_syscalls[index].sc_name) {
       enter_event_now(thread, type, kd, name);
+    }
     return;
   }
   if ((type & CLASS_MASK) == FILEMGR_BASE) {
 
-    if ((index = filemgr_index(type)) >= MAX_FILEMGR)
+    if ((index = filemgr_index(type)) >= MAX_FILEMGR) {
       return;
+    }
          
-    if (filemgr_calls[index].fm_name)
+    if (filemgr_calls[index].fm_name) {
       enter_event_now(thread, type, kd, name);
+    }
     return;
   }
 }
@@ -2655,9 +2673,7 @@ enter_event(uintptr_t thread, int type, kd_buf *kd, char *name)
  *     is all we really need.
 */
 
-void
-extend_syscall(uintptr_t thread, int type, kd_buf *kd)
-{
+void extend_syscall(uintptr_t thread, int type, kd_buf *kd) {
   th_info_t ti;
 
   switch (type) {
@@ -2711,19 +2727,26 @@ extend_syscall(uintptr_t thread, int type, kd_buf *kd)
 }
 
 
-void
-exit_event(char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
-     int format)
-{
+void exit_event(
+    char *sc_name,
+    uintptr_t thread,
+    int type,
+    uintptr_t arg1,
+    uintptr_t arg2,
+    uintptr_t arg3,
+    uintptr_t arg4,
+    int format) {
   th_info_t ti;
       
-  if ((ti = find_event(thread, type)) == (struct th_info *)0)
+  if ((ti = find_event(thread, type)) == (struct th_info *)0) {
     return;
+  }
 
   ti->nameptr = 0;
 
-  if (check_filter_mode(ti, type, arg1, arg2, sc_name))
+  if (check_filter_mode(ti, type, arg1, arg2, sc_name)) {
     format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, ti->waited, (char *)&ti->lookups[0].pathname[0]);
+  }
 
   switch (type) {
 
@@ -2734,35 +2757,36 @@ exit_event(char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t 
   if ((type & CLASS_MASK) == FILEMGR_BASE) {
     ti->in_filemgr = 0;
 
-    if (filemgr_in_progress > 0)
+    if (filemgr_in_progress > 0) {
       filemgr_in_progress--;
+    }
   }
   delete_event(ti);
 }
 
 
-void
-get_mode_nibble(char * buf, int smode, int special, char x_on, char x_off)
-{
-  if (smode & 04)
+void get_mode_nibble(char * buf, int smode, int special, char x_on, char x_off) {
+  if (smode & 04) {
     buf[0] = 'r';
-  if (smode & 02)
+  }
+  if (smode & 02) {
     buf[1] = 'w';
+  }
   if (smode & 01) {
-    if (special)
+    if (special) {
       buf[2] = x_on;
-    else 
+    } else {
       buf[2] = 'x';
+    }
   } else {
-    if (special)
+    if (special) {
       buf[2] = x_off;
+    }
   }
 }
 
 
-void
-get_mode_string(int mode, char *buf)
-{
+void get_mode_string(int mode, char *buf) {
   memset(buf, '-', 9);
   buf[9] = '\0';
 
@@ -2772,29 +2796,37 @@ get_mode_string(int mode, char *buf)
 }
 
 
-int clip_64bit(char *s, uint64_t value)
-{
+int clip_64bit(char *s, uint64_t value) {
   int clen = 0;
 
-  if ( (value & 0xff00000000000000LL) )
+  if ((value & 0xff00000000000000LL)) {
     clen = printf("%s0x%16.16qx", s, value);
-  else if ( (value & 0x00ff000000000000LL) )
+  } else if ((value & 0x00ff000000000000LL)) {
     clen = printf("%s0x%14.14qx  ", s, value);
-  else if ( (value & 0x0000ff0000000000LL) )
+  } else if ((value & 0x0000ff0000000000LL)) {
     clen = printf("%s0x%12.12qx    ", s, value);
-  else if ( (value & 0x000000ff00000000LL) )
+  } else if ((value & 0x000000ff00000000LL)) {
     clen = printf("%s0x%10.10qx      ", s, value);
-  else
+  } else {
     clen = printf("%s0x%8.8qx        ", s, value);
+  }
   
   return clen;
 }
 
 
-void
-format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
-       int format, int waited, char *pathname)
-{
+void format_print(
+    struct th_info *ti,
+    char *sc_name,
+    uintptr_t thread,
+    int type,
+    uintptr_t arg1,
+    uintptr_t arg2,
+    uintptr_t arg3,
+    uintptr_t arg4,
+    int format,
+    int waited,
+    char *pathname) {
   int nopadding = 0;
   char *command_name;
   int in_filemgr = 0;
@@ -2816,15 +2848,17 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
   command_name = "";
 
   // <rdar://problem/19852325> Filter out WindowServer/xcpm iocts in fs_usage
-  if (format == FMT_IOCTL && ti->arg2 == 0xc030581d)
+  if (format == FMT_IOCTL && ti->arg2 == 0xc030581d) {
     return;
+  }
 
   class = type >> 24;
 
   threadmap_t tme;
 
-  if ((tme = find_map_entry(thread)))
-          command_name = tme->tm_command;
+  if ((tme = find_map_entry(thread))) {
+    command_name = tme->tm_command;
+  }
   tlen = timestamp_len;
   nopadding = 0;
 
@@ -2832,17 +2866,19 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
   if (filemgr_in_progress) {
     if (class != FILEMGR_CLASS) {
-      if (find_event(thread, -1))
+      if (find_event(thread, -1)) {
         in_filemgr = 1;
+      }
     }
   }
 
-  if (class == FILEMGR_CLASS)
+  if (class == FILEMGR_CLASS) {
     printf("%s  %-20.20s", timestamp, sc_name);
-  else if (in_filemgr)
+  } else if (in_filemgr) {
     printf("%s    %-15.15s", timestamp, sc_name);
-  else
+  } else {
     printf("%s  %-17.17s", timestamp, sc_name);
+  }
        
 
   framework_name = NULL;
@@ -2933,26 +2969,31 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
       buf[0] = '\0';
 
-      if (ti->arg3 & MS_ASYNC)
+      if (ti->arg3 & MS_ASYNC) {
         mlen += sprintf(&buf[mlen], "MS_ASYNC | ");
-      else
+      } else {
         mlen += sprintf(&buf[mlen], "MS_SYNC | ");
+      }
 
-      if (ti->arg3 & MS_INVALIDATE)
+      if (ti->arg3 & MS_INVALIDATE) {
         mlen += sprintf(&buf[mlen], "MS_INVALIDATE | ");
-      if (ti->arg3 & MS_KILLPAGES)
+      } if (ti->arg3 & MS_KILLPAGES) {
         mlen += sprintf(&buf[mlen], "MS_KILLPAGES | ");
-      if (ti->arg3 & MS_DEACTIVATE)
+      } if (ti->arg3 & MS_DEACTIVATE) {
         mlen += sprintf(&buf[mlen], "MS_DEACTIVATE | ");
+      }
 
-      if (ti->arg3 & ~(MS_ASYNC | MS_SYNC | MS_INVALIDATE | MS_KILLPAGES | MS_DEACTIVATE))
+      if (ti->arg3 & ~(MS_ASYNC | MS_SYNC | MS_INVALIDATE | MS_KILLPAGES | MS_DEACTIVATE)) {
         mlen += sprintf(&buf[mlen], "UNKNOWN | ");
+      }
       
-      if (mlen)
+      if (mlen) {
         buf[mlen - 3] = '\0';
+      }
 
-      if (arg1)
+      if (arg1) {
         printf("      [%3d]", arg1);
+      }
 
       user_addr = (((off_t)(unsigned int)(ti->arg4)) << 32) | (unsigned int)(ti->arg1);
       clip_64bit(" A=", user_addr);
@@ -2973,25 +3014,32 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
       buf[0] = '\0';
 
-      if (ti->arg2 & LOCK_SH)
+      if (ti->arg2 & LOCK_SH) {
         mlen += sprintf(&buf[mlen], "LOCK_SH | ");
-      if (ti->arg2 & LOCK_EX)
+      }
+      if (ti->arg2 & LOCK_EX) {
         mlen += sprintf(&buf[mlen], "LOCK_EX | ");
-      if (ti->arg2 & LOCK_NB)
+      }
+      if (ti->arg2 & LOCK_NB) {
         mlen += sprintf(&buf[mlen], "LOCK_NB | ");
-      if (ti->arg2 & LOCK_UN)
+      }
+      if (ti->arg2 & LOCK_UN) {
         mlen += sprintf(&buf[mlen], "LOCK_UN | ");
+      }
 
-      if (ti->arg2 & ~(LOCK_SH | LOCK_EX | LOCK_NB | LOCK_UN))
+      if (ti->arg2 & ~(LOCK_SH | LOCK_EX | LOCK_NB | LOCK_UN)) {
         mlen += sprintf(&buf[mlen], "UNKNOWN | ");
+      }
       
-      if (mlen)
+      if (mlen) {
         buf[mlen - 3] = '\0';
+      }
 
-      if (arg1)
+      if (arg1) {
         printf(" F=%-3d[%3d]  <%s>", ti->arg1, arg1, buf);
-      else
+      } else {
         printf(" F=%-3d  <%s>", ti->arg1, buf);
+      }
 
       break;
     }
@@ -3004,10 +3052,11 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       char *p = NULL;
       int fd = -1;
 
-      if (arg1)
+      if (arg1) {
         printf(" F=%-3d[%3d]", ti->arg1, arg1);
-      else
+      } else {
         printf(" F=%-3d", ti->arg1);
+      }
 
       switch (ti->arg2) {
       case F_DUPFD:
@@ -3077,8 +3126,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       case F_OPENFROM:
         p = "OPENFROM";
         
-        if (arg1 == 0)
+        if (arg1 == 0) {
           fd = arg2;
+        }
         break;
 
       case F_UNLINKFROM:
@@ -3090,27 +3140,31 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
         break;
 
       case F_NOCACHE:
-        if (ti->arg3)
+        if (ti->arg3) {
           p = "CACHING OFF";
-        else
+        } else {
           p = "CACHING ON";
+        }
         break;
 
       case F_GLOBAL_NOCACHE:
-        if (ti->arg3)
+        if (ti->arg3) {
           p = "CACHING OFF (GLOBAL)";
-        else
+        } else {
           p = "CACHING ON (GLOBAL)";
+        }
         break;
 
       }
       if (p) {
-        if (fd == -1)
+        if (fd == -1) {
           printf(" <%s>", p);
-        else
+        } else {
           printf(" <%s> F=%d", p, fd);
-      } else
+        }
+      } else {
         printf(" <CMD=%d>", ti->arg2);
+      }
 
       break;
     }
@@ -3120,10 +3174,11 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       /*
        * ioctl
        */
-      if (arg1)
+      if (arg1) {
         printf(" F=%-3d[%3d]", ti->arg1, arg1);
-      else
+      } else {
         printf(" F=%-3d", ti->arg1);
+      }
 
       printf(" <CMD=0x%x>", ti->arg2);
 
@@ -3135,10 +3190,11 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       /*
        * select
        */
-      if (arg1)
+      if (arg1) {
         printf("      [%3d]", arg1);
-      else
+      } else {
         printf("        S=%-3d", arg2);
+      }
 
       break;
     }
@@ -3150,35 +3206,38 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        */
       printf(" F=%-3d", ti->arg1);
 
-      if (arg1)
+      if (arg1) {
         printf("[%3d]  ", arg1);
-      else {
-        if (format == FMT_PREAD)
+      } else {
+        if (format == FMT_PREAD) {
           printf("  B=0x%-8x ", arg2);
-        else
+        } else {
           printf("  ");
+        }
       }
-      if (format == FMT_PREAD)
+      if (format == FMT_PREAD) {
         offset_reassembled = (((off_t)(unsigned int)(ti->arg3)) << 32) | (unsigned int)(ti->arg4);
-      else
+      } else {
 #ifdef __ppc__
         offset_reassembled = (((off_t)(unsigned int)(arg2)) << 32) | (unsigned int)(arg3);
 #else
         offset_reassembled = (((off_t)(unsigned int)(arg3)) << 32) | (unsigned int)(arg2);
 #endif
+      }
       clip_64bit("O=", offset_reassembled);
 
       if (format == FMT_LSEEK) {
         char *mode;
 
-        if (ti->arg4 == SEEK_SET)
+        if (ti->arg4 == SEEK_SET) {
           mode = "SEEK_SET";
-        else if (ti->arg4 == SEEK_CUR)
+        } else if (ti->arg4 == SEEK_CUR) {
           mode = "SEEK_CUR";
-        else if (ti->arg4 == SEEK_END)
+        } else if (ti->arg4 == SEEK_END) {
           mode = "SEEK_END";
-        else
+        } else {
           mode = "UNKNOWN";
+        }
         
         printf(" <%s>", mode);
       }
@@ -3190,9 +3249,9 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        */
       printf(" F=%-3d  ", ti->arg1);
 
-      if (arg1)
+      if (arg1) {
         printf("[%3d]  ", arg1);
-      else {
+      } else {
         user_addr = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
 
         clip_64bit("A=", user_addr);
@@ -3205,14 +3264,17 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
         
         printf(" <");
 
-        if (ti->arg8 & PROT_READ)
+        if (ti->arg8 & PROT_READ) {
           printf("READ");
+        }
 
-        if (ti->arg8 & PROT_WRITE)
+        if (ti->arg8 & PROT_WRITE) {
           printf("|WRITE");
+        }
 
-        if (ti->arg8 & PROT_EXEC)
+        if (ti->arg8 & PROT_EXEC) {
           printf("|EXEC");
+        }
 
         printf(">");
       }
@@ -3223,13 +3285,15 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       /*
        * ftruncate, truncate
        */
-      if (format == FMT_FTRUNC)
+      if (format == FMT_FTRUNC) {
         printf(" F=%-3d", ti->arg1);
-      else
+      } else {
         printf("      ");
+      }
 
-      if (arg1)
+      if (arg1) {
         printf("[%3d]", arg1);
+      }
 
 #ifdef __ppc__
       offset_reassembled = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
@@ -3250,39 +3314,50 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       int mlen = 0;
 
       if (format == FMT_FCHFLAGS) {
-        if (arg1)
+        if (arg1) {
           printf(" F=%-3d[%3d]", ti->arg1, arg1);
-        else
+        } else {
           printf(" F=%-3d", ti->arg1);
+        }
       } else {
-        if (arg1)
+        if (arg1) {
           printf(" [%3d] ", arg1);
+        }
       }
       buf[mlen++] = ' ';
       buf[mlen++] = '<';
 
-      if (ti->arg2 & UF_NODUMP)
+      if (ti->arg2 & UF_NODUMP) {
         mlen += sprintf(&buf[mlen], "UF_NODUMP | ");
-      if (ti->arg2 & UF_IMMUTABLE)
+      }
+      if (ti->arg2 & UF_IMMUTABLE) {
         mlen += sprintf(&buf[mlen], "UF_IMMUTABLE | ");
-      if (ti->arg2 & UF_APPEND)
+      }
+      if (ti->arg2 & UF_APPEND) {
         mlen += sprintf(&buf[mlen], "UF_APPEND | ");
-      if (ti->arg2 & UF_OPAQUE)
+      }
+      if (ti->arg2 & UF_OPAQUE) {
         mlen += sprintf(&buf[mlen], "UF_OPAQUE | ");
-      if (ti->arg2 & SF_ARCHIVED)
+      }
+      if (ti->arg2 & SF_ARCHIVED) {
         mlen += sprintf(&buf[mlen], "SF_ARCHIVED | ");
-      if (ti->arg2 & SF_IMMUTABLE)
+      }
+      if (ti->arg2 & SF_IMMUTABLE) {
         mlen += sprintf(&buf[mlen], "SF_IMMUTABLE | ");
-      if (ti->arg2 & SF_APPEND)
+      }
+      if (ti->arg2 & SF_APPEND) {
         mlen += sprintf(&buf[mlen], "SF_APPEND | ");
+      }
       
-      if (ti->arg2 == 0)
+      if (ti->arg2 == 0) {
         mlen += sprintf(&buf[mlen], "CLEAR_ALL_FLAGS | ");
-      else if (ti->arg2 & ~(UF_NODUMP | UF_IMMUTABLE | UF_APPEND | SF_ARCHIVED | SF_IMMUTABLE | SF_APPEND))
+      } else if (ti->arg2 & ~(UF_NODUMP | UF_IMMUTABLE | UF_APPEND | SF_ARCHIVED | SF_IMMUTABLE | SF_APPEND)) {
         mlen += sprintf(&buf[mlen], "UNKNOWN | ");
+      }
 
-      if (mlen >= 3)
+      if (mlen >= 3) {
         mlen -= 3;
+      }
 
       buf[mlen++] = '>';
       buf[mlen] = '\0';
@@ -3310,29 +3385,33 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       int mode;
 
       if (format == FMT_FCHMOD || format == FMT_FCHMOD_EXT) {
-        if (arg1)
+        if (arg1) {
           printf(" F=%-3d[%3d] ", ti->arg1, arg1);
-        else
+        } else {
           printf(" F=%-3d ", ti->arg1);
+        }
       } else {
-        if (arg1)
+        if (arg1) {
           printf(" [%3d] ", arg1);
-        else  
+        } else {
           printf(" ");
+        }
       }
-      if (format == FMT_UMASK)
+      if (format == FMT_UMASK) {
         mode = ti->arg1;
-      else if (format == FMT_FCHMOD || format == FMT_CHMOD || format == FMT_CHMODAT)
+      } else if (format == FMT_FCHMOD || format == FMT_CHMOD || format == FMT_CHMODAT) {
         mode = ti->arg2;
-      else
+      } else {
         mode = ti->arg4;
+      }
 
       get_mode_string(mode, &buf[0]);
 
-      if (arg1 == 0)
+      if (arg1 == 0) {
         printf("<%s>      ", buf);
-      else
+      } else {
         printf("<%s>", buf);
+      }
       break;
     }
 
@@ -3346,19 +3425,24 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       memset(mode, '_', 4);
       mode[4] = '\0';
 
-      if (ti->arg2 & R_OK)
+      if (ti->arg2 & R_OK) {
         mode[0] = 'R';
-      if (ti->arg2 & W_OK)
+      }
+      if (ti->arg2 & W_OK) {
         mode[1] = 'W';
-      if (ti->arg2 & X_OK)
+      }
+      if (ti->arg2 & X_OK) {
         mode[2] = 'X';
-      if (ti->arg2 == F_OK)
+      }
+      if (ti->arg2 == F_OK) {
         mode[3] = 'F';
+      }
 
-      if (arg1)
+      if (arg1) {
         printf("      [%3d] (%s)   ", arg1, mode);
-      else
+      } else {
         printf("            (%s)   ", mode);
+      }
 
       nopadding = 1;
       break;
@@ -3366,10 +3450,11 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
 
     case FMT_MOUNT:
     {
-      if (arg1)
+      if (arg1) {
         printf("      [%3d] <FLGS=0x%x> ", arg1, ti->arg3);
-      else
+      } else {
         printf("     <FLGS=0x%x> ", ti->arg3);
+      }
 
       nopadding = 1;
       break;
@@ -3379,15 +3464,17 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
     {
       char *mountflag;
 
-      if (ti->arg2 & MNT_FORCE)
+      if (ti->arg2 & MNT_FORCE) {
         mountflag = "<FORCE>";
-      else
+      } else {
         mountflag = "";
+      }
 
-      if (arg1)
+      if (arg1) {
         printf("      [%3d] %s  ", arg1, mountflag);
-      else
+      } else {
         printf("     %s         ", mountflag);
+      }
 
       nopadding = 1;
       break;
@@ -3407,27 +3494,33 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       if (ti->arg2 & O_RDWR) {
         mode[0] = 'R';
         mode[1] = 'W';
-      } else if (ti->arg2 & O_WRONLY)
+      } else if (ti->arg2 & O_WRONLY) {
         mode[1] = 'W';
-      else
+      } else {
         mode[0] = 'R';
+      }
 
-      if (ti->arg2 & O_CREAT)
+      if (ti->arg2 & O_CREAT) {
         mode[2] = 'C';
+      }
         
-      if (ti->arg2 & O_APPEND)
+      if (ti->arg2 & O_APPEND) {
         mode[3] = 'A';
+      }
         
-      if (ti->arg2 & O_TRUNC)
+      if (ti->arg2 & O_TRUNC) {
         mode[4] = 'T';
+      }
         
-      if (ti->arg2 & O_EXCL)
+      if (ti->arg2 & O_EXCL) {
         mode[5] = 'E';
+      }
 
-      if (arg1)
+      if (arg1) {
         printf("      [%3d] (%s) ", arg1, mode);
-      else
+      } else {
         printf(" F=%-3d      (%s) ", arg2, mode);
+      }
 
       nopadding = 1;
       break;
@@ -3496,10 +3589,11 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
         break;
       }
 
-      if (arg1)
+      if (arg1) {
         printf("      [%3d] <%s, %s, 0x%x>", arg1, domain, type, ti->arg3);
-      else
+      } else {
         printf(" F=%-3d      <%s, %s, 0x%x>", arg2, domain, type, ti->arg3);
+      }
       break;
     }
 
@@ -3510,40 +3604,46 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        */
       char *op;
 
-      if (ti->arg1 == O_SYNC || ti->arg1 == 0)
+      if (ti->arg1 == O_SYNC || ti->arg1 == 0) {
         op = "AIO_FSYNC";
+      }
 #if O_DSYNC
-      else if (ti->arg1 == O_DSYNC)
+      else if (ti->arg1 == O_DSYNC) {
         op = "AIO_DSYNC";
+      }
 #endif      
-      else
+      else {
         op = "UNKNOWN";
+      }
 
-      if (arg1)
+      if (arg1) {
         printf("      [%3d] P=0x%8.8x  <%s>", arg1, ti->arg2, op);
-      else
+      } else {
         printf("            P=0x%8.8x  <%s>", ti->arg2, op);
+      }
       break;
-          }
+    }
 
-          case FMT_AIO_RETURN:
+    case FMT_AIO_RETURN:
       /*
        * aio_return   [errno]   AIOCBP   IOSIZE
        */
-      if (arg1)
+      if (arg1) {
         printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
-      else
+      } else {
         printf("            P=0x%8.8x  B=0x%-8x", ti->arg1, arg2);
+      }
       break;
 
     case FMT_AIO_SUSPEND:
       /*
        * aio_suspend    [errno]   NENTS
        */
-      if (arg1)
+      if (arg1) {
         printf("      [%3d] N=%d", arg1, ti->arg2);
-      else
+      } else {
         printf("            N=%d", ti->arg2);
+      }
       break;
 
     case FMT_AIO_CANCEL:
@@ -3551,15 +3651,17 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        * aio_cancel     [errno]   FD or AIOCBP (if non-null)
        */
       if (ti->arg2) {
-        if (arg1)
+        if (arg1) {
           printf("      [%3d] P=0x%8.8x", arg1, ti->arg2);
-        else
+        } else {
           printf("            P=0x%8.8x", ti->arg2);
+        }
       } else {
-        if (arg1)
+        if (arg1) {
           printf(" F=%-3d[%3d]", ti->arg1, arg1);
-        else
+        } else {
           printf(" F=%-3d", ti->arg1);
+        }
       }
       break;
 
@@ -3567,10 +3669,11 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       /*
        * aio_error, aio_read, aio_write [errno]  AIOCBP
        */
-      if (arg1)
+      if (arg1) {
         printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
-      else
+      } else {
         printf("            P=0x%8.8x", ti->arg1);
+      }
       break;
 
     case FMT_LIO_LISTIO:
@@ -3580,25 +3683,27 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
        */
       char *op;
 
-      if (ti->arg1 == LIO_NOWAIT)
+      if (ti->arg1 == LIO_NOWAIT) {
         op = "LIO_NOWAIT";
-      else if (ti->arg1 == LIO_WAIT)
+      } else if (ti->arg1 == LIO_WAIT) {
         op = "LIO_WAIT";
-      else
+      } else {
         op = "UNKNOWN";
+      }
 
-      if (arg1)
+      if (arg1) {
         printf("      [%3d] N=%d  <%s>", arg1, ti->arg3, op);
-      else
+      } else {
         printf("            N=%d  <%s>", ti->arg3, op);
+      }
       break;
     }
     }
   }
 
-  if (framework_name)
+  if (framework_name) {
     len = sprintf(&buf[0], " %s %s ", framework_type, framework_name);
-  else if (*pathname != '\0') {
+  } else if (*pathname != '\0') {
     switch(format) {
     case FMT_AT:
     case FMT_OPENAT:
@@ -3620,35 +3725,38 @@ format_print(struct th_info *ti, char *sc_name, uintptr_t thread, int type, uint
       len2 = sprintf(&buf[len+2], " %s ", (char *)&ti->lookups[1].pathname[0]);
       len = len + 2 + len2;
     }
-  } else
+  } else {
     len = 0;
+  }
 
   pathname = buf;
   
-  if (class != FILEMGR_CLASS && !nopadding)
+  if (class != FILEMGR_CLASS && !nopadding) {
     p1 = "   ";
-  else
+  } else {
     p1 = "";
+  }
          
-  if (waited)
+  if (waited) {
     p2 = " W";
-  else
+  } else {
     p2 = "  ";
+  }
 
   printf("%s%s %s %s.%d\n", p1, pathname, p2, command_name, (int)thread);
 }
 
 
-void
-add_meta_name(uint64_t blockno, char *pathname) {
+void add_meta_name(uint64_t blockno, char *pathname) {
   meta_info_t mi;
   int hashid;
 
   hashid = blockno & VN_HASH_MASK;
 
   for (mi = m_info_hash[hashid]; mi; mi = mi->m_next) {
-    if (mi->m_blkno == blockno)
+    if (mi->m_blkno == blockno) {
       break;
+    }
   }
   if (mi == NULL) {
     mi = (meta_info_t)malloc(sizeof(struct meta_info));
@@ -3660,16 +3768,16 @@ add_meta_name(uint64_t blockno, char *pathname) {
   mi->m_nameptr = pathname;
 }
 
-char *
-add_vnode_name(uint64_t vn_id, char *pathname) {
+char *add_vnode_name(uint64_t vn_id, char *pathname) {
   vnode_info_t  vn;
   int   hashid;
 
   hashid = (vn_id >> VN_HASH_SHIFT) & VN_HASH_MASK;
 
   for (vn = vn_info_hash[hashid]; vn; vn = vn->vn_next) {
-    if (vn->vn_id == vn_id)
+    if (vn->vn_id == vn_id) {
       break;
+    }
   }
   if (vn == NULL) {
     vn = (vnode_info_t)malloc(sizeof(struct vnode_info));
@@ -3684,33 +3792,32 @@ add_vnode_name(uint64_t vn_id, char *pathname) {
 }
 
 
-char *
-find_vnode_name(uint64_t vn_id) {
-  vnode_info_t  vn;
-  int   hashid;
+char *find_vnode_name(uint64_t vn_id) {
+  vnode_info_t vn;
+  int hashid;
 
   hashid = (vn_id >> VN_HASH_SHIFT) & VN_HASH_MASK;
 
   for (vn = vn_info_hash[hashid]; vn; vn = vn->vn_next) {
-    if (vn->vn_id == vn_id)
+    if (vn->vn_id == vn_id) {
       return vn->vn_pathname;
+    }
   }
   return "";
 }
 
 
-void
-delete_event(th_info_t ti_to_delete) {
+void delete_event(th_info_t ti_to_delete) {
   th_info_t ti;
   th_info_t ti_prev;
-  int   hashid;
+  int hashid;
 
   hashid = ti_to_delete->thread & HASH_MASK;
 
   if ((ti = th_info_hash[hashid])) {
-    if (ti == ti_to_delete)
+    if (ti == ti_to_delete) {
       th_info_hash[hashid] = ti->next;
-    else {
+    } else {
       ti_prev = ti;
 
       for (ti = ti->next; ti; ti = ti->next) {
@@ -3728,16 +3835,16 @@ delete_event(th_info_t ti_to_delete) {
   }
 }
 
-th_info_t
-add_event(uintptr_t thread, int type) {
+th_info_t add_event(uintptr_t thread, int type) {
   th_info_t ti;
   int i;
   int hashid;
 
-  if ((ti = th_info_freelist))
+  if ((ti = th_info_freelist)) {
     th_info_freelist = ti->next;
-  else
+  } else {
     ti = (th_info_t)malloc(sizeof(struct th_info));
+  }
 
   hashid = thread & HASH_MASK;
 
@@ -3755,14 +3862,14 @@ add_event(uintptr_t thread, int type) {
   ti->pn_scall_index = 0;
   ti->pn_work_index = 0;
 
-  for (i = 0; i < MAX_PATHNAMES; i++)
+  for (i = 0; i < MAX_PATHNAMES; i++) {
     ti->lookups[i].pathname[0] = 0;
+  }
 
   return ti;
 }
 
-th_info_t
-find_event(uintptr_t thread, int type) {
+th_info_t find_event(uintptr_t thread, int type) {
   th_info_t ti;
   int hashid;
 
@@ -3770,25 +3877,27 @@ find_event(uintptr_t thread, int type) {
 
   for (ti = th_info_hash[hashid]; ti; ti = ti->next) {
     if (ti->thread == thread) {
-      if (type == ti->type)
+      if (type == ti->type) {
         return ti;
+      }
       if (ti->in_filemgr) {
-        if (type == -1)
+        if (type == -1) {
           return ti;
+        }
         continue;
       }
-      if (type == 0)
+      if (type == 0) {
         return ti;
+      }
     }
   }
   return ((th_info_t) 0);
 }
 
-void
-delete_all_events() {
+void delete_all_events() {
   th_info_t ti = 0;
   th_info_t ti_next = 0;
-  int             i;
+  int i;
 
   for (i = 0; i < HASH_SIZE; i++) {
     for (ti = th_info_hash[i]; ti; ti = ti_next) {
@@ -3800,8 +3909,7 @@ delete_all_events() {
   }
 }
 
-void read_command_map()
-{
+void read_command_map() {
   size_t size;
   int i;
   int total_threads = 0;
@@ -3836,23 +3944,24 @@ void read_command_map()
       }
     }
   }
-  for (i = 0; i < total_threads; i++)
+  for (i = 0; i < total_threads; i++) {
     create_map_entry(mapptr[i].thread, mapptr[i].valid, &mapptr[i].command[0]);
+  }
 
   free(mapptr);
 }
 
 
-void delete_all_map_entries()
-{
+void delete_all_map_entries() {
   threadmap_t tme = 0;
   threadmap_t tme_next = 0;
   int i;
 
   for (i = 0; i < HASH_SIZE; i++) {
     for (tme = threadmap_hash[i]; tme; tme = tme_next) {
-      if (tme->tm_setptr)
+      if (tme->tm_setptr) {
         free(tme->tm_setptr);
+      }
       tme_next = tme->tm_next;
       tme->tm_next = threadmap_freelist;
       threadmap_freelist = tme;
@@ -3862,15 +3971,15 @@ void delete_all_map_entries()
 }
 
 
-void create_map_entry(uintptr_t thread, int pid, char *command)
-{
+void create_map_entry(uintptr_t thread, int pid, char *command) {
   threadmap_t tme;
   int hashid;
 
-  if ((tme = threadmap_freelist))
+  if ((tme = threadmap_freelist)) {
     threadmap_freelist = tme->tm_next;
-  else
+  } else {
     tme = (threadmap_t)malloc(sizeof(struct threadmap));
+  }
 
   tme->tm_thread  = thread;
   tme->tm_setsize = 0;
@@ -3885,31 +3994,29 @@ void create_map_entry(uintptr_t thread, int pid, char *command)
   threadmap_hash[hashid] = tme;
 
   if (pid != 0 && pid != 1) {
-    if (!strncmp(command, "LaunchCFMA", 10))
+    if (!strncmp(command, "LaunchCFMA", 10)) {
       (void)get_real_command_name(pid, tme->tm_command, MAXCOMLEN);
+    }
   }
 }
 
 
-threadmap_t
-find_map_entry(uintptr_t thread)
-{
+threadmap_t find_map_entry(uintptr_t thread) {
   threadmap_t tme;
   int hashid;
 
   hashid = thread & HASH_MASK;
 
   for (tme = threadmap_hash[hashid]; tme; tme = tme->tm_next) {
-    if (tme->tm_thread == thread)
+    if (tme->tm_thread == thread) {
       return tme;
+    }
   }
   return 0;
 }
 
 
-void
-delete_map_entry(uintptr_t thread)
-{
+void delete_map_entry(uintptr_t thread) {
   threadmap_t tme = 0;
   threadmap_t tme_prev;
   int hashid;
@@ -3917,9 +4024,9 @@ delete_map_entry(uintptr_t thread)
   hashid = thread & HASH_MASK;
 
   if ((tme = threadmap_hash[hashid])) {
-    if (tme->tm_thread == thread)
+    if (tme->tm_thread == thread) {
       threadmap_hash[hashid] = tme->tm_next;
-    else {
+    } else {
       tme_prev = tme;
 
       for (tme = tme->tm_next; tme; tme = tme->tm_next) {
@@ -3931,8 +4038,9 @@ delete_map_entry(uintptr_t thread)
       }
     }
     if (tme) {
-      if (tme->tm_setptr)
+      if (tme->tm_setptr) {
         free(tme->tm_setptr);
+      }
 
       tme->tm_next = threadmap_freelist;
       threadmap_freelist = tme;
@@ -3941,19 +4049,19 @@ delete_map_entry(uintptr_t thread)
 }
 
 
-void
-fs_usage_fd_set(uintptr_t thread, unsigned int fd)
-{
+void fs_usage_fd_set(uintptr_t thread, unsigned int fd) {
   threadmap_t tme;
 
-  if ((tme = find_map_entry(thread)) == 0)
+  if ((tme = find_map_entry(thread)) == 0) {
     return;
+  }
   /*
    * If the map is not allocated, then now is the time
    */
   if (tme->tm_setptr == (unsigned long *)0) {
-    if ((tme->tm_setptr = (unsigned long *)malloc(FS_USAGE_NFDBYTES(FS_USAGE_FD_SETSIZE))) == 0)
+    if ((tme->tm_setptr = (unsigned long *)malloc(FS_USAGE_NFDBYTES(FS_USAGE_FD_SETSIZE))) == 0) {
       return;
+    }
 
     tme->tm_setsize = FS_USAGE_FD_SETSIZE;
     bzero(tme->tm_setptr, (FS_USAGE_NFDBYTES(FS_USAGE_FD_SETSIZE)));
@@ -3982,36 +4090,32 @@ fs_usage_fd_set(uintptr_t thread, unsigned int fd)
  *  0 : File Descriptor bit is not set
  *  1 : File Descriptor bit is set
  */
-int
-fs_usage_fd_isset(uintptr_t thread, unsigned int fd)
-{
+int fs_usage_fd_isset(uintptr_t thread, unsigned int fd) {
   threadmap_t tme;
-  int   ret = 0;
+  int ret = 0;
 
   if ((tme = find_map_entry(thread))) {
-    if (tme->tm_setptr && fd < tme->tm_setsize)
+    if (tme->tm_setptr && fd < tme->tm_setsize) {
       ret = tme->tm_setptr[fd/FS_USAGE_NFDBITS] & (1 << (fd % FS_USAGE_NFDBITS));
+    }
   }
   return ret;
 }
     
 
-void
-fs_usage_fd_clear(uintptr_t thread, unsigned int fd)
-{
+void fs_usage_fd_clear(uintptr_t thread, unsigned int fd) {
   threadmap_t tme;
 
   if ((tme = find_map_entry(thread))) {
-    if (tme->tm_setptr && fd < tme->tm_setsize)
+    if (tme->tm_setptr && fd < tme->tm_setsize) {
       tme->tm_setptr[fd/FS_USAGE_NFDBITS] &= ~(1 << (fd % FS_USAGE_NFDBITS));
+    }
   }
 }
 
 
 
-void
-argtopid(char *str)
-{
+void argtopid(char *str) {
   char *cp;
   int ret;
   int i;
@@ -4019,24 +4123,26 @@ argtopid(char *str)
   ret = (int)strtol(str, &cp, 10);
 
   if (cp == str || *cp) {
-  /*
-   * Assume this is a command string and find matching pids
-   */
-  if (!kp_buffer)
-    find_proc_names();
+    /*
+     * Assume this is a command string and find matching pids
+     */
+    if (!kp_buffer) {
+      find_proc_names();
+    }
 
-  for (i = 0; i < kp_nentries && num_of_pids < (MAX_PIDS - 1); i++) {
-    if (kp_buffer[i].kp_proc.p_stat == 0)
-      continue;
-    else {
-      if (!strncmp(str, kp_buffer[i].kp_proc.p_comm,
-            sizeof(kp_buffer[i].kp_proc.p_comm) -1))
-        pids[num_of_pids++] = kp_buffer[i].kp_proc.p_pid;
+    for (i = 0; i < kp_nentries && num_of_pids < (MAX_PIDS - 1); i++) {
+      if (kp_buffer[i].kp_proc.p_stat == 0) {
+        continue;
+      } else {
+        if (!strncmp(str, kp_buffer[i].kp_proc.p_comm,
+              sizeof(kp_buffer[i].kp_proc.p_comm) -1)) {
+          pids[num_of_pids++] = kp_buffer[i].kp_proc.p_pid;
+        }
       }
     }
-  }
-  else if (num_of_pids < (MAX_PIDS - 1))
+  } else if (num_of_pids < (MAX_PIDS - 1)) {
     pids[num_of_pids++] = ret;
+  }
 }
 
 /*
@@ -4053,32 +4159,35 @@ argtopid(char *str)
  *
  * filters may be combined; default is all filters on
  */
-int
-check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_name)
-{
+int check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_name) {
   int ret = 0;
   int network_fd_isset = 0;
   unsigned int fd;
 
-  if (filter_mode == DEFAULT_DO_NOT_FILTER)
+  if (filter_mode == DEFAULT_DO_NOT_FILTER) {
     return 1;
+  }
   
   if (filter_mode & EXEC_FILTER) {
-    if (type == BSC_execve || type == BSC_posix_spawn)
+    if (type == BSC_execve || type == BSC_posix_spawn) {
       return 1;
+    }
   }
 
   if (filter_mode & PATHNAME_FILTER) {
-    if (ti && ti->lookups[0].pathname[0])
+    if (ti && ti->lookups[0].pathname[0]) {
       return 1;
+    }
     if (type == BSC_close || type == BSC_close_nocancel ||
-      type == BSC_guarded_close_np)
-    return 1;
+        type == BSC_guarded_close_np) {
+      return 1;
+    }
   }
 
   if (ti == (struct th_info *)0) {
-    if (filter_mode & FILESYS_FILTER)
+    if (filter_mode & FILESYS_FILTER) {
       return 1;
+    }
     return 0;
   }
 
@@ -4089,12 +4198,15 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
     fd = ti->arg1;
     network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
 
-    if (error == 0)
+    if (error == 0) {
       fs_usage_fd_clear(ti->thread, fd);
+    }
 
-    if (!network_fd_isset)
-      if (filter_mode & FILESYS_FILTER)
+    if (!network_fd_isset) {
+      if (filter_mode & FILESYS_FILTER) {
         ret = 1;
+      }
+    }
     break;
 
   case BSC_read:
@@ -4107,9 +4219,11 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
     fd = ti->arg1;
     network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
 
-    if (!network_fd_isset)
-      if (filter_mode & FILESYS_FILTER)
+    if (!network_fd_isset) {
+      if (filter_mode & FILESYS_FILTER) {
         ret = 1;
+      }
+    }
     break;
 
   case BSC_accept:
@@ -4117,8 +4231,9 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
   case BSC_socket:
     fd = retval;
 
-    if (error == 0)
+    if (error == 0) {
       fs_usage_fd_set(ti->thread, fd);
+    }
     break;
 
   case BSC_recvfrom:
@@ -4135,8 +4250,9 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
   case BSC_connect_nocancel:
     fd = ti->arg1;
 
-    if (error == 0)
+    if (error == 0) {
       fs_usage_fd_set(ti->thread, fd);
+    }
     break;
 
   case BSC_dup:
@@ -4157,8 +4273,9 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
     break;
 
   default:
-    if (filter_mode & FILESYS_FILTER)
+    if (filter_mode & FILESYS_FILTER) {
       ret = 1;
+    }
     break;
   }
 
@@ -4173,9 +4290,7 @@ check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_
  */
 
 /* TODO(peck): We don't need to track command names really */
-void
-init_arguments_buffer()
-{
+void init_arguments_buffer() {
   int mib[2];
   size_t size;
 
@@ -4183,8 +4298,9 @@ init_arguments_buffer()
   mib[1] = KERN_ARGMAX;
   size = sizeof(argmax);
 
-  if (sysctl(mib, 2, &argmax, &size, NULL, 0) == -1)
+  if (sysctl(mib, 2, &argmax, &size, NULL, 0) == -1) {
     return;
+  }
 #if 1
   /* Hack to avoid kernel bug. */
   if (argmax > 8192) {
@@ -4196,9 +4312,7 @@ init_arguments_buffer()
 
 
 /* TODO(peck): We don't need to track command names really */
-int
-get_real_command_name(int pid, char *cbuf, int csize)
-{
+int get_real_command_name(int pid, char *cbuf, int csize) {
   /*
    * Get command and arguments.
    */
@@ -4206,13 +4320,15 @@ get_real_command_name(int pid, char *cbuf, int csize)
   int mib[4];
   char *command_beg, *command, *command_end;
 
-  if (cbuf == NULL)
+  if (cbuf == NULL) {
     return 0;
+  }
 
-  if (arguments)
+  if (arguments) {
     bzero(arguments, argmax);
-  else
+  } else {
     return 0;
+  }
 
   /*
    * A sysctl() is made to find out the full path that the command
@@ -4223,8 +4339,9 @@ get_real_command_name(int pid, char *cbuf, int csize)
   mib[2] = pid;
   mib[3] = 0;
 
-  if (sysctl(mib, 3, arguments, (size_t *)&argmax, NULL, 0) < 0)
+  if (sysctl(mib, 3, arguments, (size_t *)&argmax, NULL, 0) < 0) {
     return 0;
+  }
 
   /*
    * Skip the saved exec_path
@@ -4237,8 +4354,9 @@ get_real_command_name(int pid, char *cbuf, int csize)
       break;
     }
   }
-  if (cp == &arguments[argmax])
+  if (cp == &arguments[argmax]) {
     return 0;
+  }
 
   /*
    * Skip trailing '\0' characters
@@ -4251,8 +4369,9 @@ get_real_command_name(int pid, char *cbuf, int csize)
       break;
     }
   }
-  if (cp == &arguments[argmax])
+  if (cp == &arguments[argmax]) {
     return 0;
+  }
 
   command_beg = cp;
   /*
@@ -4268,8 +4387,9 @@ get_real_command_name(int pid, char *cbuf, int csize)
       break;
     }
   }
-  if (cp == &arguments[argmax])
+  if (cp == &arguments[argmax]) {
     return 0;
+  }
 
   command_end = command = cp;
 
