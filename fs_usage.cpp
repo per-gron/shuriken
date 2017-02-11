@@ -746,83 +746,97 @@ static const auto bsd_syscalls = make_bsd_syscall_table();
 
 #define MAX_FILEMGR 512
 
+int filemgr_index(int type) {
+  if (type & 0x10000) {
+    return (((type >> 2) & 0x3fff) + 256);
+  }
+
+  return (((type >> 2) & 0x3fff));
+}
+
 struct filemgr_call {
   const char *fm_name = nullptr;
 };
-static std::array<filemgr_call, MAX_FILEMGR> filemgr_calls{};
 
+std::array<filemgr_call, MAX_FILEMGR> make_filemgr_calls() {
+  static const std::pair<int, const char *> filemgr_call_types[] = {
+    { FILEMGR_PBGETCATALOGINFO, "GetCatalogInfo" },
+    { FILEMGR_PBGETCATALOGINFOBULK, "GetCatalogInfoBulk" },
+    { FILEMGR_PBCREATEFILEUNICODE, "CreateFileUnicode" },
+    { FILEMGR_PBCREATEDIRECTORYUNICODE, "CreateDirectoryUnicode" },
+    { FILEMGR_PBCREATEFORK, "PBCreateFork" },
+    { FILEMGR_PBDELETEFORK, "PBDeleteFork" },
+    { FILEMGR_PBITERATEFORK, "PBIterateFork" },
+    { FILEMGR_PBOPENFORK, "PBOpenFork" },
+    { FILEMGR_PBREADFORK, "PBReadFork" },
+    { FILEMGR_PBWRITEFORK, "PBWriteFork" },
+    { FILEMGR_PBALLOCATEFORK, "PBAllocateFork" },
+    { FILEMGR_PBDELETEOBJECT, "PBDeleteObject" },
+    { FILEMGR_PBEXCHANGEOBJECT, "PBExchangeObject" },
+    { FILEMGR_PBGETFORKCBINFO, "PBGetForkCBInfo" },
+    { FILEMGR_PBGETVOLUMEINFO, "PBGetVolumeInfo" },
+    { FILEMGR_PBMAKEFSREF, "PBMakeFSRef" },
+    { FILEMGR_PBMAKEFSREFUNICODE, "PBMakeFSRefUnicode" },
+    { FILEMGR_PBMOVEOBJECT, "PBMoveObject" },
+    { FILEMGR_PBOPENITERATOR, "PBOpenIterator" },
+    { FILEMGR_PBRENAMEUNICODE, "PBRenameUnicode" },
+    { FILEMGR_PBSETCATALOGINFO, "SetCatalogInfo" },
+    { FILEMGR_PBSETVOLUMEINFO, "SetVolumeInfo" },
+    { FILEMGR_FSREFMAKEPATH, "FSRefMakePath" },
+    { FILEMGR_FSPATHMAKEREF, "FSPathMakeRef" },
+    { FILEMGR_PBGETCATINFO, "GetCatInfo" },
+    { FILEMGR_PBGETCATINFOLITE, "GetCatInfoLite" },
+    { FILEMGR_PBHGETFINFO, "PBHGetFInfo" },
+    { FILEMGR_PBXGETVOLINFO, "PBXGetVolInfo" },
+    { FILEMGR_PBHCREATE, "PBHCreate" },
+    { FILEMGR_PBHOPENDF, "PBHOpenDF" },
+    { FILEMGR_PBHOPENRF, "PBHOpenRF" },
+    { FILEMGR_PBHGETDIRACCESS, "PBHGetDirAccess" },
+    { FILEMGR_PBHSETDIRACCESS, "PBHSetDirAccess" },
+    { FILEMGR_PBHMAPID, "PBHMapID" },
+    { FILEMGR_PBHMAPNAME, "PBHMapName" },
+    { FILEMGR_PBCLOSE, "PBClose" },
+    { FILEMGR_PBFLUSHFILE, "PBFlushFile" },
+    { FILEMGR_PBGETEOF, "PBGetEOF" },
+    { FILEMGR_PBSETEOF, "PBSetEOF" },
+    { FILEMGR_PBGETFPOS, "PBGetFPos" },
+    { FILEMGR_PBREAD, "PBRead" },
+    { FILEMGR_PBWRITE, "PBWrite" },
+    { FILEMGR_PBGETFCBINFO, "PBGetFCBInfo" },
+    { FILEMGR_PBSETFINFO, "PBSetFInfo" },
+    { FILEMGR_PBALLOCATE, "PBAllocate" },
+    { FILEMGR_PBALLOCCONTIG, "PBAllocContig" },
+    { FILEMGR_PBSETFPOS, "PBSetFPos" },
+    { FILEMGR_PBSETCATINFO, "PBSetCatInfo" },
+    { FILEMGR_PBGETVOLPARMS, "PBGetVolParms" },
+    { FILEMGR_PBSETVINFO, "PBSetVInfo" },
+    { FILEMGR_PBMAKEFSSPEC, "PBMakeFSSpec" },
+    { FILEMGR_PBHGETVINFO, "PBHGetVInfo" },
+    { FILEMGR_PBCREATEFILEIDREF, "PBCreateFileIDRef" },
+    { FILEMGR_PBDELETEFILEIDREF, "PBDeleteFileIDRef" },
+    { FILEMGR_PBRESOLVEFILEIDREF, "PBResolveFileIDRef" },
+    { FILEMGR_PBFLUSHVOL, "PBFlushVol" },
+    { FILEMGR_PBHRENAME, "PBHRename" },
+    { FILEMGR_PBCATMOVE, "PBCatMove" },
+    { FILEMGR_PBEXCHANGEFILES, "PBExchangeFiles" },
+    { FILEMGR_PBHDELETE, "PBHDelete" },
+    { FILEMGR_PBDIRCREATE, "PBDirCreate" },
+    { FILEMGR_PBCATSEARCH, "PBCatSearch" },
+    { FILEMGR_PBHSETFLOCK, "PBHSetFlock" },
+    { FILEMGR_PBHRSTFLOCK, "PBHRstFLock" },
+    { FILEMGR_PBLOCKRANGE, "PBLockRange" },
+    { FILEMGR_PBUNLOCKRANGE, "PBUnlockRange" }
+  };
 
-int filemgr_call_types[] = {
-  FILEMGR_PBGETCATALOGINFO,
-  FILEMGR_PBGETCATALOGINFOBULK,
-  FILEMGR_PBCREATEFILEUNICODE,
-  FILEMGR_PBCREATEDIRECTORYUNICODE,
-  FILEMGR_PBCREATEFORK,
-  FILEMGR_PBDELETEFORK,
-  FILEMGR_PBITERATEFORK,
-  FILEMGR_PBOPENFORK,
-  FILEMGR_PBREADFORK,
-  FILEMGR_PBWRITEFORK,
-  FILEMGR_PBALLOCATEFORK,
-  FILEMGR_PBDELETEOBJECT,
-  FILEMGR_PBEXCHANGEOBJECT,
-  FILEMGR_PBGETFORKCBINFO,
-  FILEMGR_PBGETVOLUMEINFO,
-  FILEMGR_PBMAKEFSREF,
-  FILEMGR_PBMAKEFSREFUNICODE,
-  FILEMGR_PBMOVEOBJECT,
-  FILEMGR_PBOPENITERATOR,
-  FILEMGR_PBRENAMEUNICODE,
-  FILEMGR_PBSETCATALOGINFO,
-  FILEMGR_PBSETVOLUMEINFO,
-  FILEMGR_FSREFMAKEPATH,
-  FILEMGR_FSPATHMAKEREF,
+  std::array<filemgr_call, MAX_FILEMGR> result{};
+  for (auto filemgr_call_type : filemgr_call_types) {
+    int code = filemgr_index(filemgr_call_type.first);
+    result[code].fm_name = filemgr_call_type.second;
+  }
+  return result;
+}
 
-  FILEMGR_PBGETCATINFO,
-  FILEMGR_PBGETCATINFOLITE,
-  FILEMGR_PBHGETFINFO,
-  FILEMGR_PBXGETVOLINFO,
-  FILEMGR_PBHCREATE,
-  FILEMGR_PBHOPENDF,
-  FILEMGR_PBHOPENRF,
-  FILEMGR_PBHGETDIRACCESS,
-  FILEMGR_PBHSETDIRACCESS,
-  FILEMGR_PBHMAPID,
-  FILEMGR_PBHMAPNAME,
-  FILEMGR_PBCLOSE,
-  FILEMGR_PBFLUSHFILE,
-  FILEMGR_PBGETEOF,
-  FILEMGR_PBSETEOF,
-  FILEMGR_PBGETFPOS,
-  FILEMGR_PBREAD,
-  FILEMGR_PBWRITE,
-  FILEMGR_PBGETFCBINFO,
-  FILEMGR_PBSETFINFO,
-  FILEMGR_PBALLOCATE,
-  FILEMGR_PBALLOCCONTIG,
-  FILEMGR_PBSETFPOS,
-  FILEMGR_PBSETCATINFO,
-  FILEMGR_PBGETVOLPARMS,
-  FILEMGR_PBSETVINFO,
-  FILEMGR_PBMAKEFSSPEC,
-  FILEMGR_PBHGETVINFO,
-  FILEMGR_PBCREATEFILEIDREF,
-  FILEMGR_PBDELETEFILEIDREF,
-  FILEMGR_PBRESOLVEFILEIDREF,
-  FILEMGR_PBFLUSHVOL,
-  FILEMGR_PBHRENAME,
-  FILEMGR_PBCATMOVE,
-  FILEMGR_PBEXCHANGEFILES,
-  FILEMGR_PBHDELETE,
-  FILEMGR_PBDIRCREATE,
-  FILEMGR_PBCATSEARCH,
-  FILEMGR_PBHSETFLOCK,
-  FILEMGR_PBHRSTFLOCK,
-  FILEMGR_PBLOCKRANGE,
-  FILEMGR_PBUNLOCKRANGE,
-  0
-};
-
+static auto filemgr_calls = make_filemgr_calls();
 
 
 #define MAX_PIDS 256
@@ -927,300 +941,6 @@ int exit_usage(const char *myname) {
   fprintf(stderr, "fs_usage, Terminal, telnetd, sshd, rlogind, tcsh, csh, sh\n\n");
 
   exit(1);
-}
-
-
-int filemgr_index(int type) {
-  if (type & 0x10000) {
-    return (((type >> 2) & 0x3fff) + 256);
-  }
-
-  return (((type >> 2) & 0x3fff));
-}
-
-
-void init_tables(void) {
-  for (int i = 0, type; (type = filemgr_call_types[i]); i++) {
-    const char *p;
-
-    int code = filemgr_index(type);
-
-    if (code >= MAX_FILEMGR) {
-      printf("FILEMGR call init (%x):  type exceeds table size\n", type);
-      continue;
-    }
-    switch (type) {
-
-      case FILEMGR_PBGETCATALOGINFO:
-        p = "GetCatalogInfo";
-        break;
-
-      case FILEMGR_PBGETCATALOGINFOBULK:
-        p = "GetCatalogInfoBulk";
-        break;
-
-      case FILEMGR_PBCREATEFILEUNICODE:
-        p = "CreateFileUnicode";
-        break;
-
-      case FILEMGR_PBCREATEDIRECTORYUNICODE:
-        p = "CreateDirectoryUnicode";
-        break;
-
-      case FILEMGR_PBCREATEFORK:
-        p = "PBCreateFork";
-        break;
-
-      case FILEMGR_PBDELETEFORK:
-        p = "PBDeleteFork";
-        break;
-
-      case FILEMGR_PBITERATEFORK:
-        p = "PBIterateFork";
-        break;
-
-      case FILEMGR_PBOPENFORK:
-        p = "PBOpenFork";
-        break;
-
-      case FILEMGR_PBREADFORK:
-        p = "PBReadFork";
-        break;
-
-      case FILEMGR_PBWRITEFORK:
-        p = "PBWriteFork";
-        break;
-
-      case FILEMGR_PBALLOCATEFORK:
-        p = "PBAllocateFork";
-        break;
-
-      case FILEMGR_PBDELETEOBJECT:
-        p = "PBDeleteObject";
-        break;
-
-      case FILEMGR_PBEXCHANGEOBJECT:
-        p = "PBExchangeObject";
-        break;
-
-      case FILEMGR_PBGETFORKCBINFO:
-        p = "PBGetForkCBInfo";
-        break;
-
-      case FILEMGR_PBGETVOLUMEINFO:
-        p = "PBGetVolumeInfo";
-        break;
-  
-      case FILEMGR_PBMAKEFSREF:
-        p = "PBMakeFSRef";
-        break;
-
-      case FILEMGR_PBMAKEFSREFUNICODE:
-        p = "PBMakeFSRefUnicode";
-        break;
-
-      case FILEMGR_PBMOVEOBJECT:
-        p = "PBMoveObject";
-        break;
-
-      case FILEMGR_PBOPENITERATOR:
-        p = "PBOpenIterator";
-        break;
-
-      case FILEMGR_PBRENAMEUNICODE:
-        p = "PBRenameUnicode";
-        break;
-
-      case FILEMGR_PBSETCATALOGINFO:
-        p = "SetCatalogInfo";
-        break;
-
-      case FILEMGR_PBSETVOLUMEINFO:
-        p = "SetVolumeInfo";
-        break;
-
-      case FILEMGR_FSREFMAKEPATH:
-        p = "FSRefMakePath";
-        break;
-
-      case FILEMGR_FSPATHMAKEREF:
-        p = "FSPathMakeRef";
-        break;
-
-      case FILEMGR_PBGETCATINFO:
-        p = "GetCatInfo";
-        break;
-
-      case FILEMGR_PBGETCATINFOLITE:
-        p = "GetCatInfoLite";
-        break;
-
-      case FILEMGR_PBHGETFINFO:
-        p = "PBHGetFInfo";
-        break;
-
-      case FILEMGR_PBXGETVOLINFO:
-        p = "PBXGetVolInfo";
-        break;
-
-      case FILEMGR_PBHCREATE:
-        p = "PBHCreate";
-        break;
-
-      case FILEMGR_PBHOPENDF:
-        p = "PBHOpenDF";
-        break;
-
-      case FILEMGR_PBHOPENRF:
-        p = "PBHOpenRF";
-        break;
-
-      case FILEMGR_PBHGETDIRACCESS:
-        p = "PBHGetDirAccess";
-        break;
-
-      case FILEMGR_PBHSETDIRACCESS:
-        p = "PBHSetDirAccess";
-        break;
-
-      case FILEMGR_PBHMAPID:
-        p = "PBHMapID";
-        break;
-
-      case FILEMGR_PBHMAPNAME:
-        p = "PBHMapName";
-        break;
-
-      case FILEMGR_PBCLOSE:
-        p = "PBClose";
-        break;
-
-      case FILEMGR_PBFLUSHFILE:
-        p = "PBFlushFile";
-        break;
-
-      case FILEMGR_PBGETEOF:
-        p = "PBGetEOF";
-        break;
-
-      case FILEMGR_PBSETEOF:
-        p = "PBSetEOF";
-        break;
-
-      case FILEMGR_PBGETFPOS:
-        p = "PBGetFPos";
-        break;
-
-      case FILEMGR_PBREAD:
-        p = "PBRead";
-        break;
-
-      case FILEMGR_PBWRITE:
-        p = "PBWrite";
-        break;
-
-      case FILEMGR_PBGETFCBINFO:
-        p = "PBGetFCBInfo";
-        break;
-
-      case FILEMGR_PBSETFINFO:
-        p = "PBSetFInfo";
-        break;
-
-      case FILEMGR_PBALLOCATE:
-        p = "PBAllocate";
-        break;
-
-      case FILEMGR_PBALLOCCONTIG:
-        p = "PBAllocContig";
-        break;
-
-      case FILEMGR_PBSETFPOS:
-        p = "PBSetFPos";
-        break;
-
-      case FILEMGR_PBSETCATINFO:
-        p = "PBSetCatInfo";
-        break;
-
-      case FILEMGR_PBGETVOLPARMS:
-        p = "PBGetVolParms";
-        break;
-
-      case FILEMGR_PBSETVINFO:
-        p = "PBSetVInfo";
-        break;
-
-      case FILEMGR_PBMAKEFSSPEC:
-        p = "PBMakeFSSpec";
-        break;
-
-      case FILEMGR_PBHGETVINFO:
-        p = "PBHGetVInfo";
-        break;
-
-      case FILEMGR_PBCREATEFILEIDREF:
-        p = "PBCreateFileIDRef";
-        break;
-
-      case FILEMGR_PBDELETEFILEIDREF:
-        p = "PBDeleteFileIDRef";
-        break;
-
-      case FILEMGR_PBRESOLVEFILEIDREF:
-        p = "PBResolveFileIDRef";
-        break;
-
-      case FILEMGR_PBFLUSHVOL:
-        p = "PBFlushVol";
-        break;
-
-      case FILEMGR_PBHRENAME:
-        p = "PBHRename";
-        break;
-
-      case FILEMGR_PBCATMOVE:
-        p = "PBCatMove";
-        break;
-
-      case FILEMGR_PBEXCHANGEFILES:
-        p = "PBExchangeFiles";
-        break;
-
-      case FILEMGR_PBHDELETE:
-        p = "PBHDelete";
-        break;
-
-      case FILEMGR_PBDIRCREATE:
-        p = "PBDirCreate";
-        break;
-
-      case FILEMGR_PBCATSEARCH:
-        p = "PBCatSearch";
-        break;
-
-      case FILEMGR_PBHSETFLOCK:
-        p = "PBHSetFlock";
-        break;
-
-      case FILEMGR_PBHRSTFLOCK:
-        p = "PBHRstFLock";
-        break;
-
-      case FILEMGR_PBLOCKRANGE:
-        p = "PBLockRange";
-        break;
-
-      case FILEMGR_PBUNLOCKRANGE:
-        p = "PBUnlockRange";
-        break;
-
-      default:
-        p = NULL;
-        break;
-    }
-    filemgr_calls[code].fm_name = p;
-  }
 }
 
 
@@ -1344,8 +1064,6 @@ int main(int argc, char *argv[]) {
   set_enable(1);
 
   init_arguments_buffer();
-
-  init_tables();
 
   /*
    * main loop
