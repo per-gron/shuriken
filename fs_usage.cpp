@@ -206,43 +206,6 @@ int filter_mode = DEFAULT_DO_NOT_FILTER;
 #define NFS_DEV -1
 #define CS_DEV -2
 
-extern "C" int reexec_to_match_kernel();
-
-int     check_filter_mode(struct th_info *, int, int, int, const char *);
-void    format_print(struct th_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, int, const char *);
-void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
-void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
-void    exit_event(const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int);
-void    extend_syscall(uintptr_t, int, kd_buf *);
-
-void    fs_usage_fd_set(uintptr_t, unsigned int);
-int     fs_usage_fd_isset(uintptr_t, unsigned int);
-void    fs_usage_fd_clear(uintptr_t, unsigned int);
-
-void    init_arguments_buffer();
-int     get_real_command_name(int, char *, int);
-
-void    delete_all_events();
-void    delete_event(th_info_t);
-th_info_t add_event(uintptr_t, int);
-th_info_t find_event(uintptr_t, int);
-
-void    read_command_map();
-void    delete_all_map_entries();
-void    create_map_entry(uintptr_t, int, char *);
-void    delete_map_entry(uintptr_t);
-threadmap_t find_map_entry(uintptr_t);
-
-char   *add_vnode_name(uint64_t, const char *);
-const char *find_vnode_name(uint64_t);
-void    add_meta_name(uint64_t, const char *);
-
-void    argtopid(char *str);
-void    set_remove();
-void    set_pidcheck(int pid, int on_off);
-void    set_pidexclude(int pid, int on_off);
-int     quit(const char *s);
-
 
 static constexpr int CLASS_MASK = 0xff000000;
 static constexpr int CSC_MASK = 0xffff0000;
@@ -513,219 +476,257 @@ static constexpr int FILEMGR_PBUNLOCKRANGE = 0x1e0100a4;
 static constexpr int FILEMGR_CLASS = 0x1e;
 static constexpr int FILEMGR_BASE = 0x1e000000;
 
-#define FMT_DEFAULT 0
-#define FMT_FD    1
-#define FMT_FD_IO 2
-#define FMT_FD_2  3
-#define FMT_SOCKET  4
-#define FMT_LSEEK 9
-#define FMT_PREAD 10
-#define FMT_FTRUNC  11
-#define FMT_TRUNC 12
-#define FMT_SELECT  13
-#define FMT_OPEN  14
-#define FMT_AIO_FSYNC 15
-#define FMT_AIO_RETURN  16
-#define FMT_AIO_SUSPEND 17
-#define FMT_AIO_CANCEL  18
-#define FMT_AIO   19
-#define FMT_LIO_LISTIO  20
-#define FMT_MSYNC 21
-#define FMT_FCNTL 22
-#define FMT_ACCESS  23
-#define FMT_CHMOD 24
-#define FMT_FCHMOD  25
-#define FMT_CHMOD_EXT 26
-#define FMT_FCHMOD_EXT  27
-#define FMT_CHFLAGS 28
-#define FMT_FCHFLAGS  29
-#define FMT_IOCTL 30
-#define FMT_MMAP  31
-#define FMT_UMASK 32
-#define FMT_SENDFILE  33
-#define FMT_IOCTL_SYNC  34
-#define FMT_MOUNT 35
-#define FMT_UNMOUNT 36
-#define FMT_IOCTL_UNMAP 39
-#define FMT_UNMAP_INFO  40
-#define FMT_HFS_update  41
-#define FMT_FLOCK 42
-#define FMT_AT    43
-#define FMT_CHMODAT 44
-#define FMT_OPENAT  45
-#define FMT_RENAMEAT  46
-#define FMT_IOCTL_SYNCCACHE 47
+enum class Fmt {
+  DEFAULT,
+  FD,
+  FD_IO,
+  FD_2,
+  SOCKET,
+  LSEEK,
+  PREAD,
+  FTRUNC,
+  TRUNC,
+  SELECT,
+  OPEN,
+  AIO_FSYNC,
+  AIO_RETURN,
+  AIO_SUSPEND,
+  AIO_CANCEL,
+  AIO,
+  LIO_LISTIO,
+  MSYNC,
+  FCNTL,
+  ACCESS,
+  CHMOD,
+  FCHMOD,
+  CHMOD_EXT,
+  FCHMOD_EXT,
+  CHFLAGS,
+  FCHFLAGS,
+  IOCTL,
+  MMAP,
+  UMASK,
+  SENDFILE,
+  IOCTL_SYNC,
+  MOUNT,
+  UNMOUNT,
+  IOCTL_UNMAP,
+  UNMAP_INFO,
+  HFS_update,
+  FLOCK,
+  AT,
+  CHMODAT,
+  OPENAT,
+  RENAMEAT,
+  IOCTL_SYNCCACHE,
+};
 
+extern "C" int reexec_to_match_kernel();
+
+int     check_filter_mode(struct th_info *, int, int, int, const char *);
+void    format_print(struct th_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt, int, const char *);
+void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
+void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
+void    exit_event(const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt);
+void    extend_syscall(uintptr_t, int, kd_buf *);
+
+void    fs_usage_fd_set(uintptr_t, unsigned int);
+int     fs_usage_fd_isset(uintptr_t, unsigned int);
+void    fs_usage_fd_clear(uintptr_t, unsigned int);
+
+void    init_arguments_buffer();
+int     get_real_command_name(int, char *, int);
+
+void    delete_all_events();
+void    delete_event(th_info_t);
+th_info_t add_event(uintptr_t, int);
+th_info_t find_event(uintptr_t, int);
+
+void    read_command_map();
+void    delete_all_map_entries();
+void    create_map_entry(uintptr_t, int, char *);
+void    delete_map_entry(uintptr_t);
+threadmap_t find_map_entry(uintptr_t);
+
+char   *add_vnode_name(uint64_t, const char *);
+const char *find_vnode_name(uint64_t);
+void    add_meta_name(uint64_t, const char *);
+
+void    argtopid(char *str);
+void    set_remove();
+void    set_pidcheck(int pid, int on_off);
+void    set_pidexclude(int pid, int on_off);
+int     quit(const char *s);
 
 struct bsd_syscall {
-  static_assert(FMT_DEFAULT == 0, "bsd_syscall should be all zeros by default");
+  static_assert(static_cast<int>(Fmt::DEFAULT) == 0, "bsd_syscall should be all zeros by default");
   const char *sc_name = nullptr;
-  int sc_format = FMT_DEFAULT;
+  Fmt sc_format = Fmt::DEFAULT;
 };
 
 static constexpr int MAX_BSD_SYSCALL = 526;
 
 std::array<bsd_syscall, MAX_BSD_SYSCALL> make_bsd_syscall_table() {
-  static const std::tuple<int, const char *, int> bsd_syscall_table[] = {
-    { BSC_sendfile, "sendfile", FMT_FD /* this should be changed to FMT_SENDFILE once we add an extended info trace event */ },
-    { BSC_recvmsg, "recvmsg", FMT_FD_IO },
-    { BSC_recvmsg_nocancel, "recvmsg", FMT_FD_IO },
-    { BSC_sendmsg, "sendmsg", FMT_FD_IO },
-    { BSC_sendmsg_nocancel, "sendmsg", FMT_FD_IO },
-    { BSC_recvfrom, "recvfrom", FMT_FD_IO },
-    { BSC_recvfrom_nocancel, "recvfrom", FMT_FD_IO },
-    { BSC_sendto, "sendto", FMT_FD_IO },
-    { BSC_sendto_nocancel, "sendto", FMT_FD_IO },
-    { BSC_select, "select", FMT_SELECT },
-    { BSC_select_nocancel, "select", FMT_SELECT },
-    { BSC_accept, "accept", FMT_FD_2 },
-    { BSC_accept_nocancel, "accept", FMT_FD_2 },
-    { BSC_socket, "socket", FMT_SOCKET },
-    { BSC_connect, "connect", FMT_FD },
-    { BSC_connect_nocancel, "connect", FMT_FD },
-    { BSC_bind, "bind", FMT_FD },
-    { BSC_listen, "listen", FMT_FD },
-    { BSC_mmap, "mmap", FMT_MMAP },
-    { BSC_socketpair, "socketpair", FMT_DEFAULT },
-    { BSC_getxattr, "getxattr", FMT_DEFAULT },
-    { BSC_setxattr, "setxattr", FMT_DEFAULT },
-    { BSC_removexattr, "removexattr", FMT_DEFAULT },
-    { BSC_listxattr, "listxattr", FMT_DEFAULT },
-    { BSC_stat, "stat", FMT_DEFAULT },
-    { BSC_stat64, "stat64", FMT_DEFAULT },
-    { BSC_stat_extended, "stat_extended", FMT_DEFAULT },
-    { BSC_stat64_extended, "stat_extended64", FMT_DEFAULT },
-    { BSC_mount, "mount", FMT_MOUNT },
-    { BSC_unmount, "unmount", FMT_UNMOUNT },
-    { BSC_exit, "exit", FMT_DEFAULT },
-    { BSC_execve, "execve", FMT_DEFAULT },
-    { BSC_posix_spawn, "posix_spawn", FMT_DEFAULT },
-    { BSC_open, "open", FMT_OPEN },
-    { BSC_open_nocancel, "open", FMT_OPEN },
-    { BSC_open_extended, "open_extended", FMT_OPEN },
-    { BSC_guarded_open_np, "guarded_open_np", FMT_OPEN },
-    { BSC_open_dprotected_np, "open_dprotected", FMT_OPEN },
-    { BSC_dup, "dup", FMT_FD_2 },
-    { BSC_dup2, "dup2", FMT_FD_2 },
-    { BSC_close, "close", FMT_FD },
-    { BSC_close_nocancel, "close", FMT_FD },
-    { BSC_guarded_close_np, "guarded_close_np", FMT_FD },
-    { BSC_read, "read", FMT_FD_IO },
-    { BSC_read_nocancel, "read", FMT_FD_IO },
-    { BSC_write, "write", FMT_FD_IO },
-    { BSC_write_nocancel, "write", FMT_FD_IO },
-    { BSC_fgetxattr, "fgetxattr", FMT_FD },
-    { BSC_fsetxattr, "fsetxattr", FMT_FD },
-    { BSC_fremovexattr, "fremovexattr", FMT_FD },
-    { BSC_flistxattr, "flistxattr", FMT_FD },
-    { BSC_fstat, "fstat", FMT_FD },
-    { BSC_fstat64, "fstat64", FMT_FD },
-    { BSC_fstat_extended, "fstat_extended", FMT_FD },
-    { BSC_fstat64_extended, "fstat64_extended", FMT_FD },
-    { BSC_lstat, "lstat", FMT_DEFAULT },
-    { BSC_lstat64, "lstat64", FMT_DEFAULT },
-    { BSC_lstat_extended, "lstat_extended", FMT_DEFAULT },
-    { BSC_lstat64_extended, "lstat_extended64", FMT_DEFAULT },
-    { BSC_link, "link", FMT_DEFAULT },
-    { BSC_unlink, "unlink", FMT_DEFAULT },
-    { BSC_mknod, "mknod", FMT_DEFAULT },
-    { BSC_umask, "umask", FMT_UMASK },
-    { BSC_umask_extended, "umask_extended", FMT_UMASK },
-    { BSC_chmod, "chmod", FMT_CHMOD },
-    { BSC_chmod_extended, "chmod_extended", FMT_CHMOD_EXT },
-    { BSC_fchmod, "fchmod", FMT_FCHMOD },
-    { BSC_fchmod_extended, "fchmod_extended", FMT_FCHMOD_EXT },
-    { BSC_chown, "chown", FMT_DEFAULT },
-    { BSC_lchown, "lchown", FMT_DEFAULT },
-    { BSC_fchown, "fchown", FMT_FD },
-    { BSC_access, "access", FMT_ACCESS },
-    { BSC_access_extended, "access_extended", FMT_DEFAULT },
-    { BSC_chdir, "chdir", FMT_DEFAULT },
-    { BSC_pthread_chdir, "pthread_chdir", FMT_DEFAULT },
-    { BSC_chroot, "chroot", FMT_DEFAULT },
-    { BSC_utimes, "utimes", FMT_DEFAULT },
-    { BSC_delete, "delete-Carbon", FMT_DEFAULT },
-    { BSC_undelete, "undelete", FMT_DEFAULT },
-    { BSC_revoke, "revoke", FMT_DEFAULT },
-    { BSC_fsctl, "fsctl", FMT_DEFAULT },
-    { BSC_ffsctl, "ffsctl", FMT_FD },
-    { BSC_chflags, "chflags", FMT_CHFLAGS },
-    { BSC_fchflags, "fchflags", FMT_FCHFLAGS },
-    { BSC_fchdir, "fchdir", FMT_FD },
-    { BSC_pthread_fchdir, "pthread_fchdir", FMT_FD },
-    { BSC_futimes, "futimes", FMT_FD },
-    { BSC_sync, "sync", FMT_DEFAULT },
-    { BSC_symlink, "symlink", FMT_DEFAULT },
-    { BSC_readlink, "readlink", FMT_DEFAULT },
-    { BSC_fsync, "fsync", FMT_FD },
-    { BSC_fsync_nocancel, "fsync", FMT_FD },
-    { BSC_fdatasync, "fdatasync", FMT_FD },
-    { BSC_readv, "readv", FMT_FD_IO },
-    { BSC_readv_nocancel, "readv", FMT_FD_IO },
-    { BSC_writev, "writev", FMT_FD_IO },
-    { BSC_writev_nocancel, "writev", FMT_FD_IO },
-    { BSC_pread, "pread", FMT_PREAD },
-    { BSC_pread_nocancel, "pread", FMT_PREAD },
-    { BSC_pwrite, "pwrite", FMT_PREAD },
-    { BSC_pwrite_nocancel, "pwrite", FMT_PREAD },
-    { BSC_mkdir, "mkdir", FMT_DEFAULT },
-    { BSC_mkdir_extended, "mkdir_extended", FMT_DEFAULT },
-    { BSC_mkfifo, "mkfifo", FMT_DEFAULT },
-    { BSC_mkfifo_extended, "mkfifo_extended", FMT_DEFAULT },
-    { BSC_rmdir, "rmdir", FMT_DEFAULT },
-    { BSC_statfs, "statfs", FMT_DEFAULT },
-    { BSC_statfs64, "statfs64", FMT_DEFAULT },
-    { BSC_getfsstat, "getfsstat", FMT_DEFAULT },
-    { BSC_getfsstat64, "getfsstat64", FMT_DEFAULT },
-    { BSC_fstatfs, "fstatfs", FMT_FD },
-    { BSC_fstatfs64, "fstatfs64", FMT_FD },
-    { BSC_pathconf, "pathconf", FMT_DEFAULT },
-    { BSC_fpathconf, "fpathconf", FMT_FD },
-    { BSC_getdirentries, "getdirentries", FMT_FD_IO },
-    { BSC_getdirentries64, "getdirentries64", FMT_FD_IO },
-    { BSC_lseek, "lseek", FMT_LSEEK },
-    { BSC_truncate, "truncate", FMT_TRUNC },
-    { BSC_ftruncate, "ftruncate", FMT_FTRUNC },
-    { BSC_flock, "flock", FMT_FLOCK },
-    { BSC_getattrlist, "getattrlist", FMT_DEFAULT },
-    { BSC_setattrlist, "setattrlist", FMT_DEFAULT },
-    { BSC_fgetattrlist, "fgetattrlist", FMT_FD },
-    { BSC_fsetattrlist, "fsetattrlist", FMT_FD },
-    { BSC_getdirentriesattr, "getdirentriesattr", FMT_FD },
-    { BSC_exchangedata, "exchangedata", FMT_DEFAULT },
-    { BSC_rename, "rename", FMT_DEFAULT },
-    { BSC_copyfile, "copyfile", FMT_DEFAULT },
-    { BSC_checkuseraccess, "checkuseraccess", FMT_DEFAULT },
-    { BSC_searchfs, "searchfs", FMT_DEFAULT },
-    { BSC_aio_fsync, "aio_fsync", FMT_AIO_FSYNC },
-    { BSC_aio_return, "aio_return", FMT_AIO_RETURN },
-    { BSC_aio_suspend, "aio_suspend", FMT_AIO_SUSPEND },
-    { BSC_aio_suspend_nocancel, "aio_suspend", FMT_AIO_SUSPEND },
-    { BSC_aio_cancel,  "aio_cancel", FMT_AIO_CANCEL },
-    { BSC_aio_error, "aio_error", FMT_AIO },
-    { BSC_aio_read, "aio_read", FMT_AIO },
-    { BSC_aio_write, "aio_write", FMT_AIO },
-    { BSC_lio_listio, "lio_listio", FMT_LIO_LISTIO },
-    { BSC_msync, "msync", FMT_MSYNC },
-    { BSC_msync_nocancel, "msync", FMT_MSYNC },
-    { BSC_fcntl, "fcntl", FMT_FCNTL },
-    { BSC_fcntl_nocancel, "fcntl", FMT_FCNTL },
-    { BSC_ioctl, "ioctl", FMT_IOCTL },
-    { BSC_fsgetpath, "fsgetpath", FMT_DEFAULT },
-    { BSC_getattrlistbulk, "getattrlistbulk", FMT_DEFAULT },
-    { BSC_openat, "openat", FMT_OPENAT },
-    { BSC_openat_nocancel, "openat", FMT_OPENAT },
-    { BSC_renameat, "renameat", FMT_RENAMEAT },
-    { BSC_chmodat, "chmodat", FMT_CHMODAT },
-    { BSC_chownat, "chownat", FMT_AT },
-    { BSC_fstatat, "fstatat", FMT_AT },
-    { BSC_fstatat64, "fstatat64", FMT_AT },
-    { BSC_linkat, "linkat", FMT_AT },
-    { BSC_unlinkat, "unlinkat", FMT_AT },
-    { BSC_readlinkat, "readlinkat", FMT_AT },
-    { BSC_symlinkat, "symlinkat", FMT_AT },
-    { BSC_mkdirat, "mkdirat", FMT_AT },
-    { BSC_getattrlistat, "getattrlistat", FMT_AT },
+  static const std::tuple<int, const char *, Fmt> bsd_syscall_table[] = {
+    { BSC_sendfile, "sendfile", Fmt::FD },
+    { BSC_recvmsg, "recvmsg", Fmt::FD_IO },
+    { BSC_recvmsg_nocancel, "recvmsg", Fmt::FD_IO },
+    { BSC_sendmsg, "sendmsg", Fmt::FD_IO },
+    { BSC_sendmsg_nocancel, "sendmsg", Fmt::FD_IO },
+    { BSC_recvfrom, "recvfrom", Fmt::FD_IO },
+    { BSC_recvfrom_nocancel, "recvfrom", Fmt::FD_IO },
+    { BSC_sendto, "sendto", Fmt::FD_IO },
+    { BSC_sendto_nocancel, "sendto", Fmt::FD_IO },
+    { BSC_select, "select", Fmt::SELECT },
+    { BSC_select_nocancel, "select", Fmt::SELECT },
+    { BSC_accept, "accept", Fmt::FD_2 },
+    { BSC_accept_nocancel, "accept", Fmt::FD_2 },
+    { BSC_socket, "socket", Fmt::SOCKET },
+    { BSC_connect, "connect", Fmt::FD },
+    { BSC_connect_nocancel, "connect", Fmt::FD },
+    { BSC_bind, "bind", Fmt::FD },
+    { BSC_listen, "listen", Fmt::FD },
+    { BSC_mmap, "mmap", Fmt::MMAP },
+    { BSC_socketpair, "socketpair", Fmt::DEFAULT },
+    { BSC_getxattr, "getxattr", Fmt::DEFAULT },
+    { BSC_setxattr, "setxattr", Fmt::DEFAULT },
+    { BSC_removexattr, "removexattr", Fmt::DEFAULT },
+    { BSC_listxattr, "listxattr", Fmt::DEFAULT },
+    { BSC_stat, "stat", Fmt::DEFAULT },
+    { BSC_stat64, "stat64", Fmt::DEFAULT },
+    { BSC_stat_extended, "stat_extended", Fmt::DEFAULT },
+    { BSC_stat64_extended, "stat_extended64", Fmt::DEFAULT },
+    { BSC_mount, "mount", Fmt::MOUNT },
+    { BSC_unmount, "unmount", Fmt::UNMOUNT },
+    { BSC_exit, "exit", Fmt::DEFAULT },
+    { BSC_execve, "execve", Fmt::DEFAULT },
+    { BSC_posix_spawn, "posix_spawn", Fmt::DEFAULT },
+    { BSC_open, "open", Fmt::OPEN },
+    { BSC_open_nocancel, "open", Fmt::OPEN },
+    { BSC_open_extended, "open_extended", Fmt::OPEN },
+    { BSC_guarded_open_np, "guarded_open_np", Fmt::OPEN },
+    { BSC_open_dprotected_np, "open_dprotected", Fmt::OPEN },
+    { BSC_dup, "dup", Fmt::FD_2 },
+    { BSC_dup2, "dup2", Fmt::FD_2 },
+    { BSC_close, "close", Fmt::FD },
+    { BSC_close_nocancel, "close", Fmt::FD },
+    { BSC_guarded_close_np, "guarded_close_np", Fmt::FD },
+    { BSC_read, "read", Fmt::FD_IO },
+    { BSC_read_nocancel, "read", Fmt::FD_IO },
+    { BSC_write, "write", Fmt::FD_IO },
+    { BSC_write_nocancel, "write", Fmt::FD_IO },
+    { BSC_fgetxattr, "fgetxattr", Fmt::FD },
+    { BSC_fsetxattr, "fsetxattr", Fmt::FD },
+    { BSC_fremovexattr, "fremovexattr", Fmt::FD },
+    { BSC_flistxattr, "flistxattr", Fmt::FD },
+    { BSC_fstat, "fstat", Fmt::FD },
+    { BSC_fstat64, "fstat64", Fmt::FD },
+    { BSC_fstat_extended, "fstat_extended", Fmt::FD },
+    { BSC_fstat64_extended, "fstat64_extended", Fmt::FD },
+    { BSC_lstat, "lstat", Fmt::DEFAULT },
+    { BSC_lstat64, "lstat64", Fmt::DEFAULT },
+    { BSC_lstat_extended, "lstat_extended", Fmt::DEFAULT },
+    { BSC_lstat64_extended, "lstat_extended64", Fmt::DEFAULT },
+    { BSC_link, "link", Fmt::DEFAULT },
+    { BSC_unlink, "unlink", Fmt::DEFAULT },
+    { BSC_mknod, "mknod", Fmt::DEFAULT },
+    { BSC_umask, "umask", Fmt::UMASK },
+    { BSC_umask_extended, "umask_extended", Fmt::UMASK },
+    { BSC_chmod, "chmod", Fmt::CHMOD },
+    { BSC_chmod_extended, "chmod_extended", Fmt::CHMOD_EXT },
+    { BSC_fchmod, "fchmod", Fmt::FCHMOD },
+    { BSC_fchmod_extended, "fchmod_extended", Fmt::FCHMOD_EXT },
+    { BSC_chown, "chown", Fmt::DEFAULT },
+    { BSC_lchown, "lchown", Fmt::DEFAULT },
+    { BSC_fchown, "fchown", Fmt::FD },
+    { BSC_access, "access", Fmt::ACCESS },
+    { BSC_access_extended, "access_extended", Fmt::DEFAULT },
+    { BSC_chdir, "chdir", Fmt::DEFAULT },
+    { BSC_pthread_chdir, "pthread_chdir", Fmt::DEFAULT },
+    { BSC_chroot, "chroot", Fmt::DEFAULT },
+    { BSC_utimes, "utimes", Fmt::DEFAULT },
+    { BSC_delete, "delete-Carbon", Fmt::DEFAULT },
+    { BSC_undelete, "undelete", Fmt::DEFAULT },
+    { BSC_revoke, "revoke", Fmt::DEFAULT },
+    { BSC_fsctl, "fsctl", Fmt::DEFAULT },
+    { BSC_ffsctl, "ffsctl", Fmt::FD },
+    { BSC_chflags, "chflags", Fmt::CHFLAGS },
+    { BSC_fchflags, "fchflags", Fmt::FCHFLAGS },
+    { BSC_fchdir, "fchdir", Fmt::FD },
+    { BSC_pthread_fchdir, "pthread_fchdir", Fmt::FD },
+    { BSC_futimes, "futimes", Fmt::FD },
+    { BSC_sync, "sync", Fmt::DEFAULT },
+    { BSC_symlink, "symlink", Fmt::DEFAULT },
+    { BSC_readlink, "readlink", Fmt::DEFAULT },
+    { BSC_fsync, "fsync", Fmt::FD },
+    { BSC_fsync_nocancel, "fsync", Fmt::FD },
+    { BSC_fdatasync, "fdatasync", Fmt::FD },
+    { BSC_readv, "readv", Fmt::FD_IO },
+    { BSC_readv_nocancel, "readv", Fmt::FD_IO },
+    { BSC_writev, "writev", Fmt::FD_IO },
+    { BSC_writev_nocancel, "writev", Fmt::FD_IO },
+    { BSC_pread, "pread", Fmt::PREAD },
+    { BSC_pread_nocancel, "pread", Fmt::PREAD },
+    { BSC_pwrite, "pwrite", Fmt::PREAD },
+    { BSC_pwrite_nocancel, "pwrite", Fmt::PREAD },
+    { BSC_mkdir, "mkdir", Fmt::DEFAULT },
+    { BSC_mkdir_extended, "mkdir_extended", Fmt::DEFAULT },
+    { BSC_mkfifo, "mkfifo", Fmt::DEFAULT },
+    { BSC_mkfifo_extended, "mkfifo_extended", Fmt::DEFAULT },
+    { BSC_rmdir, "rmdir", Fmt::DEFAULT },
+    { BSC_statfs, "statfs", Fmt::DEFAULT },
+    { BSC_statfs64, "statfs64", Fmt::DEFAULT },
+    { BSC_getfsstat, "getfsstat", Fmt::DEFAULT },
+    { BSC_getfsstat64, "getfsstat64", Fmt::DEFAULT },
+    { BSC_fstatfs, "fstatfs", Fmt::FD },
+    { BSC_fstatfs64, "fstatfs64", Fmt::FD },
+    { BSC_pathconf, "pathconf", Fmt::DEFAULT },
+    { BSC_fpathconf, "fpathconf", Fmt::FD },
+    { BSC_getdirentries, "getdirentries", Fmt::FD_IO },
+    { BSC_getdirentries64, "getdirentries64", Fmt::FD_IO },
+    { BSC_lseek, "lseek", Fmt::LSEEK },
+    { BSC_truncate, "truncate", Fmt::TRUNC },
+    { BSC_ftruncate, "ftruncate", Fmt::FTRUNC },
+    { BSC_flock, "flock", Fmt::FLOCK },
+    { BSC_getattrlist, "getattrlist", Fmt::DEFAULT },
+    { BSC_setattrlist, "setattrlist", Fmt::DEFAULT },
+    { BSC_fgetattrlist, "fgetattrlist", Fmt::FD },
+    { BSC_fsetattrlist, "fsetattrlist", Fmt::FD },
+    { BSC_getdirentriesattr, "getdirentriesattr", Fmt::FD },
+    { BSC_exchangedata, "exchangedata", Fmt::DEFAULT },
+    { BSC_rename, "rename", Fmt::DEFAULT },
+    { BSC_copyfile, "copyfile", Fmt::DEFAULT },
+    { BSC_checkuseraccess, "checkuseraccess", Fmt::DEFAULT },
+    { BSC_searchfs, "searchfs", Fmt::DEFAULT },
+    { BSC_aio_fsync, "aio_fsync", Fmt::AIO_FSYNC },
+    { BSC_aio_return, "aio_return", Fmt::AIO_RETURN },
+    { BSC_aio_suspend, "aio_suspend", Fmt::AIO_SUSPEND },
+    { BSC_aio_suspend_nocancel, "aio_suspend", Fmt::AIO_SUSPEND },
+    { BSC_aio_cancel,  "aio_cancel", Fmt::AIO_CANCEL },
+    { BSC_aio_error, "aio_error", Fmt::AIO },
+    { BSC_aio_read, "aio_read", Fmt::AIO },
+    { BSC_aio_write, "aio_write", Fmt::AIO },
+    { BSC_lio_listio, "lio_listio", Fmt::LIO_LISTIO },
+    { BSC_msync, "msync", Fmt::MSYNC },
+    { BSC_msync_nocancel, "msync", Fmt::MSYNC },
+    { BSC_fcntl, "fcntl", Fmt::FCNTL },
+    { BSC_fcntl_nocancel, "fcntl", Fmt::FCNTL },
+    { BSC_ioctl, "ioctl", Fmt::IOCTL },
+    { BSC_fsgetpath, "fsgetpath", Fmt::DEFAULT },
+    { BSC_getattrlistbulk, "getattrlistbulk", Fmt::DEFAULT },
+    { BSC_openat, "openat", Fmt::OPENAT },
+    { BSC_openat_nocancel, "openat", Fmt::OPENAT },
+    { BSC_renameat, "renameat", Fmt::RENAMEAT },
+    { BSC_chmodat, "chmodat", Fmt::CHMODAT },
+    { BSC_chownat, "chownat", Fmt::AT },
+    { BSC_fstatat, "fstatat", Fmt::AT },
+    { BSC_fstatat64, "fstatat64", Fmt::AT },
+    { BSC_linkat, "linkat", Fmt::AT },
+    { BSC_unlinkat, "unlinkat", Fmt::AT },
+    { BSC_readlinkat, "readlinkat", Fmt::AT },
+    { BSC_symlinkat, "symlinkat", Fmt::AT },
+    { BSC_mkdirat, "mkdirat", Fmt::AT },
+    { BSC_getattrlistat, "getattrlistat", Fmt::AT },
   };
 
   std::array<bsd_syscall, MAX_BSD_SYSCALL> result;
@@ -1385,11 +1386,11 @@ void sample_sc() {
     case TRACE_STRING_EXEC:
       if ((ti = find_event(thread, BSC_execve))) {
         if (ti->lookups[0].pathname[0]) {
-          exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, FMT_DEFAULT);
+          exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, Fmt::DEFAULT);
         }
       } else if ((ti = find_event(thread, BSC_posix_spawn))) {
         if (ti->lookups[0].pathname[0]) {
-          exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, FMT_DEFAULT);
+          exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, Fmt::DEFAULT);
         }
       }
       if ((ti = find_event(thread, TRACE_DATA_EXEC)) == (struct th_info *)0) {
@@ -1530,25 +1531,25 @@ void sample_sc() {
 
     switch (type) {
     case Throttled:
-       exit_event("  THROTTLED", thread, type, 0, 0, 0, 0, FMT_DEFAULT);
+       exit_event("  THROTTLED", thread, type, 0, 0, 0, 0, Fmt::DEFAULT);
        continue;
 
     case HFS_update:
-       exit_event("  HFS_update", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_HFS_update);
+       exit_event("  HFS_update", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, Fmt::HFS_update);
        continue;
 
     case SPEC_unmap_info:
      if (check_filter_mode(NULL, SPEC_unmap_info, 0, 0, "SPEC_unmap_info"))
-       format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_UNMAP_INFO, 0, "");
+       format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::UNMAP_INFO, 0, "");
      continue;
 
     case SPEC_ioctl:
      if (kd[i].arg2 == DKIOCSYNCHRONIZECACHE) {
-       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_SYNCCACHE);
+       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, Fmt::IOCTL_SYNCCACHE);
      } else if (kd[i].arg2 == DKIOCUNMAP) {
-       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_IOCTL_UNMAP);
+       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, Fmt::IOCTL_UNMAP);
      } else if (kd[i].arg2 == DKIOCSYNCHRONIZE && (debugid & DBG_FUNC_ALL) == DBG_FUNC_NONE) {
-       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, FMT_IOCTL_SYNC);
+       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::IOCTL_SYNC);
      } else {
        if ((ti = find_event(thread, type))) {
          delete_event(ti);
@@ -1565,7 +1566,7 @@ void sample_sc() {
       continue;
 
     case MSC_map_fd:
-      exit_event("map_fd", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, FMT_FD);
+      exit_event("map_fd", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, Fmt::FD);
       continue;
           
     case BSC_mmap_extended:
@@ -1598,7 +1599,7 @@ void sample_sc() {
 
       if (filemgr_calls[index].fm_name) {
         exit_event(filemgr_calls[index].fm_name, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4,
-             FMT_DEFAULT);
+             Fmt::DEFAULT);
       }
     }
   }
@@ -1761,7 +1762,7 @@ void exit_event(
     uintptr_t arg2,
     uintptr_t arg3,
     uintptr_t arg4,
-    int format) {
+    Fmt format) {
   th_info_t ti;
       
   if ((ti = find_event(thread, type)) == (struct th_info *)0) {
@@ -1850,7 +1851,7 @@ void format_print(
     uintptr_t arg2,
     uintptr_t arg3,
     uintptr_t arg4,
-    int format,
+    Fmt format,
     int waited,
     const char *pathname) {
   int nopadding = 0;
@@ -1874,7 +1875,7 @@ void format_print(
   command_name = "";
 
   // <rdar://problem/19852325> Filter out WindowServer/xcpm iocts in fs_usage
-  if (format == FMT_IOCTL && ti->arg2 == 0xc030581d) {
+  if (format == Fmt::IOCTL && ti->arg2 == 0xc030581d) {
     return;
   }
 
@@ -1913,9 +1914,9 @@ void format_print(
     off_t offset_reassembled = 0LL;
     
     switch (format) {
-    case FMT_AT:
-    case FMT_RENAMEAT:
-    case FMT_DEFAULT:
+    case Fmt::AT:
+    case Fmt::RENAMEAT:
+    case Fmt::DEFAULT:
       /*
        * pathname based system calls or 
        * calls with no fd or pathname (i.e.  sync)
@@ -1926,7 +1927,7 @@ void format_print(
         printf("                  ");
       break;
 
-    case FMT_FD:
+    case Fmt::FD:
       /*
        * fd based system call... no I/O
        */
@@ -1936,7 +1937,7 @@ void format_print(
         printf(" F=%-3d", ti->arg1);
       break;
 
-    case FMT_FD_2:
+    case Fmt::FD_2:
       /*
        * accept, dup, dup2
        */
@@ -1946,7 +1947,7 @@ void format_print(
         printf(" F=%-3d  F=%-3lu", ti->arg1, arg2);
       break;
 
-    case FMT_FD_IO:
+    case Fmt::FD_IO:
       /*
        * system calls with fd's that return an I/O completion count
        */
@@ -1956,7 +1957,7 @@ void format_print(
         printf(" F=%-3d  B=0x%-6lx", ti->arg1, arg2);
       break;
 
-    case FMT_HFS_update:
+    case Fmt::HFS_update:
     {
       char sbuf[7];
       int sflag = (int)arg2;
@@ -1986,7 +1987,7 @@ void format_print(
       break;
     }
 
-    case FMT_MSYNC:
+    case Fmt::MSYNC:
     {
       /*
        * msync
@@ -2031,7 +2032,7 @@ void format_print(
       break;
     }
 
-    case FMT_FLOCK:
+    case Fmt::FLOCK:
     {
       /*
        * flock
@@ -2070,7 +2071,7 @@ void format_print(
       break;
     }
 
-    case FMT_FCNTL:
+    case Fmt::FCNTL:
     {
       /*
        * fcntl
@@ -2195,7 +2196,7 @@ void format_print(
       break;
     }
 
-    case FMT_IOCTL:
+    case Fmt::IOCTL:
     {
       /*
        * ioctl
@@ -2211,7 +2212,7 @@ void format_print(
       break;
     }
 
-    case FMT_SELECT:
+    case Fmt::SELECT:
     {
       /*
        * select
@@ -2225,8 +2226,8 @@ void format_print(
       break;
     }
 
-    case FMT_LSEEK:
-    case FMT_PREAD:
+    case Fmt::LSEEK:
+    case Fmt::PREAD:
       /*
        * pread, pwrite, lseek
        */
@@ -2235,13 +2236,13 @@ void format_print(
       if (arg1) {
         printf("[%3lu]  ", arg1);
       } else {
-        if (format == FMT_PREAD) {
+        if (format == Fmt::PREAD) {
           printf("  B=0x%-8lx ", arg2);
         } else {
           printf("  ");
         }
       }
-      if (format == FMT_PREAD) {
+      if (format == Fmt::PREAD) {
         offset_reassembled = (((off_t)(unsigned int)(ti->arg3)) << 32) | (unsigned int)(ti->arg4);
       } else {
 #ifdef __ppc__
@@ -2252,7 +2253,7 @@ void format_print(
       }
       clip_64bit("O=", offset_reassembled);
 
-      if (format == FMT_LSEEK) {
+      if (format == Fmt::LSEEK) {
         const char *mode;
 
         if (ti->arg4 == SEEK_SET) {
@@ -2269,7 +2270,7 @@ void format_print(
       }
       break;
 
-    case FMT_MMAP:
+    case Fmt::MMAP:
       /*
        * mmap
        */
@@ -2306,12 +2307,12 @@ void format_print(
       }
       break;
 
-    case FMT_TRUNC:
-    case FMT_FTRUNC:
+    case Fmt::TRUNC:
+    case Fmt::FTRUNC:
       /*
        * ftruncate, truncate
        */
-      if (format == FMT_FTRUNC) {
+      if (format == Fmt::FTRUNC) {
         printf(" F=%-3d", ti->arg1);
       } else {
         printf("      ");
@@ -2331,15 +2332,15 @@ void format_print(
       nopadding = 1;
       break;
 
-    case FMT_FCHFLAGS:
-    case FMT_CHFLAGS:
+    case Fmt::FCHFLAGS:
+    case Fmt::CHFLAGS:
     {
       /*
        * fchflags, chflags
        */
       int mlen = 0;
 
-      if (format == FMT_FCHFLAGS) {
+      if (format == Fmt::FCHFLAGS) {
         if (arg1) {
           printf(" F=%-3d[%3lu]", ti->arg1, arg1);
         } else {
@@ -2398,19 +2399,19 @@ void format_print(
       break;
     }
 
-    case FMT_UMASK:
-    case FMT_FCHMOD:
-    case FMT_FCHMOD_EXT:
-    case FMT_CHMOD:
-    case FMT_CHMOD_EXT:
-    case FMT_CHMODAT:
+    case Fmt::UMASK:
+    case Fmt::FCHMOD:
+    case Fmt::FCHMOD_EXT:
+    case Fmt::CHMOD:
+    case Fmt::CHMOD_EXT:
+    case Fmt::CHMODAT:
     {
       /*
        * fchmod, fchmod_extended, chmod, chmod_extended
        */
       int mode;
 
-      if (format == FMT_FCHMOD || format == FMT_FCHMOD_EXT) {
+      if (format == Fmt::FCHMOD || format == Fmt::FCHMOD_EXT) {
         if (arg1) {
           printf(" F=%-3d[%3lu] ", ti->arg1, arg1);
         } else {
@@ -2423,9 +2424,9 @@ void format_print(
           printf(" ");
         }
       }
-      if (format == FMT_UMASK) {
+      if (format == Fmt::UMASK) {
         mode = ti->arg1;
-      } else if (format == FMT_FCHMOD || format == FMT_CHMOD || format == FMT_CHMODAT) {
+      } else if (format == Fmt::FCHMOD || format == Fmt::CHMOD || format == Fmt::CHMODAT) {
         mode = ti->arg2;
       } else {
         mode = ti->arg4;
@@ -2441,7 +2442,7 @@ void format_print(
       break;
     }
 
-    case FMT_ACCESS:
+    case Fmt::ACCESS:
     {
       /*
        * access
@@ -2474,7 +2475,7 @@ void format_print(
       break;
     }
 
-    case FMT_MOUNT:
+    case Fmt::MOUNT:
     {
       if (arg1) {
         printf("      [%3lu] <FLGS=0x%x> ", arg1, ti->arg3);
@@ -2486,7 +2487,7 @@ void format_print(
       break;
     }
 
-    case FMT_UNMOUNT:
+    case Fmt::UNMOUNT:
     {
       const char *mountflag;
 
@@ -2506,8 +2507,8 @@ void format_print(
       break;
     }
 
-    case FMT_OPENAT:
-    case FMT_OPEN:
+    case Fmt::OPENAT:
+    case Fmt::OPEN:
     {
       /*
        * open
@@ -2552,7 +2553,7 @@ void format_print(
       break;
     }
 
-    case FMT_SOCKET:
+    case Fmt::SOCKET:
     {
       /*
        * socket
@@ -2623,7 +2624,7 @@ void format_print(
       break;
     }
 
-    case FMT_AIO_FSYNC:
+    case Fmt::AIO_FSYNC:
     {
       /*
        * aio_fsync    [errno]   AIOCBP   OP
@@ -2650,7 +2651,7 @@ void format_print(
       break;
     }
 
-    case FMT_AIO_RETURN:
+    case Fmt::AIO_RETURN:
       /*
        * aio_return   [errno]   AIOCBP   IOSIZE
        */
@@ -2661,7 +2662,7 @@ void format_print(
       }
       break;
 
-    case FMT_AIO_SUSPEND:
+    case Fmt::AIO_SUSPEND:
       /*
        * aio_suspend    [errno]   NENTS
        */
@@ -2672,7 +2673,7 @@ void format_print(
       }
       break;
 
-    case FMT_AIO_CANCEL:
+    case Fmt::AIO_CANCEL:
       /*
        * aio_cancel     [errno]   FD or AIOCBP (if non-null)
        */
@@ -2691,7 +2692,7 @@ void format_print(
       }
       break;
 
-    case FMT_AIO:
+    case Fmt::AIO:
       /*
        * aio_error, aio_read, aio_write [errno]  AIOCBP
        */
@@ -2702,7 +2703,7 @@ void format_print(
       }
       break;
 
-    case FMT_LIO_LISTIO:
+    case Fmt::LIO_LISTIO:
     {
       /*
        * lio_listio   [errno]   NENTS  MODE
@@ -2724,6 +2725,14 @@ void format_print(
       }
       break;
     }
+
+    case Fmt::SENDFILE:
+    case Fmt::IOCTL_SYNC:
+    case Fmt::IOCTL_UNMAP:
+    case Fmt::UNMAP_INFO:
+    case Fmt::IOCTL_SYNCCACHE:
+      printf("TODO: Not handled");
+      break;
     }
   }
 
@@ -2731,19 +2740,19 @@ void format_print(
     len = sprintf(&buf[0], " %s %s ", framework_type, framework_name);
   } else if (*pathname != '\0') {
     switch(format) {
-    case FMT_AT:
-    case FMT_OPENAT:
-    case FMT_CHMODAT:
+    case Fmt::AT:
+    case Fmt::OPENAT:
+    case Fmt::CHMODAT:
       len = sprintf(&buf[0], " [%d]/%s ", ti->arg1, pathname);
       break;
-    case FMT_RENAMEAT:
+    case Fmt::RENAMEAT:
       len = sprintf(&buf[0], " [%d]/%s ", ti->arg3, pathname);
       break;
     default:
       len = sprintf(&buf[0], " %s ", pathname);
     }
 
-    if (format == FMT_MOUNT && ti->lookups[1].pathname[0]) {
+    if (format == Fmt::MOUNT && ti->lookups[1].pathname[0]) {
       int len2;
 
       memset(&buf[len], ' ', 2);
