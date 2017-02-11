@@ -23,7 +23,7 @@
  */
 
 /*
-cc -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRIVATE -D__APPLE_PRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.c
+cc -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRIVATE -D__APPLE_PRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.cpp
 */
 
 #include <stdlib.h>
@@ -118,7 +118,7 @@ struct th_info {
   int  arg8;
   int  waited;
   uint64_t  vnodeid;
-  char      *nameptr;
+  const char *nameptr;
   uintptr_t *pathptr;
   int  pn_scall_index;
   int  pn_work_index;
@@ -151,7 +151,7 @@ typedef struct meta_info * meta_info_t;
 struct meta_info {
   meta_info_t     m_next;
   uint64_t        m_blkno;
-  char            *m_nameptr;
+  const char     *m_nameptr;
 };
 
 #define HASH_SIZE       1024
@@ -203,11 +203,13 @@ int filter_mode = DEFAULT_DO_NOT_FILTER;
 #define NFS_DEV -1
 #define CS_DEV  -2
 
-int     check_filter_mode(struct th_info *, int, int, int, char *);
-void    format_print(struct th_info *, char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, int, char *);
-void    enter_event_now(uintptr_t, int, kd_buf *, char *);
-void    enter_event(uintptr_t, int, kd_buf *, char *);
-void    exit_event(char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int);
+extern "C" int reexec_to_match_kernel();
+
+int     check_filter_mode(struct th_info *, int, int, int, const char *);
+void    format_print(struct th_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int, int, const char *);
+void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
+void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
+void    exit_event(const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, int);
 void    extend_syscall(uintptr_t, int, kd_buf *);
 
 void    fs_usage_fd_set(uintptr_t, unsigned int);
@@ -228,15 +230,15 @@ void    create_map_entry(uintptr_t, int, char *);
 void    delete_map_entry(uintptr_t);
 threadmap_t find_map_entry(uintptr_t);
 
-char   *add_vnode_name(uint64_t, char *);
-char   *find_vnode_name(uint64_t);
-void    add_meta_name(uint64_t, char *);
+char   *add_vnode_name(uint64_t, const char *);
+const char *find_vnode_name(uint64_t);
+void    add_meta_name(uint64_t, const char *);
 
-void    argtopid();
+void    argtopid(char *str);
 void    set_remove();
-void    set_pidcheck();
-void    set_pidexclude();
-int     quit();
+void    set_pidcheck(int pid, int on_off);
+void    set_pidexclude(int pid, int on_off);
+int     quit(const char *s);
 
 
 #define CLASS_MASK  0xff000000
@@ -558,7 +560,7 @@ int     quit();
 #define MAX_BSD_SYSCALL 526
 
 struct bsd_syscall {
-  char  *sc_name;
+  const char *sc_name;
   int sc_format;
 } bsd_syscalls[MAX_BSD_SYSCALL];
 
@@ -730,7 +732,7 @@ int bsd_syscall_types[] = {
 #define MAX_FILEMGR 512
 
 struct filemgr_call {
-  char *fm_name;
+  const char *fm_name;
 } filemgr_calls[MAX_FILEMGR];
 
 
@@ -842,23 +844,18 @@ kbufinfo_t bufinfo = {0, 0, 0, 0, 0};
 int trace_enabled = 0;
 int set_remove_flag = 1;
 
-void set_numbufs();
+void set_numbufs(int nbufs);
 void set_filter();
 void set_init();
-void set_enable();
+void set_enable(int val);
 void sample_sc();
-int quit();
 
 /*
  *  signal handlers
  */
 
-void leave() {      /* exit under normal conditions -- INT handler */
+void leave(int sig) {      /* exit under normal conditions -- INT handler */
   int i;
-  void set_enable();
-  void set_pidcheck();
-  void set_pidexclude();
-  void set_remove();
 
   fflush(0);
 
@@ -879,7 +876,7 @@ void leave() {      /* exit under normal conditions -- INT handler */
 }
 
 
-int quit(char *s) {
+int quit(const char *s) {
   if (trace_enabled) {
     set_enable(0);
   }
@@ -900,7 +897,7 @@ int quit(char *s) {
   exit(1);
 }
 
-int exit_usage(char *myname) {
+int exit_usage(const char *myname) {
 
   fprintf(stderr, "Usage: %s [-e] [-f mode] [pid | cmd [pid | cmd] ...]\n", myname);
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
@@ -919,7 +916,7 @@ int exit_usage(char *myname) {
 }
 
 
-int filemgr_index(type) {
+int filemgr_index(int type) {
   if (type & 0x10000) {
     return (((type >> 2) & 0x3fff) + 256);
   }
@@ -1620,7 +1617,7 @@ void init_tables(void) {
   }
 
   for (i = 0; (type = filemgr_call_types[i]); i++) {
-    char *p;
+    const char *p;
 
     code = filemgr_index(type);
 
@@ -1905,7 +1902,7 @@ void init_tables(void) {
 
 
 int main(int argc, char *argv[]) {
-  char *myname = "fs_usage";
+  const char *myname = "fs_usage";
   int i;
   char ch;
 
@@ -1979,8 +1976,9 @@ int main(int argc, char *argv[]) {
 
   sigaction(SIGHUP, (struct sigaction *)NULL, &osa);
 
-  if (osa.sa_handler == SIG_DFL)
+  if (osa.sa_handler == SIG_DFL) {
     signal(SIGHUP, leave);
+  }
   signal(SIGTERM, leave);
   /*
    * grab the number of cpus
@@ -1993,7 +1991,7 @@ int main(int argc, char *argv[]) {
   sysctl(mib, 2, &num_cpus, &len, NULL, 0);
   num_events = EVENT_BASE * num_cpus;
 
-  if ((my_buffer = malloc(num_events * sizeof(kd_buf))) == (char *)0) {
+  if ((my_buffer = reinterpret_cast<char *>(malloc(num_events * sizeof(kd_buf)))) == (char *)0) {
     quit("can't allocate memory for tracing info\n");
   }
 
@@ -2109,8 +2107,8 @@ void set_numbufs(int nbufs) {
   }
 }
 
-#define ENCODE_CSC_LOW(class, subclass) \
-  ( (uint16_t) ( ((class) & 0xff) << 8 ) | ((subclass) & 0xff) )
+#define ENCODE_CSC_LOW(klass, subclass) \
+  ( (uint16_t) ( ((klass) & 0xff) << 8 ) | ((subclass) & 0xff) )
 
 void set_filter() {
   uint8_t type_filter_bitmap[KDBG_TYPEFILTER_BITMAP_SIZE];
@@ -2141,7 +2139,7 @@ void set_filter() {
   }
 }
 
-void set_pidcheck(int pid, int on_off)  {
+void set_pidcheck(int pid, int on_off) {
   kd_regtype kr;
 
   kr.type = KDBG_TYPENONE;
@@ -2168,7 +2166,7 @@ void set_pidcheck(int pid, int on_off)  {
  * on_off == 0 turns off pid exclusion
  * on_off == 1 turns on pid exclusion
  */
-void set_pidexclude(int pid, int on_off)  {
+void set_pidexclude(int pid, int on_off) {
   kd_regtype kr;
 
   one_good_pid++;
@@ -2393,7 +2391,7 @@ void sample_sc() {
     case HFS_modify_block_end:
      if ((ti = find_event(thread, 0))) {
        if (ti->nameptr)
-         add_meta_name(kd[i].arg2, ti->nameptr);
+         add_meta_name(kd[i].arg2, reinterpret_cast<const char *>(ti->nameptr));
       }
      continue;
 
@@ -2457,7 +2455,9 @@ void sample_sc() {
       }
       if (debugid & DBG_FUNC_END) {
 
-        ti->nameptr = add_vnode_name(ti->vnodeid, &ti->lookups[ti->pn_work_index].pathname[0]);
+        ti->nameptr = add_vnode_name(
+            ti->vnodeid,
+            reinterpret_cast<const char *>(&ti->lookups[ti->pn_work_index].pathname[0]));
 
         if (ti->pn_work_index == ti->pn_scall_index) {
 
@@ -2477,7 +2477,7 @@ void sample_sc() {
     }
 
     if (debugid & DBG_FUNC_START) {
-      char *p;
+      const char *p;
 
       if ((type & CLASS_MASK) == FILEMGR_BASE) {
         index = filemgr_index(type);
@@ -2575,7 +2575,7 @@ void sample_sc() {
 }
 
 
-void enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name) {
+void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
   th_info_t ti;
   threadmap_t tme;
   int tsclen = 0;
@@ -2628,7 +2628,7 @@ void enter_event_now(uintptr_t thread, int type, kd_buf *kd, char *name) {
 }
 
 
-void enter_event(uintptr_t thread, int type, kd_buf *kd, char *name) {
+void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
   int index;
 
   switch (type) {
@@ -2728,7 +2728,7 @@ void extend_syscall(uintptr_t thread, int type, kd_buf *kd) {
 
 
 void exit_event(
-    char *sc_name,
+    const char *sc_name,
     uintptr_t thread,
     int type,
     uintptr_t arg1,
@@ -2796,7 +2796,7 @@ void get_mode_string(int mode, char *buf) {
 }
 
 
-int clip_64bit(char *s, uint64_t value) {
+int clip_64bit(const char *s, uint64_t value) {
   int clen = 0;
 
   if ((value & 0xff00000000000000LL)) {
@@ -2817,7 +2817,7 @@ int clip_64bit(char *s, uint64_t value) {
 
 void format_print(
     struct th_info *ti,
-    char *sc_name,
+    const char *sc_name,
     uintptr_t thread,
     int type,
     uintptr_t arg1,
@@ -2826,19 +2826,19 @@ void format_print(
     uintptr_t arg4,
     int format,
     int waited,
-    char *pathname) {
+    const char *pathname) {
   int nopadding = 0;
-  char *command_name;
+  const char *command_name;
   int in_filemgr = 0;
   int len = 0;
   int tlen = 0;
-  int class;
+  int klass;
   uint64_t user_addr;
   uint64_t user_size;
   char *framework_name;
   char *framework_type;
-  char *p1;
-  char *p2;
+  const char *p1;
+  const char *p2;
   char buf[MAXWIDTH];
 
   static char timestamp[32];
@@ -2852,7 +2852,7 @@ void format_print(
     return;
   }
 
-  class = type >> 24;
+  klass = type >> 24;
 
   threadmap_t tme;
 
@@ -2865,14 +2865,14 @@ void format_print(
   timestamp[tlen] = '\0';
 
   if (filemgr_in_progress) {
-    if (class != FILEMGR_CLASS) {
+    if (klass != FILEMGR_CLASS) {
       if (find_event(thread, -1)) {
         in_filemgr = 1;
       }
     }
   }
 
-  if (class == FILEMGR_CLASS) {
+  if (klass == FILEMGR_CLASS) {
     printf("%s  %-20.20s", timestamp, sc_name);
   } else if (in_filemgr) {
     printf("%s    %-15.15s", timestamp, sc_name);
@@ -2895,7 +2895,7 @@ void format_print(
        * calls with no fd or pathname (i.e.  sync)
        */
       if (arg1)
-        printf("      [%3d]       ", arg1);
+        printf("      [%3lu]       ", arg1);
       else
         printf("                  ");
       break;
@@ -2905,7 +2905,7 @@ void format_print(
        * fd based system call... no I/O
        */
       if (arg1)
-        printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        printf(" F=%-3d[%3lu]", ti->arg1, arg1);
       else
         printf(" F=%-3d", ti->arg1);
       break;
@@ -2915,9 +2915,9 @@ void format_print(
        * accept, dup, dup2
        */
       if (arg1)
-        printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        printf(" F=%-3d[%3lu]", ti->arg1, arg1);
       else
-        printf(" F=%-3d  F=%-3d", ti->arg1, arg2);
+        printf(" F=%-3d  F=%-3lu", ti->arg1, arg2);
       break;
 
     case FMT_FD_IO:
@@ -2925,9 +2925,9 @@ void format_print(
        * system calls with fd's that return an I/O completion count
        */
       if (arg1)
-        printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        printf(" F=%-3d[%3lu]", ti->arg1, arg1);
       else
-        printf(" F=%-3d  B=0x%-6x", ti->arg1, arg2);
+        printf(" F=%-3d  B=0x%-6lx", ti->arg1, arg2);
       break;
 
     case FMT_HFS_update:
@@ -2992,7 +2992,7 @@ void format_print(
       }
 
       if (arg1) {
-        printf("      [%3d]", arg1);
+        printf("      [%3lu]", arg1);
       }
 
       user_addr = (((off_t)(unsigned int)(ti->arg4)) << 32) | (unsigned int)(ti->arg1);
@@ -3036,7 +3036,7 @@ void format_print(
       }
 
       if (arg1) {
-        printf(" F=%-3d[%3d]  <%s>", ti->arg1, arg1, buf);
+        printf(" F=%-3d[%3lu]  <%s>", ti->arg1, arg1, buf);
       } else {
         printf(" F=%-3d  <%s>", ti->arg1, buf);
       }
@@ -3049,11 +3049,11 @@ void format_print(
       /*
        * fcntl
        */
-      char *p = NULL;
+      const char *p = NULL;
       int fd = -1;
 
       if (arg1) {
-        printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        printf(" F=%-3d[%3lu]", ti->arg1, arg1);
       } else {
         printf(" F=%-3d", ti->arg1);
       }
@@ -3175,7 +3175,7 @@ void format_print(
        * ioctl
        */
       if (arg1) {
-        printf(" F=%-3d[%3d]", ti->arg1, arg1);
+        printf(" F=%-3d[%3lu]", ti->arg1, arg1);
       } else {
         printf(" F=%-3d", ti->arg1);
       }
@@ -3191,9 +3191,9 @@ void format_print(
        * select
        */
       if (arg1) {
-        printf("      [%3d]", arg1);
+        printf("      [%3lu]", arg1);
       } else {
-        printf("        S=%-3d", arg2);
+        printf("        S=%-3lu", arg2);
       }
 
       break;
@@ -3207,10 +3207,10 @@ void format_print(
       printf(" F=%-3d", ti->arg1);
 
       if (arg1) {
-        printf("[%3d]  ", arg1);
+        printf("[%3lu]  ", arg1);
       } else {
         if (format == FMT_PREAD) {
-          printf("  B=0x%-8x ", arg2);
+          printf("  B=0x%-8lx ", arg2);
         } else {
           printf("  ");
         }
@@ -3227,7 +3227,7 @@ void format_print(
       clip_64bit("O=", offset_reassembled);
 
       if (format == FMT_LSEEK) {
-        char *mode;
+        const char *mode;
 
         if (ti->arg4 == SEEK_SET) {
           mode = "SEEK_SET";
@@ -3250,7 +3250,7 @@ void format_print(
       printf(" F=%-3d  ", ti->arg1);
 
       if (arg1) {
-        printf("[%3d]  ", arg1);
+        printf("[%3lu]  ", arg1);
       } else {
         user_addr = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
 
@@ -3292,7 +3292,7 @@ void format_print(
       }
 
       if (arg1) {
-        printf("[%3d]", arg1);
+        printf("[%3lu]", arg1);
       }
 
 #ifdef __ppc__
@@ -3315,13 +3315,13 @@ void format_print(
 
       if (format == FMT_FCHFLAGS) {
         if (arg1) {
-          printf(" F=%-3d[%3d]", ti->arg1, arg1);
+          printf(" F=%-3d[%3lu]", ti->arg1, arg1);
         } else {
           printf(" F=%-3d", ti->arg1);
         }
       } else {
         if (arg1) {
-          printf(" [%3d] ", arg1);
+          printf(" [%3lu] ", arg1);
         }
       }
       buf[mlen++] = ' ';
@@ -3386,13 +3386,13 @@ void format_print(
 
       if (format == FMT_FCHMOD || format == FMT_FCHMOD_EXT) {
         if (arg1) {
-          printf(" F=%-3d[%3d] ", ti->arg1, arg1);
+          printf(" F=%-3d[%3lu] ", ti->arg1, arg1);
         } else {
           printf(" F=%-3d ", ti->arg1);
         }
       } else {
         if (arg1) {
-          printf(" [%3d] ", arg1);
+          printf(" [%3lu] ", arg1);
         } else {
           printf(" ");
         }
@@ -3439,7 +3439,7 @@ void format_print(
       }
 
       if (arg1) {
-        printf("      [%3d] (%s)   ", arg1, mode);
+        printf("      [%3lu] (%s)   ", arg1, mode);
       } else {
         printf("            (%s)   ", mode);
       }
@@ -3451,7 +3451,7 @@ void format_print(
     case FMT_MOUNT:
     {
       if (arg1) {
-        printf("      [%3d] <FLGS=0x%x> ", arg1, ti->arg3);
+        printf("      [%3lu] <FLGS=0x%x> ", arg1, ti->arg3);
       } else {
         printf("     <FLGS=0x%x> ", ti->arg3);
       }
@@ -3462,7 +3462,7 @@ void format_print(
 
     case FMT_UNMOUNT:
     {
-      char *mountflag;
+      const char *mountflag;
 
       if (ti->arg2 & MNT_FORCE) {
         mountflag = "<FORCE>";
@@ -3471,7 +3471,7 @@ void format_print(
       }
 
       if (arg1) {
-        printf("      [%3d] %s  ", arg1, mountflag);
+        printf("      [%3lu] %s  ", arg1, mountflag);
       } else {
         printf("     %s         ", mountflag);
       }
@@ -3517,9 +3517,9 @@ void format_print(
       }
 
       if (arg1) {
-        printf("      [%3d] (%s) ", arg1, mode);
+        printf("      [%3lu] (%s) ", arg1, mode);
       } else {
-        printf(" F=%-3d      (%s) ", arg2, mode);
+        printf(" F=%-3lu      (%s) ", arg2, mode);
       }
 
       nopadding = 1;
@@ -3532,8 +3532,8 @@ void format_print(
        * socket
        * 
        */
-      char *domain;
-      char *type;
+      const char *domain;
+      const char *type;
       
       switch (ti->arg1) {
 
@@ -3590,9 +3590,9 @@ void format_print(
       }
 
       if (arg1) {
-        printf("      [%3d] <%s, %s, 0x%x>", arg1, domain, type, ti->arg3);
+        printf("      [%3lu] <%s, %s, 0x%x>", arg1, domain, type, ti->arg3);
       } else {
-        printf(" F=%-3d      <%s, %s, 0x%x>", arg2, domain, type, ti->arg3);
+        printf(" F=%-3lu      <%s, %s, 0x%x>", arg2, domain, type, ti->arg3);
       }
       break;
     }
@@ -3602,7 +3602,7 @@ void format_print(
       /*
        * aio_fsync    [errno]   AIOCBP   OP
        */
-      char *op;
+      const char *op;
 
       if (ti->arg1 == O_SYNC || ti->arg1 == 0) {
         op = "AIO_FSYNC";
@@ -3617,7 +3617,7 @@ void format_print(
       }
 
       if (arg1) {
-        printf("      [%3d] P=0x%8.8x  <%s>", arg1, ti->arg2, op);
+        printf("      [%3lu] P=0x%8.8x  <%s>", arg1, ti->arg2, op);
       } else {
         printf("            P=0x%8.8x  <%s>", ti->arg2, op);
       }
@@ -3629,9 +3629,9 @@ void format_print(
        * aio_return   [errno]   AIOCBP   IOSIZE
        */
       if (arg1) {
-        printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
+        printf("      [%3lu] P=0x%8.8x", arg1, ti->arg1);
       } else {
-        printf("            P=0x%8.8x  B=0x%-8x", ti->arg1, arg2);
+        printf("            P=0x%8.8x  B=0x%-8lx", ti->arg1, arg2);
       }
       break;
 
@@ -3640,7 +3640,7 @@ void format_print(
        * aio_suspend    [errno]   NENTS
        */
       if (arg1) {
-        printf("      [%3d] N=%d", arg1, ti->arg2);
+        printf("      [%3lu] N=%d", arg1, ti->arg2);
       } else {
         printf("            N=%d", ti->arg2);
       }
@@ -3652,13 +3652,13 @@ void format_print(
        */
       if (ti->arg2) {
         if (arg1) {
-          printf("      [%3d] P=0x%8.8x", arg1, ti->arg2);
+          printf("      [%3lu] P=0x%8.8x", arg1, ti->arg2);
         } else {
           printf("            P=0x%8.8x", ti->arg2);
         }
       } else {
         if (arg1) {
-          printf(" F=%-3d[%3d]", ti->arg1, arg1);
+          printf(" F=%-3d[%3lu]", ti->arg1, arg1);
         } else {
           printf(" F=%-3d", ti->arg1);
         }
@@ -3670,7 +3670,7 @@ void format_print(
        * aio_error, aio_read, aio_write [errno]  AIOCBP
        */
       if (arg1) {
-        printf("      [%3d] P=0x%8.8x", arg1, ti->arg1);
+        printf("      [%3lu] P=0x%8.8x", arg1, ti->arg1);
       } else {
         printf("            P=0x%8.8x", ti->arg1);
       }
@@ -3681,7 +3681,7 @@ void format_print(
       /*
        * lio_listio   [errno]   NENTS  MODE
        */
-      char *op;
+      const char *op;
 
       if (ti->arg1 == LIO_NOWAIT) {
         op = "LIO_NOWAIT";
@@ -3692,7 +3692,7 @@ void format_print(
       }
 
       if (arg1) {
-        printf("      [%3d] N=%d  <%s>", arg1, ti->arg3, op);
+        printf("      [%3lu] N=%d  <%s>", arg1, ti->arg3, op);
       } else {
         printf("            N=%d  <%s>", ti->arg3, op);
       }
@@ -3731,7 +3731,7 @@ void format_print(
 
   pathname = buf;
   
-  if (class != FILEMGR_CLASS && !nopadding) {
+  if (klass != FILEMGR_CLASS && !nopadding) {
     p1 = "   ";
   } else {
     p1 = "";
@@ -3747,7 +3747,7 @@ void format_print(
 }
 
 
-void add_meta_name(uint64_t blockno, char *pathname) {
+void add_meta_name(uint64_t blockno, const char *pathname) {
   meta_info_t mi;
   int hashid;
 
@@ -3768,7 +3768,7 @@ void add_meta_name(uint64_t blockno, char *pathname) {
   mi->m_nameptr = pathname;
 }
 
-char *add_vnode_name(uint64_t vn_id, char *pathname) {
+char *add_vnode_name(uint64_t vn_id, const char *pathname) {
   vnode_info_t  vn;
   int   hashid;
 
@@ -3786,13 +3786,13 @@ char *add_vnode_name(uint64_t vn_id, char *pathname) {
     vn_info_hash[hashid] = vn;
     vn->vn_id = vn_id;
   }
-  strcpy(vn->vn_pathname, pathname);
+  strcpy(reinterpret_cast<char *>(vn->vn_pathname), pathname);
 
-  return &vn->vn_pathname;
+  return reinterpret_cast<char *>(&vn->vn_pathname);
 }
 
 
-char *find_vnode_name(uint64_t vn_id) {
+const char *find_vnode_name(uint64_t vn_id) {
   vnode_info_t vn;
   int hashid;
 
@@ -3800,7 +3800,7 @@ char *find_vnode_name(uint64_t vn_id) {
 
   for (vn = vn_info_hash[hashid]; vn; vn = vn->vn_next) {
     if (vn->vn_id == vn_id) {
-      return vn->vn_pathname;
+      return reinterpret_cast<char *>(vn->vn_pathname);
     }
   }
   return "";
@@ -4159,7 +4159,7 @@ void argtopid(char *str) {
  *
  * filters may be combined; default is all filters on
  */
-int check_filter_mode(struct th_info *ti, int type, int error, int retval, char *sc_name) {
+int check_filter_mode(struct th_info *ti, int type, int error, int retval, const char *sc_name) {
   int ret = 0;
   int network_fd_isset = 0;
   unsigned int fd;
@@ -4402,7 +4402,7 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
       break;
     }
   }
-  (void) strncpy(cbuf, (char *)command, csize);
+  strncpy(cbuf, (char *)command, csize);
   cbuf[csize-1] = '\0';
 
   return 1;
