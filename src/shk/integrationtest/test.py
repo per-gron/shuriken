@@ -300,5 +300,9 @@ class IntegrationTest(unittest.TestCase):
     write_file('build.ninja.in', manifest.replace('[[GENERATOR_LINE]]', 'before'))
     self.assertEqual(read_file('build.ninja'), original_manifest)
 
+  @with_testdir('build_pool')
+  def test_build_pool(self):
+    run_cmd(shk)
+
 if __name__ == '__main__':
     unittest.main()

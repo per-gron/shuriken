@@ -36,6 +36,7 @@
 #include "build_error.h"
 #include "cmd/dry_run_command_runner.h"
 #include "cmd/limited_command_runner.h"
+#include "cmd/pooled_command_runner.h"
 #include "cmd/real_command_runner.h"
 #include "cmd/tracing_command_runner.h"
 #include "edit_distance.h"
@@ -419,13 +420,15 @@ BuildResult ShurikenMain::runBuild(
     const std::vector<Path> &specified_outputs) throw(BuildError, IoError) {
   const auto command_runner = _config.dry_run ?
       makeDryRunCommandRunner() :
-      makeLimitedCommandRunner(
-        getLoadAverage,
-        _config.max_load_average,
-        _config.parallelism,
-        makeTracingCommandRunner(
-            _file_system,
-            makeRealCommandRunner()));
+      makePooledCommandRunner(
+        _indexed_manifest.manifest.pools,
+        makeLimitedCommandRunner(
+          getLoadAverage,
+          _config.max_load_average,
+          _config.parallelism,
+          makeTracingCommandRunner(
+              _file_system,
+              makeRealCommandRunner())));
 
   return build(
       getTime,
