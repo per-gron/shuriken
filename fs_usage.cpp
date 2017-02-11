@@ -839,8 +839,7 @@ std::array<filemgr_call, MAX_FILEMGR> make_filemgr_calls() {
 static auto filemgr_calls = make_filemgr_calls();
 
 
-#define MAX_PIDS 256
-int pids[MAX_PIDS];
+std::array<int, 256> pids;
 
 int num_of_pids = 0;
 int exclude_pids = 0;
@@ -936,7 +935,7 @@ int exit_usage(const char *myname) {
   fprintf(stderr, "          mode = \"exec\"     Show only exec and spawn events\n");
   fprintf(stderr, "  pid   selects process(s) to sample\n");
   fprintf(stderr, "  cmd   selects process(s) matching command string to sample\n");
-  fprintf(stderr, "\n%s will handle a maximum list of %d pids.\n\n", myname, MAX_PIDS);
+  fprintf(stderr, "\n%s will handle a maximum list of %zu pids.\n\n", myname, pids.size());
   fprintf(stderr, "By default (no options) the following processes are excluded from the output:\n");
   fprintf(stderr, "fs_usage, Terminal, telnetd, sshd, rlogind, tcsh, csh, sh\n\n");
 
@@ -996,12 +995,12 @@ int main(int argc, char *argv[]) {
    * when excluding, fs_usage should be the first in line for pids[]
    */
   if (exclude_pids || (!exclude_pids && argc == 0)) {
-    if (num_of_pids < (MAX_PIDS - 1)) {
+    if (num_of_pids < (pids.size() - 1)) {
       pids[num_of_pids++] = getpid();
     }
   }
 
-  while (argc > 0 && num_of_pids < (MAX_PIDS - 1)) {
+  while (argc > 0 && num_of_pids < (pids.size() - 1)) {
     select_pid_mode++;
     argtopid(argv[0]);
     argc--;
@@ -3132,7 +3131,7 @@ void argtopid(char *str) {
       find_proc_names();
     }
 
-    for (int i = 0; i < kp_nentries && num_of_pids < (MAX_PIDS - 1); i++) {
+    for (int i = 0; i < kp_nentries && num_of_pids < (pids.size() - 1); i++) {
       if (kp_buffer[i].kp_proc.p_stat == 0) {
         continue;
       } else {
@@ -3142,7 +3141,7 @@ void argtopid(char *str) {
         }
       }
     }
-  } else if (num_of_pids < (MAX_PIDS - 1)) {
+  } else if (num_of_pids < (pids.size() - 1)) {
     pids[num_of_pids++] = ret;
   }
 }
