@@ -903,14 +903,13 @@ char *s;
 int
 exit_usage(char *myname) {
 
-  fprintf(stderr, "Usage: %s [-e] [-f mode] [-b] [-t seconds] [pid | cmd [pid | cmd] ...]\n", myname);
+  fprintf(stderr, "Usage: %s [-e] [-f mode] [-b] [pid | cmd [pid | cmd] ...]\n", myname);
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
   fprintf(stderr, "        and exclude fs_usage by default\n");
   fprintf(stderr, "  -f    output is based on the mode provided\n");
   fprintf(stderr, "          mode = \"filesys\"  Show filesystem-related events\n");
   fprintf(stderr, "          mode = \"pathname\" Show only pathname-related events\n");
   fprintf(stderr, "          mode = \"exec\"     Show only exec and spawn events\n");
-  fprintf(stderr, "  -t    specifies timeout in seconds (for use in automated tools)\n");
   fprintf(stderr, "  pid   selects process(s) to sample\n");
   fprintf(stderr, "  cmd   selects process(s) matching command string to sample\n");
   fprintf(stderr, "\n%s will handle a maximum list of %d pids.\n\n", myname, MAX_PIDS);
@@ -1915,8 +1914,6 @@ main(argc, argv)
   int     i;
   char    ch;
 
-  time_t stop_at_time = 0;
-
   if (0 != reexec_to_match_kernel()) {
     fprintf(stderr, "Could not re-execute: %d\n", errno);
     exit(1);
@@ -1953,20 +1950,16 @@ main(argc, argv)
       BC_flag = 1;
       break;
 
-    case 't':
-      stop_at_time = time(NULL) + strtoul(optarg, NULL, 10);
-      break;
-
-         default:
-     exit_usage(myname);     
-         }
+    default:
+      exit_usage(myname);     
+    }
   }
   if ( geteuid() != 0 ) {
     fprintf(stderr, "'fs_usage' must be run as root...\n");
     exit(1);
   }
-        argc -= optind;
-        argv += optind;
+  argc -= optind;
+  argv += optind;
 
   /*
    * when excluding, fs_usage should be the first in line for pids[]
@@ -2042,7 +2035,7 @@ main(argc, argv)
   /*
    * main loop
    */
-  while (stop_at_time == 0 || last_time < stop_at_time) {
+  for (;;) {
     usleep(1000 * usleep_ms);
 
     sample_sc();
