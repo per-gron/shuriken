@@ -186,17 +186,6 @@ int argmax = 0;
 #define USLEEP_MAX 32
 int usleep_ms = USLEEP_MIN;
 
-/*
- * Filesystem only output filter
- * Default of zero means report all activity - no filtering
- */
-#define FILESYS_FILTER 0x01
-#define EXEC_FILTER 0x08
-#define PATHNAME_FILTER 0x10
-#define DEFAULT_DO_NOT_FILTER 0x00
-
-int filter_mode = DEFAULT_DO_NOT_FILTER;
-
 #define NFS_DEV -1
 #define CS_DEV -2
 
@@ -215,7 +204,6 @@ static constexpr int proc_exit = 0x4010004;
 
 extern "C" int reexec_to_match_kernel();
 
-int     check_filter_mode(struct th_info *, int, int, int, const char *);
 void    format_print(struct th_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt, int, const char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
 void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
@@ -340,13 +328,9 @@ int quit(const char *s) {
 
 int exit_usage(const char *myname) {
 
-  fprintf(stderr, "Usage: %s [-e] [-f mode] [pid | cmd [pid | cmd] ...]\n", myname);
+  fprintf(stderr, "Usage: %s [-e] [pid | cmd [pid | cmd] ...]\n", myname);
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
   fprintf(stderr, "        and exclude fs_usage by default\n");
-  fprintf(stderr, "  -f    output is based on the mode provided\n");
-  fprintf(stderr, "          mode = \"filesys\"  Show filesystem-related events\n");
-  fprintf(stderr, "          mode = \"pathname\" Show only pathname-related events\n");
-  fprintf(stderr, "          mode = \"exec\"     Show only exec and spawn events\n");
   fprintf(stderr, "  pid   selects process(s) to sample\n");
   fprintf(stderr, "  cmd   selects process(s) matching command string to sample\n");
   fprintf(stderr, "\n%s will handle a maximum list of %zu pids.\n\n", myname, pids.size());
@@ -382,16 +366,6 @@ int main(int argc, char *argv[]) {
     switch(ch) {
       case 'e':
         exclude_pids = 1;
-        break;
-
-      case 'f':
-        if (!strcmp(optarg, "filesys")) {
-          filter_mode |= FILESYS_FILTER;
-        } else if (!strcmp(optarg, "exec")) {
-          filter_mode |= EXEC_FILTER;
-        } else if (!strcmp(optarg, "pathname")) {
-          filter_mode |= PATHNAME_FILTER;
-        }
         break;
 
     default:
@@ -954,8 +928,7 @@ void sample_sc() {
        continue;
 
     case SPEC_unmap_info:
-     if (check_filter_mode(NULL, SPEC_unmap_info, 0, 0, "SPEC_unmap_info"))
-       format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::UNMAP_INFO, 0, "");
+     format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::UNMAP_INFO, 0, "");
      continue;
 
     case MACH_pageout:
@@ -1171,9 +1144,7 @@ void exit_event(
 
   ti->nameptr = 0;
 
-  if (check_filter_mode(ti, type, arg1, arg2, sc_name)) {
-    format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, ti->waited, (char *)&ti->lookups[0].pathname[0]);
-  }
+  format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, ti->waited, (char *)&ti->lookups[0].pathname[0]);
 
   switch (type) {
 
@@ -1978,143 +1949,6 @@ void argtopid(char *str) {
   } else if (num_of_pids < (pids.size() - 1)) {
     pids[num_of_pids++] = ret;
   }
-}
-
-/*
- * ret = 1 means print the entry
- * ret = 0 means don't print the entry
- */
-
-/*
- * meaning of filter flags:
- *
- * exec   show exec/posix_spawn
- * pathname show events with a pathname and close()
- * filesys  show filesystem events
- *
- * filters may be combined; default is all filters on
- */
-int check_filter_mode(struct th_info *ti, int type, int error, int retval, const char *sc_name) {
-  int ret = 0;
-  int network_fd_isset = 0;
-  unsigned int fd;
-
-  if (filter_mode == DEFAULT_DO_NOT_FILTER) {
-    return 1;
-  }
-  
-  if (filter_mode & EXEC_FILTER) {
-    if (type == BSC_execve || type == BSC_posix_spawn) {
-      return 1;
-    }
-  }
-
-  if (filter_mode & PATHNAME_FILTER) {
-    if (ti && ti->lookups[0].pathname[0]) {
-      return 1;
-    }
-    if (type == BSC_close || type == BSC_close_nocancel ||
-        type == BSC_guarded_close_np) {
-      return 1;
-    }
-  }
-
-  if (ti == (struct th_info *)0) {
-    if (filter_mode & FILESYS_FILTER) {
-      return 1;
-    }
-    return 0;
-  }
-
-  switch (type) {
-  case BSC_close:
-  case BSC_close_nocancel:
-  case BSC_guarded_close_np:
-    fd = ti->arg1;
-    network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
-
-    if (error == 0) {
-      fs_usage_fd_clear(ti->thread, fd);
-    }
-
-    if (!network_fd_isset) {
-      if (filter_mode & FILESYS_FILTER) {
-        ret = 1;
-      }
-    }
-    break;
-
-  case BSC_read:
-  case BSC_write:
-  case BSC_read_nocancel:
-  case BSC_write_nocancel:
-    /*
-     * we don't care about error in these cases
-     */
-    fd = ti->arg1;
-    network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
-
-    if (!network_fd_isset) {
-      if (filter_mode & FILESYS_FILTER) {
-        ret = 1;
-      }
-    }
-    break;
-
-  case BSC_accept:
-  case BSC_accept_nocancel:
-  case BSC_socket:
-    fd = retval;
-
-    if (error == 0) {
-      fs_usage_fd_set(ti->thread, fd);
-    }
-    break;
-
-  case BSC_recvfrom:
-  case BSC_sendto:
-  case BSC_recvmsg:
-  case BSC_sendmsg:
-  case BSC_connect:
-  case BSC_bind:
-  case BSC_listen:      
-  case BSC_sendto_nocancel:
-  case BSC_recvfrom_nocancel:
-  case BSC_recvmsg_nocancel:
-  case BSC_sendmsg_nocancel:
-  case BSC_connect_nocancel:
-    fd = ti->arg1;
-
-    if (error == 0) {
-      fs_usage_fd_set(ti->thread, fd);
-    }
-    break;
-
-  case BSC_dup:
-  case BSC_dup2:
-    /*
-     * We track these cases for fd state only
-     */
-    fd = ti->arg1;
-    network_fd_isset = fs_usage_fd_isset(ti->thread, fd);
-
-    if (error == 0 && network_fd_isset) {
-      /*
-       * then we are duping a socket descriptor
-       */
-      fd = retval;  /* the new fd */
-      fs_usage_fd_set(ti->thread, fd);
-    }
-    break;
-
-  default:
-    if (filter_mode & FILESYS_FILTER) {
-      ret = 1;
-    }
-    break;
-  }
-
-  return ret;
 }
 
 /*
