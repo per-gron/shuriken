@@ -855,18 +855,16 @@ void sample_sc();
  */
 
 void leave(int sig) {      /* exit under normal conditions -- INT handler */
-  int i;
-
   fflush(0);
 
   set_enable(0);
 
   if (exclude_pids == 0) {
-    for (i = 0; i < num_of_pids; i++) {
+    for (int i = 0; i < num_of_pids; i++) {
       set_pidcheck(pids[i], 0);
     }
   } else {
-    for (i = 0; i < num_of_pids; i++) {
+    for (int i = 0; i < num_of_pids; i++) {
       set_pidexclude(pids[i], 0);
     }
   }
@@ -926,21 +924,17 @@ int filemgr_index(int type) {
 
 
 void init_tables(void) {
-  int i;
-  int type;
-  int code;
-
-  for (i = 0; i < MAX_BSD_SYSCALL; i++) {
+  for (int i = 0; i < MAX_BSD_SYSCALL; i++) {
     bsd_syscalls[i].sc_name = NULL;
     bsd_syscalls[i].sc_format = FMT_DEFAULT;
   }
 
-  for (i = 0; i < MAX_FILEMGR; i++) {
+  for (int i = 0; i < MAX_FILEMGR; i++) {
     filemgr_calls[i].fm_name = NULL;
   }
 
-  for (i = 0; (type = bsd_syscall_types[i]); i++) {
-    code = BSC_INDEX(type);
+  for (int i = 0, type; (type = bsd_syscall_types[i]); i++) {
+    int code = BSC_INDEX(type);
 
     if (code >= MAX_BSD_SYSCALL) {
       printf("BSD syscall init (%x):  type exceeds table size\n", type);
@@ -1616,10 +1610,10 @@ void init_tables(void) {
     }
   }
 
-  for (i = 0; (type = filemgr_call_types[i]); i++) {
+  for (int i = 0, type; (type = filemgr_call_types[i]); i++) {
     const char *p;
 
-    code = filemgr_index(type);
+    int code = filemgr_index(type);
 
     if (code >= MAX_FILEMGR) {
       printf("FILEMGR call init (%x):  type exceeds table size\n", type);
@@ -1903,8 +1897,6 @@ void init_tables(void) {
 
 int main(int argc, char *argv[]) {
   const char *myname = "fs_usage";
-  int i;
-  char ch;
 
   if (0 != reexec_to_match_kernel()) {
     fprintf(stderr, "Could not re-execute: %d\n", errno);
@@ -1922,7 +1914,7 @@ int main(int argc, char *argv[]) {
     }
   }
   
-  while ((ch = getopt(argc, argv, "bewf:R:S:E:t:W")) != EOF) {
+  for (char ch; (ch = getopt(argc, argv, "bewf:R:S:E:t:W")) != EOF;) {
 
     switch(ch) {
       case 'e':
@@ -2000,11 +1992,11 @@ int main(int argc, char *argv[]) {
   set_init();
 
   if (exclude_pids == 0) {
-    for (i = 0; i < num_of_pids; i++) {
+    for (int i = 0; i < num_of_pids; i++) {
       set_pidcheck(pids[i], 1);
     }
   } else {
-    for (i = 0; i < num_of_pids; i++) {
+    for (int i = 0; i < num_of_pids; i++) {
       set_pidexclude(pids[i], 1);
     }
   }
@@ -2257,18 +2249,13 @@ void set_init() {
 
 
 void sample_sc() {
-  kd_buf *kd;
-  int i, count;
-  size_t needed;
-  uint32_t my_buffer_size = 0;
-
   get_bufinfo(&bufinfo);
 
   if (need_new_map) {
     read_command_map();
     need_new_map = 0;
   }
-  needed = bufinfo.nkdbufs * sizeof(kd_buf);
+  size_t needed = bufinfo.nkdbufs * sizeof(kd_buf);
 
   mib[0] = CTL_KERN;
   mib[1] = KERN_KDEBUG;
@@ -2280,7 +2267,7 @@ void sample_sc() {
   if (sysctl(mib, 3, my_buffer, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDREADTR\n");
   }
-  count = needed;
+  int count = needed;
 
   if (count > (num_events / 8)) {
     if (usleep_ms > USLEEP_BEHIND) {
@@ -2305,9 +2292,9 @@ void sample_sc() {
     set_enable(0);
     set_enable(1);
   }
-  kd = (kd_buf *)my_buffer;
+  kd_buf *kd = (kd_buf *)my_buffer;
 
-  for (i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++) {
     uint32_t debugid;
     uintptr_t thread;
     int type;
@@ -2577,11 +2564,8 @@ void sample_sc() {
 
 void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
   th_info_t ti;
-  threadmap_t tme;
-  int tsclen = 0;
-  int nmclen = 0;
-  int argsclen = 0;
   char buf[MAXWIDTH];
+  buf[0] = 0;
 
   if ((ti = add_event(thread, type)) == NULL) {
     return;
@@ -2603,21 +2587,21 @@ void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
     filemgr_in_progress++;
     ti->in_filemgr = 1;
 
-    tsclen = strlen(buf);  /* TODO(peck): I think this is empty */
+    int tsclen = strlen(buf);  /* TODO(peck): I think this is empty */
 
     /*
      * Print timestamp column
      */
     printf("%s", buf);
 
-    tme = find_map_entry(thread);
+    threadmap_t tme = find_map_entry(thread);
     if (tme) {
       sprintf(buf, "  %-25.25s ", name);
-      nmclen = strlen(buf);
+      int nmclen = strlen(buf);
       printf("%s", buf);
 
       sprintf(buf, "(%d, 0x%lx, 0x%lx, 0x%lx)", (short)kd->arg1, kd->arg2, kd->arg3, kd->arg4);
-      argsclen = strlen(buf);
+      int argsclen = strlen(buf);
 
       printf("%s", buf);   /* print the kdargs */
       printf("%s.%d\n", tme->tm_command, (int)thread); 
@@ -2629,8 +2613,6 @@ void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
 
 
 void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
-  int index;
-
   switch (type) {
 
   case MSC_map_fd:
@@ -2642,8 +2624,8 @@ void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
 
   }
   if ((type & CSC_MASK) == BSC_BASE) {
-
-    if ((index = BSC_INDEX(type)) >= MAX_BSD_SYSCALL) {
+    int index = BSC_INDEX(type);
+    if (index >= MAX_BSD_SYSCALL) {
       return;
     }
 
@@ -2653,8 +2635,8 @@ void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
     return;
   }
   if ((type & CLASS_MASK) == FILEMGR_BASE) {
-
-    if ((index = filemgr_index(type)) >= MAX_FILEMGR) {
+    int index = index = filemgr_index(type);
+    if (index >= MAX_FILEMGR) {
       return;
     }
          
@@ -3749,9 +3731,8 @@ void format_print(
 
 void add_meta_name(uint64_t blockno, const char *pathname) {
   meta_info_t mi;
-  int hashid;
 
-  hashid = blockno & VN_HASH_MASK;
+  int hashid = blockno & VN_HASH_MASK;
 
   for (mi = m_info_hash[hashid]; mi; mi = mi->m_next) {
     if (mi->m_blkno == blockno) {
@@ -3769,10 +3750,9 @@ void add_meta_name(uint64_t blockno, const char *pathname) {
 }
 
 char *add_vnode_name(uint64_t vn_id, const char *pathname) {
-  vnode_info_t  vn;
-  int   hashid;
+  vnode_info_t vn;
 
-  hashid = (vn_id >> VN_HASH_SHIFT) & VN_HASH_MASK;
+  int hashid = (vn_id >> VN_HASH_SHIFT) & VN_HASH_MASK;
 
   for (vn = vn_info_hash[hashid]; vn; vn = vn->vn_next) {
     if (vn->vn_id == vn_id) {
@@ -3793,12 +3773,9 @@ char *add_vnode_name(uint64_t vn_id, const char *pathname) {
 
 
 const char *find_vnode_name(uint64_t vn_id) {
-  vnode_info_t vn;
-  int hashid;
+  int hashid = (vn_id >> VN_HASH_SHIFT) & VN_HASH_MASK;
 
-  hashid = (vn_id >> VN_HASH_SHIFT) & VN_HASH_MASK;
-
-  for (vn = vn_info_hash[hashid]; vn; vn = vn->vn_next) {
+  for (vnode_info_t vn = vn_info_hash[hashid]; vn; vn = vn->vn_next) {
     if (vn->vn_id == vn_id) {
       return reinterpret_cast<char *>(vn->vn_pathname);
     }
@@ -3810,9 +3787,8 @@ const char *find_vnode_name(uint64_t vn_id) {
 void delete_event(th_info_t ti_to_delete) {
   th_info_t ti;
   th_info_t ti_prev;
-  int hashid;
 
-  hashid = ti_to_delete->thread & HASH_MASK;
+  int hashid = ti_to_delete->thread & HASH_MASK;
 
   if ((ti = th_info_hash[hashid])) {
     if (ti == ti_to_delete) {
@@ -3837,8 +3813,6 @@ void delete_event(th_info_t ti_to_delete) {
 
 th_info_t add_event(uintptr_t thread, int type) {
   th_info_t ti;
-  int i;
-  int hashid;
 
   if ((ti = th_info_freelist)) {
     th_info_freelist = ti->next;
@@ -3846,7 +3820,7 @@ th_info_t add_event(uintptr_t thread, int type) {
     ti = (th_info_t)malloc(sizeof(struct th_info));
   }
 
-  hashid = thread & HASH_MASK;
+  int hashid = thread & HASH_MASK;
 
   ti->next = th_info_hash[hashid];
   th_info_hash[hashid] = ti;
@@ -3862,7 +3836,7 @@ th_info_t add_event(uintptr_t thread, int type) {
   ti->pn_scall_index = 0;
   ti->pn_work_index = 0;
 
-  for (i = 0; i < MAX_PATHNAMES; i++) {
+  for (int i = 0; i < MAX_PATHNAMES; i++) {
     ti->lookups[i].pathname[0] = 0;
   }
 
@@ -3870,12 +3844,9 @@ th_info_t add_event(uintptr_t thread, int type) {
 }
 
 th_info_t find_event(uintptr_t thread, int type) {
-  th_info_t ti;
-  int hashid;
+  int hashid = thread & HASH_MASK;
 
-  hashid = thread & HASH_MASK;
-
-  for (ti = th_info_hash[hashid]; ti; ti = ti->next) {
+  for (th_info_t ti = th_info_hash[hashid]; ti; ti = ti->next) {
     if (ti->thread == thread) {
       if (type == ti->type) {
         return ti;
@@ -3895,12 +3866,10 @@ th_info_t find_event(uintptr_t thread, int type) {
 }
 
 void delete_all_events() {
-  th_info_t ti = 0;
   th_info_t ti_next = 0;
-  int i;
 
-  for (i = 0; i < HASH_SIZE; i++) {
-    for (ti = th_info_hash[i]; ti; ti = ti_next) {
+  for (int i = 0; i < HASH_SIZE; i++) {
+    for (th_info_t ti = th_info_hash[i]; ti; ti = ti_next) {
       ti_next = ti->next;
       ti->next = th_info_freelist;
       th_info_freelist = ti;
@@ -3910,18 +3879,15 @@ void delete_all_events() {
 }
 
 void read_command_map() {
-  size_t size;
-  int i;
-  int total_threads = 0;
   kd_threadmap *mapptr = 0;
 
   delete_all_map_entries();
 
-  total_threads = bufinfo.nkdthreads;
-  size = bufinfo.nkdthreads * sizeof(kd_threadmap);
+  int total_threads = bufinfo.nkdthreads;
+  size_t size = bufinfo.nkdthreads * sizeof(kd_threadmap);
 
   if (size) {
-    if ((mapptr = (kd_threadmap *) malloc(size))) {
+    if ((mapptr = reinterpret_cast<kd_threadmap *>(malloc(size)))) {
       int mib[6];
 
       bzero (mapptr, size);
@@ -3944,7 +3910,7 @@ void read_command_map() {
       }
     }
   }
-  for (i = 0; i < total_threads; i++) {
+  for (int i = 0; i < total_threads; i++) {
     create_map_entry(mapptr[i].thread, mapptr[i].valid, &mapptr[i].command[0]);
   }
 
@@ -3953,12 +3919,10 @@ void read_command_map() {
 
 
 void delete_all_map_entries() {
-  threadmap_t tme = 0;
   threadmap_t tme_next = 0;
-  int i;
 
-  for (i = 0; i < HASH_SIZE; i++) {
-    for (tme = threadmap_hash[i]; tme; tme = tme_next) {
+  for (int i = 0; i < HASH_SIZE; i++) {
+    for (threadmap_t tme = threadmap_hash[i]; tme; tme = tme_next) {
       if (tme->tm_setptr) {
         free(tme->tm_setptr);
       }
@@ -3973,7 +3937,6 @@ void delete_all_map_entries() {
 
 void create_map_entry(uintptr_t thread, int pid, char *command) {
   threadmap_t tme;
-  int hashid;
 
   if ((tme = threadmap_freelist)) {
     threadmap_freelist = tme->tm_next;
@@ -3988,7 +3951,7 @@ void create_map_entry(uintptr_t thread, int pid, char *command) {
   (void)strncpy (tme->tm_command, command, MAXCOMLEN);
   tme->tm_command[MAXCOMLEN] = '\0';
 
-  hashid = thread & HASH_MASK;
+  int hashid = thread & HASH_MASK;
 
   tme->tm_next = threadmap_hash[hashid];
   threadmap_hash[hashid] = tme;
@@ -4002,12 +3965,9 @@ void create_map_entry(uintptr_t thread, int pid, char *command) {
 
 
 threadmap_t find_map_entry(uintptr_t thread) {
-  threadmap_t tme;
-  int hashid;
+  int hashid = thread & HASH_MASK;
 
-  hashid = thread & HASH_MASK;
-
-  for (tme = threadmap_hash[hashid]; tme; tme = tme->tm_next) {
+  for (threadmap_t tme = threadmap_hash[hashid]; tme; tme = tme->tm_next) {
     if (tme->tm_thread == thread) {
       return tme;
     }
@@ -4019,9 +3979,8 @@ threadmap_t find_map_entry(uintptr_t thread) {
 void delete_map_entry(uintptr_t thread) {
   threadmap_t tme = 0;
   threadmap_t tme_prev;
-  int hashid;
 
-  hashid = thread & HASH_MASK;
+  int hashid = thread & HASH_MASK;
 
   if ((tme = threadmap_hash[hashid])) {
     if (tme->tm_thread == thread) {
@@ -4070,9 +4029,7 @@ void fs_usage_fd_set(uintptr_t thread, unsigned int fd) {
    * If the map is not big enough, then reallocate it
    */
   while (tme->tm_setsize <= fd) {
-    int n;
-
-    n = tme->tm_setsize * 2;
+    int n = tme->tm_setsize * 2;
     tme->tm_setptr = (unsigned long *)realloc(tme->tm_setptr, (FS_USAGE_NFDBYTES(n)));
 
     bzero(&tme->tm_setptr[(tme->tm_setsize/FS_USAGE_NFDBITS)], (FS_USAGE_NFDBYTES(tme->tm_setsize)));
@@ -4117,10 +4074,7 @@ void fs_usage_fd_clear(uintptr_t thread, unsigned int fd) {
 
 void argtopid(char *str) {
   char *cp;
-  int ret;
-  int i;
-
-  ret = (int)strtol(str, &cp, 10);
+  int ret = (int)strtol(str, &cp, 10);
 
   if (cp == str || *cp) {
     /*
@@ -4130,7 +4084,7 @@ void argtopid(char *str) {
       find_proc_names();
     }
 
-    for (i = 0; i < kp_nentries && num_of_pids < (MAX_PIDS - 1); i++) {
+    for (int i = 0; i < kp_nentries && num_of_pids < (MAX_PIDS - 1); i++) {
       if (kp_buffer[i].kp_proc.p_stat == 0) {
         continue;
       } else {
