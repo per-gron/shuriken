@@ -1564,21 +1564,9 @@ void format_print(
       break;
     }
 
-    case Fmt::FLOCK:
-    case Fmt::FCNTL:
     case Fmt::FD:
     case Fmt::FD_2:  // accept, dup, dup2
     case Fmt::FD_IO:  // system calls with fd's that return an I/O completion count
-    case Fmt::MSYNC:
-    case Fmt::LSEEK:
-    case Fmt::PREAD:
-    case Fmt::LIO_LISTIO:
-    case Fmt::AIO:
-    case Fmt::AIO_RETURN:
-    case Fmt::AIO_CANCEL:
-    case Fmt::AIO_FSYNC:
-    case Fmt::AIO_SUSPEND:
-    case Fmt::SENDFILE:
     case Fmt::UNMAP_INFO:
       printf("TODO: Not handled");
       break;
