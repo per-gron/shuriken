@@ -210,7 +210,6 @@ static constexpr int HFS_update = 0x3018000;
 static constexpr int HFS_modify_block_end = 0x3018004;
 
 static constexpr int Throttled = 0x3010184;
-static constexpr int SPEC_ioctl =  0x3060000;
 static constexpr int SPEC_unmap_info = 0x3060004;
 static constexpr int proc_exit = 0x4010004;
 
@@ -574,7 +573,6 @@ void set_filter() {
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_MACH,DBG_MACH_EXCP_SC)); //0x010c
 
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_FSRW)); //0x0301
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_IOCTL)); //0x0306
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_BOOTCACHE)); //0x0307
 
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_BSD,DBG_BSD_EXCP_SC)); //0x040c
@@ -960,20 +958,6 @@ void sample_sc() {
        format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::UNMAP_INFO, 0, "");
      continue;
 
-    case SPEC_ioctl:
-     if (kd[i].arg2 == DKIOCSYNCHRONIZECACHE) {
-       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, Fmt::IOCTL_SYNCCACHE);
-     } else if (kd[i].arg2 == DKIOCUNMAP) {
-       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, Fmt::IOCTL_UNMAP);
-     } else if (kd[i].arg2 == DKIOCSYNCHRONIZE && (debugid & DBG_FUNC_ALL) == DBG_FUNC_NONE) {
-       exit_event("IOCTL", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::IOCTL_SYNC);
-     } else {
-       if ((ti = find_event(thread, type))) {
-         delete_event(ti);
-       }
-     }
-     continue;
-
     case MACH_pageout:
     case MACH_vmfault:
       /* TODO(peck): what about deleting all of the events? */
@@ -1078,7 +1062,6 @@ void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
   switch (type) {
 
   case MSC_map_fd:
-  case SPEC_ioctl:
   case Throttled:
   case HFS_update:
     enter_event_now(thread, type, kd, name);
@@ -1290,11 +1273,6 @@ void format_print(
   static int timestamp_len = 0;
 
   command_name = "";
-
-  // <rdar://problem/19852325> Filter out WindowServer/xcpm iocts in fs_usage
-  if (format == Fmt::IOCTL && ti->arg2 == 0xc030581d) {
-    return;
-  }
 
   klass = type >> 24;
 
@@ -1595,8 +1573,6 @@ void format_print(
     case Fmt::FD_2:  // accept, dup, dup2
     case Fmt::FD_IO:  // system calls with fd's that return an I/O completion count
     case Fmt::MSYNC:
-    case Fmt::IOCTL:
-    case Fmt::SELECT:
     case Fmt::LSEEK:
     case Fmt::PREAD:
     case Fmt::MMAP:
@@ -1610,10 +1586,7 @@ void format_print(
     case Fmt::AIO_FSYNC:
     case Fmt::AIO_SUSPEND:
     case Fmt::SENDFILE:
-    case Fmt::IOCTL_SYNC:
-    case Fmt::IOCTL_UNMAP:
     case Fmt::UNMAP_INFO:
-    case Fmt::IOCTL_SYNCCACHE:
       printf("TODO: Not handled");
       break;
     }
