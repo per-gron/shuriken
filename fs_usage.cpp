@@ -322,8 +322,6 @@ int exit_usage(const char *myname) {
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
   fprintf(stderr, "        and exclude fs_usage by default\n");
   fprintf(stderr, "  pid   selects process(s) to sample\n");
-  fprintf(stderr, "By default (no options) the following processes are excluded from the output:\n");
-  fprintf(stderr, "fs_usage, Terminal, telnetd, sshd, rlogind, tcsh, csh, sh\n\n");
 
   exit(1);
 }
