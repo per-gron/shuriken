@@ -1163,37 +1163,6 @@ void exit_event(
 }
 
 
-void get_mode_nibble(char * buf, int smode, int special, char x_on, char x_off) {
-  if (smode & 04) {
-    buf[0] = 'r';
-  }
-  if (smode & 02) {
-    buf[1] = 'w';
-  }
-  if (smode & 01) {
-    if (special) {
-      buf[2] = x_on;
-    } else {
-      buf[2] = 'x';
-    }
-  } else {
-    if (special) {
-      buf[2] = x_off;
-    }
-  }
-}
-
-
-void get_mode_string(int mode, char *buf) {
-  memset(buf, '-', 9);
-  buf[9] = '\0';
-
-  get_mode_nibble(&buf[6], mode, (mode & 01000), 't', 'T');
-  get_mode_nibble(&buf[3], (mode>>3), (mode & 02000), 's', 'S');
-  get_mode_nibble(&buf[0], (mode>>6), (mode & 04000), 's', 'S');
-}
-
-
 int clip_64bit(const char *s, uint64_t value) {
   int clen = 0;
 
@@ -1425,8 +1394,6 @@ void format_print(
       /*
        * fchmod, fchmod_extended, chmod, chmod_extended
        */
-      int mode;
-
       if (format == Fmt::FCHMOD || format == Fmt::FCHMOD_EXT) {
         if (arg1) {
           printf(" F=%-3d[%3lu] ", ti->arg1, arg1);
@@ -1440,19 +1407,7 @@ void format_print(
           printf(" ");
         }
       }
-      if (format == Fmt::FCHMOD || format == Fmt::CHMOD || format == Fmt::CHMODAT) {
-        mode = ti->arg2;
-      } else {
-        mode = ti->arg4;
-      }
 
-      get_mode_string(mode, &buf[0]);
-
-      if (arg1 == 0) {
-        printf("<%s>      ", buf);
-      } else {
-        printf("<%s>", buf);
-      }
       break;
     }
 
