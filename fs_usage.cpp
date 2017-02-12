@@ -1293,7 +1293,6 @@ void format_print(
       /*
        * fchflags, chflags
        */
-      int mlen = 0;
 
       if (format == Fmt::FCHFLAGS) {
         if (arg1) {
@@ -1306,49 +1305,6 @@ void format_print(
           printf(" [%3lu] ", arg1);
         }
       }
-      buf[mlen++] = ' ';
-      buf[mlen++] = '<';
-
-      if (ti->arg2 & UF_NODUMP) {
-        mlen += sprintf(&buf[mlen], "UF_NODUMP | ");
-      }
-      if (ti->arg2 & UF_IMMUTABLE) {
-        mlen += sprintf(&buf[mlen], "UF_IMMUTABLE | ");
-      }
-      if (ti->arg2 & UF_APPEND) {
-        mlen += sprintf(&buf[mlen], "UF_APPEND | ");
-      }
-      if (ti->arg2 & UF_OPAQUE) {
-        mlen += sprintf(&buf[mlen], "UF_OPAQUE | ");
-      }
-      if (ti->arg2 & SF_ARCHIVED) {
-        mlen += sprintf(&buf[mlen], "SF_ARCHIVED | ");
-      }
-      if (ti->arg2 & SF_IMMUTABLE) {
-        mlen += sprintf(&buf[mlen], "SF_IMMUTABLE | ");
-      }
-      if (ti->arg2 & SF_APPEND) {
-        mlen += sprintf(&buf[mlen], "SF_APPEND | ");
-      }
-      
-      if (ti->arg2 == 0) {
-        mlen += sprintf(&buf[mlen], "CLEAR_ALL_FLAGS | ");
-      } else if (ti->arg2 & ~(UF_NODUMP | UF_IMMUTABLE | UF_APPEND | SF_ARCHIVED | SF_IMMUTABLE | SF_APPEND)) {
-        mlen += sprintf(&buf[mlen], "UNKNOWN | ");
-      }
-
-      if (mlen >= 3) {
-        mlen -= 3;
-      }
-
-      buf[mlen++] = '>';
-      buf[mlen] = '\0';
-
-      if (mlen < 19) {
-        memset(&buf[mlen], ' ', 19 - mlen);
-        mlen = 19;
-      }
-      printf("%s", buf);
 
       nopadding = 1;
       break;
