@@ -247,9 +247,6 @@ int num_of_pids = 0;
 int exclude_pids = 0;
 
 
-struct kinfo_proc *kp_buffer = 0;
-int kp_nentries = 0;
-
 #define EVENT_BASE 60000
 
 int num_events = EVENT_BASE;
@@ -328,11 +325,10 @@ int quit(const char *s) {
 
 int exit_usage(const char *myname) {
 
-  fprintf(stderr, "Usage: %s [-e] [pid | cmd [pid | cmd] ...]\n", myname);
+  fprintf(stderr, "Usage: %s [-e] [pid [pid] ...]\n", myname);
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
   fprintf(stderr, "        and exclude fs_usage by default\n");
   fprintf(stderr, "  pid   selects process(s) to sample\n");
-  fprintf(stderr, "  cmd   selects process(s) matching command string to sample\n");
   fprintf(stderr, "\n%s will handle a maximum list of %zu pids.\n\n", myname, pids.size());
   fprintf(stderr, "By default (no options) the following processes are excluded from the output:\n");
   fprintf(stderr, "fs_usage, Terminal, telnetd, sshd, rlogind, tcsh, csh, sh\n\n");
@@ -463,33 +459,6 @@ int main(int argc, char *argv[]) {
     last_time = time((long *)0);
   }
 }
-
-
-void find_proc_names() {
-  size_t bufSize = 0;
-  struct kinfo_proc *kp;
-
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_PROC;
-  mib[2] = KERN_PROC_ALL;
-  mib[3] = 0;
-
-  if (sysctl(mib, 4, NULL, &bufSize, NULL, 0) < 0) {
-    quit("trace facility failure, KERN_PROC_ALL\n");
-  }
-
-  if ((kp = (struct kinfo_proc *)malloc(bufSize)) == (struct kinfo_proc *)0) {
-    quit("can't allocate memory for proc buffer\n");
-  }
-  
-  if (sysctl(mib, 4, kp, &bufSize, NULL, 0) < 0) {
-    quit("trace facility failure, KERN_PROC_ALL\n");
-
-    kp_nentries = bufSize/ sizeof(struct kinfo_proc);
-  }
-  kp_buffer = kp;
-}
-
 
 void set_enable(int val) {
   mib[0] = CTL_KERN;
@@ -1883,25 +1852,7 @@ void argtopid(char *str) {
   char *cp;
   int ret = (int)strtol(str, &cp, 10);
 
-  if (cp == str || *cp) {
-    /*
-     * Assume this is a command string and find matching pids
-     */
-    if (!kp_buffer) {
-      find_proc_names();
-    }
-
-    for (int i = 0; i < kp_nentries && num_of_pids < (pids.size() - 1); i++) {
-      if (kp_buffer[i].kp_proc.p_stat == 0) {
-        continue;
-      } else {
-        if (!strncmp(str, kp_buffer[i].kp_proc.p_comm,
-              sizeof(kp_buffer[i].kp_proc.p_comm) -1)) {
-          pids[num_of_pids++] = kp_buffer[i].kp_proc.p_pid;
-        }
-      }
-    }
-  } else if (num_of_pids < (pids.size() - 1)) {
+  if (num_of_pids < (pids.size() - 1)) {
     pids[num_of_pids++] = ret;
   }
 }
