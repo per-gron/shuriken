@@ -201,7 +201,7 @@ static constexpr int proc_exit = 0x4010004;
 
 extern "C" int reexec_to_match_kernel();
 
-void    format_print(struct th_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt, int, const char *);
+void    format_print(th_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt, int, const char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
 void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
 void    exit_event(const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt);
@@ -711,7 +711,7 @@ void sample_sc() {
       continue;
 
     case TRACE_STRING_NEWTHREAD:
-      if ((ti = find_event(thread, TRACE_DATA_NEWTHREAD)) == (struct th_info *)0) {
+      if ((ti = find_event(thread, TRACE_DATA_NEWTHREAD)) == nullptr) {
         continue;
       }
 
@@ -738,7 +738,7 @@ void sample_sc() {
           exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, Fmt::DEFAULT);
         }
       }
-      if ((ti = find_event(thread, TRACE_DATA_EXEC)) == (struct th_info *)0) {
+      if ((ti = find_event(thread, TRACE_DATA_EXEC)) == nullptr) {
         continue;
       }
 
@@ -777,7 +777,7 @@ void sample_sc() {
       continue;
 
     case VFS_LOOKUP:
-      if ((ti = find_event(thread, 0)) == (struct th_info *)0) {
+      if ((ti = find_event(thread, 0)) == nullptr) {
         continue;
       }
 
@@ -1025,7 +1025,7 @@ void exit_event(
     Fmt format) {
   th_info *ti;
       
-  if ((ti = find_event(thread, type)) == (struct th_info *)0) {
+  if ((ti = find_event(thread, type)) == nullptr) {
     return;
   }
 
@@ -1070,7 +1070,7 @@ int clip_64bit(const char *s, uint64_t value) {
 
 
 void format_print(
-    struct th_info *ti,
+    th_info *ti,
     const char *sc_name,
     uintptr_t thread,
     int type,
@@ -1468,7 +1468,7 @@ th_info *add_event(uintptr_t thread, int type) {
   if ((ti = th_info_freelist)) {
     th_info_freelist = ti->next;
   } else {
-    ti = reinterpret_cast<th_info *>(malloc(sizeof(struct th_info)));
+    ti = reinterpret_cast<th_info *>(malloc(sizeof(th_info)));
   }
 
   int hashid = thread & HASH_MASK;
