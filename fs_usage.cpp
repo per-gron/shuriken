@@ -28,6 +28,7 @@ clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/Priv
 
 #include <array>
 #include <tuple>
+#include <unordered_map>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -130,11 +131,8 @@ struct th_info {
 
 
 struct threadmap_entry {
-  threadmap_entry *tm_next;
-
-  uintptr_t tm_thread;
-  unsigned int tm_setsize; /* this is a bit count */
-  unsigned long *tm_setptr;  /* file descripter bitmap */
+  unsigned int tm_setsize = 0; /* this is a bit count */
+  unsigned long *tm_setptr = nullptr;  /* file descripter bitmap */
   char tm_command[MAXCOMLEN + 1];
 };
 
@@ -157,8 +155,7 @@ struct meta_info {
 th_info *th_info_hash[HASH_SIZE];
 th_info *th_info_freelist;
 
-threadmap_entry *threadmap_hash[HASH_SIZE];
-threadmap_entry *threadmap_freelist;
+std::unordered_map<uintptr_t, threadmap_entry> threadmap;
 
 
 #define VN_HASH_SHIFT 3
@@ -223,10 +220,7 @@ th_info *add_event(uintptr_t, int);
 th_info *find_event(uintptr_t, int);
 
 void    read_command_map();
-void    delete_all_map_entries();
 void    create_map_entry(uintptr_t, int, char *);
-void    delete_map_entry(uintptr_t);
-threadmap_entry *find_map_entry(uintptr_t);
 
 char   *add_vnode_name(uint64_t, const char *);
 const char *find_vnode_name(uint64_t);
@@ -761,7 +755,7 @@ void sample_sc() {
       continue;
 
     case BSC_thread_terminate:
-      delete_map_entry(thread);
+      threadmap.erase(thread);
       continue;
 
     case BSC_exit:
@@ -931,7 +925,7 @@ void sample_sc() {
              bsd_syscalls[index].sc_format);
 
         if (type == BSC_exit) {
-          delete_map_entry(thread);
+          threadmap.erase(thread);
         }
       }
     } else if ((type & CLASS_MASK) == FILEMGR_BASE) {
@@ -982,8 +976,8 @@ void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
      */
     printf("%s", buf);
 
-    threadmap_entry *tme = find_map_entry(thread);
-    if (tme) {
+    auto tme_it = threadmap.find(thread);
+    if (tme_it != threadmap.end()) {
       sprintf(buf, "  %-25.25s ", name);
       int nmclen = strlen(buf);
       printf("%s", buf);
@@ -992,7 +986,7 @@ void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
       int argsclen = strlen(buf);
 
       printf("%s", buf);   /* print the kdargs */
-      printf("%s.%d\n", tme->tm_command, (int)thread); 
+      printf("%s.%d\n", tme_it->second.tm_command, (int)thread);
     } else {
       printf("  %-24.24s (%5d, %#lx, 0x%lx, 0x%lx)\n",         name, (short)kd->arg1, kd->arg2, kd->arg3, kd->arg4);
     }
@@ -1187,8 +1181,9 @@ void format_print(
 
   threadmap_entry *tme;
 
-  if ((tme = find_map_entry(thread))) {
-    command_name = tme->tm_command;
+  auto tme_it = threadmap.find(thread);
+  if (tme_it != threadmap.end()) {
+    command_name = tme_it->second.tm_command;
   }
   tlen = timestamp_len;
   nopadding = 0;
@@ -1613,7 +1608,7 @@ void delete_all_events() {
 void read_command_map() {
   kd_threadmap *mapptr = 0;
 
-  delete_all_map_entries();
+  threadmap.clear();
 
   int total_threads = bufinfo.nkdthreads;
   size_t size = bufinfo.nkdthreads * sizeof(kd_threadmap);
@@ -1650,127 +1645,52 @@ void read_command_map() {
 }
 
 
-void delete_all_map_entries() {
-  threadmap_entry *tme_next = 0;
-
-  for (int i = 0; i < HASH_SIZE; i++) {
-    for (threadmap_entry *tme = threadmap_hash[i]; tme; tme = tme_next) {
-      if (tme->tm_setptr) {
-        free(tme->tm_setptr);
-      }
-      tme_next = tme->tm_next;
-      tme->tm_next = threadmap_freelist;
-      threadmap_freelist = tme;
-    }
-    threadmap_hash[i] = 0;
-  }
-}
-
-
 void create_map_entry(uintptr_t thread, int pid, char *command) {
-  threadmap_entry *tme;
+  auto &tme = threadmap[thread];
 
-  if ((tme = threadmap_freelist)) {
-    threadmap_freelist = tme->tm_next;
-  } else {
-    tme = reinterpret_cast<threadmap_entry *>(malloc(sizeof(struct threadmap_entry)));
-  }
-
-  tme->tm_thread  = thread;
-  tme->tm_setsize = 0;
-  tme->tm_setptr  = 0;
-
-  (void)strncpy (tme->tm_command, command, MAXCOMLEN);
-  tme->tm_command[MAXCOMLEN] = '\0';
-
-  int hashid = thread & HASH_MASK;
-
-  tme->tm_next = threadmap_hash[hashid];
-  threadmap_hash[hashid] = tme;
+  strncpy(tme.tm_command, command, MAXCOMLEN);
+  tme.tm_command[MAXCOMLEN] = '\0';
 
   if (pid != 0 && pid != 1) {
     if (!strncmp(command, "LaunchCFMA", 10)) {
-      (void)get_real_command_name(pid, tme->tm_command, MAXCOMLEN);
-    }
-  }
-}
-
-
-threadmap_entry *find_map_entry(uintptr_t thread) {
-  int hashid = thread & HASH_MASK;
-
-  for (threadmap_entry *tme = threadmap_hash[hashid]; tme; tme = tme->tm_next) {
-    if (tme->tm_thread == thread) {
-      return tme;
-    }
-  }
-  return 0;
-}
-
-
-void delete_map_entry(uintptr_t thread) {
-  threadmap_entry *tme = 0;
-  threadmap_entry *tme_prev;
-
-  int hashid = thread & HASH_MASK;
-
-  if ((tme = threadmap_hash[hashid])) {
-    if (tme->tm_thread == thread) {
-      threadmap_hash[hashid] = tme->tm_next;
-    } else {
-      tme_prev = tme;
-
-      for (tme = tme->tm_next; tme; tme = tme->tm_next) {
-        if (tme->tm_thread == thread) {
-          tme_prev->tm_next = tme->tm_next;
-          break;
-        }
-        tme_prev = tme;
-      }
-    }
-    if (tme) {
-      if (tme->tm_setptr) {
-        free(tme->tm_setptr);
-      }
-
-      tme->tm_next = threadmap_freelist;
-      threadmap_freelist = tme;
+      (void)get_real_command_name(pid, tme.tm_command, MAXCOMLEN);
     }
   }
 }
 
 
 void fs_usage_fd_set(uintptr_t thread, unsigned int fd) {
-  threadmap_entry *tme;
-
-  if ((tme = find_map_entry(thread)) == 0) {
+  auto tme_it = threadmap.find(thread);
+  if (tme_it == threadmap.end()) {
     return;
   }
+  auto &tme = tme_it->second;
+
   /*
    * If the map is not allocated, then now is the time
    */
-  if (tme->tm_setptr == (unsigned long *)0) {
-    if ((tme->tm_setptr = (unsigned long *)malloc(FS_USAGE_NFDBYTES(FS_USAGE_FD_SETSIZE))) == 0) {
+  if (tme.tm_setptr == (unsigned long *)0) {
+    if ((tme.tm_setptr = (unsigned long *)malloc(FS_USAGE_NFDBYTES(FS_USAGE_FD_SETSIZE))) == 0) {
       return;
     }
 
-    tme->tm_setsize = FS_USAGE_FD_SETSIZE;
-    bzero(tme->tm_setptr, (FS_USAGE_NFDBYTES(FS_USAGE_FD_SETSIZE)));
+    tme.tm_setsize = FS_USAGE_FD_SETSIZE;
+    bzero(tme.tm_setptr, (FS_USAGE_NFDBYTES(FS_USAGE_FD_SETSIZE)));
   }
   /*
    * If the map is not big enough, then reallocate it
    */
-  while (tme->tm_setsize <= fd) {
-    int n = tme->tm_setsize * 2;
-    tme->tm_setptr = (unsigned long *)realloc(tme->tm_setptr, (FS_USAGE_NFDBYTES(n)));
+  while (tme.tm_setsize <= fd) {
+    int n = tme.tm_setsize * 2;
+    tme.tm_setptr = (unsigned long *)realloc(tme.tm_setptr, (FS_USAGE_NFDBYTES(n)));
 
-    bzero(&tme->tm_setptr[(tme->tm_setsize/FS_USAGE_NFDBITS)], (FS_USAGE_NFDBYTES(tme->tm_setsize)));
-    tme->tm_setsize = n;
+    bzero(&tme.tm_setptr[(tme.tm_setsize/FS_USAGE_NFDBITS)], (FS_USAGE_NFDBYTES(tme.tm_setsize)));
+    tme.tm_setsize = n;
   }
   /*
    * set the bit
    */
-  tme->tm_setptr[fd/FS_USAGE_NFDBITS] |= (1 << ((fd) % FS_USAGE_NFDBITS));
+  tme.tm_setptr[fd/FS_USAGE_NFDBITS] |= (1 << ((fd) % FS_USAGE_NFDBITS));
 }
 
 
@@ -1780,12 +1700,13 @@ void fs_usage_fd_set(uintptr_t thread, unsigned int fd) {
  *  1 : File Descriptor bit is set
  */
 int fs_usage_fd_isset(uintptr_t thread, unsigned int fd) {
-  threadmap_entry *tme;
   int ret = 0;
 
-  if ((tme = find_map_entry(thread))) {
-    if (tme->tm_setptr && fd < tme->tm_setsize) {
-      ret = tme->tm_setptr[fd/FS_USAGE_NFDBITS] & (1 << (fd % FS_USAGE_NFDBITS));
+  auto it = threadmap.find(thread);
+  if (it != threadmap.end()) {
+    auto &tme = it->second;
+    if (tme.tm_setptr && fd < tme.tm_setsize) {
+      ret = tme.tm_setptr[fd/FS_USAGE_NFDBITS] & (1 << (fd % FS_USAGE_NFDBITS));
     }
   }
   return ret;
@@ -1795,9 +1716,11 @@ int fs_usage_fd_isset(uintptr_t thread, unsigned int fd) {
 void fs_usage_fd_clear(uintptr_t thread, unsigned int fd) {
   threadmap_entry *tme;
 
-  if ((tme = find_map_entry(thread))) {
-    if (tme->tm_setptr && fd < tme->tm_setsize) {
-      tme->tm_setptr[fd/FS_USAGE_NFDBITS] &= ~(1 << (fd % FS_USAGE_NFDBITS));
+  auto it = threadmap.find(thread);
+  if (it != threadmap.end()) {
+    auto &tme = it->second;
+    if (tme.tm_setptr && fd < tme.tm_setsize) {
+      tme.tm_setptr[fd/FS_USAGE_NFDBITS] &= ~(1 << (fd % FS_USAGE_NFDBITS));
     }
   }
 }
