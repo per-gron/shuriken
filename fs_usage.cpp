@@ -26,9 +26,9 @@
 clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRIVATE -D__APPLE_PRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.cpp
 */
 
-#include <array>
 #include <tuple>
 #include <unordered_map>
+#include <vector>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -235,9 +235,8 @@ int     quit(const char *s);
 static const auto bsd_syscalls = make_bsd_syscall_table();
 static auto filemgr_calls = make_filemgr_calls();
 
-std::array<int, 256> pids;
+std::vector<int> pids;
 
-int num_of_pids = 0;
 int exclude_pids = 0;
 
 
@@ -282,12 +281,12 @@ void leave(int sig) {      /* exit under normal conditions -- INT handler */
   set_enable(0);
 
   if (exclude_pids == 0) {
-    for (int i = 0; i < num_of_pids; i++) {
-      set_pidcheck(pids[i], 0);
+    for (int pid : pids) {
+      set_pidcheck(pid, 0);
     }
   } else {
-    for (int i = 0; i < num_of_pids; i++) {
-      set_pidexclude(pids[i], 0);
+    for (int pid : pids) {
+      set_pidexclude(pid, 0);
     }
   }
   set_remove();
@@ -323,7 +322,6 @@ int exit_usage(const char *myname) {
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
   fprintf(stderr, "        and exclude fs_usage by default\n");
   fprintf(stderr, "  pid   selects process(s) to sample\n");
-  fprintf(stderr, "\n%s will handle a maximum list of %zu pids.\n\n", myname, pids.size());
   fprintf(stderr, "By default (no options) the following processes are excluded from the output:\n");
   fprintf(stderr, "fs_usage, Terminal, telnetd, sshd, rlogind, tcsh, csh, sh\n\n");
 
@@ -373,12 +371,10 @@ int main(int argc, char *argv[]) {
    * when excluding, fs_usage should be the first in line for pids[]
    */
   if (exclude_pids || (!exclude_pids && argc == 0)) {
-    if (num_of_pids < (pids.size() - 1)) {
-      pids[num_of_pids++] = getpid();
-    }
+    pids.push_back(getpid());
   }
 
-  while (argc > 0 && num_of_pids < (pids.size() - 1)) {
+  while (argc > 0) {
     select_pid_mode++;
     argtopid(argv[0]);
     argc--;
@@ -419,12 +415,12 @@ int main(int argc, char *argv[]) {
   set_init();
 
   if (exclude_pids == 0) {
-    for (int i = 0; i < num_of_pids; i++) {
-      set_pidcheck(pids[i], 1);
+    for (int pid : pids) {
+      set_pidcheck(pid, 1);
     }
   } else {
-    for (int i = 0; i < num_of_pids; i++) {
-      set_pidexclude(pids[i], 1);
+    for (int pid : pids) {
+      set_pidexclude(pid, 1);
     }
   }
   if (select_pid_mode && !one_good_pid) {
@@ -1731,9 +1727,7 @@ void argtopid(char *str) {
   char *cp;
   int ret = (int)strtol(str, &cp, 10);
 
-  if (num_of_pids < (pids.size() - 1)) {
-    pids[num_of_pids++] = ret;
-  }
+  pids.push_back(ret);
 }
 
 /*
