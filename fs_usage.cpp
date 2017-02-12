@@ -143,12 +143,6 @@ struct vnode_info {
   uintptr_t vn_pathname[NUMPARMS + 1];
 };
 
-struct meta_info {
-  meta_info *m_next;
-  uint64_t m_blkno;
-  const char *m_nameptr;
-};
-
 #define HASH_SIZE 1024
 #define HASH_MASK (HASH_SIZE - 1)
 
@@ -163,7 +157,6 @@ std::unordered_map<uintptr_t, threadmap_entry> threadmap;
 #define VN_HASH_MASK (VN_HASH_SIZE - 1)
 
 vnode_info *vn_info_hash[VN_HASH_SIZE];
-meta_info *m_info_hash[VN_HASH_SIZE];
 
 
 int filemgr_in_progress = 0;
@@ -223,7 +216,6 @@ void    create_map_entry(uintptr_t, int, char *);
 
 char   *add_vnode_name(uint64_t, const char *);
 const char *find_vnode_name(uint64_t);
-void    add_meta_name(uint64_t, const char *);
 
 void    argtopid(char *str);
 void    set_remove();
@@ -764,13 +756,6 @@ void sample_sc() {
         continue;
       }
       break;
-
-    case HFS_modify_block_end:
-     if ((ti = find_event(thread, 0))) {
-       if (ti->nameptr)
-         add_meta_name(kd[i].arg2, reinterpret_cast<const char *>(ti->nameptr));
-      }
-     continue;
 
     case VFS_ALIAS_VP:
       add_vnode_name(kd[i].arg2, find_vnode_name(kd[i].arg1));
@@ -1377,27 +1362,6 @@ void format_print(
   }
 
   printf("%s%s %s %s.%d\n", p1, pathname, p2, command_name, (int)thread);
-}
-
-
-void add_meta_name(uint64_t blockno, const char *pathname) {
-  meta_info *mi;
-
-  int hashid = blockno & VN_HASH_MASK;
-
-  for (mi = m_info_hash[hashid]; mi; mi = mi->m_next) {
-    if (mi->m_blkno == blockno) {
-      break;
-    }
-  }
-  if (mi == NULL) {
-    mi = reinterpret_cast<meta_info *>(malloc(sizeof(struct meta_info)));
-    
-    mi->m_next = m_info_hash[hashid];
-    m_info_hash[hashid] = mi;
-    mi->m_blkno = blockno;
-  }
-  mi->m_nameptr = pathname;
 }
 
 char *add_vnode_name(uint64_t vn_id, const char *pathname) {
