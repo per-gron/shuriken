@@ -129,8 +129,8 @@ struct th_info {
 };
 
 
-struct threadmap {
-  threadmap *tm_next;
+struct threadmap_entry {
+  threadmap_entry *tm_next;
 
   uintptr_t tm_thread;
   unsigned int tm_setsize; /* this is a bit count */
@@ -157,8 +157,8 @@ struct meta_info {
 th_info *th_info_hash[HASH_SIZE];
 th_info *th_info_freelist;
 
-threadmap *threadmap_hash[HASH_SIZE];
-threadmap *threadmap_freelist;
+threadmap_entry *threadmap_hash[HASH_SIZE];
+threadmap_entry *threadmap_freelist;
 
 
 #define VN_HASH_SHIFT 3
@@ -226,7 +226,7 @@ void    read_command_map();
 void    delete_all_map_entries();
 void    create_map_entry(uintptr_t, int, char *);
 void    delete_map_entry(uintptr_t);
-threadmap *find_map_entry(uintptr_t);
+threadmap_entry *find_map_entry(uintptr_t);
 
 char   *add_vnode_name(uint64_t, const char *);
 const char *find_vnode_name(uint64_t);
@@ -982,7 +982,7 @@ void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
      */
     printf("%s", buf);
 
-    threadmap *tme = find_map_entry(thread);
+    threadmap_entry *tme = find_map_entry(thread);
     if (tme) {
       sprintf(buf, "  %-25.25s ", name);
       int nmclen = strlen(buf);
@@ -1185,7 +1185,7 @@ void format_print(
 
   klass = type >> 24;
 
-  threadmap *tme;
+  threadmap_entry *tme;
 
   if ((tme = find_map_entry(thread))) {
     command_name = tme->tm_command;
@@ -1651,10 +1651,10 @@ void read_command_map() {
 
 
 void delete_all_map_entries() {
-  threadmap *tme_next = 0;
+  threadmap_entry *tme_next = 0;
 
   for (int i = 0; i < HASH_SIZE; i++) {
-    for (threadmap *tme = threadmap_hash[i]; tme; tme = tme_next) {
+    for (threadmap_entry *tme = threadmap_hash[i]; tme; tme = tme_next) {
       if (tme->tm_setptr) {
         free(tme->tm_setptr);
       }
@@ -1668,12 +1668,12 @@ void delete_all_map_entries() {
 
 
 void create_map_entry(uintptr_t thread, int pid, char *command) {
-  threadmap *tme;
+  threadmap_entry *tme;
 
   if ((tme = threadmap_freelist)) {
     threadmap_freelist = tme->tm_next;
   } else {
-    tme = reinterpret_cast<threadmap *>(malloc(sizeof(struct threadmap)));
+    tme = reinterpret_cast<threadmap_entry *>(malloc(sizeof(struct threadmap_entry)));
   }
 
   tme->tm_thread  = thread;
@@ -1696,10 +1696,10 @@ void create_map_entry(uintptr_t thread, int pid, char *command) {
 }
 
 
-threadmap *find_map_entry(uintptr_t thread) {
+threadmap_entry *find_map_entry(uintptr_t thread) {
   int hashid = thread & HASH_MASK;
 
-  for (threadmap *tme = threadmap_hash[hashid]; tme; tme = tme->tm_next) {
+  for (threadmap_entry *tme = threadmap_hash[hashid]; tme; tme = tme->tm_next) {
     if (tme->tm_thread == thread) {
       return tme;
     }
@@ -1709,8 +1709,8 @@ threadmap *find_map_entry(uintptr_t thread) {
 
 
 void delete_map_entry(uintptr_t thread) {
-  threadmap *tme = 0;
-  threadmap *tme_prev;
+  threadmap_entry *tme = 0;
+  threadmap_entry *tme_prev;
 
   int hashid = thread & HASH_MASK;
 
@@ -1741,7 +1741,7 @@ void delete_map_entry(uintptr_t thread) {
 
 
 void fs_usage_fd_set(uintptr_t thread, unsigned int fd) {
-  threadmap *tme;
+  threadmap_entry *tme;
 
   if ((tme = find_map_entry(thread)) == 0) {
     return;
@@ -1780,7 +1780,7 @@ void fs_usage_fd_set(uintptr_t thread, unsigned int fd) {
  *  1 : File Descriptor bit is set
  */
 int fs_usage_fd_isset(uintptr_t thread, unsigned int fd) {
-  threadmap *tme;
+  threadmap_entry *tme;
   int ret = 0;
 
   if ((tme = find_map_entry(thread))) {
@@ -1793,7 +1793,7 @@ int fs_usage_fd_isset(uintptr_t thread, unsigned int fd) {
     
 
 void fs_usage_fd_clear(uintptr_t thread, unsigned int fd) {
-  threadmap *tme;
+  threadmap_entry *tme;
 
   if ((tme = find_map_entry(thread))) {
     if (tme->tm_setptr && fd < tme->tm_setsize) {
