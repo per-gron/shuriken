@@ -205,7 +205,6 @@ void    format_print(struct th_info *, const char *, uintptr_t, int, uintptr_t, 
 void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
 void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
 void    exit_event(const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt);
-void    extend_syscall(uintptr_t, int, kd_buf *);
 
 void    fs_usage_fd_set(uintptr_t, unsigned int);
 int     fs_usage_fd_isset(uintptr_t, unsigned int);
@@ -899,14 +898,6 @@ void sample_sc() {
     case MSC_map_fd:
       exit_event("map_fd", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, Fmt::FD);
       continue;
-          
-    case BSC_mmap_extended:
-    case BSC_mmap_extended2:
-    case BSC_msync_extended:
-    case BSC_pread_extended:
-    case BSC_pwrite_extended:
-      extend_syscall(thread, type, &kd[i]);
-      continue;
     }
 
     if ((type & CSC_MASK) == BSC_BASE) {
@@ -1018,67 +1009,6 @@ void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
     if (filemgr_calls[index].fm_name) {
       enter_event_now(thread, type, kd, name);
     }
-    return;
-  }
-}
-
-/*
- * Handle system call extended trace data.
- * pread and pwrite:
- *     Wipe out the kd args that were collected upon syscall_entry
- *     because it is the extended info that we really want, and it
- *     is all we really need.
-*/
-
-void extend_syscall(uintptr_t thread, int type, kd_buf *kd) {
-  th_info *ti;
-
-  switch (type) {
-  case BSC_mmap_extended:
-    if ((ti = find_event(thread, BSC_mmap)) == (struct th_info *)0)
-      return;
-    ti->arg8   = ti->arg3;  /* save protection */
-    ti->arg1   = kd->arg1;  /* the fd */
-    ti->arg3   = kd->arg2;  /* bottom half address */
-    ti->arg5   = kd->arg3;  /* bottom half size */
-    break;
-  case BSC_mmap_extended2:
-    if ((ti = find_event(thread, BSC_mmap)) == (struct th_info *)0)
-      return;
-    ti->arg2   = kd->arg1;  /* top half address */
-    ti->arg4   = kd->arg2;  /* top half size */
-    ti->arg6   = kd->arg3;  /* top half file offset */
-    ti->arg7   = kd->arg4;  /* bottom half file offset */
-    break;
-  case BSC_msync_extended:
-    if ((ti = find_event(thread, BSC_msync)) == (struct th_info *)0) {
-      if ((ti = find_event(thread, BSC_msync_nocancel)) == (struct th_info *)0)
-        return;
-    }
-    ti->arg4   = kd->arg1;  /* top half address */
-    ti->arg5   = kd->arg2;  /* top half size */
-    break;
-  case BSC_pread_extended:
-    if ((ti = find_event(thread, BSC_pread)) == (struct th_info *)0) {
-      if ((ti = find_event(thread, BSC_pread_nocancel)) == (struct th_info *)0)
-        return;
-    }
-    ti->arg1   = kd->arg1;  /* the fd */
-    ti->arg2   = kd->arg2;  /* nbytes */
-    ti->arg3   = kd->arg3;  /* top half offset */
-    ti->arg4   = kd->arg4;  /* bottom half offset */
-    break;
-  case BSC_pwrite_extended:
-    if ((ti = find_event(thread, BSC_pwrite)) == (struct th_info *)0) {
-      if ((ti = find_event(thread, BSC_pwrite_nocancel)) == (struct th_info *)0)
-        return;
-    }
-    ti->arg1   = kd->arg1;  /* the fd */
-    ti->arg2   = kd->arg2;  /* nbytes */
-    ti->arg3   = kd->arg3;  /* top half offset */
-    ti->arg4   = kd->arg4;  /* bottom half offset */
-    break;
-  default:
     return;
   }
 }
