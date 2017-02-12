@@ -161,7 +161,6 @@ vnode_info *vn_info_hash[VN_HASH_SIZE];
 
 int filemgr_in_progress = 0;
 int need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
-long last_time;
 
 int one_good_pid = 0;    /* Used to fail gracefully when bad pids given */
 int select_pid_mode = 0;  /* Flag set indicates that output is restricted
@@ -434,8 +433,6 @@ int main(int argc, char *argv[]) {
     usleep(1000 * usleep_ms);
 
     sample_sc();
-
-    last_time = time((long *)0);
   }
 }
 
@@ -1070,7 +1067,6 @@ void format_print(
   const char *command_name;
   int in_filemgr = 0;
   int len = 0;
-  int tlen = 0;
   int klass;
   uint64_t user_addr;
   uint64_t user_size;
@@ -1079,10 +1075,6 @@ void format_print(
   const char *p1;
   const char *p2;
   char buf[MAXWIDTH];
-
-  static char timestamp[32];
-  static int last_timestamp = -1;
-  static int timestamp_len = 0;
 
   command_name = "";
 
@@ -1094,10 +1086,7 @@ void format_print(
   if (tme_it != threadmap.end()) {
     command_name = tme_it->second.tm_command;
   }
-  tlen = timestamp_len;
   nopadding = 0;
-
-  timestamp[tlen] = '\0';
 
   if (filemgr_in_progress) {
     if (klass != FILEMGR_CLASS) {
@@ -1108,11 +1097,11 @@ void format_print(
   }
 
   if (klass == FILEMGR_CLASS) {
-    printf("%s  %-20.20s", timestamp, sc_name);
+    printf("  %-20.20s", sc_name);
   } else if (in_filemgr) {
-    printf("%s    %-15.15s", timestamp, sc_name);
+    printf("    %-15.15s", sc_name);
   } else {
-    printf("%s  %-17.17s", timestamp, sc_name);
+    printf("  %-17.17s", sc_name);
   }
        
 
