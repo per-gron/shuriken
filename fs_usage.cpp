@@ -109,7 +109,6 @@ struct th_info {
   uintptr_t thread;
   uintptr_t child_thread;
 
-  int in_hfs_update;
   int pid;
   int type;
   int arg1;
@@ -755,7 +754,7 @@ void sample_sc() {
 
       if (debugid & DBG_FUNC_START) {
 
-        if (ti->in_hfs_update) {
+        if (ti->type == HFS_update) {
           ti->pn_work_index = (MAX_PATHNAMES - 1);
         } else {
           if (ti->pn_scall_index < MAX_SCALL_PATHNAMES) {
@@ -887,16 +886,10 @@ void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
     return;
   }
 
-  ti->arg1   = kd->arg1;
-  ti->arg2   = kd->arg2;
-  ti->arg3   = kd->arg3;
-  ti->arg4   = kd->arg4;
-
-  switch (type) {
-  case HFS_update:
-    ti->in_hfs_update = 1;
-    break;
-  }
+  ti->arg1 = kd->arg1;
+  ti->arg2 = kd->arg2;
+  ti->arg3 = kd->arg3;
+  ti->arg4 = kd->arg4;
 }
 
 
@@ -947,13 +940,6 @@ void exit_event(
   }
 
   format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, (char *)&ti->lookups[0].pathname[0]);
-
-  switch (type) {
-
-  case HFS_update:
-    ti->in_hfs_update = 0;
-    break;
-  }
   delete_event(ti);
 }
 
@@ -1271,8 +1257,6 @@ th_info *add_event(uintptr_t thread, int type) {
 
   ti->thread = thread;
   ti->type = type;
-
-  ti->in_hfs_update = 0;
 
   ti->pathptr = &ti->lookups[0].pathname[0];
   ti->pn_scall_index = 0;
