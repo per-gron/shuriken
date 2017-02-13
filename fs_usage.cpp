@@ -109,7 +109,6 @@ struct th_info {
   uintptr_t thread;
   uintptr_t child_thread;
 
-  int in_filemgr;
   int in_hfs_update;
   int pid;
   int type;
@@ -146,7 +145,6 @@ std::unordered_map<uintptr_t, threadmap_entry> threadmap;
 std::unordered_map<uint64_t, std::string> vn_name_map;
 
 
-int filemgr_in_progress = 0;
 int need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
 
 int one_good_pid = 0;    /* Used to fail gracefully when bad pids given */
@@ -183,6 +181,7 @@ extern "C" int reexec_to_match_kernel();
 void    format_print(th_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt, const char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
 void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
+void    enter_illegal_event(uintptr_t thread, int type);
 void    exit_event(const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt);
 
 void    fs_usage_fd_set(uintptr_t, unsigned int);
@@ -207,7 +206,6 @@ void    set_pidexclude(int pid, int on_off);
 int     quit(const char *s);
 
 static const auto bsd_syscalls = make_bsd_syscall_table();
-static auto filemgr_calls = make_filemgr_calls();
 
 std::vector<int> pids;
 
@@ -827,23 +825,11 @@ void sample_sc() {
     }
 
     if (debugid & DBG_FUNC_START) {
-      const char *p;
-
       if ((type & CLASS_MASK) == FILEMGR_BASE) {
-        index = filemgr_index(type);
-
-        if (index >= MAX_FILEMGR) {
-          continue;
-        }
-
-        if ((p = filemgr_calls[index].fm_name) == NULL) {
-          continue;
-        }
+        enter_illegal_event(thread, type);
       } else {
-        p = NULL;
+        enter_event(thread, type, &kd[i], nullptr);
       }
-
-      enter_event(thread, type, &kd[i], p);
       continue;
     }
 
@@ -886,16 +872,6 @@ void sample_sc() {
           threadmap.erase(thread);
         }
       }
-    } else if ((type & CLASS_MASK) == FILEMGR_BASE) {
-    
-      if ((index = filemgr_index(type)) >= MAX_FILEMGR) {
-        continue;
-      }
-
-      if (filemgr_calls[index].fm_name) {
-        exit_event(filemgr_calls[index].fm_name, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4,
-             Fmt::DEFAULT);
-      }
     }
   }
   fflush(0);
@@ -921,34 +897,6 @@ void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
     ti->in_hfs_update = 1;
     break;
   }
-
-  if ((type & CLASS_MASK) == FILEMGR_BASE) {
-
-    filemgr_in_progress++;
-    ti->in_filemgr = 1;
-
-    int tsclen = strlen(buf);  /* TODO(peck): I think this is empty */
-
-    /*
-     * Print timestamp column
-     */
-    printf("%s", buf);
-
-    auto tme_it = threadmap.find(thread);
-    if (tme_it != threadmap.end()) {
-      sprintf(buf, "  %-25.25s ", name);
-      int nmclen = strlen(buf);
-      printf("%s", buf);
-
-      sprintf(buf, "(%d, 0x%lx, 0x%lx, 0x%lx)", (short)kd->arg1, kd->arg2, kd->arg3, kd->arg4);
-      int argsclen = strlen(buf);
-
-      printf("%s", buf);   /* print the kdargs */
-      printf("%s.%d\n", tme_it->second.tm_command, (int)thread);
-    } else {
-      printf("  %-24.24s (%5d, %#lx, 0x%lx, 0x%lx)\n",         name, (short)kd->arg1, kd->arg2, kd->arg3, kd->arg4);
-    }
-  }
 }
 
 
@@ -973,17 +921,13 @@ void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
     }
     return;
   }
-  if ((type & CLASS_MASK) == FILEMGR_BASE) {
-    int index = index = filemgr_index(type);
-    if (index >= MAX_FILEMGR) {
-      return;
-    }
-         
-    if (filemgr_calls[index].fm_name) {
-      enter_event_now(thread, type, kd, name);
-    }
-    return;
-  }
+}
+
+
+void enter_illegal_event(uintptr_t thread, int type) {
+  // TODO(peck): Only exist if the thread is one that is traced
+  fprintf(stderr, "Encountered illegal syscall (perhaps a Carbon File Manager)\n");
+  exit(1);
 }
 
 
@@ -1009,13 +953,6 @@ void exit_event(
   case HFS_update:
     ti->in_hfs_update = 0;
     break;
-  }
-  if ((type & CLASS_MASK) == FILEMGR_BASE) {
-    ti->in_filemgr = 0;
-
-    if (filemgr_in_progress > 0) {
-      filemgr_in_progress--;
-    }
   }
   delete_event(ti);
 }
@@ -1053,7 +990,6 @@ void format_print(
     const char *pathname /* nullable */) {
   int nopadding = 0;
   const char *command_name;
-  int in_filemgr = 0;
   int len = 0;
   int klass;
   uint64_t user_addr;
@@ -1075,22 +1011,7 @@ void format_print(
   }
   nopadding = 0;
 
-  if (filemgr_in_progress) {
-    if (klass != FILEMGR_CLASS) {
-      if (find_event(thread, -1)) {
-        in_filemgr = 1;
-      }
-    }
-  }
-
-  if (klass == FILEMGR_CLASS) {
-    printf("  %-20.20s", sc_name);
-  } else if (in_filemgr) {
-    printf("    %-15.15s", sc_name);
-  } else {
-    printf("  %-17.17s", sc_name);
-  }
-       
+  printf("  %-17.17s", sc_name);
 
   framework_name = NULL;
 
@@ -1326,7 +1247,7 @@ void format_print(
 
   pathname = buf;
   
-  if (klass != FILEMGR_CLASS && !nopadding) {
+  if (!nopadding) {
     p1 = "   ";
   } else {
     p1 = "";
@@ -1380,7 +1301,6 @@ th_info *add_event(uintptr_t thread, int type) {
   ti->thread = thread;
   ti->type = type;
 
-  ti->in_filemgr = 0;
   ti->in_hfs_update = 0;
 
   ti->pathptr = &ti->lookups[0].pathname[0];
@@ -1401,12 +1321,6 @@ th_info *find_event(uintptr_t thread, int type) {
     if (ti->thread == thread) {
       if (type == ti->type) {
         return ti;
-      }
-      if (ti->in_filemgr) {
-        if (type == -1) {
-          return ti;
-        }
-        continue;
       }
       if (type == 0) {
         return ti;
