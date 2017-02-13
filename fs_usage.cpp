@@ -988,32 +988,15 @@ void format_print(
     uintptr_t arg4,
     Fmt format,
     const char *pathname /* nullable */) {
-  int nopadding = 0;
-  const char *command_name;
-  int len = 0;
-  int klass;
-  uint64_t user_addr;
-  uint64_t user_size;
-  char *framework_name;
-  char *framework_type;
-  const char *p1;
   char buf[MAXWIDTH];
-
-  command_name = "";
-
-  klass = type >> 24;
 
   threadmap_entry *tme;
 
   auto tme_it = threadmap.find(thread);
-  if (tme_it != threadmap.end()) {
-    command_name = tme_it->second.tm_command;
-  }
-  nopadding = 0;
+  const char *command_name = tme_it == threadmap.end() ?
+      "" : tme_it->second.tm_command;
 
   printf("  %-17.17s", sc_name);
-
-  framework_name = NULL;
 
   if (1) {  /* TODO(peck): Clean me up */
     off_t offset_reassembled = 0LL;
@@ -1059,7 +1042,6 @@ void format_print(
 
       auto name_it = vn_name_map.find(arg1);
       pathname = name_it == vn_name_map.end() ? nullptr : name_it->second.c_str();
-      nopadding = 1;
 
       break;
     }
@@ -1086,7 +1068,6 @@ void format_print(
 #endif
       clip_64bit("  O=", offset_reassembled);
 
-      nopadding = 1;
       break;
 
     case Fmt::FCHFLAGS:
@@ -1108,7 +1089,6 @@ void format_print(
         }
       }
 
-      nopadding = 1;
       break;
     }
 
@@ -1167,7 +1147,6 @@ void format_print(
         printf("            (%s)   ", mode);
       }
 
-      nopadding = 1;
       break;
     }
 
@@ -1213,7 +1192,6 @@ void format_print(
         printf(" F=%-3lu      (%s) ", arg2, mode);
       }
 
-      nopadding = 1;
       break;
     }
 
@@ -1226,34 +1204,24 @@ void format_print(
     }
   }
 
-  if (framework_name) {
-    len = sprintf(&buf[0], " %s %s ", framework_type, framework_name);
-  } else if (pathname) {
+  if (pathname) {
     switch(format) {
     case Fmt::AT:
     case Fmt::OPENAT:
     case Fmt::CHMODAT:
-      len = sprintf(&buf[0], " [%d]/%s ", ti->arg1, pathname);
+      sprintf(&buf[0], " [%d]/%s ", ti->arg1, pathname);
       break;
     case Fmt::RENAMEAT:
-      len = sprintf(&buf[0], " [%d]/%s ", ti->arg3, pathname);
+      sprintf(&buf[0], " [%d]/%s ", ti->arg3, pathname);
       break;
     default:
-      len = sprintf(&buf[0], " %s ", pathname);
+      sprintf(&buf[0], " %s ", pathname);
     }
-  } else {
-    len = 0;
   }
 
   pathname = buf;
-  
-  if (!nopadding) {
-    p1 = "   ";
-  } else {
-    p1 = "";
-  }
 
-  printf("%s%s %s.%d\n", p1, pathname, command_name, (int)thread);
+  printf("%s %s.%d\n", pathname, command_name, (int)thread);
 }
 
 
