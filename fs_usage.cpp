@@ -26,6 +26,7 @@
 clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRIVATE -D__APPLE_PRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.cpp
 */
 
+#include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
@@ -122,7 +123,6 @@ struct th_info {
   int arg8;
   int waited;
   uint64_t vnodeid;
-  const char *nameptr;
   uintptr_t *pathptr;
   int pn_scall_index;
   int pn_work_index;
@@ -136,13 +136,6 @@ struct threadmap_entry {
   char tm_command[MAXCOMLEN + 1];
 };
 
-
-struct vnode_info {
-  vnode_info *vn_next;
-  uint64_t vn_id;
-  uintptr_t vn_pathname[NUMPARMS + 1];
-};
-
 #define HASH_SIZE 1024
 #define HASH_MASK (HASH_SIZE - 1)
 
@@ -151,12 +144,7 @@ th_info *th_info_freelist;
 
 std::unordered_map<uintptr_t, threadmap_entry> threadmap;
 
-
-#define VN_HASH_SHIFT 3
-#define VN_HASH_SIZE 16384
-#define VN_HASH_MASK (VN_HASH_SIZE - 1)
-
-vnode_info *vn_info_hash[VN_HASH_SIZE];
+std::unordered_map<uint64_t, std::string> vn_name_map;
 
 
 int filemgr_in_progress = 0;
@@ -212,9 +200,6 @@ th_info *find_event(uintptr_t, int);
 
 void    read_command_map();
 void    create_map_entry(uintptr_t, int, char *);
-
-char   *add_vnode_name(uint64_t, const char *);
-const char *find_vnode_name(uint64_t);
 
 void    argtopid(char *str);
 void    set_remove();
@@ -755,8 +740,16 @@ void sample_sc() {
       break;
 
     case VFS_ALIAS_VP:
-      add_vnode_name(kd[i].arg2, find_vnode_name(kd[i].arg1));
-      continue;
+      {
+        auto name_it = vn_name_map.find(kd[i].arg1);
+        if (name_it != vn_name_map.end()) {
+          vn_name_map[kd[i].arg2] = name_it->second;
+        } else {
+          // TODO(peck): Can this happen?
+          vn_name_map.erase(kd[i].arg2);
+        }
+        continue;
+      }
 
     case VFS_LOOKUP:
       if ((ti = find_event(thread, 0)) == nullptr) {
@@ -814,9 +807,8 @@ void sample_sc() {
       }
       if (debugid & DBG_FUNC_END) {
 
-        ti->nameptr = add_vnode_name(
-            ti->vnodeid,
-            reinterpret_cast<const char *>(&ti->lookups[ti->pn_work_index].pathname[0]));
+        vn_name_map[ti->vnodeid] =
+            reinterpret_cast<const char *>(&ti->lookups[ti->pn_work_index].pathname[0]);
 
         if (ti->pn_work_index == ti->pn_scall_index) {
 
@@ -866,7 +858,7 @@ void sample_sc() {
        continue;
 
     case SPEC_unmap_info:
-     format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::UNMAP_INFO, 0, "");
+     format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::UNMAP_INFO, 0, nullptr);
      continue;
 
     case MACH_pageout:
@@ -1011,8 +1003,6 @@ void exit_event(
     return;
   }
 
-  ti->nameptr = 0;
-
   format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, ti->waited, (char *)&ti->lookups[0].pathname[0]);
 
   switch (type) {
@@ -1062,7 +1052,7 @@ void format_print(
     uintptr_t arg4,
     Fmt format,
     int waited,
-    const char *pathname) {
+    const char *pathname /* nullable */) {
   int nopadding = 0;
   const char *command_name;
   int in_filemgr = 0;
@@ -1149,7 +1139,8 @@ void format_print(
 
       printf("            (%s) ", sbuf);
 
-      pathname = find_vnode_name(arg1);
+      auto name_it = vn_name_map.find(arg1);
+      pathname = name_it == vn_name_map.end() ? nullptr : name_it->second.c_str();
       nopadding = 1;
 
       break;
@@ -1319,7 +1310,7 @@ void format_print(
 
   if (framework_name) {
     len = sprintf(&buf[0], " %s %s ", framework_type, framework_name);
-  } else if (*pathname != '\0') {
+  } else if (pathname) {
     switch(format) {
     case Fmt::AT:
     case Fmt::OPENAT:
@@ -1351,40 +1342,6 @@ void format_print(
   }
 
   printf("%s%s %s %s.%d\n", p1, pathname, p2, command_name, (int)thread);
-}
-
-char *add_vnode_name(uint64_t vn_id, const char *pathname) {
-  vnode_info *vn;
-
-  int hashid = (vn_id >> VN_HASH_SHIFT) & VN_HASH_MASK;
-
-  for (vn = vn_info_hash[hashid]; vn; vn = vn->vn_next) {
-    if (vn->vn_id == vn_id) {
-      break;
-    }
-  }
-  if (vn == NULL) {
-    vn = reinterpret_cast<vnode_info *>(malloc(sizeof(struct vnode_info)));
-    
-    vn->vn_next = vn_info_hash[hashid];
-    vn_info_hash[hashid] = vn;
-    vn->vn_id = vn_id;
-  }
-  strcpy(reinterpret_cast<char *>(vn->vn_pathname), pathname);
-
-  return reinterpret_cast<char *>(&vn->vn_pathname);
-}
-
-
-const char *find_vnode_name(uint64_t vn_id) {
-  int hashid = (vn_id >> VN_HASH_SHIFT) & VN_HASH_MASK;
-
-  for (vnode_info *vn = vn_info_hash[hashid]; vn; vn = vn->vn_next) {
-    if (vn->vn_id == vn_id) {
-      return reinterpret_cast<char *>(vn->vn_pathname);
-    }
-  }
-  return "";
 }
 
 
