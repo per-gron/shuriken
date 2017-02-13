@@ -121,7 +121,6 @@ struct th_info {
   int arg6;
   int arg7;
   int arg8;
-  int waited;
   uint64_t vnodeid;
   uintptr_t *pathptr;
   int pn_scall_index;
@@ -181,7 +180,7 @@ static constexpr int proc_exit = 0x4010004;
 
 extern "C" int reexec_to_match_kernel();
 
-void    format_print(th_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt, int, const char *);
+void    format_print(th_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt, const char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
 void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
 void    exit_event(const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt);
@@ -858,7 +857,7 @@ void sample_sc() {
        continue;
 
     case SPEC_unmap_info:
-     format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::UNMAP_INFO, 0, nullptr);
+     format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::UNMAP_INFO, nullptr);
      continue;
 
     case MACH_pageout:
@@ -1003,7 +1002,7 @@ void exit_event(
     return;
   }
 
-  format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, ti->waited, (char *)&ti->lookups[0].pathname[0]);
+  format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, (char *)&ti->lookups[0].pathname[0]);
 
   switch (type) {
 
@@ -1051,7 +1050,6 @@ void format_print(
     uintptr_t arg3,
     uintptr_t arg4,
     Fmt format,
-    int waited,
     const char *pathname /* nullable */) {
   int nopadding = 0;
   const char *command_name;
@@ -1063,7 +1061,6 @@ void format_print(
   char *framework_name;
   char *framework_type;
   const char *p1;
-  const char *p2;
   char buf[MAXWIDTH];
 
   command_name = "";
@@ -1334,14 +1331,8 @@ void format_print(
   } else {
     p1 = "";
   }
-         
-  if (waited) {
-    p2 = " W";
-  } else {
-    p2 = "  ";
-  }
 
-  printf("%s%s %s %s.%d\n", p1, pathname, p2, command_name, (int)thread);
+  printf("%s%s %s.%d\n", p1, pathname, command_name, (int)thread);
 }
 
 
@@ -1389,7 +1380,6 @@ th_info *add_event(uintptr_t thread, int type) {
   ti->thread = thread;
   ti->type = type;
 
-  ti->waited = 0;
   ti->in_filemgr = 0;
   ti->in_hfs_update = 0;
 
