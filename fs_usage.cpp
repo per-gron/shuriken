@@ -998,210 +998,213 @@ void format_print(
 
   printf("  %-17.17s", sc_name);
 
-  if (1) {  /* TODO(peck): Clean me up */
-    off_t offset_reassembled = 0LL;
-    
-    switch (format) {
-    case Fmt::AT:
-    case Fmt::RENAMEAT:
-    case Fmt::DEFAULT:
-      /*
-       * pathname based system calls or 
-       * calls with no fd or pathname (i.e.  sync)
-       */
-      if (arg1)
-        printf("      [%3lu]       ", arg1);
-      else
-        printf("                  ");
-      break;
+  off_t offset_reassembled = 0LL;
+
+  switch (format) {
+  case Fmt::AT:
+  case Fmt::RENAMEAT:
+  case Fmt::DEFAULT:
+    /*
+     * pathname based system calls or
+     * calls with no fd or pathname (i.e.  sync)
+     */
+    if (arg1)
+      printf("      [%3lu]       ", arg1);
+    else
+      printf("                  ");
+    break;
 
 
-    case Fmt::HFS_update:
-    {
-      char sbuf[7];
-      int sflag = (int)arg2;
+  case Fmt::HFS_update:
+  {
+    char sbuf[7];
+    int sflag = (int)arg2;
 
-      memset(sbuf, '_', 6);
-      sbuf[6] = '\0';
+    memset(sbuf, '_', 6);
+    sbuf[6] = '\0';
 
-      
-      if (sflag & 0x10)
-        sbuf[0] = 'F';
-      if (sflag & 0x08)
-        sbuf[1] = 'M';
-      if (sflag & 0x20)
-        sbuf[2] = 'D';
-      if (sflag & 0x04)
-        sbuf[3] = 'c';
-      if (sflag & 0x01)
-        sbuf[4] = 'a';
-      if (sflag & 0x02)
-        sbuf[5] = 'm';
-
-      printf("            (%s) ", sbuf);
-
-      auto name_it = vn_name_map.find(arg1);
-      pathname = name_it == vn_name_map.end() ? nullptr : name_it->second.c_str();
-
-      break;
+    if (sflag & 0x10) {
+      sbuf[0] = 'F';
+    }
+    if (sflag & 0x08) {
+      sbuf[1] = 'M';
+    }
+    if (sflag & 0x20) {
+      sbuf[2] = 'D';
+    }
+    if (sflag & 0x04) {
+      sbuf[3] = 'c';
+    }
+    if (sflag & 0x01) {
+      sbuf[4] = 'a';
+    }
+    if (sflag & 0x02) {
+      sbuf[5] = 'm';
     }
 
-    case Fmt::TRUNC:
-    case Fmt::FTRUNC:
-      /*
-       * ftruncate, truncate
-       */
-      if (format == Fmt::FTRUNC) {
-        printf(" F=%-3d", ti->arg1);
-      } else {
-        printf("      ");
-      }
+    printf("            (%s) ", sbuf);
 
-      if (arg1) {
-        printf("[%3lu]", arg1);
-      }
+    auto name_it = vn_name_map.find(arg1);
+    pathname = name_it == vn_name_map.end() ? nullptr : name_it->second.c_str();
+
+    break;
+  }
+
+  case Fmt::TRUNC:
+  case Fmt::FTRUNC:
+    /*
+     * ftruncate, truncate
+     */
+    if (format == Fmt::FTRUNC) {
+      printf(" F=%-3d", ti->arg1);
+    } else {
+      printf("      ");
+    }
+
+    if (arg1) {
+      printf("[%3lu]", arg1);
+    }
 
 #ifdef __ppc__
-      offset_reassembled = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
+    offset_reassembled = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
 #else
-      offset_reassembled = (((off_t)(unsigned int)(ti->arg3)) << 32) | (unsigned int)(ti->arg2);
+    offset_reassembled = (((off_t)(unsigned int)(ti->arg3)) << 32) | (unsigned int)(ti->arg2);
 #endif
-      clip_64bit("  O=", offset_reassembled);
+    clip_64bit("  O=", offset_reassembled);
 
-      break;
+    break;
 
-    case Fmt::FCHFLAGS:
-    case Fmt::CHFLAGS:
-    {
-      /*
-       * fchflags, chflags
-       */
+  case Fmt::FCHFLAGS:
+  case Fmt::CHFLAGS:
+  {
+    /*
+     * fchflags, chflags
+     */
 
-      if (format == Fmt::FCHFLAGS) {
-        if (arg1) {
-          printf(" F=%-3d[%3lu]", ti->arg1, arg1);
-        } else {
-          printf(" F=%-3d", ti->arg1);
-        }
-      } else {
-        if (arg1) {
-          printf(" [%3lu] ", arg1);
-        }
-      }
-
-      break;
-    }
-
-    case Fmt::FCHMOD:
-    case Fmt::FCHMOD_EXT:
-    case Fmt::CHMOD:
-    case Fmt::CHMOD_EXT:
-    case Fmt::CHMODAT:
-    {
-      /*
-       * fchmod, fchmod_extended, chmod, chmod_extended
-       */
-      if (format == Fmt::FCHMOD || format == Fmt::FCHMOD_EXT) {
-        if (arg1) {
-          printf(" F=%-3d[%3lu] ", ti->arg1, arg1);
-        } else {
-          printf(" F=%-3d ", ti->arg1);
-        }
-      } else {
-        if (arg1) {
-          printf(" [%3lu] ", arg1);
-        } else {
-          printf(" ");
-        }
-      }
-
-      break;
-    }
-
-    case Fmt::ACCESS:
-    {
-      /*
-       * access
-       */
-      char mode[5];
-      
-      memset(mode, '_', 4);
-      mode[4] = '\0';
-
-      if (ti->arg2 & R_OK) {
-        mode[0] = 'R';
-      }
-      if (ti->arg2 & W_OK) {
-        mode[1] = 'W';
-      }
-      if (ti->arg2 & X_OK) {
-        mode[2] = 'X';
-      }
-      if (ti->arg2 == F_OK) {
-        mode[3] = 'F';
-      }
-
+    if (format == Fmt::FCHFLAGS) {
       if (arg1) {
-        printf("      [%3lu] (%s)   ", arg1, mode);
+        printf(" F=%-3d[%3lu]", ti->arg1, arg1);
       } else {
-        printf("            (%s)   ", mode);
+        printf(" F=%-3d", ti->arg1);
       }
-
-      break;
-    }
-
-    case Fmt::OPENAT:
-    case Fmt::OPEN:
-    {
-      /*
-       * open
-       */
-      char mode[7];
-      
-      memset(mode, '_', 6);
-      mode[6] = '\0';
-
-      if (ti->arg2 & O_RDWR) {
-        mode[0] = 'R';
-        mode[1] = 'W';
-      } else if (ti->arg2 & O_WRONLY) {
-        mode[1] = 'W';
-      } else {
-        mode[0] = 'R';
-      }
-
-      if (ti->arg2 & O_CREAT) {
-        mode[2] = 'C';
-      }
-        
-      if (ti->arg2 & O_APPEND) {
-        mode[3] = 'A';
-      }
-        
-      if (ti->arg2 & O_TRUNC) {
-        mode[4] = 'T';
-      }
-        
-      if (ti->arg2 & O_EXCL) {
-        mode[5] = 'E';
-      }
-
+    } else {
       if (arg1) {
-        printf("      [%3lu] (%s) ", arg1, mode);
-      } else {
-        printf(" F=%-3lu      (%s) ", arg2, mode);
+        printf(" [%3lu] ", arg1);
       }
-
-      break;
     }
 
-    case Fmt::FD:
-    case Fmt::FD_2:  // accept, dup, dup2
-    case Fmt::FD_IO:  // system calls with fd's that return an I/O completion count
-    case Fmt::UNMAP_INFO:
-      printf("TODO: Not handled");
-      break;
+    break;
+  }
+
+  case Fmt::FCHMOD:
+  case Fmt::FCHMOD_EXT:
+  case Fmt::CHMOD:
+  case Fmt::CHMOD_EXT:
+  case Fmt::CHMODAT:
+  {
+    /*
+     * fchmod, fchmod_extended, chmod, chmod_extended
+     */
+    if (format == Fmt::FCHMOD || format == Fmt::FCHMOD_EXT) {
+      if (arg1) {
+        printf(" F=%-3d[%3lu] ", ti->arg1, arg1);
+      } else {
+        printf(" F=%-3d ", ti->arg1);
+      }
+    } else {
+      if (arg1) {
+        printf(" [%3lu] ", arg1);
+      } else {
+        printf(" ");
+      }
     }
+
+    break;
+  }
+
+  case Fmt::ACCESS:
+  {
+    /*
+     * access
+     */
+    char mode[5];
+
+    memset(mode, '_', 4);
+    mode[4] = '\0';
+
+    if (ti->arg2 & R_OK) {
+      mode[0] = 'R';
+    }
+    if (ti->arg2 & W_OK) {
+      mode[1] = 'W';
+    }
+    if (ti->arg2 & X_OK) {
+      mode[2] = 'X';
+    }
+    if (ti->arg2 == F_OK) {
+      mode[3] = 'F';
+    }
+
+    if (arg1) {
+      printf("      [%3lu] (%s)   ", arg1, mode);
+    } else {
+      printf("            (%s)   ", mode);
+    }
+
+    break;
+  }
+
+  case Fmt::OPENAT:
+  case Fmt::OPEN:
+  {
+    /*
+     * open
+     */
+    char mode[7];
+
+    memset(mode, '_', 6);
+    mode[6] = '\0';
+
+    if (ti->arg2 & O_RDWR) {
+      mode[0] = 'R';
+      mode[1] = 'W';
+    } else if (ti->arg2 & O_WRONLY) {
+      mode[1] = 'W';
+    } else {
+      mode[0] = 'R';
+    }
+
+    if (ti->arg2 & O_CREAT) {
+      mode[2] = 'C';
+    }
+
+    if (ti->arg2 & O_APPEND) {
+      mode[3] = 'A';
+    }
+
+    if (ti->arg2 & O_TRUNC) {
+      mode[4] = 'T';
+    }
+
+    if (ti->arg2 & O_EXCL) {
+      mode[5] = 'E';
+    }
+
+    if (arg1) {
+      printf("      [%3lu] (%s) ", arg1, mode);
+    } else {
+      printf(" F=%-3lu      (%s) ", arg2, mode);
+    }
+
+    break;
+  }
+
+  case Fmt::FD:
+  case Fmt::FD_2:  // accept, dup, dup2
+  case Fmt::FD_IO:  // system calls with fd's that return an I/O completion count
+  case Fmt::UNMAP_INFO:
+    printf("TODO: Not handled");
+    break;
   }
 
   if (pathname) {
