@@ -105,24 +105,28 @@ struct lookup {
 };
 
 struct event_info {
-  event_info *next;
-  uintptr_t thread;
+  event_info()
+      : pathptr(&lookups[0].pathname[0]) {
+    for (int i = 0; i < MAX_PATHNAMES; i++) {
+      lookups[i].pathname[0] = 0;
+    }
+  }
 
-  uintptr_t child_thread;
-  int pid;
-  int type;
-  int arg1;
-  int arg2;
-  int arg3;
-  int arg4;
-  int arg5;
-  int arg6;
-  int arg7;
-  int arg8;
-  uint64_t vnodeid;
-  uintptr_t *pathptr;
-  int pn_scall_index;
-  int pn_work_index;
+  uintptr_t child_thread = 0;
+  int pid = 0;
+  int type = 0;
+  int arg1 = 0;
+  int arg2 = 0;
+  int arg3 = 0;
+  int arg4 = 0;
+  int arg5 = 0;
+  int arg6 = 0;
+  int arg7 = 0;
+  int arg8 = 0;
+  uint64_t vnodeid = 0;
+  uintptr_t *pathptr = nullptr;
+  int pn_scall_index = 0;
+  int pn_work_index = 0;
   struct lookup lookups[MAX_PATHNAMES];
 };
 
@@ -134,18 +138,66 @@ struct threadmap_entry {
 };
 
 class event_info_map {
+  struct ei_hash {
+    using argument_type = std::pair<uintptr_t, int>;
+    using result_type = std::size_t;
+
+    result_type operator()(const argument_type &f) const {
+      return
+          std::hash<uintptr_t>()(f.first) ^
+          std::hash<int>()(f.second);
+    }
+  };
+
+  using map = std::unordered_map<std::pair<uintptr_t, int>, event_info, ei_hash>;
+
  public:
-  void clear();
-  void delete_event(event_info *);
-  event_info *add_event(uintptr_t, int);
-  event_info *find_event(uintptr_t, int);
+  using iterator = map::iterator;
+
+  void clear() {
+    _map.clear();
+    _last_event_map.clear();
+
+  }
+
+  void erase(iterator iter) {
+    auto thread = iter->first.first;
+    auto type = iter->first.second;
+
+    auto last_event_it = _last_event_map.find(thread);
+    if (last_event_it != _last_event_map.end() && last_event_it->second == type) {
+      _last_event_map.erase(last_event_it);
+    }
+
+    _map.erase(iter);
+  }
+
+  iterator add_event(uintptr_t thread, int type) {
+    _map[std::make_pair(thread, type)] = event_info();
+    _last_event_map[thread] = type;
+    return _map.find(std::make_pair(thread, type));
+  }
+
+  iterator find(uintptr_t thread, int type) {
+    if (type == 0) {
+      auto it = _last_event_map.find(thread);
+      if (it == _last_event_map.end()) {
+        return end();
+      }
+      return _map.find(std::make_pair(thread, it->second));
+    } else {
+      return _map.find(std::make_pair(thread, type));
+    }
+  }
+
+  iterator end() {
+    return _map.end();
+  }
 
  private:
-  static constexpr int HASH_SIZE = 1024;
-  static constexpr int HASH_MASK = HASH_SIZE - 1;
-
-  std::array<event_info *, HASH_SIZE> _event_info_hash;
-  event_info *_event_info_freelist = nullptr;
+  map _map;
+  // Map from thread id to last event type for that thread
+  std::unordered_map<uintptr_t, int> _last_event_map;
 };
 
 std::unordered_map<uintptr_t, threadmap_entry> threadmap;
@@ -664,8 +716,6 @@ void sample_sc() {
     int type;
     int index;
     uintptr_t *sargptr;
-    event_info *ei;
-
 
     thread  = kd[i].arg5;
     debugid = kd[i].debugid;
@@ -674,9 +724,7 @@ void sample_sc() {
     switch (type) {
     case TRACE_DATA_NEWTHREAD:
       if (kd[i].arg1) {
-        if ((ei = ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)) == NULL) {
-          continue;
-        }
+        event_info *ei = &ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)->second;
         ei->child_thread = kd[i].arg1;
         ei->pid = kd[i].arg2;
         /* TODO(peck): Removeme */
@@ -685,41 +733,45 @@ void sample_sc() {
       continue;
 
     case TRACE_STRING_NEWTHREAD:
-      if ((ei = ei_map.find_event(thread, TRACE_DATA_NEWTHREAD)) == nullptr) {
+      {
+        auto ei_it = ei_map.find(thread, TRACE_DATA_NEWTHREAD);
+        if (ei_it == ei_map.end()) {
+          continue;
+        }
+        event_info *ei = &ei_it->second;
+
+        create_map_entry(ei->child_thread, ei->pid, (char *)&kd[i].arg1);
+
+        ei_map.erase(ei_it);
         continue;
       }
-
-      create_map_entry(ei->child_thread, ei->pid, (char *)&kd[i].arg1);
-
-      ei_map.delete_event(ei);
-      continue;
   
     case TRACE_DATA_EXEC:
-      if ((ei = ei_map.add_event(thread, TRACE_DATA_EXEC)) == NULL) {
+      {
+        event_info *ei = &ei_map.add_event(thread, TRACE_DATA_EXEC)->second;
+        ei->pid = kd[i].arg1;
         continue;
       }
-
-      ei->pid = kd[i].arg1;
-      continue;
 
     case TRACE_STRING_EXEC:
-      if ((ei = ei_map.find_event(thread, BSC_execve))) {
-        if (ei->lookups[0].pathname[0]) {
-          exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, Fmt::DEFAULT);
+      {
+        auto ei_it = ei_map.find(thread, BSC_execve);
+        if (ei_it != ei_map.end()) {
+          if (ei_it->second.lookups[0].pathname[0]) {
+            exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, Fmt::DEFAULT);
+          }
+        } else if ((ei_it = ei_map.find(thread, BSC_posix_spawn)) != ei_map.end()) {
+          if (ei_it->second.lookups[0].pathname[0]) {
+            exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, Fmt::DEFAULT);
+          }
         }
-      } else if ((ei = ei_map.find_event(thread, BSC_posix_spawn))) {
-        if (ei->lookups[0].pathname[0]) {
-          exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, Fmt::DEFAULT);
-        }
-      }
-      if ((ei = ei_map.find_event(thread, TRACE_DATA_EXEC)) == nullptr) {
+        ei_it = ei_map.find(thread, TRACE_DATA_EXEC);
+
+        create_map_entry(thread, ei_it->second.pid, (char *)&kd[i].arg1);
+
+        ei_map.erase(ei_it);
         continue;
       }
-
-      create_map_entry(thread, ei->pid, (char *)&kd[i].arg1);
-
-      ei_map.delete_event(ei);
-      continue;
 
     case BSC_thread_terminate:
       threadmap.erase(thread);
@@ -752,50 +804,28 @@ void sample_sc() {
       }
 
     case VFS_LOOKUP:
-      if ((ei = ei_map.find_event(thread, 0)) == nullptr) {
-        continue;
-      }
-
-      if (debugid & DBG_FUNC_START) {
-
-        if (ei->type == HFS_update) {
-          ei->pn_work_index = (MAX_PATHNAMES - 1);
-        } else {
-          if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
-            ei->pn_work_index = ei->pn_scall_index;
-          } else {
-            continue;
-          }
-        }
-        sargptr = &ei->lookups[ei->pn_work_index].pathname[0];
-
-        ei->vnodeid = kd[i].arg1;
-
-        *sargptr++ = kd[i].arg2;
-        *sargptr++ = kd[i].arg3;
-        *sargptr++ = kd[i].arg4;
-        /*
-         * NULL terminate the 'string'
-         */
-        *sargptr = 0;
-
-        ei->pathptr = sargptr;
-      } else {
-        sargptr = ei->pathptr;
-
-        /*
-         * We don't want to overrun our pathname buffer if the
-         * kernel sends us more VFS_LOOKUP entries than we can
-         * handle and we only handle 2 pathname lookups for
-         * a given system call
-         */
-        if (sargptr == 0) {
+      {
+        auto ei_it = ei_map.find(thread, 0);
+        if (ei_it == ei_map.end()) {
           continue;
         }
+        event_info *ei = &ei_it->second;
 
-        if ((uintptr_t)sargptr < (uintptr_t)&ei->lookups[ei->pn_work_index].pathname[NUMPARMS]) {
+        if (debugid & DBG_FUNC_START) {
 
-          *sargptr++ = kd[i].arg1;
+          if (ei->type == HFS_update) {
+            ei->pn_work_index = (MAX_PATHNAMES - 1);
+          } else {
+            if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
+              ei->pn_work_index = ei->pn_scall_index;
+            } else {
+              continue;
+            }
+          }
+          sargptr = &ei->lookups[ei->pn_work_index].pathname[0];
+
+          ei->vnodeid = kd[i].arg1;
+
           *sargptr++ = kd[i].arg2;
           *sargptr++ = kd[i].arg3;
           *sargptr++ = kd[i].arg4;
@@ -803,28 +833,54 @@ void sample_sc() {
            * NULL terminate the 'string'
            */
           *sargptr = 0;
-        }
-      }
-      if (debugid & DBG_FUNC_END) {
 
-        vn_name_map[ei->vnodeid] =
-            reinterpret_cast<const char *>(&ei->lookups[ei->pn_work_index].pathname[0]);
+          ei->pathptr = sargptr;
+        } else {
+          sargptr = ei->pathptr;
 
-        if (ei->pn_work_index == ei->pn_scall_index) {
+          /*
+           * We don't want to overrun our pathname buffer if the
+           * kernel sends us more VFS_LOOKUP entries than we can
+           * handle and we only handle 2 pathname lookups for
+           * a given system call
+           */
+          if (sargptr == 0) {
+            continue;
+          }
 
-          ei->pn_scall_index++;
+          if ((uintptr_t)sargptr < (uintptr_t)&ei->lookups[ei->pn_work_index].pathname[NUMPARMS]) {
 
-          if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
-            ei->pathptr = &ei->lookups[ei->pn_scall_index].pathname[0];
-          } else {
-            ei->pathptr = 0;
+            *sargptr++ = kd[i].arg1;
+            *sargptr++ = kd[i].arg2;
+            *sargptr++ = kd[i].arg3;
+            *sargptr++ = kd[i].arg4;
+            /*
+             * NULL terminate the 'string'
+             */
+            *sargptr = 0;
           }
         }
-      } else {
-        ei->pathptr = sargptr;
-      }
+        if (debugid & DBG_FUNC_END) {
 
-      continue;
+          vn_name_map[ei->vnodeid] =
+              reinterpret_cast<const char *>(&ei->lookups[ei->pn_work_index].pathname[0]);
+
+          if (ei->pn_work_index == ei->pn_scall_index) {
+
+            ei->pn_scall_index++;
+
+            if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
+              ei->pathptr = &ei->lookups[ei->pn_scall_index].pathname[0];
+            } else {
+              ei->pathptr = 0;
+            }
+          }
+        } else {
+          ei->pathptr = sargptr;
+        }
+
+        continue;
+      }
     }
 
     if (debugid & DBG_FUNC_START) {
@@ -851,11 +907,13 @@ void sample_sc() {
 
     case MACH_pageout:
     case MACH_vmfault:
-      /* TODO(peck): what about deleting all of the events? */
-      if ((ei = ei_map.find_event(thread, type))) {
-        ei_map.delete_event(ei);
+      {
+        auto ei_it = ei_map.find(thread, type);
+        if (ei_it != ei_map.end()) {
+          ei_map.erase(ei_it);
+        }
+        continue;
       }
-      continue;
 
     case MSC_map_fd:
       exit_event("map_fd", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, Fmt::FD);
@@ -882,13 +940,8 @@ void sample_sc() {
 
 
 void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
-  event_info *ei;
-  char buf[MAXWIDTH];
-  buf[0] = 0;
-
-  if ((ei = ei_map.add_event(thread, type)) == NULL) {
-    return;
-  }
+  auto ei_it = ei_map.add_event(thread, type);
+  auto *ei = &ei_it->second;
 
   ei->arg1 = kd->arg1;
   ei->arg2 = kd->arg2;
@@ -937,14 +990,14 @@ void exit_event(
     uintptr_t arg3,
     uintptr_t arg4,
     Fmt format) {
-  event_info *ei;
-      
-  if ((ei = ei_map.find_event(thread, type)) == nullptr) {
+  auto ei_it = ei_map.find(thread, type);
+  if (ei_it == ei_map.end()) {
     return;
   }
 
+  auto *ei = &ei_it->second;
   format_print(ei, sc_name, thread, type, arg1, arg2, arg3, arg4, format, (char *)&ei->lookups[0].pathname[0]);
-  ei_map.delete_event(ei);
+  ei_map.erase(ei_it);
 }
 
 
@@ -1215,91 +1268,6 @@ void format_print(
   pathname = buf;
 
   printf("%s %s.%d\n", pathname, command_name, (int)thread);
-}
-
-
-void event_info_map::delete_event(event_info *ei_to_delete) {
-  event_info *ei;
-  event_info *ei_prev;
-
-  int hashid = ei_to_delete->thread & HASH_MASK;
-
-  if ((ei = _event_info_hash[hashid])) {
-    if (ei == ei_to_delete) {
-      _event_info_hash[hashid] = ei->next;
-    } else {
-      ei_prev = ei;
-
-      for (ei = ei->next; ei; ei = ei->next) {
-        if (ei == ei_to_delete) {
-          ei_prev->next = ei->next;
-          break;
-        }
-        ei_prev = ei;
-      }
-    }
-    if (ei) {
-      ei->next = _event_info_freelist;
-      _event_info_freelist = ei;
-    }
-  }
-}
-
-event_info *event_info_map::add_event(uintptr_t thread, int type) {
-  event_info *ei;
-
-  if ((ei = _event_info_freelist)) {
-    _event_info_freelist = ei->next;
-  } else {
-    ei = reinterpret_cast<event_info *>(malloc(sizeof(event_info)));
-  }
-
-  int hashid = thread & HASH_MASK;
-
-  ei->next = _event_info_hash[hashid];
-  _event_info_hash[hashid] = ei;
-
-  ei->thread = thread;
-  ei->type = type;
-
-  ei->pathptr = &ei->lookups[0].pathname[0];
-  ei->pn_scall_index = 0;
-  ei->pn_work_index = 0;
-
-  for (int i = 0; i < MAX_PATHNAMES; i++) {
-    ei->lookups[i].pathname[0] = 0;
-  }
-
-  return ei;
-}
-
-event_info *event_info_map::find_event(uintptr_t thread, int type) {
-  int hashid = thread & HASH_MASK;
-
-  for (event_info *ei = _event_info_hash[hashid]; ei; ei = ei->next) {
-    if (ei->thread == thread) {
-      if (type == ei->type) {
-        return ei;
-      }
-      if (type == 0) {
-        return ei;
-      }
-    }
-  }
-  return nullptr;
-}
-
-void event_info_map::clear() {
-  event_info *ei_next = nullptr;
-
-  for (int i = 0; i < HASH_SIZE; i++) {
-    for (event_info *ei = _event_info_hash[i]; ei; ei = ei_next) {
-      ei_next = ei->next;
-      ei->next = _event_info_freelist;
-      _event_info_freelist = ei;
-    }
-    _event_info_hash[i] = 0;
-  }
 }
 
 void read_command_map() {
