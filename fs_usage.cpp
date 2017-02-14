@@ -1000,25 +1000,6 @@ void exit_event(
 }
 
 
-int clip_64bit(const char *s, uint64_t value) {
-  int clen = 0;
-
-  if ((value & 0xff00000000000000LL)) {
-    clen = printf("%s0x%16.16qx", s, value);
-  } else if ((value & 0x00ff000000000000LL)) {
-    clen = printf("%s0x%14.14qx  ", s, value);
-  } else if ((value & 0x0000ff0000000000LL)) {
-    clen = printf("%s0x%12.12qx    ", s, value);
-  } else if ((value & 0x000000ff00000000LL)) {
-    clen = printf("%s0x%10.10qx      ", s, value);
-  } else {
-    clen = printf("%s0x%8.8qx        ", s, value);
-  }
-  
-  return clen;
-}
-
-
 void format_print(
     event_info *ei,
     const char *sc_name,
@@ -1092,110 +1073,6 @@ void format_print(
     break;
   }
 
-  case Fmt::TRUNC:
-  case Fmt::FTRUNC:
-    /*
-     * ftruncate, truncate
-     */
-    if (format == Fmt::FTRUNC) {
-      printf(" F=%-3d", ei->arg1);
-    } else {
-      printf("      ");
-    }
-
-    if (arg1) {
-      printf("[%3lu]", arg1);
-    }
-
-#ifdef __ppc__
-    offset_reassembled = (((off_t)(unsigned int)(ei->arg2)) << 32) | (unsigned int)(ei->arg3);
-#else
-    offset_reassembled = (((off_t)(unsigned int)(ei->arg3)) << 32) | (unsigned int)(ei->arg2);
-#endif
-    clip_64bit("  O=", offset_reassembled);
-
-    break;
-
-  case Fmt::FCHFLAGS:
-  case Fmt::CHFLAGS:
-  {
-    /*
-     * fchflags, chflags
-     */
-
-    if (format == Fmt::FCHFLAGS) {
-      if (arg1) {
-        printf(" F=%-3d[%3lu]", ei->arg1, arg1);
-      } else {
-        printf(" F=%-3d", ei->arg1);
-      }
-    } else {
-      if (arg1) {
-        printf(" [%3lu] ", arg1);
-      }
-    }
-
-    break;
-  }
-
-  case Fmt::FCHMOD:
-  case Fmt::FCHMOD_EXT:
-  case Fmt::CHMOD:
-  case Fmt::CHMOD_EXT:
-  case Fmt::CHMODAT:
-  {
-    /*
-     * fchmod, fchmod_extended, chmod, chmod_extended
-     */
-    if (format == Fmt::FCHMOD || format == Fmt::FCHMOD_EXT) {
-      if (arg1) {
-        printf(" F=%-3d[%3lu] ", ei->arg1, arg1);
-      } else {
-        printf(" F=%-3d ", ei->arg1);
-      }
-    } else {
-      if (arg1) {
-        printf(" [%3lu] ", arg1);
-      } else {
-        printf(" ");
-      }
-    }
-
-    break;
-  }
-
-  case Fmt::ACCESS:
-  {
-    /*
-     * access
-     */
-    char mode[5];
-
-    memset(mode, '_', 4);
-    mode[4] = '\0';
-
-    if (ei->arg2 & R_OK) {
-      mode[0] = 'R';
-    }
-    if (ei->arg2 & W_OK) {
-      mode[1] = 'W';
-    }
-    if (ei->arg2 & X_OK) {
-      mode[2] = 'X';
-    }
-    if (ei->arg2 == F_OK) {
-      mode[3] = 'F';
-    }
-
-    if (arg1) {
-      printf("      [%3lu] (%s)   ", arg1, mode);
-    } else {
-      printf("            (%s)   ", mode);
-    }
-
-    break;
-  }
-
   case Fmt::OPENAT:
   case Fmt::OPEN:
   {
@@ -1241,10 +1118,20 @@ void format_print(
     break;
   }
 
+  case Fmt::ACCESS:
   case Fmt::FD:
   case Fmt::FD_2:  // accept, dup, dup2
   case Fmt::FD_IO:  // system calls with fd's that return an I/O completion count
   case Fmt::UNMAP_INFO:
+  case Fmt::TRUNC:
+  case Fmt::FTRUNC:
+  case Fmt::FCHFLAGS:
+  case Fmt::CHFLAGS:
+  case Fmt::FCHMOD:
+  case Fmt::FCHMOD_EXT:
+  case Fmt::CHMOD:
+  case Fmt::CHMOD_EXT:
+  case Fmt::CHMODAT:
     printf("TODO: Not handled");
     break;
   }
