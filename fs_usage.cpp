@@ -133,15 +133,24 @@ struct threadmap_entry {
   char tm_command[MAXCOMLEN + 1];
 };
 
-#define HASH_SIZE 1024
-#define HASH_MASK (HASH_SIZE - 1)
+class event_info_map {
+ public:
+  void delete_all_events();
+  void delete_event(event_info *);
+  event_info *add_event(uintptr_t, int);
+  event_info *find_event(uintptr_t, int);
 
-event_info *event_info_hash[HASH_SIZE];
-event_info *event_info_freelist;
+ private:
+  static constexpr int HASH_SIZE = 1024;
+  static constexpr int HASH_MASK = HASH_SIZE - 1;
+
+  std::array<event_info *, HASH_SIZE> _event_info_hash;
+  event_info *_event_info_freelist = nullptr;
+};
 
 std::unordered_map<uintptr_t, threadmap_entry> threadmap;
-
 std::unordered_map<uint64_t, std::string> vn_name_map;
+event_info_map ei_map;
 
 
 int need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
@@ -189,11 +198,6 @@ void    fs_usage_fd_clear(uintptr_t, unsigned int);
 
 void    init_arguments_buffer();
 int     get_real_command_name(int, char *, int);
-
-void    delete_all_events();
-void    delete_event(event_info *);
-event_info *add_event(uintptr_t, int);
-event_info *find_event(uintptr_t, int);
 
 void    read_command_map();
 void    create_map_entry(uintptr_t, int, char *);
@@ -645,7 +649,7 @@ void sample_sc() {
   if (bufinfo.flags & KDBG_WRAPPED) {
     fprintf(stderr, "fs_usage: buffer overrun, events generated too quickly: %d\n", count);
 
-    delete_all_events();
+    ei_map.delete_all_events();
 
     need_new_map = 1;
 
@@ -670,7 +674,7 @@ void sample_sc() {
     switch (type) {
     case TRACE_DATA_NEWTHREAD:
       if (kd[i].arg1) {
-        if ((ei = add_event(thread, TRACE_DATA_NEWTHREAD)) == NULL) {
+        if ((ei = ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)) == NULL) {
           continue;
         }
         ei->child_thread = kd[i].arg1;
@@ -681,17 +685,17 @@ void sample_sc() {
       continue;
 
     case TRACE_STRING_NEWTHREAD:
-      if ((ei = find_event(thread, TRACE_DATA_NEWTHREAD)) == nullptr) {
+      if ((ei = ei_map.find_event(thread, TRACE_DATA_NEWTHREAD)) == nullptr) {
         continue;
       }
 
       create_map_entry(ei->child_thread, ei->pid, (char *)&kd[i].arg1);
 
-      delete_event(ei);
+      ei_map.delete_event(ei);
       continue;
   
     case TRACE_DATA_EXEC:
-      if ((ei = add_event(thread, TRACE_DATA_EXEC)) == NULL) {
+      if ((ei = ei_map.add_event(thread, TRACE_DATA_EXEC)) == NULL) {
         continue;
       }
 
@@ -699,22 +703,22 @@ void sample_sc() {
       continue;
 
     case TRACE_STRING_EXEC:
-      if ((ei = find_event(thread, BSC_execve))) {
+      if ((ei = ei_map.find_event(thread, BSC_execve))) {
         if (ei->lookups[0].pathname[0]) {
           exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, Fmt::DEFAULT);
         }
-      } else if ((ei = find_event(thread, BSC_posix_spawn))) {
+      } else if ((ei = ei_map.find_event(thread, BSC_posix_spawn))) {
         if (ei->lookups[0].pathname[0]) {
           exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, Fmt::DEFAULT);
         }
       }
-      if ((ei = find_event(thread, TRACE_DATA_EXEC)) == nullptr) {
+      if ((ei = ei_map.find_event(thread, TRACE_DATA_EXEC)) == nullptr) {
         continue;
       }
 
       create_map_entry(thread, ei->pid, (char *)&kd[i].arg1);
 
-      delete_event(ei);
+      ei_map.delete_event(ei);
       continue;
 
     case BSC_thread_terminate:
@@ -748,7 +752,7 @@ void sample_sc() {
       }
 
     case VFS_LOOKUP:
-      if ((ei = find_event(thread, 0)) == nullptr) {
+      if ((ei = ei_map.find_event(thread, 0)) == nullptr) {
         continue;
       }
 
@@ -848,8 +852,8 @@ void sample_sc() {
     case MACH_pageout:
     case MACH_vmfault:
       /* TODO(peck): what about deleting all of the events? */
-      if ((ei = find_event(thread, type))) {
-        delete_event(ei);
+      if ((ei = ei_map.find_event(thread, type))) {
+        ei_map.delete_event(ei);
       }
       continue;
 
@@ -882,7 +886,7 @@ void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
   char buf[MAXWIDTH];
   buf[0] = 0;
 
-  if ((ei = add_event(thread, type)) == NULL) {
+  if ((ei = ei_map.add_event(thread, type)) == NULL) {
     return;
   }
 
@@ -935,12 +939,12 @@ void exit_event(
     Fmt format) {
   event_info *ei;
       
-  if ((ei = find_event(thread, type)) == nullptr) {
+  if ((ei = ei_map.find_event(thread, type)) == nullptr) {
     return;
   }
 
   format_print(ei, sc_name, thread, type, arg1, arg2, arg3, arg4, format, (char *)&ei->lookups[0].pathname[0]);
-  delete_event(ei);
+  ei_map.delete_event(ei);
 }
 
 
@@ -1214,15 +1218,15 @@ void format_print(
 }
 
 
-void delete_event(event_info *ei_to_delete) {
+void event_info_map::delete_event(event_info *ei_to_delete) {
   event_info *ei;
   event_info *ei_prev;
 
   int hashid = ei_to_delete->thread & HASH_MASK;
 
-  if ((ei = event_info_hash[hashid])) {
+  if ((ei = _event_info_hash[hashid])) {
     if (ei == ei_to_delete) {
-      event_info_hash[hashid] = ei->next;
+      _event_info_hash[hashid] = ei->next;
     } else {
       ei_prev = ei;
 
@@ -1235,25 +1239,25 @@ void delete_event(event_info *ei_to_delete) {
       }
     }
     if (ei) {
-      ei->next = event_info_freelist;
-      event_info_freelist = ei;
+      ei->next = _event_info_freelist;
+      _event_info_freelist = ei;
     }
   }
 }
 
-event_info *add_event(uintptr_t thread, int type) {
+event_info *event_info_map::add_event(uintptr_t thread, int type) {
   event_info *ei;
 
-  if ((ei = event_info_freelist)) {
-    event_info_freelist = ei->next;
+  if ((ei = _event_info_freelist)) {
+    _event_info_freelist = ei->next;
   } else {
     ei = reinterpret_cast<event_info *>(malloc(sizeof(event_info)));
   }
 
   int hashid = thread & HASH_MASK;
 
-  ei->next = event_info_hash[hashid];
-  event_info_hash[hashid] = ei;
+  ei->next = _event_info_hash[hashid];
+  _event_info_hash[hashid] = ei;
 
   ei->thread = thread;
   ei->type = type;
@@ -1269,10 +1273,10 @@ event_info *add_event(uintptr_t thread, int type) {
   return ei;
 }
 
-event_info *find_event(uintptr_t thread, int type) {
+event_info *event_info_map::find_event(uintptr_t thread, int type) {
   int hashid = thread & HASH_MASK;
 
-  for (event_info *ei = event_info_hash[hashid]; ei; ei = ei->next) {
+  for (event_info *ei = _event_info_hash[hashid]; ei; ei = ei->next) {
     if (ei->thread == thread) {
       if (type == ei->type) {
         return ei;
@@ -1285,16 +1289,16 @@ event_info *find_event(uintptr_t thread, int type) {
   return nullptr;
 }
 
-void delete_all_events() {
+void event_info_map::delete_all_events() {
   event_info *ei_next = nullptr;
 
   for (int i = 0; i < HASH_SIZE; i++) {
-    for (event_info *ei = event_info_hash[i]; ei; ei = ei_next) {
+    for (event_info *ei = _event_info_hash[i]; ei; ei = ei_next) {
       ei_next = ei->next;
-      ei->next = event_info_freelist;
-      event_info_freelist = ei;
+      ei->next = _event_info_freelist;
+      _event_info_freelist = ei;
     }
-    event_info_hash[i] = 0;
+    _event_info_hash[i] = 0;
   }
 }
 
