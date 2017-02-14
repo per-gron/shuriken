@@ -135,7 +135,7 @@ struct threadmap_entry {
 
 class event_info_map {
  public:
-  void delete_all_events();
+  void clear();
   void delete_event(event_info *);
   event_info *add_event(uintptr_t, int);
   event_info *find_event(uintptr_t, int);
@@ -649,7 +649,7 @@ void sample_sc() {
   if (bufinfo.flags & KDBG_WRAPPED) {
     fprintf(stderr, "fs_usage: buffer overrun, events generated too quickly: %d\n", count);
 
-    ei_map.delete_all_events();
+    ei_map.clear();
 
     need_new_map = 1;
 
@@ -1289,7 +1289,7 @@ event_info *event_info_map::find_event(uintptr_t thread, int type) {
   return nullptr;
 }
 
-void event_info_map::delete_all_events() {
+void event_info_map::clear() {
   event_info *ei_next = nullptr;
 
   for (int i = 0; i < HASH_SIZE; i++) {
