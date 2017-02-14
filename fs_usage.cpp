@@ -274,7 +274,6 @@ int num_events = EVENT_BASE;
 #define DBG_FUNC_ALL  (DBG_FUNC_START | DBG_FUNC_END)
 #define DBG_FUNC_MASK 0xfffffffc
 
-int mib[6];
 size_t needed;
 char *my_buffer;
 
@@ -422,12 +421,9 @@ int main(int argc, char *argv[]) {
   /*
    * grab the number of cpus
    */
-  mib[0] = CTL_HW;
-  mib[1] = HW_NCPU;
-  mib[2] = 0;
   len = sizeof(num_cpus);
-
-  sysctl(mib, 2, &num_cpus, &len, NULL, 0);
+  static int name[] = { CTL_HW, HW_NCPU, 0 };
+  sysctl(name, 2, &num_cpus, &len, NULL, 0);
   num_events = EVENT_BASE * num_cpus;
 
   if ((my_buffer = reinterpret_cast<char *>(malloc(num_events * sizeof(kd_buf)))) == (char *)0) {
@@ -473,14 +469,8 @@ int main(int argc, char *argv[]) {
 }
 
 void set_enable(int val) {
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_KDEBUG;
-  mib[2] = KERN_KDENABLE;   /* protocol */
-  mib[3] = val;
-  mib[4] = 0;
-  mib[5] = 0;           /* no flags */
-
-  if (sysctl(mib, 4, NULL, &needed, NULL, 0) < 0) {
+  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDENABLE, val, 0, 0 };
+  if (sysctl(name, 4, NULL, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDENABLE\n");
   }
 
@@ -492,25 +482,13 @@ void set_enable(int val) {
 }
 
 void set_numbufs(int nbufs) {
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_KDEBUG;
-  mib[2] = KERN_KDSETBUF;
-  mib[3] = nbufs;
-  mib[4] = 0;
-  mib[5] = 0;           /* no flags */
-
-  if (sysctl(mib, 4, NULL, &needed, NULL, 0) < 0) {
+  static int name_1[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETBUF, nbufs, 0, 0 };
+  if (sysctl(name_1, 4, NULL, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDSETBUF\n");
   }
 
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_KDEBUG;
-  mib[2] = KERN_KDSETUP;    
-  mib[3] = 0;
-  mib[4] = 0;
-  mib[5] = 0;           /* no flags */
-
-  if (sysctl(mib, 3, NULL, &needed, NULL, 0) < 0) {
+  static int name_2[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETUP, 0, 0, 0 };
+  if (sysctl(name_2, 3, NULL, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDSETUP\n");
   }
 }
@@ -539,9 +517,9 @@ void set_filter() {
   setbit(type_filter_bitmap, ENCODE_CSC_LOW(FILEMGR_CLASS, 1)); //Carbon File Manager
 
   errno = 0;
-  int mib[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSET_TYPEFILTER };
+  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSET_TYPEFILTER };
   size_t needed = KDBG_TYPEFILTER_BITMAP_SIZE;
-  if(sysctl(mib, 3, type_filter_bitmap, &needed, NULL, 0)) {
+  if(sysctl(name, 3, type_filter_bitmap, &needed, NULL, 0)) {
     quit("trace facility failure, KERN_KDSET_TYPEFILTER\n");
   }
 }
@@ -553,14 +531,9 @@ void set_pidcheck(int pid, int on_off) {
   kr.value1 = pid;
   kr.value2 = on_off;
   needed = sizeof(kd_regtype);
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_KDEBUG;
-  mib[2] = KERN_KDPIDTR;
-  mib[3] = 0;
-  mib[4] = 0;
-  mib[5] = 0;
 
-  if (sysctl(mib, 3, &kr, &needed, NULL, 0) < 0) {
+  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDPIDTR, 0, 0, 0 };
+  if (sysctl(name, 3, &kr, &needed, NULL, 0) < 0) {
     if (on_off == 1) {
       fprintf(stderr, "pid %d does not exist\n", pid);
     }
@@ -582,14 +555,8 @@ void set_pidexclude(int pid, int on_off) {
   kr.value1 = pid;
   kr.value2 = on_off;
   needed = sizeof(kd_regtype);
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_KDEBUG;
-  mib[2] = KERN_KDPIDEX;
-  mib[3] = 0;
-  mib[4] = 0;
-  mib[5] = 0;
-
-  if (sysctl(mib, 3, &kr, &needed, NULL, 0) < 0) {
+  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDPIDEX, 0, 0, 0 };
+  if (sysctl(name, 3, &kr, &needed, NULL, 0) < 0) {
     if (on_off == 1) {
       fprintf(stderr, "pid %d does not exist\n", pid);
     }
@@ -598,14 +565,8 @@ void set_pidexclude(int pid, int on_off) {
 
 void get_bufinfo(kbufinfo_t *val) {
   needed = sizeof (*val);
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_KDEBUG;
-  mib[2] = KERN_KDGETBUF;   
-  mib[3] = 0;
-  mib[4] = 0;
-  mib[5] = 0;   /* no flags */
-
-  if (sysctl(mib, 3, val, &needed, 0, 0) < 0) {
+  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDGETBUF, 0, 0, 0 };
+  if (sysctl(name, 3, val, &needed, 0, 0) < 0) {
     quit("trace facility failure, KERN_KDGETBUF\n");
   }
 }
@@ -613,14 +574,8 @@ void get_bufinfo(kbufinfo_t *val) {
 void set_remove()  {
   errno = 0;
 
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_KDEBUG;
-  mib[2] = KERN_KDREMOVE;   /* protocol */
-  mib[3] = 0;
-  mib[4] = 0;
-  mib[5] = 0;   /* no flags */
-
-  if (sysctl(mib, 3, NULL, &needed, NULL, 0) < 0) {
+  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDREMOVE, 0, 0, 0 };
+  if (sysctl(name, 3, NULL, &needed, NULL, 0) < 0) {
     set_remove_flag = 0;
 
     if (errno == EBUSY) {
@@ -639,25 +594,13 @@ void set_init() {
   kr.value2 = -1;
   needed = sizeof(kd_regtype);
 
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_KDEBUG;
-  mib[2] = KERN_KDSETREG;   
-  mib[3] = 0;
-  mib[4] = 0;
-  mib[5] = 0;   /* no flags */
-
-  if (sysctl(mib, 3, &kr, &needed, NULL, 0) < 0) {
+  static int name_1[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETREG, 0, 0, 0 };
+  if (sysctl(name_1, 3, &kr, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDSETREG\n");
   }
 
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_KDEBUG;
-  mib[2] = KERN_KDSETUP;    
-  mib[3] = 0;
-  mib[4] = 0;
-  mib[5] = 0;   /* no flags */
-
-  if (sysctl(mib, 3, NULL, &needed, NULL, 0) < 0) {
+  static int name_2[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETUP, 0, 0, 0 };
+  if (sysctl(name_2, 3, NULL, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDSETUP\n");
   }
 }
@@ -672,14 +615,8 @@ void sample_sc() {
   }
   size_t needed = bufinfo.nkdbufs * sizeof(kd_buf);
 
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_KDEBUG;
-  mib[2] = KERN_KDREADTR;
-  mib[3] = 0;
-  mib[4] = 0;
-  mib[5] = 0;   /* no flags */
-
-  if (sysctl(mib, 3, my_buffer, &needed, NULL, 0) < 0) {
+  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDREADTR, 0, 0, 0 };
+  if (sysctl(name, 3, my_buffer, &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDREADTR\n");
   }
   int count = needed;
@@ -1166,20 +1103,12 @@ void read_command_map() {
 
   if (size) {
     if ((mapptr = reinterpret_cast<kd_threadmap *>(malloc(size)))) {
-      int mib[6];
-
       bzero (mapptr, size);
       /*
        * Now read the threadmap
        */
-      mib[0] = CTL_KERN;
-      mib[1] = KERN_KDEBUG;
-      mib[2] = KERN_KDTHRMAP;
-      mib[3] = 0;
-      mib[4] = 0;
-      mib[5] = 0;   /* no flags */
-
-      if (sysctl(mib, 3, mapptr, &size, NULL, 0) < 0) {
+      static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDTHRMAP, 0, 0, 0 };
+      if (sysctl(name, 3, mapptr, &size, NULL, 0) < 0) {
         /*
          * This is not fatal -- just means I cant map command strings
          */
@@ -1294,22 +1223,16 @@ void argtopid(char *str) {
 
 /* TODO(peck): We don't need to track command names really */
 void init_arguments_buffer() {
-  int mib[2];
-  size_t size;
+  size_t size = sizeof(argmax);
 
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_ARGMAX;
-  size = sizeof(argmax);
-
-  if (sysctl(mib, 2, &argmax, &size, NULL, 0) == -1) {
+  static int name[] = { CTL_KERN, KERN_ARGMAX };
+  if (sysctl(name, 2, &argmax, &size, NULL, 0) == -1) {
     return;
   }
-#if 1
   /* Hack to avoid kernel bug. */
   if (argmax > 8192) {
     argmax = 8192;
   }
-#endif
   arguments = (char *)malloc(argmax);
 }
 
@@ -1320,7 +1243,6 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
    * Get command and arguments.
    */
   char *cp;
-  int mib[4];
   char *command_beg, *command, *command_end;
 
   if (cbuf == NULL) {
@@ -1337,12 +1259,8 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
    * A sysctl() is made to find out the full path that the command
    * was called with.
    */
-  mib[0] = CTL_KERN;
-  mib[1] = KERN_PROCARGS2;
-  mib[2] = pid;
-  mib[3] = 0;
-
-  if (sysctl(mib, 3, arguments, (size_t *)&argmax, NULL, 0) < 0) {
+  static int name[] = { CTL_KERN, KERN_PROCARGS2, pid, 0 };
+  if (sysctl(name, 3, arguments, (size_t *)&argmax, NULL, 0) < 0) {
     return 0;
   }
 
