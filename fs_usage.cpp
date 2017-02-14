@@ -104,11 +104,11 @@ struct lookup {
   uintptr_t pathname[NUMPARMS + 1]; /* add room for null terminator */
 };
 
-struct th_info {
-  th_info *next;
+struct event_info {
+  event_info *next;
   uintptr_t thread;
-  uintptr_t child_thread;
 
+  uintptr_t child_thread;
   int pid;
   int type;
   int arg1;
@@ -136,8 +136,8 @@ struct threadmap_entry {
 #define HASH_SIZE 1024
 #define HASH_MASK (HASH_SIZE - 1)
 
-th_info *th_info_hash[HASH_SIZE];
-th_info *th_info_freelist;
+event_info *event_info_hash[HASH_SIZE];
+event_info *event_info_freelist;
 
 std::unordered_map<uintptr_t, threadmap_entry> threadmap;
 
@@ -177,7 +177,7 @@ static constexpr int proc_exit = 0x4010004;
 
 extern "C" int reexec_to_match_kernel();
 
-void    format_print(th_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt, const char *);
+void    format_print(event_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt, const char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
 void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
 void    enter_illegal_event(uintptr_t thread, int type);
@@ -191,9 +191,9 @@ void    init_arguments_buffer();
 int     get_real_command_name(int, char *, int);
 
 void    delete_all_events();
-void    delete_event(th_info *);
-th_info *add_event(uintptr_t, int);
-th_info *find_event(uintptr_t, int);
+void    delete_event(event_info *);
+event_info *add_event(uintptr_t, int);
+event_info *find_event(uintptr_t, int);
 
 void    read_command_map();
 void    create_map_entry(uintptr_t, int, char *);
@@ -660,7 +660,7 @@ void sample_sc() {
     int type;
     int index;
     uintptr_t *sargptr;
-    th_info *ti;
+    event_info *ei;
 
 
     thread  = kd[i].arg5;
@@ -670,51 +670,51 @@ void sample_sc() {
     switch (type) {
     case TRACE_DATA_NEWTHREAD:
       if (kd[i].arg1) {
-        if ((ti = add_event(thread, TRACE_DATA_NEWTHREAD)) == NULL) {
+        if ((ei = add_event(thread, TRACE_DATA_NEWTHREAD)) == NULL) {
           continue;
         }
-        ti->child_thread = kd[i].arg1;
-        ti->pid = kd[i].arg2;
+        ei->child_thread = kd[i].arg1;
+        ei->pid = kd[i].arg2;
         /* TODO(peck): Removeme */
-        /* printf("newthread PID %d (thread = %d, child_thread = %d)\n", (int)ti->pid, (int)thread, ti->child_thread); */
+        /* printf("newthread PID %d (thread = %d, child_thread = %d)\n", (int)ei->pid, (int)thread, ei->child_thread); */
       }
       continue;
 
     case TRACE_STRING_NEWTHREAD:
-      if ((ti = find_event(thread, TRACE_DATA_NEWTHREAD)) == nullptr) {
+      if ((ei = find_event(thread, TRACE_DATA_NEWTHREAD)) == nullptr) {
         continue;
       }
 
-      create_map_entry(ti->child_thread, ti->pid, (char *)&kd[i].arg1);
+      create_map_entry(ei->child_thread, ei->pid, (char *)&kd[i].arg1);
 
-      delete_event(ti);
+      delete_event(ei);
       continue;
   
     case TRACE_DATA_EXEC:
-      if ((ti = add_event(thread, TRACE_DATA_EXEC)) == NULL) {
+      if ((ei = add_event(thread, TRACE_DATA_EXEC)) == NULL) {
         continue;
       }
 
-      ti->pid = kd[i].arg1;
+      ei->pid = kd[i].arg1;
       continue;
 
     case TRACE_STRING_EXEC:
-      if ((ti = find_event(thread, BSC_execve))) {
-        if (ti->lookups[0].pathname[0]) {
+      if ((ei = find_event(thread, BSC_execve))) {
+        if (ei->lookups[0].pathname[0]) {
           exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, Fmt::DEFAULT);
         }
-      } else if ((ti = find_event(thread, BSC_posix_spawn))) {
-        if (ti->lookups[0].pathname[0]) {
+      } else if ((ei = find_event(thread, BSC_posix_spawn))) {
+        if (ei->lookups[0].pathname[0]) {
           exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, Fmt::DEFAULT);
         }
       }
-      if ((ti = find_event(thread, TRACE_DATA_EXEC)) == nullptr) {
+      if ((ei = find_event(thread, TRACE_DATA_EXEC)) == nullptr) {
         continue;
       }
 
-      create_map_entry(thread, ti->pid, (char *)&kd[i].arg1);
+      create_map_entry(thread, ei->pid, (char *)&kd[i].arg1);
 
-      delete_event(ti);
+      delete_event(ei);
       continue;
 
     case BSC_thread_terminate:
@@ -748,24 +748,24 @@ void sample_sc() {
       }
 
     case VFS_LOOKUP:
-      if ((ti = find_event(thread, 0)) == nullptr) {
+      if ((ei = find_event(thread, 0)) == nullptr) {
         continue;
       }
 
       if (debugid & DBG_FUNC_START) {
 
-        if (ti->type == HFS_update) {
-          ti->pn_work_index = (MAX_PATHNAMES - 1);
+        if (ei->type == HFS_update) {
+          ei->pn_work_index = (MAX_PATHNAMES - 1);
         } else {
-          if (ti->pn_scall_index < MAX_SCALL_PATHNAMES) {
-            ti->pn_work_index = ti->pn_scall_index;
+          if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
+            ei->pn_work_index = ei->pn_scall_index;
           } else {
             continue;
           }
         }
-        sargptr = &ti->lookups[ti->pn_work_index].pathname[0];
+        sargptr = &ei->lookups[ei->pn_work_index].pathname[0];
 
-        ti->vnodeid = kd[i].arg1;
+        ei->vnodeid = kd[i].arg1;
 
         *sargptr++ = kd[i].arg2;
         *sargptr++ = kd[i].arg3;
@@ -775,9 +775,9 @@ void sample_sc() {
          */
         *sargptr = 0;
 
-        ti->pathptr = sargptr;
+        ei->pathptr = sargptr;
       } else {
-        sargptr = ti->pathptr;
+        sargptr = ei->pathptr;
 
         /*
          * We don't want to overrun our pathname buffer if the
@@ -789,7 +789,7 @@ void sample_sc() {
           continue;
         }
 
-        if ((uintptr_t)sargptr < (uintptr_t)&ti->lookups[ti->pn_work_index].pathname[NUMPARMS]) {
+        if ((uintptr_t)sargptr < (uintptr_t)&ei->lookups[ei->pn_work_index].pathname[NUMPARMS]) {
 
           *sargptr++ = kd[i].arg1;
           *sargptr++ = kd[i].arg2;
@@ -803,21 +803,21 @@ void sample_sc() {
       }
       if (debugid & DBG_FUNC_END) {
 
-        vn_name_map[ti->vnodeid] =
-            reinterpret_cast<const char *>(&ti->lookups[ti->pn_work_index].pathname[0]);
+        vn_name_map[ei->vnodeid] =
+            reinterpret_cast<const char *>(&ei->lookups[ei->pn_work_index].pathname[0]);
 
-        if (ti->pn_work_index == ti->pn_scall_index) {
+        if (ei->pn_work_index == ei->pn_scall_index) {
 
-          ti->pn_scall_index++;
+          ei->pn_scall_index++;
 
-          if (ti->pn_scall_index < MAX_SCALL_PATHNAMES) {
-            ti->pathptr = &ti->lookups[ti->pn_scall_index].pathname[0];
+          if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
+            ei->pathptr = &ei->lookups[ei->pn_scall_index].pathname[0];
           } else {
-            ti->pathptr = 0;
+            ei->pathptr = 0;
           }
         }
       } else {
-        ti->pathptr = sargptr;
+        ei->pathptr = sargptr;
       }
 
       continue;
@@ -848,8 +848,8 @@ void sample_sc() {
     case MACH_pageout:
     case MACH_vmfault:
       /* TODO(peck): what about deleting all of the events? */
-      if ((ti = find_event(thread, type))) {
-        delete_event(ti);
+      if ((ei = find_event(thread, type))) {
+        delete_event(ei);
       }
       continue;
 
@@ -878,18 +878,18 @@ void sample_sc() {
 
 
 void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
-  th_info *ti;
+  event_info *ei;
   char buf[MAXWIDTH];
   buf[0] = 0;
 
-  if ((ti = add_event(thread, type)) == NULL) {
+  if ((ei = add_event(thread, type)) == NULL) {
     return;
   }
 
-  ti->arg1 = kd->arg1;
-  ti->arg2 = kd->arg2;
-  ti->arg3 = kd->arg3;
-  ti->arg4 = kd->arg4;
+  ei->arg1 = kd->arg1;
+  ei->arg2 = kd->arg2;
+  ei->arg3 = kd->arg3;
+  ei->arg4 = kd->arg4;
 }
 
 
@@ -933,14 +933,14 @@ void exit_event(
     uintptr_t arg3,
     uintptr_t arg4,
     Fmt format) {
-  th_info *ti;
+  event_info *ei;
       
-  if ((ti = find_event(thread, type)) == nullptr) {
+  if ((ei = find_event(thread, type)) == nullptr) {
     return;
   }
 
-  format_print(ti, sc_name, thread, type, arg1, arg2, arg3, arg4, format, (char *)&ti->lookups[0].pathname[0]);
-  delete_event(ti);
+  format_print(ei, sc_name, thread, type, arg1, arg2, arg3, arg4, format, (char *)&ei->lookups[0].pathname[0]);
+  delete_event(ei);
 }
 
 
@@ -964,7 +964,7 @@ int clip_64bit(const char *s, uint64_t value) {
 
 
 void format_print(
-    th_info *ti,
+    event_info *ei,
     const char *sc_name,
     uintptr_t thread,
     int type,
@@ -1042,7 +1042,7 @@ void format_print(
      * ftruncate, truncate
      */
     if (format == Fmt::FTRUNC) {
-      printf(" F=%-3d", ti->arg1);
+      printf(" F=%-3d", ei->arg1);
     } else {
       printf("      ");
     }
@@ -1052,9 +1052,9 @@ void format_print(
     }
 
 #ifdef __ppc__
-    offset_reassembled = (((off_t)(unsigned int)(ti->arg2)) << 32) | (unsigned int)(ti->arg3);
+    offset_reassembled = (((off_t)(unsigned int)(ei->arg2)) << 32) | (unsigned int)(ei->arg3);
 #else
-    offset_reassembled = (((off_t)(unsigned int)(ti->arg3)) << 32) | (unsigned int)(ti->arg2);
+    offset_reassembled = (((off_t)(unsigned int)(ei->arg3)) << 32) | (unsigned int)(ei->arg2);
 #endif
     clip_64bit("  O=", offset_reassembled);
 
@@ -1069,9 +1069,9 @@ void format_print(
 
     if (format == Fmt::FCHFLAGS) {
       if (arg1) {
-        printf(" F=%-3d[%3lu]", ti->arg1, arg1);
+        printf(" F=%-3d[%3lu]", ei->arg1, arg1);
       } else {
-        printf(" F=%-3d", ti->arg1);
+        printf(" F=%-3d", ei->arg1);
       }
     } else {
       if (arg1) {
@@ -1093,9 +1093,9 @@ void format_print(
      */
     if (format == Fmt::FCHMOD || format == Fmt::FCHMOD_EXT) {
       if (arg1) {
-        printf(" F=%-3d[%3lu] ", ti->arg1, arg1);
+        printf(" F=%-3d[%3lu] ", ei->arg1, arg1);
       } else {
-        printf(" F=%-3d ", ti->arg1);
+        printf(" F=%-3d ", ei->arg1);
       }
     } else {
       if (arg1) {
@@ -1118,16 +1118,16 @@ void format_print(
     memset(mode, '_', 4);
     mode[4] = '\0';
 
-    if (ti->arg2 & R_OK) {
+    if (ei->arg2 & R_OK) {
       mode[0] = 'R';
     }
-    if (ti->arg2 & W_OK) {
+    if (ei->arg2 & W_OK) {
       mode[1] = 'W';
     }
-    if (ti->arg2 & X_OK) {
+    if (ei->arg2 & X_OK) {
       mode[2] = 'X';
     }
-    if (ti->arg2 == F_OK) {
+    if (ei->arg2 == F_OK) {
       mode[3] = 'F';
     }
 
@@ -1151,28 +1151,28 @@ void format_print(
     memset(mode, '_', 6);
     mode[6] = '\0';
 
-    if (ti->arg2 & O_RDWR) {
+    if (ei->arg2 & O_RDWR) {
       mode[0] = 'R';
       mode[1] = 'W';
-    } else if (ti->arg2 & O_WRONLY) {
+    } else if (ei->arg2 & O_WRONLY) {
       mode[1] = 'W';
     } else {
       mode[0] = 'R';
     }
 
-    if (ti->arg2 & O_CREAT) {
+    if (ei->arg2 & O_CREAT) {
       mode[2] = 'C';
     }
 
-    if (ti->arg2 & O_APPEND) {
+    if (ei->arg2 & O_APPEND) {
       mode[3] = 'A';
     }
 
-    if (ti->arg2 & O_TRUNC) {
+    if (ei->arg2 & O_TRUNC) {
       mode[4] = 'T';
     }
 
-    if (ti->arg2 & O_EXCL) {
+    if (ei->arg2 & O_EXCL) {
       mode[5] = 'E';
     }
 
@@ -1198,10 +1198,10 @@ void format_print(
     case Fmt::AT:
     case Fmt::OPENAT:
     case Fmt::CHMODAT:
-      sprintf(&buf[0], " [%d]/%s ", ti->arg1, pathname);
+      sprintf(&buf[0], " [%d]/%s ", ei->arg1, pathname);
       break;
     case Fmt::RENAMEAT:
-      sprintf(&buf[0], " [%d]/%s ", ti->arg3, pathname);
+      sprintf(&buf[0], " [%d]/%s ", ei->arg3, pathname);
       break;
     default:
       sprintf(&buf[0], " %s ", pathname);
@@ -1214,71 +1214,71 @@ void format_print(
 }
 
 
-void delete_event(th_info *ti_to_delete) {
-  th_info *ti;
-  th_info *ti_prev;
+void delete_event(event_info *ei_to_delete) {
+  event_info *ei;
+  event_info *ei_prev;
 
-  int hashid = ti_to_delete->thread & HASH_MASK;
+  int hashid = ei_to_delete->thread & HASH_MASK;
 
-  if ((ti = th_info_hash[hashid])) {
-    if (ti == ti_to_delete) {
-      th_info_hash[hashid] = ti->next;
+  if ((ei = event_info_hash[hashid])) {
+    if (ei == ei_to_delete) {
+      event_info_hash[hashid] = ei->next;
     } else {
-      ti_prev = ti;
+      ei_prev = ei;
 
-      for (ti = ti->next; ti; ti = ti->next) {
-        if (ti == ti_to_delete) {
-          ti_prev->next = ti->next;
+      for (ei = ei->next; ei; ei = ei->next) {
+        if (ei == ei_to_delete) {
+          ei_prev->next = ei->next;
           break;
         }
-        ti_prev = ti;
+        ei_prev = ei;
       }
     }
-    if (ti) {
-      ti->next = th_info_freelist;
-      th_info_freelist = ti;
+    if (ei) {
+      ei->next = event_info_freelist;
+      event_info_freelist = ei;
     }
   }
 }
 
-th_info *add_event(uintptr_t thread, int type) {
-  th_info *ti;
+event_info *add_event(uintptr_t thread, int type) {
+  event_info *ei;
 
-  if ((ti = th_info_freelist)) {
-    th_info_freelist = ti->next;
+  if ((ei = event_info_freelist)) {
+    event_info_freelist = ei->next;
   } else {
-    ti = reinterpret_cast<th_info *>(malloc(sizeof(th_info)));
+    ei = reinterpret_cast<event_info *>(malloc(sizeof(event_info)));
   }
 
   int hashid = thread & HASH_MASK;
 
-  ti->next = th_info_hash[hashid];
-  th_info_hash[hashid] = ti;
+  ei->next = event_info_hash[hashid];
+  event_info_hash[hashid] = ei;
 
-  ti->thread = thread;
-  ti->type = type;
+  ei->thread = thread;
+  ei->type = type;
 
-  ti->pathptr = &ti->lookups[0].pathname[0];
-  ti->pn_scall_index = 0;
-  ti->pn_work_index = 0;
+  ei->pathptr = &ei->lookups[0].pathname[0];
+  ei->pn_scall_index = 0;
+  ei->pn_work_index = 0;
 
   for (int i = 0; i < MAX_PATHNAMES; i++) {
-    ti->lookups[i].pathname[0] = 0;
+    ei->lookups[i].pathname[0] = 0;
   }
 
-  return ti;
+  return ei;
 }
 
-th_info *find_event(uintptr_t thread, int type) {
+event_info *find_event(uintptr_t thread, int type) {
   int hashid = thread & HASH_MASK;
 
-  for (th_info *ti = th_info_hash[hashid]; ti; ti = ti->next) {
-    if (ti->thread == thread) {
-      if (type == ti->type) {
-        return ti;
+  for (event_info *ei = event_info_hash[hashid]; ei; ei = ei->next) {
+    if (ei->thread == thread) {
+      if (type == ei->type) {
+        return ei;
       }
       if (type == 0) {
-        return ti;
+        return ei;
       }
     }
   }
@@ -1286,15 +1286,15 @@ th_info *find_event(uintptr_t thread, int type) {
 }
 
 void delete_all_events() {
-  th_info *ti_next = nullptr;
+  event_info *ei_next = nullptr;
 
   for (int i = 0; i < HASH_SIZE; i++) {
-    for (th_info *ti = th_info_hash[i]; ti; ti = ti_next) {
-      ti_next = ti->next;
-      ti->next = th_info_freelist;
-      th_info_freelist = ti;
+    for (event_info *ei = event_info_hash[i]; ei; ei = ei_next) {
+      ei_next = ei->next;
+      ei->next = event_info_freelist;
+      event_info_freelist = ei;
     }
-    th_info_hash[i] = 0;
+    event_info_hash[i] = 0;
   }
 }
 
