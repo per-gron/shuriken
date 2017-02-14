@@ -179,15 +179,14 @@ class event_info_map {
   }
 
   iterator find(uintptr_t thread, int type) {
-    if (type == 0) {
-      auto it = _last_event_map.find(thread);
-      if (it == _last_event_map.end()) {
-        return end();
-      }
-      return _map.find(std::make_pair(thread, it->second));
-    } else {
-      return _map.find(std::make_pair(thread, type));
-    }
+    return _map.find(std::make_pair(thread, type));
+  }
+
+  iterator find_last(uintptr_t thread) {
+    auto it = _last_event_map.find(thread);
+    return it == _last_event_map.end() ?
+        end() :
+        _map.find(std::make_pair(thread, it->second));
   }
 
   iterator end() {
@@ -805,7 +804,7 @@ void sample_sc() {
 
     case VFS_LOOKUP:
       {
-        auto ei_it = ei_map.find(thread, 0);
+        auto ei_it = ei_map.find_last(thread);
         if (ei_it == ei_map.end()) {
           continue;
         }
