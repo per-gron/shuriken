@@ -183,3 +183,15 @@ static constexpr int BSC_mmap_extended2 = 0x040f0314;
 
 static constexpr int FILEMGR_CLASS = 0x1e;
 static constexpr int FILEMGR_BASE = 0x1e000000;
+
+static constexpr int MACH_vmfault = 0x01300008;
+static constexpr int MACH_pageout = 0x01300004;
+static constexpr int VFS_ALIAS_VP = 0x03010094;
+
+static constexpr int BSC_thread_terminate = 0x040c05a4;
+
+static constexpr int HFS_update = 0x3018000;
+
+static constexpr int Throttled = 0x3010184;
+static constexpr int SPEC_unmap_info = 0x3060004;
+static constexpr int proc_exit = 0x4010004;

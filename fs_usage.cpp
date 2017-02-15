@@ -219,22 +219,6 @@ int argmax = 0;
 #define USLEEP_MAX 32
 int usleep_ms = USLEEP_MIN;
 
-#define NFS_DEV -1
-#define CS_DEV -2
-
-static constexpr int MACH_vmfault = 0x01300008;
-static constexpr int MACH_pageout = 0x01300004;
-static constexpr int VFS_ALIAS_VP = 0x03010094;
-
-static constexpr int BSC_thread_terminate = 0x040c05a4;
-
-static constexpr int HFS_update = 0x3018000;
-static constexpr int HFS_modify_block_end = 0x3018004;
-
-static constexpr int Throttled = 0x3010184;
-static constexpr int SPEC_unmap_info = 0x3060004;
-static constexpr int proc_exit = 0x4010004;
-
 extern "C" int reexec_to_match_kernel();
 
 void    format_print(event_info *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &, const char *);
