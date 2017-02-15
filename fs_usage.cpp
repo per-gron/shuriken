@@ -285,6 +285,16 @@ int quit(const char *s) {
   exit(1);
 }
 
+int get_num_cpus() {
+  int num_cpus;
+  size_t len = sizeof(num_cpus);
+  static int name[] = { CTL_HW, HW_NCPU, 0 };
+  if (sysctl(name, 2, &num_cpus, &len, NULL, 0) < 0) {
+    quit("failed to get number of CPUs\n");
+  }
+  return num_cpus;
+}
+
 int main(int argc, char *argv[]) {
   const char *myname = "fs_usage";
 
@@ -323,14 +333,9 @@ int main(int argc, char *argv[]) {
     signal(SIGHUP, leave);
   }
   signal(SIGTERM, leave);
-  // grab the number of cpus
-  int num_cpus;
-  size_t len = sizeof(num_cpus);
-  static int name[] = { CTL_HW, HW_NCPU, 0 };
-  sysctl(name, 2, &num_cpus, &len, NULL, 0);
-  num_events = EVENT_BASE * num_cpus;
+  num_events = EVENT_BASE * get_num_cpus();
 
-  if ((my_buffer = reinterpret_cast<char *>(malloc(num_events * sizeof(kd_buf)))) == (char *)0) {
+  if ((my_buffer = reinterpret_cast<char *>(malloc(num_events * sizeof(kd_buf)))) == nullptr) {
     quit("can't allocate memory for tracing info\n");
   }
 
