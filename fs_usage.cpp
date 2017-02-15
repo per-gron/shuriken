@@ -237,11 +237,11 @@ static constexpr int proc_exit = 0x4010004;
 
 extern "C" int reexec_to_match_kernel();
 
-void    format_print(event_info *, const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt, const char *);
+void    format_print(event_info *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &, const char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
 void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
 void    enter_illegal_event(uintptr_t thread, int type);
-void    exit_event(const char *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, Fmt);
+void    exit_event(uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &);
 
 void    fs_usage_fd_set(uintptr_t, unsigned int);
 int     fs_usage_fd_isset(uintptr_t, unsigned int);
@@ -694,11 +694,11 @@ void sample_sc() {
         auto ei_it = ei_map.find(thread, BSC_execve);
         if (ei_it != ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
-            exit_event("execve", thread, BSC_execve, 0, 0, 0, 0, Fmt::DEFAULT);
+            exit_event(thread, BSC_execve, 0, 0, 0, 0, bsd_syscalls[BSC_INDEX(BSC_execve)]);
           }
         } else if ((ei_it = ei_map.find(thread, BSC_posix_spawn)) != ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
-            exit_event("posix_spawn", thread, BSC_posix_spawn, 0, 0, 0, 0, Fmt::DEFAULT);
+            exit_event(thread, BSC_posix_spawn, 0, 0, 0, 0, bsd_syscalls[BSC_INDEX(BSC_execve)]);
           }
         }
         ei_it = ei_map.find(thread, TRACE_DATA_EXEC);
@@ -830,16 +830,30 @@ void sample_sc() {
 
     switch (type) {
     case Throttled:
-       exit_event("  THROTTLED", thread, type, 0, 0, 0, 0, Fmt::DEFAULT);
-       continue;
+      {
+        static bsd_syscall syscall;
+        syscall.name = "  THROTTLED";
+        exit_event(thread, type, 0, 0, 0, 0, syscall);
+        continue;
+      }
 
     case HFS_update:
-       exit_event("  HFS_update", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, Fmt::HFS_update);
-       continue;
+      {
+        static bsd_syscall syscall;
+        syscall.name = "  HFS_update";
+        syscall.format = Fmt::HFS_update;
+        exit_event(thread, type, kd[i].arg1, kd[i].arg2, 0, 0, syscall);
+        continue;
+      }
 
     case SPEC_unmap_info:
-     format_print(NULL, "  TrimExtent", thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, Fmt::UNMAP_INFO, nullptr);
-     continue;
+      {
+        // TODO(peck): Is this ignored code?
+        static bsd_syscall syscall;
+        syscall.name = "  TrimExtent";
+        format_print(NULL, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, syscall, nullptr);
+        continue;
+      }
 
     case MACH_pageout:
     case MACH_vmfault:
@@ -852,8 +866,13 @@ void sample_sc() {
       }
 
     case MSC_map_fd:
-      exit_event("map_fd", thread, type, kd[i].arg1, kd[i].arg2, 0, 0, Fmt::FD);
-      continue;
+      {
+        // TODO(peck): Is this ignored code?
+        static bsd_syscall syscall;
+        syscall.name = "map_fd";
+        exit_event(thread, type, kd[i].arg1, kd[i].arg2, 0, 0, syscall);
+        continue;
+      }
     }
 
     if ((type & CSC_MASK) == BSC_BASE) {
@@ -861,9 +880,8 @@ void sample_sc() {
         continue;
       }
 
-      if (bsd_syscalls[index].sc_name) {
-        exit_event(bsd_syscalls[index].sc_name, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4,
-             bsd_syscalls[index].sc_format);
+      if (bsd_syscalls[index].name) {
+        exit_event(thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, bsd_syscalls[index]);
 
         if (type == BSC_exit) {
           threadmap.erase(thread);
@@ -902,7 +920,7 @@ void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
       return;
     }
 
-    if (bsd_syscalls[index].sc_name) {
+    if (bsd_syscalls[index].name) {
       enter_event_now(thread, type, kd, name);
     }
     return;
@@ -918,35 +936,33 @@ void enter_illegal_event(uintptr_t thread, int type) {
 
 
 void exit_event(
-    const char *sc_name,
     uintptr_t thread,
     int type,
     uintptr_t arg1,
     uintptr_t arg2,
     uintptr_t arg3,
     uintptr_t arg4,
-    Fmt format) {
+    const bsd_syscall &syscall) {
   auto ei_it = ei_map.find(thread, type);
   if (ei_it == ei_map.end()) {
     return;
   }
 
   auto *ei = &ei_it->second;
-  format_print(ei, sc_name, thread, type, arg1, arg2, arg3, arg4, format, (char *)&ei->lookups[0].pathname[0]);
+  format_print(ei, thread, type, arg1, arg2, arg3, arg4, syscall, (char *)&ei->lookups[0].pathname[0]);
   ei_map.erase(ei_it);
 }
 
 
 void format_print(
     event_info *ei,
-    const char *sc_name,
     uintptr_t thread,
     int type,
     uintptr_t arg1,
     uintptr_t arg2,
     uintptr_t arg3,
     uintptr_t arg4,
-    Fmt format,
+    const bsd_syscall &syscall,
     const char *pathname /* nullable */) {
   char buf[MAXWIDTH];
 
@@ -956,24 +972,13 @@ void format_print(
   const char *command_name = tme_it == threadmap.end() ?
       "" : tme_it->second.tm_command;
 
-  printf("  %-17.17s", sc_name);
+  printf("  %-17.17s", syscall.name);
 
   off_t offset_reassembled = 0LL;
 
-  switch (format) {
-  case Fmt::AT:
-  case Fmt::RENAMEAT:
-  case Fmt::DEFAULT:
-    /*
-     * pathname based system calls or
-     * calls with no fd or pathname (i.e.  sync)
-     */
-    if (arg1)
-      printf("      [%3lu]       ", arg1);
-    else
-      printf("                  ");
+  switch (syscall.format) {
+  case Fmt::IGNORE:
     break;
-
 
   case Fmt::HFS_update:
   {
@@ -1010,7 +1015,6 @@ void format_print(
     break;
   }
 
-  case Fmt::OPENAT:
   case Fmt::OPEN:
   {
     /*
@@ -1055,35 +1059,63 @@ void format_print(
     break;
   }
 
-  case Fmt::ACCESS:
-  case Fmt::FD:
-  case Fmt::FD_2:  // accept, dup, dup2
-  case Fmt::FD_IO:  // system calls with fd's that return an I/O completion count
-  case Fmt::UNMAP_INFO:
-  case Fmt::TRUNC:
-  case Fmt::FTRUNC:
-  case Fmt::FCHFLAGS:
-  case Fmt::CHFLAGS:
-  case Fmt::FCHMOD:
-  case Fmt::FCHMOD_EXT:
-  case Fmt::CHMOD:
-  case Fmt::CHMOD_EXT:
-  case Fmt::CHMODAT:
-    printf("TODO: Not handled");
+  case Fmt::CREATE:
+    printf("create");
+    break;
+
+  case Fmt::DELETE:
+    printf("delete");
+    break;
+
+  case Fmt::READ_CONTENTS:
+    printf("read_contents");
+    break;
+
+  case Fmt::WRITE_CONTENTS:
+    printf("write_contents");
+    break;
+
+  case Fmt::READ_METADATA:
+  case Fmt::FD_READ_METADATA:
+    printf("read_metadata");
+    break;
+
+  case Fmt::WRITE_METADATA:
+  case Fmt::FD_WRITE_METADATA:
+    printf("write_metadata");
+    break;
+
+  case Fmt::CREATE_DIR:
+    printf("create_dir");
+    break;
+
+  case Fmt::DELETE_DIR:
+    printf("delete_dir");
+    break;
+
+  case Fmt::READ_DIR:
+  case Fmt::FD_READ_DIR:
+    printf("read_dir");
+    break;
+
+  case Fmt::EXCHANGE:
+    printf("exchange");
+    break;
+
+  case Fmt::RENAME:
+    printf("rename");
+    break;
+
+  case Fmt::ILLEGAL:
+    printf("[[ILLEGAL]]");
     break;
   }
 
   if (pathname) {
-    switch(format) {
-    case Fmt::AT:
-    case Fmt::OPENAT:
-    case Fmt::CHMODAT:
-      sprintf(&buf[0], " [%d]/%s ", ei->arg1, pathname);
-      break;
-    case Fmt::RENAMEAT:
-      sprintf(&buf[0], " [%d]/%s ", ei->arg3, pathname);
-      break;
-    default:
+    if (syscall.at == SyscallAt::YES) {
+      int at = syscall.format == Fmt::RENAME ? ei->arg3 : ei->arg1;
+      sprintf(&buf[0], " [%d]/%s ", at, pathname);
+    } else {
       sprintf(&buf[0], " %s ", pathname);
     }
   }
