@@ -181,10 +181,6 @@ event_info_map ei_map;
 
 int need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
 
-int one_good_pid = 0;    /* Used to fail gracefully when bad pids given */
-int select_pid_mode = 0;  /* Flag set indicates that output is restricted
-            to selected pids or commands */
-
 char *arguments = 0;
 int argmax = 0;
 
@@ -212,7 +208,6 @@ int     get_real_command_name(int, char *, int);
 void    read_command_map();
 void    create_map_entry(uintptr_t, int, char *);
 
-void    argtopid(char *str);
 void    set_remove();
 void    set_pidcheck(int pid, int on_off);
 void    set_pidexclude(int pid, int on_off);
@@ -220,10 +215,7 @@ int     quit(const char *s);
 
 static const auto bsd_syscalls = make_bsd_syscall_table();
 
-std::vector<int> pids;
-
-int exclude_pids = 0;
-
+std::vector<int> excluded_pids;
 
 #define EVENT_BASE 60000
 
@@ -263,14 +255,8 @@ void leave(int sig) {      /* exit under normal conditions -- INT handler */
 
   set_enable(0);
 
-  if (exclude_pids == 0) {
-    for (int pid : pids) {
-      set_pidcheck(pid, 0);
-    }
-  } else {
-    for (int pid : pids) {
-      set_pidexclude(pid, 0);
-    }
+  for (int pid : excluded_pids) {
+    set_pidexclude(pid, 0);
   }
   set_remove();
 
@@ -299,17 +285,6 @@ int quit(const char *s) {
   exit(1);
 }
 
-int exit_usage(const char *myname) {
-  fprintf(stderr, "Usage: %s [-e] [pid [pid] ...]\n", myname);
-  fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
-  fprintf(stderr, "        and exclude fs_usage by default\n");
-  fprintf(stderr, "  pid   selects process(s) to sample\n");
-
-  exit(1);
-}
-
-
-
 int main(int argc, char *argv[]) {
   const char *myname = "fs_usage";
 
@@ -326,16 +301,6 @@ int main(int argc, char *argv[]) {
     }
   }
   
-  for (char ch; (ch = getopt(argc, argv, "e")) != EOF;) {
-    switch(ch) {
-      case 'e':
-        exclude_pids = 1;
-        break;
-
-    default:
-      exit_usage(myname);     
-    }
-  }
   if (geteuid() != 0) {
     fprintf(stderr, "'fs_usage' must be run as root...\n");
     exit(1);
@@ -343,24 +308,15 @@ int main(int argc, char *argv[]) {
   argc -= optind;
   argv += optind;
 
-  // when excluding, fs_usage should be the first in line for pids
-  if (exclude_pids || (!exclude_pids && argc == 0)) {
-    pids.push_back(getpid());
-  }
-
-  while (argc > 0) {
-    select_pid_mode++;
-    argtopid(argv[0]);
-    argc--;
-    argv++;
-  }
+  // Don't listen to this process
+  excluded_pids.push_back(getpid());  // TODO(peck): Move this somewhere else.
 
   /* set up signal handlers */
   signal(SIGINT, leave);
   signal(SIGQUIT, leave);
   signal(SIGPIPE, leave);
 
-  sigaction osa;
+  struct sigaction osa;
   sigaction(SIGHUP, (struct sigaction *)NULL, &osa);
 
   if (osa.sa_handler == SIG_DFL) {
@@ -382,20 +338,8 @@ int main(int argc, char *argv[]) {
   set_numbufs(num_events);
   set_init();
 
-  if (exclude_pids == 0) {
-    for (int pid : pids) {
-      set_pidcheck(pid, 1);
-    }
-  } else {
-    for (int pid : pids) {
-      set_pidexclude(pid, 1);
-    }
-  }
-  if (select_pid_mode && !one_good_pid) {
-    // An attempt to restrict output to a given pid or command has failed. Exit
-    // gracefully.
-    set_remove();
-    exit_usage(myname);
+  for (int pid : excluded_pids) {
+    set_pidexclude(pid, 1);
   }
 
   set_filter();
@@ -405,6 +349,19 @@ int main(int argc, char *argv[]) {
   for (;;) {
     usleep(1000 * usleep_ms);
     sample_sc();
+  }
+}
+
+void set_enable(int val) {
+  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDENABLE, val, 0, 0 };
+  if (sysctl(name, 4, NULL, &needed, NULL, 0) < 0) {
+    quit("trace facility failure, KERN_KDENABLE\n");
+  }
+
+  if (val) {
+    trace_enabled = 1;
+  } else {
+    trace_enabled = 0;
   }
 }
 
@@ -464,8 +421,6 @@ void set_pidcheck(int pid, int on_off) {
     if (on_off == 1) {
       fprintf(stderr, "pid %d does not exist\n", pid);
     }
-  } else {
-    one_good_pid++;
   }
 }
 
@@ -475,8 +430,6 @@ void set_pidcheck(int pid, int on_off) {
  */
 void set_pidexclude(int pid, int on_off) {
   kd_regtype kr;
-
-  one_good_pid++;
 
   kr.type = KDBG_TYPENONE;
   kr.value1 = pid;
@@ -1162,15 +1115,6 @@ void fs_usage_fd_clear(uintptr_t thread, unsigned int fd) {
       tme.tm_setptr[fd/FS_USAGE_NFDBITS] &= ~(1 << (fd % FS_USAGE_NFDBITS));
     }
   }
-}
-
-
-
-void argtopid(char *str) {
-  char *cp;
-  int ret = (int)strtol(str, &cp, 10);
-
-  pids.push_back(ret);
 }
 
 /*
