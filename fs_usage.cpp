@@ -226,7 +226,7 @@ int num_events = EVENT_BASE;
 #define DBG_FUNC_MASK 0xfffffffc
 
 size_t needed;
-char *my_buffer;
+std::vector<kd_buf> my_buffer;
 
 kbufinfo_t bufinfo = {0, 0, 0, 0, 0};
 
@@ -335,9 +335,7 @@ int main(int argc, char *argv[]) {
   signal(SIGTERM, leave);
   num_events = EVENT_BASE * get_num_cpus();
 
-  if ((my_buffer = reinterpret_cast<char *>(malloc(num_events * sizeof(kd_buf)))) == nullptr) {
-    quit("can't allocate memory for tracing info\n");
-  }
+  my_buffer.resize(num_events);
 
   set_remove();
   set_numbufs(num_events);
@@ -501,7 +499,7 @@ void sample_sc() {
   size_t needed = bufinfo.nkdbufs * sizeof(kd_buf);
 
   static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDREADTR, 0, 0, 0 };
-  if (sysctl(name, 3, my_buffer, &needed, NULL, 0) < 0) {
+  if (sysctl(name, 3, my_buffer.data(), &needed, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDREADTR\n");
   }
   int count = needed;
@@ -529,7 +527,7 @@ void sample_sc() {
     set_enable(0);
     set_enable(1);
   }
-  kd_buf *kd = (kd_buf *)my_buffer;
+  kd_buf *kd = my_buffer.data();
 
   for (int i = 0; i < count; i++) {
     uint32_t debugid;
