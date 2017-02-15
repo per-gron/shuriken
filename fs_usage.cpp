@@ -70,34 +70,10 @@ clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/Priv
 #include "syscall_constants.h"
 #include "syscall_tables.h"
 
-
-#define F_OPENFROM      56              /* SPI: open a file relative to fd (must be a dir) */
-#define F_UNLINKFROM    57              /* SPI: open a file relative to fd (must be a dir) */
-#define F_CHECK_OPENEVT 58              /* SPI: if a process is marked OPENEVT, or in O_EVTONLY on opens of this vnode */
-
-#define MAXINDEX 2048
-
-#define TEXT_R    0
-#define DATA_R    1
-#define OBJC_R    2
-#define IMPORT_R  3
-#define UNICODE_R 4
-#define IMAGE_R   5
-#define LINKEDIT_R  6
-
-/* 
- * MAXCOLS controls when extra data kicks in.
- * MAX_WIDE_MODE_COLS controls -w mode to get even wider data in path.
- * If NUMPARMS changes to match the kernel, it will automatically
- * get reflected in the -w mode output.
- */
 #define NUMPARMS 23
 #define PATHLENGTH (NUMPARMS*sizeof(uintptr_t))
 
-#define MAX_WIDE_MODE_COLS (PATHLENGTH + 80)
-#define MAXWIDTH MAX_WIDE_MODE_COLS + 64
-
-#define MAX_PATHNAMES   3
+#define MAX_PATHNAMES 3
 #define MAX_SCALL_PATHNAMES 2
 
 struct lookup {
@@ -157,7 +133,6 @@ class event_info_map {
   void clear() {
     _map.clear();
     _last_event_map.clear();
-
   }
 
   void erase(iterator iter) {
@@ -265,8 +240,7 @@ kbufinfo_t bufinfo = {0, 0, 0, 0, 0};
 
 
 /* defines for tracking file descriptor state */
-#define FS_USAGE_FD_SETSIZE 256   /* Initial number of file descriptors per
-             thread that we will track */
+#define FS_USAGE_FD_SETSIZE 256  // Initial number of file descriptors per thread that we will track
 
 #define FS_USAGE_NFDBITS      (sizeof (unsigned long) * 8)
 #define FS_USAGE_NFDBYTES(n)  (((n) / FS_USAGE_NFDBITS) * sizeof (unsigned long))
@@ -948,7 +922,7 @@ void format_print(
     uintptr_t arg4,
     const bsd_syscall &syscall,
     const char *pathname /* nullable */) {
-  char buf[MAXWIDTH];
+  char buf[(PATHLENGTH + 80) + 64];
 
   threadmap_entry *tme;
 
