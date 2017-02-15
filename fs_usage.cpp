@@ -69,6 +69,7 @@ clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/Priv
 
 #include "syscall_constants.h"
 #include "syscall_tables.h"
+#include "sysctl_helpers.h"
 
 #define NUMPARMS 23
 #define PATHLENGTH (NUMPARMS*sizeof(uintptr_t))
@@ -240,8 +241,6 @@ kbufinfo_t bufinfo = {0, 0, 0, 0, 0};
 int trace_enabled = 0;
 int set_remove_flag = 1;
 
-void set_numbufs(int nbufs);
-void set_filter();
 void set_init();
 void set_enable(int val);
 void sample_sc();
@@ -283,16 +282,6 @@ int quit(const char *s) {
   }
 
   exit(1);
-}
-
-int get_num_cpus() {
-  int num_cpus;
-  size_t len = sizeof(num_cpus);
-  static int name[] = { CTL_HW, HW_NCPU, 0 };
-  if (sysctl(name, 2, &num_cpus, &len, NULL, 0) < 0) {
-    quit("failed to get number of CPUs\n");
-  }
-  return num_cpus;
 }
 
 int main(int argc, char *argv[]) {
@@ -338,14 +327,14 @@ int main(int argc, char *argv[]) {
   my_buffer.resize(num_events);
 
   set_remove();
-  set_numbufs(num_events);
+  set_kdebug_numbufs(num_events);
   set_init();
 
   for (int pid : excluded_pids) {
     set_pidexclude(pid, 1);
   }
 
-  set_filter();
+  set_kdebug_filter();
   set_enable(1);
   init_arguments_buffer();
 
@@ -365,49 +354,6 @@ void set_enable(int val) {
     trace_enabled = 1;
   } else {
     trace_enabled = 0;
-  }
-}
-
-void set_numbufs(int nbufs) {
-  static int name_1[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETBUF, nbufs, 0, 0 };
-  if (sysctl(name_1, 4, NULL, &needed, NULL, 0) < 0) {
-    quit("trace facility failure, KERN_KDSETBUF\n");
-  }
-
-  static int name_2[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETUP, 0, 0, 0 };
-  if (sysctl(name_2, 3, NULL, &needed, NULL, 0) < 0) {
-    quit("trace facility failure, KERN_KDSETUP\n");
-  }
-}
-
-#define ENCODE_CSC_LOW(klass, subclass) \
-  ( (uint16_t) ( ((klass) & 0xff) << 8 ) | ((subclass) & 0xff) )
-
-void set_filter() {
-  uint8_t type_filter_bitmap[KDBG_TYPEFILTER_BITMAP_SIZE];
-  bzero(type_filter_bitmap, sizeof(type_filter_bitmap));
-
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_TRACE,DBG_TRACE_DATA));
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_TRACE,DBG_TRACE_STRING));
-
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_MACH,DBG_MACH_EXCP_SC)); //0x010c
-
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_FSRW)); //0x0301
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_FSYSTEM,DBG_BOOTCACHE)); //0x0307
-
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_BSD,DBG_BSD_EXCP_SC)); //0x040c
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_BSD,DBG_BSD_PROC)); //0x0401
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_BSD,DBG_BSD_SC_EXTENDED_INFO)); //0x040e
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(DBG_BSD,DBG_BSD_SC_EXTENDED_INFO2)); //0x040f
-
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(FILEMGR_CLASS, 0)); //Carbon File Manager
-  setbit(type_filter_bitmap, ENCODE_CSC_LOW(FILEMGR_CLASS, 1)); //Carbon File Manager
-
-  errno = 0;
-  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSET_TYPEFILTER };
-  size_t needed = KDBG_TYPEFILTER_BITMAP_SIZE;
-  if(sysctl(name, 3, type_filter_bitmap, &needed, NULL, 0)) {
-    quit("trace facility failure, KERN_KDSET_TYPEFILTER\n");
   }
 }
 
