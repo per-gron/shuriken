@@ -300,7 +300,6 @@ int quit(const char *s) {
 }
 
 int exit_usage(const char *myname) {
-
   fprintf(stderr, "Usage: %s [-e] [pid [pid] ...]\n", myname);
   fprintf(stderr, "  -e    exclude the specified list of pids from the sample\n");
   fprintf(stderr, "        and exclude fs_usage by default\n");
@@ -319,9 +318,6 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  /*
-   * get our name
-   */
   if (argc > 0) {
     if ((myname = rindex(argv[0], '/')) == 0) {
       myname = argv[0];
@@ -330,8 +326,7 @@ int main(int argc, char *argv[]) {
     }
   }
   
-  for (char ch; (ch = getopt(argc, argv, "bewf:R:S:E:t:W")) != EOF;) {
-
+  for (char ch; (ch = getopt(argc, argv, "e")) != EOF;) {
     switch(ch) {
       case 'e':
         exclude_pids = 1;
@@ -348,9 +343,7 @@ int main(int argc, char *argv[]) {
   argc -= optind;
   argv += optind;
 
-  /*
-   * when excluding, fs_usage should be the first in line for pids[]
-   */
+  // when excluding, fs_usage should be the first in line for pids
   if (exclude_pids || (!exclude_pids && argc == 0)) {
     pids.push_back(getpid());
   }
@@ -361,25 +354,22 @@ int main(int argc, char *argv[]) {
     argc--;
     argv++;
   }
-  struct sigaction osa;
-  int num_cpus;
-  size_t  len;
 
   /* set up signal handlers */
   signal(SIGINT, leave);
   signal(SIGQUIT, leave);
   signal(SIGPIPE, leave);
 
+  sigaction osa;
   sigaction(SIGHUP, (struct sigaction *)NULL, &osa);
 
   if (osa.sa_handler == SIG_DFL) {
     signal(SIGHUP, leave);
   }
   signal(SIGTERM, leave);
-  /*
-   * grab the number of cpus
-   */
-  len = sizeof(num_cpus);
+  // grab the number of cpus
+  int num_cpus;
+  size_t len = sizeof(num_cpus);
   static int name[] = { CTL_HW, HW_NCPU, 0 };
   sysctl(name, 2, &num_cpus, &len, NULL, 0);
   num_events = EVENT_BASE * num_cpus;
@@ -402,40 +392,19 @@ int main(int argc, char *argv[]) {
     }
   }
   if (select_pid_mode && !one_good_pid) {
-    /*
-     *  An attempt to restrict output to a given
-     *  pid or command has failed. Exit gracefully
-     */
+    // An attempt to restrict output to a given pid or command has failed. Exit
+    // gracefully.
     set_remove();
     exit_usage(myname);
   }
 
   set_filter();
-
   set_enable(1);
-
   init_arguments_buffer();
 
-  /*
-   * main loop
-   */
   for (;;) {
     usleep(1000 * usleep_ms);
-
     sample_sc();
-  }
-}
-
-void set_enable(int val) {
-  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDENABLE, val, 0, 0 };
-  if (sysctl(name, 4, NULL, &needed, NULL, 0) < 0) {
-    quit("trace facility failure, KERN_KDENABLE\n");
-  }
-
-  if (val) {
-    trace_enabled = 1;
-  } else {
-    trace_enabled = 0;
   }
 }
 
