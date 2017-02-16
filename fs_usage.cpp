@@ -210,8 +210,6 @@ void    read_command_map();
 void    create_map_entry(uintptr_t, int, char *);
 
 void    set_remove();
-void    set_pidcheck(int pid, int on_off);
-void    set_pidexclude(int pid, int on_off);
 int     quit(const char *s);
 
 static const auto bsd_syscalls = make_bsd_syscall_table();
@@ -226,7 +224,6 @@ int num_events = EVENT_BASE;
 #define DBG_FUNC_ALL  (DBG_FUNC_START | DBG_FUNC_END)
 #define DBG_FUNC_MASK 0xfffffffc
 
-size_t needed;
 std::vector<kd_buf> my_buffer;
 
 kbufinfo_t bufinfo = {0, 0, 0, 0, 0};
@@ -241,8 +238,7 @@ kbufinfo_t bufinfo = {0, 0, 0, 0, 0};
 int trace_enabled = 0;
 int set_remove_flag = 1;
 
-void set_init();
-void set_enable(int val);
+void set_enable(bool enabled);
 void sample_sc();
 
 /*
@@ -252,10 +248,10 @@ void sample_sc();
 void leave(int sig) {      /* exit under normal conditions -- INT handler */
   fflush(0);
 
-  set_enable(0);
+  set_enable(false);
 
   for (int pid : excluded_pids) {
-    set_pidexclude(pid, 0);
+    kdebug_exclude_pid(pid, false);
   }
   set_remove();
 
@@ -265,7 +261,7 @@ void leave(int sig) {      /* exit under normal conditions -- INT handler */
 
 int quit(const char *s) {
   if (trace_enabled) {
-    set_enable(0);
+    set_enable(false);
   }
 
   /* 
@@ -328,14 +324,14 @@ int main(int argc, char *argv[]) {
 
   set_remove();
   set_kdebug_numbufs(num_events);
-  set_init();
+  kdebug_setup();
 
   for (int pid : excluded_pids) {
-    set_pidexclude(pid, 1);
+    kdebug_exclude_pid(pid, true);
   }
 
   set_kdebug_filter();
-  set_enable(1);
+  set_enable(true);
   init_arguments_buffer();
 
   for (;;) {
@@ -344,99 +340,22 @@ int main(int argc, char *argv[]) {
   }
 }
 
-void set_enable(int val) {
-  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDENABLE, val, 0, 0 };
-  if (sysctl(name, 4, NULL, &needed, NULL, 0) < 0) {
-    quit("trace facility failure, KERN_KDENABLE\n");
-  }
-
-  if (val) {
-    trace_enabled = 1;
-  } else {
-    trace_enabled = 0;
-  }
-}
-
-void set_pidcheck(int pid, int on_off) {
-  kd_regtype kr;
-
-  kr.type = KDBG_TYPENONE;
-  kr.value1 = pid;
-  kr.value2 = on_off;
-  needed = sizeof(kd_regtype);
-
-  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDPIDTR, 0, 0, 0 };
-  if (sysctl(name, 3, &kr, &needed, NULL, 0) < 0) {
-    if (on_off == 1) {
-      fprintf(stderr, "pid %d does not exist\n", pid);
-    }
-  }
-}
-
-/* 
- * on_off == 0 turns off pid exclusion
- * on_off == 1 turns on pid exclusion
- */
-void set_pidexclude(int pid, int on_off) {
-  kd_regtype kr;
-
-  kr.type = KDBG_TYPENONE;
-  kr.value1 = pid;
-  kr.value2 = on_off;
-  needed = sizeof(kd_regtype);
-  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDPIDEX, 0, 0, 0 };
-  if (sysctl(name, 3, &kr, &needed, NULL, 0) < 0) {
-    if (on_off == 1) {
-      fprintf(stderr, "pid %d does not exist\n", pid);
-    }
-  }
-}
-
-void get_bufinfo(kbufinfo_t *val) {
-  needed = sizeof (*val);
-  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDGETBUF, 0, 0, 0 };
-  if (sysctl(name, 3, val, &needed, 0, 0) < 0) {
-    quit("trace facility failure, KERN_KDGETBUF\n");
-  }
+void set_enable(bool enabled) {
+  enable_kdebug(enabled);
+  trace_enabled = enabled;
 }
 
 void set_remove()  {
-  errno = 0;
-
-  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDREMOVE, 0, 0, 0 };
-  if (sysctl(name, 3, NULL, &needed, NULL, 0) < 0) {
+  try {
+    kdebug_teardown();
+  } catch (std::runtime_error &error) {
     set_remove_flag = 0;
-
-    if (errno == EBUSY) {
-      quit("the trace facility is currently in use...\n          fs_usage, sc_usage, and latency use this feature.\n\n");
-    } else {
-      quit("trace facility failure, KERN_KDREMOVE\n");
-    }
+    quit(error.what());
   }
 }
-
-void set_init() {
-  kd_regtype kr;
-
-  kr.type = KDBG_RANGETYPE;
-  kr.value1 = 0;
-  kr.value2 = -1;
-  needed = sizeof(kd_regtype);
-
-  static int name_1[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETREG, 0, 0, 0 };
-  if (sysctl(name_1, 3, &kr, &needed, NULL, 0) < 0) {
-    quit("trace facility failure, KERN_KDSETREG\n");
-  }
-
-  static int name_2[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETUP, 0, 0, 0 };
-  if (sysctl(name_2, 3, NULL, &needed, NULL, 0) < 0) {
-    quit("trace facility failure, KERN_KDSETUP\n");
-  }
-}
-
 
 void sample_sc() {
-  get_bufinfo(&bufinfo);
+  bufinfo = get_kdebug_bufinfo();
 
   if (need_new_map) {
     read_command_map();
@@ -470,8 +389,8 @@ void sample_sc() {
 
     need_new_map = 1;
 
-    set_enable(0);
-    set_enable(1);
+    set_enable(false);
+    set_enable(true);
   }
   kd_buf *kd = my_buffer.data();
 
