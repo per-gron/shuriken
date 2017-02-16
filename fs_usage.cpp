@@ -362,11 +362,7 @@ void sample_sc() {
     need_new_map = 0;
   }
 
-  size_t count = bufinfo.nkdbufs * sizeof(kd_buf);
-  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDREADTR, 0, 0, 0 };
-  if (sysctl(name, 3, my_buffer.data(), &count, NULL, 0) < 0) {
-    quit("trace facility failure, KERN_KDREADTR\n");
-  }
+  size_t count = kdebug_read_buf(my_buffer.data(), bufinfo.nkdbufs);
 
   if (count > (num_events / 8)) {
     if (usleep_ms > USLEEP_BEHIND) {
@@ -864,6 +860,7 @@ void format_print(
   printf("%s %s.%d\n", pathname, command_name, (int)thread);
 }
 
+/* TODO(peck): We don't need to track command names really */
 void read_command_map() {
   kd_threadmap *mapptr = 0;
 
@@ -875,14 +872,10 @@ void read_command_map() {
   if (size) {
     if ((mapptr = reinterpret_cast<kd_threadmap *>(malloc(size)))) {
       bzero (mapptr, size);
-      /*
-       * Now read the threadmap
-       */
+      // Now read the threadmap
       static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDTHRMAP, 0, 0, 0 };
       if (sysctl(name, 3, mapptr, &size, NULL, 0) < 0) {
-        /*
-         * This is not fatal -- just means I cant map command strings
-         */
+        // This is not fatal -- just means I cant map command strings
         free(mapptr);
         return;
       }

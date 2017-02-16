@@ -113,3 +113,12 @@ void kdebug_teardown()  {
     }
   }
 }
+
+size_t kdebug_read_buf(kd_buf *bufs, size_t num_bufs) {
+  size_t count = num_bufs * sizeof(kd_buf);
+  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDREADTR, 0, 0, 0 };
+  if (sysctl(name, 3, bufs, &count, nullptr, 0)) {
+    throw std::runtime_error("Failed KERN_KDREADTR sysctl");
+  }
+  return count;
+}
