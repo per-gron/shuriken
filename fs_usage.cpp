@@ -264,10 +264,7 @@ int quit(const char *s) {
     set_enable(false);
   }
 
-  /* 
-   * This flag is turned off when calling
-   * quit() due to a set_remove() failure.
-   */
+  // This flag is turned off when calling quit() due to a set_remove() failure.
   if (set_remove_flag) {
     set_remove();
   }
@@ -281,23 +278,13 @@ int quit(const char *s) {
 }
 
 int main(int argc, char *argv[]) {
-  const char *myname = "fs_usage";
-
   if (0 != reexec_to_match_kernel()) {
     fprintf(stderr, "Could not re-execute: %d\n", errno);
     exit(1);
   }
 
-  if (argc > 0) {
-    if ((myname = rindex(argv[0], '/')) == 0) {
-      myname = argv[0];
-    } else {
-      myname++;
-    }
-  }
-  
   if (geteuid() != 0) {
-    fprintf(stderr, "'fs_usage' must be run as root...\n");
+    fprintf(stderr, "This tool must be run as root\n");
     exit(1);
   }
   argc -= optind;
