@@ -180,7 +180,7 @@ std::unordered_map<uint64_t, std::string> vn_name_map;
 event_info_map ei_map;
 
 
-int need_new_map = 1;  /* TODO(peck): This should be treated as an error instead. */
+int need_new_map = 1;
 
 char *arguments = 0;
 int argmax = 0;
@@ -361,13 +361,12 @@ void sample_sc() {
     read_command_map();
     need_new_map = 0;
   }
-  size_t needed = bufinfo.nkdbufs * sizeof(kd_buf);
 
+  size_t count = bufinfo.nkdbufs * sizeof(kd_buf);
   static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDREADTR, 0, 0, 0 };
-  if (sysctl(name, 3, my_buffer.data(), &needed, NULL, 0) < 0) {
+  if (sysctl(name, 3, my_buffer.data(), &count, NULL, 0) < 0) {
     quit("trace facility failure, KERN_KDREADTR\n");
   }
-  int count = needed;
 
   if (count > (num_events / 8)) {
     if (usleep_ms > USLEEP_BEHIND) {
@@ -375,7 +374,6 @@ void sample_sc() {
     } else if (usleep_ms > USLEEP_MIN) {
       usleep_ms /= 2;
     }
-
   } else if (count < (num_events / 16)) {
     if (usleep_ms < USLEEP_MAX) {
       usleep_ms *= 2;
@@ -383,14 +381,7 @@ void sample_sc() {
   }
 
   if (bufinfo.flags & KDBG_WRAPPED) {
-    fprintf(stderr, "fs_usage: buffer overrun, events generated too quickly: %d\n", count);
-
-    ei_map.clear();
-
-    need_new_map = 1;
-
-    set_enable(false);
-    set_enable(true);
+    throw std::runtime_error("Buffer overrun! Event data has been lost");
   }
   kd_buf *kd = my_buffer.data();
 
