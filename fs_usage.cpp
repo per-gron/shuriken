@@ -382,15 +382,9 @@ void sample_sc() {
   kd_buf *kd = my_buffer.data();
 
   for (int i = 0; i < count; i++) {
-    uint32_t debugid;
-    uintptr_t thread;
-    int type;
-    int index;
-    uintptr_t *sargptr;
-
-    thread  = kd[i].arg5;
-    debugid = kd[i].debugid;
-    type    = kd[i].debugid & DBG_FUNC_MASK;
+    uintptr_t thread = kd[i].arg5;
+    uint32_t debugid = kd[i].debugid;
+    int type = kd[i].debugid & DBG_FUNC_MASK;
 
     switch (type) {
     case TRACE_DATA_NEWTHREAD:
@@ -482,6 +476,7 @@ void sample_sc() {
         }
         event_info *ei = &ei_it->second;
 
+        uintptr_t *sargptr;
         if (debugid & DBG_FUNC_START) {
 
           if (ei->type == HFS_update) {
@@ -611,7 +606,8 @@ void sample_sc() {
     }
 
     if ((type & CSC_MASK) == BSC_BASE) {
-      if ((index = BSC_INDEX(type)) >= bsd_syscalls.size()) {
+      int index = BSC_INDEX(type);
+      if (index >= bsd_syscalls.size()) {
         continue;
       }
 
