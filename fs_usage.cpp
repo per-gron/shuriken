@@ -120,12 +120,10 @@ std::vector<int> excluded_pids;
 #define EVENT_BASE 60000
 #define DBG_FUNC_MASK 0xfffffffc
 
-std::vector<kd_buf> my_buffer;
-
 int trace_enabled = 0;
 
 void set_enable(bool enabled);
-void sample_sc();
+void sample_sc(std::vector<kd_buf> &event_buffer);
 
 /*
  *  signal handlers
@@ -174,10 +172,10 @@ int main(int argc, char *argv[]) {
   }
   signal(SIGTERM, leave);
 
-  my_buffer.resize(EVENT_BASE * get_num_cpus());
+  std::vector<kd_buf> event_buffer(EVENT_BASE * get_num_cpus());
 
   set_remove();
-  set_kdebug_numbufs(my_buffer.size());
+  set_kdebug_numbufs(event_buffer.size());
   kdebug_setup();
 
   for (int pid : excluded_pids) {
@@ -190,7 +188,7 @@ int main(int argc, char *argv[]) {
 
   for (;;) {
     usleep(1000 * usleep_ms);
-    sample_sc();
+    sample_sc(event_buffer);
   }
 }
 
@@ -211,7 +209,7 @@ void set_remove()  {
   }
 }
 
-void sample_sc() {
+void sample_sc(std::vector<kd_buf> &event_buffer) {
   kbufinfo_t bufinfo = get_kdebug_bufinfo();
 
   if (need_new_map) {
@@ -219,15 +217,15 @@ void sample_sc() {
     need_new_map = 0;
   }
 
-  size_t count = kdebug_read_buf(my_buffer.data(), bufinfo.nkdbufs);
+  size_t count = kdebug_read_buf(event_buffer.data(), bufinfo.nkdbufs);
 
-  if (count > (my_buffer.size() / 8)) {
+  if (count > (event_buffer.size() / 8)) {
     if (usleep_ms > USLEEP_BEHIND) {
       usleep_ms = USLEEP_BEHIND;
     } else if (usleep_ms > USLEEP_MIN) {
       usleep_ms /= 2;
     }
-  } else if (count < (my_buffer.size() / 16)) {
+  } else if (count < (event_buffer.size() / 16)) {
     if (usleep_ms < USLEEP_MAX) {
       usleep_ms *= 2;
     }
@@ -236,7 +234,7 @@ void sample_sc() {
   if (bufinfo.flags & KDBG_WRAPPED) {
     throw std::runtime_error("Buffer overrun! Event data has been lost");
   }
-  kd_buf *kd = my_buffer.data();
+  kd_buf *kd = event_buffer.data();
 
   for (int i = 0; i < count; i++) {
     uintptr_t thread = kd[i].arg5;
