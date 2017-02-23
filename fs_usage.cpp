@@ -118,10 +118,6 @@ static const auto bsd_syscalls = make_bsd_syscall_table();
 std::vector<int> excluded_pids;
 
 #define EVENT_BASE 60000
-
-int num_events = EVENT_BASE;
-
-
 #define DBG_FUNC_MASK 0xfffffffc
 
 std::vector<kd_buf> my_buffer;
@@ -177,12 +173,11 @@ int main(int argc, char *argv[]) {
     signal(SIGHUP, leave);
   }
   signal(SIGTERM, leave);
-  num_events = EVENT_BASE * get_num_cpus();
 
-  my_buffer.resize(num_events);
+  my_buffer.resize(EVENT_BASE * get_num_cpus());
 
   set_remove();
-  set_kdebug_numbufs(num_events);
+  set_kdebug_numbufs(my_buffer.size());
   kdebug_setup();
 
   for (int pid : excluded_pids) {
@@ -226,13 +221,13 @@ void sample_sc() {
 
   size_t count = kdebug_read_buf(my_buffer.data(), bufinfo.nkdbufs);
 
-  if (count > (num_events / 8)) {
+  if (count > (my_buffer.size() / 8)) {
     if (usleep_ms > USLEEP_BEHIND) {
       usleep_ms = USLEEP_BEHIND;
     } else if (usleep_ms > USLEEP_MIN) {
       usleep_ms /= 2;
     }
-  } else if (count < (num_events / 16)) {
+  } else if (count < (my_buffer.size() / 16)) {
     if (usleep_ms < USLEEP_MAX) {
       usleep_ms *= 2;
     }
