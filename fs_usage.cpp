@@ -108,7 +108,7 @@ void    exit_event(uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, c
 void    init_arguments_buffer();
 int     get_real_command_name(int, char *, int);
 
-void    read_command_map();
+void    read_command_map(const kbufinfo_t &bufinfo);
 void    create_map_entry(uintptr_t, int, char *);
 
 void    set_remove();
@@ -125,8 +125,6 @@ int num_events = EVENT_BASE;
 #define DBG_FUNC_MASK 0xfffffffc
 
 std::vector<kd_buf> my_buffer;
-
-kbufinfo_t bufinfo = {};
 
 int trace_enabled = 0;
 
@@ -219,10 +217,10 @@ void set_remove()  {
 }
 
 void sample_sc() {
-  bufinfo = get_kdebug_bufinfo();
+  kbufinfo_t bufinfo = get_kdebug_bufinfo();
 
   if (need_new_map) {
-    read_command_map();
+    read_command_map(bufinfo);
     need_new_map = 0;
   }
 
@@ -721,7 +719,7 @@ void format_print(
 }
 
 /* TODO(peck): We don't need to track command names really */
-void read_command_map() {
+void read_command_map(const kbufinfo_t &bufinfo) {
   kd_threadmap *mapptr = 0;
 
   threadmap.clear();
