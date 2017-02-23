@@ -76,8 +76,8 @@ clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/Priv
 #define PATHLENGTH (NUMPARMS*sizeof(uintptr_t))
 
 struct threadmap_entry {
-  unsigned int tm_setsize = 0; /* this is a bit count */
-  unsigned long *tm_setptr = nullptr;  /* file descripter bitmap */
+  unsigned int tm_setsize = 0; // This is a bit count
+  unsigned long *tm_setptr = nullptr;  // File descriptor bitmap
   char tm_command[MAXCOMLEN + 1];
 };
 
@@ -129,7 +129,7 @@ void sample_sc(std::vector<kd_buf> &event_buffer);
  *  signal handlers
  */
 
-void leave(int sig) {      /* exit under normal conditions -- INT handler */
+void leave(int sig) {  // Signal handler for exiting under normal conditions
   fflush(0);
 
   set_enable(false);
@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
   // Don't listen to this process
   excluded_pids.push_back(getpid());  // TODO(peck): Move this somewhere else.
 
-  /* set up signal handlers */
+  // Set up signal handlers
   signal(SIGINT, leave);
   signal(SIGQUIT, leave);
   signal(SIGPIPE, leave);
@@ -247,8 +247,8 @@ void sample_sc(std::vector<kd_buf> &event_buffer) {
         event_info *ei = &ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)->second;
         ei->child_thread = kd[i].arg1;
         ei->pid = kd[i].arg2;
-        /* TODO(peck): Removeme */
-        /* printf("newthread PID %d (thread = %d, child_thread = %d)\n", (int)ei->pid, (int)thread, ei->child_thread); */
+        // TODO(peck): Removeme
+        // printf("newthread PID %d (thread = %d, child_thread = %d)\n", (int)ei->pid, (int)thread, ei->child_thread);
       }
       continue;
 
@@ -350,21 +350,16 @@ void sample_sc(std::vector<kd_buf> &event_buffer) {
           *sargptr++ = kd[i].arg2;
           *sargptr++ = kd[i].arg3;
           *sargptr++ = kd[i].arg4;
-          /*
-           * NULL terminate the 'string'
-           */
           *sargptr = 0;
 
           ei->pathptr = sargptr;
         } else {
           sargptr = ei->pathptr;
 
-          /*
-           * We don't want to overrun our pathname buffer if the
-           * kernel sends us more VFS_LOOKUP entries than we can
-           * handle and we only handle 2 pathname lookups for
-           * a given system call
-           */
+          // We don't want to overrun our pathname buffer if the
+          // kernel sends us more VFS_LOOKUP entries than we can
+          // handle and we only handle 2 pathname lookups for
+          // a given system call.
           if (sargptr == 0) {
             continue;
           }
@@ -375,9 +370,6 @@ void sample_sc(std::vector<kd_buf> &event_buffer) {
             *sargptr++ = kd[i].arg2;
             *sargptr++ = kd[i].arg3;
             *sargptr++ = kd[i].arg4;
-            /*
-             * NULL terminate the 'string'
-             */
             *sargptr = 0;
           }
         }
@@ -603,9 +595,6 @@ void format_print(
 
   case Fmt::OPEN:
   {
-    /*
-     * open
-     */
     char mode[7];
 
     memset(mode, '_', 6);
@@ -711,7 +700,7 @@ void format_print(
   printf("%s %s.%d\n", pathname, command_name, (int)thread);
 }
 
-/* TODO(peck): We don't need to track command names really */
+// TODO(peck): We don't need to track command names really
 void read_command_map(const kbufinfo_t &bufinfo) {
   kd_threadmap *mapptr = 0;
 
@@ -753,14 +742,7 @@ void create_map_entry(uintptr_t thread, int pid, char *command) {
   }
 }
 
-/*
- * Allocate a buffer that is large enough to hold the maximum arguments
- * to execve().  This is used when getting the arguments to programs
- * when we see LaunchCFMApps.  If this fails, it is not fatal, we will
- * simply not resolve the command name.
- */
-
-/* TODO(peck): We don't need to track command names really */
+// TODO(peck): We don't need to track command names really
 void init_arguments_buffer() {
   size_t size = sizeof(argmax);
 
@@ -768,7 +750,7 @@ void init_arguments_buffer() {
   if (sysctl(name, 2, &argmax, &size, NULL, 0) == -1) {
     return;
   }
-  /* Hack to avoid kernel bug. */
+  // Hack to avoid kernel bug.
   if (argmax > 8192) {
     argmax = 8192;
   }
@@ -776,11 +758,8 @@ void init_arguments_buffer() {
 }
 
 
-/* TODO(peck): We don't need to track command names really */
+// TODO(peck): We don't need to track command names really
 int get_real_command_name(int pid, char *cbuf, int csize) {
-  /*
-   * Get command and arguments.
-   */
   char *cp;
   char *command_beg, *command, *command_end;
 
@@ -794,23 +773,17 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
     return 0;
   }
 
-  /*
-   * A sysctl() is made to find out the full path that the command
-   * was called with.
-   */
+  // A sysctl() is made to find out the full path that the command
+  // was called with.
   static int name[] = { CTL_KERN, KERN_PROCARGS2, pid, 0 };
   if (sysctl(name, 3, arguments, (size_t *)&argmax, NULL, 0) < 0) {
     return 0;
   }
 
-  /*
-   * Skip the saved exec_path
-   */
+  // Skip the saved exec_path
   for (cp = arguments; cp < &arguments[argmax]; cp++) {
     if (*cp == '\0') {
-      /*
-       * End of exec_path reached
-       */
+      // End of exec_path reached
       break;
     }
   }
@@ -818,14 +791,10 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
     return 0;
   }
 
-  /*
-   * Skip trailing '\0' characters
-   */
+  // Skip trailing '\0' characters
   for (; cp < &arguments[argmax]; cp++) {
     if (*cp != '\0') {
-      /*
-       * Beginning of first argument reached
-       */
+      // Beginning of first argument reached
       break;
     }
   }
@@ -834,16 +803,12 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
   }
 
   command_beg = cp;
-  /*
-   * Make sure that the command is '\0'-terminated.  This protects
-   * against malicious programs; under normal operation this never
-   * ends up being a problem..
-   */
+  // Make sure that the command is '\0'-terminated.  This protects
+  // against malicious programs; under normal operation this never
+  // ends up being a problem..
   for (; cp < &arguments[argmax]; cp++) {
     if (*cp == '\0') {
-      /*
-       * End of first argument reached
-       */
+      // End of first argument reached
       break;
     }
   }
@@ -853,9 +818,7 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
 
   command_end = command = cp;
 
-  /*
-   * Get the basename of command
-   */
+  // Get the basename of command
   for (command--; command >= command_beg; command--) {
     if (*command == '/') {
       command++;
