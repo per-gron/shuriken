@@ -39,11 +39,8 @@ void set_kdebug_filter() {
   filter.set(kdebugFilterIndex(DBG_TRACE, DBG_TRACE_STRING));
   filter.set(kdebugFilterIndex(DBG_MACH, DBG_MACH_EXCP_SC));
   filter.set(kdebugFilterIndex(DBG_FSYSTEM, DBG_FSRW));
-  filter.set(kdebugFilterIndex(DBG_FSYSTEM, DBG_BOOTCACHE));
   filter.set(kdebugFilterIndex(DBG_BSD, DBG_BSD_EXCP_SC));
   filter.set(kdebugFilterIndex(DBG_BSD, DBG_BSD_PROC));
-  filter.set(kdebugFilterIndex(DBG_BSD, DBG_BSD_SC_EXTENDED_INFO));
-  filter.set(kdebugFilterIndex(DBG_BSD, DBG_BSD_SC_EXTENDED_INFO2));
   filter.set(kdebugFilterIndex(FILEMGR_CLASS, 0)); // Carbon File Manager
   filter.set(kdebugFilterIndex(FILEMGR_CLASS, 1)); // Carbon File Manager
 

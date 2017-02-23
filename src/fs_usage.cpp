@@ -23,7 +23,7 @@
  */
 
 /*
-clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders -DPRIVATE -D__APPLE_PRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.cpp
+clang++ -std=c++11 -DKERNEL_PRIVATE -DPRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.cpp
 */
 
 #include <string>
@@ -36,14 +36,7 @@ clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/Priv
 
 #include <sys/mman.h>
 
-#ifndef KERNEL_PRIVATE
-#define KERNEL_PRIVATE
 #include "kdebug.h"
-#undef KERNEL_PRIVATE
-#else
-#include "kdebug.h"
-#endif /*KERNEL_PRIVATE*/
-
 #include "event_info.h"
 #include "syscall_constants.h"
 #include "syscall_tables.h"
