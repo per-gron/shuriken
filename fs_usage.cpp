@@ -105,10 +105,6 @@ void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
 void    enter_illegal_event(uintptr_t thread, int type);
 void    exit_event(uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &);
 
-void    fs_usage_fd_set(uintptr_t, unsigned int);
-int     fs_usage_fd_isset(uintptr_t, unsigned int);
-void    fs_usage_fd_clear(uintptr_t, unsigned int);
-
 void    init_arguments_buffer();
 int     get_real_command_name(int, char *, int);
 
@@ -126,19 +122,11 @@ std::vector<int> excluded_pids;
 int num_events = EVENT_BASE;
 
 
-#define DBG_FUNC_ALL  (DBG_FUNC_START | DBG_FUNC_END)
 #define DBG_FUNC_MASK 0xfffffffc
 
 std::vector<kd_buf> my_buffer;
 
-kbufinfo_t bufinfo = {0, 0, 0, 0, 0};
-
-
-/* defines for tracking file descriptor state */
-#define FS_USAGE_FD_SETSIZE 256  // Initial number of file descriptors per thread that we will track
-
-#define FS_USAGE_NFDBITS      (sizeof (unsigned long) * 8)
-#define FS_USAGE_NFDBYTES(n)  (((n) / FS_USAGE_NFDBITS) * sizeof (unsigned long))
+kbufinfo_t bufinfo = {};
 
 int trace_enabled = 0;
 
@@ -770,73 +758,6 @@ void create_map_entry(uintptr_t thread, int pid, char *command) {
   if (pid != 0 && pid != 1) {
     if (!strncmp(command, "LaunchCFMA", 10)) {
       (void)get_real_command_name(pid, tme.tm_command, MAXCOMLEN);
-    }
-  }
-}
-
-
-void fs_usage_fd_set(uintptr_t thread, unsigned int fd) {
-  auto tme_it = threadmap.find(thread);
-  if (tme_it == threadmap.end()) {
-    return;
-  }
-  auto &tme = tme_it->second;
-
-  /*
-   * If the map is not allocated, then now is the time
-   */
-  if (tme.tm_setptr == (unsigned long *)0) {
-    if ((tme.tm_setptr = (unsigned long *)malloc(FS_USAGE_NFDBYTES(FS_USAGE_FD_SETSIZE))) == 0) {
-      return;
-    }
-
-    tme.tm_setsize = FS_USAGE_FD_SETSIZE;
-    bzero(tme.tm_setptr, (FS_USAGE_NFDBYTES(FS_USAGE_FD_SETSIZE)));
-  }
-  /*
-   * If the map is not big enough, then reallocate it
-   */
-  while (tme.tm_setsize <= fd) {
-    int n = tme.tm_setsize * 2;
-    tme.tm_setptr = (unsigned long *)realloc(tme.tm_setptr, (FS_USAGE_NFDBYTES(n)));
-
-    bzero(&tme.tm_setptr[(tme.tm_setsize/FS_USAGE_NFDBITS)], (FS_USAGE_NFDBYTES(tme.tm_setsize)));
-    tme.tm_setsize = n;
-  }
-  /*
-   * set the bit
-   */
-  tme.tm_setptr[fd/FS_USAGE_NFDBITS] |= (1 << ((fd) % FS_USAGE_NFDBITS));
-}
-
-
-/*
- * Return values:
- *  0 : File Descriptor bit is not set
- *  1 : File Descriptor bit is set
- */
-int fs_usage_fd_isset(uintptr_t thread, unsigned int fd) {
-  int ret = 0;
-
-  auto it = threadmap.find(thread);
-  if (it != threadmap.end()) {
-    auto &tme = it->second;
-    if (tme.tm_setptr && fd < tme.tm_setsize) {
-      ret = tme.tm_setptr[fd/FS_USAGE_NFDBITS] & (1 << (fd % FS_USAGE_NFDBITS));
-    }
-  }
-  return ret;
-}
-    
-
-void fs_usage_fd_clear(uintptr_t thread, unsigned int fd) {
-  threadmap_entry *tme;
-
-  auto it = threadmap.find(thread);
-  if (it != threadmap.end()) {
-    auto &tme = it->second;
-    if (tme.tm_setptr && fd < tme.tm_setsize) {
-      tme.tm_setptr[fd/FS_USAGE_NFDBITS] &= ~(1 << (fd % FS_USAGE_NFDBITS));
     }
   }
 }
