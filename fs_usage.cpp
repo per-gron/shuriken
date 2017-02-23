@@ -31,30 +31,10 @@ clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/Priv
 #include <unordered_map>
 #include <vector>
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <signal.h>
-#include <strings.h>
-#include <nlist.h>
-#include <fcntl.h>
-#include <aio.h>
-#include <string.h>
-#include <dirent.h>
 #include <libc.h>
-#include <termios.h>
 #include <errno.h>
-#include <err.h>
-#include "libutil.h"
 
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <sys/mman.h>
-#include <sys/sysctl.h>
-#include <sys/disk.h>
-#include <sys/file.h>
 
 #ifndef KERNEL_PRIVATE
 #define KERNEL_PRIVATE
@@ -63,9 +43,6 @@ clang++ -std=c++11 -I/System/Library/Frameworks/System.framework/Versions/B/Priv
 #else
 #include "kdebug.h"
 #endif /*KERNEL_PRIVATE*/
-
-#import <mach/clock_types.h>
-#import <mach/mach_time.h>
 
 #include "event_info.h"
 #include "syscall_constants.h"
