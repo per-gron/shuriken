@@ -116,7 +116,6 @@ void    read_command_map();
 void    create_map_entry(uintptr_t, int, char *);
 
 void    set_remove();
-int     quit(const char *s);
 
 static const auto bsd_syscalls = make_bsd_syscall_table();
 
@@ -142,7 +141,6 @@ kbufinfo_t bufinfo = {0, 0, 0, 0, 0};
 #define FS_USAGE_NFDBYTES(n)  (((n) / FS_USAGE_NFDBITS) * sizeof (unsigned long))
 
 int trace_enabled = 0;
-int set_remove_flag = 1;
 
 void set_enable(bool enabled);
 void sample_sc();
@@ -164,24 +162,6 @@ void leave(int sig) {      /* exit under normal conditions -- INT handler */
   exit(0);
 }
 
-
-int quit(const char *s) {
-  if (trace_enabled) {
-    set_enable(false);
-  }
-
-  // This flag is turned off when calling quit() due to a set_remove() failure.
-  if (set_remove_flag) {
-    set_remove();
-  }
-
-  fprintf(stderr, "fs_usage: ");
-  if (s) {
-    fprintf(stderr, "%s", s);
-  }
-
-  exit(1);
-}
 
 int main(int argc, char *argv[]) {
   if (0 != reexec_to_match_kernel()) {
@@ -242,8 +222,11 @@ void set_remove()  {
   try {
     kdebug_teardown();
   } catch (std::runtime_error &error) {
-    set_remove_flag = 0;
-    quit(error.what());
+    if (trace_enabled) {
+      set_enable(false);
+    }
+
+    exit(1);
   }
 }
 
