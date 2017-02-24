@@ -11,6 +11,7 @@ add_custom_command(
 
 add_executable(shk-exec
   src/fs_usage.cpp
+  src/sysctl_helpers.cpp
   sudo_dummy.h)
 target_compile_definitions(shk-exec PRIVATE KERNEL_PRIVATE PRIVATE=)
 target_link_libraries(shk-exec util)
