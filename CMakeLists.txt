@@ -11,8 +11,14 @@ add_custom_command(
 
 add_executable(shk-trace
   src/daemon.cpp
+  src/daemon.h
+  src/event_info.h
+  src/kdebug.h
   src/main.cpp
+  src/syscall_constants.h
+  src/syscall_tables.h
   src/sysctl_helpers.cpp
+  src/sysctl_helpers.h
   sudo_dummy.h)
 target_compile_definitions(shk-trace PRIVATE KERNEL_PRIVATE PRIVATE=)
 target_link_libraries(shk-trace util)
