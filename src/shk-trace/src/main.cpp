@@ -38,8 +38,6 @@
 #include "syscall_tables.h"
 #include "sysctl_helpers.h"
 
-#define PATHLENGTH (NUMPARMS*sizeof(uintptr_t))
-
 extern "C" int reexec_to_match_kernel();
 
 namespace shk {
@@ -60,10 +58,14 @@ int need_new_map = 1;
 char *arguments = 0;
 int argmax = 0;
 
+static constexpr int PATHLENGTH = NUMPARMS * sizeof(uintptr_t);
 
-#define USLEEP_MIN 1
-#define USLEEP_BEHIND 2
-#define USLEEP_MAX 32
+static constexpr int USLEEP_MIN = 1;
+static constexpr int USLEEP_BEHIND = 2;
+static constexpr int USLEEP_MAX = 32;
+
+static constexpr int EVENT_BASE = 60000;
+static constexpr int DBG_FUNC_MASK = 0xfffffffc;
 
 void    format_print(event_info *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &, const char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
@@ -80,9 +82,6 @@ void    create_map_entry(uintptr_t, int, char *);
 void    set_remove();
 
 static const auto bsd_syscalls = make_bsd_syscall_table();
-
-#define EVENT_BASE 60000
-#define DBG_FUNC_MASK 0xfffffffc
 
 int trace_enabled = 0;
 
