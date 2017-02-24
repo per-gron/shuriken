@@ -82,8 +82,6 @@ void    set_remove();
 
 static const auto bsd_syscalls = make_bsd_syscall_table();
 
-std::vector<int> excluded_pids;
-
 #define EVENT_BASE 60000
 #define DBG_FUNC_MASK 0xfffffffc
 
@@ -100,10 +98,6 @@ void leave(int sig) {  // Signal handler for exiting under normal conditions
   fflush(0);
 
   set_enable(false);
-
-  for (int pid : excluded_pids) {
-    kdebug_exclude_pid(pid, false);
-  }
   set_remove();
 
   exit(0);
@@ -748,11 +742,7 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
   return 1;
 }
 
-}  // namespace shk
-
 int main(int argc, char *argv[]) {
-  using namespace shk;
-
   if (0 != reexec_to_match_kernel()) {
     fprintf(stderr, "Could not re-execute: %d\n", errno);
     exit(1);
@@ -762,11 +752,6 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "This tool must be run as root\n");
     exit(1);
   }
-  argc -= optind;
-  argv += optind;
-
-  // Don't listen to this process
-  excluded_pids.push_back(getpid());  // TODO(peck): Move this somewhere else.
 
   // Set up signal handlers
   signal(SIGINT, leave);
@@ -787,10 +772,6 @@ int main(int argc, char *argv[]) {
   set_kdebug_numbufs(event_buffer.size());
   kdebug_setup();
 
-  for (int pid : excluded_pids) {
-    kdebug_exclude_pid(pid, true);
-  }
-
   set_kdebug_filter();
   set_enable(true);
   init_arguments_buffer();
@@ -799,4 +780,10 @@ int main(int argc, char *argv[]) {
     usleep(1000 * usleep_ms);
     sample_sc(event_buffer);
   }
+}
+
+}  // namespace shk
+
+int main(int argc, char *argv[]) {
+  shk::main(argc, argv);
 }

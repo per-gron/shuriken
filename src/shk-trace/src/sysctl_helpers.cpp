@@ -95,19 +95,6 @@ void enable_kdebug(bool enabled) {
   }
 }
 
-void kdebug_exclude_pid(int pid, bool enable_exclusion) {
-  kd_regtype kr;
-  kr.type = KDBG_TYPENONE;
-  kr.value1 = pid;
-  kr.value2 = enable_exclusion;
-  size_t len = sizeof(kd_regtype);
-  static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDPIDEX, 0, 0, 0 };
-  if (sysctl(name, 3, &kr, &len, nullptr, 0)) {
-    throw std::runtime_error(
-        std::string("pid ") + std::to_string(pid) + " does not exist");
-  }
-}
-
 void kdebug_setup() {
   kd_regtype kr;
 

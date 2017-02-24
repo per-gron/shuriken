@@ -44,8 +44,6 @@ kbufinfo_t get_kdebug_bufinfo();
 
 void enable_kdebug(bool enabled);
 
-void kdebug_exclude_pid(int pid, bool enable_exclusion);
-
 void kdebug_setup();
 
 void kdebug_teardown();
