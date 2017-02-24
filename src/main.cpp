@@ -38,8 +38,11 @@
 #include "syscall_tables.h"
 #include "sysctl_helpers.h"
 
-#define NUMPARMS 23
 #define PATHLENGTH (NUMPARMS*sizeof(uintptr_t))
+
+extern "C" int reexec_to_match_kernel();
+
+namespace shk {
 
 struct threadmap_entry {
   unsigned int tm_setsize = 0; // This is a bit count
@@ -62,8 +65,6 @@ int argmax = 0;
 #define USLEEP_BEHIND 2
 #define USLEEP_MAX 32
 int usleep_ms = USLEEP_MIN;
-
-extern "C" int reexec_to_match_kernel();
 
 void    format_print(event_info *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &, const char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
@@ -106,56 +107,6 @@ void leave(int sig) {  // Signal handler for exiting under normal conditions
   set_remove();
 
   exit(0);
-}
-
-
-int main(int argc, char *argv[]) {
-  if (0 != reexec_to_match_kernel()) {
-    fprintf(stderr, "Could not re-execute: %d\n", errno);
-    exit(1);
-  }
-
-  if (geteuid() != 0) {
-    fprintf(stderr, "This tool must be run as root\n");
-    exit(1);
-  }
-  argc -= optind;
-  argv += optind;
-
-  // Don't listen to this process
-  excluded_pids.push_back(getpid());  // TODO(peck): Move this somewhere else.
-
-  // Set up signal handlers
-  signal(SIGINT, leave);
-  signal(SIGQUIT, leave);
-  signal(SIGPIPE, leave);
-
-  struct sigaction osa;
-  sigaction(SIGHUP, (struct sigaction *)NULL, &osa);
-
-  if (osa.sa_handler == SIG_DFL) {
-    signal(SIGHUP, leave);
-  }
-  signal(SIGTERM, leave);
-
-  std::vector<kd_buf> event_buffer(EVENT_BASE * get_num_cpus());
-
-  set_remove();
-  set_kdebug_numbufs(event_buffer.size());
-  kdebug_setup();
-
-  for (int pid : excluded_pids) {
-    kdebug_exclude_pid(pid, true);
-  }
-
-  set_kdebug_filter();
-  set_enable(true);
-  init_arguments_buffer();
-
-  for (;;) {
-    usleep(1000 * usleep_ms);
-    sample_sc(event_buffer);
-  }
 }
 
 void set_enable(bool enabled) {
@@ -795,4 +746,57 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
   cbuf[csize-1] = '\0';
 
   return 1;
+}
+
+}  // namespace shk
+
+int main(int argc, char *argv[]) {
+  using namespace shk;
+
+  if (0 != reexec_to_match_kernel()) {
+    fprintf(stderr, "Could not re-execute: %d\n", errno);
+    exit(1);
+  }
+
+  if (geteuid() != 0) {
+    fprintf(stderr, "This tool must be run as root\n");
+    exit(1);
+  }
+  argc -= optind;
+  argv += optind;
+
+  // Don't listen to this process
+  excluded_pids.push_back(getpid());  // TODO(peck): Move this somewhere else.
+
+  // Set up signal handlers
+  signal(SIGINT, leave);
+  signal(SIGQUIT, leave);
+  signal(SIGPIPE, leave);
+
+  struct sigaction osa;
+  sigaction(SIGHUP, (struct sigaction *)NULL, &osa);
+
+  if (osa.sa_handler == SIG_DFL) {
+    signal(SIGHUP, leave);
+  }
+  signal(SIGTERM, leave);
+
+  std::vector<kd_buf> event_buffer(EVENT_BASE * get_num_cpus());
+
+  set_remove();
+  set_kdebug_numbufs(event_buffer.size());
+  kdebug_setup();
+
+  for (int pid : excluded_pids) {
+    kdebug_exclude_pid(pid, true);
+  }
+
+  set_kdebug_filter();
+  set_enable(true);
+  init_arguments_buffer();
+
+  for (;;) {
+    usleep(1000 * usleep_ms);
+    sample_sc(event_buffer);
+  }
 }

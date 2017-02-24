@@ -30,6 +30,8 @@
 
 #include "syscall_constants.h"
 
+namespace shk {
+
 int get_num_cpus() throw(std::runtime_error) {
   int num_cpus;
   size_t len = sizeof(num_cpus);
@@ -144,3 +146,5 @@ size_t kdebug_read_buf(kd_buf *bufs, size_t num_bufs) {
   }
   return count;
 }
+
+}  // namespace shk

@@ -28,6 +28,8 @@
 
 #include "syscall_constants.h"
 
+namespace shk {
+
 enum class Fmt {
   IGNORE,
   ILLEGAL,
@@ -154,3 +156,5 @@ std::array<bsd_syscall, MAX_BSD_SYSCALL> make_bsd_syscall_table() {
   }
   return result;
 }
+
+}  // namespace shk
