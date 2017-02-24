@@ -759,7 +759,7 @@ int main(int argc, char *argv[]) {
   signal(SIGPIPE, leave);
 
   struct sigaction osa;
-  sigaction(SIGHUP, (struct sigaction *)NULL, &osa);
+  sigaction(SIGHUP, nullptr, &osa);
 
   if (osa.sa_handler == SIG_DFL) {
     signal(SIGHUP, leave);
