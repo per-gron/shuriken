@@ -64,7 +64,6 @@ int argmax = 0;
 #define USLEEP_MIN 1
 #define USLEEP_BEHIND 2
 #define USLEEP_MAX 32
-int usleep_ms = USLEEP_MIN;
 
 void    format_print(event_info *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &, const char *);
 void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
@@ -88,7 +87,6 @@ static const auto bsd_syscalls = make_bsd_syscall_table();
 int trace_enabled = 0;
 
 void set_enable(bool enabled);
-void sample_sc(std::vector<kd_buf> &event_buffer);
 
 /*
  *  signal handlers
@@ -120,7 +118,7 @@ void set_remove()  {
   }
 }
 
-void sample_sc(std::vector<kd_buf> &event_buffer) {
+int sample_sc(std::vector<kd_buf> &event_buffer) {
   kbufinfo_t bufinfo = get_kdebug_bufinfo();
 
   if (need_new_map) {
@@ -130,6 +128,7 @@ void sample_sc(std::vector<kd_buf> &event_buffer) {
 
   size_t count = kdebug_read_buf(event_buffer.data(), bufinfo.nkdbufs);
 
+  int usleep_ms = USLEEP_MIN;
   if (count > (event_buffer.size() / 8)) {
     if (usleep_ms > USLEEP_BEHIND) {
       usleep_ms = USLEEP_BEHIND;
@@ -379,6 +378,8 @@ void sample_sc(std::vector<kd_buf> &event_buffer) {
     }
   }
   fflush(0);
+
+  return usleep_ms;
 }
 
 
@@ -777,8 +778,8 @@ int main(int argc, char *argv[]) {
   init_arguments_buffer();
 
   for (;;) {
+    auto usleep_ms = sample_sc(event_buffer);
     usleep(1000 * usleep_ms);
-    sample_sc(event_buffer);
   }
 }
 
