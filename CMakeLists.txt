@@ -15,6 +15,8 @@ add_executable(shk-trace
   src/event_info.h
   src/kdebug.h
   src/main.cpp
+  src/socket.cpp
+  src/socket.h
   src/syscall_constants.h
   src/syscall_tables.h
   src/sysctl_helpers.cpp
