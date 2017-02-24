@@ -22,10 +22,6 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-/*
-clang++ -std=c++11 -DKERNEL_PRIVATE -DPRIVATE -arch x86_64 -arch i386 -O -lutil -o fs_usage fs_usage.cpp
-*/
-
 #include <string>
 #include <tuple>
 #include <unordered_map>
