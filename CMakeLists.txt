@@ -10,7 +10,7 @@ add_custom_command(
   VERBATIM USES_TERMINAL)
 
 add_executable(shk-exec
-  src/fs_usage.cpp
+  src/main.cpp
   src/sysctl_helpers.cpp
   sudo_dummy.h)
 target_compile_definitions(shk-exec PRIVATE KERNEL_PRIVATE PRIVATE=)
