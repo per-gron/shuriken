@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 3.2.1)
-project(shk-trace)
-
 # This is a hack workaround for the fact that CMake+Ninja doesn't respect
 # the USES_TERMINAL keyword when it's applied to the add_custom_command
 # declarations below.
@@ -50,5 +47,4 @@ add_custom_command(
   COMMAND sudo chmod u+s shk-trace
   VERBATIM USES_TERMINAL)
 
-enable_testing()
-add_test(NAME unit COMMAND shktrace_test)
+add_test(NAME trace_unit COMMAND shktrace_test)

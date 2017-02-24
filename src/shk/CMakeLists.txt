@@ -100,7 +100,7 @@ add_library(shklib
   sandbox_parser.cpp)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC src)
-target_link_libraries(shklib utf8proc blake2 util)
+target_link_libraries(shklib utf8proc blake2 shkutil)
 set_target_properties(shklib PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk
