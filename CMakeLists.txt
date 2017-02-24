@@ -10,6 +10,7 @@ add_custom_command(
   VERBATIM USES_TERMINAL)
 
 add_executable(shk-trace
+  src/daemon.cpp
   src/main.cpp
   src/sysctl_helpers.cpp
   sudo_dummy.h)
