@@ -30,7 +30,8 @@ target_link_libraries(shk-trace util libshktrace)
 set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test
-  test/main.cpp)
+  test/main.cpp
+  test/socket_test.cpp)
 target_link_libraries(shktrace_test catch libshktrace)
 target_include_directories(shktrace_test PUBLIC src)
 set_property(TARGET shktrace_test PROPERTY CXX_STANDARD 11)
