@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2.1)
-project(shk-exec)
+project(shk-trace)
 
 # This is a hack workaround for the fact that CMake+Ninja doesn't respect
 # the USES_TERMINAL keyword when it's applied to the add_custom_command
@@ -9,22 +9,22 @@ add_custom_command(
   COMMAND sudo echo > /dev/null && touch sudo_dummy.h
   VERBATIM USES_TERMINAL)
 
-add_executable(shk-exec
+add_executable(shk-trace
   src/main.cpp
   src/sysctl_helpers.cpp
   sudo_dummy.h)
-target_compile_definitions(shk-exec PRIVATE KERNEL_PRIVATE PRIVATE=)
-target_link_libraries(shk-exec util)
-set_property(TARGET shk-exec PROPERTY CXX_STANDARD 11)
+target_compile_definitions(shk-trace PRIVATE KERNEL_PRIVATE PRIVATE=)
+target_link_libraries(shk-trace util)
+set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_custom_command(
-  TARGET shk-exec
+  TARGET shk-trace
   PRE_LINK
-  COMMAND rm -f shk-exec
+  COMMAND rm -f shk-trace
   VERBATIM USES_TERMINAL)
 add_custom_command(
-  TARGET shk-exec
+  TARGET shk-trace
   POST_BUILD
-  COMMAND sudo chown root shk-exec
-  COMMAND sudo chmod u+s shk-exec
+  COMMAND sudo chown root shk-trace
+  COMMAND sudo chmod u+s shk-trace
   VERBATIM USES_TERMINAL)
