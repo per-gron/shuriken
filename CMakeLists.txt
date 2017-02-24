@@ -6,7 +6,7 @@ project(shk-trace)
 # declarations below.
 add_custom_command(
   OUTPUT sudo_dummy.h
-  COMMAND sudo echo > /dev/null && touch sudo_dummy.h
+  COMMAND sudo echo > /dev/null
   VERBATIM USES_TERMINAL)
 
 add_executable(shk-trace
