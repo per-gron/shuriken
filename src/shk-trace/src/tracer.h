@@ -2,6 +2,9 @@
 
 namespace shk {
 
-int main(int argc, char *argv[]);
+class Tracer {
+ public:
+  int run();
+};
 
 }

@@ -22,6 +22,8 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+#include "tracer.h"
+
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -742,7 +744,7 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
   return 1;
 }
 
-int main(int argc, char *argv[]) {
+int Tracer::run() {
   if (0 != reexec_to_match_kernel()) {
     fprintf(stderr, "Could not re-execute: %d\n", errno);
     exit(1);
