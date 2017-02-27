@@ -36,8 +36,6 @@ int get_num_cpus() throw(std::runtime_error);
 
 void set_kdebug_numbufs(int nbufs);
 
-int kdebugFilterIndex(int klass, int subclass);
-
 void set_kdebug_filter();
 
 kbufinfo_t get_kdebug_bufinfo();

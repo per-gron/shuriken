@@ -31,6 +31,13 @@
 #include "syscall_constants.h"
 
 namespace shk {
+namespace {
+
+int kdebugFilterIndex(int klass, int subclass) {
+  return ((klass & 0xff) << 8) | (subclass & 0xff);
+}
+
+}
 
 int get_num_cpus() throw(std::runtime_error) {
   int num_cpus;
@@ -53,10 +60,6 @@ void set_kdebug_numbufs(int nbufs) {
   if (sysctl(name_2, 3, nullptr, &len, nullptr, 0)) {
     throw std::runtime_error("Failed KERN_KDSETUP sysctl");
   }
-}
-
-int kdebugFilterIndex(int klass, int subclass) {
-  return ((klass & 0xff) << 8) | (subclass & 0xff);
 }
 
 void set_kdebug_filter() {
