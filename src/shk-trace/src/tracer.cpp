@@ -44,18 +44,18 @@ static const auto bsd_syscalls = make_bsd_syscall_table();
 
 Tracer::Tracer(
     int num_cpus,
-    std::unique_ptr<KdebugController> &&kdebug_ctrl,
-    std::unique_ptr<Delegate> &&delegate)
+    KdebugController &kdebug_ctrl,
+    Delegate &delegate)
     : _event_buffer(EVENT_BASE * num_cpus),
-      _kdebug_ctrl(std::move(kdebug_ctrl)),
-      _delegate(std::move(delegate)) {}
+      _kdebug_ctrl(kdebug_ctrl),
+      _delegate(delegate) {}
 
 void Tracer::start(dispatch_queue_t queue) {
   set_remove();
-  _kdebug_ctrl->setNumbufs(_event_buffer.size());
-  _kdebug_ctrl->setup();
+  _kdebug_ctrl.setNumbufs(_event_buffer.size());
+  _kdebug_ctrl.setup();
 
-  _kdebug_ctrl->setFilter();
+  _kdebug_ctrl.setFilter();
   set_enable(true);
   init_arguments_buffer();
 
@@ -69,13 +69,13 @@ void Tracer::loop(dispatch_queue_t queue) {
 }
 
 void Tracer::set_enable(bool enabled) {
-  _kdebug_ctrl->enable(enabled);
+  _kdebug_ctrl.enable(enabled);
   _trace_enabled = enabled;
 }
 
 void Tracer::set_remove()  {
   try {
-    _kdebug_ctrl->teardown();
+    _kdebug_ctrl.teardown();
   } catch (std::runtime_error &error) {
     if (_trace_enabled) {
       set_enable(false);
@@ -86,14 +86,14 @@ void Tracer::set_remove()  {
 }
 
 uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
-  kbufinfo_t bufinfo = _kdebug_ctrl->getBufinfo();
+  kbufinfo_t bufinfo = _kdebug_ctrl.getBufinfo();
 
   if (_need_new_map) {
     read_command_map(bufinfo);
     _need_new_map = 0;
   }
 
-  size_t count = _kdebug_ctrl->readBuf(event_buffer.data(), bufinfo.nkdbufs);
+  size_t count = _kdebug_ctrl.readBuf(event_buffer.data(), bufinfo.nkdbufs);
 
   uint64_t sleep_ms = SLEEP_MIN;
   if (count > (event_buffer.size() / 8)) {
@@ -124,7 +124,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         event_info *ei = &_ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)->second;
         ei->child_thread = kd[i].arg1;
         ei->pid = kd[i].arg2;
-        _delegate->newThread(thread, ei->child_thread, ei->pid);
+        _delegate.newThread(thread, ei->child_thread, ei->pid);
       }
       continue;
 
@@ -170,7 +170,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
       }
 
     case BSC_thread_terminate:
-      _delegate->terminateThread(thread);
+      _delegate.terminateThread(thread);
       _threadmap.erase(thread);
       continue;
 
@@ -275,7 +275,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
     if (debugid & DBG_FUNC_START) {
       if ((type & CLASS_MASK) == FILEMGR_BASE) {
-        _delegate->illegalEvent(thread);
+        _delegate.illegalEvent(thread);
       } else {
         enter_event(thread, type, &kd[i], nullptr);
       }
@@ -565,7 +565,7 @@ void Tracer::format_print(
       sprintf(&buf[0], " %s ", pathname);
     }
 
-    _delegate->fileEvent(thread, EventType::READ, pathname);
+    _delegate.fileEvent(thread, EventType::READ, pathname);
   }
 
   pathname = buf;

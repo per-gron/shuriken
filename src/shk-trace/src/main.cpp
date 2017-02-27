@@ -52,10 +52,12 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  auto kdebug_ctrl = makeKdebugController();
+  DummyTracerDelegate tracer_delegate;
   Tracer tracer(
       getNumCpus(),
-      makeKdebugController(),
-      std::unique_ptr<Tracer::Delegate>(new DummyTracerDelegate));
+      *kdebug_ctrl,
+      tracer_delegate);
   tracer.start(dispatch_get_main_queue());
 
   dispatch_main();
