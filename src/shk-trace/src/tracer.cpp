@@ -44,6 +44,17 @@ extern "C" int reexec_to_match_kernel();
 
 namespace shk {
 
+static constexpr int PATHLENGTH = NUMPARMS * sizeof(uintptr_t);
+
+static constexpr int USLEEP_MIN = 1;
+static constexpr int USLEEP_BEHIND = 2;
+static constexpr int USLEEP_MAX = 32;
+
+static constexpr int EVENT_BASE = 60000;
+static constexpr int DBG_FUNC_MASK = 0xfffffffc;
+
+static const auto bsd_syscalls = make_bsd_syscall_table();
+
 struct threadmap_entry {
   unsigned int tm_setsize = 0; // This is a bit count
   unsigned long *tm_setptr = nullptr;  // File descriptor bitmap
@@ -54,38 +65,26 @@ std::unordered_map<uintptr_t, threadmap_entry> threadmap;
 std::unordered_map<uint64_t, std::string> vn_name_map;
 event_info_map ei_map;
 
-
 int need_new_map = 1;
 
 char *arguments = 0;
 int argmax = 0;
 
-static constexpr int PATHLENGTH = NUMPARMS * sizeof(uintptr_t);
-
-static constexpr int USLEEP_MIN = 1;
-static constexpr int USLEEP_BEHIND = 2;
-static constexpr int USLEEP_MAX = 32;
-
-static constexpr int EVENT_BASE = 60000;
-static constexpr int DBG_FUNC_MASK = 0xfffffffc;
-
-void    format_print(event_info *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &, const char *);
-void    enter_event_now(uintptr_t, int, kd_buf *, const char *);
-void    enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
-void    enter_illegal_event(uintptr_t thread, int type);
-void    exit_event(uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &);
-
-void    init_arguments_buffer();
-int     get_real_command_name(int, char *, int);
-
-void    read_command_map(const kbufinfo_t &bufinfo);
-void    create_map_entry(uintptr_t, int, char *);
-
-void    set_remove();
-
-static const auto bsd_syscalls = make_bsd_syscall_table();
-
 int trace_enabled = 0;
+
+void format_print(event_info *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &, const char *);
+void enter_event_now(uintptr_t, int, kd_buf *, const char *);
+void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
+void enter_illegal_event(uintptr_t thread, int type);
+void exit_event(uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &);
+
+void init_arguments_buffer();
+int get_real_command_name(int, char *, int);
+
+void read_command_map(const kbufinfo_t &bufinfo);
+void create_map_entry(uintptr_t, int, char *);
+
+void set_remove();
 
 void set_enable(bool enabled);
 
