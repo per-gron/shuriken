@@ -18,7 +18,9 @@ add_library(libshktrace
   src/syscall_constants.h
   src/syscall_tables.h
   src/sysctl_helpers.cpp
-  src/sysctl_helpers.h)
+  src/sysctl_helpers.h
+  src/tracer.cpp
+  src/tracer.h)
 target_compile_definitions(libshktrace PRIVATE ${shktrace_definitions})
 set_property(TARGET libshktrace PROPERTY CXX_STANDARD 11)
 
