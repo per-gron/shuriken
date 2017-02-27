@@ -46,7 +46,7 @@ Tracer::Tracer(int num_cpus, std::unique_ptr<KdebugController> &&kdebug_ctrl)
     : _event_buffer(EVENT_BASE * num_cpus),
       _kdebug_ctrl(std::move(kdebug_ctrl)) {}
 
-int Tracer::run() {
+void Tracer::start(dispatch_queue_t queue) {
   set_remove();
   _kdebug_ctrl->setNumbufs(_event_buffer.size());
   _kdebug_ctrl->setup();
@@ -55,15 +55,13 @@ int Tracer::run() {
   set_enable(true);
   init_arguments_buffer();
 
-  dispatch_async(dispatch_get_main_queue(), ^{ loop(); });
-
-  dispatch_main();
+  dispatch_async(queue, ^{ loop(queue); });
 }
 
-void Tracer::loop() {
+void Tracer::loop(dispatch_queue_t queue) {
   auto sleep_ms = sample_sc(_event_buffer);
   dispatch_time_t time = dispatch_time(DISPATCH_TIME_NOW, sleep_ms * 1000);
-  dispatch_after(time, dispatch_get_main_queue(), ^{ loop(); });
+  dispatch_after(time, queue, ^{ loop(queue); });
 }
 
 void Tracer::set_enable(bool enabled) {

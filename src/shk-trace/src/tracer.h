@@ -1,9 +1,11 @@
 #pragma once
 
-#include <libc.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include <dispatch/dispatch.h>
+#include <libc.h>
 
 #include "event_info.h"
 #include "kdebug.h"
@@ -17,10 +19,10 @@ class Tracer {
  public:
   Tracer(int num_cpus, std::unique_ptr<KdebugController> &&kdebug_ctrl);
 
-  int run();
+  void start(dispatch_queue_t queue);
 
  private:
-  void loop();
+  void loop(dispatch_queue_t queue);
 
   void set_enable(bool enabled);
   void set_remove();

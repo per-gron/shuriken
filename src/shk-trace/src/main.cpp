@@ -31,5 +31,8 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  shk::Tracer(getNumCpus(), shk::makeKdebugController()).run();
+  shk::Tracer tracer(getNumCpus(), shk::makeKdebugController());
+  tracer.start(dispatch_get_main_queue());
+
+  dispatch_main();
 }
