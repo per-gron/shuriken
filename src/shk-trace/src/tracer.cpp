@@ -27,14 +27,12 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
-#include <vector>
 
-#include <libc.h>
+#include <dispatch/dispatch.h>
 #include <errno.h>
-
+#include <libc.h>
 #include <sys/mman.h>
 
-#include "kdebug.h"
 #include "event_info.h"
 #include "syscall_constants.h"
 #include "syscall_tables.h"
@@ -46,9 +44,9 @@ namespace shk {
 
 static constexpr int PATHLENGTH = NUMPARMS * sizeof(uintptr_t);
 
-static constexpr int USLEEP_MIN = 1;
-static constexpr int USLEEP_BEHIND = 2;
-static constexpr int USLEEP_MAX = 32;
+static constexpr uint64_t SLEEP_MIN = 1;
+static constexpr uint64_t SLEEP_BEHIND = 2;
+static constexpr uint64_t SLEEP_MAX = 32;
 
 static constexpr int EVENT_BASE = 60000;
 static constexpr int DBG_FUNC_MASK = 0xfffffffc;
@@ -86,21 +84,6 @@ void create_map_entry(uintptr_t, int, char *);
 
 void set_remove();
 
-void set_enable(bool enabled);
-
-/*
- *  signal handlers
- */
-
-void leave(int sig) {  // Signal handler for exiting under normal conditions
-  fflush(0);
-
-  set_enable(false);
-  set_remove();
-
-  exit(0);
-}
-
 void set_enable(bool enabled) {
   enable_kdebug(enabled);
   trace_enabled = enabled;
@@ -118,7 +101,7 @@ void set_remove()  {
   }
 }
 
-int sample_sc(std::vector<kd_buf> &event_buffer) {
+uint64_t sample_sc(std::vector<kd_buf> &event_buffer) {
   kbufinfo_t bufinfo = get_kdebug_bufinfo();
 
   if (need_new_map) {
@@ -128,16 +111,16 @@ int sample_sc(std::vector<kd_buf> &event_buffer) {
 
   size_t count = kdebug_read_buf(event_buffer.data(), bufinfo.nkdbufs);
 
-  int usleep_ms = USLEEP_MIN;
+  uint64_t sleep_ms = SLEEP_MIN;
   if (count > (event_buffer.size() / 8)) {
-    if (usleep_ms > USLEEP_BEHIND) {
-      usleep_ms = USLEEP_BEHIND;
-    } else if (usleep_ms > USLEEP_MIN) {
-      usleep_ms /= 2;
+    if (sleep_ms > SLEEP_BEHIND) {
+      sleep_ms = SLEEP_BEHIND;
+    } else if (sleep_ms > SLEEP_MIN) {
+      sleep_ms /= 2;
     }
   } else if (count < (event_buffer.size() / 16)) {
-    if (usleep_ms < USLEEP_MAX) {
-      usleep_ms *= 2;
+    if (sleep_ms < SLEEP_MAX) {
+      sleep_ms *= 2;
     }
   }
 
@@ -379,7 +362,7 @@ int sample_sc(std::vector<kd_buf> &event_buffer) {
   }
   fflush(0);
 
-  return usleep_ms;
+  return sleep_ms;
 }
 
 
@@ -743,6 +726,9 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
   return 1;
 }
 
+Tracer::Tracer()
+    : _event_buffer(EVENT_BASE * get_num_cpus()) {}
+
 int Tracer::run() {
   if (0 != reexec_to_match_kernel()) {
     fprintf(stderr, "Could not re-execute: %d\n", errno);
@@ -754,33 +740,23 @@ int Tracer::run() {
     exit(1);
   }
 
-  // Set up signal handlers
-  signal(SIGINT, leave);
-  signal(SIGQUIT, leave);
-  signal(SIGPIPE, leave);
-
-  struct sigaction osa;
-  sigaction(SIGHUP, nullptr, &osa);
-
-  if (osa.sa_handler == SIG_DFL) {
-    signal(SIGHUP, leave);
-  }
-  signal(SIGTERM, leave);
-
-  std::vector<kd_buf> event_buffer(EVENT_BASE * get_num_cpus());
-
   set_remove();
-  set_kdebug_numbufs(event_buffer.size());
+  set_kdebug_numbufs(_event_buffer.size());
   kdebug_setup();
 
   set_kdebug_filter();
   set_enable(true);
   init_arguments_buffer();
 
-  for (;;) {
-    auto usleep_ms = sample_sc(event_buffer);
-    usleep(1000 * usleep_ms);
-  }
+  dispatch_async(dispatch_get_main_queue(), ^{ loop(); });
+
+  dispatch_main();
+}
+
+void Tracer::loop() {
+  auto sleep_ms = sample_sc(_event_buffer);
+  dispatch_time_t time = dispatch_time(DISPATCH_TIME_NOW, sleep_ms * 1000);
+  dispatch_after(time, dispatch_get_main_queue(), ^{ loop(); });
 }
 
 }  // namespace shk
