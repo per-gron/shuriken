@@ -14,7 +14,7 @@ namespace shk {
 
 class Tracer {
  public:
-  Tracer();
+  Tracer(int num_cpus);
 
   int run();
 

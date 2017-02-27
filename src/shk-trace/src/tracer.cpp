@@ -44,8 +44,8 @@ static constexpr int DBG_FUNC_MASK = 0xfffffffc;
 
 static const auto bsd_syscalls = make_bsd_syscall_table();
 
-Tracer::Tracer()
-    : _event_buffer(EVENT_BASE * get_num_cpus()) {}
+Tracer::Tracer(int num_cpus)
+    : _event_buffer(EVENT_BASE * num_cpus) {}
 
 int Tracer::run() {
   set_remove();

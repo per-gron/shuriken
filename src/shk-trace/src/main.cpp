@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <libc.h>
 
+#include "sysctl_helpers.h"
 #include "tracer.h"
 
 extern "C" int reexec_to_match_kernel();
@@ -16,5 +17,5 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  shk::Tracer().run();
+  shk::Tracer(shk::get_num_cpus()).run();
 }
