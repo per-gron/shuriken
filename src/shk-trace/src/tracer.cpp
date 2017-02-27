@@ -42,9 +42,13 @@ static constexpr int DBG_FUNC_MASK = 0xfffffffc;
 
 static const auto bsd_syscalls = make_bsd_syscall_table();
 
-Tracer::Tracer(int num_cpus, std::unique_ptr<KdebugController> &&kdebug_ctrl)
+Tracer::Tracer(
+    int num_cpus,
+    std::unique_ptr<KdebugController> &&kdebug_ctrl,
+    std::unique_ptr<Delegate> &&delegate)
     : _event_buffer(EVENT_BASE * num_cpus),
-      _kdebug_ctrl(std::move(kdebug_ctrl)) {}
+      _kdebug_ctrl(std::move(kdebug_ctrl)),
+      _delegate(std::move(delegate)) {}
 
 void Tracer::start(dispatch_queue_t queue) {
   set_remove();

@@ -17,7 +17,27 @@ namespace shk {
 
 class Tracer {
  public:
-  Tracer(int num_cpus, std::unique_ptr<KdebugController> &&kdebug_ctrl);
+  enum class EventType {
+    READ,
+    WRITE,
+    CREATE,
+    DELETE
+  };
+
+  class Delegate {
+   public:
+    virtual ~Delegate() = default;
+
+    void newThread(uintptr_t parent_thread_id, uintptr_t child_thread_id, int parent_pid);
+    void terminateThread(uintptr_t thread_id);
+    void illegalEvent(uintptr_t thread_id);
+    void fileEvent(uintptr_t thread_id, EventType type, std::string &&path);
+  };
+
+  Tracer(
+      int num_cpus,
+      std::unique_ptr<KdebugController> &&kdebug_ctrl,
+      std::unique_ptr<Delegate> &&delegate);
 
   void start(dispatch_queue_t queue);
 
@@ -62,6 +82,7 @@ class Tracer {
   std::vector<kd_buf> _event_buffer;
 
   const std::unique_ptr<KdebugController> _kdebug_ctrl;
+  const std::unique_ptr<Delegate> _delegate;
 
   std::unordered_map<uintptr_t, threadmap_entry> _threadmap;
   std::unordered_map<uint64_t, std::string> _vn_name_map;
