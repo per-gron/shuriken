@@ -29,7 +29,6 @@
 #include <unordered_map>
 
 #include <dispatch/dispatch.h>
-#include <errno.h>
 #include <libc.h>
 #include <sys/mman.h>
 
@@ -37,8 +36,6 @@
 #include "syscall_constants.h"
 #include "syscall_tables.h"
 #include "sysctl_helpers.h"
-
-extern "C" int reexec_to_match_kernel();
 
 namespace shk {
 
@@ -730,16 +727,6 @@ Tracer::Tracer()
     : _event_buffer(EVENT_BASE * get_num_cpus()) {}
 
 int Tracer::run() {
-  if (0 != reexec_to_match_kernel()) {
-    fprintf(stderr, "Could not re-execute: %d\n", errno);
-    exit(1);
-  }
-
-  if (geteuid() != 0) {
-    fprintf(stderr, "This tool must be run as root\n");
-    exit(1);
-  }
-
   set_remove();
   set_kdebug_numbufs(_event_buffer.size());
   kdebug_setup();
