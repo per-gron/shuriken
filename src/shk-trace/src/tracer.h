@@ -33,10 +33,22 @@ class Tracer {
    public:
     virtual ~Delegate() = default;
 
-    void newThread(uintptr_t parent_thread_id, uintptr_t child_thread_id, int parent_pid);
-    void terminateThread(uintptr_t thread_id);
-    void illegalEvent(uintptr_t thread_id);
-    void fileEvent(uintptr_t thread_id, EventType type, std::string &&path);
+    virtual void newThread(
+        uintptr_t parent_thread_id,
+        uintptr_t child_thread_id,
+        int parent_pid) = 0;
+
+    virtual void terminateThread(uintptr_t thread_id) = 0;
+
+    /**
+     * Encountered an event that the Tracer does not understand. For threads
+     * where this happens, the tracer report may miss things. This happens for
+     * legacy Carbon File Manager system calls.
+     */
+    virtual void illegalEvent(uintptr_t thread_id) = 0;
+
+    virtual void fileEvent(
+        uintptr_t thread_id, EventType type, std::string &&path) = 0;
   };
 
   Tracer(

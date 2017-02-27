@@ -124,8 +124,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         event_info *ei = &_ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)->second;
         ei->child_thread = kd[i].arg1;
         ei->pid = kd[i].arg2;
-        // TODO(peck): Removeme
-        // printf("newthread PID %d (thread = %d, child_thread = %d)\n", (int)ei->pid, (int)thread, ei->child_thread);
+        _delegate->newThread(thread, ei->child_thread, ei->pid);
       }
       continue;
 
@@ -171,6 +170,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
       }
 
     case BSC_thread_terminate:
+      _delegate->terminateThread(thread);
       _threadmap.erase(thread);
       continue;
 
@@ -275,7 +275,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
     if (debugid & DBG_FUNC_START) {
       if ((type & CLASS_MASK) == FILEMGR_BASE) {
-        enter_illegal_event(thread, type);
+        _delegate->illegalEvent(thread);
       } else {
         enter_event(thread, type, &kd[i], nullptr);
       }
@@ -383,14 +383,6 @@ void Tracer::enter_event(uintptr_t thread, int type, kd_buf *kd, const char *nam
     return;
   }
 }
-
-
-void Tracer::enter_illegal_event(uintptr_t thread, int type) {
-  // TODO(peck): Only exist if the thread is one that is traced
-  fprintf(stderr, "Encountered illegal syscall (perhaps a Carbon File Manager)\n");
-  exit(1);
-}
-
 
 void Tracer::exit_event(
     uintptr_t thread,

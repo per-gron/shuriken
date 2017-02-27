@@ -6,7 +6,7 @@
 
 extern "C" int reexec_to_match_kernel();
 
-namespace {
+namespace shk {
 
 int getNumCpus() {
   int num_cpus;
@@ -18,7 +18,28 @@ int getNumCpus() {
   return num_cpus;
 }
 
-}  // anonymous namespace
+class DummyTracerDelegate : public Tracer::Delegate {
+ public:
+  virtual void newThread(
+      uintptr_t parent_thread_id,
+      uintptr_t child_thread_id,
+      int parent_pid) override {
+    printf("-- New thread!\n");
+  }
+
+  virtual void terminateThread(uintptr_t thread_id) override {
+    printf("-- Terminate thread!\n");
+  }
+
+  virtual void illegalEvent(uintptr_t thread_id) override {
+    printf("-- Illegal event!\n");
+  }
+
+  virtual void fileEvent(
+      uintptr_t thread_id, Tracer::EventType type, std::string &&path) override {
+    printf("-- File event!\n");
+  }
+};
 
 int main(int argc, char *argv[]) {
   if (0 != reexec_to_match_kernel()) {
@@ -31,8 +52,18 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  shk::Tracer tracer(getNumCpus(), shk::makeKdebugController(), nullptr);
+  Tracer tracer(
+      getNumCpus(),
+      makeKdebugController(),
+      std::unique_ptr<Tracer::Delegate>(new DummyTracerDelegate));
   tracer.start(dispatch_get_main_queue());
 
   dispatch_main();
+}
+
+}  // namespace shk
+
+
+int main(int argc, char *argv[]) {
+  shk::main(argc, argv);
 }
