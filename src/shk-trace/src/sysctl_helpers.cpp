@@ -37,17 +37,7 @@ int kdebugFilterIndex(int klass, int subclass) {
   return ((klass & 0xff) << 8) | (subclass & 0xff);
 }
 
-}
-
-int get_num_cpus() {
-  int num_cpus;
-  size_t len = sizeof(num_cpus);
-  static int name[] = { CTL_HW, HW_NCPU, 0 };
-  if (sysctl(name, 2, &num_cpus, &len, nullptr, 0) < 0) {
-    throw std::runtime_error("Failed to get number of CPUs");
-  }
-  return num_cpus;
-}
+}  // anonymous namespace
 
 void set_kdebug_numbufs(int nbufs) {
   static size_t len = 0;

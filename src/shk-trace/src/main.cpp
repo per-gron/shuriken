@@ -6,6 +6,20 @@
 
 extern "C" int reexec_to_match_kernel();
 
+namespace {
+
+int getNumCpus() {
+  int num_cpus;
+  size_t len = sizeof(num_cpus);
+  static int name[] = { CTL_HW, HW_NCPU, 0 };
+  if (sysctl(name, 2, &num_cpus, &len, nullptr, 0) < 0) {
+    throw std::runtime_error("Failed to get number of CPUs");
+  }
+  return num_cpus;
+}
+
+}  // anonymous namespace
+
 int main(int argc, char *argv[]) {
   if (0 != reexec_to_match_kernel()) {
     fprintf(stderr, "Could not re-execute: %d\n", errno);
@@ -17,5 +31,5 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  shk::Tracer(shk::get_num_cpus()).run();
+  shk::Tracer(getNumCpus()).run();
 }

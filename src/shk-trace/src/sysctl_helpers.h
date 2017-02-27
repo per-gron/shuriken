@@ -32,8 +32,6 @@
 
 namespace shk {
 
-int get_num_cpus();
-
 void set_kdebug_numbufs(int nbufs);
 
 void set_kdebug_filter();
