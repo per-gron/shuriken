@@ -29,8 +29,6 @@
 #include <dispatch/dispatch.h>
 #include <sys/mman.h>
 
-#include "sysctl_helpers.h"
-
 namespace shk {
 
 static constexpr int PATHLENGTH = NUMPARMS * sizeof(uintptr_t);
@@ -44,15 +42,16 @@ static constexpr int DBG_FUNC_MASK = 0xfffffffc;
 
 static const auto bsd_syscalls = make_bsd_syscall_table();
 
-Tracer::Tracer(int num_cpus)
-    : _event_buffer(EVENT_BASE * num_cpus) {}
+Tracer::Tracer(int num_cpus, std::unique_ptr<KdebugController> &&kdebug_ctrl)
+    : _event_buffer(EVENT_BASE * num_cpus),
+      _kdebug_ctrl(std::move(kdebug_ctrl)) {}
 
 int Tracer::run() {
   set_remove();
-  set_kdebug_numbufs(_event_buffer.size());
-  kdebug_setup();
+  _kdebug_ctrl->setNumbufs(_event_buffer.size());
+  _kdebug_ctrl->setup();
 
-  set_kdebug_filter();
+  _kdebug_ctrl->setFilter();
   set_enable(true);
   init_arguments_buffer();
 
@@ -68,13 +67,13 @@ void Tracer::loop() {
 }
 
 void Tracer::set_enable(bool enabled) {
-  enable_kdebug(enabled);
+  _kdebug_ctrl->enable(enabled);
   _trace_enabled = enabled;
 }
 
 void Tracer::set_remove()  {
   try {
-    kdebug_teardown();
+    _kdebug_ctrl->teardown();
   } catch (std::runtime_error &error) {
     if (_trace_enabled) {
       set_enable(false);
@@ -85,14 +84,14 @@ void Tracer::set_remove()  {
 }
 
 uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
-  kbufinfo_t bufinfo = get_kdebug_bufinfo();
+  kbufinfo_t bufinfo = _kdebug_ctrl->getBufinfo();
 
   if (_need_new_map) {
     read_command_map(bufinfo);
     _need_new_map = 0;
   }
 
-  size_t count = kdebug_read_buf(event_buffer.data(), bufinfo.nkdbufs);
+  size_t count = _kdebug_ctrl->readBuf(event_buffer.data(), bufinfo.nkdbufs);
 
   uint64_t sleep_ms = SLEEP_MIN;
   if (count > (event_buffer.size() / 8)) {

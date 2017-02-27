@@ -1,7 +1,7 @@
 #include <errno.h>
 #include <libc.h>
 
-#include "sysctl_helpers.h"
+#include "kdebug_controller.h"
 #include "tracer.h"
 
 extern "C" int reexec_to_match_kernel();
@@ -31,5 +31,5 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  shk::Tracer(getNumCpus()).run();
+  shk::Tracer(getNumCpus(), shk::makeKdebugController()).run();
 }

@@ -7,6 +7,7 @@
 
 #include "event_info.h"
 #include "kdebug.h"
+#include "kdebug_controller.h"
 #include "syscall_constants.h"
 #include "syscall_tables.h"
 
@@ -14,7 +15,7 @@ namespace shk {
 
 class Tracer {
  public:
-  Tracer(int num_cpus);
+  Tracer(int num_cpus, std::unique_ptr<KdebugController> &&kdebug_ctrl);
 
   int run();
 
@@ -57,6 +58,8 @@ class Tracer {
   };
 
   std::vector<kd_buf> _event_buffer;
+
+  const std::unique_ptr<KdebugController> _kdebug_ctrl;
 
   std::unordered_map<uintptr_t, threadmap_entry> _threadmap;
   std::unordered_map<uint64_t, std::string> _vn_name_map;

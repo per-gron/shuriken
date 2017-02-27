@@ -13,12 +13,12 @@ add_library(libshktrace
   src/daemon.h
   src/event_info.h
   src/kdebug.h
+  src/kdebug_controller.cpp
+  src/kdebug_controller.h
   src/socket.cpp
   src/socket.h
   src/syscall_constants.h
   src/syscall_tables.h
-  src/sysctl_helpers.cpp
-  src/sysctl_helpers.h
   src/tracer.cpp
   src/tracer.h)
 target_compile_definitions(libshktrace PRIVATE ${shktrace_definitions})

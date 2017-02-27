@@ -25,6 +25,7 @@
 #pragma once
 
 #include <stdexcept>
+#include <memory>
 
 #include <sys/sysctl.h>
 
@@ -32,18 +33,19 @@
 
 namespace shk {
 
-void set_kdebug_numbufs(int nbufs);
+class KdebugController {
+ public:
+  virtual ~KdebugController() = default;
 
-void set_kdebug_filter();
+  virtual void setNumbufs(int nbufs) = 0;
+  virtual void setFilter() = 0;
+  virtual kbufinfo_t getBufinfo() = 0;
+  virtual void enable(bool enabled) = 0;
+  virtual void setup() = 0;
+  virtual void teardown() = 0;
+  virtual size_t readBuf(kd_buf *bufs, size_t num_bufs) = 0;
+};
 
-kbufinfo_t get_kdebug_bufinfo();
-
-void enable_kdebug(bool enabled);
-
-void kdebug_setup();
-
-void kdebug_teardown();
-
-size_t kdebug_read_buf(kd_buf *bufs, size_t num_bufs);
+std::unique_ptr<KdebugController> makeKdebugController();
 
 }  // namespace shk
