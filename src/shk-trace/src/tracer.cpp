@@ -25,16 +25,10 @@
 #include "tracer.h"
 
 #include <string>
-#include <tuple>
-#include <unordered_map>
 
 #include <dispatch/dispatch.h>
-#include <libc.h>
 #include <sys/mman.h>
 
-#include "event_info.h"
-#include "syscall_constants.h"
-#include "syscall_tables.h"
 #include "sysctl_helpers.h"
 
 namespace shk {
@@ -50,47 +44,39 @@ static constexpr int DBG_FUNC_MASK = 0xfffffffc;
 
 static const auto bsd_syscalls = make_bsd_syscall_table();
 
-struct threadmap_entry {
-  unsigned int tm_setsize = 0; // This is a bit count
-  unsigned long *tm_setptr = nullptr;  // File descriptor bitmap
-  char tm_command[MAXCOMLEN + 1];
-};
+Tracer::Tracer()
+    : _event_buffer(EVENT_BASE * get_num_cpus()) {}
 
-std::unordered_map<uintptr_t, threadmap_entry> threadmap;
-std::unordered_map<uint64_t, std::string> vn_name_map;
-event_info_map ei_map;
+int Tracer::run() {
+  set_remove();
+  set_kdebug_numbufs(_event_buffer.size());
+  kdebug_setup();
 
-int need_new_map = 1;
+  set_kdebug_filter();
+  set_enable(true);
+  init_arguments_buffer();
 
-char *arguments = 0;
-int argmax = 0;
+  dispatch_async(dispatch_get_main_queue(), ^{ loop(); });
 
-int trace_enabled = 0;
-
-void format_print(event_info *, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &, const char *);
-void enter_event_now(uintptr_t, int, kd_buf *, const char *);
-void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
-void enter_illegal_event(uintptr_t thread, int type);
-void exit_event(uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, const bsd_syscall &);
-
-void init_arguments_buffer();
-int get_real_command_name(int, char *, int);
-
-void read_command_map(const kbufinfo_t &bufinfo);
-void create_map_entry(uintptr_t, int, char *);
-
-void set_remove();
-
-void set_enable(bool enabled) {
-  enable_kdebug(enabled);
-  trace_enabled = enabled;
+  dispatch_main();
 }
 
-void set_remove()  {
+void Tracer::loop() {
+  auto sleep_ms = sample_sc(_event_buffer);
+  dispatch_time_t time = dispatch_time(DISPATCH_TIME_NOW, sleep_ms * 1000);
+  dispatch_after(time, dispatch_get_main_queue(), ^{ loop(); });
+}
+
+void Tracer::set_enable(bool enabled) {
+  enable_kdebug(enabled);
+  _trace_enabled = enabled;
+}
+
+void Tracer::set_remove()  {
   try {
     kdebug_teardown();
   } catch (std::runtime_error &error) {
-    if (trace_enabled) {
+    if (_trace_enabled) {
       set_enable(false);
     }
 
@@ -98,12 +84,12 @@ void set_remove()  {
   }
 }
 
-uint64_t sample_sc(std::vector<kd_buf> &event_buffer) {
+uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
   kbufinfo_t bufinfo = get_kdebug_bufinfo();
 
-  if (need_new_map) {
+  if (_need_new_map) {
     read_command_map(bufinfo);
-    need_new_map = 0;
+    _need_new_map = 0;
   }
 
   size_t count = kdebug_read_buf(event_buffer.data(), bufinfo.nkdbufs);
@@ -134,7 +120,7 @@ uint64_t sample_sc(std::vector<kd_buf> &event_buffer) {
     switch (type) {
     case TRACE_DATA_NEWTHREAD:
       if (kd[i].arg1) {
-        event_info *ei = &ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)->second;
+        event_info *ei = &_ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)->second;
         ei->child_thread = kd[i].arg1;
         ei->pid = kd[i].arg2;
         // TODO(peck): Removeme
@@ -144,47 +130,47 @@ uint64_t sample_sc(std::vector<kd_buf> &event_buffer) {
 
     case TRACE_STRING_NEWTHREAD:
       {
-        auto ei_it = ei_map.find(thread, TRACE_DATA_NEWTHREAD);
-        if (ei_it == ei_map.end()) {
+        auto ei_it = _ei_map.find(thread, TRACE_DATA_NEWTHREAD);
+        if (ei_it == _ei_map.end()) {
           continue;
         }
         event_info *ei = &ei_it->second;
 
         create_map_entry(ei->child_thread, ei->pid, (char *)&kd[i].arg1);
 
-        ei_map.erase(ei_it);
+        _ei_map.erase(ei_it);
         continue;
       }
 
     case TRACE_DATA_EXEC:
       {
-        event_info *ei = &ei_map.add_event(thread, TRACE_DATA_EXEC)->second;
+        event_info *ei = &_ei_map.add_event(thread, TRACE_DATA_EXEC)->second;
         ei->pid = kd[i].arg1;
         continue;
       }
 
     case TRACE_STRING_EXEC:
       {
-        auto ei_it = ei_map.find(thread, BSC_execve);
-        if (ei_it != ei_map.end()) {
+        auto ei_it = _ei_map.find(thread, BSC_execve);
+        if (ei_it != _ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
             exit_event(thread, BSC_execve, 0, 0, 0, 0, bsd_syscalls[BSC_INDEX(BSC_execve)]);
           }
-        } else if ((ei_it = ei_map.find(thread, BSC_posix_spawn)) != ei_map.end()) {
+        } else if ((ei_it = _ei_map.find(thread, BSC_posix_spawn)) != _ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
             exit_event(thread, BSC_posix_spawn, 0, 0, 0, 0, bsd_syscalls[BSC_INDEX(BSC_execve)]);
           }
         }
-        ei_it = ei_map.find(thread, TRACE_DATA_EXEC);
+        ei_it = _ei_map.find(thread, TRACE_DATA_EXEC);
 
         create_map_entry(thread, ei_it->second.pid, (char *)&kd[i].arg1);
 
-        ei_map.erase(ei_it);
+        _ei_map.erase(ei_it);
         continue;
       }
 
     case BSC_thread_terminate:
-      threadmap.erase(thread);
+      _threadmap.erase(thread);
       continue;
 
     case BSC_exit:
@@ -203,20 +189,20 @@ uint64_t sample_sc(std::vector<kd_buf> &event_buffer) {
 
     case VFS_ALIAS_VP:
       {
-        auto name_it = vn_name_map.find(kd[i].arg1);
-        if (name_it != vn_name_map.end()) {
-          vn_name_map[kd[i].arg2] = name_it->second;
+        auto name_it = _vn_name_map.find(kd[i].arg1);
+        if (name_it != _vn_name_map.end()) {
+          _vn_name_map[kd[i].arg2] = name_it->second;
         } else {
           // TODO(peck): Can this happen?
-          vn_name_map.erase(kd[i].arg2);
+          _vn_name_map.erase(kd[i].arg2);
         }
         continue;
       }
 
     case VFS_LOOKUP:
       {
-        auto ei_it = ei_map.find_last(thread);
-        if (ei_it == ei_map.end()) {
+        auto ei_it = _ei_map.find_last(thread);
+        if (ei_it == _ei_map.end()) {
           continue;
         }
         event_info *ei = &ei_it->second;
@@ -265,7 +251,7 @@ uint64_t sample_sc(std::vector<kd_buf> &event_buffer) {
         }
         if (debugid & DBG_FUNC_END) {
 
-          vn_name_map[ei->vnodeid] =
+          _vn_name_map[ei->vnodeid] =
               reinterpret_cast<const char *>(&ei->lookups[ei->pn_work_index].pathname[0]);
 
           if (ei->pn_work_index == ei->pn_scall_index) {
@@ -325,9 +311,9 @@ uint64_t sample_sc(std::vector<kd_buf> &event_buffer) {
     case MACH_pageout:
     case MACH_vmfault:
       {
-        auto ei_it = ei_map.find(thread, type);
-        if (ei_it != ei_map.end()) {
-          ei_map.erase(ei_it);
+        auto ei_it = _ei_map.find(thread, type);
+        if (ei_it != _ei_map.end()) {
+          _ei_map.erase(ei_it);
         }
         continue;
       }
@@ -352,7 +338,7 @@ uint64_t sample_sc(std::vector<kd_buf> &event_buffer) {
         exit_event(thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, bsd_syscalls[index]);
 
         if (type == BSC_exit) {
-          threadmap.erase(thread);
+          _threadmap.erase(thread);
         }
       }
     }
@@ -363,8 +349,8 @@ uint64_t sample_sc(std::vector<kd_buf> &event_buffer) {
 }
 
 
-void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
-  auto ei_it = ei_map.add_event(thread, type);
+void Tracer::enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
+  auto ei_it = _ei_map.add_event(thread, type);
   auto *ei = &ei_it->second;
 
   ei->arg1 = kd->arg1;
@@ -374,7 +360,7 @@ void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
 }
 
 
-void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
+void Tracer::enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
   switch (type) {
 
   case MSC_map_fd:
@@ -398,14 +384,14 @@ void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
 }
 
 
-void enter_illegal_event(uintptr_t thread, int type) {
+void Tracer::enter_illegal_event(uintptr_t thread, int type) {
   // TODO(peck): Only exist if the thread is one that is traced
   fprintf(stderr, "Encountered illegal syscall (perhaps a Carbon File Manager)\n");
   exit(1);
 }
 
 
-void exit_event(
+void Tracer::exit_event(
     uintptr_t thread,
     int type,
     uintptr_t arg1,
@@ -413,18 +399,18 @@ void exit_event(
     uintptr_t arg3,
     uintptr_t arg4,
     const bsd_syscall &syscall) {
-  auto ei_it = ei_map.find(thread, type);
-  if (ei_it == ei_map.end()) {
+  auto ei_it = _ei_map.find(thread, type);
+  if (ei_it == _ei_map.end()) {
     return;
   }
 
   auto *ei = &ei_it->second;
   format_print(ei, thread, type, arg1, arg2, arg3, arg4, syscall, (char *)&ei->lookups[0].pathname[0]);
-  ei_map.erase(ei_it);
+  _ei_map.erase(ei_it);
 }
 
 
-void format_print(
+void Tracer::format_print(
     event_info *ei,
     uintptr_t thread,
     int type,
@@ -438,8 +424,8 @@ void format_print(
 
   threadmap_entry *tme;
 
-  auto tme_it = threadmap.find(thread);
-  const char *command_name = tme_it == threadmap.end() ?
+  auto tme_it = _threadmap.find(thread);
+  const char *command_name = tme_it == _threadmap.end() ?
       "" : tme_it->second.tm_command;
 
   printf("  %-17.17s", syscall.name);
@@ -479,8 +465,8 @@ void format_print(
 
     printf("            (%s) ", sbuf);
 
-    auto name_it = vn_name_map.find(arg1);
-    pathname = name_it == vn_name_map.end() ? nullptr : name_it->second.c_str();
+    auto name_it = _vn_name_map.find(arg1);
+    pathname = name_it == _vn_name_map.end() ? nullptr : name_it->second.c_str();
 
     break;
   }
@@ -593,10 +579,10 @@ void format_print(
 }
 
 // TODO(peck): We don't need to track command names really
-void read_command_map(const kbufinfo_t &bufinfo) {
+void Tracer::read_command_map(const kbufinfo_t &bufinfo) {
   kd_threadmap *mapptr = 0;
 
-  threadmap.clear();
+  _threadmap.clear();
 
   int total_threads = bufinfo.nkdthreads;
   size_t size = bufinfo.nkdthreads * sizeof(kd_threadmap);
@@ -621,8 +607,8 @@ void read_command_map(const kbufinfo_t &bufinfo) {
 }
 
 
-void create_map_entry(uintptr_t thread, int pid, char *command) {
-  auto &tme = threadmap[thread];
+void Tracer::create_map_entry(uintptr_t thread, int pid, char *command) {
+  auto &tme = _threadmap[thread];
 
   strncpy(tme.tm_command, command, MAXCOMLEN);
   tme.tm_command[MAXCOMLEN] = '\0';
@@ -635,23 +621,23 @@ void create_map_entry(uintptr_t thread, int pid, char *command) {
 }
 
 // TODO(peck): We don't need to track command names really
-void init_arguments_buffer() {
-  size_t size = sizeof(argmax);
+void Tracer::init_arguments_buffer() {
+  size_t size = sizeof(_argmax);
 
   static int name[] = { CTL_KERN, KERN_ARGMAX };
-  if (sysctl(name, 2, &argmax, &size, NULL, 0) == -1) {
+  if (sysctl(name, 2, &_argmax, &size, NULL, 0) == -1) {
     return;
   }
   // Hack to avoid kernel bug.
-  if (argmax > 8192) {
-    argmax = 8192;
+  if (_argmax > 8192) {
+    _argmax = 8192;
   }
-  arguments = (char *)malloc(argmax);
+  _arguments = (char *)malloc(_argmax);
 }
 
 
 // TODO(peck): We don't need to track command names really
-int get_real_command_name(int pid, char *cbuf, int csize) {
+int Tracer::get_real_command_name(int pid, char *cbuf, int csize) {
   char *cp;
   char *command_beg, *command, *command_end;
 
@@ -659,8 +645,8 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
     return 0;
   }
 
-  if (arguments) {
-    bzero(arguments, argmax);
+  if (_arguments) {
+    bzero(_arguments, _argmax);
   } else {
     return 0;
   }
@@ -668,29 +654,29 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
   // A sysctl() is made to find out the full path that the command
   // was called with.
   static int name[] = { CTL_KERN, KERN_PROCARGS2, pid, 0 };
-  if (sysctl(name, 3, arguments, (size_t *)&argmax, NULL, 0) < 0) {
+  if (sysctl(name, 3, _arguments, (size_t *)&_argmax, NULL, 0) < 0) {
     return 0;
   }
 
   // Skip the saved exec_path
-  for (cp = arguments; cp < &arguments[argmax]; cp++) {
+  for (cp = _arguments; cp < &_arguments[_argmax]; cp++) {
     if (*cp == '\0') {
       // End of exec_path reached
       break;
     }
   }
-  if (cp == &arguments[argmax]) {
+  if (cp == &_arguments[_argmax]) {
     return 0;
   }
 
   // Skip trailing '\0' characters
-  for (; cp < &arguments[argmax]; cp++) {
+  for (; cp < &_arguments[_argmax]; cp++) {
     if (*cp != '\0') {
       // Beginning of first argument reached
       break;
     }
   }
-  if (cp == &arguments[argmax]) {
+  if (cp == &_arguments[_argmax]) {
     return 0;
   }
 
@@ -698,13 +684,13 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
   // Make sure that the command is '\0'-terminated.  This protects
   // against malicious programs; under normal operation this never
   // ends up being a problem..
-  for (; cp < &arguments[argmax]; cp++) {
+  for (; cp < &_arguments[_argmax]; cp++) {
     if (*cp == '\0') {
       // End of first argument reached
       break;
     }
   }
-  if (cp == &arguments[argmax]) {
+  if (cp == &_arguments[_argmax]) {
     return 0;
   }
 
@@ -721,29 +707,6 @@ int get_real_command_name(int pid, char *cbuf, int csize) {
   cbuf[csize-1] = '\0';
 
   return 1;
-}
-
-Tracer::Tracer()
-    : _event_buffer(EVENT_BASE * get_num_cpus()) {}
-
-int Tracer::run() {
-  set_remove();
-  set_kdebug_numbufs(_event_buffer.size());
-  kdebug_setup();
-
-  set_kdebug_filter();
-  set_enable(true);
-  init_arguments_buffer();
-
-  dispatch_async(dispatch_get_main_queue(), ^{ loop(); });
-
-  dispatch_main();
-}
-
-void Tracer::loop() {
-  auto sleep_ms = sample_sc(_event_buffer);
-  dispatch_time_t time = dispatch_time(DISPATCH_TIME_NOW, sleep_ms * 1000);
-  dispatch_after(time, dispatch_get_main_queue(), ^{ loop(); });
 }
 
 }  // namespace shk

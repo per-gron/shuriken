@@ -26,6 +26,8 @@
 
 #include <unordered_map>
 
+#include "kdebug.h"
+
 #define MAX_PATHNAMES 3
 #define MAX_SCALL_PATHNAMES 2
 

@@ -65,7 +65,7 @@ struct bsd_syscall {
 
 static constexpr int MAX_BSD_SYSCALL = 526;
 
-std::array<bsd_syscall, MAX_BSD_SYSCALL> make_bsd_syscall_table() {
+static std::array<bsd_syscall, MAX_BSD_SYSCALL> make_bsd_syscall_table() {
   static const std::tuple<int, const char *, Fmt, SyscallAt> bsd_syscall_table[] = {
     { BSC_stat, "stat", Fmt::READ_METADATA, SyscallAt::NO },
     { BSC_stat64, "stat64", Fmt::READ_METADATA, SyscallAt::NO },
