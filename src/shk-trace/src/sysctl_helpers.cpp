@@ -39,7 +39,7 @@ int kdebugFilterIndex(int klass, int subclass) {
 
 }
 
-int get_num_cpus() throw(std::runtime_error) {
+int get_num_cpus() {
   int num_cpus;
   size_t len = sizeof(num_cpus);
   static int name[] = { CTL_HW, HW_NCPU, 0 };
