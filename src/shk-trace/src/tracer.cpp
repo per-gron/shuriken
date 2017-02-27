@@ -564,6 +564,8 @@ void Tracer::format_print(
     } else {
       sprintf(&buf[0], " %s ", pathname);
     }
+
+    _delegate->fileEvent(thread, EventType::READ, pathname);
   }
 
   pathname = buf;
