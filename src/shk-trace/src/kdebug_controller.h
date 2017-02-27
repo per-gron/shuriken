@@ -33,6 +33,10 @@
 
 namespace shk {
 
+/**
+ * KdebugController objects expose a low-level interface to kdebug, only thick
+ * enough to facilitate unit testing of classes that use it.
+ */
 class KdebugController {
  public:
   virtual ~KdebugController() = default;
