@@ -6,8 +6,6 @@ add_custom_command(
   COMMAND sudo echo > /dev/null
   VERBATIM USES_TERMINAL)
 
-set(shktrace_definitions KERNEL_PRIVATE PRIVATE=)
-
 add_library(libshktrace
   src/daemon.cpp
   src/daemon.h
@@ -15,22 +13,24 @@ add_library(libshktrace
   src/kdebug.h
   src/kdebug_controller.cpp
   src/kdebug_controller.h
+  src/process_tracer.cpp
+  src/process_tracer.h
   src/syscall_constants.h
   src/syscall_tables.h
   src/tracer.cpp
   src/tracer.h)
-target_compile_definitions(libshktrace PRIVATE ${shktrace_definitions})
+target_compile_definitions(libshktrace PUBLIC KERNEL_PRIVATE PRIVATE=)
 set_property(TARGET libshktrace PROPERTY CXX_STANDARD 11)
 
 add_executable(shk-trace
   src/main.cpp
   sudo_dummy.h)
-target_compile_definitions(shk-trace PRIVATE ${shktrace_definitions})
 target_link_libraries(shk-trace util libshktrace)
 set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test
-  test/main.cpp)
+  test/main.cpp
+  test/process_tracer_test.cpp)
 target_link_libraries(shktrace_test catch libshktrace)
 target_include_directories(shktrace_test PUBLIC src)
 set_property(TARGET shktrace_test PROPERTY CXX_STANDARD 11)

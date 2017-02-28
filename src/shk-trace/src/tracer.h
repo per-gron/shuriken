@@ -17,8 +17,9 @@ namespace shk {
 
 /**
  * Tracer uses a low-level KdebugController object and (via the delegate)
- * exposes a higher-level stream of events. It does not format its output and
- * it does not follow process children.
+ * exposes a higher-level stream of events (such as thread creation/termination
+ * and file manipulation events). It does not format its output and it does not
+ * follow process children.
  */
 class Tracer {
  public:
