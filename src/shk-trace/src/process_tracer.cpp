@@ -49,12 +49,6 @@ void ProcessTracer::terminateThread(uintptr_t thread_id) {
   }
 }
 
-void ProcessTracer::illegalEvent(uintptr_t thread_id) {
-  if (auto delegate = findDelegate(thread_id)) {
-    delegate->illegalEvent();
-  }
-}
-
 void ProcessTracer::fileEvent(
     uintptr_t thread_id, Tracer::EventType type, std::string &&path) {
   if (auto delegate = findDelegate(thread_id)) {

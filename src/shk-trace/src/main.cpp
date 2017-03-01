@@ -31,10 +31,6 @@ class DummyTracerDelegate : public Tracer::Delegate {
     printf("-- Terminate thread!\n");
   }
 
-  virtual void illegalEvent(uintptr_t thread_id) override {
-    printf("-- Illegal event!\n");
-  }
-
   virtual void fileEvent(
       uintptr_t thread_id, Tracer::EventType type, std::string &&path) override {
     printf("-- File event!\n");

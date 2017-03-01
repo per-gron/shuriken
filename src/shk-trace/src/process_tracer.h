@@ -22,13 +22,6 @@ class ProcessTracer : public Tracer::Delegate {
      */
     virtual ~Delegate() = default;
 
-    /**
-     * Encountered an event that the ProcessTracer does not understand. For
-     * threads where this happens, the tracer report may miss things. This
-     * happens for legacy Carbon File Manager system calls.
-     */
-    virtual void illegalEvent() = 0;
-
     virtual void fileEvent(Tracer::EventType type, std::string &&path) = 0;
   };
 
@@ -49,8 +42,6 @@ class ProcessTracer : public Tracer::Delegate {
       int parent_pid) override;
 
   virtual void terminateThread(uintptr_t thread_id) override;
-
-  virtual void illegalEvent(uintptr_t thread_id) override;
 
   virtual void fileEvent(
       uintptr_t thread_id, Tracer::EventType type, std::string &&path) override;

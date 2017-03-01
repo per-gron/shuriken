@@ -275,7 +275,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
     if (debugid & DBG_FUNC_START) {
       if ((type & CLASS_MASK) == FILEMGR_BASE) {
-        _delegate.illegalEvent(thread);
+        _delegate.fileEvent(thread, EventType::ILLEGAL, "");
       } else {
         enter_event(thread, type, &kd[i], nullptr);
       }

@@ -27,7 +27,15 @@ class Tracer {
     READ,
     WRITE,
     CREATE,
-    DELETE
+    DELETE,
+    /**
+     * This is an event that the Tracer does not understand, and it doesn't know
+     * which files may have been read or written because of it. This happens for
+     * legacy Carbon File Manager system calls.
+     *
+     * For ILLEGAL events, the path provided is undefined and has no meaning.
+     */
+    ILLEGAL
   };
 
   class Delegate {
@@ -40,13 +48,6 @@ class Tracer {
         int parent_pid) = 0;
 
     virtual void terminateThread(uintptr_t thread_id) = 0;
-
-    /**
-     * Encountered an event that the Tracer does not understand. For threads
-     * where this happens, the tracer report may miss things. This happens for
-     * legacy Carbon File Manager system calls.
-     */
-    virtual void illegalEvent(uintptr_t thread_id) = 0;
 
     virtual void fileEvent(
         uintptr_t thread_id, EventType type, std::string &&path) = 0;
