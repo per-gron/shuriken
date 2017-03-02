@@ -24,8 +24,21 @@ namespace shk {
 class Tracer {
  public:
   enum class EventType {
+    /**
+     * READ is used when a program performs an operation that provides
+     * information about a given file, including both metadata and actual file
+     * contents.
+     */
     READ,
+    /**
+     * WRITE is used when a program performs an operation that modifies a file
+     * but that could potentially leave parts of the previous file contents.
+     */
     WRITE,
+    /**
+     * CREATE is used when a program creates a file, or when it entirely
+     * overwrites the contents of a file.
+     */
     CREATE,
     DELETE,
     /**

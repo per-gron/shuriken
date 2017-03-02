@@ -9,6 +9,8 @@ add_custom_command(
 add_library(libshktrace
   src/daemon.cpp
   src/daemon.h
+  src/event_consolidator.cpp
+  src/event_consolidator.h
   src/event_info.h
   src/kdebug.h
   src/kdebug_controller.cpp
@@ -29,6 +31,7 @@ target_link_libraries(shk-trace util libshktrace)
 set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test
+  test/event_consolidator_test.cpp
   test/main.cpp
   test/process_tracer_test.cpp)
 target_link_libraries(shktrace_test catch libshktrace)
