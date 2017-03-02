@@ -32,7 +32,9 @@ class DummyTracerDelegate : public Tracer::Delegate {
   }
 
   virtual void fileEvent(
-      uintptr_t thread_id, Tracer::EventType type, std::string &&path) override {
+      uintptr_t thread_id,
+      Tracer::EventType type,
+      std::string &&path) override {
     printf("-- File event!\n");
   }
 };

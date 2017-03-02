@@ -70,6 +70,8 @@ class Tracer {
       int num_cpus,
       KdebugController &kdebug_ctrl,
       Delegate &delegate);
+  Tracer(const Tracer &) = delete;
+  Tracer &operator=(const Tracer &) = delete;
 
   void start(dispatch_queue_t queue);
 
