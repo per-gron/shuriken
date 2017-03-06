@@ -17,7 +17,7 @@ class FileLock {
 
  private:
   const std::string _path;
-  using FileHandle = util::RAIIHelper<FILE *, int, fclose>;
+  using FileHandle = RAIIHelper<FILE *, int, fclose>;
   const FileHandle _f;
 };
 

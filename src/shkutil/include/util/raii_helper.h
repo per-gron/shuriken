@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace util {
+namespace shk {
 
 template<
     typename T,
@@ -40,4 +40,4 @@ class RAIIHelper {
   T _obj;
 };
 
-}  // namespace util
+}  // namespace shk

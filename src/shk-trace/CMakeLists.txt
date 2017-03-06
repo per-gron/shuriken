@@ -15,6 +15,8 @@ add_library(libshktrace
   src/kdebug.h
   src/kdebug_controller.cpp
   src/kdebug_controller.h
+  src/mach_port.cpp
+  src/mach_port.h
   src/process_tracer.cpp
   src/process_tracer.h
   src/syscall_constants.h
@@ -22,12 +24,13 @@ add_library(libshktrace
   src/tracer.cpp
   src/tracer.h)
 target_compile_definitions(libshktrace PUBLIC KERNEL_PRIVATE PRIVATE=)
+target_link_libraries(libshktrace util shkutil)
 set_property(TARGET libshktrace PROPERTY CXX_STANDARD 11)
 
 add_executable(shk-trace
   src/main.cpp
   sudo_dummy.h)
-target_link_libraries(shk-trace util libshktrace)
+target_link_libraries(shk-trace libshktrace)
 set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test

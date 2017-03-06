@@ -2,7 +2,7 @@
 
 #include <util/raii_helper.h>
 
-namespace util {
+namespace shk {
 namespace {
 
 int gVal = 0;
@@ -93,4 +93,4 @@ TEST_CASE("RAIIHelper") {
   }
 }
 
-}  // namespace util
+}  // namespace shk
