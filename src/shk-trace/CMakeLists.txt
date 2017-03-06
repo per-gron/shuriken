@@ -35,6 +35,7 @@ set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test
   test/event_consolidator_test.cpp
+  test/mach_port_test.cpp
   test/main.cpp
   test/process_tracer_test.cpp)
 target_link_libraries(shktrace_test catch libshktrace)
