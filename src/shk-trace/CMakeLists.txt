@@ -17,6 +17,8 @@ add_library(libshktrace
   src/kdebug_controller.h
   src/mach_port.cpp
   src/mach_port.h
+  src/named_mach_port.cpp
+  src/named_mach_port.h
   src/process_tracer.cpp
   src/process_tracer.h
   src/syscall_constants.h
@@ -24,7 +26,7 @@ add_library(libshktrace
   src/tracer.cpp
   src/tracer.h)
 target_compile_definitions(libshktrace PUBLIC KERNEL_PRIVATE PRIVATE=)
-target_link_libraries(libshktrace util shkutil)
+target_link_libraries(libshktrace util bsm shkutil)
 set_property(TARGET libshktrace PROPERTY CXX_STANDARD 11)
 
 add_executable(shk-trace
@@ -37,6 +39,7 @@ add_executable(shktrace_test
   test/event_consolidator_test.cpp
   test/mach_port_test.cpp
   test/main.cpp
+  test/named_mach_port_test.cpp
   test/process_tracer_test.cpp)
 target_link_libraries(shktrace_test catch libshktrace)
 target_include_directories(shktrace_test PUBLIC src)
