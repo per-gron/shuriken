@@ -11,7 +11,7 @@ template<
     T EmptyValue = nullptr>
 class RAIIHelper {
  public:
-  RAIIHelper(T obj)
+  explicit RAIIHelper(T obj)
       : _obj(obj) {}
 
   RAIIHelper(const RAIIHelper &) = delete;
