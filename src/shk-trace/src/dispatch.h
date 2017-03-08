@@ -8,11 +8,11 @@ namespace shk {
 namespace detail {
 
 template <typename DispatchObject>
-static void releaseDispatchObject(DispatchObject object) {
+void releaseDispatchObject(DispatchObject object) {
   dispatch_release(object);
 }
 
-}
+}  // namespace detail
 
 using DispatchSource = RAIIHelper<
     dispatch_source_t, void, detail::releaseDispatchObject>;
