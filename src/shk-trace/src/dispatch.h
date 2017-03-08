@@ -20,4 +20,7 @@ using DispatchSource = RAIIHelper<
 using DispatchQueue = RAIIHelper<
     dispatch_queue_t, void, detail::releaseDispatchObject>;
 
+using DispatchSemaphore = RAIIHelper<
+    dispatch_semaphore_t, void, detail::releaseDispatchObject>;
+
 }  // namespace shk
