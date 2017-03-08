@@ -15,6 +15,7 @@ add_library(libshktrace
   src/event_info.h
   src/file_descriptor.cpp
   src/file_descriptor.h
+  src/fileport.h
   src/kdebug.h
   src/kdebug_controller.cpp
   src/kdebug_controller.h
