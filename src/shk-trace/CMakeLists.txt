@@ -9,6 +9,7 @@ add_custom_command(
 add_library(libshktrace
   src/daemon.cpp
   src/daemon.h
+  src/dispatch.h
   src/event_consolidator.cpp
   src/event_consolidator.h
   src/event_info.h
