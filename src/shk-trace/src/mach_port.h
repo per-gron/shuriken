@@ -18,4 +18,6 @@ using MachSendRight = RAIIHelper<
 using MachReceiveRight = RAIIHelper<
     mach_port_t, void, detail::derefReceiveRight, MACH_PORT_NULL>;
 
+std::pair<MachReceiveRight, MachSendRight> makePortPair();
+
 }  // namespace shk
