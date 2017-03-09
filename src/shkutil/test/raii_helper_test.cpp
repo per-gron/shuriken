@@ -45,6 +45,17 @@ TEST_CASE("RAIIHelper") {
     CHECK(gPtr == &an_int);
   }
 
+  SECTION("DoesNotInvokeFreeAfterRelease") {
+    int an_int = 0;
+
+    {
+      RAIIHelper<int *, void, mockFree> helper(&an_int);
+      CHECK(helper.release() == &an_int);
+    }
+
+    CHECK(gPtr == nullptr);
+  }
+
   SECTION("OperatorBool") {
     int an_int = 0;
     RAIIHelper<int *, void, mockFree, &gVal> empty(&gVal);

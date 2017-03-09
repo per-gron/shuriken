@@ -36,6 +36,12 @@ class RAIIHelper {
     return _obj;
   }
 
+  T release() {
+    T ret = EmptyValue;
+    std::swap(ret, _obj);
+    return ret;
+  }
+
  private:
   T _obj;
 };
