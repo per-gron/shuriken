@@ -34,6 +34,22 @@ TEST_CASE("RAIIHelper") {
     CHECK(gPtr == &an_int);
   }
 
+  SECTION("Reset") {
+    SECTION("WorksWhenInitiallyEmpty") {
+      RAIIHelper<int *, void, mockFree> helper(nullptr);
+      int an_int = 0;
+      helper.reset(&an_int);
+      CHECK(gPtr == &an_int);
+    }
+
+    SECTION("WorksWhenNotInitiallyEmpty") {
+      int an_int = 0;
+      RAIIHelper<int *, void, mockFree> helper(&an_int);
+      helper.reset(nullptr);
+      CHECK(gPtr == &an_int);
+    }
+  }
+
   SECTION("DoesNotInvokeFreeOnDestructionWhenEmpty") {
     int an_int = 0;
     gPtr = &an_int;

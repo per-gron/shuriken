@@ -18,7 +18,6 @@ struct MachRecvMsg : public MachSendMsg {
   mach_msg_audit_trailer_t trailer;
 };
 
-
 }  // anonymous namespace
 
 TEST_CASE("NamedMachPort") {

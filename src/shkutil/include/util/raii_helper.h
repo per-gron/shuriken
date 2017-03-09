@@ -42,6 +42,14 @@ class RAIIHelper {
     return ret;
   }
 
+  void reset(T new_val = EmptyValue) {
+    auto old = _obj;
+    _obj = new_val;
+    if (_obj != EmptyValue) {
+      Free(_obj);
+    }
+  }
+
  private:
   T _obj;
 };
