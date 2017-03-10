@@ -25,7 +25,7 @@ TEST_CASE("NamedMachPort") {
 
   SECTION("OpenMissing") {
     auto result = openNamedPort(port_name).second;
-    CHECK(result == MachOpenPortResult::FAILURE);
+    CHECK(result == MachOpenPortResult::NOT_FOUND);
   }
 
   SECTION("Register") {
@@ -50,7 +50,7 @@ TEST_CASE("NamedMachPort") {
       auto server_port = registerNamedPort(port_name);
     }
     auto result = openNamedPort(port_name).second;
-    CHECK(result == MachOpenPortResult::FAILURE);
+    CHECK(result == MachOpenPortResult::NOT_FOUND);
   }
 
   SECTION("ExchangeMessage") {

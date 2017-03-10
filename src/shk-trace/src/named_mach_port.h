@@ -16,6 +16,7 @@ enum class MachPortRegistrationResult {
 
 enum class MachOpenPortResult {
   SUCCESS,
+  NOT_FOUND,
   FAILURE
 };
 

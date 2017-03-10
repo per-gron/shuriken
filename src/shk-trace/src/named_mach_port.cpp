@@ -12,7 +12,7 @@ std::pair<MachReceiveRight, MachPortRegistrationResult> registerNamedPort(
   bool in_use =
       kr == BOOTSTRAP_SERVICE_ACTIVE || kr == BOOTSTRAP_NOT_PRIVILEGED;
   auto result =
-      kr == KERN_SUCCESS ? MachPortRegistrationResult::SUCCESS :
+      kr == BOOTSTRAP_SUCCESS ? MachPortRegistrationResult::SUCCESS :
       in_use ? MachPortRegistrationResult::IN_USE :
       MachPortRegistrationResult::FAILURE;
 
@@ -24,8 +24,10 @@ std::pair<MachSendRight, MachOpenPortResult> openNamedPort(
   mach_port_t port = MACH_PORT_NULL;
   kern_return_t kr = bootstrap_look_up(bootstrap_port, name.c_str(), &port);
 
-  auto result = kr == KERN_SUCCESS ?
-      MachOpenPortResult::SUCCESS : MachOpenPortResult::FAILURE;
+  auto result =
+    kr == BOOTSTRAP_SUCCESS ? MachOpenPortResult::SUCCESS :
+    kr == BOOTSTRAP_UNKNOWN_SERVICE ? MachOpenPortResult::NOT_FOUND :
+    MachOpenPortResult::FAILURE;
 
   return std::make_pair(MachSendRight(port), result);
 }
