@@ -7,6 +7,7 @@
 #include <dispatch/dispatch.h>
 #include <libc.h>
 
+#include "dispatch.h"
 #include "event_info.h"
 #include "kdebug.h"
 #include "kdebug_controller.h"
@@ -72,6 +73,7 @@ class Tracer {
       Delegate &delegate);
   Tracer(const Tracer &) = delete;
   Tracer &operator=(const Tracer &) = delete;
+  ~Tracer();
 
   void start(dispatch_queue_t queue);
 
@@ -113,6 +115,8 @@ class Tracer {
     char tm_command[MAXCOMLEN + 1];
   };
 
+  std::atomic<bool> _shutting_down;
+  DispatchSemaphore _shutdown_semaphore;
   std::vector<kd_buf> _event_buffer;
 
   KdebugController &_kdebug_ctrl;

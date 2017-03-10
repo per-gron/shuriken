@@ -46,9 +46,20 @@ Tracer::Tracer(
     int num_cpus,
     KdebugController &kdebug_ctrl,
     Delegate &delegate)
-    : _event_buffer(EVENT_BASE * num_cpus),
+    : _shutting_down(false),
+      _shutdown_semaphore(dispatch_semaphore_create(0)),
+      _event_buffer(EVENT_BASE * num_cpus),
       _kdebug_ctrl(kdebug_ctrl),
       _delegate(delegate) {}
+
+Tracer::~Tracer() {
+  _shutting_down = true;
+  if (dispatch_semaphore_wait(
+          _shutdown_semaphore.get(), DISPATCH_TIME_FOREVER)) {
+    fprintf(stderr, "Failed to wait for tracing to finish\n");
+    abort();
+  }
+}
 
 void Tracer::start(dispatch_queue_t queue) {
   set_remove();
@@ -63,6 +74,11 @@ void Tracer::start(dispatch_queue_t queue) {
 }
 
 void Tracer::loop(dispatch_queue_t queue) {
+  if (_shutting_down) {
+    dispatch_semaphore_signal(_shutdown_semaphore.get());
+    return;
+  }
+
   auto sleep_ms = sample_sc(_event_buffer);
   dispatch_time_t time = dispatch_time(DISPATCH_TIME_NOW, sleep_ms * 1000);
   dispatch_after(time, queue, ^{ loop(queue); });
