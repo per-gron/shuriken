@@ -15,6 +15,9 @@ void mockFree(int *ptr) {
   gPtr = ptr;
 }
 
+void noop(int unused) {
+}
+
 void neverCalled(int *ptr) {
   CHECK(false);
 }
@@ -23,6 +26,11 @@ void neverCalled(int *ptr) {
 
 TEST_CASE("RAIIHelper") {
   gPtr = nullptr;
+
+  SECTION("DefaultConstructor") {
+    RAIIHelper<int, void, noop, 3> helper;
+    CHECK(helper.get() == 3);
+  }
 
   SECTION("InvokesFreeOnDestruction") {
     int an_int = 0;
@@ -39,7 +47,7 @@ TEST_CASE("RAIIHelper") {
       RAIIHelper<int *, void, mockFree> helper(nullptr);
       int an_int = 0;
       helper.reset(&an_int);
-      CHECK(gPtr == &an_int);
+      CHECK(gPtr == nullptr);
     }
 
     SECTION("WorksWhenNotInitiallyEmpty") {

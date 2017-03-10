@@ -11,6 +11,8 @@ template<
     T EmptyValue = nullptr>
 class RAIIHelper {
  public:
+  RAIIHelper() : _obj(EmptyValue) {}
+
   explicit RAIIHelper(T obj)
       : _obj(obj) {}
 
@@ -45,8 +47,8 @@ class RAIIHelper {
   void reset(T new_val = EmptyValue) {
     auto old = _obj;
     _obj = new_val;
-    if (_obj != EmptyValue) {
-      Free(_obj);
+    if (old != EmptyValue) {
+      Free(old);
     }
   }
 
