@@ -28,7 +28,9 @@ add_library(libshktrace
   src/syscall_constants.h
   src/syscall_tables.h
   src/tracer.cpp
-  src/tracer.h)
+  src/tracer.h
+  src/tracing_server.cpp
+  src/tracing_server.h)
 target_compile_definitions(libshktrace PUBLIC KERNEL_PRIVATE PRIVATE=)
 target_link_libraries(libshktrace util bsm shkutil)
 set_property(TARGET libshktrace PROPERTY CXX_STANDARD 11)
@@ -44,7 +46,8 @@ add_executable(shktrace_test
   test/mach_port_test.cpp
   test/main.cpp
   test/named_mach_port_test.cpp
-  test/process_tracer_test.cpp)
+  test/process_tracer_test.cpp
+  test/tracing_server_test.cpp)
 target_link_libraries(shktrace_test catch libshktrace)
 target_include_directories(shktrace_test PUBLIC src)
 set_property(TARGET shktrace_test PROPERTY CXX_STANDARD 11)
