@@ -77,7 +77,7 @@ class GCDTraceRequest : public TracingServer::TraceRequest {
 class GCDTracingServer : public TracingServer {
  public:
   GCDTracingServer(
-      const DispatchQueue &queue,
+      dispatch_queue_t queue,
       MachReceiveRight &&mach_port,
       const TracingServer::Callback &cb)
       : _mach_port(std::move(mach_port)),
@@ -86,7 +86,7 @@ class GCDTracingServer : public TracingServer {
             DISPATCH_SOURCE_TYPE_MACH_RECV,
             _mach_port.get(),
             0,
-            queue.get())) {}
+            queue)) {}
 
   GCDTracingServer(const GCDTracingServer &) = delete;
   GCDTracingServer& operator=(const GCDTracingServer &) = delete;
@@ -200,7 +200,7 @@ class MachTraceHandle : public TraceHandle {
 }  // anonymous namespace
 
 std::unique_ptr<TracingServer> makeTracingServer(
-    const DispatchQueue &queue,
+    dispatch_queue_t queue,
     MachReceiveRight &&port,
     const TracingServer::Callback &cb) {
   auto server = new GCDTracingServer(

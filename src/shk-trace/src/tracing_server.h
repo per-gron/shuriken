@@ -53,7 +53,7 @@ class TracingServer {
  * given Mach port.
  */
 std::unique_ptr<TracingServer> makeTracingServer(
-    const DispatchQueue &queue,
+    dispatch_queue_t queue,
     MachReceiveRight &&port,
     const TracingServer::Callback &cb);
 

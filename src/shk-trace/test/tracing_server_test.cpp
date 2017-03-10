@@ -23,7 +23,7 @@ TEST_CASE("TracingServer") {
 
   std::vector<std::unique_ptr<TracingServer::TraceRequest>> requests;
 
-  auto server = makeTracingServer(queue, std::move(port_pair.first), [&](
+  auto server = makeTracingServer(queue.get(), std::move(port_pair.first), [&](
       std::unique_ptr<TracingServer::TraceRequest> &&request) {
     requests.push_back(std::move(request));
     dispatch_semaphore_signal(sema.get());
