@@ -415,15 +415,11 @@ void Tracer::format_print(
     const char *pathname /* nullable */) {
   char buf[(PATHLENGTH + 80) + 64];
 
-  threadmap_entry *tme;
-
   auto tme_it = _threadmap.find(thread);
   const char *command_name = tme_it == _threadmap.end() ?
       "" : tme_it->second.tm_command;
 
   printf("  %-17.17s", syscall.name);
-
-  off_t offset_reassembled = 0LL;
 
   switch (syscall.format) {
   case Fmt::IGNORE:

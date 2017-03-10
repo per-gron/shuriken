@@ -3,19 +3,6 @@
 #include <cstdlib>
 
 namespace shk {
-namespace {
-
-mach_port_t getBootstrapPort() {
-  mach_port_t bootstrap_port;
-  auto kr = task_get_bootstrap_port(mach_task_self(), &bootstrap_port);
-  if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "task_get_bootstrap_port(): %s\n", mach_error_string(kr));
-    abort();
-  }
-  return bootstrap_port;
-}
-
-}  // anonymous namespace
 
 std::pair<MachReceiveRight, MachPortRegistrationResult> registerNamedPort(
     const std::string &name) {
