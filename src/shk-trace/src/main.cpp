@@ -4,6 +4,7 @@
 #include <string.h>
 #include <thread>
 
+#include "cmdline_options.h"
 #include "event_consolidator.h"
 #include "kdebug_controller.h"
 #include "named_mach_port.h"
@@ -148,7 +149,19 @@ std::pair<FileDescriptor, bool> openTraceFile(const std::string &path) {
   return std::make_pair(FileDescriptor(fd), fd != -1);
 }
 
+void printUsage() {
+  fprintf(stderr, "usage: shk-trace -f tracefile -c command\n");
+}
+
 int main(int argc, char *argv[]) {
+  auto cmdline_options = CmdlineOptions::parse(argc, argv);
+  if (cmdline_options.result == CmdlineOptions::Result::VERSION) {
+    // TODO(peck): Print version
+  } else if (cmdline_options.result != CmdlineOptions::Result::SUCCESS) {
+    printUsage();
+    return 1;
+  }
+
   if (0 != reexec_to_match_kernel()) {
     fprintf(stderr, "Could not re-execute: %s\n", strerror(errno));
     return 1;
@@ -198,7 +211,7 @@ int main(int argc, char *argv[]) {
 
   dropPrivileges();
 
-  auto trace_fd = openTraceFile("trace.txt");
+  auto trace_fd = openTraceFile(cmdline_options.tracefile);
   if (!trace_fd.second) {
     fprintf(stderr, "Failed to open tracing file: %s\n", strerror(errno));
     return 1;
@@ -224,7 +237,7 @@ int main(int argc, char *argv[]) {
     // TODO(peck): Restructure / document this so that it becomes sane.
     printf("EXECUTING\n");
 
-    status_code = executeCommand("ls /");
+    status_code = executeCommand(cmdline_options.command);
   }).join();
 
   trace_request.first->wait(MACH_MSG_TIMEOUT_NONE);
