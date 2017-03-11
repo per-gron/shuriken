@@ -31,7 +31,7 @@ class EventConsolidator {
   std::vector<Event> getConsolidatedEventsAndReset();
 
  private:
-  bool _encountered_fatal_error = false;
+  std::unordered_set<std::string> _fatal_errors;
   std::unordered_set<std::string> _deleted;
   std::unordered_set<std::string> _created;
   std::unordered_set<std::string> _read;

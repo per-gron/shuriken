@@ -58,7 +58,7 @@ TEST_CASE("EventConsolidator") {
 
   SECTION("KeepPathAndEventType") {
     static constexpr ET events[] = {
-        ET::READ, ET::WRITE, ET::CREATE, ET::DELETE };
+        ET::READ, ET::WRITE, ET::CREATE, ET::DELETE, ET::FATAL_ERROR };
     for (const auto event : events) {
       ec.event(event, "path");
 
