@@ -215,7 +215,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
         uintptr_t *sargptr;
         if (debugid & DBG_FUNC_START) {
-
           if (ei->type == HFS_update) {
             ei->pn_work_index = (MAX_PATHNAMES - 1);
           } else {
@@ -247,7 +246,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
           }
 
           if ((uintptr_t)sargptr < (uintptr_t)&ei->lookups[ei->pn_work_index].pathname[NUMPARMS]) {
-
             *sargptr++ = kd[i].arg1;
             *sargptr++ = kd[i].arg2;
             *sargptr++ = kd[i].arg3;
@@ -256,12 +254,10 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
           }
         }
         if (debugid & DBG_FUNC_END) {
-
           _vn_name_map[ei->vnodeid] =
               reinterpret_cast<const char *>(&ei->lookups[ei->pn_work_index].pathname[0]);
 
           if (ei->pn_work_index == ei->pn_scall_index) {
-
             ei->pn_scall_index++;
 
             if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
@@ -397,13 +393,11 @@ void Tracer::exit_event(
     uintptr_t arg4,
     const bsd_syscall &syscall) {
   auto ei_it = _ei_map.find(thread, type);
-  if (ei_it == _ei_map.end()) {
-    return;
+  if (ei_it != _ei_map.end()) {
+    auto *ei = &ei_it->second;
+    format_print(ei, thread, type, arg1, arg2, arg3, arg4, syscall, (char *)&ei->lookups[0].pathname[0]);
+    _ei_map.erase(ei_it);
   }
-
-  auto *ei = &ei_it->second;
-  format_print(ei, thread, type, arg1, arg2, arg3, arg4, syscall, (char *)&ei->lookups[0].pathname[0]);
-  _ei_map.erase(ei_it);
 }
 
 
