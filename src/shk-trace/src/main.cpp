@@ -4,6 +4,7 @@
 #include <string.h>
 #include <thread>
 
+#include "event_consolidator.h"
 #include "kdebug_controller.h"
 #include "named_mach_port.h"
 #include "process_tracer.h"
@@ -33,11 +34,18 @@ class ProcessTracerDelegate : public ProcessTracer::Delegate {
   ProcessTracerDelegate(std::unique_ptr<TracingServer::TraceRequest> &&request)
       : _request(std::move(request)) {}
 
-  virtual void fileEvent(Tracer::EventType type, std::string &&path) override {
-    // TODO(peck): Write something that actually makes sense
-    write(path + "\n");
+  virtual ~ProcessTracerDelegate() {
+    auto events = _consolidator.getConsolidatedEventsAndReset();
+    for (const auto &event : events) {
+      // TODO(peck): Write something that actually makes sense
+      write(event.second + "\n");
+    }
 
     // TODO(peck): Do something about quitting the tracing server as well.
+  }
+
+  virtual void fileEvent(Tracer::EventType type, std::string &&path) override {
+    _consolidator.event(type, std::move(path));
   }
 
  private:
@@ -56,6 +64,7 @@ class ProcessTracerDelegate : public ProcessTracer::Delegate {
   // destroy the TraceRequest, which signals to the traced process that tracing
   // has finished.
   const std::unique_ptr<TracingServer::TraceRequest> _request;
+  EventConsolidator _consolidator;
 };
 
 std::unique_ptr<TracingServer> runTracingServer(
