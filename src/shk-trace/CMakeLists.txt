@@ -7,6 +7,8 @@ add_custom_command(
   VERBATIM USES_TERMINAL)
 
 add_library(libshktrace
+  src/cmdline_options.cpp
+  src/cmdline_options.h
   src/daemon.cpp
   src/daemon.h
   src/dispatch.h
@@ -44,6 +46,7 @@ target_link_libraries(shk-trace libshktrace)
 set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test
+  test/cmdline_options_test.cpp
   test/event_consolidator_test.cpp
   test/event_test.cpp
   test/mach_port_test.cpp
