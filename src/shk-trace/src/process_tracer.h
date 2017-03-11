@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 
+#include "event.h"
 #include "tracer.h"
 
 namespace shk {
@@ -22,7 +23,7 @@ class ProcessTracer : public Tracer::Delegate {
      */
     virtual ~Delegate() = default;
 
-    virtual void fileEvent(Tracer::EventType type, std::string &&path) = 0;
+    virtual void fileEvent(EventType type, std::string &&path) = 0;
   };
 
   ProcessTracer() = default;
@@ -44,7 +45,7 @@ class ProcessTracer : public Tracer::Delegate {
   virtual void terminateThread(uintptr_t thread_id) override;
 
   virtual void fileEvent(
-      uintptr_t thread_id, Tracer::EventType type, std::string &&path) override;
+      uintptr_t thread_id, EventType type, std::string &&path) override;
 
  private:
   // Returns nullptr on not found

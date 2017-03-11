@@ -44,7 +44,7 @@ class ProcessTracerDelegate : public ProcessTracer::Delegate {
     // TODO(peck): Do something about quitting the tracing server as well.
   }
 
-  virtual void fileEvent(Tracer::EventType type, std::string &&path) override {
+  virtual void fileEvent(EventType type, std::string &&path) override {
     _consolidator.event(type, std::move(path));
   }
 

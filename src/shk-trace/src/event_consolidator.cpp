@@ -2,9 +2,9 @@
 
 namespace shk {
 
-void EventConsolidator::event(Tracer::EventType type, std::string &&path) {
+void EventConsolidator::event(EventType type, std::string &&path) {
   switch (type) {
-  case Tracer::EventType::READ:
+  case EventType::READ:
     if (_created.count(path) == 0) {
       // When a program reads from a file that it created itself, that doesn't
       // affect the result of the program; it can only see what it itself has
@@ -13,7 +13,7 @@ void EventConsolidator::event(Tracer::EventType type, std::string &&path) {
     }
     break;
 
-  case Tracer::EventType::WRITE:
+  case EventType::WRITE:
     if (_created.count(path) == 0) {
       // When a program writes to a file that it created itself, it is
       // sufficient to remember that the file was created by that program.
@@ -24,7 +24,7 @@ void EventConsolidator::event(Tracer::EventType type, std::string &&path) {
     }
     break;
 
-  case Tracer::EventType::CREATE:
+  case EventType::CREATE:
     // The program has now entirely overwritten the file. See WRITE
     _written.erase(path);
     // The program has now created a file at this path. There is no need to
@@ -34,7 +34,7 @@ void EventConsolidator::event(Tracer::EventType type, std::string &&path) {
     _created.insert(std::move(path));
     break;
 
-  case Tracer::EventType::DELETE:
+  case EventType::DELETE:
     {
       // When a program writes to a file and then deletes it, it doesn't matter
       // that it wrote to the file before. (However, if it read from the file,
@@ -50,7 +50,7 @@ void EventConsolidator::event(Tracer::EventType type, std::string &&path) {
     }
     break;
 
-  case Tracer::EventType::FATAL_ERROR:
+  case EventType::FATAL_ERROR:
     _fatal_errors.insert(std::move(path));
     break;
   }
@@ -59,17 +59,17 @@ void EventConsolidator::event(Tracer::EventType type, std::string &&path) {
 std::vector<EventConsolidator::Event> EventConsolidator::getConsolidatedEventsAndReset() {
   std::vector<Event> ans;
 
-  auto insert_events = [&](std::unordered_set<std::string> &map, Tracer::EventType event_type) {
+  auto insert_events = [&](std::unordered_set<std::string> &map, EventType event_type) {
     for (auto &&entry : map) {
       ans.emplace_back(event_type, std::move(entry));
     }
   };
 
-  insert_events(_fatal_errors, Tracer::EventType::FATAL_ERROR);
-  insert_events(_deleted, Tracer::EventType::DELETE);
-  insert_events(_created, Tracer::EventType::CREATE);
-  insert_events(_read, Tracer::EventType::READ);
-  insert_events(_written, Tracer::EventType::WRITE);
+  insert_events(_fatal_errors, EventType::FATAL_ERROR);
+  insert_events(_deleted, EventType::DELETE);
+  insert_events(_created, EventType::CREATE);
+  insert_events(_read, EventType::READ);
+  insert_events(_written, EventType::WRITE);
 
   *this = EventConsolidator();
 

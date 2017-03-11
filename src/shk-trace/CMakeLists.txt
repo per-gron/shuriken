@@ -10,6 +10,7 @@ add_library(libshktrace
   src/daemon.cpp
   src/daemon.h
   src/dispatch.h
+  src/event.h
   src/event_consolidator.cpp
   src/event_consolidator.h
   src/event_info.h

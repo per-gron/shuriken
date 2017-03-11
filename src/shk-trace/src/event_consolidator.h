@@ -2,8 +2,9 @@
 
 #include <string>
 #include <unordered_set>
+#include <vector>
 
-#include "tracer.h"
+#include "event.h"
 
 namespace shk {
 
@@ -20,9 +21,9 @@ class EventConsolidator {
   EventConsolidator(const EventConsolidator &) = default;
   EventConsolidator &operator=(const EventConsolidator &) = default;
 
-  void event(Tracer::EventType type, std::string &&path);
+  void event(EventType type, std::string &&path);
 
-  using Event = std::pair<Tracer::EventType, std::string>;
+  using Event = std::pair<EventType, std::string>;
 
   /**
    * Calling this resets the state of the EventConsolidator. This reset is done

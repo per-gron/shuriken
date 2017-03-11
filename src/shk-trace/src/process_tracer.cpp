@@ -50,7 +50,7 @@ void ProcessTracer::terminateThread(uintptr_t thread_id) {
 }
 
 void ProcessTracer::fileEvent(
-    uintptr_t thread_id, Tracer::EventType type, std::string &&path) {
+    uintptr_t thread_id, EventType type, std::string &&path) {
   if (auto delegate = findDelegate(thread_id)) {
     delegate->fileEvent(type, std::move(path));
   }

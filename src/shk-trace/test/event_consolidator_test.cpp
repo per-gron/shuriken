@@ -8,14 +8,14 @@ namespace {
 bool containsFatalError(const std::vector<EventConsolidator::Event> &events) {
   return std::find_if(events.begin(), events.end(), [](
       const EventConsolidator::Event &event) {
-    return event.first == Tracer::EventType::FATAL_ERROR;
+    return event.first == EventType::FATAL_ERROR;
   }) != events.end();
 }
 
 }  // anonymous namespace
 
 TEST_CASE("EventConsolidator") {
-  using ET = Tracer::EventType;
+  using ET = EventType;
 
   EventConsolidator ec;
 
