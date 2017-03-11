@@ -37,8 +37,7 @@ class ProcessTracerDelegate : public ProcessTracer::Delegate {
   virtual ~ProcessTracerDelegate() {
     auto events = _consolidator.getConsolidatedEventsAndReset();
     for (const auto &event : events) {
-      // TODO(peck): Write something that actually makes sense
-      write(event.second + "\n");
+      write(eventTypeToString(event.first) + (" " + event.second) + "\n");
     }
 
     // TODO(peck): Do something about quitting the tracing server as well.
