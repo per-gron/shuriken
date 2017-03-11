@@ -10,6 +10,7 @@ add_library(libshktrace
   src/daemon.cpp
   src/daemon.h
   src/dispatch.h
+  src/event.cpp
   src/event.h
   src/event_consolidator.cpp
   src/event_consolidator.h
@@ -44,6 +45,7 @@ set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test
   test/event_consolidator_test.cpp
+  test/event_test.cpp
   test/mach_port_test.cpp
   test/main.cpp
   test/named_mach_port_test.cpp

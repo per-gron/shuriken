@@ -33,4 +33,6 @@ enum class EventType {
   FATAL_ERROR
 };
 
+const char *eventTypeToString(EventType event_type);
+
 }  // namespace shk
