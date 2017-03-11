@@ -2,6 +2,7 @@
 #include <libc.h>
 #include <spawn.h>
 #include <string.h>
+#include <thread>
 
 #include "kdebug_controller.h"
 #include "named_mach_port.h"
@@ -33,20 +34,24 @@ class ProcessTracerDelegate : public ProcessTracer::Delegate {
       : _request(std::move(request)) {}
 
   virtual void fileEvent(Tracer::EventType type, std::string &&path) override {
-    auto written = write(
-        _request->trace_fd.get(),
-        path.c_str(),
-        path.size());
-    if (written != path.size()) {
-      fprintf(stderr, "Failed to write to tracing file\n");
-      abort();
-    }
     // TODO(peck): Write something that actually makes sense
+    write(path + "\n");
 
     // TODO(peck): Do something about quitting the tracing server as well.
   }
 
  private:
+  void write(const std::string &str) {
+    auto written = ::write(
+        _request->trace_fd.get(),
+        str.c_str(),
+        str.size());
+    if (written != str.size()) {
+      fprintf(stderr, "Failed to write to tracing file\n");
+      abort();
+    }
+  }
+
   // This object is destroyed when tracing has finished. That, in turn, will
   // destroy the TraceRequest, which signals to the traced process that tracing
   // has finished.
@@ -199,7 +204,20 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  int status_code = executeCommand("ls /");
+  int status_code;
+  std::thread([&] {
+    // Due to a limitation in the tracing information that kdebug provides,
+    // the traced program must create a thread, that has its own pid, which
+    // will be traced. This thread can then spawn another process.
+    //
+    // This is because a tracing request contains the pid of the process to
+    // be traced. This starts tracing 
+    //
+    // TODO(peck): Restructure / document this so that it becomes sane.
+    printf("EXECUTING\n");
+
+    status_code = executeCommand("ls /");
+  }).join();
 
   trace_request.first->wait(MACH_MSG_TIMEOUT_NONE);
 

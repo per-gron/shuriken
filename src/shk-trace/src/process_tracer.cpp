@@ -3,14 +3,18 @@
 namespace shk {
 
 void ProcessTracer::traceProcess(
-    int pid, std::unique_ptr<Delegate> &&delegate) {
+    pid_t pid, std::unique_ptr<Delegate> &&delegate) {
+  printf("TRACING %d\n", pid);
+
   _to_be_traced.emplace(pid, std::move(delegate));
 }
 
 void ProcessTracer::newThread(
     uintptr_t parent_thread_id,
     uintptr_t child_thread_id,
-    int parent_pid) {
+    pid_t parent_pid) {
+  printf("NEW THREAD %d\n", parent_pid);
+
   auto ancestor_id = findAncestor(parent_thread_id);
   if (_traced_threads.count(ancestor_id)) {
     // This is a child thread of an already traced thread.

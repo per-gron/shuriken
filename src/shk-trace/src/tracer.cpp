@@ -140,6 +140,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         event_info *ei = &_ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)->second;
         ei->child_thread = kd[i].arg1;
         ei->pid = kd[i].arg2;
+        printf("nt %d %d %d %d %d\n", kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, kd[i].arg5);
         _delegate.newThread(thread, ei->child_thread, ei->pid);
       }
       continue;
@@ -435,7 +436,7 @@ void Tracer::format_print(
   const char *command_name = tme_it == _threadmap.end() ?
       "" : tme_it->second.tm_command;
 
-  printf("  %-17.17s", syscall.name);
+  // TODO(peck): Remove me printf("  %-17.17s", syscall.name);
 
   switch (syscall.format) {
   case Fmt::IGNORE:
@@ -468,7 +469,7 @@ void Tracer::format_print(
       sbuf[5] = 'm';
     }
 
-    printf("            (%s) ", sbuf);
+    // TODO(peck): Remove me printf("            (%s) ", sbuf);
 
     auto name_it = _vn_name_map.find(arg1);
     pathname = name_it == _vn_name_map.end() ? nullptr : name_it->second.c_str();
@@ -509,63 +510,63 @@ void Tracer::format_print(
     }
 
     if (arg1) {
-      printf("      [%3lu] (%s) ", arg1, mode);
+      // TODO(peck): Remove me printf("      [%3lu] (%s) ", arg1, mode);
     } else {
-      printf(" F=%-3lu      (%s) ", arg2, mode);
+      // TODO(peck): Remove me printf(" F=%-3lu      (%s) ", arg2, mode);
     }
 
     break;
   }
 
   case Fmt::CREATE:
-    printf("create");
+    // TODO(peck): Remove me printf("create");
     break;
 
   case Fmt::DELETE:
-    printf("delete");
+    // TODO(peck): Remove me printf("delete");
     break;
 
   case Fmt::READ_CONTENTS:
-    printf("read_contents");
+    // TODO(peck): Remove me printf("read_contents");
     break;
 
   case Fmt::WRITE_CONTENTS:
-    printf("write_contents");
+    // TODO(peck): Remove me printf("write_contents");
     break;
 
   case Fmt::READ_METADATA:
   case Fmt::FD_READ_METADATA:
-    printf("read_metadata");
+    // TODO(peck): Remove me printf("read_metadata");
     break;
 
   case Fmt::WRITE_METADATA:
   case Fmt::FD_WRITE_METADATA:
-    printf("write_metadata");
+    // TODO(peck): Remove me printf("write_metadata");
     break;
 
   case Fmt::CREATE_DIR:
-    printf("create_dir");
+    // TODO(peck): Remove me printf("create_dir");
     break;
 
   case Fmt::DELETE_DIR:
-    printf("delete_dir");
+    // TODO(peck): Remove me printf("delete_dir");
     break;
 
   case Fmt::READ_DIR:
   case Fmt::FD_READ_DIR:
-    printf("read_dir");
+    // TODO(peck): Remove me printf("read_dir");
     break;
 
   case Fmt::EXCHANGE:
-    printf("exchange");
+    // TODO(peck): Remove me printf("exchange");
     break;
 
   case Fmt::RENAME:
-    printf("rename");
+    // TODO(peck): Remove me printf("rename");
     break;
 
   case Fmt::ILLEGAL:
-    printf("[[ILLEGAL]]");
+    // TODO(peck): Remove me printf("[[ILLEGAL]]");
     break;
   }
 
@@ -582,7 +583,7 @@ void Tracer::format_print(
 
   pathname = buf;
 
-  printf("%s %s.%d\n", pathname, command_name, (int)thread);
+  // TODO(peck): Remove me printf("%s %s.%d\n", pathname, command_name, (int)thread);
 }
 
 // TODO(peck): We don't need to track command names really
