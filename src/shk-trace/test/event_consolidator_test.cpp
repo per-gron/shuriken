@@ -5,10 +5,10 @@
 namespace shk {
 namespace {
 
-bool containsIllegal(const std::vector<EventConsolidator::Event> &events) {
+bool containsFatalError(const std::vector<EventConsolidator::Event> &events) {
   return std::find_if(events.begin(), events.end(), [](
       const EventConsolidator::Event &event) {
-    return event.first == Tracer::EventType::ILLEGAL;
+    return event.first == Tracer::EventType::FATAL_ERROR;
   }) != events.end();
 }
 
@@ -20,25 +20,25 @@ TEST_CASE("EventConsolidator") {
   EventConsolidator ec;
 
   SECTION("Copyable") {
-    ec.event(ET::ILLEGAL, "");
+    ec.event(ET::FATAL_ERROR, "");
     auto ec2 = ec;
 
-    CHECK(containsIllegal(ec.getConsolidatedEventsAndReset()));
-    CHECK(containsIllegal(ec2.getConsolidatedEventsAndReset()));
+    CHECK(containsFatalError(ec.getConsolidatedEventsAndReset()));
+    CHECK(containsFatalError(ec2.getConsolidatedEventsAndReset()));
   }
 
   SECTION("Assignable") {
     EventConsolidator ec2;
-    ec2.event(ET::ILLEGAL, "");
+    ec2.event(ET::FATAL_ERROR, "");
     ec = ec2;
 
-    CHECK(containsIllegal(ec.getConsolidatedEventsAndReset()));
-    CHECK(containsIllegal(ec2.getConsolidatedEventsAndReset()));
+    CHECK(containsFatalError(ec.getConsolidatedEventsAndReset()));
+    CHECK(containsFatalError(ec2.getConsolidatedEventsAndReset()));
   }
 
   SECTION("Reset") {
     static constexpr ET events[] = {
-        ET::READ, ET::WRITE, ET::CREATE, ET::DELETE, ET::ILLEGAL };
+        ET::READ, ET::WRITE, ET::CREATE, ET::DELETE, ET::FATAL_ERROR };
     for (const auto event : events) {
       ec.event(event, "");
       CHECK(!ec.getConsolidatedEventsAndReset().empty());
@@ -48,7 +48,7 @@ TEST_CASE("EventConsolidator") {
 
   SECTION("MergeDuplicateEvents") {
     static constexpr ET events[] = {
-        ET::READ, ET::WRITE, ET::CREATE, ET::DELETE, ET::ILLEGAL };
+        ET::READ, ET::WRITE, ET::CREATE, ET::DELETE, ET::FATAL_ERROR };
     for (const auto event : events) {
       ec.event(event, "a");
       ec.event(event, "a");

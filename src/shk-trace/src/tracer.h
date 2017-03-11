@@ -43,13 +43,16 @@ class Tracer {
     CREATE,
     DELETE,
     /**
-     * This is an event that the Tracer does not understand, and it doesn't know
+     * FATAL_ERROR events mean that the Tracer has failed. It could be that it's
+     * seen an event that the Tracer does not understand, and it doesn't know
      * which files may have been read or written because of it. This happens for
-     * legacy Carbon File Manager system calls.
+     * legacy Carbon File Manager system calls. It can also be because of
+     * internal errors in the tracer.
      *
-     * For ILLEGAL events, the path provided is undefined and has no meaning.
+     * For FATAL_ERROR events, the path provided is undefined and has no
+     * meaning.
      */
-    ILLEGAL
+    FATAL_ERROR
   };
 
   class Delegate {

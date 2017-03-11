@@ -52,13 +52,14 @@ TEST_CASE("ProcessTracer") {
   tracer.traceProcess(2, std::move(delegate2_ptr));
 
   SECTION("PidIsNotThreadId") {
-    tracer.fileEvent(1, Tracer::EventType::ILLEGAL, "");  // should be dropped
+    // should be dropped
+    tracer.fileEvent(1, Tracer::EventType::FATAL_ERROR, "");
   }
 
   SECTION("EventForwarding") {
     SECTION("UnknownThreadId") {
-      tracer.fileEvent(2, Tracer::EventType::ILLEGAL, "");
-      tracer.fileEvent(123, Tracer::EventType::ILLEGAL, "");
+      tracer.fileEvent(2, Tracer::EventType::FATAL_ERROR, "");
+      tracer.fileEvent(123, Tracer::EventType::FATAL_ERROR, "");
     }
 
     SECTION("FileEvent") {
@@ -70,7 +71,7 @@ TEST_CASE("ProcessTracer") {
 
     SECTION("MultipleDelegates") {
       tracer.newThread(4, 5, /*pid:*/2);
-      tracer.fileEvent(5, Tracer::EventType::ILLEGAL, "");
+      tracer.fileEvent(5, Tracer::EventType::FATAL_ERROR, "");
       delegate2.popFileEvent();
     }
   }
@@ -78,14 +79,14 @@ TEST_CASE("ProcessTracer") {
   SECTION("DescendantFollowing") {
     SECTION("OneChild") {
       tracer.newThread(3, 4, /*pid:*/543);
-      tracer.fileEvent(4, Tracer::EventType::ILLEGAL, "");
+      tracer.fileEvent(4, Tracer::EventType::FATAL_ERROR, "");
       delegate.popFileEvent();
     }
 
     SECTION("TwoGenerations") {
       tracer.newThread(3, 4, /*pid:*/543);
       tracer.newThread(4, 5, /*pid:*/543);
-      tracer.fileEvent(5, Tracer::EventType::ILLEGAL, "");
+      tracer.fileEvent(5, Tracer::EventType::FATAL_ERROR, "");
       delegate.popFileEvent();
     }
 
@@ -93,7 +94,7 @@ TEST_CASE("ProcessTracer") {
       tracer.newThread(3, 4, /*pid:*/543);
       tracer.newThread(4, 5, /*pid:*/543);
       tracer.terminateThread(4);
-      tracer.fileEvent(5, Tracer::EventType::ILLEGAL, "");
+      tracer.fileEvent(5, Tracer::EventType::FATAL_ERROR, "");
       delegate.popFileEvent();
     }
   }
@@ -102,7 +103,7 @@ TEST_CASE("ProcessTracer") {
     SECTION("DontTraceThreadAfterItsTerminated") {
       tracer.newThread(3, 4, /*pid:*/543);
       tracer.terminateThread(4);
-      tracer.fileEvent(4, Tracer::EventType::ILLEGAL, "");
+      tracer.fileEvent(4, Tracer::EventType::FATAL_ERROR, "");
     }
 
     SECTION("MainThreadTermination") {

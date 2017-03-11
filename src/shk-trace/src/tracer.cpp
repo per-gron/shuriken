@@ -140,7 +140,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         event_info *ei = &_ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)->second;
         ei->child_thread = kd[i].arg1;
         ei->pid = kd[i].arg2;
-        printf("nt %d %d %d %d %d\n", kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, kd[i].arg5);
         _delegate.newThread(thread, ei->child_thread, ei->pid);
       }
       continue;
@@ -292,7 +291,10 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
     if (debugid & DBG_FUNC_START) {
       if ((type & CLASS_MASK) == FILEMGR_BASE) {
-        _delegate.fileEvent(thread, EventType::ILLEGAL, "");
+        _delegate.fileEvent(
+              thread,
+              EventType::FATAL_ERROR,
+              "Legacy Carbon FileManager event");
       } else {
         enter_event(thread, type, &kd[i], nullptr);
       }

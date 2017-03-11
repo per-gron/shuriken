@@ -50,8 +50,8 @@ void EventConsolidator::event(Tracer::EventType type, std::string &&path) {
     }
     break;
 
-  case Tracer::EventType::ILLEGAL:
-    _encountered_illegal = true;
+  case Tracer::EventType::FATAL_ERROR:
+    _encountered_fatal_error = true;
     break;
   }
 }
@@ -59,8 +59,8 @@ void EventConsolidator::event(Tracer::EventType type, std::string &&path) {
 std::vector<EventConsolidator::Event> EventConsolidator::getConsolidatedEventsAndReset() {
   std::vector<Event> ans;
 
-  if (_encountered_illegal) {
-    ans.emplace_back(Tracer::EventType::ILLEGAL, "");
+  if (_encountered_fatal_error  ) {
+    ans.emplace_back(Tracer::EventType::FATAL_ERROR, "");
   }
 
   auto insert_events = [&](std::unordered_set<std::string> &map, Tracer::EventType event_type) {
