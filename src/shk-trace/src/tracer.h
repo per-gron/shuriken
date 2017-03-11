@@ -77,15 +77,13 @@ class Tracer {
       uintptr_t arg4,
       const bsd_syscall &syscall,
       const char *pathname /* nullable */);
-  void read_command_map(const kbufinfo_t &bufinfo);
-  void create_map_entry(uintptr_t thread, int pid, char *command);
+  void create_map_entry(uintptr_t thread);
   void init_arguments_buffer();
   int get_real_command_name(int pid, char *cbuf, int csize);
 
   struct threadmap_entry {
     unsigned int tm_setsize = 0; // This is a bit count
     unsigned long *tm_setptr = nullptr;  // File descriptor bitmap
-    char tm_command[MAXCOMLEN + 1];
   };
 
   std::atomic<bool> _shutting_down;
@@ -95,14 +93,8 @@ class Tracer {
   KdebugController &_kdebug_ctrl;
   Delegate &_delegate;
 
-  std::unordered_map<uintptr_t, threadmap_entry> _threadmap;
   std::unordered_map<uint64_t, std::string> _vn_name_map;
   event_info_map _ei_map;
-
-  int _need_new_map = 1;
-
-  char *_arguments = 0;
-  int _argmax = 0;
 
   int _trace_enabled = 0;
 };

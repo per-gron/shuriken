@@ -68,7 +68,6 @@ void Tracer::start(dispatch_queue_t queue) {
 
   _kdebug_ctrl.setFilter();
   set_enable(true);
-  init_arguments_buffer();
 
   dispatch_async(queue, ^{ loop(queue); });
 }
@@ -103,11 +102,6 @@ void Tracer::set_remove()  {
 
 uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
   kbufinfo_t bufinfo = _kdebug_ctrl.getBufinfo();
-
-  if (_need_new_map) {
-    read_command_map(bufinfo);
-    _need_new_map = 0;
-  }
 
   size_t count = _kdebug_ctrl.readBuf(event_buffer.data(), bufinfo.nkdbufs);
 
@@ -152,8 +146,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         }
         event_info *ei = &ei_it->second;
 
-        create_map_entry(ei->child_thread, ei->pid, (char *)&kd[i].arg1);
-
         _ei_map.erase(ei_it);
         continue;
       }
@@ -179,15 +171,12 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         }
         ei_it = _ei_map.find(thread, TRACE_DATA_EXEC);
 
-        create_map_entry(thread, ei_it->second.pid, (char *)&kd[i].arg1);
-
         _ei_map.erase(ei_it);
         continue;
       }
 
     case BSC_thread_terminate:
       _delegate.terminateThread(thread);
-      _threadmap.erase(thread);
       continue;
 
     case BSC_exit:
@@ -356,10 +345,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
       if (bsd_syscalls[index].name) {
         exit_event(thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, bsd_syscalls[index]);
-
-        if (type == BSC_exit) {
-          _threadmap.erase(thread);
-        }
       }
     }
   }
@@ -433,10 +418,6 @@ void Tracer::format_print(
     const bsd_syscall &syscall,
     const char *pathname /* nullable */) {
   char buf[(PATHLENGTH + 80) + 64];
-
-  auto tme_it = _threadmap.find(thread);
-  const char *command_name = tme_it == _threadmap.end() ?
-      "" : tme_it->second.tm_command;
 
   // TODO(peck): Remove me printf("  %-17.17s", syscall.name);
 
@@ -586,137 +567,6 @@ void Tracer::format_print(
   pathname = buf;
 
   // TODO(peck): Remove me printf("%s %s.%d\n", pathname, command_name, (int)thread);
-}
-
-// TODO(peck): We don't need to track command names really
-void Tracer::read_command_map(const kbufinfo_t &bufinfo) {
-  kd_threadmap *mapptr = 0;
-
-  _threadmap.clear();
-
-  int total_threads = bufinfo.nkdthreads;
-  size_t size = bufinfo.nkdthreads * sizeof(kd_threadmap);
-
-  if (size) {
-    if ((mapptr = reinterpret_cast<kd_threadmap *>(malloc(size)))) {
-      bzero (mapptr, size);
-      // Now read the threadmap
-      static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDTHRMAP, 0, 0, 0 };
-      if (sysctl(name, 3, mapptr, &size, NULL, 0) < 0) {
-        // This is not fatal -- just means I cant map command strings
-        free(mapptr);
-        return;
-      }
-    }
-  }
-  for (int i = 0; i < total_threads; i++) {
-    create_map_entry(mapptr[i].thread, mapptr[i].valid, &mapptr[i].command[0]);
-  }
-
-  free(mapptr);
-}
-
-
-void Tracer::create_map_entry(uintptr_t thread, int pid, char *command) {
-  auto &tme = _threadmap[thread];
-
-  strncpy(tme.tm_command, command, MAXCOMLEN);
-  tme.tm_command[MAXCOMLEN] = '\0';
-
-  if (pid != 0 && pid != 1) {
-    if (!strncmp(command, "LaunchCFMA", 10)) {
-      (void)get_real_command_name(pid, tme.tm_command, MAXCOMLEN);
-    }
-  }
-}
-
-// TODO(peck): We don't need to track command names really
-void Tracer::init_arguments_buffer() {
-  size_t size = sizeof(_argmax);
-
-  static int name[] = { CTL_KERN, KERN_ARGMAX };
-  if (sysctl(name, 2, &_argmax, &size, NULL, 0) == -1) {
-    return;
-  }
-  // Hack to avoid kernel bug.
-  if (_argmax > 8192) {
-    _argmax = 8192;
-  }
-  _arguments = (char *)malloc(_argmax);
-}
-
-
-// TODO(peck): We don't need to track command names really
-int Tracer::get_real_command_name(int pid, char *cbuf, int csize) {
-  char *cp;
-  char *command_beg, *command, *command_end;
-
-  if (cbuf == NULL) {
-    return 0;
-  }
-
-  if (_arguments) {
-    bzero(_arguments, _argmax);
-  } else {
-    return 0;
-  }
-
-  // A sysctl() is made to find out the full path that the command
-  // was called with.
-  static int name[] = { CTL_KERN, KERN_PROCARGS2, pid, 0 };
-  if (sysctl(name, 3, _arguments, (size_t *)&_argmax, NULL, 0) < 0) {
-    return 0;
-  }
-
-  // Skip the saved exec_path
-  for (cp = _arguments; cp < &_arguments[_argmax]; cp++) {
-    if (*cp == '\0') {
-      // End of exec_path reached
-      break;
-    }
-  }
-  if (cp == &_arguments[_argmax]) {
-    return 0;
-  }
-
-  // Skip trailing '\0' characters
-  for (; cp < &_arguments[_argmax]; cp++) {
-    if (*cp != '\0') {
-      // Beginning of first argument reached
-      break;
-    }
-  }
-  if (cp == &_arguments[_argmax]) {
-    return 0;
-  }
-
-  command_beg = cp;
-  // Make sure that the command is '\0'-terminated.  This protects
-  // against malicious programs; under normal operation this never
-  // ends up being a problem..
-  for (; cp < &_arguments[_argmax]; cp++) {
-    if (*cp == '\0') {
-      // End of first argument reached
-      break;
-    }
-  }
-  if (cp == &_arguments[_argmax]) {
-    return 0;
-  }
-
-  command_end = command = cp;
-
-  // Get the basename of command
-  for (command--; command >= command_beg; command--) {
-    if (*command == '/') {
-      command++;
-      break;
-    }
-  }
-  strncpy(cbuf, (char *)command, csize);
-  cbuf[csize-1] = '\0';
-
-  return 1;
 }
 
 }  // namespace shk
