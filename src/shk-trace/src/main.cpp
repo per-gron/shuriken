@@ -30,7 +30,7 @@ int getNumCpus() {
 
 static const std::string PORT_NAME = "com.pereckerdal.shktrace";
 
-class ProcessTracerDelegate : public ProcessTracer::Delegate {
+class ProcessTracerDelegate : public Tracer::Delegate {
  public:
   ProcessTracerDelegate(std::unique_ptr<TracingServer::TraceRequest> &&request)
       : _request(std::move(request)) {}
@@ -44,8 +44,18 @@ class ProcessTracerDelegate : public ProcessTracer::Delegate {
     // TODO(peck): Do something about quitting the tracing server as well.
   }
 
-  virtual void fileEvent(EventType type, std::string &&path) override {
+  virtual void fileEvent(
+      uintptr_t thread_id, EventType type, std::string &&path) override {
     _consolidator.event(type, std::move(path));
+  }
+
+  virtual void newThread(
+      uintptr_t parent_thread_id,
+      uintptr_t child_thread_id,
+      int parent_pid) override {
+  }
+
+  virtual void terminateThread(uintptr_t thread_id) override {
   }
 
  private:

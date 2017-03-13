@@ -12,20 +12,10 @@ namespace shk {
  * organizing events from a global stream into one stream per process and its
  * children. It receives events from a Tracer (via the Tracer::Delegate
  * interface) and emits per-process (including child processes) events to
- * ProcessTracer::Delegate objects.
+ * Tracer::Delegate objects (one per trace).
  */
 class ProcessTracer : public Tracer::Delegate {
  public:
-  class Delegate {
-   public:
-    /**
-     * Delegate is destroyed when the traced process has terminated.
-     */
-    virtual ~Delegate() = default;
-
-    virtual void fileEvent(EventType type, std::string &&path) = 0;
-  };
-
   ProcessTracer() = default;
   ProcessTracer(const ProcessTracer &) = delete;
   ProcessTracer &operator=(const ProcessTracer &) = delete;
@@ -35,12 +25,12 @@ class ProcessTracer : public Tracer::Delegate {
    * traceProcess method. The Delegate object is destroyed when the traced
    * process has terminated.
    */
-  void traceProcess(pid_t pid, std::unique_ptr<Delegate> &&delegate);
+  void traceProcess(pid_t pid, std::unique_ptr<Tracer::Delegate> &&delegate);
 
   virtual void newThread(
       uintptr_t parent_thread_id,
       uintptr_t child_thread_id,
-      pid_t parent_pid) override;
+      pid_t pid) override;
 
   virtual void terminateThread(uintptr_t thread_id) override;
 
@@ -48,23 +38,38 @@ class ProcessTracer : public Tracer::Delegate {
       uintptr_t thread_id, EventType type, std::string &&path) override;
 
  private:
-  // Returns nullptr on not found
-  Delegate *findDelegate(uintptr_t thread_id);
-  // Returns thread_id if there is no known ancestor
-  uintptr_t findAncestor(uintptr_t thread_id);
+  struct Ancestor {
+    Ancestor(uintptr_t ancestor_thread_id, Tracer::Delegate *delegate)
+        : ancestor_thread_id(ancestor_thread_id),
+          delegate(delegate) {}
+
+    uintptr_t ancestor_thread_id = 0;
+    Tracer::Delegate *delegate = nullptr;
+
+    explicit operator bool() const {
+      return !!delegate;
+    }
+  };
+
+  // Returns Ancestor without delegate if the thread is not being traced.
+  // Returns Ancestor with ancestor_thread_id == thread_id if thread_id is an
+  // ancestor itself.
+  Ancestor findAncestor(uintptr_t thread_id);
 
   // Map pid => Delegate, for processes where we don't yet know the thread id.
-  using ToBeTracedQueue = std::unordered_map<pid_t, std::unique_ptr<Delegate>>;
+  using ToBeTracedQueue =
+      std::unordered_map<pid_t, std::unique_ptr<Tracer::Delegate>>;
 
-  // Map traced child thread id => traced ancestor thread id. There are no
-  // entries for ancestor threads themselves in this map.
-  using AncestorThreadIds = std::unordered_map<uintptr_t, uintptr_t>;
+  // Map traced child thread id => Tracer::Delegate (not owning ref). For each
+  // traced process, there is also an entry for the ancestor thread in this map.
+  using AncestorThreads = std::unordered_map<uintptr_t, Ancestor>;
 
   // Map traced ancestor thread id => Delegate for tracing
-  using TracedThreads = std::unordered_map<uintptr_t, std::unique_ptr<Delegate>>;
+  using TracedThreads =
+      std::unordered_map<uintptr_t, std::unique_ptr<Tracer::Delegate>>;
 
   ToBeTracedQueue _to_be_traced;
-  AncestorThreadIds _ancestor_threads;
+  AncestorThreads _ancestor_threads;
   TracedThreads _traced_threads;
 };
 

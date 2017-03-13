@@ -32,7 +32,7 @@ class Tracer {
     virtual void newThread(
         uintptr_t parent_thread_id,
         uintptr_t child_thread_id,
-        int parent_pid) = 0;
+        pid_t pid) = 0;
 
     virtual void terminateThread(uintptr_t thread_id) = 0;
 
