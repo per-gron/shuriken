@@ -19,6 +19,8 @@ add_library(libshktrace
   src/event_info.h
   src/file_descriptor.cpp
   src/file_descriptor.h
+  src/file_descriptor_memo.cpp
+  src/file_descriptor_memo.h
   src/fileport.h
   src/kdebug.h
   src/kdebug_controller.cpp
@@ -49,6 +51,7 @@ add_executable(shktrace_test
   test/cmdline_options_test.cpp
   test/event_consolidator_test.cpp
   test/event_test.cpp
+  test/file_descriptor_memo_test.cpp
   test/mach_port_test.cpp
   test/main.cpp
   test/named_mach_port_test.cpp
