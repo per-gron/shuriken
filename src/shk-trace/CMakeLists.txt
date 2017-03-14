@@ -9,6 +9,8 @@ add_custom_command(
 add_library(libshktrace
   src/cmdline_options.cpp
   src/cmdline_options.h
+  src/cwd_memo.cpp
+  src/cwd_memo.h
   src/daemon.cpp
   src/daemon.h
   src/dispatch.h
@@ -49,6 +51,7 @@ set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test
   test/cmdline_options_test.cpp
+  test/cwd_memo_test.cpp
   test/event_consolidator_test.cpp
   test/event_test.cpp
   test/file_descriptor_memo_test.cpp
@@ -57,7 +60,7 @@ add_executable(shktrace_test
   test/named_mach_port_test.cpp
   test/process_tracer_test.cpp
   test/tracing_server_test.cpp)
-target_link_libraries(shktrace_test catch libshktrace)
+target_link_libraries(shktrace_test pthread catch libshktrace)
 target_include_directories(shktrace_test PUBLIC src)
 set_property(TARGET shktrace_test PROPERTY CXX_STANDARD 11)
 
