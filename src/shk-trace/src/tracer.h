@@ -37,7 +37,11 @@ class Tracer {
     virtual void terminateThread(uintptr_t thread_id) = 0;
 
     virtual void fileEvent(
-        uintptr_t thread_id, EventType type, std::string &&path) = 0;
+        pid_t pid,
+        uintptr_t thread_id,
+        EventType type,
+        int at_fd,
+        std::string &&path) = 0;
 
     /**
      * Invoked whenever a file descriptor to a file or directory has been

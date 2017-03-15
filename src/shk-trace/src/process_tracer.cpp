@@ -56,9 +56,13 @@ void ProcessTracer::terminateThread(uintptr_t thread_id) {
 }
 
 void ProcessTracer::fileEvent(
-    uintptr_t thread_id, EventType type, std::string &&path) {
+    pid_t pid,
+    uintptr_t thread_id,
+    EventType type,
+    int at_fd,
+    std::string &&path) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->fileEvent(thread_id, type, std::move(path));
+    delegate->fileEvent(pid, thread_id, type, at_fd, std::move(path));
   }
 }
 

@@ -35,7 +35,11 @@ class ProcessTracer : public Tracer::Delegate {
   virtual void terminateThread(uintptr_t thread_id) override;
 
   virtual void fileEvent(
-      uintptr_t thread_id, EventType type, std::string &&path) override;
+      pid_t pid,
+      uintptr_t thread_id,
+      EventType type,
+      int at_fd,
+      std::string &&path) override;
 
   virtual void open(
       pid_t pid,

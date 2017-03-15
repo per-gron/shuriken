@@ -1,6 +1,7 @@
 #include <catch.hpp>
 
 #include <deque>
+#include <fcntl.h>
 #include <utility>
 
 #include "process_tracer.h"
@@ -9,8 +10,10 @@ namespace shk {
 namespace {
 
 struct FileEvent {
+  pid_t pid;
   uintptr_t thread_id;
   EventType type;
+  int at_fd;
   std::string path;
 };
 
@@ -98,8 +101,13 @@ class MockDelegate : public Tracer::Delegate {
   }
 
   virtual void fileEvent(
-      uintptr_t thread_id, EventType type, std::string &&path) override {
-    _file_events.push_back(FileEvent{ thread_id, type, std::move(path) });
+      pid_t pid,
+      uintptr_t thread_id,
+      EventType type,
+      int at_fd,
+      std::string &&path) override {
+    _file_events.push_back(
+        FileEvent{ pid, thread_id, type, at_fd, std::move(path) });
   }
 
   virtual void newThread(
@@ -258,20 +266,22 @@ TEST_CASE("ProcessTracer") {
 
   SECTION("PidIsNotThreadId") {
     // should be dropped
-    tracer.fileEvent(1, EventType::FATAL_ERROR, "");
+    tracer.fileEvent(0, 1, EventType::FATAL_ERROR, AT_FDCWD, "");
   }
 
   SECTION("EventForwarding") {
     SECTION("UnknownThreadId") {
-      tracer.fileEvent(2, EventType::FATAL_ERROR, "");
-      tracer.fileEvent(123, EventType::FATAL_ERROR, "");
+      tracer.fileEvent(1, 2, EventType::FATAL_ERROR, AT_FDCWD, "");
+      tracer.fileEvent(1, 123, EventType::FATAL_ERROR, AT_FDCWD, "");
     }
 
     SECTION("FileEvent") {
-      tracer.fileEvent(3, EventType::CREATE, "abc");
+      tracer.fileEvent(1, 3, EventType::CREATE, 999, "abc");
       auto evt = delegate.popFileEvent();
+      CHECK(evt.pid == 1);
       CHECK(evt.thread_id == 3);
       CHECK(evt.type == EventType::CREATE);
+      CHECK(evt.at_fd == 999);
       CHECK(evt.path == "abc");
     }
 
@@ -306,7 +316,7 @@ TEST_CASE("ProcessTracer") {
     SECTION("MultipleDelegates") {
       tracer.newThread(/*pid:*/2, 4, 5);
       delegate2.popNewThreadEvent();
-      tracer.fileEvent(5, EventType::FATAL_ERROR, "");
+      tracer.fileEvent(1, 5, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate2.popFileEvent();
     }
 
@@ -417,7 +427,7 @@ TEST_CASE("ProcessTracer") {
     SECTION("OneChild") {
       tracer.newThread(/*pid:*/543, 3, 4);
       delegate.popNewThreadEvent();
-      tracer.fileEvent(4, EventType::FATAL_ERROR, "");
+      tracer.fileEvent(1, 4, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
     }
 
@@ -426,7 +436,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       tracer.newThread(/*pid:*/543, 4, 5);
       delegate.popNewThreadEvent();
-      tracer.fileEvent(5, EventType::FATAL_ERROR, "");
+      tracer.fileEvent(1, 5, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
     }
 
@@ -437,7 +447,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       tracer.terminateThread(4);
       delegate.popTerminateThreadEvent();
-      tracer.fileEvent(5, EventType::FATAL_ERROR, "");
+      tracer.fileEvent(1, 5, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
     }
   }
@@ -448,7 +458,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       tracer.terminateThread(4);
       delegate.popTerminateThreadEvent();
-      tracer.fileEvent(4, EventType::FATAL_ERROR, "");
+      tracer.fileEvent(1, 4, EventType::FATAL_ERROR, AT_FDCWD, "");
     }
 
     SECTION("MainThreadTermination") {

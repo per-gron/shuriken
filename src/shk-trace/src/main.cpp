@@ -45,7 +45,11 @@ class ProcessTracerDelegate : public Tracer::Delegate {
   }
 
   virtual void fileEvent(
-      uintptr_t thread_id, EventType type, std::string &&path) override {
+      pid_t pid,
+      uintptr_t thread_id,
+      EventType type,
+      int at_fd,
+      std::string &&path) override {
     _consolidator.event(type, std::move(path));
   }
 
