@@ -62,6 +62,64 @@ void ProcessTracer::fileEvent(
   }
 }
 
+void ProcessTracer::open(
+    uintptr_t thread_id,
+    pid_t pid,
+    int fd,
+    int at_fd,
+    std::string &&path,
+    bool cloexec) {
+  if (auto delegate = findAncestor(thread_id).delegate) {
+    delegate->open(thread_id, pid, fd, at_fd, std::move(path), cloexec);
+  }
+}
+
+void ProcessTracer::dup(
+    uintptr_t thread_id, pid_t pid, int from_fd, int to_fd) {
+  if (auto delegate = findAncestor(thread_id).delegate) {
+    delegate->dup(thread_id, pid, from_fd, to_fd);
+  }
+}
+
+void ProcessTracer::setCloexec(
+    uintptr_t thread_id, pid_t pid, int fd, bool cloexec) {
+  if (auto delegate = findAncestor(thread_id).delegate) {
+    delegate->setCloexec(thread_id, pid, fd, cloexec);
+  }
+}
+
+void ProcessTracer::fork(uintptr_t thread_id, pid_t ppid, pid_t pid) {
+  if (auto delegate = findAncestor(thread_id).delegate) {
+    delegate->fork(thread_id, ppid, pid);
+  }
+}
+
+void ProcessTracer::close(uintptr_t thread_id, pid_t pid, int fd) {
+  if (auto delegate = findAncestor(thread_id).delegate) {
+    delegate->close(thread_id, pid, fd);
+  }
+}
+
+void ProcessTracer::chdir(
+    uintptr_t thread_id, pid_t pid, std::string &&path, int at_fd) {
+  if (auto delegate = findAncestor(thread_id).delegate) {
+    delegate->chdir(thread_id, pid, std::move(path), at_fd);
+  }
+}
+
+void ProcessTracer::threadChdir(
+    uintptr_t thread_id, std::string &&path, int at_fd) {
+  if (auto delegate = findAncestor(thread_id).delegate) {
+    delegate->threadChdir(thread_id, std::move(path), at_fd);
+  }
+}
+
+void ProcessTracer::exec(uintptr_t thread_id, pid_t pid) {
+  if (auto delegate = findAncestor(thread_id).delegate) {
+    delegate->exec(thread_id, pid);
+  }
+}
+
 ProcessTracer::Ancestor ProcessTracer::findAncestor(uintptr_t thread_id) {
   auto ancestor_it = _ancestor_threads.find(thread_id);
   return ancestor_it == _ancestor_threads.end() ?

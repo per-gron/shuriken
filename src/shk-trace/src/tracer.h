@@ -38,6 +38,90 @@ class Tracer {
 
     virtual void fileEvent(
         uintptr_t thread_id, EventType type, std::string &&path) = 0;
+
+    /**
+     * Invoked whenever a file descriptor to a file or directory has been
+     * opened, along with the path of the file (possibly relative), its
+     * initial cloexec flag and the file descriptor that the path is relative
+     * to (possibly AT_FDCWD which means the working directory).
+     *
+     * For some operations, Tracer will call both fileEvent and open.
+     *
+     * thread_id is the id of the thread that made the system call that caused
+     * this to happen.
+     */
+    virtual void open(
+        uintptr_t thread_id,
+        pid_t pid,
+        int fd,
+        int at_fd,
+        std::string &&path,
+        bool cloexec) = 0;
+
+    /**
+     * Invoked whenever a file descriptor has been duplicated.
+     *
+     * thread_id is the id of the thread that made the system call that caused
+     * this to happen.
+     */
+    virtual void dup(
+        uintptr_t thread_id, pid_t pid, int from_fd, int to_fd) = 0;
+
+    /**
+     * Invoked whenever the cloexec flag has been set on a file descriptor.
+     *
+     * thread_id is the id of the thread that made the system call that caused
+     * this to happen.
+     */
+    virtual void setCloexec(
+        uintptr_t thread_id, pid_t pid, int fd, bool cloexec) = 0;
+
+    /**
+     * Invoked whenever a process has forked.
+     *
+     * thread_id is the id of the thread that made the system call that caused
+     * this to happen.
+     */
+    virtual void fork(uintptr_t thread_id, pid_t ppid, pid_t pid) = 0;
+
+    /**
+     * Invoked whenever a file descriptor has been closed. (Except for when they
+     * are implicitly closed due to exec.)
+     *
+     * thread_id is the id of the thread that made the system call that caused
+     * this to happen.
+     */
+    virtual void close(uintptr_t thread_id, pid_t pid, int fd) = 0;
+
+    /**
+     * Invoked whenever a process's working directory has been changed. The path
+     * may be relative. The file descriptor that the path is relative to is also
+     * passed, in at_fd (which may be AT_FDCWD which means the current working
+     * directory).
+     *
+     * thread_id is the id of the thread that made the system call that caused
+     * this to happen.
+     */
+    virtual void chdir(
+        uintptr_t thread_id, pid_t pid, std::string &&path, int at_fd) = 0;
+
+    /**
+     * Invoked whenever a thread has changed its thread-local working directory.
+     * The path may be relative. If so, it is relative to the file pointed to by
+     * the file descriptor at_fd (which may be AT_FDCWD whic means the current
+     * working directory).
+     */
+    virtual void threadChdir(
+        uintptr_t thread_id, std::string &&path, int at_fd) = 0;
+
+    /**
+     * Invoked whenever a process has successfully invoked an exec family system
+     * call.
+     *
+     * thread_id is the id of the thread that made the system call that caused
+     * this to happen.
+     */
+    virtual void exec(uintptr_t thread_id, pid_t pid) = 0;
   };
 
   Tracer(

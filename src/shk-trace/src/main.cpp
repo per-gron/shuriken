@@ -58,6 +58,40 @@ class ProcessTracerDelegate : public Tracer::Delegate {
   virtual void terminateThread(uintptr_t thread_id) override {
   }
 
+  virtual void open(
+      uintptr_t thread_id,
+      pid_t pid,
+      int fd,
+      int at_fd,
+      std::string &&path,
+      bool cloexec) override {
+  }
+
+  virtual void dup(
+      uintptr_t thread_id, pid_t pid, int from_fd, int to_fd) override {
+  }
+
+  virtual void setCloexec(
+      uintptr_t thread_id, pid_t pid, int fd, bool cloexec) override {
+  }
+
+  virtual void fork(uintptr_t thread_id, pid_t ppid, pid_t pid) override {
+  }
+
+  virtual void close(uintptr_t thread_id, pid_t pid, int fd) override {
+  }
+
+  virtual void chdir(
+      uintptr_t thread_id, pid_t pid, std::string &&path, int at_fd) override {
+  }
+
+  virtual void threadChdir(
+      uintptr_t thread_id, std::string &&path, int at_fd) override {
+  }
+
+  virtual void exec(uintptr_t thread_id, pid_t pid) override {
+  }
+
  private:
   void write(const std::string &str) {
     auto written = ::write(
