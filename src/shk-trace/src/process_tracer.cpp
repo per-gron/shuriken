@@ -8,9 +8,9 @@ void ProcessTracer::traceProcess(
 }
 
 void ProcessTracer::newThread(
+    pid_t pid,
     uintptr_t parent_thread_id,
-    uintptr_t child_thread_id,
-    pid_t pid) {
+    uintptr_t child_thread_id) {
   if (Ancestor ancestor = findAncestor(parent_thread_id)) {
     // This is a child thread of an already traced thread.
     bool success = _ancestor_threads.emplace(child_thread_id, ancestor).second;
@@ -18,7 +18,7 @@ void ProcessTracer::newThread(
       throw std::runtime_error(
           "Created already existing thread. This should not happen.");
     }
-    ancestor.delegate->newThread(parent_thread_id, child_thread_id, pid);
+    ancestor.delegate->newThread(pid, parent_thread_id, child_thread_id);
     return;
   }
 
@@ -31,7 +31,7 @@ void ProcessTracer::newThread(
     _ancestor_threads.emplace(
         child_thread_id, Ancestor(child_thread_id, &delegate));
     _to_be_traced.erase(to_be_traced_it);
-    delegate.newThread(parent_thread_id, child_thread_id, pid);
+    delegate.newThread(pid, parent_thread_id, child_thread_id);
     return;
   }
 }
@@ -63,47 +63,47 @@ void ProcessTracer::fileEvent(
 }
 
 void ProcessTracer::open(
-    uintptr_t thread_id,
     pid_t pid,
+    uintptr_t thread_id,
     int fd,
     int at_fd,
     std::string &&path,
     bool cloexec) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->open(thread_id, pid, fd, at_fd, std::move(path), cloexec);
+    delegate->open(pid, thread_id, fd, at_fd, std::move(path), cloexec);
   }
 }
 
 void ProcessTracer::dup(
-    uintptr_t thread_id, pid_t pid, int from_fd, int to_fd) {
+    pid_t pid, uintptr_t thread_id, int from_fd, int to_fd) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->dup(thread_id, pid, from_fd, to_fd);
+    delegate->dup(pid, thread_id, from_fd, to_fd);
   }
 }
 
 void ProcessTracer::setCloexec(
-    uintptr_t thread_id, pid_t pid, int fd, bool cloexec) {
+    pid_t pid, uintptr_t thread_id, int fd, bool cloexec) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->setCloexec(thread_id, pid, fd, cloexec);
+    delegate->setCloexec(pid, thread_id, fd, cloexec);
   }
 }
 
-void ProcessTracer::fork(uintptr_t thread_id, pid_t ppid, pid_t pid) {
+void ProcessTracer::fork(pid_t ppid, uintptr_t thread_id, pid_t pid) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->fork(thread_id, ppid, pid);
+    delegate->fork(ppid, thread_id, pid);
   }
 }
 
-void ProcessTracer::close(uintptr_t thread_id, pid_t pid, int fd) {
+void ProcessTracer::close(pid_t pid, uintptr_t thread_id, int fd) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->close(thread_id, pid, fd);
+    delegate->close(pid, thread_id, fd);
   }
 }
 
 void ProcessTracer::chdir(
-    uintptr_t thread_id, pid_t pid, std::string &&path, int at_fd) {
+    pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->chdir(thread_id, pid, std::move(path), at_fd);
+    delegate->chdir(pid, thread_id, std::move(path), at_fd);
   }
 }
 
@@ -114,9 +114,9 @@ void ProcessTracer::threadChdir(
   }
 }
 
-void ProcessTracer::exec(uintptr_t thread_id, pid_t pid) {
+void ProcessTracer::exec(pid_t pid, uintptr_t thread_id) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->exec(thread_id, pid);
+    delegate->exec(pid, thread_id);
   }
 }
 

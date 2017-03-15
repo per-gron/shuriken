@@ -15,14 +15,14 @@ struct FileEvent {
 };
 
 struct NewThreadEvent {
+  pid_t pid;
   uintptr_t parent_thread_id;
   uintptr_t child_thread_id;
-  pid_t pid;
 };
 
 struct OpenEvent {
-  uintptr_t thread_id;
   pid_t pid;
+  uintptr_t thread_id;
   int fd;
   int at_fd;
   std::string path;
@@ -30,34 +30,34 @@ struct OpenEvent {
 };
 
 struct DupEvent {
-  uintptr_t thread_id;
   pid_t pid;
+  uintptr_t thread_id;
   int from_fd;
   int to_fd;
 };
 
 struct SetCloexecEvent {
-  uintptr_t thread_id;
   pid_t pid;
+  uintptr_t thread_id;
   int fd;
   bool cloexec;
 };
 
 struct ForkEvent {
-  uintptr_t thread_id;
   pid_t ppid;
+  uintptr_t thread_id;
   pid_t pid;
 };
 
 struct CloseEvent {
-  uintptr_t thread_id;
   pid_t pid;
+  uintptr_t thread_id;
   int fd;
 };
 
 struct ChdirEvent {
-  uintptr_t thread_id;
   pid_t pid;
+  uintptr_t thread_id;
   std::string path;
   int at_fd;
 };
@@ -69,8 +69,8 @@ struct ThreadChdirEvent {
 };
 
 struct ExecEvent {
-  uintptr_t thread_id;
   pid_t pid;
+  uintptr_t thread_id;
 };
 
 class MockDelegate : public Tracer::Delegate {
@@ -103,11 +103,11 @@ class MockDelegate : public Tracer::Delegate {
   }
 
   virtual void newThread(
+      pid_t pid,
       uintptr_t parent_thread_id,
-      uintptr_t child_thread_id,
-      pid_t pid) override {
+      uintptr_t child_thread_id) override {
     _new_thread_events.push_back(NewThreadEvent{
-        parent_thread_id, child_thread_id, pid });
+        pid, parent_thread_id, child_thread_id });
   }
 
   virtual void terminateThread(uintptr_t thread_id) override {
@@ -115,42 +115,42 @@ class MockDelegate : public Tracer::Delegate {
   }
 
   virtual void open(
-      uintptr_t thread_id,
       pid_t pid,
+      uintptr_t thread_id,
       int fd,
       int at_fd,
       std::string &&path,
       bool cloexec) override {
     _open_events.push_back(OpenEvent{
-        thread_id, pid, fd, at_fd, std::move(path), cloexec });
+        pid, thread_id, fd, at_fd, std::move(path), cloexec });
   }
 
   virtual void dup(
-      uintptr_t thread_id, pid_t pid, int from_fd, int to_fd) override {
+      pid_t pid, uintptr_t thread_id, int from_fd, int to_fd) override {
     _dup_events.push_back(DupEvent{
-        thread_id, pid, from_fd, to_fd });
+        pid, thread_id, from_fd, to_fd });
   }
 
   virtual void setCloexec(
-      uintptr_t thread_id, pid_t pid, int fd, bool cloexec) override {
+      pid_t pid, uintptr_t thread_id, int fd, bool cloexec) override {
     _set_cloexec_events.push_back(SetCloexecEvent{
-        thread_id, pid, fd, cloexec });
+        pid, thread_id, fd, cloexec });
   }
 
-  virtual void fork(uintptr_t thread_id, pid_t ppid, pid_t pid) override {
+  virtual void fork(pid_t ppid, uintptr_t thread_id, pid_t pid) override {
     _fork_events.push_back(ForkEvent{
-        thread_id, ppid, pid });
+        ppid, thread_id, pid });
   }
 
-  virtual void close(uintptr_t thread_id, pid_t pid, int fd) override {
+  virtual void close(pid_t pid, uintptr_t thread_id, int fd) override {
     _close_events.push_back(CloseEvent{
-        thread_id, pid, fd });
+        pid, thread_id, fd });
   }
 
   virtual void chdir(
-      uintptr_t thread_id, pid_t pid, std::string &&path, int at_fd) override {
+      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override {
     _chdir_events.push_back(ChdirEvent{
-        thread_id, pid, std::move(path), at_fd });
+        pid, thread_id, std::move(path), at_fd });
   }
 
   virtual void threadChdir(
@@ -159,9 +159,9 @@ class MockDelegate : public Tracer::Delegate {
         thread_id, std::move(path), at_fd });
   }
 
-  virtual void exec(uintptr_t thread_id, pid_t pid) override {
+  virtual void exec(pid_t pid, uintptr_t thread_id) override {
     _exec_events.push_back(ExecEvent{
-        thread_id, pid });
+        pid, thread_id });
   }
 
   FileEvent popFileEvent() {
@@ -248,7 +248,7 @@ TEST_CASE("ProcessTracer") {
       new MockDelegate(dead_tracers));
   auto &delegate = *delegate_ptr;
   tracer.traceProcess(1, std::move(delegate_ptr));
-  tracer.newThread(2, 3, /*pid:*/1);
+  tracer.newThread(/*pid:*/1, 2, 3);
   delegate.popNewThreadEvent();
 
   auto delegate2_ptr = std::unique_ptr<MockDelegate>(
@@ -281,14 +281,14 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("TerminateThreadEventForChildThread") {
-      tracer.newThread(3, 4, /*pid:*/1);
+      tracer.newThread(/*pid:*/1, 3, 4);
       auto event = delegate.popNewThreadEvent();
       tracer.terminateThread(4);
       CHECK(delegate.popTerminateThreadEvent() == 4);
     }
 
     SECTION("NewThreadForNewTrace") {
-      tracer.newThread(4, 5, /*pid:*/2);
+      tracer.newThread(/*pid:*/2, 4, 5);
       auto event = delegate2.popNewThreadEvent();
       CHECK(event.parent_thread_id == 4);
       CHECK(event.child_thread_id == 5);
@@ -296,7 +296,7 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("NewThreadForCurrentTrace") {
-      tracer.newThread(3, 4, /*pid:*/1);
+      tracer.newThread(/*pid:*/1, 3, 4);
       auto event = delegate.popNewThreadEvent();
       CHECK(event.parent_thread_id == 3);
       CHECK(event.child_thread_id == 4);
@@ -304,14 +304,14 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("MultipleDelegates") {
-      tracer.newThread(4, 5, /*pid:*/2);
+      tracer.newThread(/*pid:*/2, 4, 5);
       delegate2.popNewThreadEvent();
       tracer.fileEvent(5, EventType::FATAL_ERROR, "");
       delegate2.popFileEvent();
     }
 
     SECTION("OpenEvent") {
-      tracer.open(3, 12, 13, 14, "hey", false);
+      tracer.open(12, 3, 13, 14, "hey", false);
       auto event = delegate.popOpenEvent();
       CHECK(event.thread_id == 3);
       CHECK(event.pid == 12);
@@ -326,7 +326,7 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("DupEvent") {
-      tracer.dup(3, 12, 13, 14);
+      tracer.dup(12, 3, 13, 14);
       auto event = delegate.popDupEvent();
       CHECK(event.thread_id == 3);
       CHECK(event.pid == 12);
@@ -339,7 +339,7 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("SetCloexecEvent") {
-      tracer.setCloexec(3, 12, 13, false);
+      tracer.setCloexec(12, 3, 13, false);
       auto event = delegate.popSetCloexecEvent();
       CHECK(event.thread_id == 3);
       CHECK(event.pid == 12);
@@ -352,7 +352,7 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("ForkEvent") {
-      tracer.fork(3, 12, 13);
+      tracer.fork(12, 3, 13);
       auto event = delegate.popForkEvent();
       CHECK(event.thread_id == 3);
       CHECK(event.ppid == 12);
@@ -364,7 +364,7 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("CloseEvent") {
-      tracer.close(3, 12, 13);
+      tracer.close(12, 3, 13);
       auto event = delegate.popCloseEvent();
       CHECK(event.thread_id == 3);
       CHECK(event.pid == 12);
@@ -376,7 +376,7 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("ChdirEvent") {
-      tracer.chdir(3, 12, "hey", 13);
+      tracer.chdir(12, 3, "hey", 13);
       auto event = delegate.popChdirEvent();
       CHECK(event.thread_id == 3);
       CHECK(event.pid == 12);
@@ -401,7 +401,7 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("ExecEvent") {
-      tracer.exec(3, 12);
+      tracer.exec(12, 3);
       auto event = delegate.popExecEvent();
       CHECK(event.thread_id == 3);
       CHECK(event.pid == 12);
@@ -415,25 +415,25 @@ TEST_CASE("ProcessTracer") {
 
   SECTION("DescendantFollowing") {
     SECTION("OneChild") {
-      tracer.newThread(3, 4, /*pid:*/543);
+      tracer.newThread(/*pid:*/543, 3, 4);
       delegate.popNewThreadEvent();
       tracer.fileEvent(4, EventType::FATAL_ERROR, "");
       delegate.popFileEvent();
     }
 
     SECTION("TwoGenerations") {
-      tracer.newThread(3, 4, /*pid:*/543);
+      tracer.newThread(/*pid:*/543, 3, 4);
       delegate.popNewThreadEvent();
-      tracer.newThread(4, 5, /*pid:*/543);
+      tracer.newThread(/*pid:*/543, 4, 5);
       delegate.popNewThreadEvent();
       tracer.fileEvent(5, EventType::FATAL_ERROR, "");
       delegate.popFileEvent();
     }
 
     SECTION("TwoGenerationsIntermediaryDead") {
-      tracer.newThread(3, 4, /*pid:*/543);
+      tracer.newThread(/*pid:*/543, 3, 4);
       delegate.popNewThreadEvent();
-      tracer.newThread(4, 5, /*pid:*/543);
+      tracer.newThread(/*pid:*/543, 4, 5);
       delegate.popNewThreadEvent();
       tracer.terminateThread(4);
       delegate.popTerminateThreadEvent();
@@ -444,7 +444,7 @@ TEST_CASE("ProcessTracer") {
 
   SECTION("Termination") {
     SECTION("DontTraceThreadAfterItsTerminated") {
-      tracer.newThread(3, 4, /*pid:*/543);
+      tracer.newThread(/*pid:*/543, 3, 4);
       delegate.popNewThreadEvent();
       tracer.terminateThread(4);
       delegate.popTerminateThreadEvent();

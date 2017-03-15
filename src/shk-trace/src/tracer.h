@@ -30,9 +30,9 @@ class Tracer {
     virtual ~Delegate() = default;
 
     virtual void newThread(
+        pid_t pid,
         uintptr_t parent_thread_id,
-        uintptr_t child_thread_id,
-        pid_t pid) = 0;
+        uintptr_t child_thread_id) = 0;
 
     virtual void terminateThread(uintptr_t thread_id) = 0;
 
@@ -51,8 +51,8 @@ class Tracer {
      * this to happen.
      */
     virtual void open(
-        uintptr_t thread_id,
         pid_t pid,
+        uintptr_t thread_id,
         int fd,
         int at_fd,
         std::string &&path,
@@ -65,7 +65,7 @@ class Tracer {
      * this to happen.
      */
     virtual void dup(
-        uintptr_t thread_id, pid_t pid, int from_fd, int to_fd) = 0;
+        pid_t pid, uintptr_t thread_id, int from_fd, int to_fd) = 0;
 
     /**
      * Invoked whenever the cloexec flag has been set on a file descriptor.
@@ -74,7 +74,7 @@ class Tracer {
      * this to happen.
      */
     virtual void setCloexec(
-        uintptr_t thread_id, pid_t pid, int fd, bool cloexec) = 0;
+        pid_t pid, uintptr_t thread_id, int fd, bool cloexec) = 0;
 
     /**
      * Invoked whenever a process has forked.
@@ -82,7 +82,7 @@ class Tracer {
      * thread_id is the id of the thread that made the system call that caused
      * this to happen.
      */
-    virtual void fork(uintptr_t thread_id, pid_t ppid, pid_t pid) = 0;
+    virtual void fork(pid_t ppid, uintptr_t thread_id, pid_t pid) = 0;
 
     /**
      * Invoked whenever a file descriptor has been closed. (Except for when they
@@ -91,7 +91,7 @@ class Tracer {
      * thread_id is the id of the thread that made the system call that caused
      * this to happen.
      */
-    virtual void close(uintptr_t thread_id, pid_t pid, int fd) = 0;
+    virtual void close(pid_t pid, uintptr_t thread_id, int fd) = 0;
 
     /**
      * Invoked whenever a process's working directory has been changed. The path
@@ -103,7 +103,7 @@ class Tracer {
      * this to happen.
      */
     virtual void chdir(
-        uintptr_t thread_id, pid_t pid, std::string &&path, int at_fd) = 0;
+        pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) = 0;
 
     /**
      * Invoked whenever a thread has changed its thread-local working directory.
@@ -121,7 +121,7 @@ class Tracer {
      * thread_id is the id of the thread that made the system call that caused
      * this to happen.
      */
-    virtual void exec(uintptr_t thread_id, pid_t pid) = 0;
+    virtual void exec(pid_t pid, uintptr_t thread_id) = 0;
   };
 
   Tracer(
