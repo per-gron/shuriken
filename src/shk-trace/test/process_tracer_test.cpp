@@ -66,6 +66,7 @@ struct ChdirEvent {
 };
 
 struct ThreadChdirEvent {
+  pid_t pid;
   uintptr_t thread_id;
   std::string path;
   int at_fd;
@@ -162,9 +163,9 @@ class MockDelegate : public Tracer::Delegate {
   }
 
   virtual void threadChdir(
-      uintptr_t thread_id, std::string &&path, int at_fd) override {
+      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override {
     _thread_chdir_events.push_back(ThreadChdirEvent{
-        thread_id, std::move(path), at_fd });
+        pid, thread_id, std::move(path), at_fd });
   }
 
   virtual void exec(pid_t pid, uintptr_t thread_id) override {
@@ -399,15 +400,16 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("ThreadChdirEvent") {
-      tracer.threadChdir(3, "lol", 12);
+      tracer.threadChdir(1, 3, "lol", 12);
       auto event = delegate.popThreadChdirEvent();
+      CHECK(event.pid == 1);
       CHECK(event.thread_id == 3);
       CHECK(event.path == "lol");
       CHECK(event.at_fd == 12);
     }
 
     SECTION("ThreadChdirEventUnknownThreadId") {
-      tracer.threadChdir(11, "lol", 12);
+      tracer.threadChdir(10, 11, "lol", 12);
     }
 
     SECTION("ExecEvent") {

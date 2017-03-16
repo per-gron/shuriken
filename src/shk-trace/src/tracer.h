@@ -116,7 +116,7 @@ class Tracer {
      * working directory).
      */
     virtual void threadChdir(
-        uintptr_t thread_id, std::string &&path, int at_fd) = 0;
+        pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) = 0;
 
     /**
      * Invoked whenever a process has successfully invoked an exec family system

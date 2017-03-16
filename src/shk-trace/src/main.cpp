@@ -90,7 +90,7 @@ class ProcessTracerDelegate : public Tracer::Delegate {
   }
 
   virtual void threadChdir(
-      uintptr_t thread_id, std::string &&path, int at_fd) override {
+      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override {
   }
 
   virtual void exec(pid_t pid, uintptr_t thread_id) override {

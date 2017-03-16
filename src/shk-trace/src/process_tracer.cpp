@@ -112,9 +112,9 @@ void ProcessTracer::chdir(
 }
 
 void ProcessTracer::threadChdir(
-    uintptr_t thread_id, std::string &&path, int at_fd) {
+    pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->threadChdir(thread_id, std::move(path), at_fd);
+    delegate->threadChdir(pid, thread_id, std::move(path), at_fd);
   }
 }
 
