@@ -35,7 +35,7 @@ TEST_CASE("TracingServer") {
   FileDescriptor output_fd(fd[1]);
 
   auto request = requestTracing(
-      std::move(port_pair.second), std::move(output_fd));
+      std::move(port_pair.second), std::move(output_fd), "my_cwd");
   REQUIRE(request.second == MachOpenPortResult::SUCCESS);
 
   if (dispatch_semaphore_wait(
@@ -56,6 +56,16 @@ TEST_CASE("TracingServer") {
     // This is a rather lame test. We could as well be getting the pid of the
     // tracing server...
     CHECK(requests.front()->pid_to_trace == getpid());
+  }
+
+  SECTION("CheckCwd") {
+    CHECK(requests.front()->cwd == "my_cwd");
+  }
+
+  SECTION("TooLargeCwd") {
+    auto request = requestTracing(
+        std::move(port_pair.second), std::move(output_fd), std::string(3000, ' '));
+    REQUIRE(request.second == MachOpenPortResult::FAILURE);
   }
 
   SECTION("WaitForTracing") {

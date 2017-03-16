@@ -12,6 +12,7 @@ struct MachSendMsg {
   mach_msg_body_t body;
   mach_msg_port_descriptor_t trace_fd_port;
   mach_msg_port_descriptor_t trace_ack_port;
+  char cwd[2048];
 };
 
 struct MachRecvMsg : public MachSendMsg {
@@ -62,8 +63,9 @@ class GCDTraceRequest : public TracingServer::TraceRequest {
   GCDTraceRequest(
       FileDescriptor &&trace_fd,
       pid_t pid_to_trace,
+      std::string &&cwd,
       MachSendRight &&ack_port)
-      : TraceRequest(std::move(trace_fd), pid_to_trace),
+      : TraceRequest(std::move(trace_fd), pid_to_trace, std::move(cwd)),
         _ack_port(std::move(ack_port)) {}
 
   virtual ~GCDTraceRequest() {
@@ -123,6 +125,7 @@ class GCDTracingServer : public TracingServer {
     _cb(std::unique_ptr<TraceRequest>(new GCDTraceRequest(
         std::move(trace_fd),
         client_pid,
+        msg.cwd,
         std::move(tracing_finished_ack_port))));
   }
 
@@ -210,7 +213,9 @@ std::unique_ptr<TracingServer> makeTracingServer(
 }
 
 std::pair<std::unique_ptr<TraceHandle>, MachOpenPortResult> requestTracing(
-      const MachSendRight &server_port, FileDescriptor &&trace_fd) {
+      const MachSendRight &server_port,
+      FileDescriptor &&trace_fd,
+      const std::string &cwd) {
   // Make mach port to receive the tracing start acknowledgement on
   mach_port_t raw_receive_port;
   if (mach_port_allocate(
@@ -248,6 +253,12 @@ std::pair<std::unique_ptr<TraceHandle>, MachOpenPortResult> requestTracing(
   send_msg.trace_ack_port.name = ack_ports.second.release();
   send_msg.trace_ack_port.disposition = MACH_MSG_TYPE_PORT_SEND;
   send_msg.trace_ack_port.type = MACH_MSG_PORT_DESCRIPTOR;
+
+  if (cwd.size() >= sizeof(send_msg.cwd)) {
+    // Cwd too large
+    return std::make_pair(nullptr, MachOpenPortResult::FAILURE);
+  }
+  strncpy(send_msg.cwd, cwd.c_str(), sizeof(send_msg.cwd));
 
   // Send a mach message to the other port and wait for a reply from the other
   // process. The reply is sent when tracing is actually enabled.

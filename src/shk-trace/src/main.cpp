@@ -203,6 +203,7 @@ int main(int argc, char *argv[]) {
       std::move(port_pair.first),
       [&](std::unique_ptr<TracingServer::TraceRequest> &&request) {
         pid_t pid = request->pid_to_trace;
+        auto cwd = request->cwd;
         process_tracer.traceProcess(
             pid,
             std::unique_ptr<Tracer::Delegate>(
@@ -210,7 +211,7 @@ int main(int argc, char *argv[]) {
                     std::unique_ptr<PathResolver::Delegate>(
                         new PathResolverDelegate(std::move(request))),
                     pid,
-                    "/initial_cwd_TODO")));
+                    std::move(cwd))));
       });
 
   //auto mach_port = connectToServer();
@@ -229,7 +230,9 @@ int main(int argc, char *argv[]) {
 
   auto trace_request = requestTracing(
       std::move(port_pair.second),
-      std::move(trace_fd.first));
+      std::move(trace_fd.first),
+      reinterpret_cast<char *>(
+          RAIIHelper<void *, void, free>(getcwd(nullptr, 0)).get()));
   if (trace_request.second != MachOpenPortResult::SUCCESS) {
     fprintf(stderr, "Failed to initiate tracing\n");
     return 1;

@@ -30,12 +30,18 @@ class TracingServer {
    */
   class TraceRequest {
    public:
-    TraceRequest(FileDescriptor &&trace_fd, pid_t pid_to_trace)
-        : trace_fd(std::move(trace_fd)), pid_to_trace(pid_to_trace) {}
+    TraceRequest(
+        FileDescriptor &&trace_fd,
+        pid_t pid_to_trace,
+        std::string &&cwd)
+        : trace_fd(std::move(trace_fd)),
+          pid_to_trace(pid_to_trace),
+          cwd(std::move(cwd)) {}
     virtual ~TraceRequest() = default;
 
     const FileDescriptor trace_fd;
     const pid_t pid_to_trace;
+    const std::string cwd;  // cwd of the process that has requested tracing.
   };
 
   /**
@@ -84,8 +90,13 @@ class TraceHandle {
  *
  * This function blocks and returns only when the server has acknowledged that
  * the tracing has begun (or on failure).
+ *
+ * The cwd parameter is the working directory of the process that is about to
+ * be traced. The process must not have any thread local cwd overrides.
  */
 std::pair<std::unique_ptr<TraceHandle>, MachOpenPortResult> requestTracing(
-    const MachSendRight &server_port, FileDescriptor &&trace_fd);
+    const MachSendRight &server_port,
+    FileDescriptor &&trace_fd,
+    const std::string &cwd);
 
 }  // namespace shk
