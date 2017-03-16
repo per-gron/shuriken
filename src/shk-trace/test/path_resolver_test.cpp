@@ -50,10 +50,12 @@ class MockPathResolverDelegate : public PathResolver::Delegate {
 }  // anonymous namespace
 
 TEST_CASE("PathResolver") {
-  MockPathResolverDelegate delegate;
+  auto delegate_ptr = std::unique_ptr<MockPathResolverDelegate>(
+      new MockPathResolverDelegate());
+  MockPathResolverDelegate &delegate = *delegate_ptr;
   static constexpr pid_t kInitialPid = 1;
   static const std::string kInitialPath = "/initial_path";
-  PathResolver pr(delegate, kInitialPid, std::string(kInitialPath));
+  PathResolver pr(std::move(delegate_ptr), kInitialPid, std::string(kInitialPath));
 
   SECTION("NewThread") {
     // Not much to test here

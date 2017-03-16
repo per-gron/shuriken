@@ -31,7 +31,9 @@ class PathResolver : public Tracer::Delegate {
   };
 
   PathResolver(
-      Delegate &delegate, pid_t initial_pid, std::string &&initial_cwd);
+      std::unique_ptr<Delegate> &&delegate,
+      pid_t initial_pid,
+      std::string &&initial_cwd);
 
   virtual void newThread(
       pid_t pid,
@@ -74,7 +76,7 @@ class PathResolver : public Tracer::Delegate {
   std::string resolve(
       pid_t pid, uintptr_t thread_id, int at_fd, std::string &&path);
 
-  Delegate &_delegate;
+  std::unique_ptr<Delegate> _delegate;
   CwdMemo _cwd_memo;
   FileDescriptorMemo _file_descriptor_memo;
 };

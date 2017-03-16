@@ -5,8 +5,10 @@
 namespace shk {
 
 PathResolver::PathResolver(
-    Delegate &delegate, pid_t initial_pid, std::string &&initial_cwd)
-    : _delegate(delegate),
+    std::unique_ptr<Delegate> &&delegate,
+    pid_t initial_pid,
+    std::string &&initial_cwd)
+    : _delegate(std::move(delegate)),
       _cwd_memo(initial_pid, std::move(initial_cwd)) {}
 
 void PathResolver::newThread(
@@ -26,7 +28,7 @@ void PathResolver::fileEvent(
     EventType type,
     int at_fd,
     std::string &&path) {
-  _delegate.fileEvent(
+  _delegate->fileEvent(
       pid,
       thread_id,
       type,
