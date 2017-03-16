@@ -8,6 +8,7 @@
 #include "event_consolidator.h"
 #include "kdebug_controller.h"
 #include "named_mach_port.h"
+#include "path_resolver.h"
 #include "process_tracer.h"
 #include "tracer.h"
 #include "tracing_server.h"
@@ -30,12 +31,12 @@ int getNumCpus() {
 
 static const std::string PORT_NAME = "com.pereckerdal.shktrace";
 
-class ProcessTracerDelegate : public Tracer::Delegate {
+class PathResolverDelegate : public PathResolver::Delegate {
  public:
-  ProcessTracerDelegate(std::unique_ptr<TracingServer::TraceRequest> &&request)
+  PathResolverDelegate(std::unique_ptr<TracingServer::TraceRequest> &&request)
       : _request(std::move(request)) {}
 
-  virtual ~ProcessTracerDelegate() {
+  virtual ~PathResolverDelegate() {
     auto events = _consolidator.getConsolidatedEventsAndReset();
     for (const auto &event : events) {
       write(eventTypeToString(event.first) + (" " + event.second) + "\n");
@@ -51,53 +52,6 @@ class ProcessTracerDelegate : public Tracer::Delegate {
       int at_fd,
       std::string &&path) override {
     _consolidator.event(type, std::move(path));
-  }
-
-  virtual void newThread(
-      int parent_pid,
-      uintptr_t parent_thread_id,
-      uintptr_t child_thread_id) override {
-  }
-
-  virtual void terminateThread(uintptr_t thread_id) override {
-  }
-
-  virtual void open(
-      pid_t pid,
-      uintptr_t thread_id,
-      int fd,
-      int at_fd,
-      std::string &&path,
-      bool cloexec) override {
-  }
-
-  virtual void dup(
-      pid_t pid,
-      uintptr_t thread_id,
-      int from_fd,
-      int to_fd,
-      bool cloexec) override {
-  }
-
-  virtual void setCloexec(
-      pid_t pid, uintptr_t thread_id, int fd, bool cloexec) override {
-  }
-
-  virtual void fork(pid_t ppid, uintptr_t thread_id, pid_t pid) override {
-  }
-
-  virtual void close(pid_t pid, uintptr_t thread_id, int fd) override {
-  }
-
-  virtual void chdir(
-      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override {
-  }
-
-  virtual void threadChdir(
-      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override {
-  }
-
-  virtual void exec(pid_t pid, uintptr_t thread_id) override {
   }
 
  private:
@@ -139,7 +93,7 @@ std::unique_ptr<TracingServer> runTracingServer(
         process_tracer.traceProcess(
             pid,
             std::unique_ptr<ProcessTracer::Delegate>(
-                new ProcessTracerDelegate(std::move(request))));
+                nullptr/*new PathResolverDelegate(std::move(request))*/));
       });
 }
 
@@ -251,8 +205,12 @@ int main(int argc, char *argv[]) {
         pid_t pid = request->pid_to_trace;
         process_tracer.traceProcess(
             pid,
-            std::unique_ptr<ProcessTracer::Delegate>(
-                new ProcessTracerDelegate(std::move(request))));
+            std::unique_ptr<Tracer::Delegate>(
+                new PathResolver(
+                    std::unique_ptr<PathResolver::Delegate>(
+                        new PathResolverDelegate(std::move(request))),
+                    pid,
+                    "/initial_cwd_TODO")));
       });
 
   //auto mach_port = connectToServer();
