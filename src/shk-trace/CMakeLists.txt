@@ -31,6 +31,8 @@ add_library(libshktrace
   src/mach_port.h
   src/named_mach_port.cpp
   src/named_mach_port.h
+  src/path_resolver.cpp
+  src/path_resolver.h
   src/process_tracer.cpp
   src/process_tracer.h
   src/syscall_constants.h
@@ -59,6 +61,7 @@ add_executable(shktrace_test
   test/main.cpp
   test/mock_tracer_delegate.h
   test/named_mach_port_test.cpp
+  test/path_resolver_test.cpp
   test/process_tracer_test.cpp
   test/tracing_server_test.cpp)
 target_link_libraries(shktrace_test pthread catch libshktrace)
