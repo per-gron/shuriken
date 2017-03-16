@@ -72,7 +72,11 @@ class ProcessTracerDelegate : public Tracer::Delegate {
   }
 
   virtual void dup(
-      pid_t pid, uintptr_t thread_id, int from_fd, int to_fd) override {
+      pid_t pid,
+      uintptr_t thread_id,
+      int from_fd,
+      int to_fd,
+      bool cloexec) override {
   }
 
   virtual void setCloexec(

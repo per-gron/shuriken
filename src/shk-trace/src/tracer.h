@@ -69,7 +69,11 @@ class Tracer {
      * this to happen.
      */
     virtual void dup(
-        pid_t pid, uintptr_t thread_id, int from_fd, int to_fd) = 0;
+        pid_t pid,
+        uintptr_t thread_id,
+        int from_fd,
+        int to_fd,
+        bool cloexec) = 0;
 
     /**
      * Invoked whenever the cloexec flag has been set on a file descriptor.

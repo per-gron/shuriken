@@ -41,7 +41,7 @@ class FileDescriptorMemo {
    * Call when a file descriptor has been duplicated. Calling dup with a from_fd
    * that does not exist or is unknown is a no-op.
    */
-  void dup(pid_t pid, int from_fd, int to_fd);
+  void dup(pid_t pid, int from_fd, int to_fd, bool cloexec);
 
   /**
    * Call when a process has done an exec family syscall. Closes fds that are

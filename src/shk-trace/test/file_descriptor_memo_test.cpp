@@ -48,31 +48,47 @@ TEST_CASE("FileDescriptorMemo") {
   SECTION("Dup") {
     SECTION("Dup") {
       memo.open(1, 2, "path", false);
-      memo.dup(1, 2, 3);
+      memo.dup(1, 2, 3, false);
       CHECK(memo.getFileDescriptorPath(1, 3) == "path");
     }
 
     SECTION("DupAndClose") {
       memo.open(1, 2, "path", false);
-      memo.dup(1, 2, 3);
+      memo.dup(1, 2, 3, false);
       memo.close(1, 2);
       CHECK(memo.getFileDescriptorPath(1, 3) == "path");
     }
 
     SECTION("DupAndCloseDup") {
       memo.open(1, 2, "path", false);
-      memo.dup(1, 2, 3);
+      memo.dup(1, 2, 3, false);
       memo.close(1, 3);
       CHECK(memo.getFileDescriptorPath(1, 2) == "path");
     }
 
     SECTION("DupUnknownPid") {
-      memo.dup(1, 2, 3);
+      memo.dup(1, 2, 3, false);
     }
 
     SECTION("DupUnknownFd") {
       memo.open(1, 4, "path", false);
-      memo.dup(1, 2, 3);
+      memo.dup(1, 2, 3, false);
+    }
+
+    SECTION("DupCloexecOff") {
+      memo.open(1, 2, "path", false);
+      memo.dup(1, 2, 3, false);
+      memo.exec(1);
+      CHECK(memo.getFileDescriptorPath(1, 2) == "path");
+      CHECK(memo.getFileDescriptorPath(1, 3) == "path");
+    }
+
+    SECTION("DupCloexecOn") {
+      memo.open(1, 2, "path", false);
+      memo.dup(1, 2, 3, true);
+      memo.exec(1);
+      CHECK(memo.getFileDescriptorPath(1, 2) == "path");
+      CHECK(memo.getFileDescriptorPath(1, 3) == "");
     }
   }
 

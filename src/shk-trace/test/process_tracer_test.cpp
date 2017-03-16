@@ -99,16 +99,27 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("DupEvent") {
-      tracer.dup(12, 3, 13, 14);
+      tracer.dup(12, 3, 13, 14, true);
       auto event = delegate.popDupEvent();
       CHECK(event.thread_id == 3);
       CHECK(event.pid == 12);
       CHECK(event.from_fd == 13);
       CHECK(event.to_fd == 14);
+      CHECK(event.cloexec == true);
+    }
+
+    SECTION("DupEventCloexecOff") {
+      tracer.dup(12, 3, 13, 14, false);
+      CHECK(delegate.popDupEvent().cloexec == false);
+    }
+
+    SECTION("DupEventCloexecOn") {
+      tracer.dup(12, 3, 13, 14, true);
+      CHECK(delegate.popDupEvent().cloexec == true);
     }
 
     SECTION("DupEventUnknownThreadId") {
-      tracer.dup(11, 12, 13, 14);
+      tracer.dup(11, 12, 13, 14, false);
     }
 
     SECTION("SetCloexecEvent") {

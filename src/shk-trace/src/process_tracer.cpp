@@ -79,9 +79,9 @@ void ProcessTracer::open(
 }
 
 void ProcessTracer::dup(
-    pid_t pid, uintptr_t thread_id, int from_fd, int to_fd) {
+    pid_t pid, uintptr_t thread_id, int from_fd, int to_fd, bool cloexec) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->dup(pid, thread_id, from_fd, to_fd);
+    delegate->dup(pid, thread_id, from_fd, to_fd, cloexec);
   }
 }
 

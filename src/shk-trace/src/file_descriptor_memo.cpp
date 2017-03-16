@@ -4,7 +4,8 @@
 
 namespace shk {
 
-void FileDescriptorMemo::open(pid_t pid, int fd, std::string &&path, bool cloexec) {
+void FileDescriptorMemo::open(
+    pid_t pid, int fd, std::string &&path, bool cloexec) {
   _processes[pid][fd] = FDInfo{ std::move(path), cloexec };
 }
 
@@ -16,7 +17,7 @@ void FileDescriptorMemo::close(pid_t pid, int fd) {
   }
 }
 
-void FileDescriptorMemo::dup(pid_t pid, int from_fd, int to_fd) {
+void FileDescriptorMemo::dup(pid_t pid, int from_fd, int to_fd, bool cloexec) {
   auto process_it = _processes.find(pid);
   if (process_it == _processes.end()) {
     // Unknown pid. Nothing to dup.
@@ -30,7 +31,7 @@ void FileDescriptorMemo::dup(pid_t pid, int from_fd, int to_fd) {
     return;
   }
 
-  process_it->second[to_fd] = from_it->second;
+  process_it->second[to_fd] = FDInfo{ from_it->second.path, cloexec };
 }
 
 void FileDescriptorMemo::exec(pid_t pid) {
