@@ -134,7 +134,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         event_info *ei = &_ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)->second;
         ei->child_thread = kd[i].arg1;
         ei->pid = kd[i].arg2;
-        _delegate.newThread(thread, ei->child_thread, ei->pid);
+        _delegate.newThread(ei->pid, thread, ei->child_thread);
       }
       continue;
 
