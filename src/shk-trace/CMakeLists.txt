@@ -57,6 +57,7 @@ add_executable(shktrace_test
   test/file_descriptor_memo_test.cpp
   test/mach_port_test.cpp
   test/main.cpp
+  test/mock_tracer_delegate.h
   test/named_mach_port_test.cpp
   test/process_tracer_test.cpp
   test/tracing_server_test.cpp)
