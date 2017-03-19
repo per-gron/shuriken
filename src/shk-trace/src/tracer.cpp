@@ -277,7 +277,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
     if (debugid & DBG_FUNC_START) {
       if ((type & CLASS_MASK) == FILEMGR_BASE) {
         _delegate.fileEvent(
-            /* TODO(peck): Fill me in */0,
             thread,
             EventType::FATAL_ERROR,
             0,
@@ -557,7 +556,7 @@ void Tracer::format_print(
       sprintf(&buf[0], " %s ", pathname);
     }
 
-    _delegate.fileEvent(ei->pid, thread, EventType::READ, AT_FDCWD, pathname);
+    _delegate.fileEvent(thread, EventType::READ, AT_FDCWD, pathname);
   }
 
   pathname = buf;

@@ -3,7 +3,6 @@
 namespace shk {
 
 struct FileEvent {
-  pid_t pid;
   uintptr_t thread_id;
   EventType type;
   int at_fd;
@@ -17,7 +16,6 @@ struct NewThreadEvent {
 };
 
 struct OpenEvent {
-  pid_t pid;
   uintptr_t thread_id;
   int fd;
   int at_fd;
@@ -26,7 +24,6 @@ struct OpenEvent {
 };
 
 struct DupEvent {
-  pid_t pid;
   uintptr_t thread_id;
   int from_fd;
   int to_fd;
@@ -34,7 +31,6 @@ struct DupEvent {
 };
 
 struct SetCloexecEvent {
-  pid_t pid;
   uintptr_t thread_id;
   int fd;
   bool cloexec;
@@ -47,27 +43,23 @@ struct ForkEvent {
 };
 
 struct CloseEvent {
-  pid_t pid;
   uintptr_t thread_id;
   int fd;
 };
 
 struct ChdirEvent {
-  pid_t pid;
   uintptr_t thread_id;
   std::string path;
   int at_fd;
 };
 
 struct ThreadChdirEvent {
-  pid_t pid;
   uintptr_t thread_id;
   std::string path;
   int at_fd;
 };
 
 struct ExecEvent {
-  pid_t pid;
   uintptr_t thread_id;
 };
 
@@ -96,13 +88,12 @@ class MockTracerDelegate : public Tracer::Delegate {
   }
 
   virtual void fileEvent(
-      pid_t pid,
       uintptr_t thread_id,
       EventType type,
       int at_fd,
       std::string &&path) override {
     _file_events.push_back(
-        FileEvent{ pid, thread_id, type, at_fd, std::move(path) });
+        FileEvent{ thread_id, type, at_fd, std::move(path) });
   }
 
   virtual void newThread(
@@ -118,30 +109,28 @@ class MockTracerDelegate : public Tracer::Delegate {
   }
 
   virtual void open(
-      pid_t pid,
       uintptr_t thread_id,
       int fd,
       int at_fd,
       std::string &&path,
       bool cloexec) override {
     _open_events.push_back(OpenEvent{
-        pid, thread_id, fd, at_fd, std::move(path), cloexec });
+        thread_id, fd, at_fd, std::move(path), cloexec });
   }
 
   virtual void dup(
-      pid_t pid,
       uintptr_t thread_id,
       int from_fd,
       int to_fd,
       bool cloexec) override {
     _dup_events.push_back(DupEvent{
-        pid, thread_id, from_fd, to_fd, cloexec });
+        thread_id, from_fd, to_fd, cloexec });
   }
 
   virtual void setCloexec(
-      pid_t pid, uintptr_t thread_id, int fd, bool cloexec) override {
+      uintptr_t thread_id, int fd, bool cloexec) override {
     _set_cloexec_events.push_back(SetCloexecEvent{
-        pid, thread_id, fd, cloexec });
+        thread_id, fd, cloexec });
   }
 
   virtual void fork(pid_t ppid, uintptr_t thread_id, pid_t pid) override {
@@ -149,26 +138,26 @@ class MockTracerDelegate : public Tracer::Delegate {
         ppid, thread_id, pid });
   }
 
-  virtual void close(pid_t pid, uintptr_t thread_id, int fd) override {
+  virtual void close(uintptr_t thread_id, int fd) override {
     _close_events.push_back(CloseEvent{
-        pid, thread_id, fd });
+        thread_id, fd });
   }
 
   virtual void chdir(
-      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override {
+      uintptr_t thread_id, std::string &&path, int at_fd) override {
     _chdir_events.push_back(ChdirEvent{
-        pid, thread_id, std::move(path), at_fd });
+        thread_id, std::move(path), at_fd });
   }
 
   virtual void threadChdir(
-      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override {
+      uintptr_t thread_id, std::string &&path, int at_fd) override {
     _thread_chdir_events.push_back(ThreadChdirEvent{
-        pid, thread_id, std::move(path), at_fd });
+        thread_id, std::move(path), at_fd });
   }
 
-  virtual void exec(pid_t pid, uintptr_t thread_id) override {
+  virtual void exec(uintptr_t thread_id) override {
     _exec_events.push_back(ExecEvent{
-        pid, thread_id });
+        thread_id });
   }
 
   FileEvent popFileEvent() {

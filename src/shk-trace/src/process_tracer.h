@@ -35,14 +35,12 @@ class ProcessTracer : public Tracer::Delegate {
   virtual void terminateThread(uintptr_t thread_id) override;
 
   virtual void fileEvent(
-      pid_t pid,
       uintptr_t thread_id,
       EventType type,
       int at_fd,
       std::string &&path) override;
 
   virtual void open(
-      pid_t pid,
       uintptr_t thread_id,
       int fd,
       int at_fd,
@@ -50,26 +48,25 @@ class ProcessTracer : public Tracer::Delegate {
       bool cloexec) override;
 
   virtual void dup(
-      pid_t pid,
       uintptr_t thread_id,
       int from_fd,
       int to_fd,
       bool cloexec) override;
 
   virtual void setCloexec(
-      pid_t pid, uintptr_t thread_id, int fd, bool cloexec) override;
+      uintptr_t thread_id, int fd, bool cloexec) override;
 
   virtual void fork(pid_t ppid, uintptr_t thread_id, pid_t pid) override;
 
-  virtual void close(pid_t pid, uintptr_t thread_id, int fd) override;
+  virtual void close(uintptr_t thread_id, int fd) override;
 
   virtual void chdir(
-      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override;
+      uintptr_t thread_id, std::string &&path, int at_fd) override;
 
   virtual void threadChdir(
-      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override;
+      uintptr_t thread_id, std::string &&path, int at_fd) override;
 
-  virtual void exec(pid_t pid, uintptr_t thread_id) override;
+  virtual void exec(uintptr_t thread_id) override;
  private:
   struct Ancestor {
     Ancestor(uintptr_t ancestor_thread_id, Tracer::Delegate *delegate)

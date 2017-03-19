@@ -37,7 +37,6 @@ class Tracer {
     virtual void terminateThread(uintptr_t thread_id) = 0;
 
     virtual void fileEvent(
-        pid_t pid,
         uintptr_t thread_id,
         EventType type,
         int at_fd,
@@ -55,7 +54,6 @@ class Tracer {
      * this to happen.
      */
     virtual void open(
-        pid_t pid,
         uintptr_t thread_id,
         int fd,
         int at_fd,
@@ -69,7 +67,6 @@ class Tracer {
      * this to happen.
      */
     virtual void dup(
-        pid_t pid,
         uintptr_t thread_id,
         int from_fd,
         int to_fd,
@@ -82,7 +79,7 @@ class Tracer {
      * this to happen.
      */
     virtual void setCloexec(
-        pid_t pid, uintptr_t thread_id, int fd, bool cloexec) = 0;
+        uintptr_t thread_id, int fd, bool cloexec) = 0;
 
     /**
      * Invoked whenever a process has forked.
@@ -99,7 +96,7 @@ class Tracer {
      * thread_id is the id of the thread that made the system call that caused
      * this to happen.
      */
-    virtual void close(pid_t pid, uintptr_t thread_id, int fd) = 0;
+    virtual void close(uintptr_t thread_id, int fd) = 0;
 
     /**
      * Invoked whenever a process's working directory has been changed. The path
@@ -111,7 +108,7 @@ class Tracer {
      * this to happen.
      */
     virtual void chdir(
-        pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) = 0;
+        uintptr_t thread_id, std::string &&path, int at_fd) = 0;
 
     /**
      * Invoked whenever a thread has changed its thread-local working directory.
@@ -120,7 +117,7 @@ class Tracer {
      * working directory).
      */
     virtual void threadChdir(
-        pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) = 0;
+        uintptr_t thread_id, std::string &&path, int at_fd) = 0;
 
     /**
      * Invoked whenever a process has successfully invoked an exec family system
@@ -129,7 +126,7 @@ class Tracer {
      * thread_id is the id of the thread that made the system call that caused
      * this to happen.
      */
-    virtual void exec(pid_t pid, uintptr_t thread_id) = 0;
+    virtual void exec(uintptr_t thread_id) = 0;
   };
 
   Tracer(
@@ -169,14 +166,6 @@ class Tracer {
       uintptr_t arg4,
       const bsd_syscall &syscall,
       const char *pathname /* nullable */);
-  void create_map_entry(uintptr_t thread);
-  void init_arguments_buffer();
-  int get_real_command_name(int pid, char *cbuf, int csize);
-
-  struct threadmap_entry {
-    unsigned int tm_setsize = 0; // This is a bit count
-    unsigned long *tm_setptr = nullptr;  // File descriptor bitmap
-  };
 
   std::atomic<bool> _shutting_down;
   DispatchSemaphore _shutdown_semaphore;

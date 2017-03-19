@@ -27,21 +27,15 @@ TEST_CASE("ProcessTracer") {
   auto &delegate2 = *delegate2_ptr;
   tracer.traceProcess(2, std::move(delegate2_ptr));
 
-  SECTION("PidIsNotThreadId") {
-    // should be dropped
-    tracer.fileEvent(0, 1, EventType::FATAL_ERROR, AT_FDCWD, "");
-  }
-
   SECTION("EventForwarding") {
     SECTION("UnknownThreadId") {
-      tracer.fileEvent(1, 2, EventType::FATAL_ERROR, AT_FDCWD, "");
-      tracer.fileEvent(1, 123, EventType::FATAL_ERROR, AT_FDCWD, "");
+      tracer.fileEvent(2, EventType::FATAL_ERROR, AT_FDCWD, "");
+      tracer.fileEvent(123, EventType::FATAL_ERROR, AT_FDCWD, "");
     }
 
     SECTION("FileEvent") {
-      tracer.fileEvent(1, 3, EventType::CREATE, 999, "abc");
+      tracer.fileEvent(3, EventType::CREATE, 999, "abc");
       auto evt = delegate.popFileEvent();
-      CHECK(evt.pid == 1);
       CHECK(evt.thread_id == 3);
       CHECK(evt.type == EventType::CREATE);
       CHECK(evt.at_fd == 999);
@@ -63,31 +57,30 @@ TEST_CASE("ProcessTracer") {
     SECTION("NewThreadForNewTrace") {
       tracer.newThread(/*pid:*/2, 4, 5);
       auto event = delegate2.popNewThreadEvent();
+      CHECK(event.pid == 2);
       CHECK(event.parent_thread_id == 4);
       CHECK(event.child_thread_id == 5);
-      CHECK(event.pid == 2);
     }
 
     SECTION("NewThreadForCurrentTrace") {
       tracer.newThread(/*pid:*/1, 3, 4);
       auto event = delegate.popNewThreadEvent();
+      CHECK(event.pid == 1);
       CHECK(event.parent_thread_id == 3);
       CHECK(event.child_thread_id == 4);
-      CHECK(event.pid == 1);
     }
 
     SECTION("MultipleDelegates") {
       tracer.newThread(/*pid:*/2, 4, 5);
       delegate2.popNewThreadEvent();
-      tracer.fileEvent(1, 5, EventType::FATAL_ERROR, AT_FDCWD, "");
+      tracer.fileEvent(5, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate2.popFileEvent();
     }
 
     SECTION("OpenEvent") {
-      tracer.open(12, 3, 13, 14, "hey", false);
+      tracer.open(3, 13, 14, "hey", false);
       auto event = delegate.popOpenEvent();
       CHECK(event.thread_id == 3);
-      CHECK(event.pid == 12);
       CHECK(event.fd == 13);
       CHECK(event.at_fd == 14);
       CHECK(event.path == "hey");
@@ -95,44 +88,42 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("OpenEventUnknownThreadId") {
-      tracer.open(11, 12, 13, 14, "hey", true);
+      tracer.open(12, 13, 14, "hey", true);
     }
 
     SECTION("DupEvent") {
-      tracer.dup(12, 3, 13, 14, true);
+      tracer.dup(3, 13, 14, true);
       auto event = delegate.popDupEvent();
       CHECK(event.thread_id == 3);
-      CHECK(event.pid == 12);
       CHECK(event.from_fd == 13);
       CHECK(event.to_fd == 14);
       CHECK(event.cloexec == true);
     }
 
     SECTION("DupEventCloexecOff") {
-      tracer.dup(12, 3, 13, 14, false);
+      tracer.dup(3, 13, 14, false);
       CHECK(delegate.popDupEvent().cloexec == false);
     }
 
     SECTION("DupEventCloexecOn") {
-      tracer.dup(12, 3, 13, 14, true);
+      tracer.dup(3, 13, 14, true);
       CHECK(delegate.popDupEvent().cloexec == true);
     }
 
     SECTION("DupEventUnknownThreadId") {
-      tracer.dup(11, 12, 13, 14, false);
+      tracer.dup(12, 13, 14, false);
     }
 
     SECTION("SetCloexecEvent") {
-      tracer.setCloexec(12, 3, 13, false);
+      tracer.setCloexec(3, 13, false);
       auto event = delegate.popSetCloexecEvent();
       CHECK(event.thread_id == 3);
-      CHECK(event.pid == 12);
       CHECK(event.fd == 13);
       CHECK(event.cloexec == false);
     }
 
     SECTION("SetCloexecEventUnknownThreadId") {
-      tracer.setCloexec(11, 12, 13, true);
+      tracer.setCloexec(12, 13, true);
     }
 
     SECTION("ForkEvent") {
@@ -148,52 +139,48 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("CloseEvent") {
-      tracer.close(12, 3, 13);
+      tracer.close(3, 13);
       auto event = delegate.popCloseEvent();
       CHECK(event.thread_id == 3);
-      CHECK(event.pid == 12);
       CHECK(event.fd == 13);
     }
 
     SECTION("CloseEventUnknownThreadId") {
-      tracer.close(11, 12, 13);
+      tracer.close(12, 13);
     }
 
     SECTION("ChdirEvent") {
-      tracer.chdir(12, 3, "hey", 13);
+      tracer.chdir(3, "hey", 13);
       auto event = delegate.popChdirEvent();
       CHECK(event.thread_id == 3);
-      CHECK(event.pid == 12);
       CHECK(event.path == "hey");
       CHECK(event.at_fd == 13);
     }
 
     SECTION("ChdirEventUnknownThreadId") {
-      tracer.chdir(11, 12, "hey", 13);
+      tracer.chdir(12, "hey", 13);
     }
 
     SECTION("ThreadChdirEvent") {
-      tracer.threadChdir(1, 3, "lol", 12);
+      tracer.threadChdir(3, "lol", 12);
       auto event = delegate.popThreadChdirEvent();
-      CHECK(event.pid == 1);
       CHECK(event.thread_id == 3);
       CHECK(event.path == "lol");
       CHECK(event.at_fd == 12);
     }
 
     SECTION("ThreadChdirEventUnknownThreadId") {
-      tracer.threadChdir(10, 11, "lol", 12);
+      tracer.threadChdir(11, "lol", 12);
     }
 
     SECTION("ExecEvent") {
-      tracer.exec(12, 3);
+      tracer.exec(3);
       auto event = delegate.popExecEvent();
       CHECK(event.thread_id == 3);
-      CHECK(event.pid == 12);
     }
 
     SECTION("ExecEventUnknownThreadId") {
-      tracer.exec(11, 12);
+      tracer.exec(12);
     }
 
   }
@@ -202,7 +189,7 @@ TEST_CASE("ProcessTracer") {
     SECTION("OneChild") {
       tracer.newThread(/*pid:*/543, 3, 4);
       delegate.popNewThreadEvent();
-      tracer.fileEvent(1, 4, EventType::FATAL_ERROR, AT_FDCWD, "");
+      tracer.fileEvent(4, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
     }
 
@@ -211,7 +198,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       tracer.newThread(/*pid:*/543, 4, 5);
       delegate.popNewThreadEvent();
-      tracer.fileEvent(1, 5, EventType::FATAL_ERROR, AT_FDCWD, "");
+      tracer.fileEvent(5, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
     }
 
@@ -222,7 +209,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       tracer.terminateThread(4);
       delegate.popTerminateThreadEvent();
-      tracer.fileEvent(1, 5, EventType::FATAL_ERROR, AT_FDCWD, "");
+      tracer.fileEvent(5, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
     }
   }
@@ -233,7 +220,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       tracer.terminateThread(4);
       delegate.popTerminateThreadEvent();
-      tracer.fileEvent(1, 4, EventType::FATAL_ERROR, AT_FDCWD, "");
+      tracer.fileEvent(4, EventType::FATAL_ERROR, AT_FDCWD, "");
     }
 
     SECTION("MainThreadTermination") {

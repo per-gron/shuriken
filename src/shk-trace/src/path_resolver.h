@@ -23,7 +23,6 @@ class PathResolver : public Tracer::Delegate {
     virtual ~Delegate() = default;
 
     virtual void fileEvent(
-        pid_t pid,
         uintptr_t thread_id,
         EventType type,
         int at_fd,
@@ -43,40 +42,40 @@ class PathResolver : public Tracer::Delegate {
   virtual void terminateThread(uintptr_t thread_id) override;
 
   virtual void fileEvent(
-    pid_t pid,
     uintptr_t thread_id,
     EventType type,
     int at_fd,
     std::string &&path) override;
 
   virtual void open(
-      pid_t pid,
       uintptr_t thread_id,
       int fd,
       int at_fd,
       std::string &&path,
       bool cloexec) override;
   virtual void dup(
-      pid_t pid,
       uintptr_t thread_id,
       int from_fd,
       int to_fd,
       bool cloexec) override;
   virtual void setCloexec(
-      pid_t pid, uintptr_t thread_id, int fd, bool cloexec) override;
+      uintptr_t thread_id, int fd, bool cloexec) override;
   virtual void fork(pid_t ppid, uintptr_t thread_id, pid_t pid) override;
-  virtual void close(pid_t pid, uintptr_t thread_id, int fd) override;
+  virtual void close(uintptr_t thread_id, int fd) override;
   virtual void chdir(
-      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override;
+      uintptr_t thread_id, std::string &&path, int at_fd) override;
   virtual void threadChdir(
-      pid_t pid, uintptr_t thread_id, std::string &&path, int at_fd) override;
-  virtual void exec(pid_t pid, uintptr_t thread_id) override;
+      uintptr_t thread_id, std::string &&path, int at_fd) override;
+  virtual void exec(uintptr_t thread_id) override;
 
  private:
   std::string resolve(
-      pid_t pid, uintptr_t thread_id, int at_fd, std::string &&path);
+      uintptr_t thread_id, int at_fd, std::string &&path);
+
+  const pid_t *getPid(uintptr_t thread_id) const;
 
   std::unique_ptr<Delegate> _delegate;
+  std::unordered_map<uintptr_t, pid_t> _pids;
   CwdMemo _cwd_memo;
   FileDescriptorMemo _file_descriptor_memo;
 };

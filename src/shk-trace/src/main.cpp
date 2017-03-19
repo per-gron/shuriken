@@ -46,7 +46,6 @@ class PathResolverDelegate : public PathResolver::Delegate {
   }
 
   virtual void fileEvent(
-      pid_t pid,
       uintptr_t thread_id,
       EventType type,
       int at_fd,
