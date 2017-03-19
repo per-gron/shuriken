@@ -36,12 +36,6 @@ struct SetCloexecEvent {
   bool cloexec;
 };
 
-struct ForkEvent {
-  pid_t ppid;
-  uintptr_t thread_id;
-  pid_t pid;
-};
-
 struct CloseEvent {
   uintptr_t thread_id;
   int fd;
@@ -80,7 +74,6 @@ class MockTracerDelegate : public Tracer::Delegate {
     CHECK(_open_events.empty());
     CHECK(_dup_events.empty());
     CHECK(_set_cloexec_events.empty());
-    CHECK(_fork_events.empty());
     CHECK(_close_events.empty());
     CHECK(_chdir_events.empty());
     CHECK(_thread_chdir_events.empty());
@@ -133,11 +126,6 @@ class MockTracerDelegate : public Tracer::Delegate {
         thread_id, fd, cloexec });
   }
 
-  virtual void fork(pid_t ppid, uintptr_t thread_id, pid_t pid) override {
-    _fork_events.push_back(ForkEvent{
-        ppid, thread_id, pid });
-  }
-
   virtual void close(uintptr_t thread_id, int fd) override {
     _close_events.push_back(CloseEvent{
         thread_id, fd });
@@ -184,10 +172,6 @@ class MockTracerDelegate : public Tracer::Delegate {
     return popFrontAndReturn(_set_cloexec_events);
   }
 
-  ForkEvent popForkEvent() {
-    return popFrontAndReturn(_fork_events);
-  }
-
   CloseEvent popCloseEvent() {
     return popFrontAndReturn(_close_events);
   }
@@ -226,7 +210,6 @@ class MockTracerDelegate : public Tracer::Delegate {
   std::deque<OpenEvent> _open_events;
   std::deque<DupEvent> _dup_events;
   std::deque<SetCloexecEvent> _set_cloexec_events;
-  std::deque<ForkEvent> _fork_events;
   std::deque<CloseEvent> _close_events;
   std::deque<ChdirEvent> _chdir_events;
   std::deque<ThreadChdirEvent> _thread_chdir_events;

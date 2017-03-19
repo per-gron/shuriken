@@ -90,12 +90,6 @@ void ProcessTracer::setCloexec(
   }
 }
 
-void ProcessTracer::fork(pid_t ppid, uintptr_t thread_id, pid_t pid) {
-  if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->fork(ppid, thread_id, pid);
-  }
-}
-
 void ProcessTracer::close(uintptr_t thread_id, int fd) {
   if (auto delegate = findAncestor(thread_id).delegate) {
     delegate->close(thread_id, fd);

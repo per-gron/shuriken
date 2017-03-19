@@ -82,14 +82,6 @@ class Tracer {
         uintptr_t thread_id, int fd, bool cloexec) = 0;
 
     /**
-     * Invoked whenever a process has forked.
-     *
-     * thread_id is the id of the thread that made the system call that caused
-     * this to happen.
-     */
-    virtual void fork(pid_t ppid, uintptr_t thread_id, pid_t pid) = 0;
-
-    /**
      * Invoked whenever a file descriptor has been closed. (Except for when they
      * are implicitly closed due to exec.)
      *

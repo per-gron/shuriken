@@ -56,8 +56,6 @@ class ProcessTracer : public Tracer::Delegate {
   virtual void setCloexec(
       uintptr_t thread_id, int fd, bool cloexec) override;
 
-  virtual void fork(pid_t ppid, uintptr_t thread_id, pid_t pid) override;
-
   virtual void close(uintptr_t thread_id, int fd) override;
 
   virtual void chdir(

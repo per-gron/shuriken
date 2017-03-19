@@ -17,6 +17,11 @@ void PathResolver::newThread(
     uintptr_t child_thread_id) {
   _cwd_memo.newThread(parent_thread_id, child_thread_id);
   _pids[child_thread_id] = pid;
+
+  if (auto ppid = getPid(parent_thread_id)) {
+    _file_descriptor_memo.fork(*ppid, pid);
+    _cwd_memo.fork(*ppid, pid);
+  }
 }
 
 void PathResolver::terminateThread(uintptr_t thread_id) {
@@ -60,11 +65,6 @@ void PathResolver::setCloexec(
   if (auto pid = getPid(thread_id)) {
     _file_descriptor_memo.setCloexec(*pid, fd, cloexec);
   }
-}
-
-void PathResolver::fork(pid_t ppid, uintptr_t thread_id, pid_t pid) {
-  _file_descriptor_memo.fork(ppid, pid);
-  _cwd_memo.fork(ppid, pid);
 }
 
 void PathResolver::close(uintptr_t thread_id, int fd) {

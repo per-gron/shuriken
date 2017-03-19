@@ -126,18 +126,6 @@ TEST_CASE("ProcessTracer") {
       tracer.setCloexec(12, 13, true);
     }
 
-    SECTION("ForkEvent") {
-      tracer.fork(12, 3, 13);
-      auto event = delegate.popForkEvent();
-      CHECK(event.thread_id == 3);
-      CHECK(event.ppid == 12);
-      CHECK(event.pid == 13);
-    }
-
-    SECTION("ForkEventUnknownThreadId") {
-      tracer.fork(11, 12, 13);
-    }
-
     SECTION("CloseEvent") {
       tracer.close(3, 13);
       auto event = delegate.popCloseEvent();

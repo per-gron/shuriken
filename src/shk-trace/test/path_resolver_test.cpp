@@ -60,6 +60,10 @@ TEST_CASE("PathResolver") {
 
   SECTION("NewThread") {
     // Not much to test here.. It's tested above in the test set-up.
+
+    SECTION("Fork") {
+      // Tested in the Dup/OnFork section
+    }
   }
 
   SECTION("TerminateThread") {
@@ -251,7 +255,6 @@ TEST_CASE("PathResolver") {
     SECTION("OnFork") {
       pr.open(kThreadId, kFd1, AT_FDCWD, std::string(kFdPath), false);
       pr.dup(kThreadId, kFd1, kFd2, false);
-      pr.fork(kInitialPid, kThreadId2, kInitialPid + 1);
       pr.newThread(kInitialPid + 1, kThreadId, kThreadId2);
 
       SECTION("NotClosed") {
@@ -343,10 +346,6 @@ TEST_CASE("PathResolver") {
     }
   }
 
-  SECTION("Fork") {
-    // Tested in the Dup/OnFork section
-  }
-
   SECTION("Close") {
     static constexpr int kFd = 3;
     static const std::string kFdPath = "/fd";
@@ -402,7 +401,6 @@ TEST_CASE("PathResolver") {
     }
 
     SECTION("OnFork") {
-      pr.fork(kInitialPid, 2, kInitialPid + 2);
       pr.newThread(kInitialPid + 2, kThreadId, kThreadId3);
 
       SECTION("ChdirInParent") {
