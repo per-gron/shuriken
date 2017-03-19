@@ -262,5 +262,5 @@ int main(int argc, char *argv[]) {
 
 
 int main(int argc, char *argv[]) {
-  shk::main(argc, argv);
+  return shk::main(argc, argv);
 }
