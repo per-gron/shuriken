@@ -303,14 +303,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         continue;
       }
 
-    case SPEC_unmap_info:  // aka TrimExtent
-      {
-        // TODO(peck): Is this ignored code?
-        static bsd_syscall syscall;
-        format_print(NULL, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, syscall, nullptr);
-        continue;
-      }
-
     case MACH_pageout:
     case MACH_vmfault:
       {
