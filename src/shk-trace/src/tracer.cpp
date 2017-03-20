@@ -162,11 +162,11 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         auto ei_it = _ei_map.find(thread, BSC_execve);
         if (ei_it != _ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
-            exit_event(thread, BSC_execve, 0, 0, 0, 0, bsd_syscalls[BSC_INDEX(BSC_execve)]);
+            exit_event(thread, BSC_execve, 0, 0, 0, 0, BSC_execve);
           }
         } else if ((ei_it = _ei_map.find(thread, BSC_posix_spawn)) != _ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
-            exit_event(thread, BSC_posix_spawn, 0, 0, 0, 0, bsd_syscalls[BSC_INDEX(BSC_execve)]);
+            exit_event(thread, BSC_posix_spawn, 0, 0, 0, 0, BSC_execve);
           }
         }
         ei_it = _ei_map.find(thread, TRACE_DATA_EXEC);
@@ -302,7 +302,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
       }
 
       if (bsd_syscalls[index].format != Fmt::IGNORE) {
-        exit_event(thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, bsd_syscalls[index]);
+        exit_event(thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, type);
       }
     }
   }
@@ -344,11 +344,11 @@ void Tracer::exit_event(
     uintptr_t arg2,
     uintptr_t arg3,
     uintptr_t arg4,
-    const bsd_syscall &syscall) {
+    int syscall) {
   auto ei_it = _ei_map.find(thread, type);
   if (ei_it != _ei_map.end()) {
     auto *ei = &ei_it->second;
-    format_print(ei, thread, type, arg1, arg2, arg3, arg4, syscall, (char *)&ei->lookups[0].pathname[0]);
+    format_print(ei, thread, type, arg1, arg2, arg3, arg4, bsd_syscalls[BSC_INDEX(syscall)], (char *)&ei->lookups[0].pathname[0]);
     _ei_map.erase(ei_it);
   }
 }

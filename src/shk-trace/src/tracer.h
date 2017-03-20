@@ -147,7 +147,7 @@ class Tracer {
       uintptr_t arg2,
       uintptr_t arg3,
       uintptr_t arg4,
-      const bsd_syscall &syscall);
+      int syscall);
   void format_print(
       event_info *ei,
       uintptr_t thread,
