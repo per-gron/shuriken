@@ -291,7 +291,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
     case Throttled:
       {
         static bsd_syscall syscall;
-        syscall.name = "  THROTTLED";
         exit_event(thread, type, 0, 0, 0, 0, syscall);
         continue;
       }
@@ -299,17 +298,15 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
     case HFS_update:
       {
         static bsd_syscall syscall;
-        syscall.name = "  HFS_update";
         syscall.format = Fmt::HFS_update;
         exit_event(thread, type, kd[i].arg1, kd[i].arg2, 0, 0, syscall);
         continue;
       }
 
-    case SPEC_unmap_info:
+    case SPEC_unmap_info:  // aka TrimExtent
       {
         // TODO(peck): Is this ignored code?
         static bsd_syscall syscall;
-        syscall.name = "  TrimExtent";
         format_print(NULL, thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, 0, syscall, nullptr);
         continue;
       }
@@ -328,7 +325,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
       {
         // TODO(peck): Is this ignored code?
         static bsd_syscall syscall;
-        syscall.name = "map_fd";
         exit_event(thread, type, kd[i].arg1, kd[i].arg2, 0, 0, syscall);
         continue;
       }
@@ -340,7 +336,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         continue;
       }
 
-      if (bsd_syscalls[index].name) {
+      if (bsd_syscalls[index].format != Fmt::IGNORE) {
         exit_event(thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, bsd_syscalls[index]);
       }
     }
@@ -378,7 +374,7 @@ void Tracer::enter_event(uintptr_t thread, int type, kd_buf *kd, const char *nam
       return;
     }
 
-    if (bsd_syscalls[index].name) {
+    if (bsd_syscalls[index].format != Fmt::IGNORE) {
       enter_event_now(thread, type, kd, name);
     }
     return;
@@ -421,8 +417,6 @@ void Tracer::format_print(
   };
 
   const bool success = arg1 == 0;
-
-  // TODO(peck): Remove syscall.name field. It's not going to be used
 
   switch (syscall.format) {
   case Fmt::IGNORE:
