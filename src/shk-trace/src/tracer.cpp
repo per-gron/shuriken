@@ -40,7 +40,7 @@ static constexpr uint64_t SLEEP_MAX = 32;
 static constexpr int EVENT_BASE = 60000;
 static constexpr int DBG_FUNC_MASK = 0xfffffffc;
 
-static const auto bsd_syscalls = make_bsd_syscall_table();
+static const auto bsd_syscalls = make_bsd_syscall_table();  // TODO(peck): Remove me / replace me with more efficient bitmap
 
 Tracer::Tracer(
     int num_cpus,
@@ -364,8 +364,6 @@ void Tracer::format_print(
     uintptr_t arg4,
     int syscall,
     const char *pathname /* nullable */) {
-  const auto &syscall_info = bsd_syscalls[BSC_INDEX(syscall)];
-
   char buf[(PATHLENGTH + 80) + 64];
 
   std::array<EventType, 4> events{};
@@ -376,11 +374,14 @@ void Tracer::format_print(
 
   const bool success = arg1 == 0;
 
-  switch (syscall_info.format) {
-  case Fmt::IGNORE:
-    break;
-
-  case Fmt::OPEN:
+  switch (syscall) {
+  case BSC_open:
+  case BSC_open_nocancel:
+  case BSC_open_extended:
+  case BSC_guarded_open_np:
+  case BSC_open_dprotected_np:
+  case BSC_openat:
+  case BSC_openat_nocancel:
   {
     bool read = !(ei->arg2 & O_WRONLY);
     bool write = !!(ei->arg2 & O_RDWR) || !!(ei->arg2 & O_WRONLY);
@@ -409,62 +410,32 @@ void Tracer::format_print(
 
     break;
   }
+  }
 
-  case Fmt::CREATE:
-    // TODO(peck): Remove me printf("create");
-    break;
-
-  case Fmt::DELETE:
-    // TODO(peck): Remove me printf("delete");
-    break;
-
-  case Fmt::READ_CONTENTS:
-    // TODO(peck): Remove me printf("read_contents");
-    break;
-
-  case Fmt::WRITE_CONTENTS:
-    // TODO(peck): Remove me printf("write_contents");
-    break;
-
-  case Fmt::READ_METADATA:
-  case Fmt::FD_READ_METADATA:
-    // TODO(peck): Remove me printf("read_metadata");
-    break;
-
-  case Fmt::WRITE_METADATA:
-  case Fmt::FD_WRITE_METADATA:
-    // TODO(peck): Remove me printf("write_metadata");
-    break;
-
-  case Fmt::CREATE_DIR:
-    // TODO(peck): Remove me printf("create_dir");
-    break;
-
-  case Fmt::DELETE_DIR:
-    // TODO(peck): Remove me printf("delete_dir");
-    break;
-
-  case Fmt::READ_DIR:
-  case Fmt::FD_READ_DIR:
-    // TODO(peck): Remove me printf("read_dir");
-    break;
-
-  case Fmt::EXCHANGE:
-    // TODO(peck): Remove me printf("exchange");
-    break;
-
-  case Fmt::RENAME:
-    // TODO(peck): Remove me printf("rename");
-    break;
-
-  case Fmt::ILLEGAL:
-    // TODO(peck): Remove me printf("[[ILLEGAL]]");
+  bool is_at_syscall = false;
+  switch (syscall) {
+  case BSC_openat:
+  case BSC_openat_nocancel:
+  case BSC_renameat:
+  case BSC_chmodat:
+  case BSC_chownat:
+  case BSC_fstatat:
+  case BSC_linkat:
+  case BSC_unlinkat:
+  case BSC_readlinkat:
+  case BSC_symlinkat:
+  case BSC_mkdirat:
+  case BSC_getattrlistat:
+    is_at_syscall = true;
     break;
   }
 
   if (pathname) {
-    if (syscall_info.at == SyscallAt::YES) {
-      int at = syscall_info.format == Fmt::RENAME ? ei->arg3 : ei->arg1;
+    if (is_at_syscall) {
+      bool at_is_arg3 =
+          syscall == BSC_rename ||
+          syscall == BSC_renameat;
+      int at = at_is_arg3 ? ei->arg3 : ei->arg1;
       sprintf(&buf[0], " [%d]/%s ", at, pathname);
     } else {
       sprintf(&buf[0], " %s ", pathname);
