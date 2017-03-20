@@ -48,7 +48,6 @@ enum class Fmt {
   EXCHANGE,
   RENAME,
   OPEN,
-  HFS_update,
 };
 
 enum class SyscallAt {

@@ -215,14 +215,10 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
         uintptr_t *sargptr;
         if (debugid & DBG_FUNC_START) {
-          if (ei->type == HFS_update) {
-            ei->pn_work_index = (MAX_PATHNAMES - 1);
+          if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
+            ei->pn_work_index = ei->pn_scall_index;
           } else {
-            if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
-              ei->pn_work_index = ei->pn_scall_index;
-            } else {
-              continue;
-            }
+            continue;
           }
           sargptr = &ei->lookups[ei->pn_work_index].pathname[0];
 
@@ -288,14 +284,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
     }
 
     switch (type) {
-    case HFS_update:
-      {
-        static bsd_syscall syscall;
-        syscall.format = Fmt::HFS_update;
-        exit_event(thread, type, kd[i].arg1, kd[i].arg2, 0, 0, syscall);
-        continue;
-      }
-
     case MACH_pageout:
     case MACH_vmfault:
       {
@@ -336,13 +324,6 @@ void Tracer::enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char 
 
 
 void Tracer::enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
-  switch (type) {
-
-  case HFS_update:
-    enter_event_now(thread, type, kd, name);
-    return;
-
-  }
   if ((type & CSC_MASK) == BSC_BASE) {
     int index = BSC_INDEX(type);
     if (index >= bsd_syscalls.size()) {
@@ -396,41 +377,6 @@ void Tracer::format_print(
   switch (syscall.format) {
   case Fmt::IGNORE:
     break;
-
-  case Fmt::HFS_update:
-  {
-    char sbuf[7];
-    int sflag = (int)arg2;
-
-    memset(sbuf, '_', 6);
-    sbuf[6] = '\0';
-
-    if (sflag & 0x10) {
-      sbuf[0] = 'F';
-    }
-    if (sflag & 0x08) {
-      sbuf[1] = 'M';
-    }
-    if (sflag & 0x20) {
-      sbuf[2] = 'D';
-    }
-    if (sflag & 0x04) {
-      sbuf[3] = 'c';
-    }
-    if (sflag & 0x01) {
-      sbuf[4] = 'a';
-    }
-    if (sflag & 0x02) {
-      sbuf[5] = 'm';
-    }
-
-    // TODO(peck): Remove me printf("            (%s) ", sbuf);
-
-    auto name_it = _vn_name_map.find(arg1);
-    pathname = name_it == _vn_name_map.end() ? nullptr : name_it->second.c_str();
-
-    break;
-  }
 
   case Fmt::OPEN:
   {
