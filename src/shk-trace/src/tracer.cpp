@@ -24,6 +24,7 @@
 
 #include "tracer.h"
 
+#include <array>
 #include <string>
 
 #include <dispatch/dispatch.h>
@@ -39,8 +40,6 @@ static constexpr uint64_t SLEEP_MAX = 32;
 
 static constexpr int EVENT_BASE = 60000;
 static constexpr int DBG_FUNC_MASK = 0xfffffffc;
-
-static const auto bsd_syscalls = make_bsd_syscall_table();  // TODO(peck): Remove me / replace me with more efficient bitmap
 
 Tracer::Tracer(
     int num_cpus,
@@ -295,15 +294,8 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
       }
     }
 
-    if ((type & CSC_MASK) == BSC_BASE) {
-      int index = BSC_INDEX(type);
-      if (index >= bsd_syscalls.size()) {
-        continue;
-      }
-
-      if (bsd_syscalls[index].format != Fmt::IGNORE) {
-        exit_event(thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, type);
-      }
+    if (should_process_syscall(type)) {
+      exit_event(thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, type);
     }
   }
   fflush(0);
@@ -324,16 +316,8 @@ void Tracer::enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char 
 
 
 void Tracer::enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
-  if ((type & CSC_MASK) == BSC_BASE) {
-    int index = BSC_INDEX(type);
-    if (index >= bsd_syscalls.size()) {
-      return;
-    }
-
-    if (bsd_syscalls[index].format != Fmt::IGNORE) {
-      enter_event_now(thread, type, kd, name);
-    }
-    return;
+  if (should_process_syscall(type)) {
+    enter_event_now(thread, type, kd, name);
   }
 }
 

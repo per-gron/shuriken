@@ -24,127 +24,105 @@
 
 #pragma once
 
-#include <array>
+#include <bitset>
 
 #include "syscall_constants.h"
 
 namespace shk {
 
-enum class Fmt {
-  IGNORE,
-  ILLEGAL,
-  CREATE,
-  DELETE,
-  READ_CONTENTS,
-  WRITE_CONTENTS,
-  READ_METADATA,
-  WRITE_METADATA,
-  FD_READ_METADATA,
-  FD_WRITE_METADATA,
-  CREATE_DIR,
-  DELETE_DIR,
-  READ_DIR,
-  FD_READ_DIR,
-  EXCHANGE,
-  RENAME,
-  OPEN,
-};
-
-enum class SyscallAt {
-  NO,
-  YES
-};
-
-struct bsd_syscall {
-  static_assert(static_cast<int>(Fmt::IGNORE) == 0, "bsd_syscall should be all zeros by default");
-  Fmt format = Fmt::IGNORE;
-  SyscallAt at = SyscallAt::NO;
-};
-
 static constexpr int MAX_BSD_SYSCALL = 526;
 
-static std::array<bsd_syscall, MAX_BSD_SYSCALL> make_bsd_syscall_table() {
-  static const std::tuple<int, Fmt, SyscallAt> bsd_syscall_table[] = {
-    { BSC_stat, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_stat64, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_stat_extended, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_stat64_extended, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_open, Fmt::OPEN, SyscallAt::NO },
-    { BSC_open_nocancel, Fmt::OPEN, SyscallAt::NO },
-    { BSC_open_extended, Fmt::OPEN, SyscallAt::NO },
-    { BSC_guarded_open_np, Fmt::OPEN, SyscallAt::NO },
-    { BSC_open_dprotected_np, Fmt::OPEN, SyscallAt::NO },
-    { BSC_fstat, Fmt::FD_READ_METADATA, SyscallAt::NO },
-    { BSC_fstat64, Fmt::FD_READ_METADATA, SyscallAt::NO },
-    { BSC_fstat_extended, Fmt::FD_READ_METADATA, SyscallAt::NO },
-    { BSC_fstat64_extended, Fmt::FD_READ_METADATA, SyscallAt::NO },
-    { BSC_lstat, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_lstat64, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_lstat_extended, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_lstat64_extended, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_link, Fmt::CREATE, SyscallAt::NO },
-    { BSC_unlink, Fmt::DELETE, SyscallAt::NO },
-    { BSC_mknod, Fmt::CREATE, SyscallAt::NO },
-    { BSC_chmod, Fmt::WRITE_METADATA, SyscallAt::NO },
-    { BSC_chmod_extended, Fmt::WRITE_METADATA, SyscallAt::NO },
-    { BSC_fchmod, Fmt::FD_WRITE_METADATA, SyscallAt::NO },
-    { BSC_fchmod_extended, Fmt::FD_WRITE_METADATA, SyscallAt::NO },
-    { BSC_chown, Fmt::WRITE_METADATA, SyscallAt::NO },
-    { BSC_lchown, Fmt::WRITE_METADATA, SyscallAt::NO },
-    { BSC_fchown, Fmt::FD_WRITE_METADATA, SyscallAt::NO },
-    { BSC_access, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_access_extended, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_utimes, Fmt::WRITE_METADATA, SyscallAt::NO },
-    { BSC_delete, Fmt::DELETE, SyscallAt::NO },  // Carbon FileManager related syscall
-    { BSC_undelete, Fmt::ILLEGAL, SyscallAt::NO },
-    { BSC_chflags, Fmt::WRITE_METADATA, SyscallAt::NO },
-    { BSC_fchflags, Fmt::FD_WRITE_METADATA, SyscallAt::NO },
-    { BSC_futimes, Fmt::FD_WRITE_METADATA, SyscallAt::NO },
-    { BSC_symlink, Fmt::CREATE, SyscallAt::NO },
-    { BSC_readlink, Fmt::READ_CONTENTS, SyscallAt::NO },
-    { BSC_mkdir, Fmt::CREATE_DIR, SyscallAt::NO },
-    { BSC_mkdir_extended, Fmt::CREATE_DIR, SyscallAt::NO },
-    { BSC_mkfifo, Fmt::CREATE, SyscallAt::NO },
-    { BSC_mkfifo_extended, Fmt::CREATE, SyscallAt::NO },
-    { BSC_rmdir, Fmt::DELETE_DIR, SyscallAt::NO },
-    { BSC_getdirentries, Fmt::READ_DIR , SyscallAt::NO },
-    { BSC_getdirentries64, Fmt::READ_DIR, SyscallAt::NO },
-    { BSC_truncate, Fmt::WRITE_CONTENTS, SyscallAt::NO },
-    { BSC_getattrlist, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_setattrlist, Fmt::WRITE_METADATA, SyscallAt::NO },
-    { BSC_fgetattrlist, Fmt::FD_READ_METADATA, SyscallAt::NO },
-    { BSC_fsetattrlist, Fmt::FD_WRITE_METADATA, SyscallAt::NO },
-    { BSC_getdirentriesattr, Fmt::FD_READ_DIR, SyscallAt::NO },
-    { BSC_exchangedata, Fmt::EXCHANGE, SyscallAt::NO },
-    { BSC_rename, Fmt::RENAME, SyscallAt::NO },
-    { BSC_copyfile, Fmt::CREATE, SyscallAt::NO },
-    { BSC_checkuseraccess, Fmt::READ_METADATA, SyscallAt::NO },
-    { BSC_searchfs, Fmt::ILLEGAL, SyscallAt::NO },
-    { BSC_getattrlistbulk, Fmt::FD_READ_DIR, SyscallAt::NO },
-    { BSC_openat, Fmt::OPEN, SyscallAt::YES },
-    { BSC_openat_nocancel, Fmt::OPEN, SyscallAt::YES },
-    { BSC_renameat, Fmt::RENAME, SyscallAt::YES },
-    { BSC_chmodat, Fmt::WRITE_METADATA, SyscallAt::YES },
-    { BSC_chownat, Fmt::WRITE_METADATA, SyscallAt::YES },
-    { BSC_fstatat, Fmt::FD_READ_METADATA, SyscallAt::YES },
-    { BSC_fstatat64, Fmt::FD_READ_METADATA, SyscallAt::NO },
-    { BSC_linkat, Fmt::CREATE, SyscallAt::YES },
-    { BSC_unlinkat, Fmt::DELETE, SyscallAt::YES },
-    { BSC_readlinkat, Fmt::READ_CONTENTS, SyscallAt::YES },
-    { BSC_symlinkat, Fmt::CREATE, SyscallAt::YES },
-    { BSC_mkdirat, Fmt::CREATE_DIR, SyscallAt::YES },
-    { BSC_getattrlistat, Fmt::READ_METADATA, SyscallAt::YES },
+static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
+  static const int bsd_syscalls[] = {
+    BSC_stat,
+    BSC_stat64,
+    BSC_stat_extended,
+    BSC_stat64_extended,
+    BSC_open,
+    BSC_open_nocancel,
+    BSC_open_extended,
+    BSC_guarded_open_np,
+    BSC_open_dprotected_np,
+    BSC_fstat,
+    BSC_fstat64,
+    BSC_fstat_extended,
+    BSC_fstat64_extended,
+    BSC_lstat,
+    BSC_lstat64,
+    BSC_lstat_extended,
+    BSC_lstat64_extended,
+    BSC_link,
+    BSC_unlink,
+    BSC_mknod,
+    BSC_chmod,
+    BSC_chmod_extended,
+    BSC_fchmod,
+    BSC_fchmod_extended,
+    BSC_chown,
+    BSC_lchown,
+    BSC_fchown,
+    BSC_access,
+    BSC_access_extended,
+    BSC_utimes,
+    BSC_delete,
+    BSC_undelete,
+    BSC_chflags,
+    BSC_fchflags,
+    BSC_futimes,
+    BSC_symlink,
+    BSC_readlink,
+    BSC_mkdir,
+    BSC_mkdir_extended,
+    BSC_mkfifo,
+    BSC_mkfifo_extended,
+    BSC_rmdir,
+    BSC_getdirentries,
+    BSC_getdirentries64,
+    BSC_truncate,
+    BSC_getattrlist,
+    BSC_setattrlist,
+    BSC_fgetattrlist,
+    BSC_fsetattrlist,
+    BSC_getdirentriesattr,
+    BSC_exchangedata,
+    BSC_rename,
+    BSC_copyfile,
+    BSC_checkuseraccess,
+    BSC_searchfs,
+    BSC_getattrlistbulk,
+    BSC_openat,
+    BSC_openat_nocancel,
+    BSC_renameat,
+    BSC_chmodat,
+    BSC_chownat,
+    BSC_fstatat,
+    BSC_fstatat64,
+    BSC_linkat,
+    BSC_unlinkat,
+    BSC_readlinkat,
+    BSC_symlinkat,
+    BSC_mkdirat,
+    BSC_getattrlistat,
   };
 
-  std::array<bsd_syscall, MAX_BSD_SYSCALL> result;
-  for (auto syscall_descriptor : bsd_syscall_table) {
-    int code = BSC_INDEX(std::get<0>(syscall_descriptor));
-
-    auto &syscall = result.at(code);
-    syscall.format = std::get<1>(syscall_descriptor);
-    syscall.at = std::get<2>(syscall_descriptor);
+  std::bitset<MAX_BSD_SYSCALL> result;
+  for (auto syscall : bsd_syscalls) {
+    result.set(BSC_INDEX(syscall));
   }
   return result;
+}
+
+static bool should_process_syscall(int syscall) {
+  static const auto bsd_syscall_mask = make_bsd_syscall_mask();
+
+  if ((syscall & CSC_MASK) == BSC_BASE) {
+    int index = BSC_INDEX(syscall);
+    return index < bsd_syscall_mask.size() ?
+        bsd_syscall_mask[BSC_INDEX(syscall)] :
+        false;
+  } else {
+    return false;
+  }
 }
 
 }  // namespace shk
