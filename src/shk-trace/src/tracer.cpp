@@ -305,14 +305,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         }
         continue;
       }
-
-    case MSC_map_fd:
-      {
-        // TODO(peck): Is this ignored code?
-        static bsd_syscall syscall;
-        exit_event(thread, type, kd[i].arg1, kd[i].arg2, 0, 0, syscall);
-        continue;
-      }
     }
 
     if ((type & CSC_MASK) == BSC_BASE) {
@@ -346,7 +338,6 @@ void Tracer::enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char 
 void Tracer::enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
   switch (type) {
 
-  case MSC_map_fd:
   case HFS_update:
     enter_event_now(thread, type, kd, name);
     return;
