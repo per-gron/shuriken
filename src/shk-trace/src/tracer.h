@@ -156,7 +156,7 @@ class Tracer {
       uintptr_t arg2,
       uintptr_t arg3,
       uintptr_t arg4,
-      const bsd_syscall &syscall,
+      int syscall,
       const char *pathname /* nullable */);
 
   std::atomic<bool> _shutting_down;

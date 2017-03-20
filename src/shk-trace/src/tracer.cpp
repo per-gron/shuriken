@@ -348,7 +348,7 @@ void Tracer::exit_event(
   auto ei_it = _ei_map.find(thread, type);
   if (ei_it != _ei_map.end()) {
     auto *ei = &ei_it->second;
-    format_print(ei, thread, type, arg1, arg2, arg3, arg4, bsd_syscalls[BSC_INDEX(syscall)], (char *)&ei->lookups[0].pathname[0]);
+    format_print(ei, thread, type, arg1, arg2, arg3, arg4, syscall, (char *)&ei->lookups[0].pathname[0]);
     _ei_map.erase(ei_it);
   }
 }
@@ -362,8 +362,10 @@ void Tracer::format_print(
     uintptr_t arg2,
     uintptr_t arg3,
     uintptr_t arg4,
-    const bsd_syscall &syscall,
+    int syscall,
     const char *pathname /* nullable */) {
+  const auto &syscall_info = bsd_syscalls[BSC_INDEX(syscall)];
+
   char buf[(PATHLENGTH + 80) + 64];
 
   std::array<EventType, 4> events{};
@@ -374,7 +376,7 @@ void Tracer::format_print(
 
   const bool success = arg1 == 0;
 
-  switch (syscall.format) {
+  switch (syscall_info.format) {
   case Fmt::IGNORE:
     break;
 
@@ -461,8 +463,8 @@ void Tracer::format_print(
   }
 
   if (pathname) {
-    if (syscall.at == SyscallAt::YES) {
-      int at = syscall.format == Fmt::RENAME ? ei->arg3 : ei->arg1;
+    if (syscall_info.at == SyscallAt::YES) {
+      int at = syscall_info.format == Fmt::RENAME ? ei->arg3 : ei->arg1;
       sprintf(&buf[0], " [%d]/%s ", at, pathname);
     } else {
       sprintf(&buf[0], " %s ", pathname);
