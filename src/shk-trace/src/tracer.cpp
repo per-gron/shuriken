@@ -414,7 +414,15 @@ void Tracer::format_print(
     const char *pathname /* nullable */) {
   char buf[(PATHLENGTH + 80) + 64];
 
-  // TODO(peck): Remove me printf("  %-17.17s", syscall.name);
+  std::array<EventType, 4> events{};
+  int num_events = 0;
+  auto add_event = [&](EventType type) {
+    events[num_events++] = type;
+  };
+
+  const bool success = arg1 == 0;
+
+  // TODO(peck): Remove syscall.name field. It's not going to be used
 
   switch (syscall.format) {
   case Fmt::IGNORE:
@@ -457,40 +465,29 @@ void Tracer::format_print(
 
   case Fmt::OPEN:
   {
-    char mode[7];
+    bool read = !(ei->arg2 & O_WRONLY);
+    bool write = !!(ei->arg2 & O_RDWR) || !!(ei->arg2 & O_WRONLY);
+    bool excl = !!(ei->arg2 & O_EXCL);
+    bool trunc = !!(ei->arg2 & O_TRUNC);
 
-    memset(mode, '_', 6);
-    mode[6] = '\0';
-
-    if (ei->arg2 & O_RDWR) {
-      mode[0] = 'R';
-      mode[1] = 'W';
-    } else if (ei->arg2 & O_WRONLY) {
-      mode[1] = 'W';
-    } else {
-      mode[0] = 'R';
+    if (excl || (read && !trunc)) {
+      add_event(EventType::READ);
     }
 
-    if (ei->arg2 & O_CREAT) {
-      mode[2] = 'C';
+    if (trunc) {
+      add_event(EventType::CREATE);
+    } else if (write) {
+      add_event(EventType::WRITE);
     }
 
-    if (ei->arg2 & O_APPEND) {
-      mode[3] = 'A';
-    }
-
-    if (ei->arg2 & O_TRUNC) {
-      mode[4] = 'T';
-    }
-
-    if (ei->arg2 & O_EXCL) {
-      mode[5] = 'E';
-    }
-
-    if (arg1) {
-      // TODO(peck): Remove me printf("      [%3lu] (%s) ", arg1, mode);
-    } else {
-      // TODO(peck): Remove me printf(" F=%-3lu      (%s) ", arg2, mode);
+    if (success) {
+      auto fd = arg2;
+      _delegate.open(
+          thread,
+          fd,
+          /*at_fd:*/AT_FDCWD,  // TODO(peck): Implement me
+          pathname,
+          /*cloexec:*/false);  // TODO(peck): Implement me
     }
 
     break;
@@ -556,7 +553,17 @@ void Tracer::format_print(
       sprintf(&buf[0], " %s ", pathname);
     }
 
-    _delegate.fileEvent(thread, EventType::READ, AT_FDCWD, pathname);
+    for (int i = 0; i < num_events; i++) {
+      auto event = events[i];
+
+      const bool is_modify =
+          event == EventType::WRITE ||
+          event == EventType::CREATE ||
+          event == EventType::DELETE;
+      if (success || !is_modify) {
+        _delegate.fileEvent(thread, event, AT_FDCWD, pathname);
+      }
+    }
   }
 
   pathname = buf;

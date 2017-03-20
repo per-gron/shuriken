@@ -59,5 +59,15 @@ class IntegrationTest(unittest.TestCase):
     trace = trace_cmd("cat file")
     self.assertRegexpMatches(trace, 'read ' + os.getcwd() + '/file')
 
+  @with_testdir()
+  def test_write_file(self):
+    trace = trace_cmd("touch file")
+    self.assertRegexpMatches(trace, 'write ' + os.getcwd() + '/file')
+
+  @with_testdir()
+  def test_create_file(self):
+    trace = trace_cmd("echo > file")
+    self.assertRegexpMatches(trace, 'create ' + os.getcwd() + '/file')
+
 if __name__ == '__main__':
     unittest.main()
