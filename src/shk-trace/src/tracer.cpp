@@ -288,13 +288,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
     }
 
     switch (type) {
-    case Throttled:
-      {
-        static bsd_syscall syscall;
-        exit_event(thread, type, 0, 0, 0, 0, syscall);
-        continue;
-      }
-
     case HFS_update:
       {
         static bsd_syscall syscall;
@@ -354,7 +347,6 @@ void Tracer::enter_event(uintptr_t thread, int type, kd_buf *kd, const char *nam
   switch (type) {
 
   case MSC_map_fd:
-  case Throttled:
   case HFS_update:
     enter_event_now(thread, type, kd, name);
     return;
