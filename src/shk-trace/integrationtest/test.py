@@ -9,13 +9,13 @@ import subprocess
 import time
 import unittest
 
-def with_testdir(dir):
+def with_testdir():
   tempdir = os.path.join(os.path.dirname(__file__), 'tmpdir')
   def wrap(function):
     def decorator(*args, **kwargs):
       if os.path.exists(tempdir):
         shutil.rmtree(tempdir)
-      shutil.copytree(dir, tempdir)
+      os.mkdir(tempdir)
       cwd = os.getcwd()
       os.chdir(tempdir)
       try:
@@ -53,8 +53,9 @@ class IntegrationTest(unittest.TestCase):
     output = run_cmd_expect_fail(shkTrace + ' -h')
     self.assertRegexpMatches(output, r'usage: shk')
 
-  @with_testdir('basic')
+  @with_testdir()
   def test_read_file(self):
+    write_file('file', '')
     trace = trace_cmd("cat file")
     self.assertRegexpMatches(trace, 'read ' + os.getcwd() + '/file')
 
