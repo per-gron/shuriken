@@ -69,5 +69,11 @@ class IntegrationTest(unittest.TestCase):
     trace = trace_cmd("echo > file")
     self.assertRegexpMatches(trace, 'create ' + os.getcwd() + '/file')
 
+  @with_testdir()
+  def test_delete_file(self):
+    write_file('file', '')
+    trace = trace_cmd("rm file")
+    self.assertRegexpMatches(trace, 'delete ' + os.getcwd() + '/file')
+
 if __name__ == '__main__':
     unittest.main()

@@ -394,6 +394,12 @@ void Tracer::format_print(
 
     break;
   }
+
+  case BSC_unlink:
+  case BSC_unlinkat:
+  {
+    add_event(EventType::DELETE);
+  }
   }
 
   bool is_at_syscall = false;
