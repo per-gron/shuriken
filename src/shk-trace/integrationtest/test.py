@@ -93,5 +93,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertNotIn(os.getcwd() + '/file1', trace)
     self.assertIn('create ' + os.getcwd() + '/file2', trace)
 
+  @with_testdir()
+  def test_append_to_file(self):
+    trace = trace_cmd("echo >> file")
+    self.assertIn('write ' + os.getcwd() + '/file', trace)
+
+  @with_testdir()
+  def test_read_then_append_to_file(self):
+    write_file('file', '')
+    trace = trace_cmd("cat file && echo >> file")
+    self.assertIn('read ' + os.getcwd() + '/file', trace)
+    self.assertIn('write ' + os.getcwd() + '/file', trace)
+
 if __name__ == '__main__':
     unittest.main()
