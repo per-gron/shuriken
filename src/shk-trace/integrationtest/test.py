@@ -80,5 +80,18 @@ class IntegrationTest(unittest.TestCase):
     trace = trace_cmd("echo > file && rm file")
     self.assertNotIn(os.getcwd() + '/file', trace)
 
+  @with_testdir()
+  def test_move_file(self):
+    write_file('file1', '')
+    trace = trace_cmd("mv file1 file2")
+    self.assertIn('delete ' + os.getcwd() + '/file1', trace)
+    self.assertIn('create ' + os.getcwd() + '/file2', trace)
+
+  @with_testdir()
+  def test_create_and_move_file(self):
+    trace = trace_cmd("echo > file1 && mv file1 file2")
+    self.assertNotIn(os.getcwd() + '/file1', trace)
+    self.assertIn('create ' + os.getcwd() + '/file2', trace)
+
 if __name__ == '__main__':
     unittest.main()

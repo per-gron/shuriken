@@ -332,7 +332,17 @@ void Tracer::exit_event(
   auto ei_it = _ei_map.find(thread, type);
   if (ei_it != _ei_map.end()) {
     auto *ei = &ei_it->second;
-    format_print(ei, thread, type, arg1, arg2, arg3, arg4, syscall, (char *)&ei->lookups[0].pathname[0]);
+    format_print(
+        ei,
+        thread,
+        type,
+        arg1,
+        arg2,
+        arg3,
+        arg4,
+        syscall,
+        (char *)&ei->lookups[0].pathname[0],
+        (char *)&ei->lookups[1].pathname[0]);
     _ei_map.erase(ei_it);
   }
 }
@@ -347,13 +357,14 @@ void Tracer::format_print(
     uintptr_t arg3,
     uintptr_t arg4,
     int syscall,
-    const char *pathname /* nullable */) {
+    const char *pathname1 /* nullable */,
+    const char *pathname2 /* nullable */) {
   char buf[(PATHLENGTH + 80) + 64];
 
-  std::array<EventType, 4> events{};
+  std::array<std::pair<EventType, const char *>, 4> events{};
   int num_events = 0;
-  auto add_event = [&](EventType type) {
-    events[num_events++] = type;
+  auto add_event = [&](EventType type, const char *pathname) {
+    events[num_events++] = std::make_pair(type, pathname);
   };
 
   const bool success = arg1 == 0;
@@ -373,13 +384,13 @@ void Tracer::format_print(
     bool trunc = !!(ei->arg2 & O_TRUNC);
 
     if (excl || (read && !trunc)) {
-      add_event(EventType::READ);
+      add_event(EventType::READ, pathname1);
     }
 
     if (trunc) {
-      add_event(EventType::CREATE);
+      add_event(EventType::CREATE, pathname1);
     } else if (write) {
-      add_event(EventType::WRITE);
+      add_event(EventType::WRITE, pathname1);
     }
 
     if (success) {
@@ -388,7 +399,7 @@ void Tracer::format_print(
           thread,
           fd,
           /*at_fd:*/AT_FDCWD,  // TODO(peck): Implement me
-          pathname,
+          pathname1,
           /*cloexec:*/false);  // TODO(peck): Implement me
     }
 
@@ -398,7 +409,16 @@ void Tracer::format_print(
   case BSC_unlink:
   case BSC_unlinkat:
   {
-    add_event(EventType::DELETE);
+    add_event(EventType::DELETE, pathname1);
+    break;
+  }
+
+  case BSC_rename:
+  case BSC_renameat:
+  {
+    add_event(EventType::DELETE, pathname1);
+    add_event(EventType::CREATE, pathname2);
+    break;
   }
   }
 
@@ -420,33 +440,30 @@ void Tracer::format_print(
     break;
   }
 
-  if (pathname) {
+  if (pathname1) {
     if (is_at_syscall) {
       bool at_is_arg3 =
           syscall == BSC_rename ||
           syscall == BSC_renameat;
       int at = at_is_arg3 ? ei->arg3 : ei->arg1;
-      sprintf(&buf[0], " [%d]/%s ", at, pathname);
+      sprintf(&buf[0], " [%d]/%s ", at, pathname1);
     } else {
-      sprintf(&buf[0], " %s ", pathname);
+      sprintf(&buf[0], " %s ", pathname1);
     }
 
     for (int i = 0; i < num_events; i++) {
-      auto event = events[i];
+      auto event = events[i].first;
+      auto path = events[i].second;
 
       const bool is_modify =
           event == EventType::WRITE ||
           event == EventType::CREATE ||
           event == EventType::DELETE;
       if (success || !is_modify) {
-        _delegate.fileEvent(thread, event, AT_FDCWD, pathname);
+        _delegate.fileEvent(thread, event, AT_FDCWD, path);
       }
     }
   }
-
-  pathname = buf;
-
-  // TODO(peck): Remove me printf("%s %s.%d\n", pathname, command_name, (int)thread);
 }
 
 }  // namespace shk

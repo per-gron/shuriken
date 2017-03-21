@@ -157,7 +157,8 @@ class Tracer {
       uintptr_t arg3,
       uintptr_t arg4,
       int syscall,
-      const char *pathname /* nullable */);
+      const char *pathname1 /* nullable */,
+      const char *pathname2 /* nullable */);
 
   std::atomic<bool> _shutting_down;
   DispatchSemaphore _shutdown_semaphore;
