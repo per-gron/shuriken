@@ -19,6 +19,11 @@ enum class EventType {
    * overwrites the contents of a file.
    */
   CREATE,
+  /**
+   * DELETE is used when a program deletes a file. Because deleting a file
+   * exposes information to the program about whether the file exists, DELETE
+   * also implies READ.
+   */
   DELETE,
   /**
    * FATAL_ERROR events mean that the Tracer has failed. It could be that it's
