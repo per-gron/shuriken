@@ -247,8 +247,6 @@ int main(int argc, char *argv[]) {
     // be traced. This starts tracing 
     //
     // TODO(peck): Restructure / document this so that it becomes sane.
-    printf("EXECUTING\n");
-
     status_code = executeCommand(cmdline_options.command);
   }).join();
 

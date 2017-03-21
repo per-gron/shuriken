@@ -57,23 +57,28 @@ class IntegrationTest(unittest.TestCase):
   def test_read_file(self):
     write_file('file', '')
     trace = trace_cmd("cat file")
-    self.assertRegexpMatches(trace, 'read ' + os.getcwd() + '/file')
+    self.assertIn('read ' + os.getcwd() + '/file', trace)
 
   @with_testdir()
   def test_write_file(self):
     trace = trace_cmd("touch file")
-    self.assertRegexpMatches(trace, 'write ' + os.getcwd() + '/file')
+    self.assertIn('write ' + os.getcwd() + '/file', trace)
 
   @with_testdir()
   def test_create_file(self):
     trace = trace_cmd("echo > file")
-    self.assertRegexpMatches(trace, 'create ' + os.getcwd() + '/file')
+    self.assertIn('create ' + os.getcwd() + '/file', trace)
 
   @with_testdir()
   def test_delete_file(self):
     write_file('file', '')
     trace = trace_cmd("rm file")
-    self.assertRegexpMatches(trace, 'delete ' + os.getcwd() + '/file')
+    self.assertIn('delete ' + os.getcwd() + '/file', trace)
+
+  @with_testdir()
+  def test_create_and_delete_file(self):
+    trace = trace_cmd("echo > file && rm file")
+    self.assertNotIn(os.getcwd() + '/file', trace)
 
 if __name__ == '__main__':
     unittest.main()
