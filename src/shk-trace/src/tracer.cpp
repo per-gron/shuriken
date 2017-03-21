@@ -158,6 +158,9 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
     case TRACE_STRING_EXEC:
       {
+        // TODO(peck): It seems like this code is dead in practice.
+        // It works because execve and posix_spawn is always accompanied
+        // by stat64 calls.
         auto ei_it = _ei_map.find(thread, BSC_execve);
         if (ei_it != _ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
@@ -418,6 +421,32 @@ void Tracer::format_print(
   {
     add_event(EventType::DELETE, pathname1);
     add_event(EventType::CREATE, pathname2);
+    break;
+  }
+
+  case BSC_stat:
+  case BSC_stat64:
+  case BSC_stat_extended:
+  case BSC_stat64_extended:
+  case BSC_lstat:
+  case BSC_lstat64:
+  case BSC_lstat_extended:
+  case BSC_lstat64_extended:
+  case BSC_fstatat:
+  case BSC_fstatat64:
+  {
+    add_event(EventType::READ, pathname1);
+    break;
+  }
+
+
+  case BSC_execve:
+  case BSC_posix_spawn:
+  {
+    // TODO(peck): It seems like this code is dead in practice: This code never
+    // gets a pathname of the executed binary. It works because execve and
+    // posix_spawn is always accompanied by stat64 calls.
+    add_event(EventType::READ, pathname1);
     break;
   }
   }

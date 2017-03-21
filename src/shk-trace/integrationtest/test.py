@@ -105,5 +105,10 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/file', trace)
     self.assertIn('write ' + os.getcwd() + '/file', trace)
 
+  @with_testdir()
+  def test_executable_counts_as_input(self):
+    trace = trace_cmd("ls")
+    self.assertIn('read /bin/ls', trace)
+
 if __name__ == '__main__':
     unittest.main()
