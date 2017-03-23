@@ -28,6 +28,7 @@ def with_testdir():
   return wrap
 
 shkTrace = os.environ['SHK_TRACE_PATH']
+helper = os.path.join(os.path.dirname(shkTrace), 'shktrace_integrationtest_helper')
 
 def read_file(path):
   with open(path) as f:

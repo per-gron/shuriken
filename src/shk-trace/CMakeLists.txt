@@ -68,6 +68,10 @@ target_link_libraries(shktrace_test pthread catch libshktrace)
 target_include_directories(shktrace_test PUBLIC src)
 set_property(TARGET shktrace_test PROPERTY CXX_STANDARD 11)
 
+add_executable(shktrace_integrationtest_helper
+  integrationtest/test.cpp)
+set_property(TARGET shktrace_integrationtest_helper PROPERTY CXX_STANDARD 11)
+
 add_custom_command(
   TARGET shk-trace
   PRE_LINK
