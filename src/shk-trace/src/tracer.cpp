@@ -158,9 +158,9 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
     case TRACE_STRING_EXEC:
       {
-        // TODO(peck): It seems like this code is dead in practice.
-        // It works because execve and posix_spawn is always accompanied
-        // by stat64 calls.
+        // TODO(peck): It seems like this code never finds anything in _ei_map
+        // in practice. It works because execve and posix_spawn is always
+        // accompanied by stat64 calls, which count as reads as well.
         auto ei_it = _ei_map.find(thread, BSC_execve);
         if (ei_it != _ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
