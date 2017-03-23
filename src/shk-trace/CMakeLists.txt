@@ -19,8 +19,6 @@ add_library(libshktrace
   src/event_consolidator.cpp
   src/event_consolidator.h
   src/event_info.h
-  src/file_descriptor.cpp
-  src/file_descriptor.h
   src/file_descriptor_memo.cpp
   src/file_descriptor_memo.h
   src/fileport.h
@@ -42,6 +40,7 @@ add_library(libshktrace
   src/tracing_server.cpp
   src/tracing_server.h)
 target_compile_definitions(libshktrace PUBLIC KERNEL_PRIVATE PRIVATE=)
+target_include_directories(libshktrace PUBLIC src)
 target_link_libraries(libshktrace util bsm shkutil)
 set_property(TARGET libshktrace PROPERTY CXX_STANDARD 11)
 
@@ -65,11 +64,11 @@ add_executable(shktrace_test
   test/process_tracer_test.cpp
   test/tracing_server_test.cpp)
 target_link_libraries(shktrace_test pthread catch libshktrace)
-target_include_directories(shktrace_test PUBLIC src)
 set_property(TARGET shktrace_test PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_integrationtest_helper
   integrationtest/test.cpp)
+target_link_libraries(shktrace_integrationtest_helper shkutil)
 set_property(TARGET shktrace_integrationtest_helper PROPERTY CXX_STANDARD 11)
 
 add_custom_command(

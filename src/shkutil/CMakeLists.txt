@@ -1,5 +1,9 @@
-add_library(shkutil INTERFACE)
-target_include_directories(shkutil INTERFACE include)
+add_library(shkutil
+  include/util/file_descriptor.h
+  include/util/raii_helper.h
+  src/file_descriptor.cpp)
+target_include_directories(shkutil PUBLIC include)
+set_property(TARGET shkutil PROPERTY CXX_STANDARD 11)
 
 add_executable(shkutil_test
   test/main.cpp

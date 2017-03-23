@@ -2,6 +2,8 @@
 #include <string>
 #include <unordered_map>
 
+#include <util/file_descriptor.h>
+
 namespace {
 
 int fork() {
