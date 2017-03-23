@@ -455,6 +455,8 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_access:
+  case BSC_access_extended:
   case BSC_stat:
   case BSC_stat64:
   case BSC_stat_extended:

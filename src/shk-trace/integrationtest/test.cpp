@@ -41,6 +41,12 @@ shk::FileDescriptor openFileForWriting(const std::string &path) {
   return shk::FileDescriptor(fd);
 }
 
+void testAccess() {
+  if (access("input", 0) != 0) {
+    die("access failed");
+  }
+}
+
 void testForkInheritFd() {
   // Verify that file descriptors are inherited
 
@@ -66,7 +72,9 @@ void testForkInheritFd() {
 }
 
 void testUnlink() {
-  assert(unlink("input") == 0);
+  if (unlink("input") != 0) {
+    die("unlink failed");
+  }
 }
 
 void testUnlinkat() {
@@ -83,6 +91,7 @@ void testUnlinkatDir() {
 }
 
 const std::unordered_map<std::string, std::function<void ()>> kTests = {
+  { "access", testAccess },
   { "fork_inherit_fd", testForkInheritFd },
   { "unlink", testUnlink },
   { "unlinkat", testUnlinkat },
