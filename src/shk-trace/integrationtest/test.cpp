@@ -41,7 +41,7 @@ shk::FileDescriptor openFileForWriting(const std::string &path) {
   return shk::FileDescriptor(fd);
 }
 
-int testForkInheritFd() {
+void testForkInheritFd() {
   // Verify that file descriptors are inherited
 
   auto usr_fd = openFileForReading("/usr");
@@ -63,12 +63,15 @@ int testForkInheritFd() {
       die("Child failed");
     }
   }
-
-  return 0;
 }
 
-const std::unordered_map<std::string, std::function<int ()>> kTests = {
-  { "fork_inherit_fd", testForkInheritFd }
+void testUnlink() {
+  assert(unlink("input") == 0);
+}
+
+const std::unordered_map<std::string, std::function<void ()>> kTests = {
+  { "fork_inherit_fd", testForkInheritFd },
+  { "unlink", testUnlink },
 };
 
 }  // anonymous namespace
@@ -89,5 +92,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  return test_it->second();
+  test_it->second();
+
+  return 0;
 }

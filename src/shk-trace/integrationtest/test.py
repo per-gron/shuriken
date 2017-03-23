@@ -116,5 +116,11 @@ class IntegrationTest(unittest.TestCase):
     trace = trace_cmd(helper + ' fork_inherit_fd')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
 
+  @with_testdir()
+  def test_unlink(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' unlink')
+    self.assertIn('delete ' + os.getcwd() + '/input', trace)
+
 if __name__ == '__main__':
     unittest.main()
