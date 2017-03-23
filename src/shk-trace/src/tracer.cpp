@@ -453,6 +453,13 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_linkat:
+  {
+    add_event(EventType::READ, pathname1, &event_info::arg1);
+    add_event(EventType::CREATE, pathname2, &event_info::arg3);
+    break;
+  }
+
   case BSC_rename:
   {
     add_event(EventType::DELETE, pathname1, nullptr);

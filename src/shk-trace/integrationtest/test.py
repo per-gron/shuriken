@@ -144,6 +144,33 @@ class IntegrationTest(unittest.TestCase):
     self.assertNotIn('create ' + os.getcwd() + '/output', trace)
 
   @with_testdir()
+  def test_linkat(self):
+    os.mkdir('dir1')
+    os.mkdir('dir2')
+    write_file('dir1/input', '')
+    trace = trace_cmd(helper + ' linkat')
+    self.assertIn('read ' + os.getcwd() + '/dir1/input', trace)
+    self.assertIn('create ' + os.getcwd() + '/dir2/output', trace)
+
+  @with_testdir()
+  def test_linkat_error(self):
+    os.mkdir('dir1')
+    os.mkdir('dir2')
+    write_file('dir1/input', '')
+    write_file('dir2/output', '')
+    trace = trace_cmd(helper + ' linkat')
+    self.assertIn('read ' + os.getcwd() + '/dir1/input', trace)
+    self.assertNotIn('create ' + os.getcwd() + '/dir2/output', trace)
+
+  @with_testdir()
+  def test_link_error(self):
+    write_file('input', '')
+    write_file('output', '')
+    trace = trace_cmd(helper + ' link')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+    self.assertNotIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
   def test_unlink(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' unlink')

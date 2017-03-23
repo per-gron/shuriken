@@ -76,6 +76,13 @@ void testLink() {
   link("input", "output");
 }
 
+void testLinkat() {
+  auto dir1_fd = openFileForReading("dir1");
+  auto dir2_fd = openFileForReading("dir2");
+  // Don't check for an error code; some tests trigger this intentionally.
+  linkat(dir1_fd.get(), "input", dir2_fd.get(), "output", AT_SYMLINK_FOLLOW);
+}
+
 void testUnlink() {
   if (unlink("input") != 0) {
     die("unlink failed");
@@ -99,6 +106,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "access", testAccess },
   { "fork_inherit_fd", testForkInheritFd },
   { "link", testLink },
+  { "linkat", testLinkat },
   { "unlink", testUnlink },
   { "unlinkat", testUnlinkat },
   { "unlinkat_dir", testUnlinkatDir },
