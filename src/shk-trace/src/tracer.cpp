@@ -151,8 +151,8 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
     case TRACE_DATA_EXEC:
       {
-        event_info *ei = &_ei_map.add_event(thread, TRACE_DATA_EXEC)->second;
-        ei->pid = kd[i].arg1;
+        auto &ei = _ei_map.add_event(thread, TRACE_DATA_EXEC)->second;
+        ei.pid = kd[i].arg1;
         continue;
       }
 
