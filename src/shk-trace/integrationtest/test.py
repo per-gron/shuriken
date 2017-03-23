@@ -111,5 +111,10 @@ class IntegrationTest(unittest.TestCase):
     trace = trace_cmd("ls")
     self.assertIn('read /bin/ls', trace)
 
+  @with_testdir()
+  def test_fork_inherit_fd(self):
+    trace = trace_cmd(helper + ' fork_inherit_fd')
+    self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
+
 if __name__ == '__main__':
     unittest.main()

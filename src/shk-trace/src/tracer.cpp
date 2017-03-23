@@ -31,6 +31,34 @@
 #include <sys/mman.h>
 
 namespace shk {
+namespace {
+
+using SyscallAtMember = int event_info::*;
+
+SyscallAtMember syscallAtMember(int syscall) {
+  switch (syscall) {
+  case BSC_openat:
+  case BSC_openat_nocancel:
+  case BSC_chmodat:
+  case BSC_chownat:
+  case BSC_fstatat:
+  case BSC_linkat:
+  case BSC_unlinkat:
+  case BSC_readlinkat:
+  case BSC_symlinkat:
+  case BSC_mkdirat:
+  case BSC_getattrlistat:
+    return &event_info::arg1;
+    break;
+  case BSC_renameat:
+    abort();  // Not supported by this function (the answer is two members)
+    break;
+  default:
+    return nullptr;
+  }
+}
+
+}  // anonymous namespace
 
 static constexpr int PATHLENGTH = NUMPARMS * sizeof(uintptr_t);
 
@@ -364,10 +392,11 @@ void Tracer::format_print(
     const char *pathname2 /* nullable */) {
   char buf[(PATHLENGTH + 80) + 64];
 
-  std::array<std::pair<EventType, const char *>, 4> events{};
+  std::array<std::tuple<EventType, const char *, SyscallAtMember>, 4> events{};
   int num_events = 0;
-  auto add_event = [&](EventType type, const char *pathname) {
-    events[num_events++] = std::make_pair(type, pathname);
+  auto add_event = [&](
+      EventType type, const char *pathname, SyscallAtMember at) {
+    events[num_events++] = { type, pathname, at };
   };
 
   const bool success = arg1 == 0;
@@ -385,15 +414,16 @@ void Tracer::format_print(
     bool write = !!(ei->arg2 & O_RDWR) || !!(ei->arg2 & O_WRONLY);
     bool excl = !!(ei->arg2 & O_EXCL);
     bool trunc = !!(ei->arg2 & O_TRUNC);
+    auto at = syscallAtMember(syscall);
 
     if (excl || (read && !trunc)) {
-      add_event(EventType::READ, pathname1);
+      add_event(EventType::READ, pathname1, at);
     }
 
     if (trunc) {
-      add_event(EventType::CREATE, pathname1);
+      add_event(EventType::CREATE, pathname1, at);
     } else if (write) {
-      add_event(EventType::WRITE, pathname1);
+      add_event(EventType::WRITE, pathname1, at);
     }
 
     if (success) {
@@ -412,15 +442,16 @@ void Tracer::format_print(
   case BSC_unlink:
   case BSC_unlinkat:
   {
-    add_event(EventType::DELETE, pathname1);
+    add_event(EventType::DELETE, pathname1, syscallAtMember(syscall));
     break;
   }
 
   case BSC_rename:
   case BSC_renameat:
   {
-    add_event(EventType::DELETE, pathname1);
-    add_event(EventType::CREATE, pathname2);
+    auto at = syscallAtMember(syscall);
+    add_event(EventType::DELETE, pathname1, at);
+    add_event(EventType::CREATE, pathname2, at);
     break;
   }
 
@@ -435,7 +466,7 @@ void Tracer::format_print(
   case BSC_fstatat:
   case BSC_fstatat64:
   {
-    add_event(EventType::READ, pathname1);
+    add_event(EventType::READ, pathname1, syscallAtMember(syscall));
     break;
   }
 
@@ -446,50 +477,23 @@ void Tracer::format_print(
     // TODO(peck): It seems like this code is dead in practice: This code never
     // gets a pathname of the executed binary. It works because execve and
     // posix_spawn is always accompanied by stat64 calls.
-    add_event(EventType::READ, pathname1);
+    add_event(EventType::READ, pathname1, syscallAtMember(syscall));
     break;
   }
-  }
-
-  bool is_at_syscall = false;
-  switch (syscall) {
-  case BSC_openat:
-  case BSC_openat_nocancel:
-  case BSC_renameat:
-  case BSC_chmodat:
-  case BSC_chownat:
-  case BSC_fstatat:
-  case BSC_linkat:
-  case BSC_unlinkat:
-  case BSC_readlinkat:
-  case BSC_symlinkat:
-  case BSC_mkdirat:
-  case BSC_getattrlistat:
-    is_at_syscall = true;
-    break;
   }
 
   if (pathname1) {
-    if (is_at_syscall) {
-      bool at_is_arg3 =
-          syscall == BSC_rename ||
-          syscall == BSC_renameat;
-      int at = at_is_arg3 ? ei->arg3 : ei->arg1;
-      sprintf(&buf[0], " [%d]/%s ", at, pathname1);
-    } else {
-      sprintf(&buf[0], " %s ", pathname1);
-    }
-
     for (int i = 0; i < num_events; i++) {
-      auto event = events[i].first;
-      auto path = events[i].second;
+      EventType event = std::get<0>(events[i]);
+      const char *path = std::get<1>(events[i]);
+      SyscallAtMember at = std::get<2>(events[i]);
 
       const bool is_modify =
           event == EventType::WRITE ||
           event == EventType::CREATE ||
           event == EventType::DELETE;
       if (success || !is_modify) {
-        _delegate.fileEvent(thread, event, AT_FDCWD, path);
+        _delegate.fileEvent(thread, event, at ? ei->*at : AT_FDCWD, path);
       }
     }
   }
