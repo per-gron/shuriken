@@ -69,9 +69,24 @@ void testUnlink() {
   assert(unlink("input") == 0);
 }
 
+void testUnlinkat() {
+  auto dir_fd = openFileForReading("dir");
+  if (unlinkat(dir_fd.get(), "../input", 0) != 0) {
+    die("unlinkat failed");
+  }
+}
+
+void testUnlinkatDir() {
+  if (unlinkat(AT_FDCWD, "dir", AT_REMOVEDIR) != 0) {
+    die("unlinkat dir failed");
+  }
+}
+
 const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fork_inherit_fd", testForkInheritFd },
   { "unlink", testUnlink },
+  { "unlinkat", testUnlinkat },
+  { "unlinkat_dir", testUnlinkatDir },
 };
 
 }  // anonymous namespace

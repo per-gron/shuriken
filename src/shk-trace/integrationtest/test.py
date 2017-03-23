@@ -122,5 +122,18 @@ class IntegrationTest(unittest.TestCase):
     trace = trace_cmd(helper + ' unlink')
     self.assertIn('delete ' + os.getcwd() + '/input', trace)
 
+  @with_testdir()
+  def test_unlinkat(self):
+    os.mkdir('dir')
+    write_file('input', '')
+    trace = trace_cmd(helper + ' unlinkat')
+    self.assertIn('delete ' + os.getcwd() + '/dir/../input', trace)
+
+  @with_testdir()
+  def test_unlinkat_dir(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' unlinkat_dir')
+    self.assertIn('delete ' + os.getcwd() + '/dir', trace)
+
 if __name__ == '__main__':
     unittest.main()
