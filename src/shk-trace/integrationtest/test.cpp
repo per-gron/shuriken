@@ -71,6 +71,11 @@ void testForkInheritFd() {
   }
 }
 
+void testLink() {
+  // Don't check for an error code; some tests trigger this intentionally.
+  link("input", "output");
+}
+
 void testUnlink() {
   if (unlink("input") != 0) {
     die("unlink failed");
@@ -93,6 +98,7 @@ void testUnlinkatDir() {
 const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "access", testAccess },
   { "fork_inherit_fd", testForkInheritFd },
+  { "link", testLink },
   { "unlink", testUnlink },
   { "unlinkat", testUnlinkat },
   { "unlinkat_dir", testUnlinkatDir },

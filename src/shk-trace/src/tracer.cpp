@@ -446,12 +446,25 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_link:
+  {
+    add_event(EventType::READ, pathname1, nullptr);
+    add_event(EventType::CREATE, pathname2, nullptr);
+    break;
+  }
+
   case BSC_rename:
+  {
+    add_event(EventType::DELETE, pathname1, nullptr);
+    add_event(EventType::CREATE, pathname2, nullptr);
+    break;
+  }
+
   case BSC_renameat:
   {
     auto at = syscallAtMember(syscall);
-    add_event(EventType::DELETE, pathname1, at);
-    add_event(EventType::CREATE, pathname2, at);
+    add_event(EventType::DELETE, pathname1, &event_info::arg1);
+    add_event(EventType::CREATE, pathname2, &event_info::arg3);
     break;
   }
 

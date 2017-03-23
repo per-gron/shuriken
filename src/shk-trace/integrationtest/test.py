@@ -129,6 +129,21 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
 
   @with_testdir()
+  def test_link(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' link')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+    self.assertIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_link_error(self):
+    write_file('input', '')
+    write_file('output', '')
+    trace = trace_cmd(helper + ' link')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+    self.assertNotIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
   def test_unlink(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' unlink')
