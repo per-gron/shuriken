@@ -237,6 +237,18 @@ void testReadlinkat() {
   readlinkat(dir_fd.get(), "../input", buf, sizeof(buf));
 }
 
+void testRename() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  rename("input", "output");
+}
+
+void testRenameat() {
+  auto dir1_fd = openFileForReading("dir1");
+  auto dir2_fd = openFileForReading("dir2");
+  // Don't check for an error code; some tests trigger an error intentionally.
+  renameat(dir1_fd.get(), "input", dir2_fd.get(), "output");
+}
+
 void testUnlink() {
   if (unlink("input") != 0) {
     die("unlink failed");
@@ -277,6 +289,8 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "pthread_fchdir_other_thread", testPthreadFchdirOtherThread },
   { "readlink", testReadlink },
   { "readlinkat", testReadlinkat },
+  { "rename", testRename },
+  { "renameat", testRenameat },
   { "symlink", testSymlink },
   { "symlinkat", testSymlinkat },
   { "truncate", testTruncate },

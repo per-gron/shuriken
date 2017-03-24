@@ -22,7 +22,8 @@ enum class EventType {
   /**
    * DELETE is used when a program deletes a file. Because deleting a file
    * exposes information to the program about whether the file exists, DELETE
-   * also implies READ.
+   * also implies READ. (DELETE+CREATE is used when moving files, so DELETE
+   * truly implies that the file contents matter as well.)
    */
   DELETE,
   /**

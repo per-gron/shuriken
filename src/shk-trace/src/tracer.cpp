@@ -512,7 +512,6 @@ void Tracer::format_print(
 
   case BSC_renameat:
   {
-    auto at = syscallAtMember(syscall);
     add_event(EventType::DELETE, pathname1, &event_info::arg1);
     add_event(EventType::CREATE, pathname2, &event_info::arg3);
     break;
@@ -567,19 +566,24 @@ void Tracer::format_print(
   }
   }
 
-  if (pathname1) {
-    for (int i = 0; i < num_events; i++) {
-      EventType event = std::get<0>(events[i]);
-      const char *path = std::get<1>(events[i]);
-      SyscallAtMember at = std::get<2>(events[i]);
+  for (int i = 0; i < num_events; i++) {
+    EventType event = std::get<0>(events[i]);
+    const char *path = std::get<1>(events[i]);
+    SyscallAtMember at = std::get<2>(events[i]);
 
+    if (path) {
       const bool is_modify =
           event == EventType::WRITE ||
           event == EventType::CREATE ||
           event == EventType::DELETE;
-      if (success || !is_modify) {
-        _delegate.fileEvent(thread, event, at ? ei->*at : AT_FDCWD, path);
-      }
+      _delegate.fileEvent(
+          thread,
+          // Modify events, when they fail, potentially expose information about
+          // a file or directory at that path, even if they don't modify the
+          // file system.
+          !success && is_modify ? EventType::READ : event,
+          at ? ei->*at : AT_FDCWD,
+          path);
     }
   }
 }
