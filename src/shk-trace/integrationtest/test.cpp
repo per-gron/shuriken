@@ -47,6 +47,30 @@ void testAccess() {
   }
 }
 
+void testDup() {
+  auto usr_fd = openFileForReading("/usr");
+  auto duped_fd = shk::FileDescriptor(dup(usr_fd.get()));
+  if (duped_fd.get() == -1) {
+    die("dup failed");
+  }
+
+  assert(openat(
+      duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) == -1);
+}
+
+void testDup2() {
+  auto usr_fd = openFileForReading("/usr");
+
+  int new_fd_num = 123;
+  if (dup2(usr_fd.get(), new_fd_num) == -1) {
+    die("dup2 failed");
+  }
+  auto duped_fd = shk::FileDescriptor(new_fd_num);
+
+  assert(openat(
+      duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) == -1);
+}
+
 void testForkInheritFd() {
   // Verify that file descriptors are inherited
 
@@ -128,6 +152,8 @@ void testUnlinkatDir() {
 
 const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "access", testAccess },
+  { "dup", testDup },
+  { "dup2", testDup2 },
   { "fork_inherit_fd", testForkInheritFd },
   { "link", testLink },
   { "linkat", testLinkat },

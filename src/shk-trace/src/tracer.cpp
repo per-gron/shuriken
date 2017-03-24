@@ -404,6 +404,15 @@ void Tracer::format_print(
   const bool success = arg1 == 0;
 
   switch (syscall) {
+  case BSC_dup:
+  case BSC_dup2:
+  {
+    if (success) {
+      _delegate.dup(thread, ei->arg1, arg2, /*cloexec:*/false);
+    }
+    break;
+  }
+
   case BSC_open:
   case BSC_open_nocancel:
   case BSC_open_extended:
