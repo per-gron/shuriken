@@ -493,6 +493,12 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_truncate:
+  {
+    add_event(EventType::WRITE, pathname1, nullptr);
+    break;
+  }
+
   case BSC_access:
   case BSC_access_extended:
   case BSC_readlink:

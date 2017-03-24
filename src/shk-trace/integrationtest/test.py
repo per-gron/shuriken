@@ -229,6 +229,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertNotIn('create ' + os.getcwd() + '/dir/output', trace)
 
   @with_testdir()
+  def test_truncate(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' truncate')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_truncate_error(self):
+    trace = trace_cmd(helper + ' truncate')
+    self.assertNotIn('create ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_unlink(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' unlink')

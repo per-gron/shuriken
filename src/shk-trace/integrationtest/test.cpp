@@ -118,6 +118,11 @@ void testSymlinkat() {
   symlinkat("input", dir_fd.get(), "output");
 }
 
+void testTruncate() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  truncate("input", 123);
+}
+
 void testReadlink() {
   char buf[1024];
   // Don't check for an error code; some tests trigger an error intentionally.
@@ -161,6 +166,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "readlinkat", testReadlinkat },
   { "symlink", testSymlink },
   { "symlinkat", testSymlinkat },
+  { "truncate", testTruncate },
   { "unlink", testUnlink },
   { "unlinkat", testUnlinkat },
   { "unlinkat_dir", testUnlinkatDir },
