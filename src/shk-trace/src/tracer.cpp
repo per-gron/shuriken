@@ -486,6 +486,9 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_mkdir:
+  case BSC_mkdir_extended:
+  case BSC_mkdirat:
   case BSC_mkfifo:
   case BSC_mkfifo_extended:
   case BSC_symlink:

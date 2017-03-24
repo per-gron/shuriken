@@ -108,6 +108,17 @@ void testLinkat() {
   linkat(dir1_fd.get(), "input", dir2_fd.get(), "output", AT_SYMLINK_FOLLOW);
 }
 
+void testMkdir() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  mkdir("output", 0666);
+}
+
+void testMkdirat() {
+  auto dir_fd = openFileForReading("dir");
+  // Don't check for an error code; some tests trigger an error intentionally.
+  mkdirat(dir_fd.get(), "output", 0666);
+}
+
 void testMkfifo() {
   // Don't check for an error code; some tests trigger an error intentionally.
   mkfifo("output", 0666);
@@ -168,6 +179,8 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fork_inherit_fd", testForkInheritFd },
   { "link", testLink },
   { "linkat", testLinkat },
+  { "mkdir", testMkdir },
+  { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
   { "readlink", testReadlink },
   { "readlinkat", testReadlinkat },
