@@ -174,7 +174,7 @@ class MachTraceHandle : public TraceHandle {
 
     auto kr = mach_msg(
         &msg.header,
-        MACH_RCV_MSG | MACH_RCV_TIMEOUT,
+        MACH_RCV_MSG | (timeout == MACH_MSG_TIMEOUT_NONE ? 0 : MACH_RCV_TIMEOUT),
         /* send size: */0,
         /* receive size: */msg.header.msgh_size,
         /* receive name: */_ack_port.get(),

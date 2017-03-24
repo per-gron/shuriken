@@ -41,7 +41,6 @@ class PathResolverDelegate : public PathResolver::Delegate {
     for (const auto &event : events) {
       write(eventTypeToString(event.first) + (" " + event.second) + "\n");
     }
-
     // TODO(peck): Do something about quitting the tracing server as well.
   }
 
@@ -250,9 +249,22 @@ int main(int argc, char *argv[]) {
     status_code = executeCommand(cmdline_options.command);
   }).join();
 
-  trace_request.first->wait(MACH_MSG_TIMEOUT_NONE);
-
-  return status_code;
+  // TODO(peck): If the timeout provided here is MACH_MSG_TIMEOUT_NONE, the
+  // process sometimes just stalls. I don't know why. This probably needs to be
+  // fixed.
+  auto wait_result = trace_request.first->wait(3000);
+  switch (wait_result) {
+  case TraceHandle::WaitResult::SUCCESS:
+    return status_code;
+  case TraceHandle::WaitResult::FAILURE:
+    fprintf(stderr, "Failed to wait for tracing to finish.\n");
+    return 1;
+  case TraceHandle::WaitResult::TIMED_OUT:
+    fprintf(
+        stderr,
+        "Internal error (deadlocked): Tracing does not seem to finish.\n");
+    return 1;
+  }
 }
 
 }  // anonymous namespace
