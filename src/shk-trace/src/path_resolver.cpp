@@ -107,7 +107,7 @@ std::string PathResolver::resolve(
         _cwd_memo.getCwd(*pid, thread_id) :
         _file_descriptor_memo.getFileDescriptorPath(*pid, at_fd);
 
-    return cwd + "/" + path;
+    return path.empty() ? cwd : cwd + "/" + path;
   } else {
     return path;
   }

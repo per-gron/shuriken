@@ -75,6 +75,10 @@ void testChdirFail() {
   access("nonexisting_path_just_for_testing", 0);
 }
 
+void testChflags() {
+  chflags("input", 0);
+}
+
 void testDup() {
   auto usr_fd = openFileForReading("/usr");
   auto duped_fd = shk::FileDescriptor(dup(usr_fd.get()));
@@ -105,6 +109,11 @@ void testFchdir() {
     die("fchdir failed");
   }
   access("nonexisting_path_just_for_testing", 0);
+}
+
+void testFchflags() {
+  auto input_fd = openFileForReading("input");
+  fchflags(input_fd.get(), 0);
 }
 
 void testForkOrVforkInheritFd(pid_t (*fork_fn)()) {
@@ -273,9 +282,11 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "chdir", testChdir },
   { "chdir_other_thread", testChdirOtherThread },
   { "chdir_fail", testChdirFail },
+  { "chflags", testChflags },
   { "dup", testDup },
   { "dup2", testDup2 },
   { "fchdir", testFchdir },
+  { "fchflags", testFchflags },
   { "fork_inherit_fd", testForkInheritFd },
   { "link", testLink },
   { "linkat", testLinkat },

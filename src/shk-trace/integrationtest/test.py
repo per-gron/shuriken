@@ -139,6 +139,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/nonexisting_path_just_for_testing', trace)
 
   @with_testdir()
+  def test_chflags(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' chflags')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_chflags_fail(self):
+    trace = trace_cmd(helper + ' chflags')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_dup(self):
     trace = trace_cmd(helper + ' dup')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
@@ -151,7 +162,18 @@ class IntegrationTest(unittest.TestCase):
   @with_testdir()
   def test_fchdir(self):
     trace = trace_cmd(helper + ' fchdir')
-    self.assertIn('read /usr//nonexisting_path_just_for_testing', trace)
+    self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
+  def test_fchflags(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' fchflags')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_fchflags_fail(self):
+    trace = trace_cmd(helper + ' chflags')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_fork_inherit_fd(self):
@@ -239,7 +261,7 @@ class IntegrationTest(unittest.TestCase):
   @with_testdir()
   def test_pthread_fchdir(self):
     trace = trace_cmd(helper + ' pthread_fchdir')
-    self.assertIn('read /usr//nonexisting_path_just_for_testing', trace)
+    self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
 
   @with_testdir()
   def test_pthread_fchdir_other_thread(self):

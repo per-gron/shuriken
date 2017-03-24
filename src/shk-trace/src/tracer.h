@@ -36,6 +36,10 @@ class Tracer {
 
     virtual void terminateThread(uintptr_t thread_id) = 0;
 
+    /**
+     * A path that is "" means that the path refers to the file or directory ´
+     * that at_fd points to.
+     */
     virtual void fileEvent(
         uintptr_t thread_id,
         EventType type,

@@ -111,6 +111,12 @@ TEST_CASE("PathResolver") {
       CHECK(event.path == kInitialPath + "/yoyo");
     }
 
+    SECTION("EmptyPath") {
+      pr.fileEvent(kThreadId, EventType::FATAL_ERROR, AT_FDCWD, "");
+      auto event = delegate.popFileEvent();
+      CHECK(event.path == kInitialPath);
+    }
+
     SECTION("RelativeToFd") {
       static constexpr int kFd = 3;
       static const std::string kFdPath = "/fd";
