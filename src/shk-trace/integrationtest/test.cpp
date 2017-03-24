@@ -83,6 +83,17 @@ void testLinkat() {
   linkat(dir1_fd.get(), "input", dir2_fd.get(), "output", AT_SYMLINK_FOLLOW);
 }
 
+void testSymlink() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  symlink("input", "output");
+}
+
+void testSymlinkat() {
+  auto dir_fd = openFileForReading("dir");
+  // Don't check for an error code; some tests trigger an error intentionally.
+  symlinkat("input", dir_fd.get(), "output");
+}
+
 void testReadlink() {
   char buf[1024];
   // Don't check for an error code; some tests trigger an error intentionally.
@@ -122,6 +133,8 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "linkat", testLinkat },
   { "readlink", testReadlink },
   { "readlinkat", testReadlinkat },
+  { "symlink", testSymlink },
+  { "symlinkat", testSymlinkat },
   { "unlink", testUnlink },
   { "unlinkat", testUnlinkat },
   { "unlinkat_dir", testUnlinkatDir },

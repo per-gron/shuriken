@@ -195,6 +195,30 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/dir/../input', trace)
 
   @with_testdir()
+  def test_symlink(self):
+    trace = trace_cmd(helper + ' symlink')
+    self.assertIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_symlink_error(self):
+    write_file('output', '')
+    trace = trace_cmd(helper + ' symlink')
+    self.assertNotIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_symlinkat(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' symlinkat')
+    self.assertIn('create ' + os.getcwd() + '/dir/output', trace)
+
+  @with_testdir()
+  def test_symlinkat_error(self):
+    os.mkdir('dir')
+    write_file('dir/output', '')
+    trace = trace_cmd(helper + ' symlinkat')
+    self.assertNotIn('create ' + os.getcwd() + '/dir/output', trace)
+
+  @with_testdir()
   def test_unlink(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' unlink')

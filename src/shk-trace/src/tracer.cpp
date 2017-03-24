@@ -45,10 +45,12 @@ SyscallAtMember syscallAtMember(int syscall) {
   case BSC_linkat:
   case BSC_unlinkat:
   case BSC_readlinkat:
-  case BSC_symlinkat:
   case BSC_mkdirat:
   case BSC_getattrlistat:
     return &event_info::arg1;
+    break;
+  case BSC_symlinkat:
+    return &event_info::arg2;
     break;
   case BSC_renameat:
     abort();  // Not supported by this function (the answer is two members)
@@ -472,6 +474,13 @@ void Tracer::format_print(
     auto at = syscallAtMember(syscall);
     add_event(EventType::DELETE, pathname1, &event_info::arg1);
     add_event(EventType::CREATE, pathname2, &event_info::arg3);
+    break;
+  }
+
+  case BSC_symlink:
+  case BSC_symlinkat:
+  {
+    add_event(EventType::CREATE, pathname1, syscallAtMember(syscall));
     break;
   }
 
