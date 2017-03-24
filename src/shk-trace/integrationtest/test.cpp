@@ -89,6 +89,13 @@ void testReadlink() {
   readlink("input", buf, sizeof(buf));
 }
 
+void testReadlinkat() {
+  auto dir_fd = openFileForReading("dir");
+  char buf[1024];
+  // Don't check for an error code; some tests trigger an error intentionally.
+  readlinkat(dir_fd.get(), "../input", buf, sizeof(buf));
+}
+
 void testUnlink() {
   if (unlink("input") != 0) {
     die("unlink failed");
@@ -114,6 +121,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "link", testLink },
   { "linkat", testLinkat },
   { "readlink", testReadlink },
+  { "readlinkat", testReadlinkat },
   { "unlink", testUnlink },
   { "unlinkat", testUnlinkat },
   { "unlinkat_dir", testUnlinkatDir },

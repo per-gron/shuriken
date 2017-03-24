@@ -182,6 +182,19 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_readlinkat(self):
+    os.mkdir('dir')
+    os.symlink('abc', 'input')
+    trace = trace_cmd(helper + ' readlinkat')
+    self.assertIn('read ' + os.getcwd() + '/dir/../input', trace)
+
+  @with_testdir()
+  def test_readlinkat_error(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' readlinkat')
+    self.assertIn('read ' + os.getcwd() + '/dir/../input', trace)
+
+  @with_testdir()
   def test_unlink(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' unlink')
