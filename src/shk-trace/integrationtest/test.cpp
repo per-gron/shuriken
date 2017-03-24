@@ -6,10 +6,14 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/syslimits.h>
+#include <thread>
 #include <unistd.h>
 #include <unordered_map>
 
 #include <util/file_descriptor.h>
+
+extern "C" int __pthread_chdir(const char *path);
+extern "C" int __pthread_fchdir(int fd);
 
 namespace {
 
@@ -52,6 +56,15 @@ void testChdir() {
   if (chdir("/usr") != 0) {
     die("chdir failed");
   }
+  access("nonexisting_path_just_for_testing", 0);
+}
+
+void testChdirOtherThread() {
+  std::thread([] {
+    if (chdir("/usr") != 0) {
+      die("chdir failed");
+    }
+  }).join();
   access("nonexisting_path_just_for_testing", 0);
 }
 
@@ -146,6 +159,47 @@ void testMkfifo() {
   mkfifo("output", 0666);
 }
 
+void testPthreadChdir() {
+  if (__pthread_chdir("/usr") != 0) {
+    die("chdir failed");
+  }
+  access("nonexisting_path_just_for_testing", 0);
+}
+
+void testPthreadChdirOtherThread() {
+  std::thread([]{
+    if (__pthread_chdir("/usr") != 0) {
+      die("chdir failed");
+    }
+  }).join();
+  access("nonexisting_path_just_for_testing", 0);
+}
+
+void testPthreadChdirFail() {
+  if (__pthread_chdir("/lalalala_nonexistent_just_for_testing") == 0) {
+    die("chdir succeeded");
+  }
+  access("nonexisting_path_just_for_testing", 0);
+}
+
+void testPthreadFchdir() {
+  auto usr_fd = openFileForReading("/usr");
+  if (__pthread_fchdir(usr_fd.get()) != 0) {
+    die("fchdir failed");
+  }
+  access("nonexisting_path_just_for_testing", 0);
+}
+
+void testPthreadFchdirOtherThread() {
+  std::thread([]{
+    auto usr_fd = openFileForReading("/usr");
+    if (__pthread_fchdir(usr_fd.get()) != 0) {
+      die("fchdir failed");
+    }
+  }).join();
+  access("nonexisting_path_just_for_testing", 0);
+}
+
 void testSymlink() {
   // Don't check for an error code; some tests trigger an error intentionally.
   symlink("input", "output");
@@ -197,6 +251,7 @@ void testUnlinkatDir() {
 const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "access", testAccess },
   { "chdir", testChdir },
+  { "chdir_other_thread", testChdirOtherThread },
   { "chdir_fail", testChdirFail },
   { "dup", testDup },
   { "dup2", testDup2 },
@@ -207,6 +262,11 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkdir", testMkdir },
   { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
+  { "pthread_chdir", testPthreadChdir },
+  { "pthread_chdir_other_thread", testPthreadChdirOtherThread },
+  { "pthread_chdir_fail", testPthreadChdirFail },
+  { "pthread_fchdir", testPthreadFchdir },
+  { "pthread_fchdir_other_thread", testPthreadFchdirOtherThread },
   { "readlink", testReadlink },
   { "readlinkat", testReadlinkat },
   { "symlink", testSymlink },

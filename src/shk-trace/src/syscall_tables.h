@@ -36,6 +36,8 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
   static const int bsd_syscalls[] = {
     BSC_chdir,
     BSC_fchdir,
+    BSC_pthread_chdir,
+    BSC_pthread_fchdir,
     BSC_dup,
     BSC_dup2,
     BSC_execve,

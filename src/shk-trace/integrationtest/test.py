@@ -129,6 +129,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
 
   @with_testdir()
+  def test_chdir_other_thread(self):
+    trace = trace_cmd(helper + ' chdir_other_thread')
+    self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
   def test_chdir_fail(self):
     trace = trace_cmd(helper + ' chdir_fail')
     self.assertIn('read ' + os.getcwd() + '/nonexisting_path_just_for_testing', trace)
@@ -215,6 +220,31 @@ class IntegrationTest(unittest.TestCase):
   def test_mkfifo(self):
     trace = trace_cmd(helper + ' mkfifo')
     self.assertIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_pthread_chdir(self):
+    trace = trace_cmd(helper + ' pthread_chdir')
+    self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
+  def test_pthread_chdir_other_thread(self):
+    trace = trace_cmd(helper + ' pthread_chdir_other_thread')
+    self.assertIn('read ' + os.getcwd() + '/nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
+  def test_pthread_chdir_fail(self):
+    trace = trace_cmd(helper + ' pthread_chdir_fail')
+    self.assertIn('read ' + os.getcwd() + '/nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
+  def test_pthread_fchdir(self):
+    trace = trace_cmd(helper + ' pthread_fchdir')
+    self.assertIn('read /usr//nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
+  def test_pthread_fchdir_other_thread(self):
+    trace = trace_cmd(helper + ' pthread_fchdir_other_thread')
+    self.assertIn('read ' + os.getcwd() + '/nonexisting_path_just_for_testing', trace)
 
   @with_testdir()
   def test_mkfifo_error(self):
