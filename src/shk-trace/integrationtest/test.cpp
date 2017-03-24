@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include <string>
+#include <sys/stat.h>
 #include <sys/syslimits.h>
 #include <unistd.h>
 #include <unordered_map>
@@ -107,6 +108,11 @@ void testLinkat() {
   linkat(dir1_fd.get(), "input", dir2_fd.get(), "output", AT_SYMLINK_FOLLOW);
 }
 
+void testMkfifo() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  mkfifo("output", 0666);
+}
+
 void testSymlink() {
   // Don't check for an error code; some tests trigger an error intentionally.
   symlink("input", "output");
@@ -162,6 +168,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fork_inherit_fd", testForkInheritFd },
   { "link", testLink },
   { "linkat", testLinkat },
+  { "mkfifo", testMkfifo },
   { "readlink", testReadlink },
   { "readlinkat", testReadlinkat },
   { "symlink", testSymlink },

@@ -486,6 +486,8 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_mkfifo:
+  case BSC_mkfifo_extended:
   case BSC_symlink:
   case BSC_symlinkat:
   {

@@ -173,6 +173,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertNotIn('create ' + os.getcwd() + '/dir2/output', trace)
 
   @with_testdir()
+  def test_mkfifo(self):
+    trace = trace_cmd(helper + ' mkfifo')
+    self.assertIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_mkfifo_error(self):
+    write_file('output', '')
+    trace = trace_cmd(helper + ' mkfifo')
+    self.assertNotIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
   def test_linkat_error(self):
     write_file('input', '')
     write_file('output', '')
