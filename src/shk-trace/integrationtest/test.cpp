@@ -48,6 +48,20 @@ void testAccess() {
   }
 }
 
+void testChdir() {
+  if (chdir("/usr") != 0) {
+    die("chdir failed");
+  }
+  access("nonexisting_path_just_for_testing", 0);
+}
+
+void testChdirFail() {
+  if (chdir("/lalalala_nonexistent_just_for_testing") == 0) {
+    die("chdir succeeded");
+  }
+  access("nonexisting_path_just_for_testing", 0);
+}
+
 void testDup() {
   auto usr_fd = openFileForReading("/usr");
   auto duped_fd = shk::FileDescriptor(dup(usr_fd.get()));
@@ -70,6 +84,14 @@ void testDup2() {
 
   assert(openat(
       duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) == -1);
+}
+
+void testFchdir() {
+  auto usr_fd = openFileForReading("/usr");
+  if (fchdir(usr_fd.get()) != 0) {
+    die("fchdir failed");
+  }
+  access("nonexisting_path_just_for_testing", 0);
 }
 
 void testForkInheritFd() {
@@ -174,8 +196,11 @@ void testUnlinkatDir() {
 
 const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "access", testAccess },
+  { "chdir", testChdir },
+  { "chdir_fail", testChdirFail },
   { "dup", testDup },
   { "dup2", testDup2 },
+  { "fchdir", testFchdir },
   { "fork_inherit_fd", testForkInheritFd },
   { "link", testLink },
   { "linkat", testLinkat },

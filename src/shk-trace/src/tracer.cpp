@@ -413,6 +413,22 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_chdir:
+  {
+    if (success) {
+      _delegate.chdir(thread, pathname1, AT_FDCWD);
+    }
+    break;
+  }
+
+  case BSC_fchdir:
+  {
+    if (success) {
+      _delegate.chdir(thread, "", ei->arg1);
+    }
+    break;
+  }
+
   case BSC_open:
   case BSC_open_nocancel:
   case BSC_open_extended:

@@ -124,6 +124,16 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_chdir(self):
+    trace = trace_cmd(helper + ' chdir')
+    self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
+  def test_chdir_fail(self):
+    trace = trace_cmd(helper + ' chdir_fail')
+    self.assertIn('read ' + os.getcwd() + '/nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
   def test_dup(self):
     trace = trace_cmd(helper + ' dup')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
@@ -132,6 +142,11 @@ class IntegrationTest(unittest.TestCase):
   def test_dup2(self):
     trace = trace_cmd(helper + ' dup2')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
+  def test_fchdir(self):
+    trace = trace_cmd(helper + ' fchdir')
+    self.assertIn('read /usr//nonexisting_path_just_for_testing', trace)
 
   @with_testdir()
   def test_fork_inherit_fd(self):
