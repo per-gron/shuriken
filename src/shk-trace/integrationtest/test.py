@@ -163,12 +163,23 @@ class IntegrationTest(unittest.TestCase):
     self.assertNotIn('create ' + os.getcwd() + '/dir2/output', trace)
 
   @with_testdir()
-  def test_link_error(self):
+  def test_linkat_error(self):
     write_file('input', '')
     write_file('output', '')
     trace = trace_cmd(helper + ' link')
     self.assertIn('read ' + os.getcwd() + '/input', trace)
     self.assertNotIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_readlink(self):
+    os.symlink('abc', 'input')
+    trace = trace_cmd(helper + ' readlink')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_readlink_error(self):
+    trace = trace_cmd(helper + ' readlink')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_unlink(self):

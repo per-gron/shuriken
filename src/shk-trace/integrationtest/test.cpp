@@ -72,15 +72,21 @@ void testForkInheritFd() {
 }
 
 void testLink() {
-  // Don't check for an error code; some tests trigger this intentionally.
+  // Don't check for an error code; some tests trigger an error intentionally.
   link("input", "output");
 }
 
 void testLinkat() {
   auto dir1_fd = openFileForReading("dir1");
   auto dir2_fd = openFileForReading("dir2");
-  // Don't check for an error code; some tests trigger this intentionally.
+  // Don't check for an error code; some tests trigger an error intentionally.
   linkat(dir1_fd.get(), "input", dir2_fd.get(), "output", AT_SYMLINK_FOLLOW);
+}
+
+void testReadlink() {
+  char buf[1024];
+  // Don't check for an error code; some tests trigger an error intentionally.
+  readlink("input", buf, sizeof(buf));
 }
 
 void testUnlink() {
@@ -107,6 +113,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fork_inherit_fd", testForkInheritFd },
   { "link", testLink },
   { "linkat", testLinkat },
+  { "readlink", testReadlink },
   { "unlink", testUnlink },
   { "unlinkat", testUnlinkat },
   { "unlinkat_dir", testUnlinkatDir },
