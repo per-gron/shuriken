@@ -338,5 +338,10 @@ class IntegrationTest(unittest.TestCase):
     trace = trace_cmd(helper + ' unlinkat_dir')
     self.assertIn('delete ' + os.getcwd() + '/dir', trace)
 
+  @with_testdir()
+  def test_vfork_inherit_fd(self):
+    trace = trace_cmd(helper + ' vfork_inherit_fd')
+    self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
+
 if __name__ == '__main__':
     unittest.main()

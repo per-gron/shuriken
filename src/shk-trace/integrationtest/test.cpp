@@ -107,12 +107,12 @@ void testFchdir() {
   access("nonexisting_path_just_for_testing", 0);
 }
 
-void testForkInheritFd() {
+void testForkOrVforkInheritFd(pid_t (*fork_fn)()) {
   // Verify that file descriptors are inherited
 
   auto usr_fd = openFileForReading("/usr");
 
-  pid_t pid = fork();
+  pid_t pid = fork_fn();
   if (pid == -1) {
     die("Failed to fork");
   } else if (pid == 0) {
@@ -129,6 +129,14 @@ void testForkInheritFd() {
       die("Child failed");
     }
   }
+}
+
+void testForkInheritFd() {
+  testForkOrVforkInheritFd(&fork);
+}
+
+void testVforkInheritFd() {
+  testForkOrVforkInheritFd(&vfork);
 }
 
 void testLink() {
@@ -275,6 +283,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "unlink", testUnlink },
   { "unlinkat", testUnlinkat },
   { "unlinkat_dir", testUnlinkatDir },
+  { "vfork_inherit_fd", testVforkInheritFd },
 };
 
 }  // anonymous namespace
