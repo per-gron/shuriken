@@ -261,6 +261,13 @@ void testMkfifo() {
   mkfifo("output", 0666);
 }
 
+void testOpenat() {
+  auto dir_fd = openFileForReading("dir");
+
+  // Don't check for an error code; some tests trigger an error intentionally.
+  shk::FileDescriptor(openat(dir_fd.get(), "input", O_RDONLY));
+}
+
 void testPathconf() {
   pathconf("input", _PC_LINK_MAX);
 }
@@ -422,6 +429,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkdir", testMkdir },
   { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
+  { "openat", testOpenat },
   { "pathconf", testPathconf },
   { "pthread_chdir", testPthreadChdir },
   { "pthread_chdir_other_thread", testPthreadChdirOtherThread },

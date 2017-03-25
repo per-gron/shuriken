@@ -407,6 +407,12 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('create ' + os.getcwd() + '/output', trace)
 
   @with_testdir()
+  def test_openat(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' openat')
+    self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
   def test_pathconf(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' pathconf')
