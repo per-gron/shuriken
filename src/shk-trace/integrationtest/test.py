@@ -326,6 +326,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('create ' + os.getcwd() + '/output', trace)
 
   @with_testdir()
+  def test_pathconf(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' pathconf')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_pathconf_error(self):
+    trace = trace_cmd(helper + ' pathconf')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_pthread_chdir(self):
     trace = trace_cmd(helper + ' pthread_chdir')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)

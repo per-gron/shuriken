@@ -217,6 +217,10 @@ void testMkfifo() {
   mkfifo("output", 0666);
 }
 
+void testPathconf() {
+  pathconf("input", _PC_LINK_MAX);
+}
+
 void testPthreadChdir() {
   if (__pthread_chdir("/usr") != 0) {
     die("chdir failed");
@@ -356,6 +360,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkdir", testMkdir },
   { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
+  { "pathconf", testPathconf },
   { "pthread_chdir", testPthreadChdir },
   { "pthread_chdir_other_thread", testPthreadChdirOtherThread },
   { "pthread_chdir_fail", testPthreadChdirFail },

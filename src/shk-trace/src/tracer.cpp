@@ -556,6 +556,7 @@ void Tracer::format_print(
   case BSC_access:
   case BSC_access_extended:
   case BSC_faccessat:
+  case BSC_pathconf:
   case BSC_readlink:
   case BSC_readlinkat:
   case BSC_stat:
