@@ -437,6 +437,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/dir2/output', trace)
 
   @with_testdir()
+  def test_rmdir(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' rmdir')
+    self.assertIn('delete ' + os.getcwd() + '/dir', trace)
+
+  @with_testdir()
+  def test_rmdir_error(self):
+    trace = trace_cmd(helper + ' rmdir')
+    self.assertIn('read ' + os.getcwd() + '/dir', trace)
+
+  @with_testdir()
   def test_symlink(self):
     trace = trace_cmd(helper + ' symlink')
     self.assertIn('create ' + os.getcwd() + '/output', trace)

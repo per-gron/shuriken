@@ -483,6 +483,7 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_rmdir:
   case BSC_unlink:
   case BSC_unlinkat:
   {

@@ -258,22 +258,6 @@ void testPthreadFchdirOtherThread() {
   access("nonexisting_path_just_for_testing", 0);
 }
 
-void testSymlink() {
-  // Don't check for an error code; some tests trigger an error intentionally.
-  symlink("input", "output");
-}
-
-void testSymlinkat() {
-  auto dir_fd = openFileForReading("dir");
-  // Don't check for an error code; some tests trigger an error intentionally.
-  symlinkat("input", dir_fd.get(), "output");
-}
-
-void testTruncate() {
-  // Don't check for an error code; some tests trigger an error intentionally.
-  truncate("input", 123);
-}
-
 void testReadlink() {
   char buf[1024];
   // Don't check for an error code; some tests trigger an error intentionally.
@@ -297,6 +281,26 @@ void testRenameat() {
   auto dir2_fd = openFileForReading("dir2");
   // Don't check for an error code; some tests trigger an error intentionally.
   renameat(dir1_fd.get(), "input", dir2_fd.get(), "output");
+}
+
+void testRmdir() {
+  rmdir("dir");
+}
+
+void testSymlink() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  symlink("input", "output");
+}
+
+void testSymlinkat() {
+  auto dir_fd = openFileForReading("dir");
+  // Don't check for an error code; some tests trigger an error intentionally.
+  symlinkat("input", dir_fd.get(), "output");
+}
+
+void testTruncate() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  truncate("input", 123);
 }
 
 void testUnlink() {
@@ -361,6 +365,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "readlinkat", testReadlinkat },
   { "rename", testRename },
   { "renameat", testRenameat },
+  { "rmdir", testRmdir },
   { "symlink", testSymlink },
   { "symlinkat", testSymlinkat },
   { "truncate", testTruncate },
