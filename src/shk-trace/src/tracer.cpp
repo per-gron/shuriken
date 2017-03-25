@@ -533,7 +533,8 @@ void Tracer::format_print(
   case BSC_chflags:
   case BSC_chmod:
   case BSC_chown:
-  case BSC_fchmodat:
+  case BSC_chmodat:  // This constant actually refers to the fchmodat syscall
+  case BSC_chownat:  // This constant actually refers to the fchownat syscall
   case BSC_truncate:
   case BSC_utimes:
   {

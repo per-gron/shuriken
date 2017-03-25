@@ -228,6 +228,19 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('write ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_fchownat(self):
+    os.mkdir('dir')
+    write_file('dir/input', '')
+    trace = trace_cmd(helper + ' fchownat')
+    self.assertIn('write ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
+  def test_fchownat_error(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' fchownat')
+    self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
   def test_fork_inherit_fd(self):
     trace = trace_cmd(helper + ' fork_inherit_fd')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
