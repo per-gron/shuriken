@@ -13,10 +13,11 @@
 
 #include <util/file_descriptor.h>
 
-extern "C" int __pthread_chdir(const char *path);
-extern "C" int __pthread_fchdir(int fd);
+extern "C" int __open_nocancel(const char *, int, ...);
 extern "C" int __openat_nocancel(
     int fd, const char *fname, int oflag, mode_t mode);
+extern "C" int __pthread_chdir(const char *path);
+extern "C" int __pthread_fchdir(int fd);
 
 namespace {
 
@@ -263,6 +264,11 @@ void testMkfifo() {
   mkfifo("output", 0666);
 }
 
+void testOpenNocancel() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  shk::FileDescriptor(__open_nocancel("input", O_RDONLY, 0));
+}
+
 void testOpenat() {
   auto dir_fd = openFileForReading("dir");
 
@@ -438,6 +444,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkdir", testMkdir },
   { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
+  { "open_nocancel", testOpenNocancel },
   { "openat", testOpenat },
   { "openat_nocancel", testOpenatNocancel },
   { "pathconf", testPathconf },

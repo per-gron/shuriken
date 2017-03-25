@@ -407,6 +407,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('create ' + os.getcwd() + '/output', trace)
 
   @with_testdir()
+  def test_open_nocancel(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' open_nocancel')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_open_nocancel_error(self):
+    trace = trace_cmd(helper + ' open_nocancel')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_openat(self):
     os.mkdir('dir')
     write_file('dir/input', '')
