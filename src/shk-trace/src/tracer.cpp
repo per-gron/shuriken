@@ -37,17 +37,17 @@ using SyscallAtMember = int event_info::*;
 
 SyscallAtMember syscallAtMember(int syscall) {
   switch (syscall) {
-  case BSC_faccessat:
-  case BSC_openat:
-  case BSC_openat_nocancel:
   case BSC_chmodat:
   case BSC_chownat:
+  case BSC_faccessat:
   case BSC_fstatat:
-  case BSC_linkat:
-  case BSC_unlinkat:
-  case BSC_readlinkat:
-  case BSC_mkdirat:
   case BSC_getattrlistat:
+  case BSC_linkat:
+  case BSC_mkdirat:
+  case BSC_openat:
+  case BSC_openat_nocancel:
+  case BSC_readlinkat:
+  case BSC_unlinkat:
     return &event_info::arg1;
     break;
   case BSC_symlinkat:
