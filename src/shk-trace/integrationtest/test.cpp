@@ -151,6 +151,12 @@ void testForkInheritFd() {
   testForkOrVforkInheritFd(&fork);
 }
 
+void testFutimes() {
+  auto input_fd = openFileForReading("input");
+  struct timeval times[] = { { 0, 0 }, { 0, 0 } };
+  futimes(input_fd.get(), times);
+}
+
 void testLink() {
   // Don't check for an error code; some tests trigger an error intentionally.
   link("input", "output");
@@ -301,6 +307,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fchdir", testFchdir },
   { "fchflags", testFchflags },
   { "fork_inherit_fd", testForkInheritFd },
+  { "futimes", testFutimes },
   { "link", testLink },
   { "linkat", testLinkat },
   { "mkdir", testMkdir },
