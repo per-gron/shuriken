@@ -530,11 +530,12 @@ void Tracer::format_print(
     break;
   }
 
-  case BSC_truncate:
   case BSC_chflags:
+  case BSC_chmod:
+  case BSC_truncate:
   case BSC_utimes:
   {
-    add_event(EventType::WRITE, pathname1, nullptr);
+    add_event(EventType::WRITE, pathname1, syscallAtMember(syscall));
     break;
   }
 

@@ -150,6 +150,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_chmod(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' chmod')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_chmod_fail(self):
+    trace = trace_cmd(helper + ' chmod')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_dup(self):
     trace = trace_cmd(helper + ' dup')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
