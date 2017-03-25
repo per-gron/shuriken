@@ -160,6 +160,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
 
   @with_testdir()
+  def test_faccessat(self):
+    trace = trace_cmd(helper + ' faccessat')
+    self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
   def test_fchdir(self):
     trace = trace_cmd(helper + ' fchdir')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)

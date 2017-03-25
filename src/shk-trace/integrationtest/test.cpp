@@ -103,6 +103,12 @@ void testDup2() {
       duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) == -1);
 }
 
+void testFaccessat() {
+  auto usr_fd = openFileForReading("/usr");
+
+  faccessat(usr_fd.get(), "nonexisting_path_just_for_testing", 0, 0);
+}
+
 void testFchdir() {
   auto usr_fd = openFileForReading("/usr");
   if (fchdir(usr_fd.get()) != 0) {
@@ -285,6 +291,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "chflags", testChflags },
   { "dup", testDup },
   { "dup2", testDup2 },
+  { "faccessat", testFaccessat },
   { "fchdir", testFchdir },
   { "fchflags", testFchflags },
   { "fork_inherit_fd", testForkInheritFd },

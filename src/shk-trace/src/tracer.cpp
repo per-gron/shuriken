@@ -37,6 +37,7 @@ using SyscallAtMember = int event_info::*;
 
 SyscallAtMember syscallAtMember(int syscall) {
   switch (syscall) {
+  case BSC_faccessat:
   case BSC_openat:
   case BSC_openat_nocancel:
   case BSC_chmodat:
@@ -544,6 +545,7 @@ void Tracer::format_print(
 
   case BSC_access:
   case BSC_access_extended:
+  case BSC_faccessat:
   case BSC_readlink:
   case BSC_readlinkat:
   case BSC_stat:

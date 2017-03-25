@@ -32,8 +32,14 @@ namespace shk {
 
 static constexpr int MAX_BSD_SYSCALL = 526;
 
+// This constant is defined here and not in syscall_constants.h because that
+// file is derived from trace.codes in the kernel, but that file does not have
+// this constant defined in it.
+static constexpr int BSC_faccessat = 0x040c0748;
+
 static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
   static const int bsd_syscalls[] = {
+    BSC_faccessat,
     BSC_chdir,
     BSC_fchdir,
     BSC_pthread_chdir,
