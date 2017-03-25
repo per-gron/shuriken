@@ -215,6 +215,11 @@ void testFpathconf() {
   fpathconf(input_fd.get(), _PC_LINK_MAX);
 }
 
+void testFremovexattr() {
+  auto input_fd = openFileForReading("input");
+  fremovexattr(input_fd.get(), "test", 0);
+}
+
 void testFsetattrlist() {
   auto input_fd = openFileForReading("input");
 
@@ -504,6 +509,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "flock", testFlock },
   { "fork_inherit_fd", testForkInheritFd },
   { "fpathconf", testFpathconf },
+  { "fremovexattr", testFremovexattr },
   { "fsetattrlist", testFsetattrlist },
   { "fsetxattr", testFsetxattr },
   { "fstat", testFstat },

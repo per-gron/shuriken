@@ -292,6 +292,13 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_fremovexattr(self):
+    write_file('input', '')
+    run_cmd(helper + ' setxattr')  # set an xattr so that there is one to remove
+    trace = trace_cmd(helper + ' fremovexattr')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_fsetattrlist(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' fsetattrlist')
