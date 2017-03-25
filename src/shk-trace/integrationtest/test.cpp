@@ -155,6 +155,13 @@ void testFchownat() {
   fchownat(dir_fd.get(), "input", getuid(), getgid(), 0);
 }
 
+void testFlock() {
+  auto input_fd = openFileForReading("input");
+  if (flock(input_fd.get(), LOCK_UN) != 0) {
+    die("flock failed");
+  }
+}
+
 void testForkOrVforkInheritFd(pid_t (*fork_fn)()) {
   // Verify that file descriptors are inherited
 
@@ -400,6 +407,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fchmodat", testFchmodat },
   { "fchown", testFchown },
   { "fchownat", testFchownat },
+  { "flock", testFlock },
   { "fork_inherit_fd", testForkInheritFd },
   { "fpathconf", testFpathconf },
   { "fstat", testFstat },
