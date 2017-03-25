@@ -194,6 +194,12 @@ void testFstat() {
   fstat(input_fd.get(), &s);
 }
 
+void testFstat64() {
+  auto input_fd = openFileForReading("input");
+  struct stat64 s;
+  fstat64(input_fd.get(), &s);
+}
+
 void testFutimes() {
   auto input_fd = openFileForReading("input");
   struct timeval times[] = { { 0, 0 }, { 0, 0 } };
@@ -386,6 +392,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fork_inherit_fd", testForkInheritFd },
   { "fpathconf", testFpathconf },
   { "fstat", testFstat },
+  { "fstat64", testFstat64 },
   { "futimes", testFutimes },
   { "lchown", testLchown },
   { "link", testLink },
