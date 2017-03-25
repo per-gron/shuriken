@@ -296,6 +296,11 @@ void testLinkat() {
   linkat(dir1_fd.get(), "input", dir2_fd.get(), "output", AT_SYMLINK_FOLLOW);
 }
 
+void testListxattr() {
+  char buf[1024];
+  listxattr("input", buf, sizeof(buf), 0);
+}
+
 void testLstat() {
   struct stat s;
   lstat("input", &s);
@@ -522,6 +527,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "lchown", testLchown },
   { "link", testLink },
   { "linkat", testLinkat },
+  { "listxattr", testListxattr },
   { "lstat", testLstat },
   { "lstat64", testLstat64 },
   { "mkdir", testMkdir },

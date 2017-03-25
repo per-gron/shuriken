@@ -60,6 +60,7 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
     BSC_lchown,
     BSC_link,
     BSC_linkat,
+    BSC_listxattr,
     BSC_lstat,
     BSC_lstat64,
     BSC_lstat64_extended,

@@ -576,6 +576,7 @@ void Tracer::format_print(
   case BSC_getattrlist:
   case BSC_getattrlistat:
   case BSC_getxattr:
+  case BSC_listxattr:
   case BSC_lstat64:
   case BSC_lstat64_extended:
   case BSC_lstat:
