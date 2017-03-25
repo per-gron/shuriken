@@ -413,6 +413,10 @@ void testSetattrlist() {
   setattrlist("input", &al, buf, sizeof(buf), 0);
 }
 
+void testSetxattr() {
+  setxattr("input", "test", "", 0, 0, 0);
+}
+
 void testStat() {
   struct stat s;
   stat("input", &s);
@@ -521,6 +525,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "renameat", testRenameat },
   { "rmdir", testRmdir },
   { "setattrlist", testSetattrlist },
+  { "setxattr", testSetxattr },
   { "stat", testStat },
   { "stat64", testStat64 },
   { "symlink", testSymlink },

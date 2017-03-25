@@ -547,6 +547,7 @@ void Tracer::format_print(
   case BSC_truncate:
   case BSC_lchown:
   case BSC_setattrlist:
+  case BSC_setxattr:
   case BSC_utimes:
   {
     add_event(EventType::WRITE, pathname1, syscallAtMember(syscall));

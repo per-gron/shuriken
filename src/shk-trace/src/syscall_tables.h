@@ -85,6 +85,7 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
     BSC_rmdir,
     BSC_searchfs,
     BSC_setattrlist,
+    BSC_setxattr,
     BSC_stat,
     BSC_stat64,
     BSC_stat64_extended,
