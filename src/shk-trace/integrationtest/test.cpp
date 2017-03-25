@@ -207,6 +207,17 @@ void testFpathconf() {
   fpathconf(input_fd.get(), _PC_LINK_MAX);
 }
 
+void testFsetattrlist() {
+  auto input_fd = openFileForReading("input");
+
+  struct attrlist al{};
+  al.bitmapcount = ATTR_BIT_MAP_COUNT;
+  al.commonattr = ATTR_CMN_FNDRINFO;
+
+  char buf[1024];
+  fsetattrlist(input_fd.get(), &al, buf, sizeof(buf), 0);
+}
+
 void testFstat() {
   auto input_fd = openFileForReading("input");
   struct stat s;
@@ -465,6 +476,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "flock", testFlock },
   { "fork_inherit_fd", testForkInheritFd },
   { "fpathconf", testFpathconf },
+  { "fsetattrlist", testFsetattrlist },
   { "fstat", testFstat },
   { "fstat64", testFstat64 },
   { "fstatat", testFstatat },
