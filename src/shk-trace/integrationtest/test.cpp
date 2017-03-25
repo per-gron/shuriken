@@ -188,6 +188,12 @@ void testFpathconf() {
   fpathconf(input_fd.get(), _PC_LINK_MAX);
 }
 
+void testFstat() {
+  auto input_fd = openFileForReading("input");
+  struct stat s;
+  fstat(input_fd.get(), &s);
+}
+
 void testFutimes() {
   auto input_fd = openFileForReading("input");
   struct timeval times[] = { { 0, 0 }, { 0, 0 } };
@@ -369,6 +375,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fchownat", testFchownat },
   { "fork_inherit_fd", testForkInheritFd },
   { "fpathconf", testFpathconf },
+  { "fstat", testFstat },
   { "futimes", testFutimes },
   { "lchown", testLchown },
   { "link", testLink },
