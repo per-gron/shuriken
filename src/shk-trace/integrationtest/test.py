@@ -298,6 +298,12 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('write ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_fsetxattr(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' fsetxattr')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_fstat(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' fstat')

@@ -226,6 +226,12 @@ void testFsetattrlist() {
   fsetattrlist(input_fd.get(), &al, buf, sizeof(buf), 0);
 }
 
+void testFsetxattr() {
+  auto input_fd = openFileForReading("input");
+
+  fsetxattr(input_fd.get(), "test", "", 0, 0, 0);
+}
+
 void testFstat() {
   auto input_fd = openFileForReading("input");
   struct stat s;
@@ -495,6 +501,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fork_inherit_fd", testForkInheritFd },
   { "fpathconf", testFpathconf },
   { "fsetattrlist", testFsetattrlist },
+  { "fsetxattr", testFsetxattr },
   { "fstat", testFstat },
   { "fstat64", testFstat64 },
   { "fstatat", testFstatat },
