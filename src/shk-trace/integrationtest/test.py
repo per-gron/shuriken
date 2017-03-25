@@ -263,6 +263,12 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
 
   @with_testdir()
+  def test_fgetattrlist(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' fgetattrlist')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_flock(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' flock')
