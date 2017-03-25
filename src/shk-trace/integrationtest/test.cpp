@@ -132,6 +132,11 @@ void testFchmod() {
   fchmod(input_fd.get(), 0555);
 }
 
+void testFchmodat() {
+  auto dir_fd = openFileForReading("dir");
+  fchmodat(dir_fd.get(), "input", 0555, 0);
+}
+
 void testForkOrVforkInheritFd(pid_t (*fork_fn)()) {
   // Verify that file descriptors are inherited
 
@@ -317,6 +322,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fchdir", testFchdir },
   { "fchflags", testFchflags },
   { "fchmod", testFchmod },
+  { "fchmodat", testFchmodat },
   { "fork_inherit_fd", testForkInheritFd },
   { "futimes", testFutimes },
   { "link", testLink },
