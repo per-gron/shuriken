@@ -41,6 +41,7 @@ SyscallAtMember syscallAtMember(int syscall) {
   case BSC_chownat:
   case BSC_faccessat:
   case BSC_fstatat:
+  case BSC_fstatat64:
   case BSC_getattrlistat:
   case BSC_linkat:
   case BSC_mkdirat:
@@ -581,7 +582,6 @@ void Tracer::format_print(
     break;
   }
 
-
   case BSC_execve:
   case BSC_posix_spawn:
   {
@@ -603,6 +603,7 @@ void Tracer::format_print(
           event == EventType::WRITE ||
           event == EventType::CREATE ||
           event == EventType::DELETE;
+
       _delegate.fileEvent(
           thread,
           // Modify events, when they fail, potentially expose information about

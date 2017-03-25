@@ -200,6 +200,12 @@ void testFstat64() {
   fstat64(input_fd.get(), &s);
 }
 
+void testFstatat() {
+  auto dir_fd = openFileForReading("dir");
+  struct stat s;
+  fstatat(dir_fd.get(), "input", &s, 0);
+}
+
 void testFutimes() {
   auto input_fd = openFileForReading("input");
   struct timeval times[] = { { 0, 0 }, { 0, 0 } };
@@ -398,6 +404,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fpathconf", testFpathconf },
   { "fstat", testFstat },
   { "fstat64", testFstat64 },
+  { "fstatat", testFstatat },
   { "futimes", testFutimes },
   { "lchown", testLchown },
   { "link", testLink },
