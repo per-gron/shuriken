@@ -168,6 +168,13 @@ void testFgetattrlist() {
   fgetattrlist(input_fd.get(), &al, buf, sizeof(buf), 0);
 }
 
+void testFgetxattr() {
+  auto input_fd = openFileForReading("input");
+
+  char buf[1024];
+  fgetxattr(input_fd.get(), "test", buf, sizeof(buf), 0, 0);
+}
+
 void testFlock() {
   auto input_fd = openFileForReading("input");
   if (flock(input_fd.get(), LOCK_UN) != 0) {
@@ -479,6 +486,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fchown", testFchown },
   { "fchownat", testFchownat },
   { "fgetattrlist", testFgetattrlist },
+  { "fgetxattr", testFgetxattr },
   { "flock", testFlock },
   { "fork_inherit_fd", testForkInheritFd },
   { "fpathconf", testFpathconf },
