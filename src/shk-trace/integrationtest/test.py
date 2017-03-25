@@ -182,6 +182,28 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
 
   @with_testdir()
+  def test_exchangedata(self):
+    write_file('input', '')
+    write_file('output', '')
+    trace = trace_cmd(helper + ' exchangedata')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+    self.assertIn('write ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_exchangedata_error(self):
+    write_file('output', '')
+    trace = trace_cmd(helper + ' exchangedata')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+    # Because input doesn't exist, the syscall fails before output is touched
+
+  @with_testdir()
+  def test_exchangedata_error2(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' exchangedata')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+    self.assertIn('read ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
   def test_faccessat(self):
     trace = trace_cmd(helper + ' faccessat')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)

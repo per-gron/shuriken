@@ -505,6 +505,13 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_exchangedata:
+  {
+    add_event(EventType::WRITE, pathname1, nullptr);
+    add_event(EventType::WRITE, pathname2, nullptr);
+    break;
+  }
+
   case BSC_rename:
   {
     add_event(EventType::DELETE, pathname1, nullptr);

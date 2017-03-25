@@ -112,6 +112,10 @@ void testDup2() {
       duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) == -1);
 }
 
+void testExchangedata() {
+  exchangedata("input", "output", 0);
+}
+
 void testFaccessat() {
   auto usr_fd = openFileForReading("/usr");
 
@@ -350,6 +354,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "chown", testChown },
   { "dup", testDup },
   { "dup2", testDup2 },
+  { "exchangedata", testExchangedata },
   { "faccessat", testFaccessat },
   { "fchdir", testFchdir },
   { "fchflags", testFchflags },
