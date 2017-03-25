@@ -15,6 +15,8 @@
 
 extern "C" int __pthread_chdir(const char *path);
 extern "C" int __pthread_fchdir(int fd);
+extern "C" int __openat_nocancel(
+    int fd, const char *fname, int oflag, mode_t mode);
 
 namespace {
 
@@ -268,6 +270,13 @@ void testOpenat() {
   shk::FileDescriptor(openat(dir_fd.get(), "input", O_RDONLY));
 }
 
+void testOpenatNocancel() {
+  auto dir_fd = openFileForReading("dir");
+
+  // Don't check for an error code; some tests trigger an error intentionally.
+  shk::FileDescriptor(__openat_nocancel(dir_fd.get(), "input", O_RDONLY, 0));
+}
+
 void testPathconf() {
   pathconf("input", _PC_LINK_MAX);
 }
@@ -430,6 +439,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
   { "openat", testOpenat },
+  { "openat_nocancel", testOpenatNocancel },
   { "pathconf", testPathconf },
   { "pthread_chdir", testPthreadChdir },
   { "pthread_chdir_other_thread", testPthreadChdirOtherThread },

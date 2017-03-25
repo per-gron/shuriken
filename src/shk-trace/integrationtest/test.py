@@ -409,7 +409,27 @@ class IntegrationTest(unittest.TestCase):
   @with_testdir()
   def test_openat(self):
     os.mkdir('dir')
+    write_file('dir/input', '')
     trace = trace_cmd(helper + ' openat')
+    self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
+  def test_openat_error(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' openat')
+    self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
+  def test_openat_nocancel(self):
+    os.mkdir('dir')
+    write_file('dir/input', '')
+    trace = trace_cmd(helper + ' openat_nocancel')
+    self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
+  def test_openat_nocancel_error(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' openat_nocancel')
     self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
 
   @with_testdir()
