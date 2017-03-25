@@ -348,6 +348,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_lstat64(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' lstat64')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_lstat64_error(self):
+    trace = trace_cmd(helper + ' lstat64')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_mkdir(self):
     trace = trace_cmd(helper + ' mkdir')
     self.assertIn('create ' + os.getcwd() + '/output', trace)

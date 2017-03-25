@@ -69,6 +69,7 @@ set_property(TARGET shktrace_test PROPERTY CXX_STANDARD 11)
 add_executable(shktrace_integrationtest_helper
   integrationtest/test.cpp)
 target_link_libraries(shktrace_integrationtest_helper shkutil pthread)
+set_target_properties(shktrace_integrationtest_helper PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations")
 set_property(TARGET shktrace_integrationtest_helper PROPERTY CXX_STANDARD 11)
 
 add_custom_command(

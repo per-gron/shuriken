@@ -227,6 +227,11 @@ void testLstat() {
   lstat("input", &s);
 }
 
+void testLstat64() {
+  struct stat64 s;
+  lstat64("input", &s);
+}
+
 void testMkdir() {
   // Don't check for an error code; some tests trigger an error intentionally.
   mkdir("output", 0666);
@@ -398,6 +403,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "link", testLink },
   { "linkat", testLinkat },
   { "lstat", testLstat },
+  { "lstat64", testLstat64 },
   { "mkdir", testMkdir },
   { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
