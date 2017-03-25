@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/syslimits.h>
 #include <sys/time.h>
+#include <sys/xattr.h>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
@@ -256,6 +257,11 @@ void testGetattrlistat() {
   getattrlistat(dir_fd.get(), "input", &al, buf, sizeof(buf), 0);
 }
 
+void testGetxattr() {
+  char buf[1024];
+  getxattr("input", "test", buf, sizeof(buf), 0, 0);
+}
+
 void testLchown() {
   lchown("input", getuid(), getgid());
 }
@@ -483,6 +489,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "futimes", testFutimes },
   { "getattrlist", testGetattrlist },
   { "getattrlistat", testGetattrlistat },
+  { "getxattr", testGetxattr },
   { "lchown", testLchown },
   { "link", testLink },
   { "linkat", testLinkat },

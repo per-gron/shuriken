@@ -53,6 +53,7 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
     BSC_getdirentries,
     BSC_getdirentries64,
     BSC_getdirentriesattr,
+    BSC_getxattr,
     BSC_guarded_open_np,
     BSC_lchown,
     BSC_link,
