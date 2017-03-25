@@ -543,6 +543,7 @@ void Tracer::format_print(
 
   case BSC_fchflags:
   case BSC_fchmod:
+  case BSC_fchown:
   case BSC_futimes:
   {
     add_event(EventType::WRITE, "", &event_info::arg1);
