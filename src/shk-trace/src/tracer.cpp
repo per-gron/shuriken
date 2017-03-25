@@ -595,10 +595,24 @@ void Tracer::format_print(
 
   for (int i = 0; i < num_events; i++) {
     EventType event = std::get<0>(events[i]);
-    const char *path = std::get<1>(events[i]);
+    const char *path_c_str = std::get<1>(events[i]);
     SyscallAtMember at = std::get<2>(events[i]);
 
-    if (path) {
+    if (path_c_str) {
+      std::string path = path_c_str;
+      // For some weird reason, if a to access a file within a directory that
+      // does not exist is made, for example to /nonexisting/file, kdebug will
+      // report the path as something along the lines of "/nonexisting>>>>>>>>".
+      // We only care about the path prior to the made up > characters, so they
+      // are removed.
+      //
+      // Unfortunately, this means that shk-trace can not correctly trace file
+      // accesses to paths that end with a > character.
+      auto gt_pos = path.find_last_not_of('>');
+      if (gt_pos != std::string::npos) {
+        path.resize(gt_pos + 1);
+      }
+
       const bool is_modify =
           event == EventType::WRITE ||
           event == EventType::CREATE ||
@@ -611,7 +625,7 @@ void Tracer::format_print(
           // file system.
           !success && is_modify ? EventType::READ : event,
           at ? ei->*at : AT_FDCWD,
-          path);
+          std::move(path));
     }
   }
 }

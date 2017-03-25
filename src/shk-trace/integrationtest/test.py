@@ -61,6 +61,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/file', trace)
 
   @with_testdir()
+  def test_read_file_in_nonexistent_dir(self):
+    trace = trace_cmd("stat missing_dir/file; true")
+    self.assertIn('read ' + os.getcwd() + '/missing_dir\n', trace)
+
+  @with_testdir()
   def test_write_file(self):
     trace = trace_cmd("touch file")
     self.assertIn('write ' + os.getcwd() + '/file', trace)
