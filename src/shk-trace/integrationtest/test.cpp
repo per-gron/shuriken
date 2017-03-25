@@ -6,6 +6,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/syslimits.h>
+#include <sys/time.h>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
@@ -150,10 +151,6 @@ void testForkInheritFd() {
   testForkOrVforkInheritFd(&fork);
 }
 
-void testVforkInheritFd() {
-  testForkOrVforkInheritFd(&vfork);
-}
-
 void testLink() {
   // Don't check for an error code; some tests trigger an error intentionally.
   link("input", "output");
@@ -283,6 +280,15 @@ void testUnlinkatDir() {
   }
 }
 
+void testUtimes() {
+  struct timeval times[] = { { 0, 0 }, { 0, 0 } };
+  utimes("input", times);
+}
+
+void testVforkInheritFd() {
+  testForkOrVforkInheritFd(&vfork);
+}
+
 const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "access", testAccess },
   { "chdir", testChdir },
@@ -315,6 +321,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "unlink", testUnlink },
   { "unlinkat", testUnlinkat },
   { "unlinkat_dir", testUnlinkatDir },
+  { "utimes", testUtimes },
   { "vfork_inherit_fd", testVforkInheritFd },
 };
 

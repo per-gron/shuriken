@@ -532,6 +532,7 @@ void Tracer::format_print(
 
   case BSC_truncate:
   case BSC_chflags:
+  case BSC_utimes:
   {
     add_event(EventType::WRITE, pathname1, nullptr);
     break;

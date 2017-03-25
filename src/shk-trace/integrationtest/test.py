@@ -414,6 +414,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('delete ' + os.getcwd() + '/dir', trace)
 
   @with_testdir()
+  def test_utimes(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' utimes')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_utimes_error(self):
+    trace = trace_cmd(helper + ' utimes')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_vfork_inherit_fd(self):
     trace = trace_cmd(helper + ' vfork_inherit_fd')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
