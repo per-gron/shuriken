@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include <string>
+#include <sys/attr.h>
 #include <sys/stat.h>
 #include <sys/syslimits.h>
 #include <sys/time.h>
@@ -222,6 +223,12 @@ void testFutimes() {
   futimes(input_fd.get(), times);
 }
 
+void testGetattrlist() {
+  struct attrlist al;
+  char buf[1024];
+  getattrlist("input", &al, buf, sizeof(buf), 0);
+}
+
 void testLchown() {
   lchown("input", getuid(), getgid());
 }
@@ -436,6 +443,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fstat64", testFstat64 },
   { "fstatat", testFstatat },
   { "futimes", testFutimes },
+  { "getattrlist", testGetattrlist },
   { "lchown", testLchown },
   { "link", testLink },
   { "linkat", testLinkat },

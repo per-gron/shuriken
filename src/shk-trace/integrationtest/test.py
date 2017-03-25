@@ -311,6 +311,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('write ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_getattrlist(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' getattrlist')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_getattrlist_error(self):
+    trace = trace_cmd(helper + ' getattrlist')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_lchown(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' lchown')

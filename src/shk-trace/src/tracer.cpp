@@ -565,19 +565,20 @@ void Tracer::format_print(
   case BSC_access:
   case BSC_access_extended:
   case BSC_faccessat:
+  case BSC_fstatat64:
+  case BSC_fstatat:
+  case BSC_getattrlist:
+  case BSC_lstat64:
+  case BSC_lstat64_extended:
+  case BSC_lstat:
+  case BSC_lstat_extended:
   case BSC_pathconf:
   case BSC_readlink:
   case BSC_readlinkat:
-  case BSC_stat:
   case BSC_stat64:
-  case BSC_stat_extended:
   case BSC_stat64_extended:
-  case BSC_lstat:
-  case BSC_lstat64:
-  case BSC_lstat_extended:
-  case BSC_lstat64_extended:
-  case BSC_fstatat:
-  case BSC_fstatat64:
+  case BSC_stat:
+  case BSC_stat_extended:
   {
     add_event(EventType::READ, pathname1, syscallAtMember(syscall));
     break;
