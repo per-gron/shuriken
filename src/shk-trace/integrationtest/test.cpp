@@ -216,6 +216,11 @@ void testLinkat() {
   linkat(dir1_fd.get(), "input", dir2_fd.get(), "output", AT_SYMLINK_FOLLOW);
 }
 
+void testLstat() {
+  struct stat s;
+  lstat("input", &s);
+}
+
 void testMkdir() {
   // Don't check for an error code; some tests trigger an error intentionally.
   mkdir("output", 0666);
@@ -380,6 +385,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "lchown", testLchown },
   { "link", testLink },
   { "linkat", testLinkat },
+  { "lstat", testLstat },
   { "mkdir", testMkdir },
   { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
