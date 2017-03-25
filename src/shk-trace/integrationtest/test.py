@@ -161,6 +161,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_chown(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' chown')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_chown_fail(self):
+    trace = trace_cmd(helper + ' chown')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_dup(self):
     trace = trace_cmd(helper + ' dup')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)

@@ -84,6 +84,10 @@ void testChmod() {
   chmod("input", 0555);
 }
 
+void testChown() {
+  chown("input", getuid(), getgid());
+}
+
 void testDup() {
   auto usr_fd = openFileForReading("/usr");
   auto duped_fd = shk::FileDescriptor(dup(usr_fd.get()));
@@ -316,6 +320,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "chdir_fail", testChdirFail },
   { "chflags", testChflags },
   { "chmod", testChmod },
+  { "chown", testChown },
   { "dup", testDup },
   { "dup2", testDup2 },
   { "faccessat", testFaccessat },
