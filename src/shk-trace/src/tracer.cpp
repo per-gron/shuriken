@@ -216,17 +216,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
     case BSC_exit:
       continue;
 
-    case proc_exit:
-      kd[i].arg1 = kd[i].arg2 >> 8;
-      type = BSC_exit;
-      break;
-
-    case BSC_mmap:
-      if (kd[i].arg4 & MAP_ANON) {
-        continue;
-      }
-      break;
-
     case VFS_ALIAS_VP:
       {
         auto name_it = _vn_name_map.find(kd[i].arg1);
