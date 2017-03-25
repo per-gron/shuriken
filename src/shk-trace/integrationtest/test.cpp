@@ -185,6 +185,10 @@ void testFutimes() {
   futimes(input_fd.get(), times);
 }
 
+void testLchown() {
+  lchown("input", getuid(), getgid());
+}
+
 void testLink() {
   // Don't check for an error code; some tests trigger an error intentionally.
   link("input", "output");
@@ -342,6 +346,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fchownat", testFchownat },
   { "fork_inherit_fd", testForkInheritFd },
   { "futimes", testFutimes },
+  { "lchown", testLchown },
   { "link", testLink },
   { "linkat", testLinkat },
   { "mkdir", testMkdir },

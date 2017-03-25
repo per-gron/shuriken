@@ -167,7 +167,7 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('write ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
-  def test_chown_fail(self):
+  def test_chown_error(self):
     trace = trace_cmd(helper + ' chown')
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
@@ -250,6 +250,17 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' futimes')
     self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_lchown(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' lchown')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_lchown_error(self):
+    trace = trace_cmd(helper + ' lchown')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_link(self):

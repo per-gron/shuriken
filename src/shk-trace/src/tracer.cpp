@@ -536,6 +536,7 @@ void Tracer::format_print(
   case BSC_chmodat:  // This constant actually refers to the fchmodat syscall
   case BSC_chownat:  // This constant actually refers to the fchownat syscall
   case BSC_truncate:
+  case BSC_lchown:
   case BSC_utimes:
   {
     add_event(EventType::WRITE, pathname1, syscallAtMember(syscall));
