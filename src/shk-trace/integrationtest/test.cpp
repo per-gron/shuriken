@@ -316,6 +316,11 @@ void testStat() {
   stat("input", &s);
 }
 
+void testStat64() {
+  struct stat64 s;
+  stat64("input", &s);
+}
+
 void testSymlink() {
   // Don't check for an error code; some tests trigger an error intentionally.
   symlink("input", "output");
@@ -401,6 +406,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "renameat", testRenameat },
   { "rmdir", testRmdir },
   { "stat", testStat },
+  { "stat64", testStat64 },
   { "symlink", testSymlink },
   { "symlinkat", testSymlinkat },
   { "truncate", testTruncate },
