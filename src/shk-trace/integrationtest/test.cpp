@@ -380,6 +380,15 @@ void testRmdir() {
   rmdir("dir");
 }
 
+void testSetattrlist() {
+  struct attrlist al{};
+  al.bitmapcount = ATTR_BIT_MAP_COUNT;
+  al.commonattr = ATTR_CMN_FNDRINFO;
+
+  char buf[1024];
+  setattrlist("input", &al, buf, sizeof(buf), 0);
+}
+
 void testStat() {
   struct stat s;
   stat("input", &s);
@@ -484,6 +493,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "rename", testRename },
   { "renameat", testRenameat },
   { "rmdir", testRmdir },
+  { "setattrlist", testSetattrlist },
   { "stat", testStat },
   { "stat64", testStat64 },
   { "symlink", testSymlink },
