@@ -300,6 +300,11 @@ void testRmdir() {
   rmdir("dir");
 }
 
+void testStat() {
+  struct stat s;
+  stat("input", &s);
+}
+
 void testSymlink() {
   // Don't check for an error code; some tests trigger an error intentionally.
   symlink("input", "output");
@@ -382,6 +387,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "rename", testRename },
   { "renameat", testRenameat },
   { "rmdir", testRmdir },
+  { "stat", testStat },
   { "symlink", testSymlink },
   { "symlinkat", testSymlinkat },
   { "truncate", testTruncate },
