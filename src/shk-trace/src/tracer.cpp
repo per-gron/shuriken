@@ -546,6 +546,7 @@ void Tracer::format_print(
   case BSC_chownat:  // This constant actually refers to the fchownat syscall
   case BSC_truncate:
   case BSC_lchown:
+  case BSC_removexattr:
   case BSC_setattrlist:
   case BSC_setxattr:
   case BSC_utimes:

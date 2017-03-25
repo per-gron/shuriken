@@ -81,6 +81,7 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
     BSC_pthread_fchdir,
     BSC_readlink,
     BSC_readlinkat,
+    BSC_removexattr,
     BSC_rename,
     BSC_renameat,
     BSC_rmdir,

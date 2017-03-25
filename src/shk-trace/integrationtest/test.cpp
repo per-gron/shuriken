@@ -394,6 +394,10 @@ void testReadlinkat() {
   readlinkat(dir_fd.get(), "../input", buf, sizeof(buf));
 }
 
+void testRemovexattr() {
+  removexattr("input", "test", 0);
+}
+
 void testRename() {
   // Don't check for an error code; some tests trigger an error intentionally.
   rename("input", "output");
@@ -528,6 +532,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "pthread_fchdir_other_thread", testPthreadFchdirOtherThread },
   { "readlink", testReadlink },
   { "readlinkat", testReadlinkat },
+  { "removexattr", testRemovexattr },
   { "rename", testRename },
   { "renameat", testRenameat },
   { "rmdir", testRmdir },
