@@ -237,6 +237,14 @@ void testGetattrlist() {
   getattrlist("input", &al, buf, sizeof(buf), 0);
 }
 
+void testGetattrlistat() {
+  auto dir_fd = openFileForReading("dir");
+
+  struct attrlist al;
+  char buf[1024];
+  getattrlistat(dir_fd.get(), "input", &al, buf, sizeof(buf), 0);
+}
+
 void testLchown() {
   lchown("input", getuid(), getgid());
 }
@@ -453,6 +461,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fstatat", testFstatat },
   { "futimes", testFutimes },
   { "getattrlist", testGetattrlist },
+  { "getattrlistat", testGetattrlistat },
   { "lchown", testLchown },
   { "link", testLink },
   { "linkat", testLinkat },

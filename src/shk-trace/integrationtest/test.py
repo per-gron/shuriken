@@ -328,6 +328,19 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_getattrlistat(self):
+    os.mkdir('dir')
+    write_file('dir/input', '')
+    trace = trace_cmd(helper + ' getattrlistat')
+    self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
+  def test_getattrlistat_error(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' getattrlistat')
+    self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
   def test_lchown(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' lchown')
