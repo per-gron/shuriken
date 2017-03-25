@@ -246,6 +246,12 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
 
   @with_testdir()
+  def test_fpathconf(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' fpathconf')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_futimes(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' futimes')
