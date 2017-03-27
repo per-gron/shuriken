@@ -18,6 +18,11 @@
 
 #include <util/file_descriptor.h>
 
+extern "C" int __lstat_extended(
+    const char *path,
+    struct stat *s,
+    struct kauth_filesec *sec,
+    size_t *sec_size);
 extern "C" int __mkfifo_extended(
     const char *, uid_t, gid_t, int, struct kauth_filesec *);
 extern "C" int __mkdir_extended(
@@ -343,6 +348,14 @@ void testLstat64() {
   lstat64("input", &s);
 }
 
+void testLstatExtended() {
+  struct kauth_filesec filesec{ 0 };
+  size_t sec_size = sizeof(filesec);
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  struct stat s;
+  __lstat_extended("input", &s, &filesec, &sec_size);
+}
+
 void testMkdir() {
   // Don't check for an error code; some tests trigger an error intentionally.
   mkdir("output", 0666);
@@ -610,6 +623,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "linkat", testLinkat },
   { "listxattr", testListxattr },
   { "lstat", testLstat },
+  { "lstat_extended", testLstatExtended },
   { "lstat64", testLstat64 },
   { "mkdir", testMkdir },
   { "mkdir_extended", testMkdirExtended },

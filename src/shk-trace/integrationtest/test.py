@@ -472,6 +472,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_lstat_extended(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' lstat_extended')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_lstat_extended_error(self):
+    trace = trace_cmd(helper + ' lstat_extended')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_lstat64(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' lstat64')
