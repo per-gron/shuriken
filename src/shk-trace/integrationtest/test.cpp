@@ -23,6 +23,11 @@ extern "C" int __fstat_extended(
     struct stat *s,
     struct kauth_filesec *sec,
     size_t *sec_size);
+extern "C" int __fstat64_extended(
+    int fd,
+    struct stat64 *s,
+    struct kauth_filesec *sec,
+    size_t *sec_size);
 extern "C" int __lstat_extended(
     const char *path,
     struct stat *s,
@@ -299,6 +304,14 @@ void testFstat64() {
   auto input_fd = openFileForReading("input");
   struct stat64 s;
   fstat64(input_fd.get(), &s);
+}
+
+void testFstat64Extended() {
+  auto input_fd = openFileForReading("input");
+  struct kauth_filesec filesec{ 0 };
+  size_t sec_size = sizeof(filesec);
+  struct stat64 s;
+  __fstat64_extended(input_fd.get(), &s, &filesec, &sec_size);
 }
 
 void testFstatat() {
@@ -653,6 +666,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fstat", testFstat },
   { "fstat_extended", testFstatExtended },
   { "fstat64", testFstat64 },
+  { "fstat64_extended", testFstat64Extended },
   { "fstatat", testFstatat },
   { "futimes", testFutimes },
   { "getattrlist", testGetattrlist },
