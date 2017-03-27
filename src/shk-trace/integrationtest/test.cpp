@@ -20,6 +20,8 @@
 
 extern "C" int __mkfifo_extended(
     const char *, uid_t, gid_t, int, struct kauth_filesec *);
+extern "C" int __mkdir_extended(
+    const char *, uid_t, gid_t, int, struct kauth_filesec *);
 extern "C" int __open_nocancel(const char *, int, ...);
 extern "C" int __openat_nocancel(
     int fd, const char *fname, int oflag, mode_t mode);
@@ -347,6 +349,12 @@ void testMkdirat() {
   mkdirat(dir_fd.get(), "output", 0666);
 }
 
+void testMkdirExtended() {
+  struct kauth_filesec filesec{ 0 };
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  __mkdir_extended("output", getuid(), getgid(), 0666, &filesec);
+}
+
 void testMkfifo() {
   // Don't check for an error code; some tests trigger an error intentionally.
   mkfifo("output", 0666);
@@ -591,6 +599,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "lstat", testLstat },
   { "lstat64", testLstat64 },
   { "mkdir", testMkdir },
+  { "mkdir_extended", testMkdirExtended },
   { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
   { "mkfifo_extended", testMkfifoExtended },

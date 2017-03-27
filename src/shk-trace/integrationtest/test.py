@@ -494,6 +494,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertNotIn('create ' + os.getcwd() + '/output', trace)
 
   @with_testdir()
+  def test_mkdir_extended(self):
+    trace = trace_cmd(helper + ' mkdir_extended')
+    self.assertIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_mkdir_extended_error(self):
+    write_file('output', '')
+    trace = trace_cmd(helper + ' mkdir_extended')
+    self.assertNotIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
   def test_mkdirat(self):
     os.mkdir('dir')
     trace = trace_cmd(helper + ' mkdirat')
