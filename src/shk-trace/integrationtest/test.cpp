@@ -93,6 +93,12 @@ void testChown() {
   chown("input", getuid(), getgid());
 }
 
+void testChroot() {
+  // This syscall only works for root, but that's okay because it is a
+  // restricted/illegal operation even if it fails.
+  chroot("/");
+}
+
 void testDup() {
   auto usr_fd = openFileForReading("/usr");
   auto duped_fd = shk::FileDescriptor(dup(usr_fd.get()));
@@ -506,6 +512,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "chflags", testChflags },
   { "chmod", testChmod },
   { "chown", testChown },
+  { "chroot", testChroot },
   { "dup", testDup },
   { "dup2", testDup2 },
   { "exchangedata", testExchangedata },

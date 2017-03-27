@@ -38,7 +38,9 @@ void PathResolver::fileEvent(
       thread_id,
       type,
       AT_FDCWD,  // Does not matter, since we pass an absolute path
-      resolve(thread_id, at_fd, std::move(path)));
+      type == EventType::FATAL_ERROR ?
+          std::move(path) :
+          resolve(thread_id, at_fd, std::move(path)));
 }
 
 void PathResolver::open(

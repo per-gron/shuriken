@@ -177,6 +177,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_chroot(self):
+    trace = trace_cmd(helper + ' chroot')
+    self.assertIn('fatal_error chroot', trace)
+
+  @with_testdir()
   def test_dup(self):
     trace = trace_cmd(helper + ' dup')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)

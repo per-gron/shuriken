@@ -591,6 +591,12 @@ void Tracer::format_print(
     add_event(EventType::READ, pathname1, syscallAtMember(syscall));
     break;
   }
+
+  case BSC_chroot:
+  {
+    _delegate.fileEvent(
+        thread, EventType::FATAL_ERROR, -1, "chroot not allowed");
+  }
   }
 
   for (int i = 0; i < num_events; i++) {
