@@ -18,6 +18,11 @@
 
 #include <util/file_descriptor.h>
 
+extern "C" int __fstat_extended(
+    int fd,
+    struct stat *s,
+    struct kauth_filesec *sec,
+    size_t *sec_size);
 extern "C" int __lstat_extended(
     const char *path,
     struct stat *s,
@@ -300,6 +305,14 @@ void testFstatat() {
   auto dir_fd = openFileForReading("dir");
   struct stat s;
   fstatat(dir_fd.get(), "input", &s, 0);
+}
+
+void testFstatExtended() {
+  auto input_fd = openFileForReading("input");
+  struct kauth_filesec filesec{ 0 };
+  size_t sec_size = sizeof(filesec);
+  struct stat s;
+  __fstat_extended(input_fd.get(), &s, &filesec, &sec_size);
 }
 
 void testFutimes() {
@@ -638,6 +651,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fsetattrlist", testFsetattrlist },
   { "fsetxattr", testFsetxattr },
   { "fstat", testFstat },
+  { "fstat_extended", testFstatExtended },
   { "fstat64", testFstat64 },
   { "fstatat", testFstatat },
   { "futimes", testFutimes },
