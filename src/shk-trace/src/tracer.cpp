@@ -620,6 +620,12 @@ void Tracer::format_print(
     disallowed_event("mknod");
     break;
   }
+
+  case BSC_fhopen:
+  {
+    disallowed_event("fhopen");
+    break;
+  }
   }
 
   for (int i = 0; i < num_events; i++) {

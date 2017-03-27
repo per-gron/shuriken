@@ -285,6 +285,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_fhopen(self):
+    trace = trace_cmd(helper + ' fhopen')
+    self.assertIn('fatal_error fhopen', trace)
+
+  @with_testdir()
   def test_flistxattr(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' flistxattr')

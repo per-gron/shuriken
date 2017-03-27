@@ -12,6 +12,7 @@ static constexpr int MAX_BSD_SYSCALL = 526;
 // file is derived from trace.codes in the kernel, but that file does not have
 // this constant defined in it.
 static constexpr int BSC_faccessat = 0x040c0748;
+static constexpr int BSC_fhopen = 0x040c03e0;
 
 static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
   static const int bsd_syscalls[] = {
@@ -39,6 +40,7 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
     BSC_fchmod_extended,
     BSC_fchown,
     BSC_fgetattrlist,
+    BSC_fhopen,
     BSC_flock,
     BSC_fremovexattr,
     BSC_fsetattrlist,

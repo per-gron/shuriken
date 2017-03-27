@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <string>
 #include <sys/attr.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/syslimits.h>
 #include <sys/time.h>
@@ -179,6 +180,12 @@ void testFgetxattr() {
 
   char buf[1024];
   fgetxattr(input_fd.get(), "test", buf, sizeof(buf), 0, 0);
+}
+
+void testFhopen() {
+  if (fhopen(nullptr, 0) != -1) {
+    die("fhopen succeeded");
+  }
 }
 
 void testFlistxattr() {
@@ -545,6 +552,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fchownat", testFchownat },
   { "fgetattrlist", testFgetattrlist },
   { "fgetxattr", testFgetxattr },
+  { "fhopen", testFhopen },
   { "flistxattr", testFlistxattr },
   { "flock", testFlock },
   { "fork_inherit_fd", testForkInheritFd },
