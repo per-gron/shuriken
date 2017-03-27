@@ -27,6 +27,11 @@ extern "C" int __openat_nocancel(
     int fd, const char *fname, int oflag, mode_t mode);
 extern "C" int __pthread_chdir(const char *path);
 extern "C" int __pthread_fchdir(int fd);
+extern "C" int __stat_extended(
+    const char *path,
+    struct stat *s,
+    struct kauth_filesec *sec,
+    size_t *sec_size);
 extern "C" int openbyid_np(fsid_t* fsid, fsobj_id_t* objid, int flags);
 
 namespace {
@@ -501,6 +506,14 @@ void testStat() {
   stat("input", &s);
 }
 
+void testStatExtended() {
+  struct kauth_filesec filesec{ 0 };
+  size_t sec_size = sizeof(filesec);
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  struct stat s;
+  __stat_extended("input", &s, &filesec, &sec_size);
+}
+
 void testStat64() {
   struct stat64 s;
   stat64("input", &s);
@@ -624,6 +637,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "setattrlist", testSetattrlist },
   { "setxattr", testSetxattr },
   { "stat", testStat },
+  { "stat_extended", testStatExtended },
   { "stat64", testStat64 },
   { "symlink", testSymlink },
   { "symlinkat", testSymlinkat },
