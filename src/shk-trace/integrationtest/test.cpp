@@ -54,6 +54,13 @@ extern "C" int __mkfifo_extended(
     const char *, uid_t, gid_t, int, struct kauth_filesec *);
 extern "C" int __mkdir_extended(
     const char *, uid_t, gid_t, int, struct kauth_filesec *);
+extern "C" int __open_extended(
+    const char *path,
+    int flags,
+    uid_t uid,
+    gid_t gid,
+    int mode,
+    struct kauth_filesec *sec);
 extern "C" int __open_nocancel(const char *, int, ...);
 extern "C" int __openat_nocancel(
     int fd, const char *fname, int oflag, mode_t mode);
@@ -461,6 +468,14 @@ void testMknod() {
   }
 }
 
+void testOpenExtended() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  struct kauth_filesec filesec{ 0 };
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  shk::FileDescriptor(__open_extended(
+      "input", O_RDONLY, getuid(), getgid(), 0, &filesec));
+}
+
 void testOpenNocancel() {
   // Don't check for an error code; some tests trigger an error intentionally.
   shk::FileDescriptor(__open_nocancel("input", O_RDONLY, 0));
@@ -715,6 +730,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkfifo", testMkfifo },
   { "mkfifo_extended", testMkfifoExtended },
   { "mknod", testMknod },
+  { "open_extended", testOpenExtended },
   { "open_nocancel", testOpenNocancel },
   { "openat", testOpenat },
   { "openat_nocancel", testOpenatNocancel },
