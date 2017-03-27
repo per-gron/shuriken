@@ -23,6 +23,11 @@ extern "C" int __lstat_extended(
     struct stat *s,
     struct kauth_filesec *sec,
     size_t *sec_size);
+extern "C" int __lstat64_extended(
+    const char *path,
+    struct stat64 *s,
+    struct kauth_filesec *sec,
+    size_t *sec_size);
 extern "C" int __mkfifo_extended(
     const char *, uid_t, gid_t, int, struct kauth_filesec *);
 extern "C" int __mkdir_extended(
@@ -353,6 +358,14 @@ void testLstat64() {
   lstat64("input", &s);
 }
 
+void testLstat64Extended() {
+  struct kauth_filesec filesec{ 0 };
+  size_t sec_size = sizeof(filesec);
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  struct stat64 s;
+  __lstat64_extended("input", &s, &filesec, &sec_size);
+}
+
 void testLstatExtended() {
   struct kauth_filesec filesec{ 0 };
   size_t sec_size = sizeof(filesec);
@@ -638,6 +651,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "lstat", testLstat },
   { "lstat_extended", testLstatExtended },
   { "lstat64", testLstat64 },
+  { "lstat64_extended", testLstat64Extended },
   { "mkdir", testMkdir },
   { "mkdir_extended", testMkdirExtended },
   { "mkdirat", testMkdirat },
