@@ -766,6 +766,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertNotIn('create ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_undelete(self):
+    trace = trace_cmd(helper + ' undelete')
+    self.assertIn('fatal_error undelete', trace)
+
+  @with_testdir()
   def test_unlink(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' unlink')

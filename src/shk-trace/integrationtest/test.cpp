@@ -484,6 +484,12 @@ void testTruncate() {
   truncate("input", 123);
 }
 
+void testUndelete() {
+  if (undelete("undelete_test") == 0) {
+    die("undelete succeeded");
+  }
+}
+
 void testUnlink() {
   if (unlink("input") != 0) {
     die("unlink failed");
@@ -579,6 +585,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "symlink", testSymlink },
   { "symlinkat", testSymlinkat },
   { "truncate", testTruncate },
+  { "undelete", testUndelete },
   { "unlink", testUnlink },
   { "unlinkat", testUnlinkat },
   { "unlinkat_dir", testUnlinkatDir },

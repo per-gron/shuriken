@@ -608,6 +608,12 @@ void Tracer::format_print(
     disallowed_event("searchfs");
     break;
   }
+
+  case BSC_undelete:
+  {
+    disallowed_event("undelete");
+    break;
+  }
   }
 
   for (int i = 0; i < num_events; i++) {
