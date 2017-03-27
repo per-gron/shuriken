@@ -614,6 +614,12 @@ void Tracer::format_print(
     disallowed_event("undelete");
     break;
   }
+
+  case BSC_mknod:
+  {
+    disallowed_event("mknod");
+    break;
+  }
   }
 
   for (int i = 0; i < num_events; i++) {

@@ -500,6 +500,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('create ' + os.getcwd() + '/output', trace)
 
   @with_testdir()
+  def test_mknod(self):
+    trace = trace_cmd(helper + ' mknod')
+    self.assertIn('fatal_error mknod', trace)
+
+  @with_testdir()
   def test_open_nocancel(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' open_nocancel')

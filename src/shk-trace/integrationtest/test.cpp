@@ -340,6 +340,12 @@ void testMkfifo() {
   mkfifo("output", 0666);
 }
 
+void testMknod() {
+  if (mknod("some_dir/blah", 0, 0) == 0) {
+    die("mknod succeeded");
+  }
+}
+
 void testOpenNocancel() {
   // Don't check for an error code; some tests trigger an error intentionally.
   shk::FileDescriptor(__open_nocancel("input", O_RDONLY, 0));
@@ -562,6 +568,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkdir", testMkdir },
   { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
+  { "mknod", testMknod },
   { "open_nocancel", testOpenNocancel },
   { "openat", testOpenat },
   { "openat_nocancel", testOpenatNocancel },
