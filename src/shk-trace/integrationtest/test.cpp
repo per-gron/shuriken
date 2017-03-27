@@ -37,6 +37,11 @@ extern "C" int __stat_extended(
     struct stat *s,
     struct kauth_filesec *sec,
     size_t *sec_size);
+extern "C" int __stat64_extended(
+    const char *path,
+    struct stat64 *s,
+    struct kauth_filesec *sec,
+    size_t *sec_size);
 extern "C" int openbyid_np(fsid_t* fsid, fsobj_id_t* objid, int flags);
 
 namespace {
@@ -532,6 +537,14 @@ void testStat64() {
   stat64("input", &s);
 }
 
+void testStat64Extended() {
+  struct kauth_filesec filesec{ 0 };
+  size_t sec_size = sizeof(filesec);
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  struct stat64 s;
+  __stat64_extended("input", &s, &filesec, &sec_size);
+}
+
 void testSymlink() {
   // Don't check for an error code; some tests trigger an error intentionally.
   symlink("input", "output");
@@ -653,6 +666,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "stat", testStat },
   { "stat_extended", testStatExtended },
   { "stat64", testStat64 },
+  { "stat64_extended", testStat64Extended },
   { "symlink", testSymlink },
   { "symlinkat", testSymlinkat },
   { "truncate", testTruncate },

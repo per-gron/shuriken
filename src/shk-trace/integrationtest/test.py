@@ -797,6 +797,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_stat64_extended(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' stat64_extended')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_stat64_extended_error(self):
+    trace = trace_cmd(helper + ' stat64_extended')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_symlink(self):
     trace = trace_cmd(helper + ' symlink')
     self.assertIn('create ' + os.getcwd() + '/output', trace)
