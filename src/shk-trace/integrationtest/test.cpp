@@ -21,6 +21,7 @@ extern "C" int __openat_nocancel(
     int fd, const char *fname, int oflag, mode_t mode);
 extern "C" int __pthread_chdir(const char *path);
 extern "C" int __pthread_fchdir(int fd);
+extern "C" int openbyid_np(fsid_t* fsid, fsobj_id_t* objid, int flags);
 
 namespace {
 
@@ -372,6 +373,12 @@ void testOpenatNocancel() {
   shk::FileDescriptor(__openat_nocancel(dir_fd.get(), "input", O_RDONLY, 0));
 }
 
+void testOpenbyidNp() {
+  if (openbyid_np(nullptr, nullptr, 0) != -1) {
+    die("openbyid_np succeeded");
+  }
+}
+
 void testPathconf() {
   pathconf("input", _PC_LINK_MAX);
 }
@@ -580,6 +587,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "open_nocancel", testOpenNocancel },
   { "openat", testOpenat },
   { "openat_nocancel", testOpenatNocancel },
+  { "openbyid_np", testOpenbyidNp },
   { "pathconf", testPathconf },
   { "pthread_chdir", testPthreadChdir },
   { "pthread_chdir_other_thread", testPthreadChdirOtherThread },
