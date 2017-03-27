@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include <string>
+#include <sys/types.h>
+#include <sys/acl.h>
 #include <sys/attr.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -16,6 +18,8 @@
 
 #include <util/file_descriptor.h>
 
+extern "C" int __mkfifo_extended(
+    const char *, uid_t, gid_t, int, struct kauth_filesec *);
 extern "C" int __open_nocancel(const char *, int, ...);
 extern "C" int __openat_nocancel(
     int fd, const char *fname, int oflag, mode_t mode);
@@ -348,6 +352,12 @@ void testMkfifo() {
   mkfifo("output", 0666);
 }
 
+void testMkfifoExtended() {
+  struct kauth_filesec filesec{ 0 };
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  __mkfifo_extended("output", getuid(), getgid(), 0666, &filesec);
+}
+
 void testMknod() {
   if (mknod("some_dir/blah", 0, 0) == 0) {
     die("mknod succeeded");
@@ -583,6 +593,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkdir", testMkdir },
   { "mkdirat", testMkdirat },
   { "mkfifo", testMkfifo },
+  { "mkfifo_extended", testMkfifoExtended },
   { "mknod", testMknod },
   { "open_nocancel", testOpenNocancel },
   { "openat", testOpenat },

@@ -512,6 +512,23 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('create ' + os.getcwd() + '/output', trace)
 
   @with_testdir()
+  def test_mkfifo_error(self):
+    write_file('output', '')
+    trace = trace_cmd(helper + ' mkfifo')
+    self.assertNotIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_mkfifo_extended(self):
+    trace = trace_cmd(helper + ' mkfifo_extended')
+    self.assertIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_mkfifo_extended_error(self):
+    write_file('output', '')
+    trace = trace_cmd(helper + ' mkfifo_extended')
+    self.assertNotIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
   def test_mknod(self):
     trace = trace_cmd(helper + ' mknod')
     self.assertIn('fatal_error mknod', trace)
@@ -593,12 +610,6 @@ class IntegrationTest(unittest.TestCase):
   def test_pthread_fchdir_other_thread(self):
     trace = trace_cmd(helper + ' pthread_fchdir_other_thread')
     self.assertIn('read ' + os.getcwd() + '/nonexisting_path_just_for_testing', trace)
-
-  @with_testdir()
-  def test_mkfifo_error(self):
-    write_file('output', '')
-    trace = trace_cmd(helper + ' mkfifo')
-    self.assertNotIn('create ' + os.getcwd() + '/output', trace)
 
   @with_testdir()
   def test_linkat_error(self):
