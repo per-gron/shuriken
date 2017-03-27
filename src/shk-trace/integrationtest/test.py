@@ -139,7 +139,7 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
 
   @with_testdir()
-  def test_chdir_fail(self):
+  def test_chdir_error(self):
     trace = trace_cmd(helper + ' chdir_fail')
     self.assertIn('read ' + os.getcwd() + '/nonexisting_path_just_for_testing', trace)
 
@@ -150,7 +150,7 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('write ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
-  def test_chflags_fail(self):
+  def test_chflags_error(self):
     trace = trace_cmd(helper + ' chflags')
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
@@ -161,8 +161,19 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('write ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
-  def test_chmod_fail(self):
+  def test_chmod_error(self):
     trace = trace_cmd(helper + ' chmod')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_chmod_extended(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' chmod_extended')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_chmod_extended_error(self):
+    trace = trace_cmd(helper + ' chmod_extended')
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()

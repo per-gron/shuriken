@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include <string>
-#include <sys/types.h>
+#include <sys/types.h>  // has to be before acl.h is included, for gid_t
 #include <sys/acl.h>
 #include <sys/attr.h>
 #include <sys/mount.h>
@@ -18,6 +18,12 @@
 
 #include <util/file_descriptor.h>
 
+extern "C" int __chmod_extended(
+    const char *path,
+    uid_t uid,
+    gid_t gid,
+    int mode,
+    struct kauth_filesec *sec);
 extern "C" int __fstat_extended(
     int fd,
     struct stat *s,
@@ -125,6 +131,12 @@ void testChflags() {
 
 void testChmod() {
   chmod("input", 0555);
+}
+
+void testChmodExtended() {
+  struct kauth_filesec filesec{ 0 };
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  __chmod_extended("input", getuid(), getgid(), 0555, &filesec);
 }
 
 void testChown() {
@@ -309,6 +321,7 @@ void testFstat64() {
 void testFstat64Extended() {
   auto input_fd = openFileForReading("input");
   struct kauth_filesec filesec{ 0 };
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
   size_t sec_size = sizeof(filesec);
   struct stat64 s;
   __fstat64_extended(input_fd.get(), &s, &filesec, &sec_size);
@@ -323,6 +336,7 @@ void testFstatat() {
 void testFstatExtended() {
   auto input_fd = openFileForReading("input");
   struct kauth_filesec filesec{ 0 };
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
   size_t sec_size = sizeof(filesec);
   struct stat s;
   __fstat_extended(input_fd.get(), &s, &filesec, &sec_size);
@@ -386,8 +400,8 @@ void testLstat64() {
 
 void testLstat64Extended() {
   struct kauth_filesec filesec{ 0 };
-  size_t sec_size = sizeof(filesec);
   filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  size_t sec_size = sizeof(filesec);
   struct stat64 s;
   __lstat64_extended("input", &s, &filesec, &sec_size);
 }
@@ -565,8 +579,8 @@ void testStat() {
 
 void testStatExtended() {
   struct kauth_filesec filesec{ 0 };
-  size_t sec_size = sizeof(filesec);
   filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  size_t sec_size = sizeof(filesec);
   struct stat s;
   __stat_extended("input", &s, &filesec, &sec_size);
 }
@@ -578,8 +592,8 @@ void testStat64() {
 
 void testStat64Extended() {
   struct kauth_filesec filesec{ 0 };
-  size_t sec_size = sizeof(filesec);
   filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  size_t sec_size = sizeof(filesec);
   struct stat64 s;
   __stat64_extended("input", &s, &filesec, &sec_size);
 }
@@ -641,6 +655,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "chdir_fail", testChdirFail },
   { "chflags", testChflags },
   { "chmod", testChmod },
+  { "chmod_extended", testChmodExtended },
   { "chown", testChown },
   { "chroot", testChroot },
   { "dup", testDup },
