@@ -626,6 +626,12 @@ void Tracer::format_print(
     disallowed_event("fhopen");
     break;
   }
+
+  case BSC_fsgetpath:
+  {
+    disallowed_event("fsgetpath");
+    break;
+  }
   }
 
   for (int i = 0; i < num_events; i++) {

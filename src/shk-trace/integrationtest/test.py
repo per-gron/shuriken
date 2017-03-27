@@ -332,6 +332,13 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('write ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_fsgetpath(self):
+    # fsgetpath is a private syscall. GetFileInfo happens to call it.
+    root_stat = os.stat('/')
+    trace = trace_cmd('GetFileInfo -P /.vol/' + str(root_stat.st_dev) + '/' + str(root_stat.st_ino) + '; true')
+    self.assertIn('fatal_error fsgetpath', trace)
+
+  @with_testdir()
   def test_fstat(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' fstat')

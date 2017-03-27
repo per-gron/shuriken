@@ -45,6 +45,7 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
     BSC_fremovexattr,
     BSC_fsetattrlist,
     BSC_fsetxattr,
+    BSC_fsgetpath,
     BSC_fstat,
     BSC_fstat64,
     BSC_fstat64_extended,
