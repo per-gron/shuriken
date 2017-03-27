@@ -252,6 +252,12 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('write ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_fchmod_extended(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' fchmod_extended')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_fchmodat(self):
     os.mkdir('dir')
     write_file('dir/input', '')

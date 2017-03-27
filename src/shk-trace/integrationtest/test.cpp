@@ -24,6 +24,12 @@ extern "C" int __chmod_extended(
     gid_t gid,
     int mode,
     struct kauth_filesec *sec);
+extern "C" int __fchmod_extended(
+    int fd,
+    uid_t uid,
+    gid_t gid,
+    int mode,
+    struct kauth_filesec *sec);
 extern "C" int __fstat_extended(
     int fd,
     struct stat *s,
@@ -204,6 +210,13 @@ void testFchmod() {
 void testFchmodat() {
   auto dir_fd = openFileForReading("dir");
   fchmodat(dir_fd.get(), "input", 0555, 0);
+}
+
+void testFchmodExtended() {
+  auto input_fd = openFileForReading("input");
+  struct kauth_filesec filesec{ 0 };
+  filesec.fsec_magic = KAUTH_FILESEC_MAGIC;
+  __fchmod_extended(input_fd.get(), getuid(), getgid(), 0555, &filesec);
 }
 
 void testFchown() {
@@ -665,6 +678,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fchdir", testFchdir },
   { "fchflags", testFchflags },
   { "fchmod", testFchmod },
+  { "fchmod_extended", testFchmodExtended },
   { "fchmodat", testFchmodat },
   { "fchown", testFchown },
   { "fchownat", testFchownat },

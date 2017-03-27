@@ -552,6 +552,7 @@ void Tracer::format_print(
 
   case BSC_fchflags:
   case BSC_fchmod:
+  case BSC_fchmod_extended:
   case BSC_fchown:
   case BSC_flock:
   case BSC_fremovexattr:
