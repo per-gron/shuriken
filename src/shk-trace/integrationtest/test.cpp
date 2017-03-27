@@ -437,6 +437,14 @@ void testRmdir() {
   rmdir("dir");
 }
 
+void testSearchfs() {
+  struct fssearchblock sb{ 0 };
+  struct searchstate ss{ 0 };
+  unsigned long num_matches = 0;
+  static constexpr int kMagicConstantMandatedByManPage = 0x08000103;
+  searchfs(".", &sb, &num_matches, kMagicConstantMandatedByManPage, SRCHFS_START, &ss);
+}
+
 void testSetattrlist() {
   struct attrlist al{};
   al.bitmapcount = ATTR_BIT_MAP_COUNT;
@@ -563,6 +571,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "rename", testRename },
   { "renameat", testRenameat },
   { "rmdir", testRmdir },
+  { "searchfs", testSearchfs },
   { "setattrlist", testSetattrlist },
   { "setxattr", testSetxattr },
   { "stat", testStat },

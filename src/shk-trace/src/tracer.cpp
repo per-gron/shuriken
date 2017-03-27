@@ -392,6 +392,11 @@ void Tracer::format_print(
     events[num_events++] = { type, pathname, at };
   };
 
+  auto disallowed_event = [&](const std::string &event_name) {
+    _delegate.fileEvent(
+        thread, EventType::FATAL_ERROR, -1, event_name + " not allowed");
+  };
+
   const bool success = arg1 == 0;
 
   switch (syscall) {
@@ -594,8 +599,14 @@ void Tracer::format_print(
 
   case BSC_chroot:
   {
-    _delegate.fileEvent(
-        thread, EventType::FATAL_ERROR, -1, "chroot not allowed");
+    disallowed_event("chroot");
+    break;
+  }
+
+  case BSC_searchfs:
+  {
+    disallowed_event("searchfs");
+    break;
   }
   }
 
