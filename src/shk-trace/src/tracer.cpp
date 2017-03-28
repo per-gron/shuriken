@@ -421,6 +421,7 @@ void Tracer::format_print(
   case BSC_open:
   case BSC_open_nocancel:
   case BSC_open_extended:
+  case BSC_guarded_open_dprotected_np:
   case BSC_guarded_open_np:
   case BSC_open_dprotected_np:
   case BSC_openat:

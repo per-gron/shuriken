@@ -13,6 +13,7 @@ static constexpr int MAX_BSD_SYSCALL = 526;
 // this constant defined in it.
 static constexpr int BSC_faccessat = 0x040c0748;
 static constexpr int BSC_fhopen = 0x040c03e0;
+static constexpr int BSC_guarded_open_dprotected_np = 0x040c0790;
 static constexpr int BSC_openbyid_np = 0x040c077c;
 
 static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
@@ -61,6 +62,7 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
     BSC_getdirentries64,
     BSC_getdirentriesattr,
     BSC_getxattr,
+    BSC_guarded_open_dprotected_np,
     BSC_guarded_open_np,
     BSC_lchown,
     BSC_link,

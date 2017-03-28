@@ -21,6 +21,8 @@
 #include <util/file_descriptor.h>
 
 using guardid_t = uint64_t;
+static constexpr int PROTECTION_CLASS_DEFAULT = -1;
+static constexpr int GUARD_DUP = 2;
 
 extern "C" int __chmod_extended(
     const char *path,
@@ -44,6 +46,14 @@ extern "C" int __fstat64_extended(
     struct stat64 *s,
     struct kauth_filesec *sec,
     size_t *sec_size);
+extern "C" int __guarded_open_dprotected_np(
+    const char *path,
+    const guardid_t *guard,
+    u_int guardflags,
+    int flags,
+    int dpclass,
+    int dpflags,
+    int mode);
 extern "C" int __guarded_open_np(
     const char *path,
     const guardid_t *guard,
@@ -404,10 +414,17 @@ void testGetxattr() {
   getxattr("input", "test", buf, sizeof(buf), 0, 0);
 }
 
+void testGuardedOpenDprotectedNp() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
+  guardid_t guard = GUARD_DUP;
+  shk::FileDescriptor(__guarded_open_dprotected_np(
+      "input", &guard, GUARD_DUP, flags, PROTECTION_CLASS_DEFAULT, 0, 0666));
+}
+
 void testGuardedOpenNp() {
   // Don't check for an error code; some tests trigger an error intentionally.
   int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
-  static constexpr int GUARD_DUP = 2;
   guardid_t guard = GUARD_DUP;
   shk::FileDescriptor(__guarded_open_np(
       "input", &guard, GUARD_DUP, flags, 0666));
@@ -496,7 +513,6 @@ void testMknod() {
 
 void testOpenDprotectedNp() {
   // Don't check for an error code; some tests trigger an error intentionally.
-  static constexpr int PROTECTION_CLASS_DEFAULT = -1;
   int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
   shk::FileDescriptor(open_dprotected_np(
       "input", flags, PROTECTION_CLASS_DEFAULT, 0, 0666));
@@ -772,6 +788,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "getattrlist", testGetattrlist },
   { "getattrlistat", testGetattrlistat },
   { "getxattr", testGetxattr },
+  { "guarded_open_dprotected_np", testGuardedOpenDprotectedNp },
   { "guarded_open_np", testGuardedOpenNp },
   { "lchown", testLchown },
   { "link", testLink },
