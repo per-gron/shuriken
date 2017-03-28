@@ -580,13 +580,15 @@ void testOpenbyidNp() {
   }
 }
 
-void testOpenPartialOverwrite() {
-  auto fd = shk::FileDescriptor(open("input", O_WRONLY, 0));
+void testOpenCreate() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  int flags = O_WRONLY | O_CREAT | O_TRUNC;
+  auto fd = shk::FileDescriptor(open("input", flags, 0666));
   if (fd.get() == -1) {
     die("open failed");
   }
 
-  if (write(fd.get(), "hi", 2) != 2) {
+  if (write(fd.get(), "yo", 2) != 2) {
     die("write failed");
   }
 }
@@ -625,6 +627,17 @@ void testOpenImplicitRead() {
 void testOpenNocancel() {
   // Don't check for an error code; some tests trigger an error intentionally.
   shk::FileDescriptor(__open_nocancel("input", O_RDONLY, 0));
+}
+
+void testOpenPartialOverwrite() {
+  auto fd = shk::FileDescriptor(open("input", O_WRONLY, 0));
+  if (fd.get() == -1) {
+    die("open failed");
+  }
+
+  if (write(fd.get(), "hi", 2) != 2) {
+    die("write failed");
+  }
 }
 
 void testOpenRead() {
@@ -888,6 +901,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkfifo", testMkfifo },
   { "mkfifo_extended", testMkfifoExtended },
   { "mknod", testMknod },
+  { "open_create", testOpenCreate },
   { "open_dprotected_np", testOpenDprotectedNp },
   { "open_extended", testOpenExtended },
   { "open_implicit_read", testOpenImplicitRead },
