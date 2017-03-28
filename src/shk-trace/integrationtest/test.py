@@ -665,6 +665,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_posix_spawn(self):
+    trace = trace_cmd(helper + ' posix_spawn')
+    self.assertIn('read /usr/bin/true', trace)
+
+  @with_testdir()
   def test_pthread_chdir(self):
     trace = trace_cmd(helper + ' pthread_chdir')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)

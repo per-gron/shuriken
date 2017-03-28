@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fcntl.h>
+#include <spawn.h>
 #include <string>
 #include <sys/types.h>  // has to be before acl.h is included, for gid_t
 #include <sys/acl.h>
@@ -512,6 +513,27 @@ void testPathconf() {
   pathconf("input", _PC_LINK_MAX);
 }
 
+void testPosixSpawn() {
+  pid_t pid;
+  char *argv[] = { const_cast<char *>("/usr/bin/true"), nullptr };
+  char *environ[] = { nullptr };
+  int err = posix_spawn(
+      &pid,
+      "/usr/bin/true",
+      nullptr,
+      nullptr,
+      argv,
+      environ);
+  if (err) {
+    die("posix_spawn failed");
+  }
+
+  int status;
+  if (waitpid(pid, &status, 0) == -1) {
+    die("failed waiting for child process");
+  }
+}
+
 void testPthreadChdir() {
   if (__pthread_chdir("/usr") != 0) {
     die("chdir failed");
@@ -744,6 +766,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "openat_nocancel", testOpenatNocancel },
   { "openbyid_np", testOpenbyidNp },
   { "pathconf", testPathconf },
+  { "posix_spawn", testPosixSpawn },
   { "pthread_chdir", testPthreadChdir },
   { "pthread_chdir_other_thread", testPthreadChdirOtherThread },
   { "pthread_chdir_fail", testPthreadChdirFail },

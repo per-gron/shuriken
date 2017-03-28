@@ -126,7 +126,7 @@ void dropPrivileges() {
 
 int executeCommand(const std::string &cmd) {
   pid_t pid;
-  const char *argv[] = { "sh", "-c", cmd.c_str(), NULL };
+  const char *argv[] = { "sh", "-c", cmd.c_str(), nullptr };
   int err = posix_spawn(
       &pid,
       "/bin/sh",
