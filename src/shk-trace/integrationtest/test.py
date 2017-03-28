@@ -211,6 +211,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('write ' + os.getcwd() + '/output', trace)
 
   @with_testdir()
+  def test_execve(self):
+    trace = trace_cmd(helper + ' execve')
+    self.assertIn('read /usr/bin/true', trace)
+
+  @with_testdir()
   def test_exchangedata_error(self):
     write_file('output', '')
     trace = trace_cmd(helper + ' exchangedata')

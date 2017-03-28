@@ -141,8 +141,8 @@ class Tracer {
   void set_enable(bool enabled);
   void set_remove();
   uint64_t sample_sc(std::vector<kd_buf> &event_buffer);
-  void enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name);
-  void enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name);
+  void enter_event_now(uintptr_t thread, int type, kd_buf *kd);
+  void enter_event(uintptr_t thread, int type, kd_buf *kd);
   void enter_illegal_event(uintptr_t thread, int type);
   void exit_event(
       uintptr_t thread,

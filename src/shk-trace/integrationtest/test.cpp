@@ -190,6 +190,13 @@ void testExchangedata() {
   exchangedata("input", "output", 0);
 }
 
+void testExecve() {
+  char *argv[] = { const_cast<char *>("true"), nullptr };
+  char *environ[] = { nullptr };
+  execve("/usr/bin/true", argv, environ);
+  die("execve should not return");
+}
+
 void testFaccessat() {
   auto usr_fd = openFileForReading("/usr");
 
@@ -689,6 +696,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "dup", testDup },
   { "dup2", testDup2 },
   { "exchangedata", testExchangedata },
+  { "execve", testExecve },
   { "faccessat", testFaccessat },
   { "fchdir", testFchdir },
   { "fchflags", testFchflags },

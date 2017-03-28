@@ -161,38 +161,17 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 
     switch (type) {
     case TRACE_DATA_NEWTHREAD:
-      if (kd[i].arg1) {
-        event_info *ei = &_ei_map.add_event(thread, TRACE_DATA_NEWTHREAD)->second;
-        ei->child_thread = kd[i].arg1;
-        ei->pid = kd[i].arg2;
-        _delegate.newThread(ei->pid, thread, ei->child_thread);
-      }
-      continue;
-
-    case TRACE_STRING_NEWTHREAD:
       {
-        auto ei_it = _ei_map.find(thread, TRACE_DATA_NEWTHREAD);
-        if (ei_it == _ei_map.end()) {
-          continue;
+        auto child_thread = kd[i].arg1;
+        auto pid = kd[i].arg2;
+        if (child_thread) {
+          _delegate.newThread(pid, thread, child_thread);
         }
-        event_info *ei = &ei_it->second;
-
-        _ei_map.erase(ei_it);
-        continue;
-      }
-
-    case TRACE_DATA_EXEC:
-      {
-        auto &ei = _ei_map.add_event(thread, TRACE_DATA_EXEC)->second;
-        ei.pid = kd[i].arg1;
         continue;
       }
 
     case TRACE_STRING_EXEC:
       {
-        // TODO(peck): It seems like this code never finds anything in _ei_map
-        // in practice. It works because execve and posix_spawn is always
-        // accompanied by stat64 calls, which count as reads as well.
         auto ei_it = _ei_map.find(thread, BSC_execve);
         if (ei_it != _ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
@@ -203,9 +182,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
             exit_event(thread, BSC_posix_spawn, 0, 0, 0, 0, BSC_execve);
           }
         }
-        ei_it = _ei_map.find(thread, TRACE_DATA_EXEC);
 
-        _ei_map.erase(ei_it);
         continue;
       }
 
@@ -301,7 +278,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
             0,
             "Legacy Carbon FileManager event");
       } else {
-        enter_event(thread, type, &kd[i], nullptr);
+        enter_event(thread, type, &kd[i]);
       }
       continue;
     }
@@ -328,7 +305,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
 }
 
 
-void Tracer::enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char *name) {
+void Tracer::enter_event_now(uintptr_t thread, int type, kd_buf *kd) {
   auto ei_it = _ei_map.add_event(thread, type);
   auto *ei = &ei_it->second;
 
@@ -339,9 +316,9 @@ void Tracer::enter_event_now(uintptr_t thread, int type, kd_buf *kd, const char 
 }
 
 
-void Tracer::enter_event(uintptr_t thread, int type, kd_buf *kd, const char *name) {
+void Tracer::enter_event(uintptr_t thread, int type, kd_buf *kd) {
   if (should_process_syscall(type)) {
-    enter_event_now(thread, type, kd, name);
+    enter_event_now(thread, type, kd);
   }
 }
 
@@ -566,6 +543,7 @@ void Tracer::format_print(
 
   case BSC_access:
   case BSC_access_extended:
+  case BSC_execve:
   case BSC_faccessat:
   case BSC_fstatat64:
   case BSC_fstatat:
@@ -578,6 +556,7 @@ void Tracer::format_print(
   case BSC_lstat:
   case BSC_lstat_extended:
   case BSC_pathconf:
+  case BSC_posix_spawn:
   case BSC_readlink:
   case BSC_readlinkat:
   case BSC_stat64:
@@ -585,16 +564,6 @@ void Tracer::format_print(
   case BSC_stat:
   case BSC_stat_extended:
   {
-    add_event(EventType::READ, pathname1, syscallAtMember(syscall));
-    break;
-  }
-
-  case BSC_execve:
-  case BSC_posix_spawn:
-  {
-    // TODO(peck): It seems like this code is dead in practice: This code never
-    // gets a pathname of the executed binary. It works because execve and
-    // posix_spawn is always accompanied by stat64 calls.
     add_event(EventType::READ, pathname1, syscallAtMember(syscall));
     break;
   }
