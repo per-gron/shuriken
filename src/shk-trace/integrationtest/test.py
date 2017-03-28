@@ -671,6 +671,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_open_read(self):
+    trace = trace_cmd(helper + ' open_read')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_openat(self):
     os.mkdir('dir')
     write_file('dir/input', '')

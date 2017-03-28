@@ -560,6 +560,26 @@ void testMknod() {
   }
 }
 
+void testOpenat() {
+  auto dir_fd = openFileForReading("dir");
+
+  // Don't check for an error code; some tests trigger an error intentionally.
+  shk::FileDescriptor(openat(dir_fd.get(), "input", O_RDONLY));
+}
+
+void testOpenatNocancel() {
+  auto dir_fd = openFileForReading("dir");
+
+  // Don't check for an error code; some tests trigger an error intentionally.
+  shk::FileDescriptor(__openat_nocancel(dir_fd.get(), "input", O_RDONLY, 0));
+}
+
+void testOpenbyidNp() {
+  if (openbyid_np(nullptr, nullptr, 0) != -1) {
+    die("openbyid_np succeeded");
+  }
+}
+
 void testOpenDprotectedNp() {
   // Don't check for an error code; some tests trigger an error intentionally.
   int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
@@ -580,24 +600,9 @@ void testOpenNocancel() {
   shk::FileDescriptor(__open_nocancel("input", O_RDONLY, 0));
 }
 
-void testOpenat() {
-  auto dir_fd = openFileForReading("dir");
-
+void testOpenRead() {
   // Don't check for an error code; some tests trigger an error intentionally.
-  shk::FileDescriptor(openat(dir_fd.get(), "input", O_RDONLY));
-}
-
-void testOpenatNocancel() {
-  auto dir_fd = openFileForReading("dir");
-
-  // Don't check for an error code; some tests trigger an error intentionally.
-  shk::FileDescriptor(__openat_nocancel(dir_fd.get(), "input", O_RDONLY, 0));
-}
-
-void testOpenbyidNp() {
-  if (openbyid_np(nullptr, nullptr, 0) != -1) {
-    die("openbyid_np succeeded");
-  }
+  shk::FileDescriptor(open("input", O_RDONLY, 0));
 }
 
 void testPathconf() {
@@ -859,6 +864,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "open_dprotected_np", testOpenDprotectedNp },
   { "open_extended", testOpenExtended },
   { "open_nocancel", testOpenNocancel },
+  { "open_read", testOpenRead },
   { "openat", testOpenat },
   { "openat_nocancel", testOpenatNocancel },
   { "openbyid_np", testOpenbyidNp },
