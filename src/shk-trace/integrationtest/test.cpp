@@ -47,6 +47,7 @@ extern "C" int __fstat64_extended(
     struct stat64 *s,
     struct kauth_filesec *sec,
     size_t *sec_size);
+extern "C" int guarded_close_np(int fd, const guardid_t *guard);
 extern "C" int __guarded_open_dprotected_np(
     const char *path,
     const guardid_t *guard,
@@ -441,6 +442,27 @@ void testGetxattr() {
   getxattr("input", "test", buf, sizeof(buf), 0, 0);
 }
 
+void testGuardedCloseNp() {
+  int flags = O_RDONLY | O_CLOEXEC;
+  guardid_t guard = GUARD_DUP;
+  auto usr_fd = shk::FileDescriptor(__guarded_open_dprotected_np(
+      "/usr", &guard, GUARD_DUP, flags, PROTECTION_CLASS_DEFAULT, 0, 0666));
+  if (usr_fd.get() == -1) {
+    die("guarded_open_dprotected_np failed");
+  }
+
+  auto usr_fd_num = usr_fd.get();
+  guardid_t close_guard = GUARD_DUP;
+  if (guarded_close_np(usr_fd.release(), &close_guard) != 0) {
+    die("close failed");
+  }
+
+  // usr_fd_num is not a valid file descriptor anymore. This should fail.
+  if (faccessat(usr_fd_num, "local", 0, 0) != -1 || errno != EBADF) {
+    die("faccessat did not fail with EBADF error");
+  }
+}
+
 void testGuardedOpenDprotectedNp() {
   // Don't check for an error code; some tests trigger an error intentionally.
   int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
@@ -817,6 +839,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "getattrlist", testGetattrlist },
   { "getattrlistat", testGetattrlistat },
   { "getxattr", testGetxattr },
+  { "guarded_close_np", testGuardedCloseNp },
   { "guarded_open_dprotected_np", testGuardedOpenDprotectedNp },
   { "guarded_open_np", testGuardedOpenNp },
   { "lchown", testLchown },

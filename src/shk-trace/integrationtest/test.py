@@ -449,6 +449,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_guarded_close_np(self):
+    trace = trace_cmd(helper + ' guarded_close_np')
+    self.assertNotIn('read /usr/local\n', trace)
+
+  @with_testdir()
   def test_guarded_open_dprotected_np(self):
     trace = trace_cmd(helper + ' guarded_open_dprotected_np')
     self.assertIn('create ' + os.getcwd() + '/input', trace)

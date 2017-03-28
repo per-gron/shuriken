@@ -458,6 +458,7 @@ void Tracer::format_print(
 
   case BSC_close:
   case BSC_close_nocancel:
+  case BSC_guarded_close_np:
   {
     if (success) {
       // In practice, this call does not seem entirely necessary for
