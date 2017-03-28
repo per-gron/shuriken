@@ -677,6 +677,13 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_open_partial_overwrite(self):
+    write_file('input', '__!')
+    trace = trace_cmd(helper + ' open_partial_overwrite')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+    self.assertEqual(read_file('input'), 'hi!')
+
+  @with_testdir()
   def test_open_read(self):
     trace = trace_cmd(helper + ' open_read')
     self.assertIn('read ' + os.getcwd() + '/input', trace)

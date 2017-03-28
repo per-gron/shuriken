@@ -580,6 +580,17 @@ void testOpenbyidNp() {
   }
 }
 
+void testOpenPartialOverwrite() {
+  auto fd = shk::FileDescriptor(open("input", O_WRONLY, 0));
+  if (fd.get() == -1) {
+    die("open failed");
+  }
+
+  if (write(fd.get(), "hi", 2) != 2) {
+    die("write failed");
+  }
+}
+
 void testOpenDprotectedNp() {
   // Don't check for an error code; some tests trigger an error intentionally.
   int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
@@ -881,6 +892,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "open_extended", testOpenExtended },
   { "open_implicit_read", testOpenImplicitRead },
   { "open_nocancel", testOpenNocancel },
+  { "open_partial_overwrite", testOpenPartialOverwrite },
   { "open_read", testOpenRead },
   { "openat", testOpenat },
   { "openat_nocancel", testOpenatNocancel },
