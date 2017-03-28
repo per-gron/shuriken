@@ -29,6 +29,7 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
     BSC_chown,
     BSC_chownat,
     BSC_chroot,
+    BSC_close,
     BSC_copyfile,
     BSC_delete,
     BSC_dup,

@@ -182,6 +182,17 @@ void testChroot() {
   chroot("/");
 }
 
+void testClose() {
+  auto usr_fd = openFileForReading("/usr");
+  auto usr_fd_num = usr_fd.get();
+  usr_fd.reset();
+
+  // usr_fd_num is not a valid file descriptor anymore. This should fail.
+  if (faccessat(usr_fd_num, "local", 0, 0) != -1 || errno != EBADF) {
+    die("faccessat did not fail with EBADF error");
+  }
+}
+
 void testDup() {
   auto usr_fd = openFileForReading("/usr");
   auto duped_fd = shk::FileDescriptor(dup(usr_fd.get()));
@@ -757,6 +768,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "chmod_extended", testChmodExtended },
   { "chown", testChown },
   { "chroot", testChroot },
+  { "close", testClose },
   { "dup", testDup },
   { "dup2", testDup2 },
   { "exchangedata", testExchangedata },

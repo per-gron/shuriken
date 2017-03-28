@@ -456,6 +456,21 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_close:
+  {
+    if (success) {
+      // In practice, this call does not seem entirely necessary for
+      // correctness: If an *at syscall later uses this closed fd, it's going
+      // to fail before it even attempts to look up any path, so it's not going
+      // to be reported anyway.
+      //
+      // Nevertheless, this is useful from a resource saving perspective: We
+      // don't need to store information about this file descriptor anymore.
+      _delegate.close(thread, ei->arg1);
+    }
+    break;
+  }
+
   case BSC_rmdir:
   case BSC_unlink:
   case BSC_unlinkat:
