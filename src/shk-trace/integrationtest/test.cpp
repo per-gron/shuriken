@@ -30,6 +30,7 @@ extern "C" int __chmod_extended(
     gid_t gid,
     int mode,
     struct kauth_filesec *sec);
+extern "C" int __close_nocancel(int fd);
 extern "C" int __fchmod_extended(
     int fd,
     uid_t uid,
@@ -185,7 +186,22 @@ void testChroot() {
 void testClose() {
   auto usr_fd = openFileForReading("/usr");
   auto usr_fd_num = usr_fd.get();
-  usr_fd.reset();
+  if (close(usr_fd.release()) != 0) {
+    die("close failed");
+  }
+
+  // usr_fd_num is not a valid file descriptor anymore. This should fail.
+  if (faccessat(usr_fd_num, "local", 0, 0) != -1 || errno != EBADF) {
+    die("faccessat did not fail with EBADF error");
+  }
+}
+
+void testCloseNocancel() {
+  auto usr_fd = openFileForReading("/usr");
+  auto usr_fd_num = usr_fd.get();
+  if (__close_nocancel(usr_fd.release()) != 0) {
+    die("close_nocancel failed");
+  }
 
   // usr_fd_num is not a valid file descriptor anymore. This should fail.
   if (faccessat(usr_fd_num, "local", 0, 0) != -1 || errno != EBADF) {
@@ -769,6 +785,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "chown", testChown },
   { "chroot", testChroot },
   { "close", testClose },
+  { "close_nocancel", testCloseNocancel },
   { "dup", testDup },
   { "dup2", testDup2 },
   { "exchangedata", testExchangedata },
