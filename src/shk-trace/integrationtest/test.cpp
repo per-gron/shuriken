@@ -595,6 +595,22 @@ void testOpenExtended() {
       "input", O_RDONLY, getuid(), getgid(), 0, &filesec));
 }
 
+void testOpenImplicitRead() {
+  auto fd = shk::FileDescriptor(open("input", 0, 0));
+  if (fd.get() == -1) {
+    die("open failed");
+  }
+
+  char buf[16];
+  if (read(fd.get(), buf, 2) != 2) {
+    die("read failed");
+  }
+  buf[2] = 0;
+  if (std::string(buf) != "hi") {
+    die("expected to read 'hi'");
+  }
+}
+
 void testOpenNocancel() {
   // Don't check for an error code; some tests trigger an error intentionally.
   shk::FileDescriptor(__open_nocancel("input", O_RDONLY, 0));
@@ -863,6 +879,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mknod", testMknod },
   { "open_dprotected_np", testOpenDprotectedNp },
   { "open_extended", testOpenExtended },
+  { "open_implicit_read", testOpenImplicitRead },
   { "open_nocancel", testOpenNocancel },
   { "open_read", testOpenRead },
   { "openat", testOpenat },
