@@ -20,6 +20,8 @@
 
 #include <util/file_descriptor.h>
 
+using guardid_t = uint64_t;
+
 extern "C" int __chmod_extended(
     const char *path,
     uid_t uid,
@@ -42,6 +44,12 @@ extern "C" int __fstat64_extended(
     struct stat64 *s,
     struct kauth_filesec *sec,
     size_t *sec_size);
+extern "C" int __guarded_open_np(
+    const char *path,
+    const guardid_t *guard,
+    u_int guardflags,
+    int flags,
+    int mode);
 extern "C" int __lstat_extended(
     const char *path,
     struct stat *s,
@@ -394,6 +402,15 @@ void testGetattrlistat() {
 void testGetxattr() {
   char buf[1024];
   getxattr("input", "test", buf, sizeof(buf), 0, 0);
+}
+
+void testGuardedOpenNp() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
+  static constexpr int GUARD_DUP = 2;
+  guardid_t guard = GUARD_DUP;
+  shk::FileDescriptor(__guarded_open_np(
+      "input", &guard, GUARD_DUP, flags, 0666));
 }
 
 void testLchown() {
@@ -755,6 +772,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "getattrlist", testGetattrlist },
   { "getattrlistat", testGetattrlistat },
   { "getxattr", testGetxattr },
+  { "guarded_open_np", testGuardedOpenNp },
   { "lchown", testLchown },
   { "link", testLink },
   { "linkat", testLinkat },

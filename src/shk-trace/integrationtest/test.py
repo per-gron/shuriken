@@ -439,6 +439,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_guarded_open_np(self):
+    trace = trace_cmd(helper + ' guarded_open_np')
+    self.assertIn('create ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_guarded_open_np_error(self):
+    os.mkdir('input')
+    trace = trace_cmd(helper + ' guarded_open_np')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_lchown(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' lchown')
