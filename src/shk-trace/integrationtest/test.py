@@ -601,6 +601,17 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('fatal_error mknod', trace)
 
   @with_testdir()
+  def test_open_dprotected_np(self):
+    trace = trace_cmd(helper + ' open_dprotected_np')
+    self.assertIn('create ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
+  def test_open_dprotected_np_error(self):
+    os.mkdir('input')
+    trace = trace_cmd(helper + ' open_dprotected_np')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_open_extended(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' open_extended')

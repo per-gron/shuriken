@@ -8,6 +8,7 @@
 #include <sys/types.h>  // has to be before acl.h is included, for gid_t
 #include <sys/acl.h>
 #include <sys/attr.h>
+#include <sys/fcntl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/syslimits.h>
@@ -476,6 +477,14 @@ void testMknod() {
   }
 }
 
+void testOpenDprotectedNp() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  static constexpr int PROTECTION_CLASS_DEFAULT = -1;
+  int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
+  shk::FileDescriptor(open_dprotected_np(
+      "input", flags, PROTECTION_CLASS_DEFAULT, 0, 0666));
+}
+
 void testOpenExtended() {
   // Don't check for an error code; some tests trigger an error intentionally.
   struct kauth_filesec filesec{ 0 };
@@ -760,6 +769,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkfifo", testMkfifo },
   { "mkfifo_extended", testMkfifoExtended },
   { "mknod", testMknod },
+  { "open_dprotected_np", testOpenDprotectedNp },
   { "open_extended", testOpenExtended },
   { "open_nocancel", testOpenNocancel },
   { "openat", testOpenat },
