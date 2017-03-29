@@ -38,6 +38,7 @@ extern "C" int __fchmod_extended(
     gid_t gid,
     int mode,
     struct kauth_filesec *sec);
+extern "C" int __fcntl_nocancel(int fildes, int cmd, ...);
 extern "C" int __fstat_extended(
     int fd,
     struct stat *s,
@@ -374,6 +375,24 @@ void testFcntlEnableCloexec() {
       "open_cloexec:continuation",
       nullptr };
   auto fd_str = "fd=" + std::to_string(dir_fd.get());
+  char *environ[] = { const_cast<char *>(fd_str.c_str()), nullptr };
+  execve(self_executable_path.c_str(), const_cast<char **>(argv), environ);
+  die("execve should not return");
+}
+
+void testFcntlNocancelDupfd() {
+  auto original_fd = openFileForReading("dir");
+  auto duped_fd = shk::FileDescriptor(
+      __fcntl_nocancel(original_fd.get(), F_DUPFD));
+  if (duped_fd.get() == -1) {
+    die("dup failed");
+  }
+
+  const char *argv[] = {
+      self_executable_path.c_str(),
+      "open_cloexec_off:continuation",
+      nullptr };
+  auto fd_str = "fd=" + std::to_string(duped_fd.get());
   char *environ[] = { const_cast<char *>(fd_str.c_str()), nullptr };
   execve(self_executable_path.c_str(), const_cast<char **>(argv), environ);
   die("execve should not return");
@@ -1085,6 +1104,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fcntl_dupfd_cloexec", testFcntlDupfdCloexec },
   { "fcntl_dupfd_cloexec_exec", testFcntlDupfdCloexecExec },
   { "fcntl_enable_cloexec", testFcntlEnableCloexec },
+  { "fcntl_nocancel_dupfd", testFcntlNocancelDupfd },
   { "fgetattrlist", testFgetattrlist },
   { "fgetxattr", testFgetxattr },
   { "fhopen", testFhopen },

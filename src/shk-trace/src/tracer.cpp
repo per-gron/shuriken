@@ -461,6 +461,7 @@ void Tracer::format_print(
   }
 
   case BSC_fcntl:
+  case BSC_fcntl_nocancel:
   {
     int fd = ei->arg1;
     int cmd = ei->arg2;

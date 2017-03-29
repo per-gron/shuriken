@@ -341,6 +341,14 @@ class IntegrationTest(unittest.TestCase):
     self.assertNotIn('read ' + os.getcwd() + '/dir/input', trace)
 
   @with_testdir()
+  def test_fcntl_nocancel_dupfd(self):
+    os.mkdir('dir')
+    write_file('dir/input', '')
+    trace = trace_cmd(helper + ' fcntl_nocancel_dupfd')
+    self.assertIn('read ' + os.getcwd() + '/dir', trace)
+    self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
   def test_fgetattrlist(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' fgetattrlist')
