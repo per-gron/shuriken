@@ -460,6 +460,23 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_fcntl:
+  {
+    int fd = ei->arg1;
+    int cmd = ei->arg2;
+    int arg = ei->arg3;
+
+    if (cmd == F_DUPFD || cmd == F_DUPFD_CLOEXEC) {
+      if (success) {
+        _delegate.dup(thread, fd, arg2, cmd == F_DUPFD_CLOEXEC);
+      }
+    } else if (cmd == F_SETFD) {
+      _delegate.setCloexec(thread, fd, arg == FD_CLOEXEC);
+    }
+
+    break;
+  }
+
   case BSC_close:
   case BSC_close_nocancel:
   case BSC_guarded_close_np:

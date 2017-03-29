@@ -313,6 +313,27 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
 
   @with_testdir()
+  def test_fcntl_dupfd(self):
+    os.mkdir('dir')
+    write_file('dir/input', '')
+    trace = trace_cmd(helper + ' fcntl_dupfd')
+    self.assertIn('read ' + os.getcwd() + '/dir', trace)
+    self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
+  def test_fcntl_dupfd_cloexec(self):
+    trace = trace_cmd(helper + ' fcntl_dupfd_cloexec')
+    self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
+
+  @with_testdir()
+  def test_fcntl_dupfd_cloexec_exec(self):
+    os.mkdir('dir')
+    write_file('dir/input', '')
+    trace = trace_cmd(helper + ' fcntl_dupfd_cloexec_exec')
+    self.assertIn('read ' + os.getcwd() + '/dir', trace)
+    self.assertNotIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
   def test_fcntl_enable_cloexec(self):
     os.mkdir('dir')
     trace = trace_cmd(helper + ' fcntl_enable_cloexec')

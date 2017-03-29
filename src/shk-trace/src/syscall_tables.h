@@ -43,6 +43,8 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
     BSC_fchmod,
     BSC_fchmod_extended,
     BSC_fchown,
+    BSC_fcntl,
+    BSC_fcntl_nocancel,
     BSC_fgetattrlist,
     BSC_fhopen,
     BSC_flock,

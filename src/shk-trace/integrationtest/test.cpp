@@ -314,6 +314,51 @@ void testFcntlDisableCloexec() {
   die("execve should not return");
 }
 
+void testFcntlDupfd() {
+  auto original_fd = openFileForReading("dir");
+  auto duped_fd = shk::FileDescriptor(fcntl(original_fd.get(), F_DUPFD));
+  if (duped_fd.get() == -1) {
+    die("dup failed");
+  }
+
+  const char *argv[] = {
+      self_executable_path.c_str(),
+      "open_cloexec_off:continuation",
+      nullptr };
+  auto fd_str = "fd=" + std::to_string(duped_fd.get());
+  char *environ[] = { const_cast<char *>(fd_str.c_str()), nullptr };
+  execve(self_executable_path.c_str(), const_cast<char **>(argv), environ);
+  die("execve should not return");
+}
+
+void testFcntlDupfdCloexec() {
+  auto original_fd = openFileForReading("/usr");
+  auto duped_fd = shk::FileDescriptor(fcntl(original_fd.get(), F_DUPFD_CLOEXEC));
+  if (duped_fd.get() == -1) {
+    die("dup failed");
+  }
+
+  assert(openat(
+      duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) == -1);
+}
+
+void testFcntlDupfdCloexecExec() {
+  auto original_fd = openFileForReading("dir");
+  auto duped_fd = shk::FileDescriptor(fcntl(original_fd.get(), F_DUPFD_CLOEXEC));
+  if (duped_fd.get() == -1) {
+    die("dup failed");
+  }
+
+  const char *argv[] = {
+      self_executable_path.c_str(),
+      "open_cloexec:continuation",
+      nullptr };
+  auto fd_str = "fd=" + std::to_string(duped_fd.get());
+  char *environ[] = { const_cast<char *>(fd_str.c_str()), nullptr };
+  execve(self_executable_path.c_str(), const_cast<char **>(argv), environ);
+  die("execve should not return");
+}
+
 void testFcntlEnableCloexec() {
   auto dir_fd = shk::FileDescriptor(open("dir", O_RDONLY));
   if (dir_fd.get() == -1) {
@@ -1036,6 +1081,9 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fchown", testFchown },
   { "fchownat", testFchownat },
   { "fcntl_disable_cloexec", testFcntlDisableCloexec },
+  { "fcntl_dupfd", testFcntlDupfd },
+  { "fcntl_dupfd_cloexec", testFcntlDupfdCloexec },
+  { "fcntl_dupfd_cloexec_exec", testFcntlDupfdCloexecExec },
   { "fcntl_enable_cloexec", testFcntlEnableCloexec },
   { "fgetattrlist", testFgetattrlist },
   { "fgetxattr", testFgetxattr },
