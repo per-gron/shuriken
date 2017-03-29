@@ -684,7 +684,7 @@ class IntegrationTest(unittest.TestCase):
   def test_open_cloexec_off(self):
     os.mkdir('dir')
     write_file('dir/input', '')
-    trace = trace_cmd(helper + ' open_cloexec')
+    trace = trace_cmd(helper + ' open_cloexec_off')
     self.assertIn('read ' + os.getcwd() + '/dir', trace)
     self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
 
