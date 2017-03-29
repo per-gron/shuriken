@@ -294,6 +294,46 @@ void testFchownat() {
   fchownat(dir_fd.get(), "input", getuid(), getgid(), 0);
 }
 
+void testFcntlDisableCloexec() {
+  auto dir_fd = shk::FileDescriptor(open("dir", O_RDONLY | O_CLOEXEC));
+  if (dir_fd.get() == -1) {
+    die("open of dir failed");
+  }
+
+  if (fcntl(dir_fd.get(), F_SETFD, 0) == -1) {
+    die("fcntl failed");
+  }
+
+  const char *argv[] = {
+      self_executable_path.c_str(),
+      "open_cloexec_off:continuation",
+      nullptr };
+  auto fd_str = "fd=" + std::to_string(dir_fd.get());
+  char *environ[] = { const_cast<char *>(fd_str.c_str()), nullptr };
+  execve(self_executable_path.c_str(), const_cast<char **>(argv), environ);
+  die("execve should not return");
+}
+
+void testFcntlEnableCloexec() {
+  auto dir_fd = shk::FileDescriptor(open("dir", O_RDONLY));
+  if (dir_fd.get() == -1) {
+    die("open of dir failed");
+  }
+
+  if (fcntl(dir_fd.get(), F_SETFD, FD_CLOEXEC) == -1) {
+    die("fcntl failed");
+  }
+
+  const char *argv[] = {
+      self_executable_path.c_str(),
+      "open_cloexec:continuation",
+      nullptr };
+  auto fd_str = "fd=" + std::to_string(dir_fd.get());
+  char *environ[] = { const_cast<char *>(fd_str.c_str()), nullptr };
+  execve(self_executable_path.c_str(), const_cast<char **>(argv), environ);
+  die("execve should not return");
+}
+
 void testFgetattrlist() {
   auto input_fd = openFileForReading("input");
 
@@ -995,6 +1035,8 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "fchmodat", testFchmodat },
   { "fchown", testFchown },
   { "fchownat", testFchownat },
+  { "fcntl_disable_cloexec", testFcntlDisableCloexec },
+  { "fcntl_enable_cloexec", testFcntlEnableCloexec },
   { "fgetattrlist", testFgetattrlist },
   { "fgetxattr", testFgetxattr },
   { "fhopen", testFhopen },
