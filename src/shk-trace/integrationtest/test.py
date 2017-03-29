@@ -644,6 +644,20 @@ class IntegrationTest(unittest.TestCase):
     self.assertEqual(read_file('input'), 'yo')
 
   @with_testdir()
+  def test_open_create_excl(self):
+    trace = trace_cmd(helper + ' open_create_excl')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+    self.assertIn('create ' + os.getcwd() + '/input', trace)
+    self.assertEqual(read_file('input'), 'ye')
+
+  @with_testdir()
+  def test_open_create_excl_append(self):
+    trace = trace_cmd(helper + ' open_create_excl_append')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+    self.assertEqual(read_file('input'), 'ye')
+
+  @with_testdir()
   def test_open_dprotected_np(self):
     trace = trace_cmd(helper + ' open_dprotected_np')
     self.assertIn('create ' + os.getcwd() + '/input', trace)

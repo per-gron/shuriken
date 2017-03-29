@@ -433,6 +433,9 @@ void Tracer::format_print(
     bool trunc = !!(ei->arg2 & O_TRUNC);
     auto at = syscallAtMember(syscall);
 
+    // open with O_EXCL counts as acquiring information about a potentially
+    // pre-existing file. The only difference it makes is that it lets you know
+    // if the file was already there.
     if (excl || (read && !trunc)) {
       add_event(EventType::READ, pathname1, at);
     }

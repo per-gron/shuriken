@@ -593,6 +593,32 @@ void testOpenCreate() {
   }
 }
 
+void testOpenCreateExcl() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  int flags = O_WRONLY | O_CREAT | O_EXCL | O_TRUNC;
+  auto fd = shk::FileDescriptor(open("input", flags, 0666));
+  if (fd.get() == -1) {
+    die("open failed");
+  }
+
+  if (write(fd.get(), "ye", 2) != 2) {
+    die("write failed");
+  }
+}
+
+void testOpenCreateExclAppend() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  int flags = O_WRONLY | O_CREAT | O_EXCL;
+  auto fd = shk::FileDescriptor(open("input", flags, 0666));
+  if (fd.get() == -1) {
+    die("open failed");
+  }
+
+  if (write(fd.get(), "ye", 2) != 2) {
+    die("write failed");
+  }
+}
+
 void testOpenDprotectedNp() {
   // Don't check for an error code; some tests trigger an error intentionally.
   int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
@@ -902,6 +928,8 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkfifo_extended", testMkfifoExtended },
   { "mknod", testMknod },
   { "open_create", testOpenCreate },
+  { "open_create_excl", testOpenCreateExcl },
+  { "open_create_excl_append", testOpenCreateExclAppend },
   { "open_dprotected_np", testOpenDprotectedNp },
   { "open_extended", testOpenExtended },
   { "open_implicit_read", testOpenImplicitRead },
