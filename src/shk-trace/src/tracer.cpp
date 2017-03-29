@@ -427,11 +427,12 @@ void Tracer::format_print(
   case BSC_openat:
   case BSC_openat_nocancel:
   {
-    bool read = !(ei->arg2 & O_WRONLY);
-    bool write = !!(ei->arg2 & O_RDWR) || !!(ei->arg2 & O_WRONLY);
-    bool excl = !!(ei->arg2 & O_EXCL);
-    bool trunc = !!(ei->arg2 & O_TRUNC);
     auto at = syscallAtMember(syscall);
+    int flags = at ? ei->arg3 : ei->arg2;
+    bool read = !(flags & O_WRONLY);
+    bool write = !!(flags & O_RDWR) || !!(flags & O_WRONLY);
+    bool excl = !!(flags & O_EXCL);
+    bool trunc = !!(flags & O_TRUNC);
 
     // open with O_EXCL counts as acquiring information about a potentially
     // pre-existing file. The only difference it makes is that it lets you know
@@ -451,7 +452,7 @@ void Tracer::format_print(
       _delegate.open(
           thread,
           fd,
-          /*at_fd:*/AT_FDCWD,  // TODO(peck): Implement me
+          ei->*at,
           pathname1,
           /*cloexec:*/false);  // TODO(peck): Implement me
     }

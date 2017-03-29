@@ -741,6 +741,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
 
   @with_testdir()
+  def test_openat_with_openat_fd(self):
+    trace = trace_cmd(helper + ' openat_with_openat_fd')
+    self.assertIn('read /usr/shk_for_testing_only', trace)
+
+  @with_testdir()
   def test_openbyid_np(self):
     trace = trace_cmd(helper + ' openbyid_np')
     self.assertIn('fatal_error openbyid_np', trace)

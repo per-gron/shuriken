@@ -574,6 +574,20 @@ void testOpenatNocancel() {
   shk::FileDescriptor(__openat_nocancel(dir_fd.get(), "input", O_RDONLY, 0));
 }
 
+void testOpenatWithOpenatFd() {
+  auto dir_fd = openFileForReading("/");
+
+  auto usr_fd = shk::FileDescriptor(openat(dir_fd.get(), "usr", O_RDONLY));
+  if (usr_fd.get() == -1) {
+    die("openat of /usr failed");
+  }
+
+  auto local_fd = shk::FileDescriptor(openat(usr_fd.get(), "shk_for_testing_only", O_RDONLY));
+  if (local_fd.get() != -1 || errno != ENOENT) {
+    die("openat of /usr/shk_for_testing_only succeeded");
+  }
+}
+
 void testOpenbyidNp() {
   if (openbyid_np(nullptr, nullptr, 0) != -1) {
     die("openbyid_np succeeded");
@@ -965,6 +979,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "open_read", testOpenRead },
   { "openat", testOpenat },
   { "openat_nocancel", testOpenatNocancel },
+  { "openat_with_openat_fd", testOpenatWithOpenatFd },
   { "openbyid_np", testOpenbyidNp },
   { "pathconf", testPathconf },
   { "posix_spawn", testPosixSpawn },
