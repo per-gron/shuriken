@@ -644,6 +644,12 @@ class IntegrationTest(unittest.TestCase):
     self.assertEqual(read_file('input'), 'yo')
 
   @with_testdir()
+  def test_open_create_and_read(self):
+    trace = trace_cmd(helper + ' open_create_and_read')
+    self.assertIn('create ' + os.getcwd() + '/input', trace)
+    self.assertNotIn('read ' + os.getcwd() + '/input', trace)
+
+  @with_testdir()
   def test_open_create_excl(self):
     trace = trace_cmd(helper + ' open_create_excl')
     self.assertIn('read ' + os.getcwd() + '/input', trace)

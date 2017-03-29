@@ -593,6 +593,32 @@ void testOpenCreate() {
   }
 }
 
+void testOpenCreateAndRead() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  int flags = O_RDWR | O_CREAT | O_TRUNC;
+  auto fd = shk::FileDescriptor(open("input", flags, 0666));
+  if (fd.get() == -1) {
+    die("open failed");
+  }
+
+  if (write(fd.get(), "HA", 2) != 2) {
+    die("write failed");
+  }
+
+  if (lseek(fd.get(), 0, SEEK_SET) == -1) {
+    die("lseek failed");
+  }
+
+  char buf[16];
+  if (read(fd.get(), buf, 2) != 2) {
+    die("read failed");
+  }
+  buf[2] = 0;
+  if (std::string(buf) != "HA") {
+    die("expected to read 'HA'");
+  }
+}
+
 void testOpenCreateExcl() {
   // Don't check for an error code; some tests trigger an error intentionally.
   int flags = O_WRONLY | O_CREAT | O_EXCL | O_TRUNC;
@@ -928,6 +954,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkfifo_extended", testMkfifoExtended },
   { "mknod", testMknod },
   { "open_create", testOpenCreate },
+  { "open_create_and_read", testOpenCreateAndRead },
   { "open_create_excl", testOpenCreateExcl },
   { "open_create_excl_append", testOpenCreateExclAppend },
   { "open_dprotected_np", testOpenDprotectedNp },
