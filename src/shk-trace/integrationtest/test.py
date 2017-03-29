@@ -638,6 +638,21 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('fatal_error mknod', trace)
 
   @with_testdir()
+  def test_open_cloexec(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' open_cloexec')
+    self.assertIn('read ' + os.getcwd() + '/dir', trace)
+    self.assertNotIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
+  def test_open_cloexec_off(self):
+    os.mkdir('dir')
+    write_file('dir/input', '')
+    trace = trace_cmd(helper + ' open_cloexec')
+    self.assertIn('read ' + os.getcwd() + '/dir', trace)
+    self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
   def test_open_create(self):
     trace = trace_cmd(helper + ' open_create')
     self.assertIn('create ' + os.getcwd() + '/input', trace)

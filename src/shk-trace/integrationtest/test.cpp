@@ -24,6 +24,7 @@ using guardid_t = uint64_t;
 static constexpr int PROTECTION_CLASS_DEFAULT = -1;
 static constexpr int GUARD_DUP = 2;
 
+extern "C" char **environ;
 extern "C" int __chmod_extended(
     const char *path,
     uid_t uid,
@@ -101,6 +102,8 @@ extern "C" int __stat64_extended(
 extern "C" int openbyid_np(fsid_t* fsid, fsobj_id_t* objid, int flags);
 
 namespace {
+
+std::string self_executable_path;
 
 void die(const std::string &reason) {
   fprintf(stderr, "Fatal error: %s (%s)\n", reason.c_str(), strerror(errno));
@@ -594,6 +597,67 @@ void testOpenbyidNp() {
   }
 }
 
+int parseFdFromEnviron() {
+  for (char **env = environ; *env; env++) {
+    char *v = *env;
+    if (strlen(v) > 3 && v[0] == 'f' && v[1] == 'd' && v[2] == '=') {
+      return atoi(v + 3);
+    }
+  }
+  die("could not extract fd from environ");
+  return -1;
+}
+
+void testOpenCloexec() {
+  auto dir_fd = shk::FileDescriptor(open("dir", O_RDONLY | O_CLOEXEC));
+  if (dir_fd.get() == -1) {
+    die("open of dir failed");
+  }
+
+  const char *argv[] = {
+      self_executable_path.c_str(),
+      "open_cloexec:continuation",
+      nullptr };
+  auto fd_str = "fd=" + std::to_string(dir_fd.get());
+  char *environ[] = { const_cast<char *>(fd_str.c_str()), nullptr };
+  execve(self_executable_path.c_str(), const_cast<char **>(argv), environ);
+  die("execve should not return");
+}
+
+void testOpenCloexecContinuation() {
+  auto dir_fd = parseFdFromEnviron();
+
+  auto fd = shk::FileDescriptor(openat(dir_fd, "input", O_RDONLY));
+  if (fd.get() != -1 || errno != EBADF) {
+    die("the cloexec'd fd should be closed by now");
+  }
+}
+
+void testOpenCloexecOff() {
+  auto dir_fd = shk::FileDescriptor(open("dir", O_RDONLY));
+  if (dir_fd.get() == -1) {
+    die("open of dir failed");
+  }
+
+  const char *argv[] = {
+      self_executable_path.c_str(),
+      "open_cloexec_off:continuation",
+      nullptr };
+  auto fd_str = "fd=" + std::to_string(dir_fd.get());
+  char *environ[] = { const_cast<char *>(fd_str.c_str()), nullptr };
+  execve(self_executable_path.c_str(), const_cast<char **>(argv), environ);
+  die("execve should not return");
+}
+
+void testOpenCloexecOffContinuation() {
+  auto dir_fd = shk::FileDescriptor(parseFdFromEnviron());
+
+  auto fd = shk::FileDescriptor(openat(dir_fd.get(), "input", O_RDONLY));
+  if (fd.get() == -1) {
+    die("open failed");
+  }
+}
+
 void testOpenCreate() {
   // Don't check for an error code; some tests trigger an error intentionally.
   int flags = O_WRONLY | O_CREAT | O_TRUNC;
@@ -967,6 +1031,10 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "mkfifo", testMkfifo },
   { "mkfifo_extended", testMkfifoExtended },
   { "mknod", testMknod },
+  { "open_cloexec", testOpenCloexec },
+  { "open_cloexec:continuation", testOpenCloexecContinuation },
+  { "open_cloexec_off", testOpenCloexecOff },
+  { "open_cloexec_off:continuation", testOpenCloexecOffContinuation },
   { "open_create", testOpenCreate },
   { "open_create_and_read", testOpenCreateAndRead },
   { "open_create_excl", testOpenCreateExcl },
@@ -1022,6 +1090,8 @@ int main(int argc, char *argv[]) {
     }
     return 1;
   }
+
+  self_executable_path = argv[0];
 
   const std::string test_name = argv[1];
   auto test_it = kTests.find(test_name);

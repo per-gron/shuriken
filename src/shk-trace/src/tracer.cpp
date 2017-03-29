@@ -452,7 +452,7 @@ void Tracer::format_print(
       _delegate.open(
           thread,
           fd,
-          ei->*at,
+          at ? ei->*at : AT_FDCWD,
           pathname1,
           /*cloexec:*/false);  // TODO(peck): Implement me
     }
