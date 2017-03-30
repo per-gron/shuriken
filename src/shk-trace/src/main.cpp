@@ -238,14 +238,11 @@ int main(int argc, char *argv[]) {
 
   int status_code;
   std::thread([&] {
-    // Due to a limitation in the tracing information that kdebug provides,
-    // the traced program must create a thread, that has its own pid, which
-    // will be traced. This thread can then spawn another process.
-    //
-    // This is because a tracing request contains the pid of the process to
-    // be traced. This starts tracing 
-    //
-    // TODO(peck): Restructure / document this so that it becomes sane.
+    // Due to a limitation in the tracing information that kdebug provides
+    // (when forking, the tracer can't know the parent pid), the traced program
+    // (aka this code) creates a thread (which has the same pid as the process
+    // that makes the trace request). This triggers tracing to start, and we can
+    // then posix_spawn from here.
     status_code = executeCommand(cmdline_options.command);
   }).join();
 
