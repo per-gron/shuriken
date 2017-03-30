@@ -82,6 +82,16 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('delete ' + os.getcwd() + '/file', trace)
 
   @with_testdir()
+  def test_tracing_in_parallel(self):
+    run_cmd(
+        shkTrace + " -f trace1.txt -c 'sleep 1 && /bin/echo hey' &" +
+        shkTrace + " -f trace2.txt -c 'sleep 1 && /bin/echo hey' && wait")
+    trace1 = read_file('trace1.txt')
+    trace2 = read_file('trace2.txt')
+    self.assertIn('read /bin/echo\n', trace1)
+    self.assertIn('read /bin/echo\n', trace2)
+
+  @with_testdir()
   def test_create_and_delete_file(self):
     trace = trace_cmd("echo > file && rm file")
     self.assertNotIn(os.getcwd() + '/file', trace)
