@@ -121,6 +121,30 @@ TEST_CASE("PathResolver") {
       CHECK(event.path == kInitialPath + "/yoyo");
     }
 
+    SECTION("EmptyCwd") {
+      auto delegate_ptr = std::unique_ptr<MockPathResolverDelegate>(
+          new MockPathResolverDelegate());
+      MockPathResolverDelegate &delegate = *delegate_ptr;
+      PathResolver pr(std::move(delegate_ptr), kInitialPid, "");
+      pr.newThread(kInitialPid, 2, kThreadId);
+      pr.fileEvent(kThreadId, EventType::READ, AT_FDCWD, "yoyo");
+      auto event = delegate.popFileEvent();
+      CHECK(event.thread_id == kThreadId);
+      CHECK(event.type == EventType::READ);
+      CHECK(event.at_fd == AT_FDCWD);
+      CHECK(event.path == "/yoyo");
+    }
+
+    SECTION("CwdEndingWithSlash") {
+      pr.chdir(kThreadId, "/", AT_FDCWD);
+      pr.fileEvent(kThreadId, EventType::READ, AT_FDCWD, "yoyo");
+      auto event = delegate.popFileEvent();
+      CHECK(event.thread_id == kThreadId);
+      CHECK(event.type == EventType::READ);
+      CHECK(event.at_fd == AT_FDCWD);
+      CHECK(event.path == "/yoyo");
+    }
+
     SECTION("EmptyPath") {
       pr.fileEvent(kThreadId, EventType::READ, AT_FDCWD, "");
       auto event = delegate.popFileEvent();
