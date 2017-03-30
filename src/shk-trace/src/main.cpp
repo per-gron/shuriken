@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "cmdline_options.h"
+#include "daemon.h"
 #include "event_consolidator.h"
 #include "kdebug_controller.h"
 #include "named_mach_port.h"
@@ -14,19 +15,20 @@
 #include "tracing_server.h"
 
 extern "C" int reexec_to_match_kernel();
-extern char **environ;
+extern "C" char **environ;
 
 namespace shk {
 namespace {
 
-int getNumCpus() {
+bool getNumCpus(int *out) {
   int num_cpus;
   size_t len = sizeof(num_cpus);
   static int name[] = { CTL_HW, HW_NCPU, 0 };
   if (sysctl(name, 2, &num_cpus, &len, nullptr, 0) < 0) {
-    throw std::runtime_error("Failed to get number of CPUs");
+    return false;
   }
-  return num_cpus;
+  *out = num_cpus;
+  return true;
 }
 
 static const std::string PORT_NAME = "com.pereckerdal.shktrace";
@@ -71,45 +73,70 @@ class PathResolverDelegate : public PathResolver::Delegate {
   EventConsolidator _consolidator;
 };
 
-std::unique_ptr<TracingServer> runTracingServer(
-    dispatch_queue_t queue, MachReceiveRight &&port) {
-  auto kdebug_ctrl = makeKdebugController();
+std::pair<MachSendRight, bool> tryConnectToServer() {
+  for (int attempts = 0; attempts < 100; attempts++) {
+    auto client_port = openNamedPort(PORT_NAME);
+    if (client_port.second == MachOpenPortResult::SUCCESS) {
+      return std::make_pair(std::move(client_port.first), true);
+    } else if (client_port.second != MachOpenPortResult::NOT_FOUND) {
+      return std::make_pair(MachSendRight(), false);
+    }
 
-  ProcessTracer process_tracer;
-
-  Tracer tracer(
-      getNumCpus(),
-      *kdebug_ctrl,
-      process_tracer);
-  tracer.start(queue);
-
-  return makeTracingServer(
-      queue,
-      std::move(port),
-      [&](std::unique_ptr<TracingServer::TraceRequest> &&request) {
-        pid_t pid = request->pid_to_trace;
-        process_tracer.traceProcess(
-            pid,
-            std::unique_ptr<ProcessTracer::Delegate>(
-                nullptr/*new PathResolverDelegate(std::move(request))*/));
-      });
-}
-
-std::pair<MachSendRight, bool> connectToServer() {
-  auto client_port = openNamedPort(PORT_NAME);
-  if (client_port.second == MachOpenPortResult::SUCCESS) {
-    return std::make_pair(std::move(client_port.first), true);
-  } else if (client_port.second != MachOpenPortResult::NOT_FOUND) {
-    fprintf(stderr, "Failed to open Mach port against server\n");
-    return std::make_pair(MachSendRight(), false);
+    usleep(2000);
   }
 
-  auto server_port = registerNamedPort(PORT_NAME);
-  // TODO(peck): handle failure
-  // runTracingServer(std::move(server_port.first));
-
-  printf("Need to open\n");
   return std::make_pair(MachSendRight(), false);
+}
+
+bool tryForkAndSpawnTracingServer(std::string *err) {
+  int num_cpus = 0;
+  if (!getNumCpus(&num_cpus)) {
+    *err = "Failed to get number of CPUs";
+    return false;
+  }
+
+  daemon(DaemonConfig(), [num_cpus] {
+    auto server_port = registerNamedPort(PORT_NAME);
+    if (server_port.second != MachPortRegistrationResult::SUCCESS) {
+      // TODO(peck): handle failure
+      fprintf(stderr, "internal error\n");
+      abort();
+    }
+
+    DispatchQueue queue(dispatch_queue_create(
+        "shk-trace-server",
+        DISPATCH_QUEUE_SERIAL));
+
+    auto kdebug_ctrl = makeKdebugController();
+
+    ProcessTracer process_tracer;
+
+    Tracer tracer(
+        num_cpus,
+        *kdebug_ctrl,
+        process_tracer);
+    tracer.start(queue.get());
+
+    auto tracing_server = makeTracingServer(
+        queue.get(),
+        std::move(server_port.first),
+        [&](std::unique_ptr<TracingServer::TraceRequest> &&request) {
+          pid_t pid = request->pid_to_trace;
+          auto cwd = request->cwd;
+          process_tracer.traceProcess(
+              pid,
+              std::unique_ptr<Tracer::Delegate>(
+                  new PathResolver(
+                      std::unique_ptr<PathResolver::Delegate>(
+                          new PathResolverDelegate(std::move(request))),
+                      pid,
+                      std::move(cwd))));
+        });
+
+    dispatch_main();  // Wait forever. TODO(peck): Make this exit when appropriate
+  });
+
+  return true;
 }
 
 void dropPrivileges() {
@@ -119,6 +146,7 @@ void dropPrivileges() {
   if (newuid != olduid) {
     seteuid(newuid);
     if (setuid(newuid) == -1) {
+      fprintf(stderr, "Failed to drop privileges\n");
       abort();
     }
   }
@@ -181,44 +209,19 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  auto port_pair = makePortPair();
-  DispatchQueue queue(dispatch_queue_create(
-      "shk-trace-server",
-      DISPATCH_QUEUE_SERIAL));
-
-  auto kdebug_ctrl = makeKdebugController();
-
-  ProcessTracer process_tracer;
-
-  Tracer tracer(
-      getNumCpus(),
-      *kdebug_ctrl,
-      process_tracer);
-  tracer.start(queue.get());
-
-  auto tracing_server = makeTracingServer(
-      queue.get(),
-      std::move(port_pair.first),
-      [&](std::unique_ptr<TracingServer::TraceRequest> &&request) {
-        pid_t pid = request->pid_to_trace;
-        auto cwd = request->cwd;
-        process_tracer.traceProcess(
-            pid,
-            std::unique_ptr<Tracer::Delegate>(
-                new PathResolver(
-                    std::unique_ptr<PathResolver::Delegate>(
-                        new PathResolverDelegate(std::move(request))),
-                    pid,
-                    std::move(cwd))));
-      });
-
-  //auto mach_port = connectToServer();
-  /*if (!mach_port.second) {
-    TODO(peck): Do error checking here
+  std::string err;
+  if (!tryForkAndSpawnTracingServer(&err)) {
+    fprintf(stderr, "%s\n", err.c_str());
     return 1;
-  }*/
+  }
 
   dropPrivileges();
+
+  auto server_port = tryConnectToServer();
+  if (!server_port.second) {
+    fprintf(stderr, "Failed to connect to server\n");
+    return 1;
+  }
 
   auto trace_fd = openTraceFile(cmdline_options.tracefile);
   if (!trace_fd.second) {
@@ -227,7 +230,7 @@ int main(int argc, char *argv[]) {
   }
 
   auto trace_request = requestTracing(
-      std::move(port_pair.second),
+      std::move(server_port.first),
       std::move(trace_fd.first),
       reinterpret_cast<char *>(
           RAIIHelper<void *, void, free>(getcwd(nullptr, 0)).get()));
@@ -246,9 +249,6 @@ int main(int argc, char *argv[]) {
     status_code = executeCommand(cmdline_options.command);
   }).join();
 
-  // TODO(peck): If the timeout provided here is MACH_MSG_TIMEOUT_NONE, the
-  // process sometimes just stalls. I don't know why. This probably needs to be
-  // fixed.
   auto wait_result = trace_request.first->wait(3000);
   switch (wait_result) {
   case TraceHandle::WaitResult::SUCCESS:
