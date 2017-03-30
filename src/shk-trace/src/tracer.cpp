@@ -384,6 +384,17 @@ void Tracer::format_print(
 
   const bool success = arg1 == 0;
 
+  if (!*pathname1) {
+    // When opening root, the VFS_LOOKUP mechanism doesn't seem to work; it
+    // it results in an empty path, which by the rest of the code is treated as
+    // pointing to the cwd or (in *at syscalls) what the file descriptor points
+    // to.
+    //
+    // This is a workaround for this. Unfortunately, this means that shk-trace
+    // will often report that root has been read.
+    pathname1 = "/";
+  }
+
   switch (syscall) {
   case BSC_dup:
   case BSC_dup2:
