@@ -36,11 +36,11 @@ void ProcessTracer::newThread(
   }
 }
 
-void ProcessTracer::terminateThread(uintptr_t thread_id) {
+Tracer::Delegate::Response ProcessTracer::terminateThread(uintptr_t thread_id) {
   auto ancestor_it = _ancestor_threads.find(thread_id);
   if (ancestor_it == _ancestor_threads.end()) {
     // The thread is not being traced.
-    return;
+    return Response::OK;
   }
 
   // Call terminateThread before the object is potentially deleted below
@@ -52,7 +52,15 @@ void ProcessTracer::terminateThread(uintptr_t thread_id) {
     // This thread is an ancestor traced thread. Finish the tracing by
     // destroying the delegate.
     _traced_threads.erase(delegate_it);
+
+    if (_traced_threads.empty() && _to_be_traced.empty()) {
+      // A process has finished tracing, and there are no other processes being
+      // traced. It is time for the shk-trace daemon to quit.
+      return Response::QUIT_TRACING;
+    }
   }
+
+  return Response::OK;
 }
 
 void ProcessTracer::fileEvent(

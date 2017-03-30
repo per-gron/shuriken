@@ -85,8 +85,7 @@ Tracer::Tracer(
 
 Tracer::~Tracer() {
   _shutting_down = true;
-  if (dispatch_semaphore_wait(
-          _shutdown_semaphore.get(), DISPATCH_TIME_FOREVER)) {
+  if (!wait(DISPATCH_TIME_FOREVER)) {
     fprintf(stderr, "Failed to wait for tracing to finish\n");
     abort();
   }
@@ -103,8 +102,15 @@ void Tracer::start(dispatch_queue_t queue) {
   dispatch_async(queue, ^{ loop(queue); });
 }
 
+bool Tracer::wait(dispatch_time_t timeout) {
+  return dispatch_semaphore_wait(_shutdown_semaphore.get(), timeout) == 0;
+}
+
 void Tracer::loop(dispatch_queue_t queue) {
   if (_shutting_down) {
+    // Signal the semaphore twice, because both the destructor and wait may be
+    // waiting for it.
+    dispatch_semaphore_signal(_shutdown_semaphore.get());
     dispatch_semaphore_signal(_shutdown_semaphore.get());
     return;
   }
@@ -187,7 +193,10 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
       }
 
     case BSC_thread_terminate:
-      _delegate.terminateThread(thread);
+      if (_delegate.terminateThread(thread) == Delegate::Response::QUIT_TRACING) {
+        _shutting_down = true;
+        return 0;
+      }
       continue;
 
     case BSC_exit:
@@ -299,7 +308,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
       exit_event(thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, type);
     }
   }
-  fflush(0);
 
   return sleep_ms;
 }

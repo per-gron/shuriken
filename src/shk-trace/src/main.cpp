@@ -43,7 +43,6 @@ class PathResolverDelegate : public PathResolver::Delegate {
     for (const auto &event : events) {
       write(eventTypeToString(event.first) + (" " + event.second) + "\n");
     }
-    // TODO(peck): Do something about quitting the tracing server as well.
   }
 
   virtual void fileEvent(
@@ -133,7 +132,7 @@ bool tryForkAndSpawnTracingServer(std::string *err) {
                       std::move(cwd))));
         });
 
-    dispatch_main();  // Wait forever. TODO(peck): Make this exit when appropriate
+    tracer.wait(DISPATCH_TIME_FOREVER);
   });
 
   return true;

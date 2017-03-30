@@ -68,7 +68,7 @@ TEST_CASE("PathResolver") {
 
   SECTION("TerminateThread") {
     SECTION("Basic") {
-      pr.terminateThread(kThreadId);
+      CHECK(pr.terminateThread(kThreadId) == Tracer::Delegate::Response::OK);
     }
 
     SECTION("ForgetThreadCwd") {

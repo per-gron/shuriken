@@ -24,9 +24,11 @@ void PathResolver::newThread(
   }
 }
 
-void PathResolver::terminateThread(uintptr_t thread_id) {
+Tracer::Delegate::Response PathResolver::terminateThread(uintptr_t thread_id) {
   _cwd_memo.threadExit(thread_id);
   _pids.erase(thread_id);
+
+  return Response::OK;
 }
 
 void PathResolver::fileEvent(

@@ -27,6 +27,11 @@ class Tracer {
  public:
   class Delegate {
    public:
+    enum class Response {
+      OK,
+      QUIT_TRACING
+    };
+
     virtual ~Delegate() = default;
 
     virtual void newThread(
@@ -34,7 +39,11 @@ class Tracer {
         uintptr_t parent_thread_id,
         uintptr_t child_thread_id) = 0;
 
-    virtual void terminateThread(uintptr_t thread_id) = 0;
+    /**
+     * Invoked when a thread has terminated. The return value of this callback
+     * gives an opportunity for the Delegate to instruct the tracer to stop.
+     */
+    virtual Response terminateThread(uintptr_t thread_id) = 0;
 
     /**
      * A path that is "" means that the path refers to the file or directory ´
@@ -134,6 +143,16 @@ class Tracer {
   ~Tracer();
 
   void start(dispatch_queue_t queue);
+
+  /**
+   * Block until the tracing server has stopped listening (this happens when the
+   * delegate instructs it to quit). This method can be called from any thread.
+   *
+   * Returns true on success, or false on timeout.
+   *
+   * This method should be called at most once.
+   */
+  bool wait(dispatch_time_t timeout);
 
  private:
   void loop(dispatch_queue_t queue);
