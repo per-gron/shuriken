@@ -1,0 +1,21 @@
+namespace ShkTrace;
+
+enum EventType : byte {
+  Read,
+  Write,
+  Create,
+  Delete,
+  FatalError
+}
+
+table Event {
+  type:EventType;
+  path:string (required);
+}
+
+table Trace {
+  events:[Event] (required);
+}
+
+file_extension "trace";
+root_type Trace;
