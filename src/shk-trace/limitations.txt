@@ -3,7 +3,7 @@ Known Limitations:
 * shk-trace can't trace shk-trace.
 * cannot accurately trace paths that end with a > character.
 * symlinks in directories in paths are probably not handled correctly.
-* listxattr, removexattr, open et al, getattrlist, getattrlistat, stat, fstat, lstat, stat64, fstat64, lstat64, fstatat, fstatat64, exchangedata, lchown, chown, chmod, fchmod, fchmodat, link, futimes, fchflags: will do the wrong thing (not follow symlink) when the source is a symlink.
+* listxattr, removexattr, open et al, getattrlist, getattrlistat, stat, fstat, stat64, fstat64, fstatat, fstatat64, exchangedata, lchown, chown, chmod, fchmod, fchmodat, link, futimes, fchflags: will do the wrong thing (not follow symlink) when the source is a symlink.
 * fstatat, fstatat64, exchangedata, linkat, fchmodat, fchownat: AT_SYMLINK_NOFOLLOW is not supported
 * getattrlist, getattrlistat: FSOPT_NOFOLLOW is not supported
 * listxattr, removexattr, setxattr, getxattr: XATTR_NOFOLLOW is not supported
