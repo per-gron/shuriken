@@ -11,6 +11,7 @@
 #include "named_mach_port.h"
 #include "path_resolver.h"
 #include "process_tracer.h"
+#include "trace_writer.h"
 #include "tracer.h"
 #include "tracing_server.h"
 
@@ -32,45 +33,6 @@ bool getNumCpus(int *out) {
 }
 
 static const std::string PORT_NAME = "com.pereckerdal.shktrace";
-
-class PathResolverDelegate : public PathResolver::Delegate {
- public:
-  PathResolverDelegate(std::unique_ptr<TracingServer::TraceRequest> &&request)
-      : _request(std::move(request)) {}
-
-  virtual ~PathResolverDelegate() {
-    auto events = _consolidator.getConsolidatedEventsAndReset();
-    for (const auto &event : events) {
-      write(eventTypeToString(event.first) + (" " + event.second) + "\n");
-    }
-  }
-
-  virtual void fileEvent(
-      uintptr_t thread_id,
-      EventType type,
-      int at_fd,
-      std::string &&path) override {
-    _consolidator.event(type, std::move(path));
-  }
-
- private:
-  void write(const std::string &str) {
-    auto written = ::write(
-        _request->trace_fd.get(),
-        str.c_str(),
-        str.size());
-    if (written != str.size()) {
-      fprintf(stderr, "Failed to write to tracing file\n");
-      abort();
-    }
-  }
-
-  // This object is destroyed when tracing has finished. That, in turn, will
-  // destroy the TraceRequest, which signals to the traced process that tracing
-  // has finished.
-  const std::unique_ptr<TracingServer::TraceRequest> _request;
-  EventConsolidator _consolidator;
-};
 
 std::pair<MachSendRight, bool> tryConnectToServer() {
   for (int attempts = 0; attempts < 100; attempts++) {
@@ -122,12 +84,13 @@ bool tryForkAndSpawnTracingServer(std::string *err) {
         [&](std::unique_ptr<TracingServer::TraceRequest> &&request) {
           pid_t pid = request->pid_to_trace;
           auto cwd = request->cwd;
+          auto trace_writer = std::unique_ptr<PathResolver::Delegate>(
+              new TraceWriter(std::move(request)));
           process_tracer.traceProcess(
               pid,
               std::unique_ptr<Tracer::Delegate>(
                   new PathResolver(
-                      std::unique_ptr<PathResolver::Delegate>(
-                          new PathResolverDelegate(std::move(request))),
+                      std::move(trace_writer),
                       pid,
                       std::move(cwd))));
         });
