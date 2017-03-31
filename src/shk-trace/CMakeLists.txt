@@ -64,6 +64,7 @@ add_executable(shktrace_test
   test/named_mach_port_test.cpp
   test/path_resolver_test.cpp
   test/process_tracer_test.cpp
+  test/trace_writer_test.cpp
   test/tracing_server_test.cpp)
 target_link_libraries(shktrace_test pthread catch libshktrace)
 set_property(TARGET shktrace_test PROPERTY CXX_STANDARD 11)
