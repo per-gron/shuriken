@@ -1,5 +1,7 @@
 add_subdirectory(blake2_cmake)
 
+add_subdirectory(flatbuffers)
+
 set(RC_ENABLE_CATCH ON)
 add_subdirectory(rapidcheck)
 
