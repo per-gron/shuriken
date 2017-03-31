@@ -7,6 +7,3 @@
 [submodule "vendor/blake2"]
 	path = vendor/blake2
 	url = git@github.com:BLAKE2/BLAKE2.git
-[submodule "vendor/utf8proc"]
-	path = vendor/utf8proc
-	url = git@github.com:JuliaLang/utf8proc.git
