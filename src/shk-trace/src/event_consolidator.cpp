@@ -4,7 +4,7 @@ namespace shk {
 
 void EventConsolidator::event(EventType type, std::string &&path) {
   switch (type) {
-  case EventType::READ:
+  case EventType::Read:
     if (_created.count(path) == 0) {
       // When a program reads from a file that it created itself, that doesn't
       // affect the result of the program; it can only see what it itself has
@@ -13,7 +13,7 @@ void EventConsolidator::event(EventType type, std::string &&path) {
     }
     break;
 
-  case EventType::WRITE:
+  case EventType::Write:
     if (_created.count(path) == 0) {
       // When a program writes to a file that it created itself, it is
       // sufficient to remember that the file was created by that program.
@@ -24,7 +24,7 @@ void EventConsolidator::event(EventType type, std::string &&path) {
     }
     break;
 
-  case EventType::CREATE:
+  case EventType::Create:
     // The program has now entirely overwritten the file. See WRITE
     _written.erase(path);
     // The program has now created a file at this path. There is no need to
@@ -34,7 +34,7 @@ void EventConsolidator::event(EventType type, std::string &&path) {
     _created.insert(std::move(path));
     break;
 
-  case EventType::DELETE:
+  case EventType::Delete:
     {
       // When a program writes to a file and then deletes it, it doesn't matter
       // that it wrote to the file before. (However, if it read from the file,
@@ -50,7 +50,7 @@ void EventConsolidator::event(EventType type, std::string &&path) {
     }
     break;
 
-  case EventType::FATAL_ERROR:
+  case EventType::FatalError:
     _fatal_errors.insert(std::move(path));
     break;
   }
@@ -65,11 +65,11 @@ std::vector<EventConsolidator::Event> EventConsolidator::getConsolidatedEventsAn
     }
   };
 
-  insert_events(_fatal_errors, EventType::FATAL_ERROR);
-  insert_events(_deleted, EventType::DELETE);
-  insert_events(_created, EventType::CREATE);
-  insert_events(_read, EventType::READ);
-  insert_events(_written, EventType::WRITE);
+  insert_events(_fatal_errors, EventType::FatalError);
+  insert_events(_deleted, EventType::Delete);
+  insert_events(_created, EventType::Create);
+  insert_events(_read, EventType::Read);
+  insert_events(_written, EventType::Write);
 
   *this = EventConsolidator();
 

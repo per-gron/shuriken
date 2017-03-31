@@ -8,7 +8,7 @@ namespace {
 bool containsFatalError(const std::vector<EventConsolidator::Event> &events) {
   return std::find_if(events.begin(), events.end(), [](
       const EventConsolidator::Event &event) {
-    return event.first == EventType::FATAL_ERROR;
+    return event.first == EventType::FatalError;
   }) != events.end();
 }
 
@@ -20,7 +20,7 @@ TEST_CASE("EventConsolidator") {
   EventConsolidator ec;
 
   SECTION("Copyable") {
-    ec.event(ET::FATAL_ERROR, "");
+    ec.event(ET::FatalError, "");
     auto ec2 = ec;
 
     CHECK(containsFatalError(ec.getConsolidatedEventsAndReset()));
@@ -29,7 +29,7 @@ TEST_CASE("EventConsolidator") {
 
   SECTION("Assignable") {
     EventConsolidator ec2;
-    ec2.event(ET::FATAL_ERROR, "");
+    ec2.event(ET::FatalError, "");
     ec = ec2;
 
     CHECK(containsFatalError(ec.getConsolidatedEventsAndReset()));
@@ -38,7 +38,7 @@ TEST_CASE("EventConsolidator") {
 
   SECTION("Reset") {
     static constexpr ET events[] = {
-        ET::READ, ET::WRITE, ET::CREATE, ET::DELETE, ET::FATAL_ERROR };
+        ET::Read, ET::Write, ET::Create, ET::Delete, ET::FatalError };
     for (const auto event : events) {
       ec.event(event, "");
       CHECK(!ec.getConsolidatedEventsAndReset().empty());
@@ -48,7 +48,7 @@ TEST_CASE("EventConsolidator") {
 
   SECTION("MergeDuplicateEvents") {
     static constexpr ET events[] = {
-        ET::READ, ET::WRITE, ET::CREATE, ET::DELETE, ET::FATAL_ERROR };
+        ET::Read, ET::Write, ET::Create, ET::Delete, ET::FatalError };
     for (const auto event : events) {
       ec.event(event, "a");
       ec.event(event, "a");
@@ -58,7 +58,7 @@ TEST_CASE("EventConsolidator") {
 
   SECTION("KeepPathAndEventType") {
     static constexpr ET events[] = {
-        ET::READ, ET::WRITE, ET::CREATE, ET::DELETE, ET::FATAL_ERROR };
+        ET::Read, ET::Write, ET::Create, ET::Delete, ET::FatalError };
     for (const auto event : events) {
       ec.event(event, "path");
 
@@ -70,30 +70,30 @@ TEST_CASE("EventConsolidator") {
   }
 
   SECTION("IgnoreWriteAfterCreate") {
-    ec.event(ET::CREATE, "path");
-    ec.event(ET::WRITE, "path");
+    ec.event(ET::Create, "path");
+    ec.event(ET::Write, "path");
 
     auto res = ec.getConsolidatedEventsAndReset();
     REQUIRE(res.size() == 1);
-    CHECK(res.front().first == ET::CREATE);
+    CHECK(res.front().first == ET::Create);
     CHECK(res.front().second == "path");
   }
 
   SECTION("CreateOverridesDelete") {
-    ec.event(ET::DELETE, "path");
-    ec.event(ET::CREATE, "path");
+    ec.event(ET::Delete, "path");
+    ec.event(ET::Create, "path");
 
     auto res = ec.getConsolidatedEventsAndReset();
     REQUIRE(res.size() == 1);
-    CHECK(res.front().first == ET::CREATE);
+    CHECK(res.front().first == ET::Create);
     CHECK(res.front().second == "path");
   }
 
   SECTION("CreateAndDeleteOverrideWrite") {
-    static constexpr ET events[] = { ET::CREATE, ET::DELETE };
+    static constexpr ET events[] = { ET::Create, ET::Delete };
 
     for (auto event : events) {
-      ec.event(ET::WRITE, "path");
+      ec.event(ET::Write, "path");
       ec.event(event, "path");
 
       auto res = ec.getConsolidatedEventsAndReset();
@@ -104,20 +104,20 @@ TEST_CASE("EventConsolidator") {
   }
 
   SECTION("CreateWriteDeleteDoNotOverrideRead") {
-    static constexpr ET events[] = { ET::CREATE, ET::WRITE, ET::DELETE };
+    static constexpr ET events[] = { ET::Create, ET::Write, ET::Delete };
 
     for (auto event : events) {
-      ec.event(ET::READ, "path");
+      ec.event(ET::Read, "path");
       ec.event(event, "path");
 
       auto res = ec.getConsolidatedEventsAndReset();
       REQUIRE(res.size() == 2);
-      if (res[0].first != ET::READ) {
+      if (res[0].first != ET::Read) {
         // Crude sort
         swap(res[0], res[1]);
       }
 
-      CHECK(res[0].first == ET::READ);
+      CHECK(res[0].first == ET::Read);
       CHECK(res[0].second == "path");
       CHECK(res[1].first == event);
       CHECK(res[1].second == "path");
@@ -125,8 +125,8 @@ TEST_CASE("EventConsolidator") {
   }
 
   SECTION("DeleteErasesCreate") {
-    ec.event(ET::CREATE, "path");
-    ec.event(ET::DELETE, "path");
+    ec.event(ET::Create, "path");
+    ec.event(ET::Delete, "path");
 
     CHECK(ec.getConsolidatedEventsAndReset().empty());
   }

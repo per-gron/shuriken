@@ -283,7 +283,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
       if ((type & CLASS_MASK) == FILEMGR_BASE) {
         _delegate.fileEvent(
             thread,
-            EventType::FATAL_ERROR,
+            EventType::FatalError,
             0,
             "Legacy Carbon FileManager event");
       } else {
@@ -379,7 +379,7 @@ void Tracer::format_print(
 
   auto disallowed_event = [&](const std::string &event_name) {
     _delegate.fileEvent(
-        thread, EventType::FATAL_ERROR, -1, event_name + " not allowed");
+        thread, EventType::FatalError, -1, event_name + " not allowed");
   };
 
   const bool success = arg1 == 0;
@@ -457,13 +457,13 @@ void Tracer::format_print(
     // pre-existing file. The only difference it makes is that it lets you know
     // if the file was already there.
     if (excl || (read && !trunc)) {
-      add_event(EventType::READ, pathname1, at);
+      add_event(EventType::Read, pathname1, at);
     }
 
     if (trunc) {
-      add_event(EventType::CREATE, pathname1, at);
+      add_event(EventType::Create, pathname1, at);
     } else if (write) {
-      add_event(EventType::WRITE, pathname1, at);
+      add_event(EventType::Write, pathname1, at);
     }
 
     if (success) {
@@ -518,42 +518,42 @@ void Tracer::format_print(
   case BSC_unlink:
   case BSC_unlinkat:
   {
-    add_event(EventType::DELETE, pathname1, syscallAtMember(syscall));
+    add_event(EventType::Delete, pathname1, syscallAtMember(syscall));
     break;
   }
 
   case BSC_link:
   {
-    add_event(EventType::READ, pathname1, nullptr);
-    add_event(EventType::CREATE, pathname2, nullptr);
+    add_event(EventType::Read, pathname1, nullptr);
+    add_event(EventType::Create, pathname2, nullptr);
     break;
   }
 
   case BSC_linkat:
   {
-    add_event(EventType::READ, pathname1, &event_info::arg1);
-    add_event(EventType::CREATE, pathname2, &event_info::arg3);
+    add_event(EventType::Read, pathname1, &event_info::arg1);
+    add_event(EventType::Create, pathname2, &event_info::arg3);
     break;
   }
 
   case BSC_exchangedata:
   {
-    add_event(EventType::WRITE, pathname1, nullptr);
-    add_event(EventType::WRITE, pathname2, nullptr);
+    add_event(EventType::Write, pathname1, nullptr);
+    add_event(EventType::Write, pathname2, nullptr);
     break;
   }
 
   case BSC_rename:
   {
-    add_event(EventType::DELETE, pathname1, nullptr);
-    add_event(EventType::CREATE, pathname2, nullptr);
+    add_event(EventType::Delete, pathname1, nullptr);
+    add_event(EventType::Create, pathname2, nullptr);
     break;
   }
 
   case BSC_renameat:
   {
-    add_event(EventType::DELETE, pathname1, &event_info::arg1);
-    add_event(EventType::CREATE, pathname2, &event_info::arg3);
+    add_event(EventType::Delete, pathname1, &event_info::arg1);
+    add_event(EventType::Create, pathname2, &event_info::arg3);
     break;
   }
 
@@ -565,7 +565,7 @@ void Tracer::format_print(
   case BSC_symlink:
   case BSC_symlinkat:
   {
-    add_event(EventType::CREATE, pathname1, syscallAtMember(syscall));
+    add_event(EventType::Create, pathname1, syscallAtMember(syscall));
     break;
   }
 
@@ -582,7 +582,7 @@ void Tracer::format_print(
   case BSC_setxattr:
   case BSC_utimes:
   {
-    add_event(EventType::WRITE, pathname1, syscallAtMember(syscall));
+    add_event(EventType::Write, pathname1, syscallAtMember(syscall));
     break;
   }
 
@@ -596,7 +596,7 @@ void Tracer::format_print(
   case BSC_fsetxattr:
   case BSC_futimes:
   {
-    add_event(EventType::WRITE, "", &event_info::arg1);
+    add_event(EventType::Write, "", &event_info::arg1);
     break;
   }
 
@@ -623,7 +623,7 @@ void Tracer::format_print(
   case BSC_stat:
   case BSC_stat_extended:
   {
-    add_event(EventType::READ, pathname1, syscallAtMember(syscall));
+    add_event(EventType::Read, pathname1, syscallAtMember(syscall));
     break;
   }
 
@@ -691,16 +691,16 @@ void Tracer::format_print(
       }
 
       const bool is_modify =
-          event == EventType::WRITE ||
-          event == EventType::CREATE ||
-          event == EventType::DELETE;
+          event == EventType::Write ||
+          event == EventType::Create ||
+          event == EventType::Delete;
 
       _delegate.fileEvent(
           thread,
           // Modify events, when they fail, potentially expose information about
           // a file or directory at that path, even if they don't modify the
           // file system.
-          !success && is_modify ? EventType::READ : event,
+          !success && is_modify ? EventType::Read : event,
           at ? ei->*at : AT_FDCWD,
           std::move(path));
     }
