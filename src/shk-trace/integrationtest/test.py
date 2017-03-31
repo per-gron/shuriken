@@ -6,6 +6,7 @@ import pipes
 import re
 import shutil
 import subprocess
+import sys
 import time
 import unittest
 
@@ -27,8 +28,20 @@ def with_testdir():
     return decorator
   return wrap
 
-shkTrace = os.environ['SHK_TRACE_PATH']
+shkTraceFb = os.environ.get(
+    'SHK_TRACE_FB_PATH',
+    os.getcwd() + '/../../../build/src/shkutil/include/util')
+sys.path.insert(0, shkTraceFb)
+sys.path.insert(0, '../../../vendor/flatbuffers/python')
+import ShkTrace.Trace
+import ShkTrace.EventType
+
+shkTrace = os.environ.get(
+    'SHK_TRACE_PATH',
+    os.getcwd() + '/../../../build/src/shk-trace/shk-trace')
 helper = os.path.join(os.path.dirname(shkTrace), 'shktrace_integrationtest_helper')
+
+sys.path.insert(0, '/path/to/application/app/folder')
 
 def read_file(path):
   with open(path) as f:
@@ -44,9 +57,30 @@ def run_cmd(cmd):
 def run_cmd_expect_fail(cmd):
   return run_cmd(cmd + '; if [ $? -eq 0 ]; then exit 1; else exit 0; fi')
 
+def event_type_to_string(event_type):
+  return {
+    ShkTrace.EventType.EventType.Read: 'read',
+    ShkTrace.EventType.EventType.Write: 'write',
+    ShkTrace.EventType.EventType.Create: 'create',
+    ShkTrace.EventType.EventType.Delete: 'delete',
+    ShkTrace.EventType.EventType.Delete: 'delete',
+    ShkTrace.EventType.EventType.FatalError: 'fatal_error',
+  }.get(event_type)
+
+def trace_to_string(trace):
+  str = ''
+  for i in range(0, trace.EventsLength()):
+    event = trace.Events(i)
+    str += event_type_to_string(event.Type()) + ' ' + event.Path() + '\n'
+  return str
+
+def trace_buffer_to_string(data):
+  trace = ShkTrace.Trace.Trace.GetRootAsTrace(data, 0)
+  return trace_to_string(trace)
+
 def trace_cmd(cmd):
-  run_cmd(shkTrace + " -f trace.txt -c " + pipes.quote(cmd))
-  return read_file('trace.txt')
+  run_cmd(shkTrace + " -f out.trace -c " + pipes.quote(cmd))
+  return trace_buffer_to_string(bytearray(read_file('out.trace')))
 
 class IntegrationTest(unittest.TestCase):
 
@@ -86,8 +120,8 @@ class IntegrationTest(unittest.TestCase):
     run_cmd(
         shkTrace + " -f trace1.txt -c 'sleep 1 && /bin/echo hey' &" +
         shkTrace + " -f trace2.txt -c 'sleep 1 && /bin/echo hey' && wait")
-    trace1 = read_file('trace1.txt')
-    trace2 = read_file('trace2.txt')
+    trace1 = trace_buffer_to_string(bytearray(read_file('trace1.txt')))
+    trace2 = trace_buffer_to_string(bytearray(read_file('trace2.txt')))
     self.assertIn('read /bin/echo\n', trace1)
     self.assertIn('read /bin/echo\n', trace2)
 

@@ -20,8 +20,13 @@ TEST_CASE("TraceWriter") {
 
   char raw_buf[1024];
   int len = read(input_fd.get(), &raw_buf, 1024);
-  std::string buf(raw_buf, len);
-  CHECK(buf == "read path1\nwrite path2\n");
+
+  auto trace = GetTrace(raw_buf);
+  REQUIRE(trace->events()->size() == 2);
+  CHECK(trace->events()->Get(0)->type() == EventType::Read);
+  CHECK(std::string(trace->events()->Get(0)->path()->data()) == "path1");
+  CHECK(trace->events()->Get(1)->type() == EventType::Write);
+  CHECK(std::string(trace->events()->Get(1)->path()->data()) == "path2");
 }
 
 }  // namespace shk

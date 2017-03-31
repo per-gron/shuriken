@@ -91,4 +91,4 @@ add_test(NAME trace_unit COMMAND shktrace_test)
 add_test(
   NAME trace_integration
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/integrationtest
-  COMMAND env SHK_TRACE_PATH=${CMAKE_CURRENT_BINARY_DIR}/shk-trace python ${CMAKE_CURRENT_LIST_DIR}/integrationtest/test.py)
+  COMMAND env SHK_TRACE_FB_PATH=${CMAKE_CURRENT_BINARY_DIR}/../shkutil/include/util SHK_TRACE_PATH=${CMAKE_CURRENT_BINARY_DIR}/shk-trace python ${CMAKE_CURRENT_LIST_DIR}/integrationtest/test.py)

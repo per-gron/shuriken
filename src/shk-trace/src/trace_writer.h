@@ -18,8 +18,6 @@ class TraceWriter : public PathResolver::Delegate {
       std::string &&path) override;
 
  private:
-  void write(const std::string &str);
-
   // This object is destroyed when tracing has finished. That, in turn, will
   // destroy the TraceRequest, which signals to the traced process that tracing
   // has finished.
