@@ -1,41 +1,26 @@
 #pragma once
 
 #include "event.h"
+#include "event_consolidator.h"
+#include "path_resolver.h"
 #include "tracing_server.h"
 
 namespace shk {
 
 class TraceWriter : public PathResolver::Delegate {
  public:
-  TraceWriter(std::unique_ptr<TracingServer::TraceRequest> &&request)
-      : _request(std::move(request)) {}
+  TraceWriter(std::unique_ptr<TracingServer::TraceRequest> &&request);
 
-  virtual ~TraceWriter() {
-    auto events = _consolidator.getConsolidatedEventsAndReset();
-    for (const auto &event : events) {
-      write(eventTypeToString(event.first) + (" " + event.second) + "\n");
-    }
-  }
+  virtual ~TraceWriter();
 
   virtual void fileEvent(
       uintptr_t thread_id,
       EventType type,
       int at_fd,
-      std::string &&path) override {
-    _consolidator.event(type, std::move(path));
-  }
+      std::string &&path) override;
 
  private:
-  void write(const std::string &str) {
-    auto written = ::write(
-        _request->trace_fd.get(),
-        str.c_str(),
-        str.size());
-    if (written != str.size()) {
-      fprintf(stderr, "Failed to write to tracing file\n");
-      abort();
-    }
-  }
+  void write(const std::string &str);
 
   // This object is destroyed when tracing has finished. That, in turn, will
   // destroy the TraceRequest, which signals to the traced process that tracing

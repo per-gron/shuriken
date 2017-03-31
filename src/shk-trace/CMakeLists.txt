@@ -35,6 +35,7 @@ add_library(libshktrace
   src/process_tracer.h
   src/syscall_constants.h
   src/syscall_tables.h
+  src/trace_writer.cpp
   src/trace_writer.h
   src/tracer.cpp
   src/tracer.h
