@@ -14,8 +14,8 @@ TEST_CASE("TraceWriter") {
     TraceWriter writer(std::unique_ptr<TracingServer::TraceRequest>(
         new TracingServer::TraceRequest(std::move(output_fd), 0, "cwd")));
 
-    writer.fileEvent(1, EventType::READ, 2, "path1");
-    writer.fileEvent(1, EventType::WRITE, 2, "path2");
+    writer.fileEvent(EventType::READ, "path1");
+    writer.fileEvent(EventType::WRITE, "path2");
   }
 
   char raw_buf[1024];

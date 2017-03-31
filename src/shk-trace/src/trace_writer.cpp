@@ -13,9 +13,7 @@ TraceWriter::~TraceWriter() {
 }
 
 void TraceWriter::fileEvent(
-    uintptr_t thread_id,
     EventType type,
-    int at_fd,
     std::string &&path) {
   _consolidator.event(type, std::move(path));
 }

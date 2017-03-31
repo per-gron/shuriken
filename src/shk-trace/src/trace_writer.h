@@ -14,9 +14,7 @@ class TraceWriter : public PathResolver::Delegate {
   virtual ~TraceWriter();
 
   virtual void fileEvent(
-      uintptr_t thread_id,
       EventType type,
-      int at_fd,
       std::string &&path) override;
 
  private:

@@ -8,9 +8,7 @@ namespace shk {
 namespace {
 
 struct FileEvent {
-  uintptr_t thread_id;
   EventType type;
-  int at_fd;
   std::string path;
 };
 
@@ -21,12 +19,10 @@ class MockPathResolverDelegate : public PathResolver::Delegate {
   }
 
   virtual void fileEvent(
-      uintptr_t thread_id,
       EventType type,
-      int at_fd,
       std::string &&path) override {
     _file_events.push_back(
-        FileEvent{ thread_id, type, at_fd, std::move(path) });
+        FileEvent{ type, std::move(path) });
   }
 
   FileEvent popFileEvent() {
@@ -97,27 +93,21 @@ TEST_CASE("PathResolver") {
       // Paths should not be resolved in thi scase
       pr.fileEvent(kThreadId, EventType::FATAL_ERROR, 3, "yoyo");
       auto event = delegate.popFileEvent();
-      CHECK(event.thread_id == kThreadId);
       CHECK(event.type == EventType::FATAL_ERROR);
-      CHECK(event.at_fd == AT_FDCWD);
       CHECK(event.path == "yoyo");
     }
 
     SECTION("Absolute") {
       pr.fileEvent(kThreadId, EventType::READ, 3, "/yoyo");
       auto event = delegate.popFileEvent();
-      CHECK(event.thread_id == kThreadId);
       CHECK(event.type == EventType::READ);
-      CHECK(event.at_fd == AT_FDCWD);
       CHECK(event.path == "/yoyo");
     }
 
     SECTION("RelativeToCwd") {
       pr.fileEvent(kThreadId, EventType::READ, AT_FDCWD, "yoyo");
       auto event = delegate.popFileEvent();
-      CHECK(event.thread_id == kThreadId);
       CHECK(event.type == EventType::READ);
-      CHECK(event.at_fd == AT_FDCWD);
       CHECK(event.path == kInitialPath + "/yoyo");
     }
 
@@ -129,9 +119,7 @@ TEST_CASE("PathResolver") {
       pr.newThread(kInitialPid, 2, kThreadId);
       pr.fileEvent(kThreadId, EventType::READ, AT_FDCWD, "yoyo");
       auto event = delegate.popFileEvent();
-      CHECK(event.thread_id == kThreadId);
       CHECK(event.type == EventType::READ);
-      CHECK(event.at_fd == AT_FDCWD);
       CHECK(event.path == "/yoyo");
     }
 
@@ -139,9 +127,7 @@ TEST_CASE("PathResolver") {
       pr.chdir(kThreadId, "/", AT_FDCWD);
       pr.fileEvent(kThreadId, EventType::READ, AT_FDCWD, "yoyo");
       auto event = delegate.popFileEvent();
-      CHECK(event.thread_id == kThreadId);
       CHECK(event.type == EventType::READ);
-      CHECK(event.at_fd == AT_FDCWD);
       CHECK(event.path == "/yoyo");
     }
 
@@ -158,9 +144,7 @@ TEST_CASE("PathResolver") {
       pr.open(kThreadId, kFd, AT_FDCWD, std::string(kFdPath), true);
       pr.fileEvent(kThreadId, EventType::READ, kFd, "yoyo");
       auto event = delegate.popFileEvent();
-      CHECK(event.thread_id == kThreadId);
       CHECK(event.type == EventType::READ);
-      CHECK(event.at_fd == AT_FDCWD);
       CHECK(event.path == kFdPath + "/yoyo");
     }
   }

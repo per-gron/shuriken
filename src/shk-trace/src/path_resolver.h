@@ -23,9 +23,7 @@ class PathResolver : public Tracer::Delegate {
     virtual ~Delegate() = default;
 
     virtual void fileEvent(
-        uintptr_t thread_id,
         EventType type,
-        int at_fd,
         std::string &&path) = 0;
   };
 
