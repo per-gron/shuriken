@@ -924,6 +924,12 @@ void testOpenCreateExclAppend() {
   }
 }
 
+void testOpendir() {
+  DIR *dir = opendir("dir");
+  readdir(dir);
+  closedir(dir);
+}
+
 void testOpenDprotectedNp() {
   // Don't check for an error code; some tests trigger an error intentionally.
   int flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
@@ -1279,6 +1285,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "openat_nocancel", testOpenatNocancel },
   { "openat_with_openat_fd", testOpenatWithOpenatFd },
   { "openbyid_np", testOpenbyidNp },
+  { "opendir", testOpendir },
   { "pathconf", testPathconf },
   { "posix_spawn", testPosixSpawn },
   { "pthread_chdir", testPthreadChdir },

@@ -889,6 +889,12 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('fatal_error openbyid_np', trace)
 
   @with_testdir()
+  def test_opendir(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' opendir')
+    self.assertIn('read_directory ' + os.getcwd() + '/dir', trace)
+
+  @with_testdir()
   def test_pathconf(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' pathconf')
