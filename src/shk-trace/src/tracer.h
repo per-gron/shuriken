@@ -171,7 +171,7 @@ class Tracer {
       uintptr_t arg3,
       uintptr_t arg4,
       int syscall);
-  void format_print(
+  void notifyDelegate(
       event_info *ei,
       uintptr_t thread,
       int type,

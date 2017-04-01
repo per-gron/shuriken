@@ -329,7 +329,7 @@ void Tracer::exit_event(
   auto ei_it = _ei_map.find(thread, type);
   if (ei_it != _ei_map.end()) {
     auto *ei = &ei_it->second;
-    format_print(
+    notifyDelegate(
         ei,
         thread,
         type,
@@ -345,7 +345,7 @@ void Tracer::exit_event(
 }
 
 
-void Tracer::format_print(
+void Tracer::notifyDelegate(
     event_info *ei,
     uintptr_t thread,
     int type,
