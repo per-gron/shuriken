@@ -103,6 +103,15 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('create ' + os.getcwd() + '/new_file', trace)
 
   @with_testdir()
+  def test_copy_file_overwrite(self):
+    write_file('file', '')
+    write_file('new_file', '')
+    trace = trace_cmd("cp file new_file")
+    print trace
+    self.assertIn('read ' + os.getcwd() + '/file', trace)
+    self.assertIn('create ' + os.getcwd() + '/new_file', trace)
+
+  @with_testdir()
   def test_read_file_in_nonexistent_dir(self):
     trace = trace_cmd("stat missing_dir/file; true")
     self.assertIn('read ' + os.getcwd() + '/missing_dir\n', trace)
