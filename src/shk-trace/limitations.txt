@@ -1,5 +1,7 @@
 Known Limitations:
 
+* because shk-trace uses kdebug, most of Instruments will not be usable while
+  using it.
 * shk-trace can't trace shk-trace.
 * cannot accurately trace paths that end with a > character.
 * tracing will do the wrong thing if the traced program moves non-empty
