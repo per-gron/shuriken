@@ -38,8 +38,7 @@ class ProcessTracer : public Tracer::Delegate {
       uintptr_t thread_id,
       EventType type,
       int at_fd,
-      std::string &&path,
-      SymlinkBehavior symlink_behavior) override;
+      std::string &&path) override;
 
   virtual void open(
       uintptr_t thread_id,

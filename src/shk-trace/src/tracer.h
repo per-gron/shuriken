@@ -12,7 +12,6 @@
 #include "event_info.h"
 #include "kdebug.h"
 #include "kdebug_controller.h"
-#include "symlink_behavior.h"
 #include "syscall_constants.h"
 #include "syscall_tables.h"
 
@@ -54,8 +53,7 @@ class Tracer {
         uintptr_t thread_id,
         EventType type,
         int at_fd,
-        std::string &&path,
-        SymlinkBehavior symlink_behavior) = 0;
+        std::string &&path) = 0;
 
     /**
      * Invoked whenever a file descriptor to a file or directory has been

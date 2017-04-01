@@ -1,10 +1,5 @@
 #pragma once
 
-#include <string>
-
-#include "event.h"
-#include "symlink_behavior.h"
-
 namespace shk {
 
 struct FileEvent {
@@ -12,7 +7,6 @@ struct FileEvent {
   EventType type;
   int at_fd;
   std::string path;
-  SymlinkBehavior symlink_behavior;
 };
 
 struct NewThreadEvent {
@@ -90,10 +84,9 @@ class MockTracerDelegate : public Tracer::Delegate {
       uintptr_t thread_id,
       EventType type,
       int at_fd,
-      std::string &&path,
-      SymlinkBehavior symlink_behavior) override {
+      std::string &&path) override {
     _file_events.push_back(
-        FileEvent{ thread_id, type, at_fd, std::move(path), symlink_behavior });
+        FileEvent{ thread_id, type, at_fd, std::move(path) });
   }
 
   virtual void newThread(

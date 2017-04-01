@@ -35,9 +35,8 @@ TraceWriter::~TraceWriter() {
 
 void TraceWriter::fileEvent(
     EventType type,
-    std::string &&path,
-    SymlinkBehavior symlink_behavior) {
-  _consolidator.event(type, std::move(path), symlink_behavior);
+    std::string &&path) {
+  _consolidator.event(type, std::move(path));
 }
 
 }  // namespace shk

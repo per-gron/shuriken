@@ -2,8 +2,7 @@
 
 namespace shk {
 
-void EventConsolidator::event(
-    EventType type, std::string &&path, SymlinkBehavior symlink_behavior) {
+void EventConsolidator::event(EventType type, std::string &&path) {
   switch (type) {
   case EventType::Read:
     if (_created.count(path) == 0) {

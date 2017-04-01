@@ -2,7 +2,6 @@
 
 #include "cwd_memo.h"
 #include "file_descriptor_memo.h"
-#include "symlink_behavior.h"
 #include "tracer.h"
 
 namespace shk {
@@ -25,8 +24,7 @@ class PathResolver : public Tracer::Delegate {
 
     virtual void fileEvent(
         EventType type,
-        std::string &&path,
-        SymlinkBehavior symlink_behavior) = 0;
+        std::string &&path) = 0;
   };
 
   PathResolver(
@@ -45,8 +43,7 @@ class PathResolver : public Tracer::Delegate {
     uintptr_t thread_id,
     EventType type,
     int at_fd,
-    std::string &&path,
-    SymlinkBehavior symlink_behavior) override;
+    std::string &&path) override;
 
   virtual void open(
       uintptr_t thread_id,

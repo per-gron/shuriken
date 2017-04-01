@@ -35,14 +35,12 @@ void PathResolver::fileEvent(
     uintptr_t thread_id,
     EventType type,
     int at_fd,
-    std::string &&path,
-    SymlinkBehavior symlink_behavior) {
+    std::string &&path) {
   _delegate->fileEvent(
       type,
       type == EventType::FatalError ?
           std::move(path) :
-          resolve(thread_id, at_fd, std::move(path)),
-      symlink_behavior);
+          resolve(thread_id, at_fd, std::move(path)));
 }
 
 void PathResolver::open(

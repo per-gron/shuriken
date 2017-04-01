@@ -285,8 +285,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
             thread,
             EventType::FatalError,
             0,
-            "Legacy Carbon FileManager event",
-            SymlinkBehavior::NO_FOLLOW);
+            "Legacy Carbon FileManager event");
       } else {
         enter_event(thread, type, &kd[i]);
       }
@@ -380,11 +379,7 @@ void Tracer::format_print(
 
   auto disallowed_event = [&](const std::string &event_name) {
     _delegate.fileEvent(
-        thread,
-        EventType::FatalError,
-        -1,
-        event_name + " not allowed",
-        SymlinkBehavior::NO_FOLLOW);
+        thread, EventType::FatalError, -1, event_name + " not allowed");
   };
 
   const bool success = arg1 == 0;
@@ -707,8 +702,7 @@ void Tracer::format_print(
           // file system.
           !success && is_modify ? EventType::Read : event,
           at ? ei->*at : AT_FDCWD,
-          std::move(path),
-          SymlinkBehavior::NO_FOLLOW);
+          std::move(path));
     }
   }
 }
