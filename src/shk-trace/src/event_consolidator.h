@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "event.h"
+#include "symlink_behavior.h"
 
 namespace shk {
 
@@ -21,7 +22,8 @@ class EventConsolidator {
   EventConsolidator(const EventConsolidator &) = default;
   EventConsolidator &operator=(const EventConsolidator &) = default;
 
-  void event(EventType type, std::string &&path);
+  void event(
+      EventType type, std::string &&path, SymlinkBehavior symlink_behavior);
 
   using Event = std::pair<EventType, std::string>;
 

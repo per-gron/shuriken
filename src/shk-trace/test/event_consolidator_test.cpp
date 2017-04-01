@@ -16,11 +16,12 @@ bool containsFatalError(const std::vector<EventConsolidator::Event> &events) {
 
 TEST_CASE("EventConsolidator") {
   using ET = EventType;
+  using SB = SymlinkBehavior;
 
   EventConsolidator ec;
 
   SECTION("Copyable") {
-    ec.event(ET::FatalError, "");
+    ec.event(ET::FatalError, "", SB::NO_FOLLOW);
     auto ec2 = ec;
 
     CHECK(containsFatalError(ec.getConsolidatedEventsAndReset()));
@@ -29,7 +30,7 @@ TEST_CASE("EventConsolidator") {
 
   SECTION("Assignable") {
     EventConsolidator ec2;
-    ec2.event(ET::FatalError, "");
+    ec2.event(ET::FatalError, "", SB::NO_FOLLOW);
     ec = ec2;
 
     CHECK(containsFatalError(ec.getConsolidatedEventsAndReset()));
@@ -40,7 +41,7 @@ TEST_CASE("EventConsolidator") {
     static constexpr ET events[] = {
         ET::Read, ET::Write, ET::Create, ET::Delete, ET::FatalError };
     for (const auto event : events) {
-      ec.event(event, "");
+      ec.event(event, "", SB::NO_FOLLOW);
       CHECK(!ec.getConsolidatedEventsAndReset().empty());
       CHECK(ec.getConsolidatedEventsAndReset().empty());
     }
@@ -50,8 +51,8 @@ TEST_CASE("EventConsolidator") {
     static constexpr ET events[] = {
         ET::Read, ET::Write, ET::Create, ET::Delete, ET::FatalError };
     for (const auto event : events) {
-      ec.event(event, "a");
-      ec.event(event, "a");
+      ec.event(event, "a", SB::NO_FOLLOW);
+      ec.event(event, "a", SB::NO_FOLLOW);
       CHECK(ec.getConsolidatedEventsAndReset().size() == 1);
     }
   }
@@ -60,7 +61,7 @@ TEST_CASE("EventConsolidator") {
     static constexpr ET events[] = {
         ET::Read, ET::Write, ET::Create, ET::Delete, ET::FatalError };
     for (const auto event : events) {
-      ec.event(event, "path");
+      ec.event(event, "path", SB::NO_FOLLOW);
 
       auto res = ec.getConsolidatedEventsAndReset();
       REQUIRE(res.size() == 1);
@@ -70,8 +71,8 @@ TEST_CASE("EventConsolidator") {
   }
 
   SECTION("IgnoreWriteAfterCreate") {
-    ec.event(ET::Create, "path");
-    ec.event(ET::Write, "path");
+    ec.event(ET::Create, "path", SB::NO_FOLLOW);
+    ec.event(ET::Write, "path", SB::NO_FOLLOW);
 
     auto res = ec.getConsolidatedEventsAndReset();
     REQUIRE(res.size() == 1);
@@ -80,8 +81,8 @@ TEST_CASE("EventConsolidator") {
   }
 
   SECTION("CreateOverridesDelete") {
-    ec.event(ET::Delete, "path");
-    ec.event(ET::Create, "path");
+    ec.event(ET::Delete, "path", SB::NO_FOLLOW);
+    ec.event(ET::Create, "path", SB::NO_FOLLOW);
 
     auto res = ec.getConsolidatedEventsAndReset();
     REQUIRE(res.size() == 1);
@@ -93,8 +94,8 @@ TEST_CASE("EventConsolidator") {
     static constexpr ET events[] = { ET::Create, ET::Delete };
 
     for (auto event : events) {
-      ec.event(ET::Write, "path");
-      ec.event(event, "path");
+      ec.event(ET::Write, "path", SB::NO_FOLLOW);
+      ec.event(event, "path", SB::NO_FOLLOW);
 
       auto res = ec.getConsolidatedEventsAndReset();
       REQUIRE(res.size() == 1);
@@ -107,8 +108,8 @@ TEST_CASE("EventConsolidator") {
     static constexpr ET events[] = { ET::Create, ET::Write, ET::Delete };
 
     for (auto event : events) {
-      ec.event(ET::Read, "path");
-      ec.event(event, "path");
+      ec.event(ET::Read, "path", SB::NO_FOLLOW);
+      ec.event(event, "path", SB::NO_FOLLOW);
 
       auto res = ec.getConsolidatedEventsAndReset();
       REQUIRE(res.size() == 2);
@@ -125,8 +126,8 @@ TEST_CASE("EventConsolidator") {
   }
 
   SECTION("DeleteErasesCreate") {
-    ec.event(ET::Create, "path");
-    ec.event(ET::Delete, "path");
+    ec.event(ET::Create, "path", SB::NO_FOLLOW);
+    ec.event(ET::Delete, "path", SB::NO_FOLLOW);
 
     CHECK(ec.getConsolidatedEventsAndReset().empty());
   }
