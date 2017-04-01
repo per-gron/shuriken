@@ -555,6 +555,12 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read_directory ' + os.getcwd() + '/dir', trace)
 
   @with_testdir()
+  def test_getdirentriesattr(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' getdirentriesattr')
+    self.assertIn('read_directory ' + os.getcwd() + '/dir', trace)
+
+  @with_testdir()
   def test_getxattr(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' getxattr')

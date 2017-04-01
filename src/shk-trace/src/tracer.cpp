@@ -550,6 +550,7 @@ void Tracer::notifyDelegate(
   case BSC_getattrlistbulk:
   case BSC_getdirentries:
   case BSC_getdirentries64:
+  case BSC_getdirentriesattr:
   {
     add_event(EventType::ReadDirectory, "", &event_info::arg1);
     break;

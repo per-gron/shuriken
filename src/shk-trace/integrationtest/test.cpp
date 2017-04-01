@@ -592,7 +592,9 @@ void testGetattrlistbulk() {
       ATTR_CMN_NAME |
       ATTR_CMN_ERROR |
       ATTR_CMN_OBJTYPE;
+
   char buf[1024];
+
   if (getattrlistbulk(dir_fd.get(), &al, buf, sizeof(buf), 0) == -1) {
     die("getattrlistbulk failed");
   }
@@ -605,6 +607,37 @@ void testGetdirentries() {
   long offset = 0;
   if (__getdirentries64(dir_fd.get(), buf, sizeof(buf), &offset) == -1) {
     die("getdirentries failed");
+  }
+}
+
+void testGetdirentriesattr() {
+  auto dir_fd = openFileForReading("dir");
+
+  struct attrlist al{};
+  bzero(&al, sizeof(al));
+  al.bitmapcount = ATTR_BIT_MAP_COUNT;
+  al.commonattr =
+      ATTR_CMN_NAME |
+      ATTR_CMN_OBJTYPE |
+      ATTR_CMN_MODTIME |
+      ATTR_CMN_ACCESSMASK;
+  al.fileattr = ATTR_FILE_DATALENGTH;
+
+  char buf[1024];
+  unsigned int count = 1;
+  unsigned int basep = 0;
+  unsigned int new_state = 0;
+
+  if (getdirentriesattr(
+          dir_fd.get(),
+          &al,
+          buf,
+          sizeof(buf),
+          &count,
+          &basep,
+          &new_state,
+          0) == -1) {
+    die("getdirentriesattr failed");
   }
 }
 
@@ -1209,6 +1242,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "getattrlistat", testGetattrlistat },
   { "getattrlistbulk", testGetattrlistbulk },
   { "getdirentries", testGetdirentries },
+  { "getdirentriesattr", testGetdirentriesattr },
   { "getxattr", testGetxattr },
   { "guarded_close_np", testGuardedCloseNp },
   { "guarded_open_dprotected_np", testGuardedOpenDprotectedNp },
