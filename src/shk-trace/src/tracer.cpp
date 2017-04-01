@@ -116,7 +116,8 @@ void Tracer::loop(dispatch_queue_t queue) {
   }
 
   auto sleep_ms = sample_sc(_event_buffer);
-  dispatch_time_t time = dispatch_time(DISPATCH_TIME_NOW, sleep_ms * 1000);
+  dispatch_time_t time = dispatch_time(
+      DISPATCH_TIME_NOW, sleep_ms * 1000 * 1000);
   dispatch_after(time, queue, ^{ loop(queue); });
 }
 
