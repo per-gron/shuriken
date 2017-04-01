@@ -36,6 +36,7 @@ class EventConsolidator {
   std::unordered_set<std::string> _deleted;
   std::unordered_set<std::string> _created;
   std::unordered_set<std::string> _read;
+  std::unordered_set<std::string> _read_directories;
   std::unordered_set<std::string> _written;
 };
 

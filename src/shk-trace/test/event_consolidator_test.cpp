@@ -17,6 +17,14 @@ bool containsFatalError(const std::vector<EventConsolidator::Event> &events) {
 TEST_CASE("EventConsolidator") {
   using ET = EventType;
 
+  static constexpr ET all_events[] = {
+      ET::Read,
+      ET::ReadDirectory,
+      ET::Write,
+      ET::Create,
+      ET::Delete,
+      ET::FatalError };
+
   EventConsolidator ec;
 
   SECTION("Copyable") {
@@ -37,9 +45,7 @@ TEST_CASE("EventConsolidator") {
   }
 
   SECTION("Reset") {
-    static constexpr ET events[] = {
-        ET::Read, ET::Write, ET::Create, ET::Delete, ET::FatalError };
-    for (const auto event : events) {
+    for (const auto event : all_events) {
       ec.event(event, "");
       CHECK(!ec.getConsolidatedEventsAndReset().empty());
       CHECK(ec.getConsolidatedEventsAndReset().empty());
@@ -47,9 +53,7 @@ TEST_CASE("EventConsolidator") {
   }
 
   SECTION("MergeDuplicateEvents") {
-    static constexpr ET events[] = {
-        ET::Read, ET::Write, ET::Create, ET::Delete, ET::FatalError };
-    for (const auto event : events) {
+    for (const auto event : all_events) {
       ec.event(event, "a");
       ec.event(event, "a");
       CHECK(ec.getConsolidatedEventsAndReset().size() == 1);
@@ -57,9 +61,7 @@ TEST_CASE("EventConsolidator") {
   }
 
   SECTION("KeepPathAndEventType") {
-    static constexpr ET events[] = {
-        ET::Read, ET::Write, ET::Create, ET::Delete, ET::FatalError };
-    for (const auto event : events) {
+    for (const auto event : all_events) {
       ec.event(event, "path");
 
       auto res = ec.getConsolidatedEventsAndReset();
@@ -69,14 +71,21 @@ TEST_CASE("EventConsolidator") {
     }
   }
 
-  SECTION("IgnoreWriteAfterCreate") {
-    ec.event(ET::Create, "path");
-    ec.event(ET::Write, "path");
+  SECTION("IgnoreAfterCreate") {
+    static constexpr ET events[] = {
+        ET::Read,
+        ET::ReadDirectory,
+        ET::Write };
 
-    auto res = ec.getConsolidatedEventsAndReset();
-    REQUIRE(res.size() == 1);
-    CHECK(res.front().first == ET::Create);
-    CHECK(res.front().second == "path");
+    for (const auto event : events) {
+      ec.event(ET::Create, "path");
+      ec.event(event, "path");
+
+      auto res = ec.getConsolidatedEventsAndReset();
+      REQUIRE(res.size() == 1);
+      CHECK(res.front().first == ET::Create);
+      CHECK(res.front().second == "path");
+    }
   }
 
   SECTION("CreateOverridesDelete") {
@@ -99,6 +108,20 @@ TEST_CASE("EventConsolidator") {
       auto res = ec.getConsolidatedEventsAndReset();
       REQUIRE(res.size() == 1);
       CHECK(res.front().first == event);
+      CHECK(res.front().second == "path");
+    }
+  }
+
+  SECTION("DeleteOverridesWriteAndReadDirectory") {
+    static constexpr ET events[] = { ET::Write, ET::ReadDirectory };
+
+    for (auto event : events) {
+      ec.event(event, "path");
+      ec.event(ET::Delete, "path");
+
+      auto res = ec.getConsolidatedEventsAndReset();
+      REQUIRE(res.size() == 1);
+      CHECK(res.front().first == ET::Delete);
       CHECK(res.front().second == "path");
     }
   }

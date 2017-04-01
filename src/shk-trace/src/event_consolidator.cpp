@@ -13,6 +13,15 @@ void EventConsolidator::event(EventType type, std::string &&path) {
     }
     break;
 
+  case EventType::ReadDirectory:
+    if (_created.count(path) == 0) {
+      // When a program reads from a file that it created itself, that doesn't
+      // affect the result of the program; it can only see what it itself has
+      // written.
+      _read_directories.insert(std::move(path));
+    }
+    break;
+
   case EventType::Write:
     if (_created.count(path) == 0) {
       // When a program writes to a file that it created itself, it is
@@ -40,6 +49,8 @@ void EventConsolidator::event(EventType type, std::string &&path) {
       // that it wrote to the file before. (However, if it read from the file,
       // that still matters; it could have affected the program output.)
       _written.erase(path);
+      // Same reasoning as for _written applies for created directories.
+      _read_directories.erase(path);
 
       auto created_it = _created.find(path);
       if (created_it == _created.end()) {
@@ -69,6 +80,7 @@ std::vector<EventConsolidator::Event> EventConsolidator::getConsolidatedEventsAn
   insert_events(_deleted, EventType::Delete);
   insert_events(_created, EventType::Create);
   insert_events(_read, EventType::Read);
+  insert_events(_read_directories, EventType::ReadDirectory);
   insert_events(_written, EventType::Write);
 
   *this = EventConsolidator();

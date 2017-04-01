@@ -4,7 +4,15 @@ enum EventType : byte {
   /// Read is used when a program performs an operation that provides
   /// information about a given file, including both metadata and actual file
   /// contents.
+  ///
+  /// When the path points to a directory, it only means that the metadata of
+  /// the directory has been accessed. If the actual directory entries were
+  /// accessed, the EventType ReadDirectory is used.
   Read,
+
+  /// ReadDirectory is used when a program performs an operation that lists the
+  /// entries of a given directory, including metadata.
+  ReadDirectory,
 
   /// Write is used when a program performs an operation that modifies a file
   /// but that could potentially leave parts of the previous file contents.
