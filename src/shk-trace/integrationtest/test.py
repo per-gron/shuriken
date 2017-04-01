@@ -96,6 +96,13 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/file', trace)
 
   @with_testdir()
+  def test_copy_file(self):
+    write_file('file', '')
+    trace = trace_cmd("cp file new_file")
+    self.assertIn('read ' + os.getcwd() + '/file', trace)
+    self.assertIn('create ' + os.getcwd() + '/new_file', trace)
+
+  @with_testdir()
   def test_read_file_in_nonexistent_dir(self):
     trace = trace_cmd("stat missing_dir/file; true")
     self.assertIn('read ' + os.getcwd() + '/missing_dir\n', trace)
@@ -257,6 +264,12 @@ class IntegrationTest(unittest.TestCase):
   def test_close_nocancel(self):
     trace = trace_cmd(helper + ' close_nocancel')
     self.assertNotIn('read /usr/local\n', trace)
+
+  @with_testdir()
+  def test_copyfile(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' copyfile')
+    self.assertIn('fatal_error copyfile', trace)
 
   @with_testdir()
   def test_delete(self):

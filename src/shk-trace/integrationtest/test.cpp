@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cerrno>
+#include <copyfile.h>
 #include <cstdio>
 #include <cstdlib>
 #include <dirent.h>
@@ -33,6 +34,8 @@ extern "C" int __chmod_extended(
     int mode,
     struct kauth_filesec *sec);
 extern "C" int __close_nocancel(int fd);
+extern "C" int __copyfile(
+    const char *from, const char *to, int mode, int flags);
 extern "C" int __delete(const char *path);
 extern "C" int __fchmod_extended(
     int fd,
@@ -243,6 +246,13 @@ void testCloseNocancel() {
   // usr_fd_num is not a valid file descriptor anymore. This should fail.
   if (faccessat(usr_fd_num, "local", 0, 0) != -1 || errno != EBADF) {
     die("faccessat did not fail with EBADF error");
+  }
+}
+
+void testCopyfile() {
+  if (__copyfile("input", "output", 0555, 0) != -1) {
+    // copyfile is not supported on HFS+, so it's expected to fail.
+    die("copyfile succeeded");
   }
 }
 
@@ -1209,6 +1219,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "chroot", testChroot },
   { "close", testClose },
   { "close_nocancel", testCloseNocancel },
+  { "copyfile", testCopyfile },
   { "delete", testDelete },
   { "dup", testDup },
   { "dup2", testDup2 },

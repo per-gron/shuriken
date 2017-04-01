@@ -643,6 +643,14 @@ void Tracer::notifyDelegate(
     break;
   }
 
+  case BSC_copyfile:
+  {
+    // This syscall is not supported on HFS+, so 1) it doesn't seem important
+    // to do, 2) there is no easy good way to test it.
+    disallowed_event("copyfile");
+    break;
+  }
+
   case BSC_delete:
   {
     disallowed_event("delete");
