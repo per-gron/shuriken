@@ -17,6 +17,6 @@ Known Limitations:
     can read them, but never make calls that follow the symlink.
 * link and sometimes open (if O_CREATE flag is not set) implicitly verifies the
   non-existence of the target file. shk-trace does not detect this.
-* renamex_np and renameatx_np with RENAME_SWAP flag is not supported and
-  silently does the wrong thing (but: HFS+ does not support it either so it
-  might not be a huge problem.)
+* rename_ext, renamex_np and renameatx_np with RENAME_SWAP flag is not
+  supported and silently does the wrong thing (but: HFS+ does not support it
+  either so it might not be a huge problem.)

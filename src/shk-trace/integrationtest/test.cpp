@@ -90,6 +90,10 @@ extern "C" int __openat_nocancel(
     int fd, const char *fname, int oflag, mode_t mode);
 extern "C" int __pthread_chdir(const char *path);
 extern "C" int __pthread_fchdir(int fd);
+extern "C" int rename_ext(
+    const char *from,
+    const char *to,
+    int flags);
 extern "C" int __stat_extended(
     const char *path,
     struct stat *s,
@@ -974,16 +978,22 @@ void testRenameat() {
   renameat(dir1_fd.get(), "input", dir2_fd.get(), "output");
 }
 
-void testRenamexNp() {
-  // Don't check for an error code; some tests trigger an error intentionally.
-  renamex_np("input", "output", 0);
-}
-
 void testRenameatxNp() {
   auto dir1_fd = openFileForReading("dir1");
   auto dir2_fd = openFileForReading("dir2");
   // Don't check for an error code; some tests trigger an error intentionally.
   renameatx_np(dir1_fd.get(), "input", dir2_fd.get(), "output", 0);
+}
+
+void testRenameExt() {
+  // This actually ends up being the same syscall as renameatx_np, but it's
+  // tested separately anyway just in case.
+  rename_ext("input", "output", 0);
+}
+
+void testRenamexNp() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  renamex_np("input", "output", 0);
 }
 
 void testRmdir() {
@@ -1182,6 +1192,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "readlinkat", testReadlinkat },
   { "removexattr", testRemovexattr },
   { "rename", testRename },
+  { "rename_ext", testRenameExt },
   { "renameat", testRenameat },
   { "renamex_np", testRenamexNp },
   { "renameatx_np", testRenameatxNp },
