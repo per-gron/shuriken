@@ -44,7 +44,11 @@ CmdlineOptions CmdlineOptions::parse(int argc, char *argv[]) {
     }
   }
 
-  if (options.tracefile.empty() || options.command.empty() || optind != argc) {
+  if (options.tracefile.empty()) {
+    options.tracefile = "/dev/null";
+  }
+
+  if (options.command.empty() || optind != argc) {
     return withResult(Result::HELP);
   }
 

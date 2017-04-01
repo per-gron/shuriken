@@ -39,7 +39,10 @@ TEST_CASE("CmdlineOptions") {
   }
 
   SECTION("JustCommand") {
-    CHECK(parse({ "-c", "abc" }).result == CmdlineOptions::Result::HELP);
+    auto options = parse({ "-c", "abc" });
+    CHECK(options.result == CmdlineOptions::Result::SUCCESS);
+    CHECK(options.tracefile == "/dev/null");
+    CHECK(options.command == "abc");
   }
 
   SECTION("JustTracefile") {
@@ -55,6 +58,12 @@ TEST_CASE("CmdlineOptions") {
   SECTION("TwoTracefiles") {
     CHECK(
         parse({ "-c", "abc", "-f", "xyz", "-f", "123" }).result ==
+        CmdlineOptions::Result::HELP);
+  }
+
+  SECTION("EmptyTraceFile") {
+    CHECK(
+        parse({ "-c", "abc", "-f", "" }).result ==
         CmdlineOptions::Result::HELP);
   }
 

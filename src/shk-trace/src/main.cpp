@@ -144,7 +144,7 @@ std::pair<FileDescriptor, bool> openTraceFile(const std::string &path) {
 }
 
 void printUsage() {
-  fprintf(stderr, "usage: shk-trace -f tracefile -c command\n");
+  fprintf(stderr, "usage: shk-trace [-f tracefile] -c command\n");
 }
 
 int main(int argc, char *argv[]) {
