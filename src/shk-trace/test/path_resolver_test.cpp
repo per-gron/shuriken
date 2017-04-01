@@ -10,6 +10,7 @@ namespace {
 struct FileEvent {
   EventType type;
   std::string path;
+  PathResolver::Delegate::SymlinkBehavior symlink_behavior;
 };
 
 class MockPathResolverDelegate : public PathResolver::Delegate {
@@ -20,9 +21,10 @@ class MockPathResolverDelegate : public PathResolver::Delegate {
 
   virtual void fileEvent(
       EventType type,
-      std::string &&path) override {
+      std::string &&path,
+      SymlinkBehavior symlink_behavior) override {
     _file_events.push_back(
-        FileEvent{ type, std::move(path) });
+        FileEvent{ type, std::move(path), symlink_behavior });
   }
 
   FileEvent popFileEvent() {
@@ -99,6 +101,14 @@ TEST_CASE("PathResolver") {
       auto event = delegate.popFileEvent();
       CHECK(event.type == EventType::FatalError);
       CHECK(event.path == "yoyo");
+    }
+
+    SECTION("SymlinkBehavior") {
+      pr.fileEvent(kThreadId, EventType::FatalError, 3, "yoyo", SB::NO_FOLLOW);
+      CHECK(delegate.popFileEvent().symlink_behavior == SB::NO_FOLLOW);
+
+      pr.fileEvent(kThreadId, EventType::FatalError, 3, "yoyo", SB::FOLLOW);
+      CHECK(delegate.popFileEvent().symlink_behavior == SB::FOLLOW);
     }
 
     SECTION("Absolute") {

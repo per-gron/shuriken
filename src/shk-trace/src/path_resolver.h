@@ -20,11 +20,14 @@ class PathResolver : public Tracer::Delegate {
    */
   class Delegate {
    public:
+    using SymlinkBehavior = Tracer::Delegate::SymlinkBehavior;
+
     virtual ~Delegate() = default;
 
     virtual void fileEvent(
         EventType type,
-        std::string &&path) = 0;
+        std::string &&path,
+        SymlinkBehavior symlink_behavior) = 0;
   };
 
   PathResolver(

@@ -41,7 +41,8 @@ void PathResolver::fileEvent(
       type,
       type == EventType::FatalError ?
           std::move(path) :
-          resolve(thread_id, at_fd, std::move(path)));
+          resolve(thread_id, at_fd, std::move(path)),
+      symlink_behavior);
 }
 
 void PathResolver::open(

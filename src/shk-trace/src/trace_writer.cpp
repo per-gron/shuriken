@@ -35,7 +35,8 @@ TraceWriter::~TraceWriter() {
 
 void TraceWriter::fileEvent(
     EventType type,
-    std::string &&path) {
+    std::string &&path,
+    SymlinkBehavior symlink_behavior) {
   _consolidator.event(type, std::move(path));
 }
 

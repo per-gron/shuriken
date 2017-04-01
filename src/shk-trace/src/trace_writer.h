@@ -15,7 +15,8 @@ class TraceWriter : public PathResolver::Delegate {
 
   virtual void fileEvent(
       EventType type,
-      std::string &&path) override;
+      std::string &&path,
+      SymlinkBehavior symlink_behavior) override;
 
  private:
   // This object is destroyed when tracing has finished. That, in turn, will

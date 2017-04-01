@@ -5,6 +5,8 @@
 namespace shk {
 
 TEST_CASE("TraceWriter") {
+  using SB = PathResolver::Delegate::SymlinkBehavior;
+
   int fd[2];
   REQUIRE(pipe(fd) == 0);
   FileDescriptor input_fd(fd[0]);
@@ -14,8 +16,8 @@ TEST_CASE("TraceWriter") {
     TraceWriter writer(std::unique_ptr<TracingServer::TraceRequest>(
         new TracingServer::TraceRequest(std::move(output_fd), 0, "cwd")));
 
-    writer.fileEvent(EventType::Read, "path1");
-    writer.fileEvent(EventType::Write, "path2");
+    writer.fileEvent(EventType::Read, "path1", SB::NO_FOLLOW);
+    writer.fileEvent(EventType::Write, "path2", SB::NO_FOLLOW);
   }
 
   char raw_buf[1024];
