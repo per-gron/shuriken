@@ -552,6 +552,7 @@ void Tracer::format_print(
   }
 
   case BSC_renameat:
+  case BSC_renameatx_np:
   {
     add_event(EventType::Delete, pathname1, &event_info::arg1);
     add_event(EventType::Create, pathname2, &event_info::arg3);

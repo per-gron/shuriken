@@ -15,6 +15,7 @@ static constexpr int BSC_faccessat = 0x040c0748;
 static constexpr int BSC_fhopen = 0x040c03e0;
 static constexpr int BSC_guarded_open_dprotected_np = 0x040c0790;
 static constexpr int BSC_openbyid_np = 0x040c077c;
+static constexpr int BSC_renameatx_np = 0x40c07a0;
 
 static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
   static const int bsd_syscalls[] = {
@@ -99,6 +100,7 @@ static std::bitset<MAX_BSD_SYSCALL> make_bsd_syscall_mask() {
     BSC_removexattr,
     BSC_rename,
     BSC_renameat,
+    BSC_renameatx_np,
     BSC_rmdir,
     BSC_searchfs,
     BSC_setattrlist,

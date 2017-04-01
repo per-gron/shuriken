@@ -974,6 +974,18 @@ void testRenameat() {
   renameat(dir1_fd.get(), "input", dir2_fd.get(), "output");
 }
 
+void testRenamexNp() {
+  // Don't check for an error code; some tests trigger an error intentionally.
+  renamex_np("input", "output", 0);
+}
+
+void testRenameatxNp() {
+  auto dir1_fd = openFileForReading("dir1");
+  auto dir2_fd = openFileForReading("dir2");
+  // Don't check for an error code; some tests trigger an error intentionally.
+  renameatx_np(dir1_fd.get(), "input", dir2_fd.get(), "output", 0);
+}
+
 void testRmdir() {
   rmdir("dir");
 }
@@ -1171,6 +1183,8 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "removexattr", testRemovexattr },
   { "rename", testRename },
   { "renameat", testRenameat },
+  { "renamex_np", testRenamexNp },
+  { "renameatx_np", testRenameatxNp },
   { "rmdir", testRmdir },
   { "searchfs", testSearchfs },
   { "setattrlist", testSetattrlist },

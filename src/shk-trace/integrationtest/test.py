@@ -987,6 +987,46 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/dir2/output', trace)
 
   @with_testdir()
+  def test_renamex_np(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' renamex_np')
+    self.assertIn('delete ' + os.getcwd() + '/input', trace)
+    self.assertIn('create ' + os.getcwd() + '/output', trace)
+
+  @with_testdir()
+  def test_renamex_np_error(self):
+    trace = trace_cmd(helper + ' renamex_np')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+    # Because input doesn't exist, the syscall fails before output is touched
+
+  @with_testdir()
+  def test_renameatx_np(self):
+    os.mkdir('dir1')
+    os.mkdir('dir2')
+    write_file('dir1/input', '')
+    trace = trace_cmd(helper + ' renameatx_np')
+    self.assertIn('delete ' + os.getcwd() + '/dir1/input', trace)
+    self.assertIn('create ' + os.getcwd() + '/dir2/output', trace)
+
+  @with_testdir()
+  def test_renameatx_np_error(self):
+    os.mkdir('dir1')
+    os.mkdir('dir2')
+    trace = trace_cmd(helper + ' renameatx_np')
+    self.assertIn('read ' + os.getcwd() + '/dir1/input', trace)
+    # Because input doesn't exist, the syscall fails before output is touched
+
+  @with_testdir()
+  def test_renameatx_np_error2(self):
+    os.mkdir('dir1')
+    os.mkdir('dir2')
+    write_file('dir1/input', '')
+    os.mkdir('dir2/output')
+    trace = trace_cmd(helper + ' renameatx_np')
+    self.assertIn('read ' + os.getcwd() + '/dir1/input', trace)
+    self.assertIn('read ' + os.getcwd() + '/dir2/output', trace)
+
+  @with_testdir()
   def test_rmdir(self):
     os.mkdir('dir')
     trace = trace_cmd(helper + ' rmdir')
