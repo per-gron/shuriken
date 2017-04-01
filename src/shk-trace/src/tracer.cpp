@@ -452,6 +452,7 @@ void Tracer::format_print(
     bool write = !!(flags & O_RDWR) || !!(flags & O_WRONLY);
     bool excl = !!(flags & O_EXCL);
     bool trunc = !!(flags & O_TRUNC);
+    bool cloexec = !!(flags & O_CLOEXEC);
 
     // open with O_EXCL counts as acquiring information about a potentially
     // pre-existing file. The only difference it makes is that it lets you know
@@ -473,7 +474,7 @@ void Tracer::format_print(
           fd,
           at ? ei->*at : AT_FDCWD,
           pathname1,
-          /*cloexec:*/false);  // TODO(peck): Implement me
+          /*cloexec:*/cloexec);
     }
 
     break;
