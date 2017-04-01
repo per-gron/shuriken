@@ -1143,5 +1143,34 @@ class IntegrationTest(unittest.TestCase):
     trace = trace_cmd(helper + ' vfork_inherit_fd')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)
 
+
+  # Symlink behavior tests
+
+  @with_testdir()
+  def test_symlink_chown(self):
+    write_file('target', '')
+    os.symlink('target', 'input')
+    trace = trace_cmd(helper + ' chown')
+    # input really should be among the read files here, but it's not because
+    # OS X's kdebug simply does not provide this information :-(
+    # self.assertIn('read ' + os.getcwd() + '/input', trace)
+    self.assertIn('write ' + os.getcwd() + '/target', trace)
+
+  @with_testdir()
+  def test_symlink_lchown(self):
+    write_file('target', '')
+    os.symlink('target', 'input')
+    trace = trace_cmd(helper + ' lchown')
+    self.assertIn('write ' + os.getcwd() + '/input', trace)
+    self.assertNotIn(os.getcwd() + '/target', trace)
+
+  @with_testdir()
+  def test_symlink_lstat(self):
+    write_file('target', '')
+    os.symlink('target', 'input')
+    trace = trace_cmd(helper + ' lstat')
+    self.assertIn('read ' + os.getcwd() + '/input', trace)
+    self.assertNotIn(os.getcwd() + '/target', trace)
+
 if __name__ == '__main__':
     unittest.main()
