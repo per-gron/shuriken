@@ -2,6 +2,8 @@ Known Limitations:
 
 * shk-trace can't trace shk-trace.
 * cannot accurately trace paths that end with a > character.
+* tracing will do the wrong thing if the traced program moves non-empty
+  directories.
 * symlinks are not properly handled: A syscall that accesses a file through a
   symlink (this is true for both the last part of the path and parent
   directories) will report only the link target as accessed. (Syscalls that
@@ -13,6 +15,6 @@ Known Limitations:
     /Users/peck/coding/project/build, or
   * Build steps never access files through them: They can create links and they
     can read them, but never make calls that follow the symlink.
-* link implicitly verifies the non-existence of the target file. shk-trace does
-  not detect this.
+* link and sometimes open (if O_CREATE flag is not set) implicitly verifies the
+  non-existence of the target file. shk-trace does not detect this.
 * if directories are moved around
