@@ -144,7 +144,25 @@ std::pair<FileDescriptor, bool> openTraceFile(const std::string &path) {
 }
 
 void printUsage() {
-  fprintf(stderr, "usage: shk-trace [-f tracefile] -c command\n");
+  fprintf(
+      stderr,
+      "usage: shk-trace "
+      "[-O/--suicide-when-orphaned] "
+      "[-f tracefile] "
+      "-c command\n");
+}
+
+void suicideWhenOrphaned() {
+  auto ppid = getppid();
+  std::thread([ppid] {
+    for (;;) {
+      if (ppid != getppid()) {
+        fprintf(stderr, "Parent process has died! Shutting down.\n");
+        exit(1);
+      }
+      usleep(1000000);
+    }
+  }).detach();
 }
 
 int main(int argc, char *argv[]) {
@@ -169,6 +187,10 @@ int main(int argc, char *argv[]) {
   if (geteuid() != 0) {
     fprintf(stderr, "This tool must be run as root\n");
     return 1;
+  }
+
+  if (cmdline_options.suicide_when_orphaned) {
+    suicideWhenOrphaned();
   }
 
   std::string err;

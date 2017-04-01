@@ -43,6 +43,23 @@ TEST_CASE("CmdlineOptions") {
     CHECK(options.result == CmdlineOptions::Result::SUCCESS);
     CHECK(options.tracefile == "/dev/null");
     CHECK(options.command == "abc");
+    CHECK(options.suicide_when_orphaned == false);
+  }
+
+  SECTION("SuicideWhenOrphaned") {
+    auto options = parse({ "-c", "abc", "--suicide-when-orphaned" });
+    CHECK(options.result == CmdlineOptions::Result::SUCCESS);
+    CHECK(options.tracefile == "/dev/null");
+    CHECK(options.command == "abc");
+    CHECK(options.suicide_when_orphaned == true);
+  }
+
+  SECTION("SuicideWhenOrphanedShort") {
+    auto options = parse({ "-c", "abc", "-O" });
+    CHECK(options.result == CmdlineOptions::Result::SUCCESS);
+    CHECK(options.tracefile == "/dev/null");
+    CHECK(options.command == "abc");
+    CHECK(options.suicide_when_orphaned == true);
   }
 
   SECTION("JustTracefile") {

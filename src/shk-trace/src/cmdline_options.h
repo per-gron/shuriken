@@ -14,6 +14,7 @@ struct CmdlineOptions {
   std::string tracefile;
   std::string command;
   Result result = Result::SUCCESS;
+  bool suicide_when_orphaned = false;
 
   static CmdlineOptions parse(int argc, char *argv[]);
 };

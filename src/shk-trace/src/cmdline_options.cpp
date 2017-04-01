@@ -18,6 +18,7 @@ CmdlineOptions CmdlineOptions::parse(int argc, char *argv[]) {
   const option kLongOpts[] = {
     { "help", no_argument, nullptr, 'h' },
     { "version", no_argument, nullptr, OPT_VERSION },
+    { "suicide-when-orphaned", no_argument, nullptr, 'O' },
     { nullptr, 0, nullptr, 0 }
   };
 
@@ -30,7 +31,7 @@ CmdlineOptions CmdlineOptions::parse(int argc, char *argv[]) {
   optopt = 0;
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "+f:c:", kLongOpts, nullptr)) != -1) {
+  while ((opt = getopt_long(argc, argv, "+Of:c:", kLongOpts, nullptr)) != -1) {
     if (opt == 'f' || opt == 'c') {
       auto &target = opt == 'f' ? options.tracefile : options.command;
       if (*optarg == '\0' || !target.empty()) {
@@ -39,6 +40,8 @@ CmdlineOptions CmdlineOptions::parse(int argc, char *argv[]) {
       target = optarg;
     } else if (opt == OPT_VERSION) {
       return withResult(Result::VERSION);
+    } else if (opt == 'O') {
+      options.suicide_when_orphaned = true;
     } else {
       return withResult(Result::HELP);
     }
