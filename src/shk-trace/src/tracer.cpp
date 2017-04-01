@@ -600,9 +600,17 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_execve:
+  {
+    add_event(EventType::Read, pathname1, syscallAtMember(syscall));
+    if (success) {
+      _delegate.exec(thread);
+    }
+    break;
+  }
+
   case BSC_access:
   case BSC_access_extended:
-  case BSC_execve:
   case BSC_faccessat:
   case BSC_fstatat64:
   case BSC_fstatat:
