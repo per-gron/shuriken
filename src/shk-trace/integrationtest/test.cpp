@@ -146,6 +146,30 @@ void testAccess() {
   }
 }
 
+void testAccessxNp() {
+  const char *fn = "/usr";
+  size_t fn_size = strlen(fn);
+
+  size_t accessx_buffer_size = sizeof(accessx_descriptor) + fn_size;
+  uint8_t *accessx_buffer = reinterpret_cast<uint8_t *>(
+      alloca(accessx_buffer_size));
+  memcpy(
+    accessx_buffer + sizeof(accessx_descriptor),
+    fn,
+    fn_size + 1);
+
+  accessx_descriptor *ad = reinterpret_cast<accessx_descriptor *>(
+      accessx_buffer);
+  bzero(ad, sizeof(accessx_descriptor));
+
+  ad->ad_name_offset = sizeof(accessx_descriptor);
+
+  int result;
+  if (accessx_np(ad, accessx_buffer_size, &result, (uid_t) -1) == -1) {
+    die("accessx_np failed");
+  }
+}
+
 void testChdir() {
   if (chdir("/usr") != 0) {
     die("chdir failed");
@@ -1105,6 +1129,7 @@ void testVforkInheritFd() {
 
 const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "access", testAccess },
+  { "accessx_np", testAccessxNp },
   { "chdir", testChdir },
   { "chdir_other_thread", testChdirOtherThread },
   { "chdir_fail", testChdirFail },

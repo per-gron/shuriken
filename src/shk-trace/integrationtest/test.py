@@ -173,6 +173,12 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('read ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
+  def test_accessx_np(self):
+    write_file('input', '')
+    trace = trace_cmd(helper + ' accessx_np')
+    self.assertIn('fatal_error accessx_np', trace)
+
+  @with_testdir()
   def test_chdir(self):
     trace = trace_cmd(helper + ' chdir')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)

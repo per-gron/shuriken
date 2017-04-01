@@ -612,7 +612,6 @@ void Tracer::format_print(
   }
 
   case BSC_access:
-  case BSC_access_extended:
   case BSC_faccessat:
   case BSC_fstatat64:
   case BSC_fstatat:
@@ -634,6 +633,16 @@ void Tracer::format_print(
   case BSC_stat_extended:
   {
     add_event(EventType::Read, pathname1, syscallAtMember(syscall));
+    break;
+  }
+
+  case BSC_access_extended:
+  {
+    // This syscall can ask for info about an unbounded number of paths. I think
+    // it might be possible for this code to support that but right now it
+    // doesn't and given how undocumented + rare this syscall seems to be I
+    // don't want to implement it right now.
+    disallowed_event("accessx_np");
     break;
   }
 
