@@ -4,7 +4,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "event.h"
+#include <util/shktrace.h>
 
 namespace shk {
 

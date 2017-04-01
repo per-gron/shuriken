@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 
-#include "event.h"
+#include <util/shktrace.h>
 #include "tracer.h"
 
 namespace shk {

@@ -14,8 +14,6 @@ add_library(libshktrace
   src/daemon.cpp
   src/daemon.h
   src/dispatch.h
-  src/event.cpp
-  src/event.h
   src/event_consolidator.cpp
   src/event_consolidator.h
   src/event_info.h
@@ -56,7 +54,6 @@ add_executable(shktrace_test
   test/cmdline_options_test.cpp
   test/cwd_memo_test.cpp
   test/event_consolidator_test.cpp
-  test/event_test.cpp
   test/file_descriptor_memo_test.cpp
   test/mach_port_test.cpp
   test/main.cpp

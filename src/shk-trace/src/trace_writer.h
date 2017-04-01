@@ -1,6 +1,7 @@
 #pragma once
 
-#include "event.h"
+#include <util/shktrace.h>
+
 #include "event_consolidator.h"
 #include "path_resolver.h"
 #include "tracing_server.h"

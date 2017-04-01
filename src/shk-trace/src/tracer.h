@@ -7,8 +7,9 @@
 #include <dispatch/dispatch.h>
 #include <libc.h>
 
+#include <util/shktrace.h>
+
 #include "dispatch.h"
-#include "event.h"
 #include "event_info.h"
 #include "kdebug.h"
 #include "kdebug_controller.h"
