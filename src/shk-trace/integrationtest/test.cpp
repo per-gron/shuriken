@@ -2,6 +2,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
+#include <dirent.h>
 #include <fcntl.h>
 #include <spawn.h>
 #include <string>
@@ -51,6 +52,8 @@ extern "C" int __fstat64_extended(
     struct kauth_filesec *sec,
     size_t *sec_size);
 extern "C" int guarded_close_np(int fd, const guardid_t *guard);
+extern "C" ssize_t __getdirentries64(
+    int fd, void *buf, size_t bufsize, long *position);
 extern "C" int __guarded_open_dprotected_np(
     const char *path,
     const guardid_t *guard,
@@ -576,6 +579,33 @@ void testGetattrlistat() {
   struct attrlist al;
   char buf[1024];
   getattrlistat(dir_fd.get(), "input", &al, buf, sizeof(buf), 0);
+}
+
+void testGetattrlistbulk() {
+  auto dir_fd = openFileForReading("dir");
+
+  struct attrlist al{};
+  bzero(&al, sizeof(al));
+  al.bitmapcount = ATTR_BIT_MAP_COUNT;
+  al.commonattr =
+      ATTR_CMN_RETURNED_ATTRS |
+      ATTR_CMN_NAME |
+      ATTR_CMN_ERROR |
+      ATTR_CMN_OBJTYPE;
+  char buf[1024];
+  if (getattrlistbulk(dir_fd.get(), &al, buf, sizeof(buf), 0) == -1) {
+    die("getattrlistbulk failed");
+  }
+}
+
+void testGetdirentries() {
+  auto dir_fd = openFileForReading("dir");
+
+  char buf[1024];
+  long offset = 0;
+  if (__getdirentries64(dir_fd.get(), buf, sizeof(buf), &offset) == -1) {
+    die("getdirentries failed");
+  }
 }
 
 void testGetxattr() {
@@ -1177,6 +1207,8 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "futimes", testFutimes },
   { "getattrlist", testGetattrlist },
   { "getattrlistat", testGetattrlistat },
+  { "getattrlistbulk", testGetattrlistbulk },
+  { "getdirentries", testGetdirentries },
   { "getxattr", testGetxattr },
   { "guarded_close_np", testGuardedCloseNp },
   { "guarded_open_dprotected_np", testGuardedOpenDprotectedNp },

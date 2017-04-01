@@ -60,6 +60,7 @@ def run_cmd_expect_fail(cmd):
 def event_type_to_string(event_type):
   return {
     ShkTrace.EventType.EventType.Read: 'read',
+    ShkTrace.EventType.EventType.ReadDirectory: 'read_directory',
     ShkTrace.EventType.EventType.Write: 'write',
     ShkTrace.EventType.EventType.Create: 'create',
     ShkTrace.EventType.EventType.Delete: 'delete',
@@ -159,6 +160,11 @@ class IntegrationTest(unittest.TestCase):
   def test_executable_counts_as_input(self):
     trace = trace_cmd("ls")
     self.assertIn('read /bin/ls', trace)
+
+  @with_testdir()
+  def test_ls_reads_directory(self):
+    trace = trace_cmd("ls /usr")
+    self.assertIn('read_directory /usr', trace)
 
   @with_testdir()
   def test_access(self):
@@ -535,6 +541,18 @@ class IntegrationTest(unittest.TestCase):
     os.mkdir('dir')
     trace = trace_cmd(helper + ' getattrlistat')
     self.assertIn('read ' + os.getcwd() + '/dir/input', trace)
+
+  @with_testdir()
+  def test_getattrlistbulk(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' getattrlistbulk')
+    self.assertIn('read_directory ' + os.getcwd() + '/dir', trace)
+
+  @with_testdir()
+  def test_getdirentries(self):
+    os.mkdir('dir')
+    trace = trace_cmd(helper + ' getdirentries')
+    self.assertIn('read_directory ' + os.getcwd() + '/dir', trace)
 
   @with_testdir()
   def test_getxattr(self):

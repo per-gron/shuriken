@@ -547,6 +547,14 @@ void Tracer::notifyDelegate(
     break;
   }
 
+  case BSC_getattrlistbulk:
+  case BSC_getdirentries:
+  case BSC_getdirentries64:
+  {
+    add_event(EventType::ReadDirectory, "", &event_info::arg1);
+    break;
+  }
+
   case BSC_mkdir:
   case BSC_mkdir_extended:
   case BSC_mkdirat:
@@ -706,7 +714,8 @@ void Tracer::notifyDelegate(
       const bool is_modify =
           event == EventType::Write ||
           event == EventType::Create ||
-          event == EventType::Delete;
+          event == EventType::Delete ||
+          event == EventType::ReadDirectory;
 
       _delegate.fileEvent(
           thread,
