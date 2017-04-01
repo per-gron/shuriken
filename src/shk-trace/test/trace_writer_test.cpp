@@ -12,7 +12,7 @@ TEST_CASE("TraceWriter") {
 
   {
     TraceWriter writer(std::unique_ptr<TracingServer::TraceRequest>(
-        new TracingServer::TraceRequest(std::move(output_fd), 0, "cwd")));
+        new TracingServer::TraceRequest(std::move(output_fd), 0, 0, "cwd")));
 
     writer.fileEvent(EventType::Read, "path1");
     writer.fileEvent(EventType::Write, "path2");

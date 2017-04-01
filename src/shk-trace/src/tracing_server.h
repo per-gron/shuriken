@@ -33,14 +33,22 @@ class TracingServer {
     TraceRequest(
         FileDescriptor &&trace_fd,
         pid_t pid_to_trace,
+        uintptr_t root_thread_id,
         std::string &&cwd)
         : trace_fd(std::move(trace_fd)),
           pid_to_trace(pid_to_trace),
+          root_thread_id(root_thread_id),
           cwd(std::move(cwd)) {}
     virtual ~TraceRequest() = default;
 
     const FileDescriptor trace_fd;
     const pid_t pid_to_trace;
+    /**
+     * root_thread_id is the id of the thread that will be waiting for the trace
+     * to finish (calling TraceHandle::wait). This thread must not be traced,
+     * otherwise tracing deadlocks.
+     */
+    const uintptr_t root_thread_id;
     const std::string cwd;  // cwd of the process that has requested tracing.
   };
 

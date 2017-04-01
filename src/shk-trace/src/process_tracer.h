@@ -25,7 +25,10 @@ class ProcessTracer : public Tracer::Delegate {
    * traceProcess method. The Delegate object is destroyed when the traced
    * process has terminated.
    */
-  void traceProcess(pid_t pid, std::unique_ptr<Tracer::Delegate> &&delegate);
+  void traceProcess(
+      pid_t pid,
+      uintptr_t root_thread_id,
+      std::unique_ptr<Tracer::Delegate> &&delegate);
 
   virtual void newThread(
       pid_t pid,
@@ -84,9 +87,14 @@ class ProcessTracer : public Tracer::Delegate {
   // ancestor itself.
   Ancestor findAncestor(uintptr_t thread_id);
 
-  // Map pid => Delegate, for processes where we don't yet know the thread id.
-  using ToBeTracedQueue =
-      std::unordered_map<pid_t, std::unique_ptr<Tracer::Delegate>>;
+  struct ToBeTraced {
+    uintptr_t root_thread_id;
+    std::unique_ptr<Tracer::Delegate> delegate;
+  };
+
+  // Map pid => (root_thread_id, Delegate), for processes where we don't yet
+  // know the thread id.
+  using ToBeTracedQueue = std::unordered_map<pid_t, ToBeTraced>;
 
   // Map traced child thread id => Tracer::Delegate (not owning ref). For each
   // traced process, there is also an entry for the ancestor thread in this map.

@@ -1,6 +1,8 @@
 #include "tracing_server.h"
 
 #include <bsm/libbsm.h>
+#include <errno.h>
+#include <pthread.h>
 
 #include "fileport.h"
 
@@ -12,6 +14,7 @@ struct MachSendMsg {
   mach_msg_body_t body;
   mach_msg_port_descriptor_t trace_fd_port;
   mach_msg_port_descriptor_t trace_ack_port;
+  uint64_t root_thread_id;
   char cwd[2048];
 };
 
@@ -63,9 +66,14 @@ class GCDTraceRequest : public TracingServer::TraceRequest {
   GCDTraceRequest(
       FileDescriptor &&trace_fd,
       pid_t pid_to_trace,
+      uintptr_t root_thread_id,
       std::string &&cwd,
       MachSendRight &&ack_port)
-      : TraceRequest(std::move(trace_fd), pid_to_trace, std::move(cwd)),
+      : TraceRequest(
+            std::move(trace_fd),
+            pid_to_trace,
+            root_thread_id,
+            std::move(cwd)),
         _ack_port(std::move(ack_port)) {}
 
   virtual ~GCDTraceRequest() {
@@ -125,6 +133,7 @@ class GCDTracingServer : public TracingServer {
     _cb(std::unique_ptr<TraceRequest>(new GCDTraceRequest(
         std::move(trace_fd),
         client_pid,
+        msg.root_thread_id,
         msg.cwd,
         std::move(tracing_finished_ack_port))));
   }
@@ -253,6 +262,13 @@ std::pair<std::unique_ptr<TraceHandle>, MachOpenPortResult> requestTracing(
   send_msg.trace_ack_port.name = ack_ports.second.release();
   send_msg.trace_ack_port.disposition = MACH_MSG_TYPE_PORT_SEND;
   send_msg.trace_ack_port.type = MACH_MSG_PORT_DESCRIPTOR;
+
+  if (pthread_threadid_np(pthread_self(), &send_msg.root_thread_id) != 0) {
+    fprintf(
+        stderr,
+        "requestTracing(): pthread_threadid_np(): %s\n", strerror(errno));
+    return std::make_pair(nullptr, MachOpenPortResult::FAILURE);
+  }
 
   if (cwd.size() >= sizeof(send_msg.cwd)) {
     // Cwd too large

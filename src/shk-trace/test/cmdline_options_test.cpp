@@ -101,6 +101,32 @@ TEST_CASE("CmdlineOptions") {
     CHECK(options.tracefile == "abc");
     CHECK(options.command == "123");
   }
+
+  SECTION("Server") {
+    SECTION("Short") {
+      auto options = parse({ "-s" });
+      CHECK(options.server == true);
+    }
+
+    SECTION("Long") {
+      auto options = parse({ "--server" });
+      CHECK(options.server == true);
+    }
+
+    SECTION("SuicideWhenOrphaned") {
+      auto options = parse({ "-s", "-O" });
+      CHECK(options.server == true);
+      CHECK(options.suicide_when_orphaned == true);
+    }
+
+    SECTION("WithTraceFile") {
+      CHECK(parse({ "-s", "-f", "f" }).result == CmdlineOptions::Result::HELP);
+    }
+
+    SECTION("WithCommand") {
+      CHECK(parse({ "-s", "-c", "c" }).result == CmdlineOptions::Result::HELP);
+    }
+  }
 }
 
 }  // namespace shk

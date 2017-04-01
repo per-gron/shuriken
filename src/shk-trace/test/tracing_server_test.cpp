@@ -58,6 +58,12 @@ TEST_CASE("TracingServer") {
     CHECK(requests.front()->pid_to_trace == getpid());
   }
 
+  SECTION("CheckRootThreadId") {
+    uint64_t thread_id = 0;
+    CHECK(pthread_threadid_np(pthread_self(), &thread_id) == 0);
+    CHECK(requests.front()->root_thread_id == thread_id);
+  }
+
   SECTION("CheckCwd") {
     CHECK(requests.front()->cwd == "my_cwd");
   }

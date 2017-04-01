@@ -85,9 +85,18 @@ def trace_cmd(cmd):
 
 class IntegrationTest(unittest.TestCase):
 
+  @classmethod
+  def setUpClass(cls):
+    cls.trace_server = subprocess.Popen(
+        [shkTrace, '-s', '--suicide-when-orphaned'], stdout=subprocess.PIPE)
+
+  @classmethod
+  def tearDownClass(cls):
+    cls.trace_server.terminate()
+
   def test_printusage(self):
     output = run_cmd_expect_fail(shkTrace + ' -h')
-    self.assertRegexpMatches(output, r'usage: shk')
+    self.assertRegexpMatches(output, r'Usage:')
 
   @with_testdir()
   def test_read_file(self):
@@ -107,7 +116,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('file', '')
     write_file('new_file', '')
     trace = trace_cmd("cp file new_file")
-    print trace
     self.assertIn('read ' + os.getcwd() + '/file', trace)
     self.assertIn('create ' + os.getcwd() + '/new_file', trace)
 

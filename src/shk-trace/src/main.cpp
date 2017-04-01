@@ -5,7 +5,6 @@
 #include <thread>
 
 #include "cmdline_options.h"
-#include "daemon.h"
 #include "event_consolidator.h"
 #include "kdebug_controller.h"
 #include "named_mach_port.h"
@@ -35,68 +34,64 @@ bool getNumCpus(int *out) {
 static const std::string PORT_NAME = "com.pereckerdal.shktrace";
 
 std::pair<MachSendRight, bool> tryConnectToServer() {
-  for (int attempts = 0; attempts < 100; attempts++) {
-    auto client_port = openNamedPort(PORT_NAME);
-    if (client_port.second == MachOpenPortResult::SUCCESS) {
-      return std::make_pair(std::move(client_port.first), true);
-    } else if (client_port.second != MachOpenPortResult::NOT_FOUND) {
-      return std::make_pair(MachSendRight(), false);
-    }
-
-    usleep(2000);
+  auto client_port = openNamedPort(PORT_NAME);
+  if (client_port.second == MachOpenPortResult::SUCCESS) {
+    return std::make_pair(std::move(client_port.first), true);
+  } else {
+    return std::make_pair(MachSendRight(), false);
   }
-
-  return std::make_pair(MachSendRight(), false);
 }
 
-bool tryForkAndSpawnTracingServer(std::string *err) {
+bool runTracingServer(std::string *err) {
   int num_cpus = 0;
   if (!getNumCpus(&num_cpus)) {
     *err = "Failed to get number of CPUs";
     return false;
   }
 
-  daemon(DaemonConfig(), [num_cpus] {
-    auto server_port = registerNamedPort(PORT_NAME);
-    if (server_port.second != MachPortRegistrationResult::SUCCESS) {
-      // TODO(peck): handle failure
-      fprintf(stderr, "internal error\n");
-      abort();
-    }
+  auto server_port = registerNamedPort(PORT_NAME);
+  if (server_port.second == MachPortRegistrationResult::IN_USE) {
+    *err = "Mach port already in use. Is there already a server running?";
+    return false;
+  } else if (server_port.second != MachPortRegistrationResult::SUCCESS) {
+    *err = "Failed to bind to mach port.";
+    return false;
+  }
 
-    DispatchQueue queue(dispatch_queue_create(
-        "shk-trace-server",
-        DISPATCH_QUEUE_SERIAL));
+  DispatchQueue queue(dispatch_queue_create(
+      "shk-trace-server",
+      DISPATCH_QUEUE_SERIAL));
 
-    auto kdebug_ctrl = makeKdebugController();
+  auto kdebug_ctrl = makeKdebugController();
 
-    ProcessTracer process_tracer;
+  ProcessTracer process_tracer;
 
-    Tracer tracer(
-        num_cpus,
-        *kdebug_ctrl,
-        process_tracer);
-    tracer.start(queue.get());
+  Tracer tracer(
+      num_cpus,
+      *kdebug_ctrl,
+      process_tracer);
+  tracer.start(queue.get());
 
-    auto tracing_server = makeTracingServer(
-        queue.get(),
-        std::move(server_port.first),
-        [&](std::unique_ptr<TracingServer::TraceRequest> &&request) {
-          pid_t pid = request->pid_to_trace;
-          auto cwd = request->cwd;
-          auto trace_writer = std::unique_ptr<PathResolver::Delegate>(
-              new TraceWriter(std::move(request)));
-          process_tracer.traceProcess(
-              pid,
-              std::unique_ptr<Tracer::Delegate>(
-                  new PathResolver(
-                      std::move(trace_writer),
-                      pid,
-                      std::move(cwd))));
-        });
+  auto tracing_server = makeTracingServer(
+      queue.get(),
+      std::move(server_port.first),
+      [&](std::unique_ptr<TracingServer::TraceRequest> &&request) {
+        pid_t pid = request->pid_to_trace;
+        uintptr_t root_thread_id = request->root_thread_id;
+        auto cwd = request->cwd;
+        auto trace_writer = std::unique_ptr<PathResolver::Delegate>(
+            new TraceWriter(std::move(request)));
+        process_tracer.traceProcess(
+            pid,
+            root_thread_id,
+            std::unique_ptr<Tracer::Delegate>(
+                new PathResolver(
+                    std::move(trace_writer),
+                    pid,
+                    std::move(cwd))));
+      });
 
-    tracer.wait(DISPATCH_TIME_FOREVER);
-  });
+  tracer.wait(DISPATCH_TIME_FOREVER);
 
   return true;
 }
@@ -146,10 +141,16 @@ std::pair<FileDescriptor, bool> openTraceFile(const std::string &path) {
 void printUsage() {
   fprintf(
       stderr,
-      "usage: shk-trace "
+      "Usage:\n"
+      "Client mode: shk-trace "
       "[-O/--suicide-when-orphaned] "
       "[-f tracefile] "
-      "-c command\n");
+      "-c command\n"
+      "Server mode: shk-trace "
+      "-s/--server"
+      "[-O/--suicide-when-orphaned]\n"
+      "\n"
+      "There can be only one server process at any given time. The client cannot run without a server.\n");
 }
 
 void suicideWhenOrphaned() {
@@ -163,6 +164,55 @@ void suicideWhenOrphaned() {
       usleep(1000000);
     }
   }).detach();
+}
+
+bool runTracingClient(
+    const CmdlineOptions &cmdline_options,
+    int *status_code,
+    std::string *err) {
+
+  auto server_port = tryConnectToServer();
+  if (!server_port.second) {
+    *err = "Failed to connect to server";
+    return false;
+  }
+
+  auto trace_fd = openTraceFile(cmdline_options.tracefile);
+  if (!trace_fd.second) {
+    *err = "Failed to open tracing file: " + std::string(strerror(errno));
+    return false;
+  }
+
+  auto trace_request = requestTracing(
+      std::move(server_port.first),
+      std::move(trace_fd.first),
+      reinterpret_cast<char *>(
+          RAIIHelper<void *, void, free>(getcwd(nullptr, 0)).get()));
+  if (trace_request.second != MachOpenPortResult::SUCCESS) {
+    *err = "Failed to initiate tracing";
+    return false;
+  }
+
+  std::thread([&] {
+    // Due to a limitation in the tracing information that kdebug provides
+    // (when forking, the tracer can't know the parent pid), the traced program
+    // (aka this code) creates a thread (which has the same pid as the process
+    // that makes the trace request). This triggers tracing to start, and we can
+    // then posix_spawn from here.
+    *status_code = executeCommand(cmdline_options.command);
+  }).join();
+
+  auto wait_result = trace_request.first->wait(3000);
+  switch (wait_result) {
+  case TraceHandle::WaitResult::SUCCESS:
+    return true;
+  case TraceHandle::WaitResult::FAILURE:
+    *err = "Failed to wait for tracing to finish.";
+    return false;
+  case TraceHandle::WaitResult::TIMED_OUT:
+    *err = "Internal error (deadlocked): Tracing does not seem to finish.";
+    return false;
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -193,59 +243,24 @@ int main(int argc, char *argv[]) {
     suicideWhenOrphaned();
   }
 
-  std::string err;
-  if (!tryForkAndSpawnTracingServer(&err)) {
-    fprintf(stderr, "%s\n", err.c_str());
-    return 1;
-  }
-
-  dropPrivileges();
-
-  auto server_port = tryConnectToServer();
-  if (!server_port.second) {
-    fprintf(stderr, "Failed to connect to server\n");
-    return 1;
-  }
-
-  auto trace_fd = openTraceFile(cmdline_options.tracefile);
-  if (!trace_fd.second) {
-    fprintf(stderr, "Failed to open tracing file: %s\n", strerror(errno));
-    return 1;
-  }
-
-  auto trace_request = requestTracing(
-      std::move(server_port.first),
-      std::move(trace_fd.first),
-      reinterpret_cast<char *>(
-          RAIIHelper<void *, void, free>(getcwd(nullptr, 0)).get()));
-  if (trace_request.second != MachOpenPortResult::SUCCESS) {
-    fprintf(stderr, "Failed to initiate tracing\n");
-    return 1;
-  }
-
-  int status_code;
-  std::thread([&] {
-    // Due to a limitation in the tracing information that kdebug provides
-    // (when forking, the tracer can't know the parent pid), the traced program
-    // (aka this code) creates a thread (which has the same pid as the process
-    // that makes the trace request). This triggers tracing to start, and we can
-    // then posix_spawn from here.
-    status_code = executeCommand(cmdline_options.command);
-  }).join();
-
-  auto wait_result = trace_request.first->wait(3000);
-  switch (wait_result) {
-  case TraceHandle::WaitResult::SUCCESS:
+  if (cmdline_options.server) {
+    std::string err;
+    if (!runTracingServer(&err)) {
+      fprintf(stderr, "%s\n", err.c_str());
+      return 1;
+    }
+  } else {
+    dropPrivileges();
+    int status_code = 1;
+    std::string err;
+    if (!runTracingClient(cmdline_options, &status_code, &err)) {
+      fprintf(stderr, "%s\n", err.c_str());
+      return 1;
+    }
     return status_code;
-  case TraceHandle::WaitResult::FAILURE:
-    fprintf(stderr, "Failed to wait for tracing to finish.\n");
-    return 1;
-  case TraceHandle::WaitResult::TIMED_OUT:
-    fprintf(
-        stderr,
-        "Internal error (deadlocked): Tracing does not seem to finish.\n");
-    return 1;
   }
+
+  return 0;
 }
 
 }  // anonymous namespace

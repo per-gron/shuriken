@@ -3,8 +3,10 @@
 namespace shk {
 
 void ProcessTracer::traceProcess(
-    pid_t pid, std::unique_ptr<Tracer::Delegate> &&delegate) {
-  _to_be_traced.emplace(pid, std::move(delegate));
+    pid_t pid,
+    uintptr_t root_thread_id,
+    std::unique_ptr<Tracer::Delegate> &&delegate) {
+  _to_be_traced.emplace(pid, ToBeTraced{ root_thread_id, std::move(delegate) });
 }
 
 void ProcessTracer::newThread(
@@ -24,15 +26,21 @@ void ProcessTracer::newThread(
 
   auto to_be_traced_it = _to_be_traced.find(pid);
   if (to_be_traced_it != _to_be_traced.end()) {
-    // This is a thread that is enqueued to be traced
-    auto &delegate = *to_be_traced_it->second;
-    _traced_threads.emplace(
-        child_thread_id, std::move(to_be_traced_it->second));
-    _ancestor_threads.emplace(
-        child_thread_id, Ancestor(child_thread_id, &delegate));
-    _to_be_traced.erase(to_be_traced_it);
-    delegate.newThread(pid, parent_thread_id, child_thread_id);
-    return;
+    // This is a thread for a process that is enqueued to be traced
+    auto &to_be_traced = to_be_traced_it->second;
+    if (child_thread_id == to_be_traced.root_thread_id) {
+      // This is the thread creation event for the root thread of the process
+      // to be traced. This is the thread that will wait for tracing to finish.
+      // If we start tracing this one, tracing will deadlock.
+    } else {
+      auto &delegate = *to_be_traced.delegate;
+      _traced_threads.emplace(
+          child_thread_id, std::move(to_be_traced.delegate));
+      _ancestor_threads.emplace(
+          child_thread_id, Ancestor(child_thread_id, &delegate));
+      _to_be_traced.erase(to_be_traced_it);
+      delegate.newThread(pid, parent_thread_id, child_thread_id);
+    }
   }
 }
 
@@ -52,12 +60,6 @@ Tracer::Delegate::Response ProcessTracer::terminateThread(uintptr_t thread_id) {
     // This thread is an ancestor traced thread. Finish the tracing by
     // destroying the delegate.
     _traced_threads.erase(delegate_it);
-
-    if (_traced_threads.empty() && _to_be_traced.empty()) {
-      // A process has finished tracing, and there are no other processes being
-      // traced. It is time for the shk-trace daemon to quit.
-      return Response::QUIT_TRACING;
-    }
   }
 
   return Response::OK;

@@ -20,7 +20,7 @@ TEST_CASE("ProcessTracer") {
   auto delegate_ptr = std::unique_ptr<MockTracerDelegate>(
       new MockTracerDelegate(dead_tracers));
   auto &delegate = *delegate_ptr;
-  tracer.traceProcess(1, std::move(delegate_ptr));
+  tracer.traceProcess(1, 1000, std::move(delegate_ptr));
   tracer.newThread(/*pid:*/1, 2, 3);
   delegate.popNewThreadEvent();
 
@@ -41,7 +41,7 @@ TEST_CASE("ProcessTracer") {
 
     SECTION("TerminateThreadEventForAncestor") {
       delegate.expectTermination();
-      CHECK(tracer.terminateThread(3) == Response::QUIT_TRACING);
+      CHECK(tracer.terminateThread(3) == Response::OK);
     }
 
     SECTION("TerminateThreadEventForChildThread") {
@@ -55,7 +55,7 @@ TEST_CASE("ProcessTracer") {
       auto delegate2_ptr = std::unique_ptr<MockTracerDelegate>(
           new MockTracerDelegate(dead_tracers));
       auto &delegate2 = *delegate2_ptr;
-      tracer.traceProcess(2, std::move(delegate2_ptr));
+      tracer.traceProcess(2, 1000, std::move(delegate2_ptr));
 
       SECTION("NewThreadForNewTrace") {
         tracer.newThread(/*pid:*/2, 4, 5);
@@ -77,6 +77,13 @@ TEST_CASE("ProcessTracer") {
         CHECK(tracer.terminateThread(3) == Response::OK);
       }
 
+      SECTION("RootThreadTerminationShouldNotCountAsFinish") {
+        tracer.newThread(/*pid:*/2, 4, 1000);
+        CHECK(tracer.terminateThread(1000) == Response::OK);
+
+        // no call to delegate.expectTermination();
+      }
+
       SECTION("SecondProcessFinished") {
         tracer.newThread(/*pid:*/2, 4, 5);
         delegate2.popNewThreadEvent();
@@ -92,7 +99,7 @@ TEST_CASE("ProcessTracer") {
         CHECK(tracer.terminateThread(3) == Response::OK);
 
         delegate2.expectTermination();
-        CHECK(tracer.terminateThread(5) == Response::QUIT_TRACING);
+        CHECK(tracer.terminateThread(5) == Response::OK);
       }
 
       SECTION("BothProcessesFinishedFirstLast") {
@@ -103,7 +110,7 @@ TEST_CASE("ProcessTracer") {
         CHECK(tracer.terminateThread(5) == Response::OK);
 
         delegate.expectTermination();
-        CHECK(tracer.terminateThread(3) == Response::QUIT_TRACING);
+        CHECK(tracer.terminateThread(3) == Response::OK);
       }
     }
 
@@ -252,7 +259,7 @@ TEST_CASE("ProcessTracer") {
     SECTION("MainThreadTermination") {
       CHECK(dead_tracers == 0);
       delegate.expectTermination();
-      CHECK(tracer.terminateThread(3) == Response::QUIT_TRACING);
+      CHECK(tracer.terminateThread(3) == Response::OK);
       CHECK(dead_tracers == 1);
     }
   }
