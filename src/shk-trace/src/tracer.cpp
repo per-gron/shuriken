@@ -202,18 +202,6 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
     case BSC_exit:
       continue;
 
-    case VFS_ALIAS_VP:
-      {
-        auto name_it = _vn_name_map.find(kd[i].arg1);
-        if (name_it != _vn_name_map.end()) {
-          _vn_name_map[kd[i].arg2] = name_it->second;
-        } else {
-          // TODO(peck): Can this happen?
-          _vn_name_map.erase(kd[i].arg2);
-        }
-        continue;
-      }
-
     case VFS_LOOKUP:
       {
         auto ei_it = _ei_map.find_last(thread);
