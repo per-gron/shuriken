@@ -12,7 +12,7 @@ namespace shk {
 
 TEST_CASE("ProcessTracer") {
   using Response = Tracer::Delegate::Response;
-  using SB = Tracer::Delegate::SymlinkBehavior;
+  using SB = SymlinkBehavior;
 
   ProcessTracer tracer;
 

@@ -12,6 +12,7 @@
 #include "event_info.h"
 #include "kdebug.h"
 #include "kdebug_controller.h"
+#include "symlink_behavior.h"
 #include "syscall_constants.h"
 #include "syscall_tables.h"
 
@@ -30,11 +31,6 @@ class Tracer {
     enum class Response {
       OK,
       QUIT_TRACING
-    };
-
-    enum class SymlinkBehavior {
-      FOLLOW,
-      NO_FOLLOW
     };
 
     virtual ~Delegate() = default;

@@ -10,7 +10,7 @@ namespace {
 struct FileEvent {
   EventType type;
   std::string path;
-  PathResolver::Delegate::SymlinkBehavior symlink_behavior;
+  SymlinkBehavior symlink_behavior;
 };
 
 class MockPathResolverDelegate : public PathResolver::Delegate {
@@ -46,7 +46,7 @@ class MockPathResolverDelegate : public PathResolver::Delegate {
 }  // anonymous namespace
 
 TEST_CASE("PathResolver") {
-  using SB = Tracer::Delegate::SymlinkBehavior;
+  using SB = SymlinkBehavior;
 
   auto delegate_ptr = std::unique_ptr<MockPathResolverDelegate>(
       new MockPathResolverDelegate());

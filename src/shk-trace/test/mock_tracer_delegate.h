@@ -1,5 +1,10 @@
 #pragma once
 
+#include <string>
+
+#include "event.h"
+#include "symlink_behavior.h"
+
 namespace shk {
 
 struct FileEvent {
@@ -7,7 +12,7 @@ struct FileEvent {
   EventType type;
   int at_fd;
   std::string path;
-  Tracer::Delegate::SymlinkBehavior symlink_behavior;
+  SymlinkBehavior symlink_behavior;
 };
 
 struct NewThreadEvent {

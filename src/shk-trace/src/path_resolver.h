@@ -2,6 +2,7 @@
 
 #include "cwd_memo.h"
 #include "file_descriptor_memo.h"
+#include "symlink_behavior.h"
 #include "tracer.h"
 
 namespace shk {
@@ -20,8 +21,6 @@ class PathResolver : public Tracer::Delegate {
    */
   class Delegate {
    public:
-    using SymlinkBehavior = Tracer::Delegate::SymlinkBehavior;
-
     virtual ~Delegate() = default;
 
     virtual void fileEvent(
