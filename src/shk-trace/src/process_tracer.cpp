@@ -67,9 +67,11 @@ void ProcessTracer::fileEvent(
     uintptr_t thread_id,
     EventType type,
     int at_fd,
-    std::string &&path) {
+    std::string &&path,
+    SymlinkBehavior symlink_behavior) {
   if (auto delegate = findAncestor(thread_id).delegate) {
-    delegate->fileEvent(thread_id, type, at_fd, std::move(path));
+    delegate->fileEvent(
+        thread_id, type, at_fd, std::move(path), symlink_behavior);
   }
 }
 

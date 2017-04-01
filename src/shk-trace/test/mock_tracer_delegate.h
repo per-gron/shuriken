@@ -7,6 +7,7 @@ struct FileEvent {
   EventType type;
   int at_fd;
   std::string path;
+  Tracer::Delegate::SymlinkBehavior symlink_behavior;
 };
 
 struct NewThreadEvent {
@@ -84,9 +85,10 @@ class MockTracerDelegate : public Tracer::Delegate {
       uintptr_t thread_id,
       EventType type,
       int at_fd,
-      std::string &&path) override {
+      std::string &&path,
+      SymlinkBehavior symlink_behavior) override {
     _file_events.push_back(
-        FileEvent{ thread_id, type, at_fd, std::move(path) });
+        FileEvent{ thread_id, type, at_fd, std::move(path), symlink_behavior });
   }
 
   virtual void newThread(

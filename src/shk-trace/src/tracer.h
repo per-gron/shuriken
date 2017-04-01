@@ -32,6 +32,11 @@ class Tracer {
       QUIT_TRACING
     };
 
+    enum class SymlinkBehavior {
+      FOLLOW,
+      NO_FOLLOW
+    };
+
     virtual ~Delegate() = default;
 
     virtual void newThread(
@@ -53,7 +58,8 @@ class Tracer {
         uintptr_t thread_id,
         EventType type,
         int at_fd,
-        std::string &&path) = 0;
+        std::string &&path,
+        SymlinkBehavior symlink_behavior) = 0;
 
     /**
      * Invoked whenever a file descriptor to a file or directory has been

@@ -12,6 +12,7 @@ namespace shk {
 
 TEST_CASE("ProcessTracer") {
   using Response = Tracer::Delegate::Response;
+  using SB = Tracer::Delegate::SymlinkBehavior;
 
   ProcessTracer tracer;
 
@@ -26,17 +27,26 @@ TEST_CASE("ProcessTracer") {
 
   SECTION("EventForwarding") {
     SECTION("UnknownThreadId") {
-      tracer.fileEvent(2, EventType::FatalError, AT_FDCWD, "");
-      tracer.fileEvent(123, EventType::FatalError, AT_FDCWD, "");
+      tracer.fileEvent(2, EventType::FatalError, AT_FDCWD, "", SB::NO_FOLLOW);
+      tracer.fileEvent(123, EventType::FatalError, AT_FDCWD, "", SB::NO_FOLLOW);
     }
 
     SECTION("FileEvent") {
-      tracer.fileEvent(3, EventType::Create, 999, "abc");
+      tracer.fileEvent(3, EventType::Create, 999, "abc", SB::NO_FOLLOW);
       auto evt = delegate.popFileEvent();
       CHECK(evt.thread_id == 3);
       CHECK(evt.type == EventType::Create);
       CHECK(evt.at_fd == 999);
       CHECK(evt.path == "abc");
+      CHECK(evt.symlink_behavior == SB::NO_FOLLOW);
+    }
+
+    SECTION("FileEventSymlinkBehavior") {
+      tracer.fileEvent(3, EventType::Create, 999, "abc", SB::NO_FOLLOW);
+      CHECK(delegate.popFileEvent().symlink_behavior == SB::NO_FOLLOW);
+
+      tracer.fileEvent(3, EventType::Create, 999, "abc", SB::FOLLOW);
+      CHECK(delegate.popFileEvent().symlink_behavior == SB::FOLLOW);
     }
 
     SECTION("TerminateThreadEventForAncestor") {
@@ -68,7 +78,7 @@ TEST_CASE("ProcessTracer") {
       SECTION("MultipleDelegates") {
         tracer.newThread(/*pid:*/2, 4, 5);
         delegate2.popNewThreadEvent();
-        tracer.fileEvent(5, EventType::FatalError, AT_FDCWD, "");
+        tracer.fileEvent(5, EventType::FatalError, AT_FDCWD, "", SB::NO_FOLLOW);
         delegate2.popFileEvent();
       }
 
@@ -215,7 +225,7 @@ TEST_CASE("ProcessTracer") {
     SECTION("OneChild") {
       tracer.newThread(/*pid:*/543, 3, 4);
       delegate.popNewThreadEvent();
-      tracer.fileEvent(4, EventType::FatalError, AT_FDCWD, "");
+      tracer.fileEvent(4, EventType::FatalError, AT_FDCWD, "", SB::NO_FOLLOW);
       delegate.popFileEvent();
     }
 
@@ -224,7 +234,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       tracer.newThread(/*pid:*/543, 4, 5);
       delegate.popNewThreadEvent();
-      tracer.fileEvent(5, EventType::FatalError, AT_FDCWD, "");
+      tracer.fileEvent(5, EventType::FatalError, AT_FDCWD, "", SB::NO_FOLLOW);
       delegate.popFileEvent();
     }
 
@@ -235,7 +245,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       CHECK(tracer.terminateThread(4) == Response::OK);
       delegate.popTerminateThreadEvent();
-      tracer.fileEvent(5, EventType::FatalError, AT_FDCWD, "");
+      tracer.fileEvent(5, EventType::FatalError, AT_FDCWD, "", SB::NO_FOLLOW);
       delegate.popFileEvent();
     }
   }
@@ -246,7 +256,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       CHECK(tracer.terminateThread(4) == Response::OK);
       delegate.popTerminateThreadEvent();
-      tracer.fileEvent(4, EventType::FatalError, AT_FDCWD, "");
+      tracer.fileEvent(4, EventType::FatalError, AT_FDCWD, "", SB::NO_FOLLOW);
     }
 
     SECTION("MainThreadTermination") {

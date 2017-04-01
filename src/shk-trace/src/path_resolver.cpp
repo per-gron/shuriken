@@ -35,7 +35,8 @@ void PathResolver::fileEvent(
     uintptr_t thread_id,
     EventType type,
     int at_fd,
-    std::string &&path) {
+    std::string &&path,
+    SymlinkBehavior symlink_behavior) {
   _delegate->fileEvent(
       type,
       type == EventType::FatalError ?
