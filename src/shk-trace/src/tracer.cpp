@@ -637,6 +637,12 @@ void Tracer::format_print(
     break;
   }
 
+  case BSC_delete:
+  {
+    disallowed_event("delete");
+    break;
+  }
+
   case BSC_chroot:
   {
     disallowed_event("chroot");

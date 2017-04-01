@@ -247,6 +247,11 @@ class IntegrationTest(unittest.TestCase):
     self.assertNotIn('read /usr/local\n', trace)
 
   @with_testdir()
+  def test_delete(self):
+    trace = trace_cmd(helper + ' delete')
+    self.assertIn('fatal_error delete', trace)
+
+  @with_testdir()
   def test_dup(self):
     trace = trace_cmd(helper + ' dup')
     self.assertIn('read /usr/nonexisting_path_just_for_testing', trace)

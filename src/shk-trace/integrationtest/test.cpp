@@ -32,6 +32,7 @@ extern "C" int __chmod_extended(
     int mode,
     struct kauth_filesec *sec);
 extern "C" int __close_nocancel(int fd);
+extern "C" int __delete(const char *path);
 extern "C" int __fchmod_extended(
     int fd,
     uid_t uid,
@@ -216,6 +217,11 @@ void testCloseNocancel() {
   if (faccessat(usr_fd_num, "local", 0, 0) != -1 || errno != EBADF) {
     die("faccessat did not fail with EBADF error");
   }
+}
+
+void testDelete() {
+  // Carbon semantics delete. It is not supported by shk-trace
+  __delete("input");
 }
 
 void testDup() {
@@ -1109,6 +1115,7 @@ const std::unordered_map<std::string, std::function<void ()>> kTests = {
   { "chroot", testChroot },
   { "close", testClose },
   { "close_nocancel", testCloseNocancel },
+  { "delete", testDelete },
   { "dup", testDup },
   { "dup2", testDup2 },
   { "exchangedata", testExchangedata },
