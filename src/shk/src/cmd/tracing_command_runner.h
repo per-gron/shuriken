@@ -9,7 +9,7 @@ namespace shk {
 
 /**
  * Make a CommandRunner that uses another CommandRunner to actually run
- * commands. This CommandRunner will trace reads and writes and performing
+ * commands. This CommandRunner will trace reads and writes and perform
  * other verifications that CommandRunners should do.
  *
  * The inner CommandRunner should not perform any linting or dependency

@@ -24,6 +24,8 @@ add_library(shklib
   src/cmd/real_command_runner.h
   src/cmd/real_command_runner_posix.cpp
   src/cmd/sandbox_parser.h
+  src/cmd/trace_server_handle.cpp
+  src/cmd/trace_server_handle.h
   src/cmd/tracing_command_runner.cpp
   src/cmd/tracing_command_runner.h
   src/dependency_type.h
@@ -117,6 +119,7 @@ add_executable(shk_test
   test/cmd/real_command_runner_test.cpp
   test/cmd/sandbox_parser_test.cpp
   test/cmd/tracing_command_runner_test.cpp
+  test/cmd/trace_server_handle_test.cpp
   test/dummy_command_runner.cpp
   test/dummy_command_runner.h
   test/dummy_command_runner_test.cpp

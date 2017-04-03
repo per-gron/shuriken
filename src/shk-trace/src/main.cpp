@@ -91,6 +91,11 @@ bool runTracingServer(std::string *err) {
                     std::move(cwd))));
       });
 
+  // This is a message to the calling process that indicates that it can expect
+  // to be able to make trace requests against it.
+  printf("serving\n");
+  close(1);
+
   tracer.wait(DISPATCH_TIME_FOREVER);
 
   return true;
@@ -111,7 +116,7 @@ void dropPrivileges() {
 
 int executeCommand(const std::string &cmd) {
   pid_t pid;
-  const char *argv[] = { "sh", "-c", cmd.c_str(), nullptr };
+  const char *argv[] = { "/bin/sh", "-c", cmd.c_str(), nullptr };
   int err = posix_spawn(
       &pid,
       "/bin/sh",
