@@ -5,10 +5,6 @@
 namespace shk {
 
 TEST_CASE("TraceServerHandle") {
-  SECTION("Mock") {
-    TraceServerHandle();
-  }
-
   SECTION("InvalidCommand") {
     std::string err;
     CHECK(!TraceServerHandle::open("/nonexisting", &err));

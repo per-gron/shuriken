@@ -21,6 +21,8 @@ class TraceServerHandle {
   TraceServerHandle &operator=(const TraceServerHandle &) = delete;
   virtual ~TraceServerHandle() = default;
 
+  virtual const std::string &getShkTracePath() const = 0;
+
   /**
    * Returns a nullptr unique_ptr on failure.
    *

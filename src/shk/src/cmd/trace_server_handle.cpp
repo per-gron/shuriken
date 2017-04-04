@@ -96,6 +96,10 @@ class RealTraceServerHandle : public TraceServerHandle {
     return handle;
   }
 
+  virtual const std::string &getShkTracePath() const {
+    return _executable_path;
+  }
+
  private:
   static std::string computeExecutablePath(
       const std::string &shk_trace_command) {
