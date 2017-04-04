@@ -113,6 +113,11 @@ set_target_properties(shk PROPERTIES
   COMPILE_FLAGS ${SHK_COMPILER_FLAGS}
   RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
+add_executable(shk-trace-dummy
+  test/cmd/shk_trace_dummy.cpp)
+set_property(TARGET shk-trace-dummy PROPERTY CXX_STANDARD 11)
+set_target_properties(shk-trace-dummy PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
+
 add_executable(shk_test
   test/build_test.cpp
   test/cmd/dry_run_command_runner_test.cpp
@@ -158,7 +163,7 @@ set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shk_test PUBLIC "${CMAKE_SOURCE_DIR}/vendor/rapidcheck/extras/catch/include")
 target_link_libraries(shk_test shklib catch rapidcheck)
 set_target_properties(shk_test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-
+add_dependencies(shk_test shk-trace-dummy)
 add_test(NAME unit COMMAND shk_test)
 add_test(
   NAME integration

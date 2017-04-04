@@ -1,10 +1,13 @@
 #include "cmd/trace_server_handle.h"
 
 #include <errno.h>
+#include <mach-o/dyld.h>
+#include <libgen.h>
 #include <signal.h>
 #include <spawn.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <vector>
 
 #include <util/file_descriptor.h>
 
@@ -17,6 +20,9 @@ using PosixSpawnFileActions = RAIIHelper<posix_spawn_file_actions_t *, int, posi
 
 class RealTraceServerHandle : public TraceServerHandle {
  public:
+  RealTraceServerHandle(const std::string &shk_trace_command)
+      : _executable_path(computeExecutablePath(shk_trace_command)) {}
+
   ~RealTraceServerHandle() {
     if (_pid) {
       kill(_pid, SIGTERM);
@@ -49,17 +55,20 @@ class RealTraceServerHandle : public TraceServerHandle {
     posix_spawn_file_actions_adddup2(actions.get(), stdout_child.get(), 1);
     posix_spawn_file_actions_addclose(actions.get(), stdout_child.get());
 
+    std::unique_ptr<TraceServerHandle> handle(new RealTraceServerHandle(
+        shk_trace_command));
+    auto &real_handle = *static_cast<RealTraceServerHandle *>(
+        handle.get());
+
     const char *argv[] = {
-        "/bin/sh",
-        "-c",
-        shk_trace_command.c_str(),
+        real_handle._executable_path.c_str(),
+        "-s",  // server mode
+        "-O",  // suicide-when-orphaned
         nullptr };
 
-    std::unique_ptr<TraceServerHandle> handle(new RealTraceServerHandle());
-
     if (posix_spawn(
-            &static_cast<RealTraceServerHandle *>(handle.get())->_pid,
-            "/bin/sh",
+            &real_handle._pid,
+            real_handle._executable_path.c_str(),
             actions.get(),
             nullptr,
             const_cast<char **>(argv),
@@ -88,6 +97,26 @@ class RealTraceServerHandle : public TraceServerHandle {
   }
 
  private:
+  static std::string computeExecutablePath(
+      const std::string &shk_trace_command) {
+    if (!shk_trace_command.empty() && shk_trace_command[0] == '/') {
+      return shk_trace_command;
+    }
+
+    uint32_t bufsize = 0;
+    _NSGetExecutablePath(nullptr, &bufsize);
+    std::vector<char> executable_path(bufsize);
+    _NSGetExecutablePath(executable_path.data(), &bufsize);
+
+    // +2: null pointer and potential "." if empty input, just to be safe
+    std::vector<char> dirname_buf(executable_path.size() + 2);
+    const char * const dirname = dirname_r(
+        executable_path.data(), dirname_buf.data());
+
+    return dirname + ("/" + shk_trace_command);
+  }
+
+  const std::string _executable_path;
   pid_t _pid = 0;
 };
 
