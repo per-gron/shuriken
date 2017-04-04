@@ -48,6 +48,8 @@ add_executable(shk-trace
   src/main.cpp
   sudo_dummy.h)
 target_link_libraries(shk-trace libshktrace)
+set_target_properties(shk-trace PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test
@@ -75,17 +77,17 @@ set_property(TARGET shktrace_integrationtest_helper PROPERTY CXX_STANDARD 11)
 add_custom_command(
   TARGET shk-trace
   PRE_LINK
-  COMMAND rm -f shk-trace
+  COMMAND rm -f "${PROJECT_BINARY_DIR}/bin/shk-trace"
   VERBATIM USES_TERMINAL)
 add_custom_command(
   TARGET shk-trace
   POST_BUILD
-  COMMAND sudo chown root shk-trace
-  COMMAND sudo chmod u+s shk-trace
+  COMMAND sudo chown root "${PROJECT_BINARY_DIR}/bin/shk-trace"
+  COMMAND sudo chmod u+s "${PROJECT_BINARY_DIR}/bin/shk-trace"
   VERBATIM USES_TERMINAL)
 
 add_test(NAME trace_unit COMMAND shktrace_test)
 add_test(
   NAME trace_integration
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/integrationtest
-  COMMAND env SHK_TRACE_FB_PATH=${CMAKE_CURRENT_BINARY_DIR}/../shkutil/include/util SHK_TRACE_PATH=${CMAKE_CURRENT_BINARY_DIR}/shk-trace python ${CMAKE_CURRENT_LIST_DIR}/integrationtest/test.py)
+  COMMAND env SHK_TRACE_FB_PATH=${CMAKE_CURRENT_BINARY_DIR}/../shkutil/include/util SHK_TRACE_PATH=${PROJECT_BINARY_DIR}/bin/shk-trace SHK_TRACE_TEST_HELPER_PATH=${CMAKE_CURRENT_BINARY_DIR}/shktrace_integrationtest_helper python ${CMAKE_CURRENT_LIST_DIR}/integrationtest/test.py)

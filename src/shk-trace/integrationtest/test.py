@@ -38,8 +38,11 @@ import ShkTrace.EventType
 
 shkTrace = os.environ.get(
     'SHK_TRACE_PATH',
-    os.getcwd() + '/../../../build/src/shk-trace/shk-trace')
-helper = os.path.join(os.path.dirname(shkTrace), 'shktrace_integrationtest_helper')
+    os.getcwd() + '/../../../build/bin/shk-trace')
+
+helper = os.environ.get(
+    'SHK_TRACE_TEST_HELPER_PATH',
+    os.getcwd() + '/../../../build/src/shk-trace/shktrace_integrationtest_helper')
 
 sys.path.insert(0, '/path/to/application/app/folder')
 

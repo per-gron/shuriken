@@ -109,7 +109,9 @@ add_executable(shk
   src/shk.cpp)
 set_property(TARGET shk PROPERTY CXX_STANDARD 11)
 target_link_libraries(shk shklib)
-set_target_properties(shk PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
+set_target_properties(shk PROPERTIES
+  COMPILE_FLAGS ${SHK_COMPILER_FLAGS}
+  RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 add_executable(shk_test
   test/build_test.cpp
@@ -161,4 +163,4 @@ add_test(NAME unit COMMAND shk_test)
 add_test(
   NAME integration
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/integrationtest
-  COMMAND env SHK_PATH=${CMAKE_CURRENT_BINARY_DIR}/shk python ${CMAKE_CURRENT_LIST_DIR}/integrationtest/test.py)
+  COMMAND env SHK_PATH=${PROJECT_BINARY_DIR}/bin/shk python ${CMAKE_CURRENT_LIST_DIR}/integrationtest/test.py)
