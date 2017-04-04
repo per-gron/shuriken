@@ -94,6 +94,7 @@ bool runTracingServer(std::string *err) {
   // This is a message to the calling process that indicates that it can expect
   // to be able to make trace requests against it.
   printf("serving\n");
+  fflush(stdout);
   close(1);
 
   tracer.wait(DISPATCH_TIME_FOREVER);

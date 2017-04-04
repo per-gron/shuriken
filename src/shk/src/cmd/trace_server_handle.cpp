@@ -37,45 +37,57 @@ class RealTraceServerHandle : public TraceServerHandle {
   }
 
   static std::unique_ptr<TraceServerHandle> open(
-      const std::string &shk_trace_command,
-      std::string *err) {
+      const std::string &shk_trace_command) {
+    return std::unique_ptr<TraceServerHandle>(new RealTraceServerHandle(
+        shk_trace_command));
+  }
+
+  virtual const std::string &getShkTracePath(std::string *err) override {
+    static const std::string empty_string;
+
+    if (!_pid) {
+      if (!spawnServer(err)) {
+        return empty_string;
+      }
+    }
+
+    return _executable_path;
+  }
+
+ private:
+  bool spawnServer(std::string *err) {
     int stdout_pipe[2];
     if (pipe(stdout_pipe)) {
       *err = "pipe() failed";
-      return nullptr;
+      return false;
     }
 
     FileDescriptor stdout(stdout_pipe[0]);
     FileDescriptor stdout_child(stdout_pipe[1]);
 
     posix_spawn_file_actions_t raw_actions;
+    posix_spawn_file_actions_init(&raw_actions);
     PosixSpawnFileActions actions(&raw_actions);
-    posix_spawn_file_actions_init(actions.get());
     posix_spawn_file_actions_addclose(actions.get(), stdout.get());
     posix_spawn_file_actions_adddup2(actions.get(), stdout_child.get(), 1);
     posix_spawn_file_actions_addclose(actions.get(), stdout_child.get());
 
-    std::unique_ptr<TraceServerHandle> handle(new RealTraceServerHandle(
-        shk_trace_command));
-    auto &real_handle = *static_cast<RealTraceServerHandle *>(
-        handle.get());
-
     const char *argv[] = {
-        real_handle._executable_path.c_str(),
+        _executable_path.c_str(),
         "-s",  // server mode
         "-O",  // suicide-when-orphaned
         nullptr };
 
     if (posix_spawn(
-            &real_handle._pid,
-            real_handle._executable_path.c_str(),
+            &_pid,
+            _executable_path.c_str(),
             actions.get(),
             nullptr,
             const_cast<char **>(argv),
             environ)) {
-      static_cast<RealTraceServerHandle *>(handle.get())->_pid = 0;
+      _pid = 0;
       *err = std::string("posix_spawn() failed");
-      return nullptr;
+      return false;
     }
 
     stdout_child.reset();
@@ -86,21 +98,16 @@ class RealTraceServerHandle : public TraceServerHandle {
     int bytes_read = read(stdout.get(), buf, sizeof(buf));
     if (bytes_read == -1) {
       *err = std::string("read(): ") + strerror(errno);
-      return nullptr;
+      return false;
     }
     if (strncmp(buf, kExpectedMessage.data(), sizeof(buf)) != 0) {
       *err = "did not see expected acknowledgement message";
-      return nullptr;
+      return false;
     }
 
-    return handle;
+    return true;
   }
 
-  virtual const std::string &getShkTracePath() const {
-    return _executable_path;
-  }
-
- private:
   static std::string computeExecutablePath(
       const std::string &shk_trace_command) {
     if (!shk_trace_command.empty() && shk_trace_command[0] == '/') {
@@ -127,9 +134,8 @@ class RealTraceServerHandle : public TraceServerHandle {
 }  // anonymous namespace
 
 std::unique_ptr<TraceServerHandle> TraceServerHandle::open(
-    const std::string &shk_trace_path,
-    std::string *err) {
-  return RealTraceServerHandle::open(shk_trace_path, err);
+    const std::string &shk_trace_path) {
+  return RealTraceServerHandle::open(shk_trace_path);
 }
 
 }  // namespace shk

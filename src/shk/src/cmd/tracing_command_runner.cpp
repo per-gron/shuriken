@@ -32,9 +32,11 @@ class TemporaryFile {
 class TracingCommandRunner : public CommandRunner {
  public:
   TracingCommandRunner(
+      std::unique_ptr<TraceServerHandle> &&trace_sever_handle,
       FileSystem &file_system,
       std::unique_ptr<CommandRunner> &&inner)
-      : _file_system(file_system),
+      : _trace_server_handle(std::move(trace_sever_handle)),
+        _file_system(file_system),
         _inner(std::move(inner)) {}
 
   void invoke(
@@ -124,6 +126,7 @@ class TracingCommandRunner : public CommandRunner {
     }
   }
 
+  const std::unique_ptr<TraceServerHandle> _trace_server_handle;
   FileSystem &_file_system;
   const std::unique_ptr<CommandRunner> _inner;
 };
@@ -131,10 +134,14 @@ class TracingCommandRunner : public CommandRunner {
 }
 
 std::unique_ptr<CommandRunner> makeTracingCommandRunner(
+    std::unique_ptr<TraceServerHandle> &&trace_sever_handle,
     FileSystem &file_system,
     std::unique_ptr<CommandRunner> &&command_runner) {
   return std::unique_ptr<CommandRunner>(
-      new TracingCommandRunner(file_system, std::move(command_runner)));
+      new TracingCommandRunner(
+          std::move(trace_sever_handle),
+          file_system,
+          std::move(command_runner)));
 }
 
 }  // namespace shk

@@ -6,20 +6,24 @@ namespace shk {
 
 TEST_CASE("TraceServerHandle") {
   SECTION("InvalidCommand") {
+    auto handle = TraceServerHandle::open("/nonexisting");
     std::string err;
-    CHECK(!TraceServerHandle::open("/nonexisting", &err));
+    CHECK(handle->getShkTracePath(&err).empty());
     CHECK(err == "posix_spawn() failed");
   }
 
   SECTION("WrongAcknowledgementMessage") {
+    auto handle = TraceServerHandle::open("/bin/echo");
     std::string err;
-    CHECK(!TraceServerHandle::open("/bin/echo", &err));
+    CHECK(handle->getShkTracePath(&err).empty());
     CHECK(err == "did not see expected acknowledgement message");
   }
 
   SECTION("Success") {
+    auto handle = TraceServerHandle::open("shk-trace-dummy");
     std::string err;
-    CHECK(TraceServerHandle::open("shk-trace-dummy", &err));
+    CHECK(!handle->getShkTracePath(&err).empty());
+    CHECK(err == "");
   }
 }
 

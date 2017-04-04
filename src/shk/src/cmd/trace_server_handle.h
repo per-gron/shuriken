@@ -21,7 +21,11 @@ class TraceServerHandle {
   TraceServerHandle &operator=(const TraceServerHandle &) = delete;
   virtual ~TraceServerHandle() = default;
 
-  virtual const std::string &getShkTracePath() const = 0;
+  /**
+   * Gets the path to the shk-trace command, and lazily start the shk-trace
+   * server. Returns an empty string on failure.
+   */
+  virtual const std::string &getShkTracePath(std::string *err) = 0;
 
   /**
    * Returns a nullptr unique_ptr on failure.
@@ -32,8 +36,7 @@ class TraceServerHandle {
    * server process laying around for longer than this process.
    */
   static std::unique_ptr<TraceServerHandle> open(
-      const std::string &shk_trace_command,
-      std::string *err);
+      const std::string &shk_trace_command);
 };
 
 }  // namespace shk

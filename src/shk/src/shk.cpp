@@ -427,6 +427,7 @@ BuildResult ShurikenMain::runBuild(
           _config.max_load_average,
           _config.parallelism,
           makeTracingCommandRunner(
+              TraceServerHandle::open("shk-trace"),
               _file_system,
               makeRealCommandRunner())));
 

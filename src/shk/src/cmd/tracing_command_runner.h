@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "cmd/command_runner.h"
+#include "cmd/trace_server_handle.h"
 #include "fs/file_system.h"
 
 namespace shk {
@@ -16,6 +17,7 @@ namespace shk {
  * tracking; that might be overwritten by this object.
  */
 std::unique_ptr<CommandRunner> makeTracingCommandRunner(
+    std::unique_ptr<TraceServerHandle> &&trace_sever_handle,
     FileSystem &file_system,
     std::unique_ptr<CommandRunner> &&command_runner);
 

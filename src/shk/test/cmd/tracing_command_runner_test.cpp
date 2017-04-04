@@ -8,6 +8,16 @@
 namespace shk {
 namespace {
 
+class MockTraceServerHandle : public TraceServerHandle {
+ public:
+  virtual const std::string &getShkTracePath(std::string *err) override {
+    return _executable_path;
+  }
+
+ private:
+  std::string _executable_path;
+};
+
 CommandRunner::Result runCommand(
     CommandRunner &runner,
     const std::string &command) {
@@ -155,6 +165,7 @@ bool contains(const Container &container, const Value &value) {
 TEST_CASE("TracingCommandRunner") {
   const auto fs = persistentFileSystem();
   const auto runner = makeTracingCommandRunner(
+      std::unique_ptr<TraceServerHandle>(new MockTraceServerHandle()),
       *fs,
       makeRealCommandRunner());
   const auto output_path = getWorkingDir() + "/shk.test-file";
@@ -212,6 +223,7 @@ TEST_CASE("TracingCommandRunner") {
   SECTION("HandleTmpFileCreationError") {
     FailingMkstempFileSystem failing_mkstemp;
     const auto runner = makeTracingCommandRunner(
+        std::unique_ptr<TraceServerHandle>(new MockTraceServerHandle()),
         failing_mkstemp,
         makeRealCommandRunner());
 
@@ -225,6 +237,7 @@ TEST_CASE("TracingCommandRunner") {
   SECTION("HandleTmpFileRemovalError") {
     FailingUnlinkFileSystem failing_unlink;
     const auto runner = makeTracingCommandRunner(
+        std::unique_ptr<TraceServerHandle>(new MockTraceServerHandle()),
         failing_unlink,
         makeRealCommandRunner());
 
