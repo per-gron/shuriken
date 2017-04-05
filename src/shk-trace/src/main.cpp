@@ -164,7 +164,7 @@ void suicideWhenOrphaned() {
   std::thread([ppid] {
     for (;;) {
       if (ppid != getppid()) {
-        fprintf(stderr, "Parent process has died! Shutting down.\n");
+        // Parent process has died! Shutting down.
         exit(1);
       }
       usleep(1000000);
