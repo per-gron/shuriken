@@ -109,9 +109,7 @@ TEST_CASE("EventConsolidator") {
       REQUIRE(trace.outputs.size() == 1);
       CHECK(trace.outputs[0] == "hello");
 
-      REQUIRE(trace.errors.size() == 1);
-      CHECK(trace.errors[0] == 
-          "Process wrote to but did not fully overwrite: hello");
+      REQUIRE(trace.errors.empty());
     }
 
     SECTION("Create") {
@@ -282,9 +280,7 @@ TEST_CASE("EventConsolidator") {
       REQUIRE(trace.outputs.size() == 1);
       CHECK(trace.outputs[0] == "hello");
 
-      REQUIRE(trace.errors.size() == 1);
-      CHECK(trace.errors[0] == 
-          "Process wrote to but did not fully overwrite: hello");
+      REQUIRE(trace.errors.empty());
     }
 
     SECTION("ReadDirectoryThenWrite") {
@@ -297,9 +293,7 @@ TEST_CASE("EventConsolidator") {
       REQUIRE(trace.outputs.size() == 1);
       CHECK(trace.outputs[0] == "hello");
 
-      REQUIRE(trace.errors.size() == 1);
-      CHECK(trace.errors[0] == 
-          "Process wrote to but did not fully overwrite: hello");
+      REQUIRE(trace.errors.empty());
     }
 
     SECTION("ReadThenCreate") {

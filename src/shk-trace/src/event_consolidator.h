@@ -39,10 +39,11 @@ class EventConsolidator {
    * were listed.
    */
   std::unordered_map<std::string, bool> _inputs;
+  std::unordered_set<std::string> _outputs;
   /**
-   * Map from path => bool indicating if the file was entirely overwritten.
+   * Files that have been deleted and that are not yet overwritten. This is used
+   * to keep track of if a process deletes files that it did not create.
    */
-  std::unordered_map<std::string, bool> _outputs;
   std::unordered_set<std::string> _deleted;
   std::vector<std::string> _errors;
 };

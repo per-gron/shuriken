@@ -33,7 +33,7 @@ void EventConsolidator::event(EventType type, std::string &&path) {
         // A file should be either an input or an output, not both
         _inputs.erase(it);
       }
-      _outputs.emplace(std::move(path), false);
+      _outputs.emplace(std::move(path));
     }
     break;
 
@@ -48,8 +48,8 @@ void EventConsolidator::event(EventType type, std::string &&path) {
         // A file should be either an input or an output, not both
         _inputs.erase(it);
       }
-      _outputs[path] = true;
       _deleted.erase(path);
+      _outputs.emplace(std::move(path));
     }
     break;
 
@@ -88,7 +88,7 @@ flatbuffers::Offset<Trace> EventConsolidator::generateTrace(
   output_offsets.reserve(_outputs.size());
 
   for (const auto &output : _outputs) {
-    output_offsets.push_back(builder.CreateString(output.first));
+    output_offsets.push_back(builder.CreateString(output));
   }
   auto output_vector = builder.CreateVector(
       output_offsets.data(), output_offsets.size());
@@ -105,13 +105,6 @@ flatbuffers::Offset<Trace> EventConsolidator::generateTrace(
     if (_outputs.count(deleted) == 0) {
       error_offsets.push_back(builder.CreateString(
           "Process deleted file it did not create: " + deleted));
-    }
-  }
-
-  for (const auto &output : _outputs) {
-    if (!output.second) {
-      error_offsets.push_back(builder.CreateString(
-          "Process wrote to but did not fully overwrite: " + output.first));
     }
   }
 

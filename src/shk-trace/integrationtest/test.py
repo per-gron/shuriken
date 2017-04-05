@@ -175,7 +175,6 @@ class IntegrationTest(unittest.TestCase):
   def test_append_to_file(self):
     trace = trace_cmd("echo >> file")
     self.assertIn('output ' + os.getcwd() + '/file', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/file', trace)
 
   @with_testdir()
   def test_read_then_append_to_file(self):
@@ -232,7 +231,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' chflags')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_chflags_error(self):
@@ -244,7 +242,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' chmod')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_chmod_error(self):
@@ -256,7 +253,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' chmod_extended')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_chmod_extended_error(self):
@@ -268,7 +264,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' chown')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_chown_error(self):
@@ -318,8 +313,6 @@ class IntegrationTest(unittest.TestCase):
     trace = trace_cmd(helper + ' exchangedata')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
     self.assertIn('output ' + os.getcwd() + '/output', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/output', trace)
 
   @with_testdir()
   def test_exchangedata_error(self):
@@ -355,7 +348,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' fchflags')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_fchflags_fail(self):
@@ -367,14 +359,12 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' fchmod')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_fchmod_extended(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' fchmod_extended')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_fchmodat(self):
@@ -382,7 +372,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('dir/input', '')
     trace = trace_cmd(helper + ' fchmodat')
     self.assertIn('output ' + os.getcwd() + '/dir/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/dir/input', trace)
 
   @with_testdir()
   def test_fchmodat_error(self):
@@ -395,7 +384,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' fchown')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_fchownat(self):
@@ -403,7 +391,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('dir/input', '')
     trace = trace_cmd(helper + ' fchownat')
     self.assertIn('output ' + os.getcwd() + '/dir/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/dir/input', trace)
 
   @with_testdir()
   def test_fchownat_error(self):
@@ -483,7 +470,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' flock')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_fork_inherit_fd(self):
@@ -502,21 +488,18 @@ class IntegrationTest(unittest.TestCase):
     run_cmd(helper + ' setxattr')  # set an xattr so that there is one to remove
     trace = trace_cmd(helper + ' fremovexattr')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_fsetattrlist(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' fsetattrlist')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_fsetxattr(self):
     write_file('input', '')
     trace = trace_cmd(helper + ' fsetxattr')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_fsgetpath(self):
@@ -567,7 +550,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' futimes')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_getattrlist(self):
@@ -654,7 +636,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' lchown')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_lchown_error(self):
@@ -849,7 +830,6 @@ class IntegrationTest(unittest.TestCase):
   def test_open_create_excl_append(self):
     trace = trace_cmd(helper + ' open_create_excl_append')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
     self.assertEqual(read_file('input'), 'ye')
 
   @with_testdir()
@@ -896,7 +876,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '__!')
     trace = trace_cmd(helper + ' open_partial_overwrite')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
     self.assertEqual(read_file('input'), 'hi!')
 
   @with_testdir()
@@ -1017,7 +996,6 @@ class IntegrationTest(unittest.TestCase):
     run_cmd(helper + ' setxattr')  # set an xattr so that there is one to remove
     trace = trace_cmd(helper + ' removexattr')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_removexattr_error(self):
@@ -1146,7 +1124,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' setattrlist')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_setattrlist_error(self):
@@ -1158,7 +1135,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' setxattr')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_setxattr_error(self):
@@ -1238,7 +1214,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' truncate')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_truncate_error(self):
@@ -1274,7 +1249,6 @@ class IntegrationTest(unittest.TestCase):
     write_file('input', '')
     trace = trace_cmd(helper + ' utimes')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_utimes_error(self):
@@ -1298,7 +1272,6 @@ class IntegrationTest(unittest.TestCase):
     # OS X's kdebug simply does not provide this information :-(
     # self.assertIn('read ' + os.getcwd() + '/input', trace)
     self.assertIn('output ' + os.getcwd() + '/target', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/target', trace)
 
   @with_testdir()
   def test_symlink_lchown(self):
@@ -1306,7 +1279,6 @@ class IntegrationTest(unittest.TestCase):
     os.symlink('target', 'input')
     trace = trace_cmd(helper + ' lchown')
     self.assertIn('output ' + os.getcwd() + '/input', trace)
-    self.assertIn('wrote to but did not fully overwrite: ' + os.getcwd() + '/input', trace)
     self.assertNotIn(os.getcwd() + '/target', trace)
 
   @with_testdir()
