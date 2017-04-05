@@ -7,11 +7,18 @@ namespace shk {
 std::vector<uint8_t> constructAndSerializeObject() {
   flatbuffers::FlatBufferBuilder builder(1024);
 
-  auto path_name = builder.CreateString("path");
-  auto event = CreateEvent(builder, EventType::Write, path_name);
-  auto events = builder.CreateVector(&event, 1);
-  auto trace = CreateTrace(builder, events);
-  builder.Finish(trace);
+  std::vector<flatbuffers::Offset<Input>> input_offsets;
+  auto input_vector = builder.CreateVector(input_offsets.data(), 0);
+
+  flatbuffers::Offset<flatbuffers::String> output_offsets =
+      builder.CreateString("path");
+  auto output_vector = builder.CreateVector(&output_offsets, 1);
+
+  std::vector<flatbuffers::Offset<flatbuffers::String>> error_offsets;
+  auto error_vector = builder.CreateVector(error_offsets.data(), 0);
+
+  builder.Finish(CreateTrace(
+      builder, input_vector, output_vector, error_vector));
 
   return std::vector<uint8_t>(
       builder.GetBufferPointer(),
@@ -23,9 +30,10 @@ TEST_CASE("ShkTrace") {
 
   auto trace = GetTrace(buffer.data());
 
-  REQUIRE(trace->events()->size() == 1);
-  CHECK(trace->events()->Get(0)->type() == EventType::Write);
-  CHECK(std::string(trace->events()->Get(0)->path()->data()) == "path");
+  CHECK(trace->inputs()->size() == 0);
+  CHECK(trace->errors()->size() == 0);
+  REQUIRE(trace->outputs()->size() == 1);
+  CHECK(std::string(trace->outputs()->Get(0)->c_str()) == "path");
 }
 
 }
