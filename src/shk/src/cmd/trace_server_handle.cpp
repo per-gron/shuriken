@@ -29,7 +29,7 @@ class RealTraceServerHandle : public TraceServerHandle {
 
       // Call waitpid on _pid, to avoid zombie processes
       int status;
-      if (waitpid(_pid, &status, 0) == -1) {
+      if (waitpid(_pid, &status, WNOHANG) == -1) {
         fprintf(stderr, "Failed to wait for child process: %s\n", strerror(errno));
         abort();
       }
