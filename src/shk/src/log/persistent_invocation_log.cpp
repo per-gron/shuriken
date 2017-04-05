@@ -38,23 +38,28 @@ StringPiece advance(StringPiece piece, size_t len) {
   return StringPiece(piece._str + len, piece._len - len);
 }
 
-StringPiece parseInvocationLogSignature(StringPiece piece) throw(ParseError) {
+bool parseInvocationLogSignature(StringPiece *piece, std::string *err) {
   const auto signature_size = kFileSignature.size() + sizeof(kFileVersion);
-  if (piece._len < signature_size) {
-    throw ParseError("invalid invocation log file signature (too short)");
+  if (piece->_len < signature_size) {
+    *err = "invalid invocation log file signature (too short)";
+    return false;
   }
 
-  if (!std::equal(kFileSignature.begin(), kFileSignature.end(), piece._str)) {
-    throw ParseError("invalid invocation log file signature");
+  if (!std::equal(kFileSignature.begin(), kFileSignature.end(), piece->_str)) {
+    *err = "invalid invocation log file signature";
+    return false;
   }
 
   const auto version =
-      *reinterpret_cast<const uint32_t *>(piece._str + kFileSignature.size());
+      *reinterpret_cast<const uint32_t *>(piece->_str + kFileSignature.size());
   if (version != kFileVersion) {
-    throw ParseError("invalid invocation log file version or bad byte order");
+    *err = "invalid invocation log file version or bad byte order";
+    return false;
   }
 
-  return advance(piece, signature_size);
+  *piece = advance(*piece, signature_size);
+
+  return true;
 }
 
 class EntryHeader {
@@ -399,7 +404,10 @@ InvocationLogParseResult parsePersistentInvocationLog(
   auto piece = mmap->memory();
   const auto file_size = piece._len;
 
-  piece = parseInvocationLogSignature(piece);
+  std::string err;
+  if (!parseInvocationLogSignature(&piece, &err)) {
+    throw ParseError(err);
+  }
 
   // "Map" from path entry id to path. Entries that aren't path entries are
   // empty.
