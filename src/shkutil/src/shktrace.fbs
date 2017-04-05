@@ -6,9 +6,9 @@ table Input {
 }
 
 table Trace {
-  inputs:[Input];
-  outputs:[string];
-  errors:[string];
+  inputs:[Input] (required);
+  outputs:[string] (required);
+  errors:[string] (required);
 }
 
 file_extension "trace";
