@@ -204,7 +204,6 @@ void writeFileWithHeader(
 TEST_CASE("PersistentInvocationLog") {
   InMemoryFileSystem fs;
   Paths paths(fs);
-  fs.writeFile("empty", "");
 
   Hash hash_0;
   std::fill(hash_0.data.begin(), hash_0.data.end(), 0);
@@ -212,16 +211,32 @@ TEST_CASE("PersistentInvocationLog") {
   std::fill(hash_0.data.begin(), hash_0.data.end(), 1);
 
   SECTION("Parsing") {
-    parsePersistentInvocationLog(paths, fs, "missing");
-    CHECK_THROWS_AS(
-        parsePersistentInvocationLog(paths, fs, "empty"), ParseError);
+    SECTION("Missing") {
+      parsePersistentInvocationLog(paths, fs, "missing");
+    }
 
-    writeFileWithHeader(fs, "invalid_header", 3);
-    CHECK_THROWS_AS(
-        parsePersistentInvocationLog(paths, fs, "invalid_header"), ParseError);
+    SECTION("Empty") {
+      fs.writeFile("empty", "");
+      auto result = parsePersistentInvocationLog(paths, fs, "empty");
+      CHECK(
+          result.warning ==
+          "invalid invocation log file signature (too short)");
+      CHECK(fs.stat("empty").result == ENOENT);
+    }
 
-    writeFileWithHeader(fs, "just_header", 1);
-    checkEmpty(parsePersistentInvocationLog(paths, fs, "just_header"));
+    SECTION("InvalidHeader") {
+      writeFileWithHeader(fs, "invalid_header", 3);
+      auto result = parsePersistentInvocationLog(paths, fs, "invalid_header");
+      CHECK(
+          result.warning ==
+          "invalid invocation log file version or bad byte order");
+      CHECK(fs.stat("invalid_header").result == ENOENT);
+    }
+
+    SECTION("JustHeader") {
+      writeFileWithHeader(fs, "just_header", 1);
+      checkEmpty(parsePersistentInvocationLog(paths, fs, "just_header"));
+    }
   }
 
   SECTION("Writing") {

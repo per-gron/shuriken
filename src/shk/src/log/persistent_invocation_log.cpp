@@ -406,7 +406,12 @@ InvocationLogParseResult parsePersistentInvocationLog(
 
   std::string err;
   if (!parseInvocationLogSignature(&piece, &err)) {
-    throw ParseError(err);
+    // Parsing of log signature failed. Remove the file so that the error goes
+    // away.
+    file_system.unlink(log_path);
+
+    result.warning = err;
+    return result;
   }
 
   // "Map" from path entry id to path. Entries that aren't path entries are
