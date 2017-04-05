@@ -167,7 +167,7 @@ void suicideWhenOrphaned() {
         // Parent process has died! Shutting down.
         exit(1);
       }
-      usleep(1000000);
+      usleep(100000);
     }
   }).detach();
 }
