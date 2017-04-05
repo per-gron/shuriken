@@ -11,6 +11,7 @@
 
 #include "dispatch.h"
 #include "event_info.h"
+#include "event_type.h"
 #include "kdebug.h"
 #include "kdebug_controller.h"
 #include "syscall_constants.h"

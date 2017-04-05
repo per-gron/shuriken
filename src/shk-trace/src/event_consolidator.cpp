@@ -4,88 +4,115 @@ namespace shk {
 
 void EventConsolidator::event(EventType type, std::string &&path) {
   switch (type) {
-  case EventType::Read:
-    if (_created.count(path) == 0) {
+  case EventType::READ:
+    if (_outputs.count(path) == 0) {
       // When a program reads from a file that it created itself, that doesn't
       // affect the result of the program; it can only see what it itself has
       // written.
-      _read.insert(std::move(path));
+      _inputs.emplace(std::move(path), false);
     }
     break;
 
-  case EventType::ReadDirectory:
-    if (_created.count(path) == 0) {
+  case EventType::READ_DIRECTORY:
+    if (_outputs.count(path) == 0) {
       // When a program reads from a file that it created itself, that doesn't
       // affect the result of the program; it can only see what it itself has
       // written.
-      _read_directories.insert(std::move(path));
+      _inputs[path] = true;
     }
     break;
 
-  case EventType::Write:
-    if (_created.count(path) == 0) {
-      // When a program writes to a file that it created itself, it is
-      // sufficient to remember that the file was created by that program.
-      // Ignoring writes like this makes it possible for actors that use the
-      // output of this class if the program wrote to a file without completely
-      // overwriting it.
-      _written.insert(std::move(path));
-    }
-    break;
-
-  case EventType::Create:
-    // The program has now entirely overwritten the file. See WRITE
-    _written.erase(path);
-    // The program has now created a file at this path. There is no need to
-    // say that it deleted the file earilier; that is implied by CREATE.
-    _deleted.erase(path);
-
-    _created.insert(std::move(path));
-    break;
-
-  case EventType::Delete:
+  case EventType::WRITE:
     {
-      // When a program writes to a file and then deletes it, it doesn't matter
-      // that it wrote to the file before. (However, if it read from the file,
-      // that still matters; it could have affected the program output.)
-      _written.erase(path);
-      // Same reasoning as for _written applies for created directories.
-      _read_directories.erase(path);
+      auto it = _inputs.find(path);
+      if (it != _inputs.end()) {
+        // Ideally, this should be an error. However, it is very common that
+        // programs stat the path of their output before writing to it so it's
+        // not feasible to fail because of this.
 
-      auto created_it = _created.find(path);
-      if (created_it == _created.end()) {
-        _deleted.insert(std::move(path));
+        // A file should be either an input or an output, not both
+        _inputs.erase(it);
+      }
+      _outputs.emplace(std::move(path), false);
+    }
+    break;
+
+  case EventType::CREATE:
+    {
+      auto it = _inputs.find(path);
+      if (it != _inputs.end()) {
+        // Ideally, this should be an error. However, it is very common that
+        // programs stat the path of their output before writing to it so it's
+        // not feasible to fail because of this.
+
+        // A file should be either an input or an output, not both
+        _inputs.erase(it);
+      }
+      _outputs[path] = true;
+    }
+    break;
+
+  case EventType::DELETE:
+    {
+      auto it = _outputs.find(path);
+      if (it == _outputs.end()) {
+        _errors.push_back(
+            "Process deleted file it did not create: " +
+            path);
       } else {
-        _created.erase(created_it);
+        _outputs.erase(it);
       }
     }
     break;
 
-  case EventType::FatalError:
-    _fatal_errors.insert(std::move(path));
+  case EventType::FATAL_ERROR:
+    _errors.push_back(std::move(path));
     break;
   }
 }
 
-std::vector<EventConsolidator::Event> EventConsolidator::getConsolidatedEventsAndReset() {
-  std::vector<Event> ans;
+flatbuffers::Offset<Trace> EventConsolidator::generateTrace(
+    flatbuffers::FlatBufferBuilder &builder) const {
+  // inputs
+  std::vector<flatbuffers::Offset<Input>> input_offsets;
+  input_offsets.reserve(_inputs.size());
 
-  auto insert_events = [&](std::unordered_set<std::string> &map, EventType event_type) {
-    for (auto &&entry : map) {
-      ans.emplace_back(event_type, std::move(entry));
+  for (const auto &input : _inputs) {
+    auto path_name = builder.CreateString(input.first);
+    input_offsets.push_back(CreateInput(builder, path_name, input.second));
+  }
+  auto input_vector = builder.CreateVector(
+      input_offsets.data(), input_offsets.size());
+
+  // outputs
+  std::vector<flatbuffers::Offset<flatbuffers::String>> output_offsets;
+  output_offsets.reserve(_outputs.size());
+
+  for (const auto &output : _outputs) {
+    output_offsets.push_back(builder.CreateString(output.first));
+  }
+  auto output_vector = builder.CreateVector(
+      output_offsets.data(), output_offsets.size());
+
+  // errors
+  std::vector<flatbuffers::Offset<flatbuffers::String>> error_offsets;
+  error_offsets.reserve(_errors.size());
+
+  for (const auto &error : _errors) {
+    error_offsets.push_back(builder.CreateString(error));
+  }
+
+  for (const auto &output : _outputs) {
+    if (!output.second) {
+      error_offsets.push_back(builder.CreateString(
+          "Process wrote to but did not fully overwrite: " + output.first));
     }
-  };
+  }
 
-  insert_events(_fatal_errors, EventType::FatalError);
-  insert_events(_deleted, EventType::Delete);
-  insert_events(_created, EventType::Create);
-  insert_events(_read, EventType::Read);
-  insert_events(_read_directories, EventType::ReadDirectory);
-  insert_events(_written, EventType::Write);
+  auto error_vector = builder.CreateVector(
+      error_offsets.data(), error_offsets.size());
 
-  *this = EventConsolidator();
-
-  return ans;
+  return CreateTrace(builder, input_vector, output_vector, error_vector);
 }
 
 }  // namespace shk

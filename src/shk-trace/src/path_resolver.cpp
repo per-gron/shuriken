@@ -38,7 +38,7 @@ void PathResolver::fileEvent(
     std::string &&path) {
   _delegate->fileEvent(
       type,
-      type == EventType::FatalError ?
+      type == EventType::FATAL_ERROR ?
           std::move(path) :
           resolve(thread_id, at_fd, std::move(path)));
 }

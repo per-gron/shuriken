@@ -26,15 +26,15 @@ TEST_CASE("ProcessTracer") {
 
   SECTION("EventForwarding") {
     SECTION("UnknownThreadId") {
-      tracer.fileEvent(2, EventType::FatalError, AT_FDCWD, "");
-      tracer.fileEvent(123, EventType::FatalError, AT_FDCWD, "");
+      tracer.fileEvent(2, EventType::FATAL_ERROR, AT_FDCWD, "");
+      tracer.fileEvent(123, EventType::FATAL_ERROR, AT_FDCWD, "");
     }
 
     SECTION("FileEvent") {
-      tracer.fileEvent(3, EventType::Create, 999, "abc");
+      tracer.fileEvent(3, EventType::CREATE, 999, "abc");
       auto evt = delegate.popFileEvent();
       CHECK(evt.thread_id == 3);
-      CHECK(evt.type == EventType::Create);
+      CHECK(evt.type == EventType::CREATE);
       CHECK(evt.at_fd == 999);
       CHECK(evt.path == "abc");
     }
@@ -68,7 +68,7 @@ TEST_CASE("ProcessTracer") {
       SECTION("MultipleDelegates") {
         tracer.newThread(/*pid:*/2, 4, 5);
         delegate2.popNewThreadEvent();
-        tracer.fileEvent(5, EventType::FatalError, AT_FDCWD, "");
+        tracer.fileEvent(5, EventType::FATAL_ERROR, AT_FDCWD, "");
         delegate2.popFileEvent();
       }
 
@@ -222,7 +222,7 @@ TEST_CASE("ProcessTracer") {
     SECTION("OneChild") {
       tracer.newThread(/*pid:*/543, 3, 4);
       delegate.popNewThreadEvent();
-      tracer.fileEvent(4, EventType::FatalError, AT_FDCWD, "");
+      tracer.fileEvent(4, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
     }
 
@@ -231,7 +231,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       tracer.newThread(/*pid:*/543, 4, 5);
       delegate.popNewThreadEvent();
-      tracer.fileEvent(5, EventType::FatalError, AT_FDCWD, "");
+      tracer.fileEvent(5, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
     }
 
@@ -242,7 +242,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       CHECK(tracer.terminateThread(4) == Response::OK);
       delegate.popTerminateThreadEvent();
-      tracer.fileEvent(5, EventType::FatalError, AT_FDCWD, "");
+      tracer.fileEvent(5, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
     }
   }
@@ -253,7 +253,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       CHECK(tracer.terminateThread(4) == Response::OK);
       delegate.popTerminateThreadEvent();
-      tracer.fileEvent(4, EventType::FatalError, AT_FDCWD, "");
+      tracer.fileEvent(4, EventType::FATAL_ERROR, AT_FDCWD, "");
     }
 
     SECTION("MainThreadTermination") {

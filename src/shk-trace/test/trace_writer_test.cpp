@@ -14,19 +14,22 @@ TEST_CASE("TraceWriter") {
     TraceWriter writer(std::unique_ptr<TracingServer::TraceRequest>(
         new TracingServer::TraceRequest(std::move(output_fd), 0, 0, "cwd")));
 
-    writer.fileEvent(EventType::Read, "path1");
-    writer.fileEvent(EventType::Write, "path2");
+    writer.fileEvent(EventType::READ, "path1");
+    writer.fileEvent(EventType::CREATE, "path2");
   }
 
   char raw_buf[1024];
   int len = read(input_fd.get(), &raw_buf, 1024);
 
   auto trace = GetTrace(raw_buf);
-  REQUIRE(trace->events()->size() == 2);
-  CHECK(trace->events()->Get(0)->type() == EventType::Read);
-  CHECK(std::string(trace->events()->Get(0)->path()->data()) == "path1");
-  CHECK(trace->events()->Get(1)->type() == EventType::Write);
-  CHECK(std::string(trace->events()->Get(1)->path()->data()) == "path2");
+  REQUIRE(trace->inputs()->size() == 1);
+  CHECK(std::string(trace->inputs()->Get(0)->path()->data()) == "path1");
+  CHECK(trace->inputs()->Get(0)->directory_listing() == false);
+
+  REQUIRE(trace->outputs()->size() == 1);
+  CHECK(std::string(trace->outputs()->Get(0)->data()) == "path2");
+
+  CHECK(trace->errors()->size() == 0);
 }
 
 }  // namespace shk

@@ -1,19 +1,25 @@
 #pragma once
 
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 #include <util/shktrace.h>
+
+#include "event_type.h"
 
 namespace shk {
 
 /**
  * An EventConsolidator takes a stream of file system-related events (probably
- * originating from a Tracer) and consolidates them: Multiple reads to a given
- * file are treated as one. Same with writes. Files that are created and then
- * deleted are removed (in this use case we don't care about temporary files
- * that were removed).
+ * originating from a Tracer) and consolidates them into a Trace flatbuffer:
+ *
+ * * A list of input files
+ * * A list of output files
+ * * Errors
+ *
+ * Creating a file causes it to be an output file, deleting a file that was not
+ * created is an error, etc.
  */
 class EventConsolidator {
  public:
@@ -23,21 +29,20 @@ class EventConsolidator {
 
   void event(EventType type, std::string &&path);
 
-  using Event = std::pair<EventType, std::string>;
-
-  /**
-   * Calling this resets the state of the EventConsolidator. This reset is done
-   * to allow this method to move out all the strings instead of copying them.
-   */
-  std::vector<Event> getConsolidatedEventsAndReset();
+  flatbuffers::Offset<Trace> generateTrace(
+      flatbuffers::FlatBufferBuilder &builder) const;
 
  private:
-  std::unordered_set<std::string> _fatal_errors;
-  std::unordered_set<std::string> _deleted;
-  std::unordered_set<std::string> _created;
-  std::unordered_set<std::string> _read;
-  std::unordered_set<std::string> _read_directories;
-  std::unordered_set<std::string> _written;
+  /**
+   * Map from path => bool indicating if the path is a directory whose files
+   * were listed.
+   */
+  std::unordered_map<std::string, bool> _inputs;
+  /**
+   * Map from path => bool indicating if the file was entirely overwritten.
+   */
+  std::unordered_map<std::string, bool> _outputs;
+  std::vector<std::string> _errors;
 };
 
 }  // namespace shk
