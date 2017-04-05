@@ -17,6 +17,7 @@ add_library(libshktrace
   src/event_consolidator.cpp
   src/event_consolidator.h
   src/event_info.h
+  src/event_type.h
   src/file_descriptor_memo.cpp
   src/file_descriptor_memo.h
   src/fileport.h
