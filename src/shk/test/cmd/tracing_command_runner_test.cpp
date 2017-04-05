@@ -10,8 +10,12 @@ namespace {
 
 class MockTraceServerHandle : public TraceServerHandle {
  public:
-  virtual const std::string &getShkTracePath(std::string *err) override {
+  virtual const std::string &getShkTracePath() override {
     return _executable_path;
+  }
+
+  virtual bool startServer(std::string *err) override {
+    return true;
   }
 
  private:

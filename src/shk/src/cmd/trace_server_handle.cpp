@@ -42,16 +42,12 @@ class RealTraceServerHandle : public TraceServerHandle {
         shk_trace_command));
   }
 
-  virtual const std::string &getShkTracePath(std::string *err) override {
-    static const std::string empty_string;
-
-    if (!_pid) {
-      if (!spawnServer(err)) {
-        return empty_string;
-      }
-    }
-
+  virtual const std::string &getShkTracePath() override {
     return _executable_path;
+  }
+
+  virtual bool startServer(std::string *err) override {
+    return !!_pid || spawnServer(err);
   }
 
  private:

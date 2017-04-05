@@ -21,11 +21,14 @@ class TraceServerHandle {
   TraceServerHandle &operator=(const TraceServerHandle &) = delete;
   virtual ~TraceServerHandle() = default;
 
+  virtual const std::string &getShkTracePath() = 0;
+
   /**
-   * Gets the path to the shk-trace command, and lazily start the shk-trace
-   * server. Returns an empty string on failure.
+   * Start the shk-trace server. Returns false on failure.
+   *
+   * Calling this method again after it has succeeded once is a no-op.
    */
-  virtual const std::string &getShkTracePath(std::string *err) = 0;
+  virtual bool startServer(std::string *err) = 0;
 
   /**
    * Returns a nullptr unique_ptr on failure.
