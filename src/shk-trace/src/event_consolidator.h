@@ -2,6 +2,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <util/shktrace.h>
@@ -42,6 +43,7 @@ class EventConsolidator {
    * Map from path => bool indicating if the file was entirely overwritten.
    */
   std::unordered_map<std::string, bool> _outputs;
+  std::unordered_set<std::string> _deleted;
   std::vector<std::string> _errors;
 };
 

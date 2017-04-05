@@ -49,6 +49,7 @@ void EventConsolidator::event(EventType type, std::string &&path) {
         _inputs.erase(it);
       }
       _outputs[path] = true;
+      _deleted.erase(path);
     }
     break;
 
@@ -56,9 +57,7 @@ void EventConsolidator::event(EventType type, std::string &&path) {
     {
       auto it = _outputs.find(path);
       if (it == _outputs.end()) {
-        _errors.push_back(
-            "Process deleted file it did not create: " +
-            path);
+        _deleted.insert(path);
       } else {
         _outputs.erase(it);
       }
@@ -100,6 +99,13 @@ flatbuffers::Offset<Trace> EventConsolidator::generateTrace(
 
   for (const auto &error : _errors) {
     error_offsets.push_back(builder.CreateString(error));
+  }
+
+  for (const auto &deleted : _deleted) {
+    if (_outputs.count(deleted) == 0) {
+      error_offsets.push_back(builder.CreateString(
+          "Process deleted file it did not create: " + deleted));
+    }
   }
 
   for (const auto &output : _outputs) {

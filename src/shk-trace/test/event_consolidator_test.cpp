@@ -327,6 +327,46 @@ TEST_CASE("EventConsolidator") {
 
       CHECK(trace.errors.empty());
     }
+
+    SECTION("DeleteThenCreate") {
+      ec.event(ET::DELETE, "hello");
+      ec.event(ET::CREATE, "hello");
+      auto trace = generateTrace(ec);
+
+      CHECK(trace.inputs.empty());
+
+      REQUIRE(trace.outputs.size() == 1);
+      CHECK(trace.outputs[0] == "hello");
+
+      CHECK(trace.errors.empty());
+    }
+  }
+
+  SECTION("ThreeEvents") {
+    SECTION("CreateThenDeleteThenCreate") {
+      ec.event(ET::CREATE, "hello");
+      ec.event(ET::DELETE, "hello");
+      ec.event(ET::CREATE, "hello");
+      auto trace = generateTrace(ec);
+
+      CHECK(trace.inputs.empty());
+
+      REQUIRE(trace.outputs.size() == 1);
+      CHECK(trace.outputs[0] == "hello");
+
+      CHECK(trace.errors.empty());
+    }
+
+    SECTION("DeleteThenCreateThenDelete") {
+      ec.event(ET::DELETE, "hello");
+      ec.event(ET::CREATE, "hello");
+      ec.event(ET::DELETE, "hello");
+      auto trace = generateTrace(ec);
+
+      CHECK(trace.inputs.empty());
+      CHECK(trace.outputs.empty());
+      CHECK(trace.errors.empty());
+    }
   }
 }
 
