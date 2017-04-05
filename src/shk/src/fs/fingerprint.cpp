@@ -5,10 +5,11 @@
 namespace shk {
 namespace {
 
-Fingerprint::Stat fingerprintStat(
-    FileSystem &file_system, const std::string &path) throw(IoError) {
-  Fingerprint::Stat result;
-
+bool fingerprintStat(
+    FileSystem &file_system,
+    const std::string &path,
+    Fingerprint::Stat *out,
+    std::string *err) {
   // TODO(peck): It would not be correct to use lstat here because then we could
   // report that the file is a symlink even though it points to a directory,
   // which later on causes the build to fail when it attempts to hash the
@@ -16,23 +17,24 @@ Fingerprint::Stat fingerprintStat(
   // this could be to hash symlinks in a special way.
   const auto stat = file_system.stat(path);
   if (stat.result == 0) {
-    result.size = stat.metadata.size;
-    result.ino = stat.metadata.ino;
+    out->size = stat.metadata.size;
+    out->ino = stat.metadata.ino;
     static constexpr auto mode_mask =
         S_IFMT | S_IRWXU | S_IRWXG | S_IXOTH | S_ISUID | S_ISGID | S_ISVTX;
-    result.mode = stat.metadata.mode & mode_mask;
-    result.mtime = stat.timestamps.mtime;
-    result.ctime = stat.timestamps.ctime;
+    out->mode = stat.metadata.mode & mode_mask;
+    out->mtime = stat.timestamps.mtime;
+    out->ctime = stat.timestamps.ctime;
 
-    if (!S_ISLNK(result.mode) &&
-        !S_ISREG(result.mode) &&
-        !S_ISDIR(result.mode)) {
-      throw IoError(
-          "Can only fingerprint regular files, directories and links: " + path, 0);
+    if (!S_ISLNK(out->mode) &&
+        !S_ISREG(out->mode) &&
+        !S_ISDIR(out->mode)) {
+      *err =
+          "Can only fingerprint regular files, directories and links: " + path;
+      return false;
     }
   }
 
-  return result;
+  return true;
 }
 
 /**
@@ -148,7 +150,10 @@ Fingerprint takeFingerprint(
     const std::string &path) throw(IoError) {
   Fingerprint fp;
 
-  fp.stat = fingerprintStat(file_system, path);
+  std::string err;
+  if (!fingerprintStat(file_system, path, &fp.stat, &err)) {
+    throw IoError(err, 0);
+  }
   fp.timestamp = timestamp;
   if (S_ISDIR(fp.stat.mode)) {
     fp.hash = file_system.hashDir(path);
@@ -167,8 +172,13 @@ Fingerprint retakeFingerprint(
     const std::string &path,
     const Fingerprint &old_fingerprint) {
   Fingerprint new_fingerprint;
+
+  std::string err;
+  if (!fingerprintStat(file_system, path, &new_fingerprint.stat, &err)) {
+    throw IoError(err, 0);
+  }
+
   new_fingerprint.timestamp = timestamp;
-  new_fingerprint.stat = fingerprintStat(file_system, path);
   const auto result = fingerprintMatches(
       file_system,
       path,
@@ -190,11 +200,18 @@ MatchesResult fingerprintMatches(
     const std::string &path,
     const Fingerprint &fp) throw(IoError) {
   Hash discard;
+
+  std::string err;
+  Fingerprint::Stat fingerprint_stat;
+  if (!fingerprintStat(file_system, path, &fingerprint_stat, &err)) {
+    throw IoError(err, 0);
+  }
+
   return fingerprintMatches(
       file_system,
       path,
       fp,
-      fingerprintStat(file_system, path),
+      fingerprint_stat,
       discard);
 }
 
