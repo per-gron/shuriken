@@ -161,13 +161,6 @@ void parseTrace(StringPiece trace_slice, CommandRunner::Result *result) {
     result->exit_status = ExitStatus::FAILURE;
   }
 
-  // Linking steps tend to read the contents of the working directory for
-  // some reason, which causes them to always be treated as dirty, which
-  // obviously is not good. This is a hack to work around that, but it also
-  // means that build steps can't depend on the contents of the build
-  // directory.
-  result->input_files.erase(getWorkingDir());
-
   static const char * const kIgnoredFiles[] = {
       "/AppleInternal",
       "/dev/null",

@@ -84,7 +84,6 @@ Large things remaining to do:
 * Fix race that causes tracing to deadlock
 * Mach port already in use. Is there already a server running?
   ^^^ This happens almost always when running CMake, because it will start shk-trace again directly after
-* Try not removing the build directory (done in tracing_command_runner.cpp)
 * Test with client-core and shk and spotify-json
 * Tracer race:
   * Can be debugged by building something big from clean more than once and checking the invocation log. They should be identical.

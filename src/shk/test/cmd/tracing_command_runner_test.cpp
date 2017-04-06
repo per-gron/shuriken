@@ -483,21 +483,6 @@ TEST_CASE("TracingCommandRunner") {
       CHECK(result.output_files.empty());
       CHECK(result.output.empty());
     }
-
-    SECTION("IgnoreReadOfWorkingDir") {
-      const auto trace = makeTrace(
-          { { getWorkingDir(), true } },
-          { getWorkingDir() },
-          {});
-      CommandRunner::Result result;
-      detail::parseTrace(trace, &result);
-
-      CHECK(result.exit_status == ExitStatus::SUCCESS);
-      CHECK(result.input_files.empty());
-      CHECK(result.output_files.size() == 1);
-      CHECK(contains(result.output_files, getWorkingDir()));
-      CHECK(result.output.empty());
-    }
   }
 }
 
