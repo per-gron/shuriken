@@ -81,6 +81,7 @@ Aesthetic bugs:
 * Deal with depfile files: Don't treat them as outputs
 
 Large things remaining to do:
+* Do something about generator rules. It's not nice that they are re-run directly after. Perhaps emulate ninja's behavior.
 * Mach port already in use. Is there already a server running?
   ^^^ This happens almost always when running CMake, because it will start shk-trace again directly after
 * Test with client-core and shk and spotify-json
@@ -96,8 +97,6 @@ Large things remaining to do:
 * Handle restat rules. OR: Make it the default somehow. Shuriken will not just stat but even hash all output files.
 * Caching
 * Distributed caching
-* Use ktrace instead of sandbox-exec, to avoid file descriptor leak. Or possibly: Try to reuse
-  the sandbox-exec processes to reduce leakage.
 
 * Possible optimizations
   * Stat cache for use by Paths

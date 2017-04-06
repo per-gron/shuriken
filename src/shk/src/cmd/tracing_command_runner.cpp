@@ -4,7 +4,6 @@
 
 #include <util/shktrace.h>
 
-#include "cmd/sandbox_parser.h"
 #include "util.h"
 
 namespace shk {

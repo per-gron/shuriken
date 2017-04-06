@@ -3,11 +3,6 @@ add_custom_command(
   COMMAND re2c -b -i --no-generation-date -o lexer.cpp ${CMAKE_CURRENT_LIST_DIR}/src/manifest/lexer.in.cpp
   DEPENDS src/manifest/lexer.in.cpp re2c)
 
-add_custom_command(
-  OUTPUT sandbox_parser.cpp
-  COMMAND re2c -b -i --no-generation-date -o sandbox_parser.cpp ${CMAKE_CURRENT_LIST_DIR}/src/cmd/sandbox_parser.in.cpp
-  DEPENDS src/cmd/sandbox_parser.in.cpp re2c)
-
 add_library(shklib
   src/build.h
   src/build.cpp
@@ -23,7 +18,6 @@ add_library(shklib
   src/cmd/pooled_command_runner.h
   src/cmd/real_command_runner.h
   src/cmd/real_command_runner_posix.cpp
-  src/cmd/sandbox_parser.h
   src/cmd/trace_server_handle.cpp
   src/cmd/trace_server_handle.h
   src/cmd/tracing_command_runner.cpp
@@ -98,8 +92,7 @@ add_library(shklib
   src/util.h
   src/version.cpp
   src/version.h
-  lexer.cpp
-  sandbox_parser.cpp)
+  lexer.cpp)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC src)
 target_link_libraries(shklib blake2 shkutil)
@@ -124,7 +117,6 @@ add_executable(shk_test
   test/cmd/limited_command_runner_test.cpp
   test/cmd/pooled_command_runner_test.cpp
   test/cmd/real_command_runner_test.cpp
-  test/cmd/sandbox_parser_test.cpp
   test/cmd/tracing_command_runner_test.cpp
   test/cmd/trace_server_handle_test.cpp
   test/dummy_command_runner.cpp
