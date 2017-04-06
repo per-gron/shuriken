@@ -7,6 +7,16 @@
 #include "fs/file_system.h"
 
 namespace shk {
+namespace detail {
+
+/**
+ * Parse a flatbuffer Trace object and add the input files, output files
+ * and potentially errors to this Result. If there are errors, exit_status
+ * is set accordingly.
+ */
+void parseTrace(StringPiece trace_slice, CommandRunner::Result *result);
+
+}  // namespace detail
 
 /**
  * Make a CommandRunner that uses another CommandRunner to actually run

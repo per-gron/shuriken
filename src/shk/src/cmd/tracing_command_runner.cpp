@@ -2,6 +2,8 @@
 
 #include <assert.h>
 
+#include <util/shktrace.h>
+
 #include "cmd/sandbox_parser.h"
 #include "util.h"
 
@@ -29,6 +31,12 @@ class TemporaryFile {
   FileSystem &_file_system;
 };
 
+std::string shellEscape(const std::string &cmd) {
+  std::string escaped_cmd;
+  getShellEscapedString(cmd, &escaped_cmd);
+  return escaped_cmd;
+}
+
 class TracingCommandRunner : public CommandRunner {
  public:
   TracingCommandRunner(
@@ -36,6 +44,8 @@ class TracingCommandRunner : public CommandRunner {
       FileSystem &file_system,
       std::unique_ptr<CommandRunner> &&inner)
       : _trace_server_handle(std::move(trace_sever_handle)),
+        _escaped_shk_trace_cmd(
+            shellEscape(_trace_server_handle->getShkTracePath())),
         _file_system(file_system),
         _inner(std::move(inner)) {}
 
@@ -48,6 +58,11 @@ class TracingCommandRunner : public CommandRunner {
       return;
     }
 
+    std::string err;
+    if (!_trace_server_handle->startServer(&err)) {
+      throw IoError("Failed to start shk-trace server: " + err, 0);
+    }
+
     try {
       const auto tmp = std::make_shared<TemporaryFile>(_file_system);
 
@@ -57,8 +72,10 @@ class TracingCommandRunner : public CommandRunner {
       // ' or ". It would be an evil temporary file creation function that would
       // do that.
       _inner->invoke(
-          "/usr/bin/sandbox-exec -p '(version 1)(trace \"" +
-              tmp->path + "\")' /bin/sh -c " + escaped_command,
+          _escaped_shk_trace_cmd + ""
+              " -O"  // suicide-when-orphaned
+              " -f '" + tmp->path + "'"
+              " -c " + escaped_command,
           pool_name,
           [this, tmp, callback](CommandRunner::Result &&result) {
             computeResults(tmp->path, result);
@@ -95,43 +112,78 @@ class TracingCommandRunner : public CommandRunner {
       return;
     }
     try {
-      auto sandbox = parseSandbox(
-          SandboxIgnores::defaults(),
-          _file_system.readFile(path));
-
-      // Linking steps tend to read the contents of the working directory for
-      // some reason, which causes them to always be treated as dirty, which
-      // obviously is not good. This is a hack to work around that, but it also
-      // means that build steps can't depend on the contents of the build
-      // directory.
-      sandbox.read.erase(getWorkingDir());
-
-      result.input_files.swap(sandbox.read);
-      result.output_files.swap(sandbox.created);
-
-      if (!sandbox.violations.empty()) {
-        for (const auto &violation : sandbox.violations) {
-          result.output += "Linting error: " + violation + "\n";
-        }
-        result.exit_status = ExitStatus::FAILURE;
-      }
-    } catch (const ParseError &error) {
-      result.output +=
-          std::string("Failed to parse sandbox file: ") + error.what() + "\n";
-      result.exit_status = ExitStatus::FAILURE;
+      auto mmap = _file_system.mmap(path);
+      detail::parseTrace(mmap->memory(), &result);
     } catch (const IoError &error) {
       result.output +=
-          std::string("Failed to open sandbox file: ") + error.what() + "\n";
+          std::string("shk: Failed to open trace file: ") + error.what() + "\n";
       result.exit_status = ExitStatus::FAILURE;
     }
   }
 
   const std::unique_ptr<TraceServerHandle> _trace_server_handle;
+  const std::string _escaped_shk_trace_cmd;
   FileSystem &_file_system;
   const std::unique_ptr<CommandRunner> _inner;
 };
 
 }
+
+namespace detail {
+
+void parseTrace(StringPiece trace_slice, CommandRunner::Result *result) {
+  flatbuffers::Verifier verifier(
+      reinterpret_cast<const uint8_t *>(trace_slice._str),
+      trace_slice._len);
+  if (!VerifyTraceBuffer(verifier)) {
+    result->output += "shk: Trace file did not pass validation\n";
+    result->exit_status = ExitStatus::FAILURE;
+    return;
+  }
+
+  auto trace = GetTrace(trace_slice._str);
+
+  for (int i = 0; i < trace->inputs()->size(); i++) {
+    const auto *input = trace->inputs()->Get(i);
+    result->input_files.emplace(
+        input->path()->c_str(),
+        input->directory_listing() ?
+            DependencyType::ALWAYS :
+            DependencyType::IGNORE_IF_DIRECTORY);
+  }
+
+  for (int i = 0; i < trace->outputs()->size(); i++) {
+    result->output_files.insert(trace->outputs()->Get(i)->c_str());
+  }
+
+  for (int i = 0; i < trace->errors()->size(); i++) {
+    result->output +=
+        "shk: " + std::string(trace->errors()->Get(i)->c_str()) + "\n";
+    result->exit_status = ExitStatus::FAILURE;
+  }
+
+  // Linking steps tend to read the contents of the working directory for
+  // some reason, which causes them to always be treated as dirty, which
+  // obviously is not good. This is a hack to work around that, but it also
+  // means that build steps can't depend on the contents of the build
+  // directory.
+  result->input_files.erase(getWorkingDir());
+
+  static const char * const kIgnoredFiles[] = {
+      "/AppleInternal",
+      "/dev/null",
+      "/dev/random",
+      "/dev/urandom",
+      "/dev/dtracehelper",
+      "/dev/tty" };
+
+  for (const auto *ignored_file : kIgnoredFiles) {
+    result->input_files.erase(ignored_file);
+    result->output_files.erase(ignored_file);
+  }
+}
+
+}  // namespace detail
 
 std::unique_ptr<CommandRunner> makeTracingCommandRunner(
     std::unique_ptr<TraceServerHandle> &&trace_sever_handle,
