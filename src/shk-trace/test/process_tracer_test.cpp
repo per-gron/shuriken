@@ -20,7 +20,7 @@ TEST_CASE("ProcessTracer") {
   auto delegate_ptr = std::unique_ptr<MockTracerDelegate>(
       new MockTracerDelegate(dead_tracers));
   auto &delegate = *delegate_ptr;
-  tracer.traceProcess(1, 1000, std::move(delegate_ptr));
+  tracer.traceProcess(1, 2, std::move(delegate_ptr));
   tracer.newThread(/*pid:*/1, 2, 3);
   delegate.popNewThreadEvent();
 
@@ -55,7 +55,7 @@ TEST_CASE("ProcessTracer") {
       auto delegate2_ptr = std::unique_ptr<MockTracerDelegate>(
           new MockTracerDelegate(dead_tracers));
       auto &delegate2 = *delegate2_ptr;
-      tracer.traceProcess(2, 1000, std::move(delegate2_ptr));
+      tracer.traceProcess(2, 4, std::move(delegate2_ptr));
 
       SECTION("NewThreadForNewTrace") {
         tracer.newThread(/*pid:*/2, 4, 5);
@@ -78,10 +78,14 @@ TEST_CASE("ProcessTracer") {
       }
 
       SECTION("RootThreadTerminationShouldNotCountAsFinish") {
-        tracer.newThread(/*pid:*/2, 4, 1000);
-        CHECK(tracer.terminateThread(1000) == Response::OK);
+        tracer.newThread(/*pid:*/2, 123, 4);
+        CHECK(tracer.terminateThread(4) == Response::OK);
 
         // no call to delegate.expectTermination();
+      }
+
+      SECTION("NewThreadWithNonRootParentShouldNotStartTrace") {
+        tracer.newThread(/*pid:*/2, 100, 5);
       }
 
       SECTION("SecondProcessFinished") {

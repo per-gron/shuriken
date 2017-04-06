@@ -32,6 +32,14 @@ void ProcessTracer::newThread(
       // This is the thread creation event for the root thread of the process
       // to be traced. This is the thread that will wait for tracing to finish.
       // If we start tracing this one, tracing will deadlock.
+    } else if (parent_thread_id != to_be_traced.root_thread_id) {
+      // The parent thread of the spawned thread is not the root thread. This
+      // means that it is for sure not the thread that this trace request
+      // intended to trace.
+      //
+      // This case can be reached when pids get reused quickly and a process
+      // makes a trace request while the tracing server (this process) is still
+      // processing events from the old process. I think.
     } else {
       auto &delegate = *to_be_traced.delegate;
       _traced_threads.emplace(

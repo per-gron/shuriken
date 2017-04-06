@@ -81,7 +81,6 @@ Aesthetic bugs:
 * Deal with depfile files: Don't treat them as outputs
 
 Large things remaining to do:
-* Fix race that causes tracing to deadlock
 * Mach port already in use. Is there already a server running?
   ^^^ This happens almost always when running CMake, because it will start shk-trace again directly after
 * Test with client-core and shk and spotify-json
