@@ -310,7 +310,6 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.hashFile("one") != fs.hashFile("three"));
   }
 
-
   SECTION("mkstemp creates file") {
     const auto path = fs.mkstemp("hi.XXX");
     CHECK(fs.stat(path).result == 0);
@@ -322,6 +321,23 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(path1 != path2);
     CHECK(fs.stat(path1).result == 0);
     CHECK(fs.stat(path2).result == 0);
+  }
+
+  SECTION("enqueueMkstempResult") {
+    SECTION("one path") {
+      fs.enqueueMkstempResult("one");
+      CHECK(fs.mkstemp("hi.XXX") == "one");
+      CHECK(fs.stat("one").result == ENOENT);
+    }
+
+    SECTION("two paths") {
+      fs.enqueueMkstempResult("one");
+      fs.enqueueMkstempResult("two");
+      CHECK(fs.mkstemp("hi.XXX") == "one");
+      CHECK(fs.stat("one").result == ENOENT);
+      CHECK(fs.mkstemp("hi.XXX") == "two");
+      CHECK(fs.stat("two").result == ENOENT);
+    }
   }
 }
 

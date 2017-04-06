@@ -15,6 +15,10 @@ InMemoryFileSystem::InMemoryFileSystem(const std::function<time_t ()> &clock)
   _directories.emplace("/", Directory(clock(), _ino++));
 }
 
+void InMemoryFileSystem::enqueueMkstempResult(std::string &&path) {
+  _mkstemp_paths.push_back(std::move(path));
+}
+
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
     const std::string &path, const char *mode) throw(IoError) {
   const auto mode_string = std::string(mode);
@@ -345,6 +349,12 @@ Hash InMemoryFileSystem::hashFile(const std::string &path) throw(IoError) {
 
 std::string InMemoryFileSystem::mkstemp(
     std::string &&filename_template) throw(IoError) {
+  if (!_mkstemp_paths.empty()) {
+    auto result = std::move(_mkstemp_paths.front());
+    _mkstemp_paths.pop_front();
+    return result;
+  }
+
   for (;;) {
     std::string filename = filename_template;
     if (mktemp(&filename[0]) == NULL) {

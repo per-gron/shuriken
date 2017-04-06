@@ -1,5 +1,6 @@
 #include "fs/file_system.h"
 
+#include <deque>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -14,6 +15,12 @@ namespace shk {
 class InMemoryFileSystem : public FileSystem {
  public:
   InMemoryFileSystem(const std::function<time_t ()> &clock = []{ return 0; });
+
+  /**
+   * Causes the next mkstemp to return path. Can be useful in tests that need to
+   * predict temporary paths.
+   */
+  void enqueueMkstempResult(std::string &&path);
 
   std::unique_ptr<Stream> open(
       const std::string &path, const char *mode) throw(IoError) override;
@@ -123,6 +130,7 @@ class InMemoryFileSystem : public FileSystem {
 
   LookupResult lookup(const std::string &path);
 
+  std::deque<std::string> _mkstemp_paths;
   const std::function<time_t ()> _clock;
   std::unordered_map<std::string, Directory> _directories;
   ino_t _ino = 0;
