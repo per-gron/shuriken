@@ -47,19 +47,13 @@ TEST_CASE("CmdlineOptions") {
   }
 
   SECTION("SuicideWhenOrphaned") {
-    auto options = parse({ "-c", "abc", "--suicide-when-orphaned" });
-    CHECK(options.result == CmdlineOptions::Result::SUCCESS);
-    CHECK(options.tracefile == "/dev/null");
-    CHECK(options.command == "abc");
-    CHECK(options.suicide_when_orphaned == true);
+    auto options = parse({ "-c", "hej", "--suicide-when-orphaned" });
+    CHECK(options.result == CmdlineOptions::Result::HELP);
   }
 
   SECTION("SuicideWhenOrphanedShort") {
-    auto options = parse({ "-c", "abc", "-O" });
-    CHECK(options.result == CmdlineOptions::Result::SUCCESS);
-    CHECK(options.tracefile == "/dev/null");
-    CHECK(options.command == "abc");
-    CHECK(options.suicide_when_orphaned == true);
+    auto options = parse({ "-c", "hej", "-O" });
+    CHECK(options.result == CmdlineOptions::Result::HELP);
   }
 
   SECTION("JustTracefile") {
@@ -115,6 +109,12 @@ TEST_CASE("CmdlineOptions") {
 
     SECTION("SuicideWhenOrphaned") {
       auto options = parse({ "-s", "-O" });
+      CHECK(options.server == true);
+      CHECK(options.suicide_when_orphaned == true);
+    }
+
+    SECTION("SuicideWhenOrphaned") {
+      auto options = parse({ "-s", "--suicide-when-orphaned" });
       CHECK(options.server == true);
       CHECK(options.suicide_when_orphaned == true);
     }

@@ -73,7 +73,6 @@ class TracingCommandRunner : public CommandRunner {
       // do that.
       _inner->invoke(
           _escaped_shk_trace_cmd + ""
-              " -O"  // suicide-when-orphaned
               " -f '" + tmp->path + "'"
               " -c " + escaped_command,
           pool_name,

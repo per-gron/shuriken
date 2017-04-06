@@ -338,7 +338,7 @@ TEST_CASE("TracingCommandRunner") {
     const auto result = runCommand(*runner, "cmd");
 
     const auto cmd = mock_command_runner.popCommand();
-    CHECK(cmd.command == "exec_path -O -f 'temp_file' -c cmd");
+    CHECK(cmd.command == "exec_path -f 'temp_file' -c cmd");
   }
 
   SECTION("NoTrace") {

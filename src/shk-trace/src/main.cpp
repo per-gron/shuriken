@@ -245,11 +245,15 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (cmdline_options.suicide_when_orphaned) {
-    suicideWhenOrphaned();
-  }
-
   if (cmdline_options.server) {
+    // Suicide-when-orphaned works only on the server, because for processes
+    // that are to be traced, there is a chance that the tracer will select
+    // the suicide-when-orphaned thread as the thread to trace, which causes
+    // tracing to deadlock.
+    if (cmdline_options.suicide_when_orphaned) {
+      suicideWhenOrphaned();
+    }
+
     std::string err;
     if (!runTracingServer(&err)) {
       fprintf(stderr, "%s\n", err.c_str());

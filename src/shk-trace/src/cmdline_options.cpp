@@ -59,7 +59,9 @@ CmdlineOptions CmdlineOptions::parse(int argc, char *argv[]) {
       options.tracefile = "/dev/null";
     }
 
-    if (options.command.empty() || optind != argc) {
+    if (options.suicide_when_orphaned ||
+        options.command.empty() ||
+        optind != argc) {
       return withResult(Result::HELP);
     }
   }
