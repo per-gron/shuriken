@@ -116,6 +116,8 @@ class FileSystem {
   virtual void mkdir(const std::string &path) throw(IoError) = 0;
   virtual void rmdir(const std::string &path) throw(IoError) = 0;
   virtual void unlink(const std::string &path) throw(IoError) = 0;
+  virtual void symlink(
+      const std::string &target, const std::string &source) throw(IoError) = 0;
   virtual void rename(
       const std::string &old_path,
       const std::string &new_path) throw(IoError) = 0;
@@ -139,6 +141,18 @@ class FileSystem {
    * through subdirectories recursively.
    */
   Hash hashDir(const std::string &path) throw(IoError);
+
+  /**
+   * Read the contents of a symlink.
+   */
+  virtual std::string readSymlink(const std::string &path) throw(IoError) = 0;
+
+  /**
+   * Utility function for hashing a symlink. It is rather important that this
+   * hash function works the same for all FileSystem implementations, so it is
+   * defined directly here. It is implemented in terms of readlink.
+   */
+  Hash hashSymlink(const std::string &path) throw(IoError);
 
   /**
    * Utility function for reading files. It is on this interface because on

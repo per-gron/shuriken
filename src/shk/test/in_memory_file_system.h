@@ -31,12 +31,17 @@ class InMemoryFileSystem : public FileSystem {
   void mkdir(const std::string &path) throw(IoError) override;
   void rmdir(const std::string &path) throw(IoError) override;
   void unlink(const std::string &path) throw(IoError) override;
+  void symlink(
+      const std::string &target,
+      const std::string &source) throw(IoError) override;
   void rename(
       const std::string &old_path,
       const std::string &new_path) throw(IoError) override;
   void truncate(
       const std::string &path, size_t size) throw(IoError) override;
   std::vector<DirEntry> readDir(
+      const std::string &path) throw(IoError) override;
+  std::string readSymlink(
       const std::string &path) throw(IoError) override;
   std::string readFile(const std::string &path) throw(IoError) override;
   Hash hashFile(const std::string &path) throw(IoError) override;
@@ -55,9 +60,10 @@ class InMemoryFileSystem : public FileSystem {
   struct File {
     File(ino_t ino) : ino(ino) {}
 
-    time_t mtime;
+    time_t mtime = 0;
     ino_t ino;
     std::string contents;
+    bool symlink = false;
   };
 
   struct Directory {

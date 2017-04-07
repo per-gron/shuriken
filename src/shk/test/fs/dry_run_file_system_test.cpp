@@ -52,6 +52,11 @@ TEST_CASE("DryRunFileSystem") {
     CHECK(inner_fs.stat("f").result != ENOENT);
   }
 
+  SECTION("symlink") {
+    fs->symlink("target", "link");
+    CHECK(inner_fs.stat("link").result == ENOENT);
+  }
+
   SECTION("unlink") {
     fs->rename("f", "g");
     CHECK(inner_fs.stat("f").result != ENOENT);
@@ -65,6 +70,11 @@ TEST_CASE("DryRunFileSystem") {
 
   SECTION("readDir") {
     CHECK(inner_fs.readDir(".") == fs->readDir("."));
+  }
+
+  SECTION("readSymlink") {
+    inner_fs.symlink("target", "link");
+    CHECK(fs->readSymlink("link") == "target");
   }
 
   SECTION("readFile") {

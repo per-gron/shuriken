@@ -74,6 +74,11 @@ TEST_CASE("CleaningFileSystem") {
     CHECK(inner_fs.stat("f").result == ENOENT);
   }
 
+  SECTION("symlink") {
+    fs.symlink("target", "link");
+    CHECK(inner_fs.stat("link").result != ENOENT);
+  }
+
   SECTION("rename") {
     fs.rename("f", "g");
     CHECK(inner_fs.stat("f").result == ENOENT);
@@ -90,6 +95,11 @@ TEST_CASE("CleaningFileSystem") {
   SECTION("readDir") {
     CHECK(inner_fs.readDir(".") == fs.readDir("."));
     CHECK(fs.getRemovedCount() == 0);
+  }
+
+  SECTION("readSymlink") {
+    inner_fs.symlink("target", "link");
+    CHECK(fs.readSymlink("link") == "target");
   }
 
   SECTION("readFile") {

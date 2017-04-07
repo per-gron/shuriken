@@ -87,7 +87,6 @@ Large things remaining to do:
 * Do something about generator rules. It's not nice that they are re-run directly after. Perhaps emulate ninja's behavior.
 * Mach port already in use. Is there already a server running?
   ^^^ This happens almost always when running CMake, because it will start shk-trace again directly after
-* Test with client-core and shk and spotify-json
 * Tracer race:
   * Can be debugged by building something big from clean more than once and checking the invocation log. They should be identical.
   * There seems to be a race in TracingCommandRunner. It doesn't always catch deps
@@ -102,6 +101,7 @@ Large things remaining to do:
 * Distributed caching
 
 * Possible optimizations
+  * Check if using mmap can speed things up in readFile/hashFile
   * Try reduce number of /bin/sh invocations per command. I think it's 3 now
   * See if adding HAVE_SSSE3, HAVE_XOP, HAVE_SSE41 etc flags for blake2 makes sense
   * Don't calculate hashes twice for racily clean files

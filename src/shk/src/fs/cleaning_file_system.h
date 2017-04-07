@@ -35,6 +35,10 @@ class CleaningFileSystem : public FileSystem {
 
   void unlink(const std::string &path) throw(IoError) override;
 
+  void symlink(
+      const std::string &target,
+      const std::string &source) throw(IoError) override;
+
   void rename(
       const std::string &old_path,
       const std::string &new_path) throw(IoError) override;
@@ -44,6 +48,8 @@ class CleaningFileSystem : public FileSystem {
 
   std::vector<DirEntry> readDir(
       const std::string &path) throw(IoError) override;
+
+  std::string readSymlink(const std::string &path) throw(IoError) override;
 
   std::string readFile(const std::string &path) throw(IoError) override;
 

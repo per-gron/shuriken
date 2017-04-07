@@ -118,6 +118,13 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.stat(abc).result == ENOENT);
   }
 
+  SECTION("symlink") {
+    fs.symlink("target", "link");
+    const auto stat = fs.lstat("link");
+    CHECK(stat.result != ENOENT);
+    CHECK(S_ISLNK(stat.metadata.mode));
+  }
+
   SECTION("rename") {
     SECTION("missing file") {
       CHECK_THROWS_AS(fs.rename("a", "b"), IoError);
@@ -239,6 +246,11 @@ TEST_CASE("InMemoryFileSystem") {
       CHECK_THROWS_AS(fs.readDir("nonexisting"), IoError);
       CHECK_THROWS_AS(fs.readDir("d/nonexisting"), IoError);
     }
+  }
+
+  SECTION("readSymlink") {
+    fs.symlink("target", "link");
+    CHECK(fs.readSymlink("link") == "target");
   }
 
   SECTION("open with bad mode") {

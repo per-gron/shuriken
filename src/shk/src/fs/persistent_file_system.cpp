@@ -157,6 +157,12 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::unlink(path.c_str()));
   }
 
+  void symlink(
+      const std::string &target,
+      const std::string &source) throw(IoError) override {
+    checkForMinusOne(::symlink(target.c_str(), source.c_str()));
+  }
+
   void rename(
       const std::string &old_path,
       const std::string &new_path) throw(IoError) override {
@@ -184,6 +190,28 @@ class PersistentFileSystem : public FileSystem {
     closedir(dp);
 
     return result;
+  }
+
+  std::string readSymlink(const std::string &path) throw(IoError) override {
+    std::vector<char> buf;
+    int to_reserve = 128;
+
+    int res = 0;
+    for (;;) {
+      buf.resize(to_reserve);
+      res = readlink(path.c_str(), buf.data(), buf.capacity());
+      if (res == to_reserve) {
+        to_reserve *= 2;
+      } else {
+        break;
+      }
+    }
+
+    if (res == -1) {
+      throw IoError("Failed to read symlink", errno);
+    }
+
+    return buf.data();
   }
 
   std::string readFile(const std::string &path) throw(IoError) override {

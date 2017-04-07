@@ -34,6 +34,22 @@ Hash FileSystem::hashDir(const std::string &path) throw(IoError) {
   return hash;
 }
 
+Hash FileSystem::hashSymlink(const std::string &path) throw(IoError) {
+  Hash hash;
+
+  blake2b_state state;
+  blake2b_init(&state, hash.data.size());
+
+  auto link_target = readSymlink(path);
+  blake2b_update(
+      &state,
+      reinterpret_cast<const uint8_t *>(link_target.c_str()),
+      link_target.size());
+
+  blake2b_final(&state, hash.data.data(), hash.data.size());
+  return hash;
+}
+
 void FileSystem::writeFile(
     const std::string &path,
     const std::string &contents) throw(IoError) {

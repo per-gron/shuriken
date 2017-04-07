@@ -101,7 +101,7 @@ std::unique_ptr<FileSystem::Mmap> InMemoryFileSystem::mmap(
 }
 
 Stat InMemoryFileSystem::stat(const std::string &path) {
-  // Symlinks are not supported so stat is the same as lstat
+  // Symlinks are not fully supported so stat is the same as lstat
   return lstat(path);
 }
 
@@ -123,7 +123,7 @@ Stat InMemoryFileSystem::lstat(const std::string &path) {
       const auto &file = l.directory->files[l.basename];
       stat.metadata.size = file->contents.size();
       stat.metadata.ino = file->ino;
-      stat.metadata.mode |= S_IFREG;
+      stat.metadata.mode |= file->symlink ? S_IFLNK : S_IFREG;
       stat.timestamps.mtime = file->mtime;
       stat.timestamps.ctime = file->mtime;
     } else {
@@ -193,6 +193,17 @@ void InMemoryFileSystem::unlink(const std::string &path) throw(IoError) {
     l.directory->mtime = _clock();
     break;
   }
+}
+
+void InMemoryFileSystem::symlink(
+    const std::string &target,
+    const std::string &source) throw(IoError) {
+  writeFile(source, target);
+  const auto l = lookup(source);
+  assert(l.entry_type == EntryType::FILE);
+
+  const auto file = l.directory->files.find(l.basename)->second;
+  file->symlink = true;
 }
 
 void InMemoryFileSystem::rename(
@@ -318,6 +329,10 @@ std::vector<DirEntry> InMemoryFileSystem::readDir(
   }
 
   return result;
+}
+
+std::string InMemoryFileSystem::readSymlink(const std::string &path) throw(IoError) {
+  return readFile(path);
 }
 
 std::string InMemoryFileSystem::readFile(const std::string &path) throw(IoError) {

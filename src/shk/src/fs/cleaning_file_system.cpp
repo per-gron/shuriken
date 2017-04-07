@@ -51,6 +51,11 @@ void CleaningFileSystem::unlink(const std::string &path)
   _removed_count++;
 }
 
+void CleaningFileSystem::symlink(
+    const std::string &target, const std::string &source) throw(IoError) {
+  _inner.symlink(target, source);
+}
+
 void CleaningFileSystem::rename(
     const std::string &old_path,
     const std::string &new_path) throw(IoError) {
@@ -65,6 +70,11 @@ void CleaningFileSystem::truncate(
 std::vector<DirEntry> CleaningFileSystem::readDir(
     const std::string &path) throw(IoError) {
   return _inner.readDir(path);
+}
+
+std::string CleaningFileSystem::readSymlink(const std::string &path)
+    throw(IoError) {
+  return _inner.readSymlink(path);
 }
 
 std::string CleaningFileSystem::readFile(const std::string &path)

@@ -82,6 +82,11 @@ class FailingMkstempFileSystem : public FileSystem {
   void unlink(const std::string &path) throw(IoError) override {
     _fs.unlink(path);
   }
+  void symlink(
+      const std::string &target,
+      const std::string &source) throw(IoError) override {
+    _fs.symlink(target, source);
+  }
   void rename(
       const std::string &old_path,
       const std::string &new_path) throw(IoError) override {
@@ -94,6 +99,9 @@ class FailingMkstempFileSystem : public FileSystem {
   std::vector<DirEntry> readDir(
       const std::string &path) throw(IoError) override {
     return _fs.readDir(path);
+  }
+  std::string readSymlink(const std::string &path) throw(IoError) override {
+    return _fs.readSymlink(path);
   }
   std::string readFile(const std::string &path) throw(IoError) override {
     return _fs.readFile(path);
@@ -134,6 +142,11 @@ class FailingUnlinkFileSystem : public FileSystem {
   void unlink(const std::string &path) throw(IoError) override {
     throw IoError("Test-induced unlink error", 0);
   }
+  void symlink(
+      const std::string &target,
+      const std::string &source) throw(IoError) override {
+    _fs.symlink(target, source);
+  }
   void rename(
       const std::string &old_path,
       const std::string &new_path) throw(IoError) override {
@@ -146,6 +159,9 @@ class FailingUnlinkFileSystem : public FileSystem {
   std::vector<DirEntry> readDir(
       const std::string &path) throw(IoError) override {
     return _fs.readDir(path);
+  }
+  std::string readSymlink(const std::string &path) throw(IoError) override {
+    return _fs.readSymlink(path);
   }
   std::string readFile(const std::string &path) throw(IoError) override {
     return _fs.readFile(path);

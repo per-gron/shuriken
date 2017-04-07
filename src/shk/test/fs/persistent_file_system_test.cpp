@@ -1,6 +1,7 @@
 #include <catch.hpp>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "fs/persistent_file_system.h"
@@ -63,6 +64,18 @@ TEST_CASE("PersistentFileSystem") {
       const auto stat = fs->stat("this_file_does_not_exist_1243542");
       CHECK(stat.result == ENOENT);
     }
+  }
+
+  SECTION("symlink") {
+    fs->symlink("target", kTestFilename1);
+    const auto stat = fs->lstat(kTestFilename1);
+    CHECK(stat.result != ENOENT);
+    CHECK(S_ISLNK(stat.metadata.mode));
+  }
+
+  SECTION("readSymlink") {
+    fs->symlink("target", kTestFilename1);
+    CHECK(fs->readSymlink(kTestFilename1) == "target");
   }
 
   unlink(kTestFilename1);

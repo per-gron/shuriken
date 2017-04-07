@@ -55,6 +55,15 @@ TEST_CASE("FileSystem") {
     CHECK(fs.hashDir("d") == fs.hashDir("e"));
   }
 
+  SECTION("hashSymlink") {
+    fs.symlink("target", "link_1");
+    fs.symlink("target", "link_2");
+    fs.symlink("target_other", "link_3");
+
+    CHECK(fs.hashSymlink("link_1") == fs.hashSymlink("link_2"));
+    CHECK(fs.hashSymlink("link_2") != fs.hashSymlink("link_3"));
+  }
+
   SECTION("writeFile") {
     fs.writeFile("abc", "hello");
     CHECK(fs.stat("abc").result == 0);  // Verify file exists
