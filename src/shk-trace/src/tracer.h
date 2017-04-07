@@ -15,7 +15,6 @@
 #include "kdebug.h"
 #include "kdebug_controller.h"
 #include "syscall_constants.h"
-#include "syscall_tables.h"
 
 namespace shk {
 

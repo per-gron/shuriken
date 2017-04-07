@@ -30,6 +30,8 @@
 #include <dispatch/dispatch.h>
 #include <sys/mman.h>
 
+#include "syscall_tables.h"
+
 namespace shk {
 namespace {
 
@@ -63,8 +65,6 @@ SyscallAtMember syscallAtMember(int syscall) {
 }
 
 }  // anonymous namespace
-
-static constexpr int PATHLENGTH = NUMPARMS * sizeof(uintptr_t);
 
 static constexpr uint64_t SLEEP_MIN = 1;
 static constexpr uint64_t SLEEP_BEHIND = 2;
@@ -357,8 +357,6 @@ void Tracer::notifyDelegate(
     int syscall,
     const char *pathname1 /* nullable */,
     const char *pathname2 /* nullable */) {
-  char buf[(PATHLENGTH + 80) + 64];
-
   std::array<std::tuple<EventType, const char *, SyscallAtMember>, 4> events{};
   int num_events = 0;
   auto add_event = [&](

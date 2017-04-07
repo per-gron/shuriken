@@ -25,7 +25,17 @@ class CommandRunner {
   virtual ~CommandRunner() = default;
 
   struct Result {
+    /**
+     * Input files are paths to files that the program read as inputs. If the
+     * path is to a symlink, it means that the program depends on the contents
+     * of that symlink. To indicate that a program read through a symlink, both
+     * the symlink and the path pointed to should be in the input files list.
+     */
     std::unordered_map<std::string, DependencyType> input_files;
+    /**
+     * Output files are files that the program created as output of its work.
+     * They have the same semantics as input files wrt symlinks etc.
+     */
     std::unordered_set<std::string> output_files;
     ExitStatus exit_status = ExitStatus::SUCCESS;
     std::string output;

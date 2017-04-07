@@ -43,6 +43,7 @@ add_library(libshktrace
 target_compile_definitions(libshktrace PUBLIC KERNEL_PRIVATE PRIVATE=)
 target_include_directories(libshktrace PUBLIC src)
 target_link_libraries(libshktrace util bsm shkutil)
+set_target_properties(libshktrace PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_property(TARGET libshktrace PROPERTY CXX_STANDARD 11)
 
 add_executable(shk-trace
@@ -67,11 +68,13 @@ add_executable(shktrace_test
   test/trace_writer_test.cpp
   test/tracing_server_test.cpp)
 target_link_libraries(shktrace_test pthread catch libshktrace)
+set_target_properties(shktrace_test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_property(TARGET shktrace_test PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_integrationtest_helper
   integrationtest/test.cpp)
 target_link_libraries(shktrace_integrationtest_helper shkutil pthread)
+set_target_properties(shktrace_integrationtest_helper PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_target_properties(shktrace_integrationtest_helper PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations")
 set_property(TARGET shktrace_integrationtest_helper PROPERTY CXX_STANDARD 11)
 

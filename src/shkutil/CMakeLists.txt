@@ -9,6 +9,7 @@ add_library(shkutil
   src/file_descriptor.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/include/util/shktrace_generated.h)
 target_include_directories(shkutil PUBLIC include ${CMAKE_CURRENT_BINARY_DIR}/include)
+set_target_properties(shkutil PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 target_link_libraries(shkutil flatbuffers)
 set_property(TARGET shkutil PROPERTY CXX_STANDARD 11)
 
