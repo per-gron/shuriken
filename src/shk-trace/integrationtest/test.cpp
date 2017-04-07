@@ -1,4 +1,3 @@
-#include <cassert>
 #include <cerrno>
 #include <copyfile.h>
 #include <cstdio>
@@ -268,8 +267,10 @@ void testDup() {
     die("dup failed");
   }
 
-  assert(openat(
-      duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) == -1);
+  if (openat(
+      duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) != -1) {
+    die("openat succeeded");
+  }
 }
 
 void testDup2() {
@@ -281,8 +282,10 @@ void testDup2() {
   }
   auto duped_fd = shk::FileDescriptor(new_fd_num);
 
-  assert(openat(
-      duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) == -1);
+  if (openat(
+      duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) != -1) {
+    die("openat succeeded");
+  }
 }
 
 void testExchangedata() {
@@ -386,8 +389,10 @@ void testFcntlDupfdCloexec() {
     die("dup failed");
   }
 
-  assert(openat(
-      duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) == -1);
+  if (openat(
+      duped_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) != -1) {
+    die("openat succeeded");
+  }
 }
 
 void testFcntlDupfdCloexecExec() {
@@ -490,8 +495,10 @@ void testForkOrVforkInheritFd(pid_t (*fork_fn)()) {
     die("Failed to fork");
   } else if (pid == 0) {
     // In child
-    assert(openat(
-        usr_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) == -1);
+    if (openat(
+        usr_fd.get(), "nonexisting_path_just_for_testing", O_RDONLY) != -1) {
+      die("openat succeeded");
+    }
   } else {
     // In parent
     int status;
