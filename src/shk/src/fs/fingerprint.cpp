@@ -12,6 +12,8 @@ void computeFingerprintHash(
     Hash *hash) {
   if (S_ISDIR(stat.mode)) {
     *hash = file_system.hashDir(path);
+  } else if (S_ISLNK(stat.mode)) {
+    *hash = file_system.hashSymlink(path);
   } else if (stat.couldAccess()) {
     *hash = file_system.hashFile(path);
   } else {
@@ -24,12 +26,7 @@ bool fingerprintStat(
     const std::string &path,
     Fingerprint::Stat *out,
     std::string *err) {
-  // TODO(peck): It would not be correct to use lstat here because then we could
-  // report that the file is a symlink even though it points to a directory,
-  // which later on causes the build to fail when it attempts to hash the
-  // directory that is pointed to as if it were a file. Perhaps a solution to
-  // this could be to hash symlinks in a special way.
-  const auto stat = file_system.stat(path);
+  const auto stat = file_system.lstat(path);
   if (stat.result == 0) {
     out->size = stat.metadata.size;
     out->ino = stat.metadata.ino;

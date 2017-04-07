@@ -14,6 +14,7 @@ TEST_CASE("Fingerprint") {
   const std::string initial_contents = "initial_contents";
   fs.writeFile("a", initial_contents);
   fs.mkdir("dir");
+  fs.symlink("target", "link");
 
   SECTION("Stat") {
     Fingerprint::Stat a;
@@ -145,6 +146,20 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.hash == fs.hashDir("dir"));
       CHECK(fp.stat.couldAccess());
       CHECK(fp.stat.isDir());
+    }
+
+    SECTION("symlink") {
+      const auto fp = takeFingerprint(fs, 12345, "link");
+
+      CHECK(fp.stat.size == fs.readSymlink("link").size());
+      CHECK(fp.stat.ino == fs.lstat("link").metadata.ino);
+      CHECK(S_ISLNK(fp.stat.mode));
+      CHECK(fp.stat.mtime == now);
+      CHECK(fp.stat.ctime == now);
+      CHECK(fp.timestamp == 12345);
+      CHECK(fp.hash == fs.hashSymlink("link"));
+      CHECK(fp.stat.couldAccess());
+      CHECK(!fp.stat.isDir());
     }
   }
 

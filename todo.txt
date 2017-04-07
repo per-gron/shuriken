@@ -71,7 +71,6 @@ Things to do for increased build correctness:
 * Function to detect insufficiently declared dependencies (how to do this?)
 * Shield commands from env vars
 * Make sure the build does the right thing even if targets are specified wrong on the command line
-* Hash symlinks in a special way (see fingerprintStat)
 * Keep a map of files that have been read so far by the build. If any step
   writes to any of those file, there is a dependency error in the build.
   (Is this generic enough? Can it be made to always find this error instead of
@@ -81,7 +80,6 @@ Aesthetic bugs:
 * Deal with depfile files: Don't treat them as outputs
 
 Large things remaining to do:
-* Fingerprint symlinks properly
 * Make fingerprintStat share stat cache with Paths for initial processing
 * Status often says things like [5/4]
 * Optimize stat cache: We can share the entry if lstat said it was not a symlink.

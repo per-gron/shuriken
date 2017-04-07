@@ -76,7 +76,7 @@ TEST_CASE("CleaningFileSystem") {
 
   SECTION("symlink") {
     fs.symlink("target", "link");
-    CHECK(inner_fs.stat("link").result != ENOENT);
+    CHECK(inner_fs.lstat("link").result != ENOENT);
   }
 
   SECTION("rename") {

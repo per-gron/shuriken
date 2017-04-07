@@ -50,6 +50,13 @@ class InMemoryFileSystem : public FileSystem {
   bool operator==(const InMemoryFileSystem &other) const;
 
  private:
+  std::unique_ptr<Stream> open(
+      bool expect_symlink,
+      const std::string &path,
+      const char *mode) throw(IoError);
+
+  Stat stat(bool follow_symlink, const std::string &path);
+
   enum class EntryType {
     FILE_DOES_NOT_EXIST,
     DIRECTORY_DOES_NOT_EXIST,

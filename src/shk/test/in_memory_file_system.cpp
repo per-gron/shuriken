@@ -20,66 +20,9 @@ void InMemoryFileSystem::enqueueMkstempResult(std::string &&path) {
 }
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
-    const std::string &path, const char *mode) throw(IoError) {
-  const auto mode_string = std::string(mode);
-  bool read = false;
-  bool write = false;
-  bool truncate = false;
-  bool create = false;
-  bool append = false;
-  if (mode_string == "r") {
-    read = true;
-    write = false;
-  } else if (mode_string == "r+") {
-    read = true;
-    write = false;
-  } else if (mode_string == "w" || mode_string == "wb") {
-    read = false;
-    write = true;
-    truncate = true;
-    create = true;
-  } else if (mode_string == "w+") {
-    read = true;
-    write = true;
-    truncate = true;
-    create = true;
-  } else if (mode_string == "a" || mode_string == "ab") {
-    read = false;
-    write = true;
-    append = true;
-    create = true;
-  } else {
-    throw IoError("Unsupported mode " + mode_string, 0);
-  }
-
-  const auto l = lookup(path);
-  switch (l.entry_type) {
-  case EntryType::DIRECTORY_DOES_NOT_EXIST:
-    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
-  case EntryType::DIRECTORY:
-    throw IoError("The named file is a directory", EISDIR);
-  case EntryType::FILE_DOES_NOT_EXIST:
-    if (!create) {
-      throw IoError("No such file or directory", ENOENT);
-    }
-    {
-      const auto &file = std::make_shared<File>(_ino++);
-      file->mtime = _clock();
-      l.directory->files[l.basename] = file;
-      l.directory->mtime = _clock();
-      return std::unique_ptr<Stream>(
-          new InMemoryFileStream(_clock, file, read, write, append));
-    }
-  case EntryType::FILE:
-    {
-      const auto &file = l.directory->files[l.basename];
-      if (truncate) {
-        file->contents.clear();
-      }
-      return std::unique_ptr<Stream>(
-          new InMemoryFileStream(_clock, file, read, write, append));
-    }
-  }
+    const std::string &path,
+    const char *mode) throw(IoError) {
+  return open(/*expect_symlink:*/false, path, mode);
 }
 
 std::unique_ptr<FileSystem::Mmap> InMemoryFileSystem::mmap(
@@ -102,42 +45,11 @@ std::unique_ptr<FileSystem::Mmap> InMemoryFileSystem::mmap(
 
 Stat InMemoryFileSystem::stat(const std::string &path) {
   // Symlinks are not fully supported so stat is the same as lstat
-  return lstat(path);
+  return stat(/*follow_symlink:*/true, path);
 }
 
 Stat InMemoryFileSystem::lstat(const std::string &path) {
-  Stat stat;
-
-  const auto l = lookup(path);
-  switch (l.entry_type) {
-  case EntryType::DIRECTORY_DOES_NOT_EXIST:
-    stat.result = ENOTDIR;
-    break;
-  case EntryType::FILE_DOES_NOT_EXIST:
-    stat.result = ENOENT;
-    break;
-  case EntryType::FILE:
-  case EntryType::DIRECTORY:
-    stat.metadata.mode = 0755;  // Pretend this is the umask
-    if (l.entry_type == EntryType::FILE) {
-      const auto &file = l.directory->files[l.basename];
-      stat.metadata.size = file->contents.size();
-      stat.metadata.ino = file->ino;
-      stat.metadata.mode |= file->symlink ? S_IFLNK : S_IFREG;
-      stat.timestamps.mtime = file->mtime;
-      stat.timestamps.ctime = file->mtime;
-    } else {
-      const auto &dir = _directories.find(l.canonicalized)->second;
-      stat.metadata.ino = dir.ino;
-      stat.metadata.mode |= S_IFDIR;
-      stat.timestamps.mtime = dir.mtime;
-      stat.timestamps.ctime = dir.mtime;
-    }
-    // TODO(peck): Set mtime and ctime
-    break;
-  }
-
-  return stat;
+  return stat(/*follow_symlink:*/false, path);
 }
 
 void InMemoryFileSystem::mkdir(const std::string &path) throw(IoError) {
@@ -332,7 +244,16 @@ std::vector<DirEntry> InMemoryFileSystem::readDir(
 }
 
 std::string InMemoryFileSystem::readSymlink(const std::string &path) throw(IoError) {
-  return readFile(path);
+  std::string result;
+
+  const auto stream = open(/*expect_symlink:*/true, path, "r");
+  uint8_t buf[1024];
+  while (!stream->eof()) {
+    size_t read_bytes = stream->read(buf, 1, sizeof(buf));
+    result.append(reinterpret_cast<char *>(buf), read_bytes);
+  }
+
+  return result;
 }
 
 std::string InMemoryFileSystem::readFile(const std::string &path) throw(IoError) {
@@ -481,6 +402,113 @@ InMemoryFileSystem::InMemoryMmap::InMemoryMmap(const std::shared_ptr<File> &file
 
 StringPiece InMemoryFileSystem::InMemoryMmap::memory() {
   return StringPiece(_file->contents);
+}
+
+std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
+    bool expect_symlink,
+    const std::string &path,
+    const char *mode) throw(IoError) {
+  const auto mode_string = std::string(mode);
+  bool read = false;
+  bool write = false;
+  bool truncate = false;
+  bool create = false;
+  bool append = false;
+  if (mode_string == "r") {
+    read = true;
+    write = false;
+  } else if (mode_string == "r+") {
+    read = true;
+    write = false;
+  } else if (mode_string == "w" || mode_string == "wb") {
+    read = false;
+    write = true;
+    truncate = true;
+    create = true;
+  } else if (mode_string == "w+") {
+    read = true;
+    write = true;
+    truncate = true;
+    create = true;
+  } else if (mode_string == "a" || mode_string == "ab") {
+    read = false;
+    write = true;
+    append = true;
+    create = true;
+  } else {
+    throw IoError("Unsupported mode " + mode_string, 0);
+  }
+
+  const auto l = lookup(path);
+  switch (l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+  case EntryType::DIRECTORY:
+    throw IoError("The named file is a directory", EISDIR);
+  case EntryType::FILE_DOES_NOT_EXIST:
+    if (!create) {
+      throw IoError("No such file or directory", ENOENT);
+    }
+    {
+      const auto &file = std::make_shared<File>(_ino++);
+      file->mtime = _clock();
+      l.directory->files[l.basename] = file;
+      l.directory->mtime = _clock();
+      return std::unique_ptr<Stream>(
+          new InMemoryFileStream(_clock, file, read, write, append));
+    }
+  case EntryType::FILE:
+    {
+      const auto &file = l.directory->files[l.basename];
+      if (!expect_symlink && file->symlink) {
+        throw IoError("Can't open symlink file", EINVAL);
+      }
+      if (truncate) {
+        file->contents.clear();
+      }
+      return std::unique_ptr<Stream>(
+          new InMemoryFileStream(_clock, file, read, write, append));
+    }
+  }
+}
+
+Stat InMemoryFileSystem::stat(
+    bool follow_symlink, const std::string &path) {
+  Stat stat;
+
+  const auto l = lookup(path);
+  switch (l.entry_type) {
+  case EntryType::DIRECTORY_DOES_NOT_EXIST:
+    stat.result = ENOTDIR;
+    break;
+  case EntryType::FILE_DOES_NOT_EXIST:
+    stat.result = ENOENT;
+    break;
+  case EntryType::FILE:
+  case EntryType::DIRECTORY:
+    stat.metadata.mode = 0755;  // Pretend this is the umask
+    if (l.entry_type == EntryType::FILE) {
+      const auto &file = l.directory->files[l.basename];
+      if (follow_symlink && file->symlink) {
+        throw IoError("Symlink following is not supported", EINVAL);
+      }
+      stat.metadata.size = file->contents.size();
+      stat.metadata.ino = file->ino;
+      stat.metadata.mode |= file->symlink ? S_IFLNK : S_IFREG;
+      stat.timestamps.mtime = file->mtime;
+      stat.timestamps.ctime = file->mtime;
+    } else {
+      const auto &dir = _directories.find(l.canonicalized)->second;
+      stat.metadata.ino = dir.ino;
+      stat.metadata.mode |= S_IFDIR;
+      stat.timestamps.mtime = dir.mtime;
+      stat.timestamps.ctime = dir.mtime;
+    }
+    // TODO(peck): Set mtime and ctime
+    break;
+  }
+
+  return stat;
 }
 
 InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
