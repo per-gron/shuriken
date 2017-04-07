@@ -81,9 +81,10 @@ Aesthetic bugs:
 * Deal with depfile files: Don't treat them as outputs
 
 Large things remaining to do:
+* Fingerprint symlinks properly
+* Make fingerprintStat share stat cache with Paths for initial processing
 * Status often says things like [5/4]
 * Optimize stat cache: We can share the entry if lstat said it was not a symlink.
-* Another idea is to see if lstat can be used on fingerprintStat, so that it can share the same stat cache
 * Do something about generator rules. It's not nice that they are re-run directly after. Perhaps emulate ninja's behavior.
 * Mach port already in use. Is there already a server running?
   ^^^ This happens almost always when running CMake, because it will start shk-trace again directly after

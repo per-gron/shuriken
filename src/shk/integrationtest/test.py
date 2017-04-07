@@ -306,5 +306,13 @@ class IntegrationTest(unittest.TestCase):
   def test_build_pool(self):
     run_cmd(shk)
 
+  @with_testdir('target_with_symlink_dep')
+  def test_target_with_symlink_dep(self):
+    os.symlink('hello', 'in')
+    output = run_cmd_expect_fail(shk)
+    exit(0)
+    print output
+    self.assertEqual(read_file('out'), 'hello')
+
 if __name__ == '__main__':
     unittest.main()

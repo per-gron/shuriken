@@ -5,6 +5,20 @@
 namespace shk {
 namespace {
 
+void computeFingerprintHash(
+    FileSystem &file_system,
+    const Fingerprint::Stat &stat,
+    const std::string &path,
+    Hash *hash) {
+  if (S_ISDIR(stat.mode)) {
+    *hash = file_system.hashDir(path);
+  } else if (stat.couldAccess()) {
+    *hash = file_system.hashFile(path);
+  } else {
+    std::fill(hash->data.begin(), hash->data.end(), 0);
+  }
+}
+
 bool fingerprintStat(
     FileSystem &file_system,
     const std::string &path,
@@ -73,11 +87,7 @@ MatchesResult fingerprintMatches(
       // already known for sure that the file is different, but now they are the
       // same. In order to know if it's dirty or not, we need to hash the file
       // again.
-      if (S_ISDIR(fp.stat.mode)) {
-        hash = file_system.hashDir(path);
-      } else {
-        hash = file_system.hashFile(path);
-      }
+      computeFingerprintHash(file_system, fp.stat, path, &hash);
       result.clean = (hash == fp.hash);
 
       // At this point, the fingerprint in the invocation log should be
@@ -155,13 +165,7 @@ Fingerprint takeFingerprint(
     throw IoError(err, 0);
   }
   fp.timestamp = timestamp;
-  if (S_ISDIR(fp.stat.mode)) {
-    fp.hash = file_system.hashDir(path);
-  } else if (fp.stat.couldAccess()) {
-    fp.hash = file_system.hashFile(path);
-  } else {
-    std::fill(fp.hash.data.begin(), fp.hash.data.end(), 0);
-  }
+  computeFingerprintHash(file_system, fp.stat, path, &fp.hash);
 
   return fp;
 }
