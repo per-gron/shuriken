@@ -246,9 +246,9 @@ void InMemoryFileSystem::rename(
 
       for (const auto &dir_to_rename : dirs_to_rename) {
         if (dir_to_rename.first != dir_to_rename.second) {
-          const auto old_dir = std::move(_directories.find(dir_to_rename.first)->second);
+          auto old_dir = std::move(_directories.find(dir_to_rename.first)->second);
           _directories.erase(dir_to_rename.first);
-          assert(_directories.emplace(dir_to_rename.second, old_dir).second);
+          _directories[dir_to_rename.second] = std::move(old_dir);
         }
       }
       break;

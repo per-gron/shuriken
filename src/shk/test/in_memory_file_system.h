@@ -61,6 +61,7 @@ class InMemoryFileSystem : public FileSystem {
   };
 
   struct Directory {
+    Directory() = default;
     Directory(time_t mtime, ino_t ino) :
         mtime(mtime), ino(ino) {}
     Directory(const Directory &other) = default;
@@ -68,8 +69,8 @@ class InMemoryFileSystem : public FileSystem {
     Directory &operator=(const Directory &other) = default;
     Directory &operator=(Directory &&other) = default;
 
-    time_t mtime;
-    ino_t ino;
+    time_t mtime = 0;
+    ino_t ino = 0;
 
     /**
      * Key is the basename of the file, value is the contents of the file. It's
