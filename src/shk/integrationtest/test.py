@@ -26,7 +26,9 @@ def with_testdir(dir):
     return decorator
   return wrap
 
-shk = os.environ['SHK_PATH']
+shk = os.environ.get(
+    'SHK_PATH',
+    os.getcwd() + '/../../../build/bin/shk')
 
 def read_file(path):
   with open(path) as f:
