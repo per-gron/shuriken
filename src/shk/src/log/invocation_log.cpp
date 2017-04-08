@@ -13,15 +13,10 @@ void InvocationLog::relogCommand(
     outputs.insert(file.first.original());
   }
 
-  std::unordered_map<std::string, DependencyType> inputs;
+  std::unordered_set<std::string> inputs;
   for (const auto &file_idx : input_files) {
     const auto &file = fingerprints[file_idx];
-    inputs.emplace(
-        file.first.original(),
-        // ALWAYS because if the file would have been a directory and
-        // IGNORE_IF_DIRECTORY, then it wouldn't have been here in the first
-        // place.
-        DependencyType::ALWAYS);
+    inputs.insert(file.first.original());
   }
 
   ranCommand(

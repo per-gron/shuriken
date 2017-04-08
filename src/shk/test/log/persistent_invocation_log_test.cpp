@@ -250,7 +250,7 @@ TEST_CASE("PersistentInvocationLog") {
           InvocationLogParseResult::ParseData());
 
       persistent_log->ranCommand(
-          hash_0, {}, { { "dir", DependencyType::IGNORE_IF_DIRECTORY } });
+          hash_0, {}, { "dir" });
 
       const auto result = parsePersistentInvocationLog(paths, fs, "file");
       CHECK(result.warning == "");
@@ -288,7 +288,7 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("InvocationSingleInputFile") {
       writeEntries([&](InvocationLog &log) {
-        log.ranCommand(hash_0, {}, { { "hi", DependencyType::ALWAYS } });
+        log.ranCommand(hash_0, {}, { "hi" });
       });
     }
 
@@ -297,8 +297,7 @@ TEST_CASE("PersistentInvocationLog") {
         log.ranCommand(
             hash_0,
             {},
-            { { "hi", DependencyType::ALWAYS },
-              { "duh", DependencyType::ALWAYS } });
+            { "hi", "duh" });
       });
     }
 
@@ -311,7 +310,7 @@ TEST_CASE("PersistentInvocationLog") {
     SECTION("InvocationSingleInputDir") {
       fs.mkdir("dir");
       multipleWriteCycles([&](InvocationLog &log) {
-        log.ranCommand(hash_0, {}, { { "dir", DependencyType::ALWAYS } });
+        log.ranCommand(hash_0, {}, { "dir" });
       }, fs);
     }
 
@@ -337,7 +336,7 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("InvocationInputAndOutputFiles") {
       writeEntries([&](InvocationLog &log) {
-        log.ranCommand(hash_0, { "aah" }, { { "hi", DependencyType::ALWAYS } });
+        log.ranCommand(hash_0, { "aah" }, { "hi" });
       });
     }
 
@@ -367,7 +366,7 @@ TEST_CASE("PersistentInvocationLog") {
         log.createdDirectory("dir_2");
         log.removedDirectory("dir");
 
-        log.ranCommand(hash_0, { "hi" }, { { "aah", DependencyType::ALWAYS } });
+        log.ranCommand(hash_0, { "hi" }, { "aah" });
         log.cleanedCommand(hash_1);
         log.ranCommand(hash_1, {}, {});
         log.cleanedCommand(hash_0);

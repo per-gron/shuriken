@@ -453,9 +453,7 @@ TEST_CASE("TracingCommandRunner") {
       CHECK(result.exit_status == ExitStatus::SUCCESS);
       CHECK(result.input_files.size() == 2);
       CHECK(contains(result.input_files, "hi"));
-      CHECK(result.input_files["hi"] == DependencyType::IGNORE_IF_DIRECTORY);
       CHECK(contains(result.input_files, "dir"));
-      CHECK(result.input_files["dir"] == DependencyType::IGNORE_IF_DIRECTORY);
       CHECK(result.output_files.empty());
       CHECK(result.output.empty());
     }

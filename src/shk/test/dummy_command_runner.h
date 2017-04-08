@@ -18,7 +18,7 @@ namespace detail {
  */
 std::pair<
     std::unordered_set<std::string>,
-    std::unordered_map<std::string, DependencyType>> splitCommand(
+    std::unordered_set<std::string>> splitCommand(
         const std::string &command);
 
 /**

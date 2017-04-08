@@ -170,7 +170,7 @@ class PersistentInvocationLog : public InvocationLog {
   void ranCommand(
       const Hash &build_step_hash,
       std::unordered_set<std::string> &&output_files,
-      std::unordered_map<std::string, DependencyType> &&input_files_map)
+      std::unordered_set<std::string> &&input_files_map)
           throw(IoError) override {
 
     output_files = writeOutputPathsAndFingerprints(std::move(output_files));
@@ -227,13 +227,13 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
   std::unordered_set<std::string> writeInputPathsAndFingerprints(
-      const std::unordered_map<std::string, DependencyType> &dependencies) {
+      const std::unordered_set<std::string> &dependencies) {
     std::unordered_set<std::string> result;
     for (auto &&dep : dependencies) {
       const auto fingerprint = ensureRecentFingerprintIsWritten(
-          dep.first, WriteType::ALWAYS_FINGERPRINT);
-      if (!fingerprint.stat.isDir() || dep.second == DependencyType::ALWAYS) {
-        result.insert(std::move(dep.first));
+          dep, WriteType::ALWAYS_FINGERPRINT);
+      if (!fingerprint.stat.isDir()) {
+        result.insert(std::move(dep));
       }
     }
     return result;

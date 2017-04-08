@@ -22,7 +22,6 @@ add_library(shklib
   src/cmd/trace_server_handle.h
   src/cmd/tracing_command_runner.cpp
   src/cmd/tracing_command_runner.h
-  src/dependency_type.h
   src/edit_distance.cpp
   src/edit_distance.h
   src/exit_status.h

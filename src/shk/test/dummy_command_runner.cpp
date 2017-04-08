@@ -34,11 +34,11 @@ void splitPaths(
 
 std::string makeInputData(
     FileSystem &file_system,
-    const std::unordered_map<std::string, DependencyType> &inputs) {
+    const std::unordered_set<std::string> &inputs) {
   std::string input_data;
   for (const auto &input : inputs) {
-    input_data += input.first + "\n";
-    input_data += file_system.readFile(input.first);
+    input_data += input + "\n";
+    input_data += file_system.readFile(input);
     input_data += "\n";
   }
   return input_data;
@@ -50,7 +50,7 @@ namespace detail {
 
 std::pair<
     std::unordered_set<std::string>,
-    std::unordered_map<std::string, DependencyType>> splitCommand(
+    std::unordered_set<std::string>> splitCommand(
         const std::string &command) {
   std::unordered_set<std::string> outputs;
   std::vector<std::string> input_paths;
@@ -69,9 +69,9 @@ std::pair<
         std::inserter(outputs, outputs.begin()));
   }
 
-  std::unordered_map<std::string, DependencyType> inputs;
+  std::unordered_set<std::string> inputs;
   for (auto &&path : input_paths) {
-    inputs.emplace(std::move(path), DependencyType::ALWAYS);
+    inputs.insert(std::move(path));
   }
 
   return std::make_pair(outputs, inputs);
@@ -146,7 +146,7 @@ void DummyCommandRunner::checkCommand(
     FileSystem &file_system, const std::string &command)
         throw(IoError, std::runtime_error) {
   std::unordered_set<std::string> outputs;
-  std::unordered_map<std::string, DependencyType> inputs;
+  std::unordered_set<std::string> inputs;
   std::tie(outputs, inputs) = detail::splitCommand(command);
 
   const auto input_data = makeInputData(file_system, inputs);

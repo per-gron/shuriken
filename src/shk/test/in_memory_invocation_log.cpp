@@ -6,13 +6,12 @@ namespace {
 std::vector<std::pair<std::string, Fingerprint>> processInputPaths(
     FileSystem &fs,
     const Clock &clock,
-    std::unordered_map<std::string, DependencyType> &&dependencies) {
+    std::unordered_set<std::string> &&dependencies) {
   std::vector<std::pair<std::string, Fingerprint>> files;
-  for (auto &&dep : dependencies) {
-    auto &&path = std::move(dep.first);
-    const auto fingerprint = takeFingerprint(fs, clock(), path);
-    if (dep.second == DependencyType::ALWAYS || !fingerprint.stat.isDir()) {
-      files.emplace_back(std::move(path), fingerprint);
+  for (auto &dep : dependencies) {
+    const auto fingerprint = takeFingerprint(fs, clock(), dep);
+    if (!fingerprint.stat.isDir()) {
+      files.emplace_back(std::move(dep), fingerprint);
     }
   }
   return files;
@@ -46,7 +45,7 @@ void InMemoryInvocationLog::removedDirectory(const std::string &path) throw(IoEr
 void InMemoryInvocationLog::ranCommand(
     const Hash &build_step_hash,
     std::unordered_set<std::string> &&output_files,
-    std::unordered_map<std::string, DependencyType> &&input_files) throw(IoError) {
+    std::unordered_set<std::string> &&input_files) throw(IoError) {
   auto output_file_fingerprints = processOutputPaths(_fs, _clock, std::move(output_files));
 
   auto files_end = std::partition(

@@ -1,11 +1,9 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
-#include "dependency_type.h"
 #include "fs/fingerprint.h"
 #include "fs/path.h"
 #include "hash.h"
@@ -59,7 +57,7 @@ class InvocationLog {
   virtual void ranCommand(
       const Hash &build_step_hash,
       std::unordered_set<std::string> &&output_files,
-      std::unordered_map<std::string, DependencyType> &&input_files)
+      std::unordered_set<std::string> &&input_files)
           throw(IoError) = 0;
 
   /**

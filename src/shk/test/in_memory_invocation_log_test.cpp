@@ -42,20 +42,20 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("Input") {
-      fs.mkdir("dir");
-      log.ranCommand(hash, {}, { { "dir", DependencyType::ALWAYS } });
+      fs.writeFile("file", "");
+      log.ranCommand(hash, {}, { "file" });
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
       CHECK(entry.output_files.empty());
       REQUIRE(entry.input_files.size() == 1);
-      REQUIRE(entry.input_files[0].first == "dir");
+      CHECK(entry.input_files[0].first == "file");
     }
 
     SECTION("IgnoreDir") {
       fs.mkdir("dir");
       log.ranCommand(
-          hash, {}, { { "dir", DependencyType::IGNORE_IF_DIRECTORY } });
+          hash, {}, { "dir" });
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
