@@ -23,8 +23,7 @@ TEST_CASE("TraceWriter") {
 
   auto trace = GetTrace(raw_buf);
   REQUIRE(trace->inputs()->size() == 1);
-  CHECK(std::string(trace->inputs()->Get(0)->path()->data()) == "path1");
-  CHECK(trace->inputs()->Get(0)->directory_listing() == false);
+  CHECK(std::string(trace->inputs()->Get(0)->data()) == "path1");
 
   REQUIRE(trace->outputs()->size() == 1);
   CHECK(std::string(trace->outputs()->Get(0)->data()) == "path2");

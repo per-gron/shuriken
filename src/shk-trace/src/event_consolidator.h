@@ -38,7 +38,7 @@ class EventConsolidator {
    * Map from path => bool indicating if the path is a directory whose files
    * were listed.
    */
-  std::unordered_map<std::string, bool> _inputs;
+  std::unordered_set<std::string> _inputs;
   std::unordered_set<std::string> _outputs;
   /**
    * Files that have been deleted and that are not yet overwritten. This is used

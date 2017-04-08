@@ -7,7 +7,7 @@ namespace shk {
 std::vector<uint8_t> constructAndSerializeObject() {
   flatbuffers::FlatBufferBuilder builder(1024);
 
-  std::vector<flatbuffers::Offset<Input>> input_offsets;
+  std::vector<flatbuffers::Offset<flatbuffers::String>> input_offsets;
   auto input_vector = builder.CreateVector(input_offsets.data(), 0);
 
   flatbuffers::Offset<flatbuffers::String> output_offsets =

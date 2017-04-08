@@ -56,21 +56,14 @@ TEST_CASE("ToJson") {
     ec.event(EventType::READ, "hej");
     CHECK(
       convert(ec) ==
-      R"({"inputs":[{"path":"hej","directory_listing":false}]})");
+      R"({"inputs":["hej"]})");
   }
 
   SECTION("EscapeInput") {
     ec.event(EventType::READ, "h\"j");
     CHECK(
       convert(ec) ==
-      R"({"inputs":[{"path":"h\"j","directory_listing":false}]})");
-  }
-
-  SECTION("InputDirListing") {
-    ec.event(EventType::READ_DIRECTORY, "hej");
-    CHECK(
-      convert(ec) ==
-      R"({"inputs":[{"path":"hej","directory_listing":true}]})");
+      R"({"inputs":["h\"j"]})");
   }
 
   SECTION("MultipleInputs") {
@@ -78,8 +71,8 @@ TEST_CASE("ToJson") {
     ec.event(EventType::READ_DIRECTORY, "hej");
     auto json = convert(ec);
     if (
-      json != R"({"inputs":[{"path":"hej","directory_listing":true},{"path":"yo","directory_listing":false}]})" &&
-      json != R"({"inputs":[{"path":"yo","directory_listing":false},{"path":"hej","directory_listing":true}]})") {
+      json != R"({"inputs":["hej","yo"]})" &&
+      json != R"({"inputs":["yo","hej"]})") {
       CHECK(json == "is not what we expected");
       CHECK(false);
     }
@@ -153,7 +146,7 @@ TEST_CASE("ToJson") {
     ec.event(EventType::FATAL_ERROR, "3");
     CHECK(
       convert(ec) ==
-      R"({"inputs":[{"path":"1","directory_listing":false}],"outputs":["2"],"errors":["3"]})");
+      R"({"inputs":["1"],"outputs":["2"],"errors":["3"]})");
   }
 
   unlink(kTestFilename);

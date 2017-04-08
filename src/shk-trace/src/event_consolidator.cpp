@@ -5,20 +5,12 @@ namespace shk {
 void EventConsolidator::event(EventType type, std::string &&path) {
   switch (type) {
   case EventType::READ:
-    if (_outputs.count(path) == 0) {
-      // When a program reads from a file that it created itself, that doesn't
-      // affect the result of the program; it can only see what it itself has
-      // written.
-      _inputs.emplace(std::move(path), false);
-    }
-    break;
-
   case EventType::READ_DIRECTORY:
     if (_outputs.count(path) == 0) {
       // When a program reads from a file that it created itself, that doesn't
       // affect the result of the program; it can only see what it itself has
       // written.
-      _inputs[path] = true;
+      _inputs.insert(std::move(path));
     }
     break;
 
@@ -73,12 +65,11 @@ void EventConsolidator::event(EventType type, std::string &&path) {
 flatbuffers::Offset<Trace> EventConsolidator::generateTrace(
     flatbuffers::FlatBufferBuilder &builder) const {
   // inputs
-  std::vector<flatbuffers::Offset<Input>> input_offsets;
+  std::vector<flatbuffers::Offset<flatbuffers::String>> input_offsets;
   input_offsets.reserve(_inputs.size());
 
   for (const auto &input : _inputs) {
-    auto path_name = builder.CreateString(input.first);
-    input_offsets.push_back(CreateInput(builder, path_name, input.second));
+    input_offsets.push_back(builder.CreateString(input));
   }
   auto input_vector = builder.CreateVector(
       input_offsets.data(), input_offsets.size());

@@ -15,7 +15,7 @@ struct ParsedTrace {
     bool directory_listing = false;
   };
 
-  std::vector<Input> inputs;
+  std::vector<std::string> inputs;
   std::vector<std::string> outputs;
   std::vector<std::string> errors;
 };
@@ -30,8 +30,7 @@ ParsedTrace generateTrace(const EventConsolidator &consolidator) {
 
   for (int i = 0; i < trace->inputs()->size(); i++) {
     const auto *input = trace->inputs()->Get(i);
-    parsed_trace.inputs.push_back(
-        ParsedTrace::Input(input->path()->c_str(), input->directory_listing()));
+    parsed_trace.inputs.push_back(input->c_str());
   }
 
   for (int i = 0; i < trace->outputs()->size(); i++) {
@@ -81,8 +80,7 @@ TEST_CASE("EventConsolidator") {
       auto trace = generateTrace(ec);
 
       REQUIRE(trace.inputs.size() == 1);
-      CHECK(trace.inputs[0].path == "hello");
-      CHECK(trace.inputs[0].directory_listing == false);
+      CHECK(trace.inputs[0] == "hello");
 
       CHECK(trace.outputs.empty());
       CHECK(trace.errors.empty());
@@ -93,8 +91,7 @@ TEST_CASE("EventConsolidator") {
       auto trace = generateTrace(ec);
 
       REQUIRE(trace.inputs.size() == 1);
-      CHECK(trace.inputs[0].path == "hello");
-      CHECK(trace.inputs[0].directory_listing == true);
+      CHECK(trace.inputs[0] == "hello");
 
       CHECK(trace.outputs.empty());
       CHECK(trace.errors.empty());
@@ -157,8 +154,7 @@ TEST_CASE("EventConsolidator") {
       auto trace = generateTrace(ec);
 
       REQUIRE(trace.inputs.size() == 1);
-      CHECK(trace.inputs[0].path == "hello");
-      CHECK(trace.inputs[0].directory_listing == false);
+      CHECK(trace.inputs[0] == "hello");
 
       CHECK(trace.outputs.empty());
       CHECK(trace.errors.empty());
@@ -170,13 +166,11 @@ TEST_CASE("EventConsolidator") {
       auto trace = generateTrace(ec);
 
       REQUIRE(trace.inputs.size() == 2);
-      if (trace.inputs[0].path == "hello2") {
+      if (trace.inputs[0] == "hello2") {
         std::swap(trace.inputs[0], trace.inputs[1]);
       }
-      CHECK(trace.inputs[0].path == "hello1");
-      CHECK(trace.inputs[0].directory_listing == false);
-      CHECK(trace.inputs[1].path == "hello2");
-      CHECK(trace.inputs[1].directory_listing == false);
+      CHECK(trace.inputs[0] == "hello1");
+      CHECK(trace.inputs[1] == "hello2");
 
       CHECK(trace.outputs.empty());
       CHECK(trace.errors.empty());
@@ -188,8 +182,7 @@ TEST_CASE("EventConsolidator") {
       auto trace = generateTrace(ec);
 
       REQUIRE(trace.inputs.size() == 1);
-      CHECK(trace.inputs[0].path == "hello");
-      CHECK(trace.inputs[0].directory_listing == true);
+      CHECK(trace.inputs[0] == "hello");
 
       CHECK(trace.outputs.empty());
       CHECK(trace.errors.empty());
@@ -201,8 +194,7 @@ TEST_CASE("EventConsolidator") {
       auto trace = generateTrace(ec);
 
       REQUIRE(trace.inputs.size() == 1);
-      CHECK(trace.inputs[0].path == "hello");
-      CHECK(trace.inputs[0].directory_listing == true);
+      CHECK(trace.inputs[0] == "hello");
 
       CHECK(trace.outputs.empty());
       CHECK(trace.errors.empty());
@@ -214,8 +206,7 @@ TEST_CASE("EventConsolidator") {
       auto trace = generateTrace(ec);
 
       REQUIRE(trace.inputs.size() == 1);
-      CHECK(trace.inputs[0].path == "hello");
-      CHECK(trace.inputs[0].directory_listing == true);
+      CHECK(trace.inputs[0] == "hello");
 
       CHECK(trace.outputs.empty());
       CHECK(trace.errors.empty());

@@ -27,6 +27,23 @@ std::string escapeJSON(const std::string &str) {
   return result;
 }
 
+void writeJsonPathList(
+    const char *name,
+    const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>> &paths,
+    std::string *json) {
+  if (paths.size()) {
+    json->push_back('"');
+    *json += name;
+    *json += "\":[";
+    for (int i = 0; i < paths.size(); i++) {
+      *json += escapeJSON(paths.Get(i)->c_str());
+      json->push_back(',');
+    }
+    (*json)[json->size() - 1] = ']';
+    json->push_back(',');
+  }
+}
+
 }  // anonymous namespace
 
 bool convertOutputToJson(const std::string &path, std::string *err) {
@@ -59,39 +76,9 @@ bool convertOutputToJson(const std::string &path, std::string *err) {
   std::string json = "{";
   auto trace = GetTrace(file.data());
 
-  if (trace->inputs()->size()) {
-    json += "\"inputs\":[";
-    for (int i = 0; i < trace->inputs()->size(); i++) {
-      const auto *input = trace->inputs()->Get(i);
-      json += "{\"path\":";
-      json += escapeJSON(input->path()->c_str());
-      json += ",\"directory_listing\":";
-      json += input->directory_listing() ? "true" : "false";
-      json += "},";
-    }
-    json[json.size() - 1] = ']';
-    json.push_back(',');
-  }
-
-  if (trace->outputs()->size()) {
-    json += "\"outputs\":[";
-    for (int i = 0; i < trace->outputs()->size(); i++) {
-      json += escapeJSON(trace->outputs()->Get(i)->c_str());
-      json.push_back(',');
-    }
-    json[json.size() - 1] = ']';
-    json.push_back(',');
-  }
-
-  if (trace->errors()->size()) {
-    json += "\"errors\":[";
-    for (int i = 0; i < trace->errors()->size(); i++) {
-      json += escapeJSON(trace->errors()->Get(i)->c_str());
-      json.push_back(',');
-    }
-    json[json.size() - 1] = ']';
-    json.push_back(',');
-  }
+  writeJsonPathList("inputs", *trace->inputs(), &json);
+  writeJsonPathList("outputs", *trace->outputs(), &json);
+  writeJsonPathList("errors", *trace->errors(), &json);
 
   if (json[json.size() - 1] == ',') {
     json.resize(json.size() - 1);

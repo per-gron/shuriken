@@ -144,10 +144,8 @@ void parseTrace(StringPiece trace_slice, CommandRunner::Result *result) {
   for (int i = 0; i < trace->inputs()->size(); i++) {
     const auto *input = trace->inputs()->Get(i);
     result->input_files.emplace(
-        input->path()->c_str(),
-        input->directory_listing() ?
-            DependencyType::ALWAYS :
-            DependencyType::IGNORE_IF_DIRECTORY);
+        input->c_str(),
+        DependencyType::IGNORE_IF_DIRECTORY);
   }
 
   for (int i = 0; i < trace->outputs()->size(); i++) {

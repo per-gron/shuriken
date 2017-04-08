@@ -1,12 +1,7 @@
 namespace ShkTrace;
 
-table Input {
-  path:string (required);
-  directory_listing:bool;
-}
-
 table Trace {
-  inputs:[Input] (required);
+  inputs:[string] (required);
   outputs:[string] (required);
   errors:[string] (required);
 }

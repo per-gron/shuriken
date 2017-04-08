@@ -247,18 +247,17 @@ class MockCommandRunner : public CommandRunner {
 };
 
 std::string makeTrace(
-    const std::vector<std::pair<std::string, bool>> &inputs,
+    const std::vector<std::string> &inputs,
     const std::vector<std::string> &outputs,
     const std::vector<std::string> &errors) {
   flatbuffers::FlatBufferBuilder builder(1024);
 
   // inputs
-  std::vector<flatbuffers::Offset<Input>> input_offsets;
+  std::vector<flatbuffers::Offset<flatbuffers::String>> input_offsets;
   input_offsets.reserve(inputs.size());
 
   for (const auto &input : inputs) {
-    auto path_name = builder.CreateString(input.first);
-    input_offsets.push_back(CreateInput(builder, path_name, input.second));
+    input_offsets.push_back(builder.CreateString(input));
   }
   auto input_vector = builder.CreateVector(
       input_offsets.data(), input_offsets.size());
@@ -382,7 +381,7 @@ TEST_CASE("TracingCommandRunner") {
 
   SECTION("TrackInputsAndOutputs") {
     const auto trace = makeTrace(
-        { { "in1", true }, { "in2", false } },
+        { { "in1" }, { "in2" } },
         { "out" },
         {});
     fs.enqueueMkstempResult("trace");
@@ -447,7 +446,7 @@ TEST_CASE("TracingCommandRunner") {
 
     SECTION("Inputs") {
       const auto trace = makeTrace(
-          { { "hi", false }, { "dir", true } }, {}, {});
+          { { "hi" }, { "dir" } }, {}, {});
       CommandRunner::Result result;
       detail::parseTrace(trace, &result);
 
@@ -456,7 +455,7 @@ TEST_CASE("TracingCommandRunner") {
       CHECK(contains(result.input_files, "hi"));
       CHECK(result.input_files["hi"] == DependencyType::IGNORE_IF_DIRECTORY);
       CHECK(contains(result.input_files, "dir"));
-      CHECK(result.input_files["dir"] == DependencyType::ALWAYS);
+      CHECK(result.input_files["dir"] == DependencyType::IGNORE_IF_DIRECTORY);
       CHECK(result.output_files.empty());
       CHECK(result.output.empty());
     }
@@ -488,7 +487,7 @@ TEST_CASE("TracingCommandRunner") {
 
     SECTION("IgnoredPaths") {
       const auto trace = makeTrace(
-          { { "/dev/null", false }, { "/AppleInternal", true } },
+          { { "/dev/null" }, { "/AppleInternal" } },
           { "/dev/urandom" },
           {});
       CommandRunner::Result result;

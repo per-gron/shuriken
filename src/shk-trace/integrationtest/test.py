@@ -64,11 +64,7 @@ def trace_to_string(trace):
   str = ''
 
   for i in range(0, trace.InputsLength()):
-    input = trace.Inputs(i)
-    event = 'input'
-    if input.DirectoryListing():
-      event = 'input_dir'
-    str += event + ' ' + input.Path() + '\n'
+    str += 'input ' + trace.Inputs(i) + '\n'
 
   for i in range(0, trace.OutputsLength()):
     str += 'output ' + trace.Outputs(i) + '\n'
@@ -191,7 +187,7 @@ class IntegrationTest(unittest.TestCase):
   @with_testdir()
   def test_ls_reads_directory(self):
     trace = trace_cmd("ls /usr")
-    self.assertIn('input_dir /usr', trace)
+    self.assertIn('input /usr', trace)
 
   @with_testdir()
   def test_access(self):
@@ -579,19 +575,19 @@ class IntegrationTest(unittest.TestCase):
   def test_getattrlistbulk(self):
     os.mkdir('dir')
     trace = trace_cmd(helper + ' getattrlistbulk')
-    self.assertIn('input_dir ' + os.getcwd() + '/dir', trace)
+    self.assertIn('input ' + os.getcwd() + '/dir', trace)
 
   @with_testdir()
   def test_getdirentries(self):
     os.mkdir('dir')
     trace = trace_cmd(helper + ' getdirentries')
-    self.assertIn('input_dir ' + os.getcwd() + '/dir', trace)
+    self.assertIn('input ' + os.getcwd() + '/dir', trace)
 
   @with_testdir()
   def test_getdirentriesattr(self):
     os.mkdir('dir')
     trace = trace_cmd(helper + ' getdirentriesattr')
-    self.assertIn('input_dir ' + os.getcwd() + '/dir', trace)
+    self.assertIn('input ' + os.getcwd() + '/dir', trace)
 
   @with_testdir()
   def test_getxattr(self):
@@ -923,7 +919,7 @@ class IntegrationTest(unittest.TestCase):
   def test_opendir(self):
     os.mkdir('dir')
     trace = trace_cmd(helper + ' opendir')
-    self.assertIn('input_dir ' + os.getcwd() + '/dir', trace)
+    self.assertIn('input ' + os.getcwd() + '/dir', trace)
 
   @with_testdir()
   def test_pathconf(self):
