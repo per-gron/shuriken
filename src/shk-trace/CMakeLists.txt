@@ -34,6 +34,8 @@ add_library(libshktrace
   src/process_tracer.h
   src/syscall_constants.h
   src/syscall_tables.h
+  src/to_json.cpp
+  src/to_json.h
   src/trace_writer.cpp
   src/trace_writer.h
   src/tracer.cpp
@@ -65,6 +67,7 @@ add_executable(shktrace_test
   test/named_mach_port_test.cpp
   test/path_resolver_test.cpp
   test/process_tracer_test.cpp
+  test/to_json_test.cpp
   test/trace_writer_test.cpp
   test/tracing_server_test.cpp)
 target_link_libraries(shktrace_test pthread catch libshktrace)
