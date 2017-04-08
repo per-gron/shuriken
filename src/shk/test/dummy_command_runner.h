@@ -3,8 +3,6 @@
 #include <list>
 #include <string>
 #include <vector>
-#include <unordered_map>
-#include <unordered_set>
 
 #include "fs/file_system.h"
 
@@ -17,8 +15,8 @@ namespace detail {
  * This is exposed for testing purposes.
  */
 std::pair<
-    std::unordered_set<std::string>,
-    std::unordered_set<std::string>> splitCommand(
+    std::vector<std::string>,
+    std::vector<std::string>> splitCommand(
         const std::string &command);
 
 /**

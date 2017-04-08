@@ -2,8 +2,7 @@
 
 #include <functional>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
+#include <vector>
 
 #include "exit_status.h"
 
@@ -30,12 +29,12 @@ class CommandRunner {
      * of that symlink. To indicate that a program read through a symlink, both
      * the symlink and the path pointed to should be in the input files list.
      */
-    std::unordered_set<std::string> input_files;
+    std::vector<std::string> input_files;
     /**
      * Output files are files that the program created as output of its work.
      * They have the same semantics as input files wrt symlinks etc.
      */
-    std::unordered_set<std::string> output_files;
+    std::vector<std::string> output_files;
     ExitStatus exit_status = ExitStatus::SUCCESS;
     std::string output;
   };

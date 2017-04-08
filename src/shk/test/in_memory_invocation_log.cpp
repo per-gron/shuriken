@@ -6,7 +6,7 @@ namespace {
 std::vector<std::pair<std::string, Fingerprint>> processInputPaths(
     FileSystem &fs,
     const Clock &clock,
-    std::unordered_set<std::string> &&dependencies) {
+    std::vector<std::string> &&dependencies) {
   std::vector<std::pair<std::string, Fingerprint>> files;
   for (auto &dep : dependencies) {
     const auto fingerprint = takeFingerprint(fs, clock(), dep);
@@ -20,7 +20,7 @@ std::vector<std::pair<std::string, Fingerprint>> processInputPaths(
 std::vector<std::pair<std::string, Fingerprint>> processOutputPaths(
     FileSystem &fs,
     const Clock &clock,
-    std::unordered_set<std::string> &&paths) {
+    std::vector<std::string> &&paths) {
   std::vector<std::pair<std::string, Fingerprint>> files;
   for (auto &&path : paths) {
     files.emplace_back(std::move(path), takeFingerprint(fs, clock(), path));
@@ -44,8 +44,8 @@ void InMemoryInvocationLog::removedDirectory(const std::string &path) throw(IoEr
 
 void InMemoryInvocationLog::ranCommand(
     const Hash &build_step_hash,
-    std::unordered_set<std::string> &&output_files,
-    std::unordered_set<std::string> &&input_files) throw(IoError) {
+    std::vector<std::string> &&output_files,
+    std::vector<std::string> &&input_files) throw(IoError) {
   auto output_file_fingerprints = processOutputPaths(_fs, _clock, std::move(output_files));
 
   auto files_end = std::partition(

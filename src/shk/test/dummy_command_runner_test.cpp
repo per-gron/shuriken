@@ -16,8 +16,8 @@ TEST_CASE("DummyCommandRunner") {
         std::vector<std::string>(in_inputs.begin(), in_inputs.end()),
         std::vector<std::string>(in_outputs.begin(), in_outputs.end()));
 
-    std::unordered_set<std::string> out_outputs;
-    std::unordered_set<std::string> out_inputs;
+    std::vector<std::string> out_outputs;
+    std::vector<std::string> out_inputs;
     std::tie(out_outputs, out_inputs) = detail::splitCommand(command);
 
     std::unordered_set<std::string> out_input_set;

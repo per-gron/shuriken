@@ -39,8 +39,8 @@ class DelayedInvocationLog : public InvocationLog {
 
   void ranCommand(
       const Hash &build_step_hash,
-      std::unordered_set<std::string> &&output_files,
-      std::unordered_set<std::string> &&input_files)
+      std::vector<std::string> &&output_files,
+      std::vector<std::string> &&input_files)
           throw(IoError) override {
     const auto now = _clock();
     writeDelayedEntries(now);
@@ -94,8 +94,8 @@ class DelayedInvocationLog : public InvocationLog {
     // true if this entry is for a cleanedCommand invocation
     bool cleaned = false;
     Hash build_step_hash;
-    std::unordered_set<std::string> output_files;
-    std::unordered_set<std::string> input_files;
+    std::vector<std::string> output_files;
+    std::vector<std::string> input_files;
   };
 
   const Clock _clock;

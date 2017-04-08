@@ -13,8 +13,8 @@ class DryRunInvocationLog : public InvocationLog {
   void removedDirectory(const std::string &path) throw(IoError) override {}
   void ranCommand(
       const Hash &build_step_hash,
-      std::unordered_set<std::string> &&output_files,
-      std::unordered_set<std::string> &&input_files)
+      std::vector<std::string> &&output_files,
+      std::vector<std::string> &&input_files)
           throw(IoError) override {}
   void cleanedCommand(
       const Hash &build_step_hash) throw(IoError) override {}

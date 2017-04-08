@@ -169,8 +169,8 @@ class PersistentInvocationLog : public InvocationLog {
 
   void ranCommand(
       const Hash &build_step_hash,
-      std::unordered_set<std::string> &&output_files,
-      std::unordered_set<std::string> &&input_files_map)
+      std::vector<std::string> &&output_files,
+      std::vector<std::string> &&input_files_map)
           throw(IoError) override {
 
     output_files = writeOutputPathsAndFingerprints(std::move(output_files));
@@ -202,7 +202,7 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
  private:
-  void writeFiles(const std::unordered_set<std::string> &paths) {
+  void writeFiles(const std::vector<std::string> &paths) {
     for (const auto &path : paths) {
       const auto fingerprint_it = _fingerprint_ids.find(path);
       assert(fingerprint_it != _fingerprint_ids.end());
@@ -213,27 +213,27 @@ class PersistentInvocationLog : public InvocationLog {
   /**
    * Used for output files.
    */
-  std::unordered_set<std::string> writeOutputPathsAndFingerprints(
-      std::unordered_set<std::string> &&paths) {
-    std::unordered_set<std::string> result;
+  std::vector<std::string> writeOutputPathsAndFingerprints(
+      std::vector<std::string> &&paths) {
+    std::vector<std::string> result;
     for (auto &path : paths) {
       const auto fingerprint = ensureRecentFingerprintIsWritten(
           path, WriteType::DIRECTORY_AS_DIRECTORY_ENTRY);
       if (!fingerprint.stat.isDir()) {
-        result.insert(std::move(path));
+        result.push_back(std::move(path));
       }
     }
     return result;
   }
 
-  std::unordered_set<std::string> writeInputPathsAndFingerprints(
-      const std::unordered_set<std::string> &dependencies) {
-    std::unordered_set<std::string> result;
+  std::vector<std::string> writeInputPathsAndFingerprints(
+      const std::vector<std::string> &dependencies) {
+    std::vector<std::string> result;
     for (auto &&dep : dependencies) {
       const auto fingerprint = ensureRecentFingerprintIsWritten(
           dep, WriteType::ALWAYS_FINGERPRINT);
       if (!fingerprint.stat.isDir()) {
-        result.insert(std::move(dep));
+        result.push_back(std::move(dep));
       }
     }
     return result;

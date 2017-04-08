@@ -1,6 +1,7 @@
 #include "cmd/tracing_command_runner.h"
 
 #include <assert.h>
+#include <unordered_set>
 
 #include <util/shktrace.h>
 
@@ -8,6 +9,24 @@
 
 namespace shk {
 namespace {
+
+std::unordered_set<std::string> makeIgnoredFilesSet() {
+  static const char * const kIgnoredFilesList[] = {
+    "/AppleInternal",
+    "/dev/null",
+    "/dev/random",
+    "/dev/urandom",
+    "/dev/dtracehelper",
+    "/dev/tty" };
+
+  std::unordered_set<std::string> result;
+  for (const auto *file : kIgnoredFilesList) {
+    result.insert(file);
+  }
+  return result;
+}
+
+const std::unordered_set<std::string> kIgnoredFiles = makeIgnoredFilesSet();
 
 class TemporaryFile {
  public:
@@ -143,30 +162,22 @@ void parseTrace(StringPiece trace_slice, CommandRunner::Result *result) {
 
   for (int i = 0; i < trace->inputs()->size(); i++) {
     const auto *input = trace->inputs()->Get(i);
-    result->input_files.insert(input->c_str());
+    if (kIgnoredFiles.find(input->c_str()) == kIgnoredFiles.end()) {
+      result->input_files.push_back(input->c_str());
+    }
   }
 
   for (int i = 0; i < trace->outputs()->size(); i++) {
-    result->output_files.insert(trace->outputs()->Get(i)->c_str());
+    const auto *output = trace->outputs()->Get(i);
+    if (kIgnoredFiles.find(output->c_str()) == kIgnoredFiles.end()) {
+      result->output_files.push_back(output->c_str());
+    }
   }
 
   for (int i = 0; i < trace->errors()->size(); i++) {
     result->output +=
         "shk: " + std::string(trace->errors()->Get(i)->c_str()) + "\n";
     result->exit_status = ExitStatus::FAILURE;
-  }
-
-  static const char * const kIgnoredFiles[] = {
-      "/AppleInternal",
-      "/dev/null",
-      "/dev/random",
-      "/dev/urandom",
-      "/dev/dtracehelper",
-      "/dev/tty" };
-
-  for (const auto *ignored_file : kIgnoredFiles) {
-    result->input_files.erase(ignored_file);
-    result->output_files.erase(ignored_file);
   }
 }
 

@@ -7,16 +7,16 @@ void InvocationLog::relogCommand(
     const std::vector<std::pair<Path, Fingerprint>> &fingerprints,
     const std::vector<size_t> &output_files,
     const std::vector<size_t> &input_files) {
-  std::unordered_set<std::string> outputs;
+  std::vector<std::string> outputs;
   for (const auto &file_idx : output_files) {
     const auto &file = fingerprints[file_idx];
-    outputs.insert(file.first.original());
+    outputs.push_back(file.first.original());
   }
 
-  std::unordered_set<std::string> inputs;
+  std::vector<std::string> inputs;
   for (const auto &file_idx : input_files) {
     const auto &file = fingerprints[file_idx];
-    inputs.insert(file.first.original());
+    inputs.push_back(file.first.original());
   }
 
   ranCommand(

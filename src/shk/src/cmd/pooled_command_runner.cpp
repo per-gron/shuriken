@@ -1,7 +1,6 @@
 #include "cmd/pooled_command_runner.h"
 
 #include <deque>
-#include <unordered_map>
 
 namespace shk {
 namespace {

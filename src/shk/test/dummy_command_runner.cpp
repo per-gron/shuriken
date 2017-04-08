@@ -34,7 +34,7 @@ void splitPaths(
 
 std::string makeInputData(
     FileSystem &file_system,
-    const std::unordered_set<std::string> &inputs) {
+    const std::vector<std::string> &inputs) {
   std::string input_data;
   for (const auto &input : inputs) {
     input_data += input + "\n";
@@ -49,10 +49,10 @@ std::string makeInputData(
 namespace detail {
 
 std::pair<
-    std::unordered_set<std::string>,
-    std::unordered_set<std::string>> splitCommand(
+    std::vector<std::string>,
+    std::vector<std::string>> splitCommand(
         const std::string &command) {
-  std::unordered_set<std::string> outputs;
+  std::vector<std::string> outputs;
   std::vector<std::string> input_paths;
 
   const auto semicolon = std::find(command.begin(), command.end(), ';');
@@ -69,9 +69,9 @@ std::pair<
         std::inserter(outputs, outputs.begin()));
   }
 
-  std::unordered_set<std::string> inputs;
+  std::vector<std::string> inputs;
   for (auto &&path : input_paths) {
-    inputs.insert(std::move(path));
+    inputs.push_back(std::move(path));
   }
 
   return std::make_pair(outputs, inputs);
@@ -145,8 +145,8 @@ std::string DummyCommandRunner::constructCommand(
 void DummyCommandRunner::checkCommand(
     FileSystem &file_system, const std::string &command)
         throw(IoError, std::runtime_error) {
-  std::unordered_set<std::string> outputs;
-  std::unordered_set<std::string> inputs;
+  std::vector<std::string> outputs;
+  std::vector<std::string> inputs;
   std::tie(outputs, inputs) = detail::splitCommand(command);
 
   const auto input_data = makeInputData(file_system, inputs);
