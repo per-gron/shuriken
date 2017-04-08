@@ -10,6 +10,7 @@
 #include "named_mach_port.h"
 #include "path_resolver.h"
 #include "process_tracer.h"
+#include "to_json.h"
 #include "trace_writer.h"
 #include "tracer.h"
 #include "tracing_server.h"
@@ -150,6 +151,7 @@ void printUsage() {
       "Usage:\n"
       "Client mode: shk-trace "
       "[-O/--suicide-when-orphaned] "
+      "[-j/--json] "
       "[-f tracefile] "
       "-c command\n"
       "Server mode: shk-trace "
@@ -211,7 +213,11 @@ bool runTracingClient(
   auto wait_result = trace_request.first->wait(3000);
   switch (wait_result) {
   case TraceHandle::WaitResult::SUCCESS:
-    return true;
+    if (cmdline_options.json) {
+      return convertOutputToJson(cmdline_options.tracefile, err);
+    } else {
+      return true;
+    }
   case TraceHandle::WaitResult::FAILURE:
     *err = "Failed to wait for tracing to finish.";
     return false;
