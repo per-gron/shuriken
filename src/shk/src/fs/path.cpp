@@ -205,7 +205,7 @@ detail::CanonicalizedPath makeCanonicalizedPath(
   bool at_root = false;
   bool at_relative_root = false;
   for (;;) {
-    // Use lstat only for the final, component in a path. A build step's output
+    // Use lstat only for the final component in a path. A build step's output
     // is allowed be a symlink to another build step's output.
     //
     // Other than that final component, the idea is to follow symlinks to the
