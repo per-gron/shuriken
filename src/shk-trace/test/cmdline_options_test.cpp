@@ -44,6 +44,27 @@ TEST_CASE("CmdlineOptions") {
     CHECK(options.tracefile == "/dev/null");
     CHECK(options.command == "abc");
     CHECK(options.suicide_when_orphaned == false);
+    CHECK(options.json == false);
+  }
+
+  SECTION("Json") {
+    SECTION("Short") {
+      auto options = parse({ "-c", "abc", "-j" });
+      CHECK(options.result == CmdlineOptions::Result::SUCCESS);
+      CHECK(options.tracefile == "/dev/null");
+      CHECK(options.command == "abc");
+      CHECK(options.suicide_when_orphaned == false);
+      CHECK(options.json == true);
+    }
+
+    SECTION("Long") {
+      auto options = parse({ "-c", "abc", "--json" });
+      CHECK(options.result == CmdlineOptions::Result::SUCCESS);
+      CHECK(options.tracefile == "/dev/null");
+      CHECK(options.command == "abc");
+      CHECK(options.suicide_when_orphaned == false);
+      CHECK(options.json == true);
+    }
   }
 
   SECTION("SuicideWhenOrphaned") {
@@ -108,15 +129,17 @@ TEST_CASE("CmdlineOptions") {
     }
 
     SECTION("SuicideWhenOrphaned") {
-      auto options = parse({ "-s", "-O" });
-      CHECK(options.server == true);
-      CHECK(options.suicide_when_orphaned == true);
-    }
+      SECTION("Short") {
+        auto options = parse({ "-s", "-O" });
+        CHECK(options.server == true);
+        CHECK(options.suicide_when_orphaned == true);
+      }
 
-    SECTION("SuicideWhenOrphaned") {
-      auto options = parse({ "-s", "--suicide-when-orphaned" });
-      CHECK(options.server == true);
-      CHECK(options.suicide_when_orphaned == true);
+      SECTION("SuicideWhenOrphaned") {
+        auto options = parse({ "-s", "--suicide-when-orphaned" });
+        CHECK(options.server == true);
+        CHECK(options.suicide_when_orphaned == true);
+      }
     }
 
     SECTION("WithTraceFile") {
@@ -125,6 +148,11 @@ TEST_CASE("CmdlineOptions") {
 
     SECTION("WithCommand") {
       CHECK(parse({ "-s", "-c", "c" }).result == CmdlineOptions::Result::HELP);
+    }
+
+    SECTION("Json") {
+      CHECK(parse({ "-s", "-j" }).result == CmdlineOptions::Result::HELP);
+      CHECK(parse({ "-s", "--json" }).result == CmdlineOptions::Result::HELP);
     }
   }
 }

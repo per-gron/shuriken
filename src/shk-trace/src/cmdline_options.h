@@ -16,6 +16,7 @@ struct CmdlineOptions {
   Result result = Result::SUCCESS;
   bool suicide_when_orphaned = false;
   bool server = false;
+  bool json = false;
 
   static CmdlineOptions parse(int argc, char *argv[]);
 };
