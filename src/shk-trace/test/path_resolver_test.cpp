@@ -459,6 +459,7 @@ TEST_CASE("PathResolver") {
     pr.newThread(kInitialPid, kThreadId, kThreadId1);
     pr.threadChdir(kThreadId1, std::string(kNewPath), AT_FDCWD);
     pr.newThread(kInitialPid, kThreadId1, kThreadId2);
+    pr.threadChdir(kThreadId2, std::string(kNewPath), AT_FDCWD);
 
     SECTION("UnknownThread") {
       pr.threadChdir(65432, "hey_there", AT_FDCWD);

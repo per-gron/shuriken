@@ -6,11 +6,8 @@ CwdMemo::CwdMemo(pid_t initial_pid, std::string &&initial_cwd) {
   _process_cwds[initial_pid] = std::move(initial_cwd);
 }
 
-void CwdMemo::fork(pid_t ppid, pid_t pid) {
-  auto cwd_it = _process_cwds.find(ppid);
-  if (cwd_it != _process_cwds.end()) {
-    _process_cwds[pid] = cwd_it->second;
-  }
+void CwdMemo::fork(pid_t ppid, uintptr_t parent_thread_id, pid_t pid) {
+  _process_cwds[pid] = getCwd(ppid, parent_thread_id);
 }
 
 void CwdMemo::chdir(pid_t pid, std::string &&path) {
@@ -22,10 +19,6 @@ void CwdMemo::exit(pid_t pid) {
 }
 
 void CwdMemo::newThread(uintptr_t parent_thread_id, uintptr_t child_thread_id) {
-  auto cwd_it = _thread_cwds.find(parent_thread_id);
-  if (cwd_it != _thread_cwds.end()) {
-    _thread_cwds[child_thread_id] = cwd_it->second;
-  }
 }
 
 void CwdMemo::threadChdir(uintptr_t thread_id, std::string &&path) {

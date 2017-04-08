@@ -19,8 +19,10 @@ void PathResolver::newThread(
   _pids[child_thread_id] = pid;
 
   if (auto ppid = getPid(parent_thread_id)) {
-    _file_descriptor_memo.fork(*ppid, pid);
-    _cwd_memo.fork(*ppid, pid);
+    if (*ppid != pid) {
+      _file_descriptor_memo.fork(*ppid, pid);
+      _cwd_memo.fork(*ppid, parent_thread_id, pid);
+    }
   }
 }
 

@@ -24,7 +24,7 @@ class CwdMemo {
    * Call this after a process has successfully forked. It is a no-op to call
    * this method for an unknown ppid.
    */
-  void fork(pid_t ppid, pid_t pid);
+  void fork(pid_t ppid, uintptr_t parent_thread_id, pid_t pid);
 
   /**
    * Change the process-wide cwd for a process. Call this when a process has

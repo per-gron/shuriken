@@ -31,23 +31,23 @@ TEST_CASE("CwdMemo") {
 
   SECTION("Fork") {
     SECTION("Basic") {
-      memo.fork(1, 2);
+      memo.fork(1, 100, 2);
       CHECK(memo.getCwd(2, 3) == "/initial");
     }
 
     SECTION("ForkUnknownPid") {
-      memo.fork(2, 3);
+      memo.fork(2, 100, 3);
     }
 
     SECTION("ChdirInFork") {
-      memo.fork(1, 2);
+      memo.fork(1, 100, 2);
       memo.chdir(2, "/modified");
       CHECK(memo.getCwd(1, 3) == "/initial");
       CHECK(memo.getCwd(2, 3) == "/modified");
     }
 
     SECTION("ChdirInParent") {
-      memo.fork(1, 2);
+      memo.fork(1, 100, 2);
       memo.chdir(1, "/modified");
       CHECK(memo.getCwd(1, 3) == "/modified");
       CHECK(memo.getCwd(2, 3) == "/initial");
@@ -55,8 +55,8 @@ TEST_CASE("CwdMemo") {
 
     SECTION("ForkFromThreadWithLocalOverride") {
       memo.threadChdir(300, "/thread");
-      memo.fork(1, 2);
       memo.newThread(300, 301);
+      memo.fork(1, 300, 2);
       CHECK(memo.getCwd(2, 301) == "/thread");
     }
   }
@@ -114,10 +114,16 @@ TEST_CASE("CwdMemo") {
       CHECK(memo.getCwd(1, 101) == "/new_thread");
     }
 
+    SECTION("ThreadChdirOverridesGlobalChdir") {
+      memo.threadChdir(101, "/thread");
+      memo.chdir(1, "/new_global");
+      CHECK(memo.getCwd(1, 101) == "/thread");
+    }
+
     SECTION("ThreadChdirInheritance") {
       memo.threadChdir(101, "/thread");
       memo.newThread(101, 102);
-      CHECK(memo.getCwd(1, 102) == "/thread");
+      CHECK(memo.getCwd(1, 102) == "/initial");
     }
 
     SECTION("ThreadChdirInParentThread") {
@@ -125,7 +131,7 @@ TEST_CASE("CwdMemo") {
       memo.newThread(101, 102);
       memo.threadChdir(101, "/new_thread");
       CHECK(memo.getCwd(1, 101) == "/new_thread");
-      CHECK(memo.getCwd(1, 102) == "/thread");
+      CHECK(memo.getCwd(1, 102) == "/initial");
     }
 
     SECTION("ThreadChdirInChildThread") {
@@ -169,22 +175,37 @@ TEST_CASE("CwdMemo") {
       CHECK(getCwd() == "/");
     }
 
+    SECTION("ForkFromThreadWithLocalOverride") {
+      __pthread_chdir("/");
+
+      pid_t pid = fork();
+      REQUIRE(pid != -1);
+      if (pid != 0) {  // parent
+        int status;
+        REQUIRE(waitpid(pid, &status, 0) != -1);
+        CHECK(status == 0);
+      } else {  // child
+        // Expect the fork to have the thread-local override of the parent.
+        exit(getCwd() == "/" ? 0 : 1);
+      }
+    }
+
     SECTION("SetThreadLocalThenGlobalWd") {
       __pthread_chdir("/");
       REQUIRE(chdir(initial_cwd.c_str()) == 0);
       CHECK(getCwd() == "/");
     }
 
-    SECTION("GlobalCwdOverridesThreadLocal") {
+    SECTION("ThreadLocalCwdOverridesGlobal") {
       __pthread_chdir("/");
       REQUIRE(chdir(initial_cwd.c_str()) == 0);
-      CHECK(getCwd() == initial_cwd);
+      CHECK(getCwd() == "/");
     }
 
-    SECTION("NewThreadInheritsLocalCwd") {
+    SECTION("NewThreadDoesNotInheritLocalCwd") {
       __pthread_chdir("/");
       std::thread([&] {
-        CHECK(getCwd() == "/");
+        CHECK(getCwd() != "/");
       }).join();
     }
 
@@ -205,6 +226,7 @@ TEST_CASE("CwdMemo") {
     }
 
     REQUIRE(chdir(initial_cwd.c_str()) == 0);
+    REQUIRE(__pthread_chdir(initial_cwd.c_str()) == 0);
   }
 }
 
