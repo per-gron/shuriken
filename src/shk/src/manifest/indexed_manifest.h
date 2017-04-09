@@ -5,13 +5,13 @@
 
 #include "build_error.h"
 #include "fs/path.h"
-#include "manifest/manifest.h"
+#include "manifest/raw_manifest.h"
 
 namespace shk {
 
 /**
- * Manifest objects contain an std::vector<Step>. A StepIndex is an index into
- * that vector, or into a vector of the same length that refers to the same
+ * RawManifest objects contain an std::vector<Step>. A StepIndex is an index
+ * into that vector, or into a vector of the same length that refers to the same
  * Step objects (for example StepHashes).
  */
 using StepIndex = size_t;
@@ -19,7 +19,7 @@ using StepIndex = size_t;
 /**
  * Map of path => index of the step that has this file as an output.
  *
- * Please note that this map contains only files that are in the Manifest; it
+ * Please note that this map contains only files that are in the RawManifest; it
  * does not have output files that may have been created but that are not
  * declared.
  *
@@ -54,21 +54,21 @@ StepHashes computeStepHashes(const std::vector<Step> &steps);
 }  // namespace detail
 
 /**
- * Manifest objects contain information about the build that is structured in a
- * way that closely mirrors the manifest file itself: It has a list of build
+ * RawManifest objects contain information about the build that is structured in
+ * a way that closely mirrors the manifest file itself: It has a list of build
  * steps. This is nice because it is close to what the input is like, but it is
  * not necessarily efficient to work with when actually building.
  *
- * IndexedManifest has all the information that the Manifest has, plus some info
- * that makes is fast to look up things that are often used in a build,
+ * IndexedManifest has all the information that the RawManifest has, plus some
+ * info that makes is fast to look up things that are often used in a build,
  * including Step hashes and a output file Path => Step map.
  *
- * Computing an IndexedManifest from a Manifest is a pure function. This means
- * that an IndexedManifest can be reused between different builds.
+ * Computing an IndexedManifest from a RawManifest is a pure function. This
+ * means that an IndexedManifest can be reused between different builds.
  */
 struct IndexedManifest {
   IndexedManifest() = default;
-  IndexedManifest(Manifest &&manifest);
+  IndexedManifest(RawManifest &&manifest);
 
   OutputFileMap output_file_map;
   StepHashes step_hashes;

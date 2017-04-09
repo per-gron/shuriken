@@ -33,7 +33,7 @@ StepHashes computeStepHashes(const std::vector<Step> &steps) {
 
 }  // namespace detail
 
-IndexedManifest::IndexedManifest(Manifest &&manifest)
+IndexedManifest::IndexedManifest(RawManifest &&manifest)
     : output_file_map(detail::computeOutputFileMap(manifest.steps)),
       step_hashes(detail::computeStepHashes(manifest.steps)),
       steps(std::move(manifest.steps)),

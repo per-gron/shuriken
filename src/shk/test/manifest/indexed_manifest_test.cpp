@@ -10,7 +10,7 @@ namespace detail {
 TEST_CASE("IndexedManifest") {
   InMemoryFileSystem fs;
   Paths paths(fs);
-  Manifest manifest;
+  RawManifest manifest;
 
   const Step empty{};
 
@@ -80,7 +80,7 @@ TEST_CASE("IndexedManifest") {
   }
 
   SECTION("Constructor") {
-    Manifest manifest;
+    RawManifest manifest;
     manifest.steps = { single_output };
 
     IndexedManifest indexed_manifest(std::move(manifest));

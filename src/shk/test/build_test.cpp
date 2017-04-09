@@ -71,10 +71,10 @@ std::vector<StepIndex> rootSteps(
 }
 
 std::vector<StepIndex> computeStepsToBuild(
-    const Manifest &manifest,
+    const RawManifest &manifest,
     const std::vector<Path> &specified_outputs = {}) throw(BuildError) {
   return ::shk::detail::computeStepsToBuild(
-      IndexedManifest(Manifest(manifest)), specified_outputs);
+      IndexedManifest(RawManifest(manifest)), specified_outputs);
 }
 
 std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
@@ -82,10 +82,10 @@ std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
 }
 
 Build computeBuild(
-    const Manifest &manifest,
+    const RawManifest &manifest,
     const Invocations &invocations = Invocations(),
     size_t allowed_failures = 1) throw(BuildError) {
-  auto indexed_manifest = IndexedManifest(Manifest(manifest));
+  auto indexed_manifest = IndexedManifest(RawManifest(manifest));
   return ::shk::detail::computeBuild(
       invocations,
       indexed_manifest,
@@ -120,7 +120,7 @@ TEST_CASE("Build") {
   Paths paths(fs);
   InMemoryInvocationLog log(fs, clock);
   Invocations invocations;
-  Manifest manifest;
+  RawManifest manifest;
 
   const Step empty{};
 
@@ -209,7 +209,7 @@ TEST_CASE("Build") {
         implicit_input,
         dependency };
 
-    auto indexed_manifest = IndexedManifest(Manifest(manifest));
+    auto indexed_manifest = IndexedManifest(RawManifest(manifest));
 
     SECTION("normal (non-^)") {
       CHECK(interpretPath(paths, indexed_manifest, "a") == paths.get("a"));
@@ -234,7 +234,7 @@ TEST_CASE("Build") {
 
     SECTION("clean") {
       try {
-        interpretPath(paths, IndexedManifest(Manifest(manifest)), "clean");
+        interpretPath(paths, IndexedManifest(RawManifest(manifest)), "clean");
         CHECK(!"Should throw");
       } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
@@ -244,7 +244,7 @@ TEST_CASE("Build") {
 
     SECTION("help") {
       try {
-        interpretPath(paths, IndexedManifest(Manifest(manifest)), "help");
+        interpretPath(paths, IndexedManifest(RawManifest(manifest)), "help");
         CHECK(!"Should throw");
       } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
@@ -256,7 +256,7 @@ TEST_CASE("Build") {
   SECTION("interpretPath") {
     SECTION("Empty") {
       CHECK(interpretPaths(
-          paths, IndexedManifest(Manifest(manifest)), 0, nullptr).empty());
+          paths, IndexedManifest(RawManifest(manifest)), 0, nullptr).empty());
     }
 
     SECTION("Paths") {
@@ -269,7 +269,7 @@ TEST_CASE("Build") {
       char *in[] = { &a[0], &b[0] };
       const std::vector<Path> out = { paths.get("a"), paths.get("b") };
       CHECK(interpretPaths(
-          paths, IndexedManifest(Manifest(manifest)), 2, in) == out);
+          paths, IndexedManifest(RawManifest(manifest)), 2, in) == out);
     }
   }
 
@@ -317,7 +317,7 @@ TEST_CASE("Build") {
 
   SECTION("computeStepsToBuild") {
     SECTION("trivial") {
-      CHECK(computeStepsToBuild(Manifest()).empty());
+      CHECK(computeStepsToBuild(RawManifest()).empty());
     }
 
     SECTION("invalid defaults") {
@@ -377,14 +377,14 @@ TEST_CASE("Build") {
 
   SECTION("computeBuild") {
     SECTION("empty") {
-      const auto build = computeBuild(Manifest());
+      const auto build = computeBuild(RawManifest());
       CHECK(build.step_nodes.empty());
       CHECK(build.ready_steps.empty());
       CHECK(build.remaining_failures == 1);
     }
 
     SECTION("remaining_failures") {
-      const auto build = computeBuild(Manifest(), Invocations(), 543);
+      const auto build = computeBuild(RawManifest(), Invocations(), 543);
       CHECK(build.remaining_failures == 543);
     }
 
@@ -528,7 +528,7 @@ TEST_CASE("Build") {
       addInput(invocations, entry, paths.get("a"), Fingerprint());
       invocations.entries[three.hash()] = entry;
 
-      Manifest manifest;
+      RawManifest manifest;
       manifest.steps = { single_output, single_output_b, three };
       const auto build = computeBuild(manifest, invocations);
       REQUIRE(build.step_nodes.size() == 3);
@@ -551,7 +551,7 @@ TEST_CASE("Build") {
       two.inputs = { paths.get("a") };
       two.outputs = { paths.get("b") };
 
-      Manifest manifest;
+      RawManifest manifest;
       manifest.steps = { one, two };
       CHECK_THROWS_AS(computeBuild(manifest), BuildError);
     }
@@ -564,7 +564,7 @@ TEST_CASE("Build") {
       two.inputs = { paths.get("a") };
       two.outputs = { paths.get("b") };
 
-      Manifest manifest;
+      RawManifest manifest;
       // Need to specify a default, otherwise none of the steps are roots, and
       // nothing is "built".
       manifest.defaults = { paths.get("a") };
@@ -795,7 +795,7 @@ TEST_CASE("Build") {
     const auto compute_clean_steps = [&](
         const Build &build,
         Invocations &invocations,
-        const Manifest &manifest) {
+        const RawManifest &manifest) {
       return computeCleanSteps(
           clock,
           fs,

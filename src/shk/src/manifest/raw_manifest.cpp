@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "manifest.h"
+#include "raw_manifest.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -46,7 +46,7 @@ struct ManifestParser {
   ManifestParser(
       Paths &paths,
       FileSystem &file_system,
-      Manifest &manifest,
+      RawManifest &manifest,
       ManifestPostprocessingData &postprocessing_data,
       BindingEnv &env)
       : _paths(paths),
@@ -434,7 +434,7 @@ private:
 
   Paths &_paths;
   FileSystem &_file_system;
-  Manifest &_manifest;
+  RawManifest &_manifest;
   ManifestPostprocessingData &_postprocessing_data;
   BindingEnv &_env;
   Lexer _lexer;
@@ -442,11 +442,11 @@ private:
 
 }  // anonymous namespace
 
-Manifest parseManifest(
+RawManifest parseManifest(
     Paths &paths,
     FileSystem &file_system,
     const std::string &path) throw(IoError, ParseError) {
-  Manifest manifest;
+  RawManifest manifest;
 
   BindingEnv env;
   Rule phony;

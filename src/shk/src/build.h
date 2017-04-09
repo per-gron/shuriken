@@ -10,7 +10,6 @@
 #include "log/invocation_log.h"
 #include "log/invocations.h"
 #include "manifest/indexed_manifest.h"
-#include "manifest/manifest.h"
 #include "manifest/step.h"
 #include "optional.h"
 #include "status/build_status.h"

@@ -17,21 +17,21 @@
 
 #include <catch.hpp>
 
-#include "manifest/manifest.h"
+#include "manifest/raw_manifest.h"
 
 #include "../in_memory_file_system.h"
 
 namespace shk {
 namespace {
 
-void verifyManifest(const Manifest &manifest) {
+void verifyManifest(const RawManifest &manifest) {
   for (const auto &step : manifest.steps) {
     // All edges need at least one output.
     CHECK(!step.outputs.empty());
   }
 }
 
-Manifest parse(Paths &paths, FileSystem &file_system, const char *input) {
+RawManifest parse(Paths &paths, FileSystem &file_system, const char *input) {
   file_system.writeFile("build.ninja", input);
   const auto manifest = parseManifest(paths, file_system, "build.ninja");
   verifyManifest(manifest);
@@ -56,7 +56,7 @@ Step parseStep(Paths &paths, FileSystem &file_system, const char *input) {
 
 }  // anonymous namespace
 
-TEST_CASE("Manifest") {
+TEST_CASE("RawManifest") {
   InMemoryFileSystem fs;
   Paths paths(fs);
 
