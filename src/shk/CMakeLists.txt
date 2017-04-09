@@ -148,7 +148,6 @@ add_executable(shk_test
   test/status/stopwatch_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
-target_include_directories(shk_test PUBLIC "${CMAKE_SOURCE_DIR}/vendor/rapidcheck/extras/catch/include")
 target_link_libraries(shk_test shklib catch)
 set_target_properties(shk_test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 add_dependencies(shk_test shk-trace-dummy)
