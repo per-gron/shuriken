@@ -602,8 +602,9 @@ void commandDone(
           std::move(result.input_files));
     }
 
-    if (false &&  // Ignore rather than trigger an assert. Remove this later
-        step.restat &&
+    // TODO(peck): Implement restat rules
+    if (false &&  // Ignore rather than trigger an assert.
+        /* step.restat && */
         !outputsWereChanged(
             params.file_system,
             params.invocations,

@@ -76,13 +76,6 @@ struct Step {
   }
 
   /**
-   * If set to true, Shuriken will check if the output files of the build step
-   * have been changed after each invocation. If the output files are identical,
-   * subsequent build steps that depend only on this step are not run.
-   */
-  bool restat = false;
-
-  /**
    * It set to true, Shuriken will treat this build step as one that rewrites
    * manifest files. They are treated specially in the following ways:
    *

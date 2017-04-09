@@ -22,9 +22,6 @@ struct BuildInput {
 
 void showValue(const Step &step, std::ostream &os) {
   os << "<Step:'" << step.command << "' ";
-  if (step.restat) {
-    os << "restat ";
-  }
   os << rc::toString(step.dependencies) << " => " << rc::toString(step.outputs);
   os << ">";
 }
@@ -45,7 +42,6 @@ rc::Gen<Step> step(const std::shared_ptr<Paths> &paths) {
   return rc::gen::exec([paths] {
     Step step;
     // step.command is generated later
-    step.restat = *rc::gen::arbitrary<bool>();
     step.dependencies = *pathVector(paths);
     step.outputs = *pathVector(paths);
     return step;
@@ -85,8 +81,8 @@ void addFilesToFileSystem(const Files &files, FileSystem &file_system) {
   }
 }
 
-TEST_CASE("Correctness") {
 #if 0  // TODO(peck): This test is currently broken/not fully implemented
+TEST_CASE("Correctness") {
   rc::prop("successful builds should run all build steps", []() {
     const auto paths = std::make_shared<Paths>();
 
@@ -109,7 +105,6 @@ TEST_CASE("Correctness") {
         build_input.steps,
         Invocations() /* No prior invocations, this is a build from scratch */);
   });
-#endif
 
   rc::prop("In {build, build}, the second build is a no-op", []() {
     // TODO(peck): Implement me
@@ -142,10 +137,6 @@ TEST_CASE("Efficiency") {
   });
 
   rc::prop("minimal rebuilds", []() {
-    // TODO(peck): Implement me
-  });
-
-  rc::prop("restat", []() {
     // TODO(peck): Implement me
   });
 
@@ -191,5 +182,6 @@ TEST_CASE("Error detection") {
     // Move this to CommandRunner tests?
   });
 }
+#endif
 
 }  // namespace shk

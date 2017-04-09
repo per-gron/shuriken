@@ -110,7 +110,6 @@ struct ManifestParser {
 
       step.command = get_binding("command", StepEnv::EscapeKind::SHELL_ESCAPE);
       step.description = get_binding("description");
-      step.restat = to_bool(get_binding("restat"));
       step.generator = to_bool(get_binding("generator"));
       step.depfile = toPathAllowEmpty(get_binding("depfile"));
       step.rspfile = toPathAllowEmpty(get_binding("rspfile"));

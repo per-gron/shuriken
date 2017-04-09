@@ -81,7 +81,6 @@ TEST_CASE("Manifest") {
 
     CHECK(step.command == "cat in_1.cc in-2.O > result");
     CHECK(!step.generator);
-    CHECK(!step.restat);
   }
 
   SECTION("PhonyRules") {
@@ -90,7 +89,6 @@ TEST_CASE("Manifest") {
 
     CHECK(step.command == "");
     CHECK(!step.generator);
-    CHECK(!step.restat);
   }
 
   SECTION("DotPath") {
@@ -105,7 +103,6 @@ TEST_CASE("Manifest") {
 
     CHECK(step.command == "cat . in-2.O > result");
     CHECK(!step.generator);
-    CHECK(!step.restat);
   }
 
   SECTION("RuleAttributes") {
@@ -128,7 +125,6 @@ TEST_CASE("Manifest") {
     CHECK(step.depfile->original() == "b");
     CHECK(step.description == "d");
     CHECK(step.generator);
-    CHECK(step.restat);
     REQUIRE(step.rspfile);
     CHECK(step.rspfile->original() == "g");
     CHECK(step.rspfile_content == "h");
@@ -147,7 +143,6 @@ TEST_CASE("Manifest") {
 
     CHECK(step.command == "cat in_1.cc in-2.O > result");
     CHECK(!step.generator);
-    CHECK(step.restat);
   }
 
   SECTION("ResponseFiles") {
@@ -809,7 +804,6 @@ TEST_CASE("Manifest") {
 
       CHECK(step.command == "echo result new");
       CHECK(step.description == "Hi new");
-      CHECK(step.restat);
       CHECK(step.generator);
       REQUIRE(step.depfile);
       CHECK(step.depfile->original() == "new");

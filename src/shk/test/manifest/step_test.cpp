@@ -85,12 +85,6 @@ TEST_CASE("Step") {
       CHECK(a.hash() == b.hash());
     }
 
-    SECTION("Restat") {
-      // Restat is not significant for the build results
-      b.restat = !b.restat;
-      CHECK(a.hash() == b.hash());
-    }
-
     SECTION("Generator") {
       b.generator = !b.generator;
       CHECK(a.hash() != b.hash());
