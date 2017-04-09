@@ -146,7 +146,6 @@ add_executable(shk_test
   test/manifest/manifest_test.cpp
   test/manifest/step_test.cpp
   test/optional_test.cpp
-  test/properties.cpp
   test/status/line_printer_test.cpp
   test/status/stopwatch_test.cpp
   test/util_test.cpp)

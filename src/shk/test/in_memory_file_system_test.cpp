@@ -3,7 +3,6 @@
 #include <catch.hpp>
 
 #include "in_memory_file_system.h"
-#include "generators.h"
 
 namespace shk {
 

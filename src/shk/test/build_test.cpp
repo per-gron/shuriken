@@ -7,7 +7,6 @@
 #include "status/dummy_build_status.h"
 
 #include "dummy_command_runner.h"
-#include "generators.h"
 #include "in_memory_file_system.h"
 #include "in_memory_invocation_log.h"
 
