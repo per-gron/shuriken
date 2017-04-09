@@ -51,6 +51,8 @@ add_library(shklib
   src/manifest/lexer.h
   src/manifest/raw_manifest.cpp
   src/manifest/raw_manifest.h
+  src/manifest/raw_step.cpp
+  src/manifest/raw_step.h
   src/manifest/rule.cpp
   src/manifest/rule.h
   src/manifest/step.cpp
@@ -142,6 +144,7 @@ add_executable(shk_test
   test/manifest/indexed_manifest_test.cpp
   test/manifest/lexer_test.cpp
   test/manifest/raw_manifest_test.cpp
+  test/manifest/raw_step_test.cpp
   test/manifest/step_test.cpp
   test/optional_test.cpp
   test/status/line_printer_test.cpp
