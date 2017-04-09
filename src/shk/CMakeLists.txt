@@ -130,8 +130,6 @@ add_executable(shk_test
   test/fs/fingerprint_test.cpp
   test/fs/path_test.cpp
   test/fs/persistent_file_system_test.cpp
-  test/generators.cpp
-  test/generators.h
   test/in_memory_file_system.cpp
   test/in_memory_file_system.h
   test/in_memory_file_system_test.cpp
@@ -151,7 +149,7 @@ add_executable(shk_test
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_include_directories(shk_test PUBLIC "${CMAKE_SOURCE_DIR}/vendor/rapidcheck/extras/catch/include")
-target_link_libraries(shk_test shklib catch rapidcheck)
+target_link_libraries(shk_test shklib catch)
 set_target_properties(shk_test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 add_dependencies(shk_test shk-trace-dummy)
 add_test(NAME unit COMMAND shk_test)
