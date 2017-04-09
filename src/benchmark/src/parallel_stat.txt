@@ -1,0 +1,93 @@
+Results on 2,3 GHz Intel Core i7 mid-2012 MacBook Pro Retina:
+
+Conclusions:
+* lstat seems to be the same as stat in performance (as expected)
+* Up to ~100k files the results are rather predictable. With as many threads as virtual cores there is a ~4x speedup
+* At 150k files the results vary quite a lot
+* At 200k files single-threaded performance is about the same as multithreaded. I guess the file cache has maxed out at this point.
+
+@200k files, peak performance is 5 threads @10% faster
+@150k files, peak performance varies a lot, but around 7? @~3.5x faster
+@100k files, peak performance is 15 threads @5x faster
+@50k files,  peak performance is 7 threads @4x faster
+@20k files,  peak performance is 7 threads @6x faster
+
+lstat-ing 200000 files
+With 1 threads: Elapsed time: 10.701931s
+With 2 threads: Elapsed time: 12.686824s
+With 3 threads: Elapsed time: 10.438810s
+With 4 threads: Elapsed time: 9.781057s
+With 5 threads: Elapsed time: 9.021761s
+With 6 threads: Elapsed time: 11.957585s
+With 7 threads: Elapsed time: 11.226056s
+With 8 threads: Elapsed time: 11.061982s
+With 9 threads: Elapsed time: 12.023606s
+With 10 threads: Elapsed time: 14.692817s
+
+lstat-ing 150000 files
+With 1 threads: Elapsed time: 7.076369s
+With 2 threads: Elapsed time: 7.815501s
+With 3 threads: Elapsed time: 6.355114s
+With 4 threads: Elapsed time: 1.446579s
+With 5 threads: Elapsed time: 5.275549s
+With 6 threads: Elapsed time: 6.595289s
+With 7 threads: Elapsed time: 2.269167s
+With 8 threads: Elapsed time: 3.524599s
+With 9 threads: Elapsed time: 3.566009s
+With 10 threads: Elapsed time: 5.009243s
+With 11 threads: Elapsed time: 10.306138s
+With 12 threads: Elapsed time: 6.330970s
+With 13 threads: Elapsed time: 10.148980s
+With 14 threads: Elapsed time: 10.153283s
+With 15 threads: Elapsed time: 13.005542s
+
+lstat-ing 100000 files
+With 1 threads: Elapsed time: 0.330571s
+With 2 threads: Elapsed time: 0.169338s
+With 3 threads: Elapsed time: 0.138117s
+With 4 threads: Elapsed time: 0.100632s
+With 5 threads: Elapsed time: 0.090038s
+With 6 threads: Elapsed time: 0.074859s
+With 7 threads: Elapsed time: 0.076014s
+With 8 threads: Elapsed time: 0.076029s
+With 9 threads: Elapsed time: 0.083615s
+With 10 threads: Elapsed time: 0.074499s
+With 11 threads: Elapsed time: 0.084740s
+With 12 threads: Elapsed time: 0.069480s
+With 13 threads: Elapsed time: 0.082700s
+With 14 threads: Elapsed time: 0.067466s
+With 15 threads: Elapsed time: 0.067634s
+
+lstat-ing 50000 files
+With 1 threads: Elapsed time: 1.379676s
+With 2 threads: Elapsed time: 0.081977s
+With 3 threads: Elapsed time: 0.064547s
+With 4 threads: Elapsed time: 0.047256s
+With 5 threads: Elapsed time: 0.047093s
+With 6 threads: Elapsed time: 0.037507s
+With 7 threads: Elapsed time: 0.032791s
+With 8 threads: Elapsed time: 0.034349s
+With 9 threads: Elapsed time: 0.039930s
+With 10 threads: Elapsed time: 0.031657s
+With 11 threads: Elapsed time: 0.037721s
+With 12 threads: Elapsed time: 0.032009s
+With 13 threads: Elapsed time: 0.037504s
+With 14 threads: Elapsed time: 0.032555s
+With 15 threads: Elapsed time: 0.040086s
+
+lstat-ing 20000 files
+With 1 threads: Elapsed time: 0.840741s
+With 2 threads: Elapsed time: 0.031729s
+With 3 threads: Elapsed time: 0.025726s
+With 4 threads: Elapsed time: 0.020957s
+With 5 threads: Elapsed time: 0.019763s
+With 6 threads: Elapsed time: 0.021348s
+With 7 threads: Elapsed time: 0.013875s
+With 8 threads: Elapsed time: 0.014824s
+With 9 threads: Elapsed time: 0.018511s
+With 10 threads: Elapsed time: 0.018357s
+With 11 threads: Elapsed time: 0.016967s
+With 12 threads: Elapsed time: 0.016035s
+With 13 threads: Elapsed time: 0.015279s
+With 14 threads: Elapsed time: 0.016914s
+With 15 threads: Elapsed time: 0.015265s
