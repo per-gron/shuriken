@@ -1,33 +1,67 @@
 #include <catch.hpp>
-#include <rapidcheck/catch.h>
 
 #include "dummy_command_runner.h"
-#include "generators.h"
 #include "in_memory_file_system.h"
 
 namespace shk {
+namespace {
+
+void checkSplitConstructCommandIdentity(
+    const std::vector<std::string> &in_inputs,
+    const std::vector<std::string> &in_outputs) {
+  const auto command = DummyCommandRunner::constructCommand(
+      std::vector<std::string>(in_inputs.begin(), in_inputs.end()),
+      std::vector<std::string>(in_outputs.begin(), in_outputs.end()));
+
+  std::vector<std::string> out_outputs;
+  std::vector<std::string> out_inputs;
+  std::tie(out_outputs, out_inputs) = detail::splitCommand(command);
+
+  CHECK(in_inputs == out_inputs);
+  CHECK(in_outputs == out_outputs);
+}
+
+void checkRunCommand(
+    const std::vector<std::string> &inputs,
+    const std::vector<std::string> &outputs) {
+  InMemoryFileSystem file_system;
+  DummyCommandRunner runner(file_system);
+
+  // Create input files
+  for (const auto &input : inputs) {
+    file_system.writeFile(
+        input,
+        "file:" + input);
+  }
+
+  const auto command = DummyCommandRunner::constructCommand(
+      inputs, outputs);
+
+  if (outputs.empty()) {
+    DummyCommandRunner::checkCommand(file_system, command);
+  } else {
+    // The command is not run yet so should not pass
+    CHECK_THROWS(DummyCommandRunner::checkCommand(file_system, command));
+  }
+
+  runner.invoke(command, "pool", CommandRunner::noopCallback);
+  while (!runner.empty()) {
+    runner.runCommands();
+  }
+
+  DummyCommandRunner::checkCommand(file_system, command);
+}
+
+}  // anonymous namespace
 
 TEST_CASE("DummyCommandRunner") {
-  rc::prop("splitCommand of constructCommand should be an identity transformation", []() {
-    const auto in_inputs = *gen::pathStringSet();
-    const auto in_outputs = *gen::pathStringSet();
-
-    const auto command = DummyCommandRunner::constructCommand(
-        std::vector<std::string>(in_inputs.begin(), in_inputs.end()),
-        std::vector<std::string>(in_outputs.begin(), in_outputs.end()));
-
-    std::vector<std::string> out_outputs;
-    std::vector<std::string> out_inputs;
-    std::tie(out_outputs, out_inputs) = detail::splitCommand(command);
-
-    std::unordered_set<std::string> out_input_set;
-    for (const auto &dep : out_inputs) {
-      out_input_set.insert(dep);
-    }
-
-    RC_ASSERT(out_input_set == in_inputs);
-    RC_ASSERT(out_outputs == out_outputs);
-  });
+  SECTION("splitCommand of constructCommand") {
+    checkSplitConstructCommandIdentity({}, {});
+    checkSplitConstructCommandIdentity({ "in" }, {});
+    checkSplitConstructCommandIdentity({}, { "out" });
+    checkSplitConstructCommandIdentity({ "in" }, { "out" });
+    checkSplitConstructCommandIdentity({ "in", "1" }, { "out", "2" });
+  }
 
   InMemoryFileSystem file_system;
   DummyCommandRunner runner(file_system);
@@ -155,46 +189,11 @@ TEST_CASE("DummyCommandRunner") {
   }
 
   SECTION("checkCommand") {
-    SECTION("empty command") {
-      const auto empty_command = DummyCommandRunner::constructCommand({}, {});
-      DummyCommandRunner::checkCommand(file_system, empty_command);
-    }
-
-    rc::prop("checkCommand after runCommand", []() {
-      InMemoryFileSystem file_system;
-      DummyCommandRunner runner(file_system);
-
-      // Place inputs in their own folder to make sure that they don't collide
-      // with outputs.
-      const auto input_path_gen = rc::gen::exec([] {
-        return "_in/" + *gen::pathComponent();
-      });
-      const auto inputs = *rc::gen::container<std::vector<std::string>>(
-          input_path_gen);
-
-      // Create input files
-      file_system.mkdir("_in");
-      for (const auto &input : inputs) {
-        file_system.writeFile(
-            input,
-            "file:" + input);
-      }
-
-      const auto outputs = *rc::gen::nonEmpty(
-          gen::pathStringWithSingleComponentVector());
-
-      const auto command = DummyCommandRunner::constructCommand(inputs, outputs);
-
-      // The command is not run yet so should not pass
-      RC_ASSERT_THROWS(DummyCommandRunner::checkCommand(file_system, command));
-
-      runner.invoke(command, "pool", CommandRunner::noopCallback);
-      while (!runner.empty()) {
-        runner.runCommands();
-      }
-
-      DummyCommandRunner::checkCommand(file_system, command);
-    });
+    checkRunCommand({}, {});
+    checkRunCommand({ "in" }, {});
+    checkRunCommand({}, { "out" });
+    checkRunCommand({ "in" }, { "out" });
+    checkRunCommand({ "in", "1" }, { "out", "2" });
   }
 }
 
