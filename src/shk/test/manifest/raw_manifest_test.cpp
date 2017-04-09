@@ -48,7 +48,7 @@ std::string parseError(Paths &paths, FileSystem &file_system, const char *input)
   }
 }
 
-Step parseStep(Paths &paths, FileSystem &file_system, const char *input) {
+RawStep parseStep(Paths &paths, FileSystem &file_system, const char *input) {
   const auto manifest = parse(paths, file_system, input);
   REQUIRE(manifest.steps.size() == 1);
   return manifest.steps[0];

@@ -4,6 +4,21 @@
 
 namespace shk {
 
+Step::Step() {}
+
+Step::Step(RawStep &&raw_step)
+    : inputs(std::move(raw_step.inputs)),
+      implicit_inputs(std::move(raw_step.implicit_inputs)),
+      dependencies(std::move(raw_step.dependencies)),
+      outputs(std::move(raw_step.outputs)),
+      pool_name(std::move(raw_step.pool_name)),
+      command(std::move(raw_step.command)),
+      description(std::move(raw_step.description)),
+      generator(raw_step.generator),
+      depfile(raw_step.depfile),
+      rspfile(raw_step.rspfile),
+      rspfile_content(std::move(raw_step.rspfile_content)) {}
+
 Hash Step::hash() const {
   Hash hash;
   blake2b_state state;

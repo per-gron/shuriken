@@ -124,27 +124,27 @@ TEST_CASE("Build") {
 
   const Step empty{};
 
-  Step single_output;
+  RawStep single_output;
   single_output.command = "cmd";
   single_output.outputs = { paths.get("a") };
 
-  Step single_output_b;
+  RawStep single_output_b;
   single_output_b.command = "cmd";
   single_output_b.outputs = { paths.get("b") };
 
-  Step multiple_outputs;
+  RawStep multiple_outputs;
   multiple_outputs.command = "cmd";
   multiple_outputs.outputs = { paths.get("c"), paths.get("d") };
 
-  Step single_input;
+  RawStep single_input;
   single_input.command = "cmd";
   single_input.inputs = { paths.get("a") };
 
-  Step single_implicit_input;
+  RawStep single_implicit_input;
   single_implicit_input.command = "cmd";
   single_implicit_input.implicit_inputs = { paths.get("a") };
 
-  Step single_dependency;
+  RawStep single_dependency;
   single_dependency.command = "cmd";
   single_dependency.dependencies = { paths.get("a") };
 
@@ -184,19 +184,19 @@ TEST_CASE("Build") {
   };
 
   SECTION("interpretPath") {
-    Step other_input;
+    RawStep other_input;
     other_input.inputs = { paths.get("other") };
     other_input.outputs = { paths.get("foo") };
 
-    Step multiple_outputs;
+    RawStep multiple_outputs;
     multiple_outputs.inputs = { paths.get("hehe") };
     multiple_outputs.outputs = { paths.get("hej"), paths.get("there") };
 
-    Step implicit_input;
+    RawStep implicit_input;
     implicit_input.implicit_inputs = { paths.get("implicit_input") };
     implicit_input.outputs = { paths.get("implicit_output") };
 
-    Step dependency;
+    RawStep dependency;
     dependency.dependencies = { paths.get("dependency_input") };
     dependency.outputs = { paths.get("dependency_output") };
 
@@ -275,24 +275,38 @@ TEST_CASE("Build") {
 
   SECTION("rootSteps") {
     CHECK(rootSteps({}).empty());
-    CHECK(rootSteps({ single_output }) == std::vector<StepIndex>{ 0 });
+    CHECK(rootSteps(
+        { Step(RawStep(single_output)) }) == std::vector<StepIndex>{ 0 });
     CHECK(
-        rootSteps({ single_output, single_output_b }) ==
+        rootSteps({
+            Step(RawStep(single_output)),
+            Step(RawStep(single_output_b)) }) ==
         vec({ 0, 1 }));
     CHECK(
-        rootSteps({ single_output, single_input }) ==
+        rootSteps({
+            Step(RawStep(single_output)),
+            Step(RawStep(single_input)) }) ==
         std::vector<StepIndex>{ 1 });
     CHECK(
-        rootSteps({ single_output, single_implicit_input }) ==
+        rootSteps({
+            Step(RawStep(single_output)),
+            Step(RawStep(single_implicit_input)) }) ==
         std::vector<StepIndex>{ 1 });
     CHECK(
-        rootSteps({ single_output, single_dependency }) ==
+        rootSteps({
+            Step(RawStep(single_output)),
+            Step(RawStep(single_dependency)) }) ==
         std::vector<StepIndex>{ 1 });
     CHECK(
-        rootSteps({ single_dependency, single_output }) ==
+        rootSteps({
+            Step(RawStep(single_dependency)),
+            Step(RawStep(single_output)) }) ==
         std::vector<StepIndex>{ 0 });
     CHECK(
-        rootSteps({ single_dependency, single_output, multiple_outputs }) ==
+        rootSteps({
+            Step(RawStep(single_dependency)),
+            Step(RawStep(single_output)),
+            Step(RawStep(multiple_outputs)) }) ==
         (std::vector<StepIndex>{ 0, 2 }));
 
     Step one;
@@ -408,12 +422,12 @@ TEST_CASE("Build") {
       }
 
       SECTION("dep chain") {
-        Step one;
+        RawStep one;
         one.outputs = { paths.get("a") };
-        Step two;
+        RawStep two;
         two.inputs = { paths.get("a") };
         two.outputs = { paths.get("b") };
-        Step three;
+        RawStep three;
         three.inputs = { paths.get("b") };
 
         manifest.steps = { three, one, two };
@@ -424,15 +438,15 @@ TEST_CASE("Build") {
       }
 
       SECTION("diamond dep") {
-        Step one;
+        RawStep one;
         one.outputs = { paths.get("a") };
-        Step two_1;
+        RawStep two_1;
         two_1.inputs = { paths.get("a") };
         two_1.outputs = { paths.get("b") };
-        Step two_2;
+        RawStep two_2;
         two_2.inputs = { paths.get("a") };
         two_2.outputs = { paths.get("c") };
-        Step three;
+        RawStep three;
         three.inputs = { paths.get("b"), paths.get("c") };
 
         manifest.steps = { three, one, two_1, two_2 };
@@ -444,12 +458,12 @@ TEST_CASE("Build") {
     }
 
     SECTION("step_nodes.should_build") {
-      Step one;
+      RawStep one;
       one.outputs = { paths.get("a") };
-      Step two;
+      RawStep two;
       two.inputs = { paths.get("a") };
       two.outputs = { paths.get("b") };
-      Step three;
+      RawStep three;
       three.inputs = { paths.get("b") };
 
       SECTION("everything") {
@@ -486,15 +500,15 @@ TEST_CASE("Build") {
       }
 
       SECTION("diamond") {
-        Step one;
+        RawStep one;
         one.outputs = { paths.get("a") };
-        Step two_1;
+        RawStep two_1;
         two_1.inputs = { paths.get("a") };
         two_1.outputs = { paths.get("b") };
-        Step two_2;
+        RawStep two_2;
         two_2.inputs = { paths.get("a") };
         two_2.outputs = { paths.get("c") };
-        Step three;
+        RawStep three;
         three.inputs = { paths.get("b"), paths.get("c") };
 
         manifest.steps = { three, two_2, two_1, one };
@@ -520,7 +534,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("Deps from invocations") {
-      Step three;
+      RawStep three;
       three.inputs = { paths.get("a"), paths.get("b") };
 
       Invocations::Entry entry;
@@ -544,10 +558,10 @@ TEST_CASE("Build") {
     }
 
     SECTION("Dependency cycle") {
-      Step one;
+      RawStep one;
       one.outputs = { paths.get("a") };
       one.inputs = { paths.get("b") };
-      Step two;
+      RawStep two;
       two.inputs = { paths.get("a") };
       two.outputs = { paths.get("b") };
 
@@ -557,10 +571,10 @@ TEST_CASE("Build") {
     }
 
     SECTION("Dependency cycle with specified target") {
-      Step one;
+      RawStep one;
       one.outputs = { paths.get("a") };
       one.inputs = { paths.get("b") };
-      Step two;
+      RawStep two;
       two.inputs = { paths.get("a") };
       two.outputs = { paths.get("b") };
 
@@ -818,7 +832,7 @@ TEST_CASE("Build") {
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
-          manifest.steps,
+          IndexedManifest(RawManifest(manifest)).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
@@ -829,7 +843,7 @@ TEST_CASE("Build") {
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
-          manifest.steps,
+          IndexedManifest(RawManifest(manifest)).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 0);
       CHECK(build.ready_steps.size() == 2);
@@ -842,18 +856,18 @@ TEST_CASE("Build") {
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
-          manifest.steps,
+          IndexedManifest(RawManifest(manifest)).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       CHECK(build.ready_steps.size() == 1);
     }
 
-    Step root;  // depends on the single_output step
+    RawStep root;  // depends on the single_output step
     root.command = "cmd";
     root.inputs = { paths.get("a") };
     root.outputs = { paths.get("b") };
 
-    Step phony;
+    RawStep phony;
     phony.outputs = { paths.get("a") };
 
     SECTION("phony step") {
@@ -862,7 +876,7 @@ TEST_CASE("Build") {
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          manifest.steps,
+          IndexedManifest(RawManifest(manifest)).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       CHECK(build.ready_steps.empty());
@@ -880,7 +894,7 @@ TEST_CASE("Build") {
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 1);
       CHECK(discardCleanSteps(
-          manifest.steps,
+          IndexedManifest(RawManifest(manifest)).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
@@ -894,7 +908,7 @@ TEST_CASE("Build") {
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          manifest.steps,
+          IndexedManifest(RawManifest(manifest)).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       REQUIRE(build.ready_steps.size() == 1);
@@ -909,7 +923,7 @@ TEST_CASE("Build") {
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          manifest.steps,
+          IndexedManifest(RawManifest(manifest)).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 0);
       REQUIRE(build.ready_steps.size() == 1);
@@ -924,7 +938,7 @@ TEST_CASE("Build") {
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 1);
       CHECK(discardCleanSteps(
-          manifest.steps,
+          IndexedManifest(RawManifest(manifest)).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       CHECK(build.ready_steps.empty());

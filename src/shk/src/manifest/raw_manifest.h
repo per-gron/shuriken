@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "fs/file_system.h"
-#include "manifest/step.h"
+#include "manifest/raw_step.h"
 #include "parse_error.h"
 
 namespace shk {
@@ -16,7 +16,7 @@ namespace shk {
  * preprocessing good to use as a base to do a build.
  */
 struct RawManifest {
-  std::vector<Step> steps;
+  std::vector<RawStep> steps;
   std::vector<Path> defaults;
   std::unordered_map<std::string, int> pools;
 

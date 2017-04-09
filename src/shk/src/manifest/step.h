@@ -6,6 +6,7 @@
 #include "hash.h"
 #include "optional.h"
 #include "fs/path.h"
+#include "manifest/raw_step.h"
 
 namespace shk {
 
@@ -20,6 +21,9 @@ namespace shk {
  * commands.
  */
 struct Step {
+  Step();
+  Step(RawStep &&step);
+
   /**
    * Input files, as specified in the manifest. These, together with the
    * implicit dependencies are files that the build step is expected to read

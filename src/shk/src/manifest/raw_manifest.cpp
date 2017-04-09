@@ -91,7 +91,7 @@ struct ManifestParser {
       const BindingEnv *env;
       const Rule *rule;
       std::tie(env, rule) = _postprocessing_data[i];
-      Step &step = _manifest.steps[i];
+      RawStep &step = _manifest.steps[i];
 
       const auto get_binding = [&](
           const std::string &key,
@@ -374,7 +374,7 @@ private:
       has_indent_token = _lexer.peekToken(Lexer::INDENT);
     }
 
-    Step step;
+    RawStep step;
     // Evaluate input and output paths eagerly. Paths that are set as inputs,
     // outputs, implicit or order-only dependencies can contain variables, but
     // these paths can only see variables that are set higher up in the Ninja

@@ -12,29 +12,29 @@ TEST_CASE("IndexedManifest") {
   Paths paths(fs);
   RawManifest manifest;
 
-  const Step empty{};
+  const RawStep empty{};
 
-  Step single_output;
+  RawStep single_output;
   single_output.outputs = { paths.get("a") };
 
-  Step single_output_b;
+  RawStep single_output_b;
   single_output_b.outputs = { paths.get("b") };
 
-  Step multiple_outputs;
+  RawStep multiple_outputs;
   multiple_outputs.outputs = { paths.get("c"), paths.get("d") };
 
-  Step single_input;
+  RawStep single_input;
   single_input.inputs = { paths.get("a") };
 
-  Step single_implicit_input;
+  RawStep single_implicit_input;
   single_implicit_input.implicit_inputs = { paths.get("a") };
 
-  Step single_dependency;
+  RawStep single_dependency;
   single_dependency.dependencies = { paths.get("a") };
 
   SECTION("computeOutputFileMap") {
     SECTION("basics") {
-      CHECK(computeOutputFileMap({}).empty());
+      CHECK(computeOutputFileMap(std::vector<RawStep>()).empty());
       CHECK(computeOutputFileMap({ empty }).empty());
       CHECK(computeOutputFileMap({ single_input }).empty());
       CHECK(computeOutputFileMap({ single_implicit_input }).empty());

@@ -6,6 +6,7 @@
 #include "build_error.h"
 #include "fs/path.h"
 #include "manifest/raw_manifest.h"
+#include "manifest/step.h"
 
 namespace shk {
 
@@ -47,9 +48,16 @@ namespace detail {
  * generates.
  */
 OutputFileMap computeOutputFileMap(
+    const std::vector<RawStep> &steps) throw(BuildError);
+
+/**
+ * Throws BuildError if there exists an output file that more than one step
+ * generates.
+ */
+OutputFileMap computeOutputFileMap(
     const std::vector<Step> &steps) throw(BuildError);
 
-StepHashes computeStepHashes(const std::vector<Step> &steps);
+StepHashes computeStepHashes(const std::vector<RawStep> &steps);
 
 }  // namespace detail
 
