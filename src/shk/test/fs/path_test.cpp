@@ -1,9 +1,7 @@
 #include <catch.hpp>
-#include <rapidcheck/catch.h>
 
 #include "fs/path.h"
 
-#include "../generators.h"
 #include "../in_memory_file_system.h"
 
 namespace shk {
@@ -111,27 +109,6 @@ TEST_CASE("Path") {
     checkBasenameSplit(".", ".", ".");
     checkBasenameSplit("..", ".", "..");
     checkBasenameSplit("", ".", "");
-
-    rc::prop("extracts the basename and the dirname", []() {
-      const auto path_components = *gen::pathComponents();
-      RC_PRE(!path_components.empty());
-
-      const auto path_string = gen::joinPathComponents(path_components);
-      auto dirname_string = gen::joinPathComponents(
-          std::vector<std::string>(
-              path_components.begin(),
-              path_components.end() - 1));
-      if (dirname_string.empty()) {
-        dirname_string = ".";
-      }
-
-      StringPiece dirname;
-      StringPiece basename;
-      std::tie(dirname, basename) = basenameSplitPiece(path_string);
-
-      RC_ASSERT(basename == *path_components.rbegin());
-      RC_ASSERT(dirname == dirname_string);
-    });
   }
 
   SECTION("dirname") {
@@ -274,18 +251,29 @@ TEST_CASE("Path") {
 
   SECTION("operator==, operator!=") {
     InMemoryFileSystem fs;
-    rc::prop("equal string paths are equal paths", [&fs]() {
-      Paths paths(fs);
+    fs.mkdir("dir");
+    fs.writeFile("f", "");
+    fs.writeFile("dir/f", "");
 
-      const auto path_1_string = *gen::pathString();
-      const auto path_2_string = *gen::pathString();
+    static const char *kPaths[] = {
+        "/",
+        "/dir",
+        "/f",
+        "/dir/f",
+        "/dir/../f" };
 
-      const auto path_1 = paths.get(path_1_string);
-      const auto path_2 = paths.get(path_2_string);
-
-      RC_ASSERT((path_1 == path_2) == (path_1_string == path_2_string));
-      RC_ASSERT((path_1 != path_2) == (path_1_string != path_2_string));
-    });
+    for (const char *path1_string : kPaths) {
+      for (const char *path2_string : kPaths) {
+        Paths paths(fs);
+        const auto path1 = paths.get(path1_string);
+        const auto path2 = paths.get(path2_string);
+        if (path1_string == path2_string) {
+          CHECK(path1 == path2);
+        } else {
+          CHECK(path1 != path2);
+        }
+      }
+    }
   }
 
   SECTION("original") {
