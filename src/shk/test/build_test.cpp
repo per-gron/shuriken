@@ -74,7 +74,7 @@ std::vector<StepIndex> computeStepsToBuild(
     const Manifest &manifest,
     const std::vector<Path> &specified_outputs = {}) throw(BuildError) {
   return ::shk::detail::computeStepsToBuild(
-      manifest, computeOutputFileMap(manifest.steps), specified_outputs);
+      IndexedManifest(Manifest(manifest)), specified_outputs);
 }
 
 std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
@@ -85,14 +85,12 @@ Build computeBuild(
     const Manifest &manifest,
     const Invocations &invocations = Invocations(),
     size_t allowed_failures = 1) throw(BuildError) {
-  const auto output_file_map = computeOutputFileMap(manifest.steps);
+  auto indexed_manifest = IndexedManifest(Manifest(manifest));
   return ::shk::detail::computeBuild(
-      computeStepHashes(manifest.steps),
       invocations,
-      output_file_map,
-      manifest,
+      indexed_manifest,
       allowed_failures,
-      ::shk::detail::computeStepsToBuild(manifest, output_file_map, {}));
+      ::shk::detail::computeStepsToBuild(indexed_manifest, {}));
 }
 
 void addOutput(
@@ -211,30 +209,32 @@ TEST_CASE("Build") {
         implicit_input,
         dependency };
 
+    auto indexed_manifest = IndexedManifest(Manifest(manifest));
+
     SECTION("normal (non-^)") {
-      CHECK(interpretPath(paths, manifest, "a") == paths.get("a"));
-      CHECK_THROWS_AS(interpretPath(paths, manifest, "x"), BuildError);
-      CHECK_THROWS_AS(interpretPath(paths, manifest, "other"), BuildError);
+      CHECK(interpretPath(paths, indexed_manifest, "a") == paths.get("a"));
+      CHECK_THROWS_AS(interpretPath(paths, indexed_manifest, "x"), BuildError);
+      CHECK_THROWS_AS(interpretPath(paths, indexed_manifest, "other"), BuildError);
     }
 
     SECTION("^") {
       CHECK_THROWS_AS(
-          interpretPath(paths, manifest, "fancy_schmanzy^"), BuildError);
-      CHECK(interpretPath(paths, manifest, "other^") == paths.get("foo"));
+          interpretPath(paths, indexed_manifest, "fancy_schmanzy^"), BuildError);
+      CHECK(interpretPath(paths, indexed_manifest, "other^") == paths.get("foo"));
       CHECK_THROWS_AS(
-          interpretPath(paths, manifest, "a^"), BuildError);  // No out edge
-      CHECK(interpretPath(paths, manifest, "hehe^") == paths.get("hej"));
+          interpretPath(paths, indexed_manifest, "a^"), BuildError);  // No out edge
+      CHECK(interpretPath(paths, indexed_manifest, "hehe^") == paths.get("hej"));
       CHECK(
-          interpretPath(paths, manifest, "implicit_input^") ==
+          interpretPath(paths, indexed_manifest, "implicit_input^") ==
           paths.get("implicit_output"));
       CHECK(
-          interpretPath(paths, manifest, "dependency_input^") ==
+          interpretPath(paths, indexed_manifest, "dependency_input^") ==
           paths.get("dependency_output"));
     }
 
     SECTION("clean") {
       try {
-        interpretPath(paths, manifest, "clean");
+        interpretPath(paths, IndexedManifest(Manifest(manifest)), "clean");
         CHECK(!"Should throw");
       } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
@@ -244,7 +244,7 @@ TEST_CASE("Build") {
 
     SECTION("help") {
       try {
-        interpretPath(paths, manifest, "help");
+        interpretPath(paths, IndexedManifest(Manifest(manifest)), "help");
         CHECK(!"Should throw");
       } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
@@ -255,7 +255,8 @@ TEST_CASE("Build") {
 
   SECTION("interpretPath") {
     SECTION("Empty") {
-      CHECK(interpretPaths(paths, manifest, 0, nullptr).empty());
+      CHECK(interpretPaths(
+          paths, IndexedManifest(Manifest(manifest)), 0, nullptr).empty());
     }
 
     SECTION("Paths") {
@@ -267,7 +268,8 @@ TEST_CASE("Build") {
       std::string b = "b";
       char *in[] = { &a[0], &b[0] };
       const std::vector<Path> out = { paths.get("a"), paths.get("b") };
-      CHECK(interpretPaths(paths, manifest, 2, in) == out);
+      CHECK(interpretPaths(
+          paths, IndexedManifest(Manifest(manifest)), 2, in) == out);
     }
   }
 

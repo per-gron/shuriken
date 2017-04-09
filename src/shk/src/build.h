@@ -21,15 +21,17 @@ namespace shk {
  * Get the Path to a given output file for a step in the manifest. This handles
  * the ^ command line interface syntax.
  */
-Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
-    throw(BuildError);
+Path interpretPath(
+    Paths &paths,
+    const IndexedManifest &manifest,
+    std::string &&path) throw(BuildError);
 
 /**
  * Takes command line arguments and calls interpretPath on each of them.
  */
 std::vector<Path> interpretPaths(
     Paths &paths,
-    const Manifest &manifest,
+    const IndexedManifest &manifest,
     int argc,
     char *argv[]) throw(BuildError);
 
@@ -154,8 +156,7 @@ struct BuildCommandParameters {
       BuildStatus &build_status,
       InvocationLog &invocation_log,
       const Invocations &invocations,
-      const Manifest &manifest,
-      const StepHashes &step_hashes,
+      const IndexedManifest &manifest,
       Build &build)
       : clock(clock),
         file_system(file_system),
@@ -164,7 +165,6 @@ struct BuildCommandParameters {
         invocations(invocations),
         invocation_log(invocation_log),
         manifest(manifest),
-        step_hashes(step_hashes),
         build(build) {}
 
   const Clock &clock;
@@ -173,8 +173,7 @@ struct BuildCommandParameters {
   BuildStatus &build_status;
   const Invocations &invocations;
   InvocationLog &invocation_log;
-  const Manifest &manifest;
-  const StepHashes &step_hashes;
+  const IndexedManifest &manifest;
   Build &build;
   /**
    * The number of commands that have been run as part of the build, excluding
@@ -206,8 +205,7 @@ std::vector<StepIndex> rootSteps(
  * Uses defaults or the root steps.
  */
 std::vector<StepIndex> computeStepsToBuild(
-    const Manifest &manifest,
-    const OutputFileMap &output_file_map,
+    const IndexedManifest &manifest,
     const std::vector<Path> &specified_outputs) throw(BuildError);
 
 /**
@@ -220,10 +218,8 @@ std::string cycleErrorMessage(const std::vector<Path> &cycle);
  * Create a Build object suitable for use as a starting point for the build.
  */
 Build computeBuild(
-    const StepHashes &step_hashes,
     const Invocations &invocations,
-    const OutputFileMap &output_file_map,
-    const Manifest &manifest,
+    const IndexedManifest &manifest,
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError);
 

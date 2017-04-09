@@ -21,7 +21,7 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
   const auto step_indices = computeStepsToBuild(
       params.paths, params.indexed_manifest, argc, argv);
 
-  for (const auto step : params.indexed_manifest.manifest.steps) {
+  for (const auto step : params.indexed_manifest.steps) {
     if (step.phony()) {
       continue;
     }

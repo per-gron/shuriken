@@ -7,8 +7,10 @@
 
 namespace shk {
 
-Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
-    throw(BuildError) {
+Path interpretPath(
+    Paths &paths,
+    const IndexedManifest &manifest,
+    std::string &&path) throw(BuildError) {
   const bool input = !path.empty() && path[path.size() - 1] == '^';
   if (input) {
     path.resize(path.size() - 1);
@@ -52,7 +54,7 @@ Path interpretPath(Paths &paths, const Manifest &manifest, std::string &&path)
 
 std::vector<Path> interpretPaths(
     Paths &paths,
-    const Manifest &manifest,
+    const IndexedManifest &manifest,
     int argc,
     char *argv[]) throw(BuildError) {
   std::vector<Path> targets;
@@ -64,15 +66,13 @@ std::vector<Path> interpretPaths(
 
 std::vector<StepIndex> computeStepsToBuild(
     Paths &paths,
-    const IndexedManifest &indexed_manifest,
+    const IndexedManifest &manifest,
     int argc,
     char *argv[0]) throw(BuildError) {
   const auto specified_outputs = interpretPaths(
-      paths, indexed_manifest.manifest, argc, argv);
+      paths, manifest, argc, argv);
   return detail::computeStepsToBuild(
-      indexed_manifest.manifest,
-      indexed_manifest.output_file_map,
-      specified_outputs);
+      manifest, specified_outputs);
 }
 
 namespace detail {
@@ -149,15 +149,16 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
 }
 
 std::vector<StepIndex> computeStepsToBuild(
-    const Manifest &manifest,
-    const OutputFileMap &output_file_map,
+    const IndexedManifest &manifest,
     const std::vector<Path> &specified_outputs) throw(BuildError) {
   if (!specified_outputs.empty()) {
-    return computeStepsToBuildFromPaths(specified_outputs, output_file_map);
+    return computeStepsToBuildFromPaths(
+        specified_outputs, manifest.output_file_map);
   } else if (!manifest.defaults.empty()) {
-    return computeStepsToBuildFromPaths(manifest.defaults, output_file_map);
+    return computeStepsToBuildFromPaths(
+        manifest.defaults, manifest.output_file_map);
   } else {
-    return rootSteps(manifest.steps, output_file_map);
+    return rootSteps(manifest.steps, manifest.output_file_map);
   }
 }
 
@@ -217,12 +218,12 @@ std::string cycleErrorMessage(const std::vector<Path> &cycle) {
  */
 template<typename Callback>
 void visitStepInputs(
-    const StepHashes &step_hashes,
     const Invocations &invocations,
-    const Manifest &manifest,
+    const IndexedManifest &manifest,
     StepIndex idx,
     Callback &&callback) {
-  const auto invocation_it = invocations.entries.find(step_hashes[idx]);
+  const auto invocation_it = invocations.entries.find(
+      manifest.step_hashes[idx]);
   if (invocation_it != invocations.entries.end()) {
     // There is an entry for this step in the invocation log. Use the real
     // inputs from the last invocation rather than the ones specified in the
@@ -250,10 +251,8 @@ void visitStepInputs(
  * Recursive helper for computeBuild. Implements the DFS traversal.
  */
 void visitStep(
-    const Manifest &manifest,
-    const StepHashes &step_hashes,
+    const IndexedManifest &manifest,
     const Invocations &invocations,
-    const OutputFileMap &output_file_map,
     Build &build,
     std::vector<Path> &cycle,
     StepIndex idx) throw(BuildError) {
@@ -270,13 +269,12 @@ void visitStep(
 
   step_node.currently_visited = true;
   visitStepInputs(
-      step_hashes,
       invocations,
       manifest,
       idx,
       [&](const Path &input) {
-        const auto it = output_file_map.find(input);
-        if (it == output_file_map.end()) {
+        const auto it = manifest.output_file_map.find(input);
+        if (it == manifest.output_file_map.end()) {
           // This input is not an output of some other build step.
           return;
         }
@@ -289,9 +287,7 @@ void visitStep(
         cycle.push_back(input);
         visitStep(
             manifest,
-            step_hashes,
             invocations,
-            output_file_map,
             build,
             cycle,
             dependency_idx);
@@ -301,10 +297,8 @@ void visitStep(
 }
 
 Build computeBuild(
-    const StepHashes &step_hashes,
     const Invocations &invocations,
-    const OutputFileMap &output_file_map,
-    const Manifest &manifest,
+    const IndexedManifest &manifest,
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError) {
   Build build;
@@ -315,9 +309,7 @@ Build computeBuild(
   for (const auto step_idx : steps_to_build) {
     visitStep(
         manifest,
-        step_hashes,
         invocations,
-        output_file_map,
         build,
         cycle,
         step_idx);
@@ -597,7 +589,7 @@ void commandDone(
       // immediately report the step as clean regardless of what it depends on.
 
       params.invocation_log.ranCommand(
-          params.step_hashes[step_idx],
+          params.manifest.step_hashes[step_idx],
           std::move(result.output_files),
           std::move(result.input_files));
     }
@@ -608,7 +600,7 @@ void commandDone(
         !outputsWereChanged(
             params.file_system,
             params.invocations,
-            params.step_hashes[step_idx])) {
+            params.manifest.step_hashes[step_idx])) {
       // TODO(peck): Mark this step as clean
       assert(!"Not implemented");
     } else {
@@ -660,7 +652,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   const auto &step = params.manifest.steps[step_idx];
   params.build.ready_steps.pop_back();
 
-  const auto &step_hash = params.step_hashes[step_idx];
+  const auto &step_hash = params.manifest.step_hashes[step_idx];
   deleteOldOutputs(
       params.file_system,
       params.invocations,
@@ -745,28 +737,28 @@ BuildResult build(
     InvocationLog &invocation_log,
     size_t failures_allowed,
     const std::vector<Path> &specified_outputs,
-    const IndexedManifest &indexed_manifest,
+    const IndexedManifest &manifest,
     const Invocations &invocations) throw(IoError, BuildError) {
-  const auto &step_hashes = indexed_manifest.step_hashes;
-  const auto &output_file_map = indexed_manifest.output_file_map;
-  const auto &manifest = indexed_manifest.manifest;
 
   auto steps_to_build = detail::computeStepsToBuild(
-      manifest, output_file_map, specified_outputs);
+      manifest, specified_outputs);
 
   auto build = detail::computeBuild(
-      step_hashes,
       invocations,
-      output_file_map,
       manifest,
       failures_allowed,
       std::move(steps_to_build));
 
   const auto clean_steps = detail::computeCleanSteps(
-      clock, file_system, invocation_log, invocations, step_hashes, build);
+      clock,
+      file_system,
+      invocation_log,
+      invocations,
+      manifest.step_hashes,
+      build);
 
   const auto discarded_steps = detail::discardCleanSteps(
-      indexed_manifest.manifest.steps, clean_steps, build);
+      manifest.steps, clean_steps, build);
 
   const auto build_status = make_build_status(
       countStepsToBuild(manifest.steps, build) - discarded_steps);
@@ -779,7 +771,6 @@ BuildResult build(
       invocation_log,
       invocations,
       manifest,
-      step_hashes,
       build);
   detail::enqueueBuildCommands(params);
 

@@ -36,6 +36,9 @@ StepHashes computeStepHashes(const std::vector<Step> &steps) {
 IndexedManifest::IndexedManifest(Manifest &&manifest)
     : output_file_map(detail::computeOutputFileMap(manifest.steps)),
       step_hashes(detail::computeStepHashes(manifest.steps)),
-      manifest(std::move(manifest)) {}
+      steps(std::move(manifest.steps)),
+      defaults(std::move(manifest.defaults)),
+      pools(std::move(manifest.pools)),
+      build_dir(std::move(manifest.build_dir)) {}
 
 }  // namespace shk

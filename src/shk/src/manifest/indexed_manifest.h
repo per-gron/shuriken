@@ -72,7 +72,15 @@ struct IndexedManifest {
 
   OutputFileMap output_file_map;
   StepHashes step_hashes;
-  Manifest manifest;
+
+  std::vector<Step> steps;
+  std::vector<Path> defaults;
+  std::unordered_map<std::string, int> pools;
+
+  /**
+   * The build directory, used for storing the invocation log.
+   */
+  std::string build_dir;
 };
 
 }  // namespace shk

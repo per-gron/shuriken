@@ -37,7 +37,7 @@ int toolClean(int argc, char *argv[], const ToolParams &params) {
   std::vector<Path> specified_outputs;
   try {
     specified_outputs = interpretPaths(
-        params.paths, params.indexed_manifest.manifest, argc, argv);
+        params.paths, params.indexed_manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;

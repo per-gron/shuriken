@@ -329,8 +329,8 @@ void ShurikenMain::parseManifest(
 
 std::string ShurikenMain::invocationLogPath() const {
   std::string path = ".shk_log";
-  if (!_indexed_manifest.manifest.build_dir.empty()) {
-    path = _indexed_manifest.manifest.build_dir + "/" + path;
+  if (!_indexed_manifest.build_dir.empty()) {
+    path = _indexed_manifest.build_dir + "/" + path;
   }
   return path;
 }
@@ -421,7 +421,7 @@ BuildResult ShurikenMain::runBuild(
   const auto command_runner = _config.dry_run ?
       makeDryRunCommandRunner() :
       makePooledCommandRunner(
-        _indexed_manifest.manifest.pools,
+        _indexed_manifest.pools,
         makeLimitedCommandRunner(
           getLoadAverage,
           _config.max_load_average,
@@ -457,7 +457,7 @@ BuildResult ShurikenMain::runBuild(
 int ShurikenMain::runBuild(int argc, char **argv) {
   std::vector<Path> specified_outputs;
   try {
-    specified_outputs = interpretPaths(_paths, _indexed_manifest.manifest, argc, argv);
+    specified_outputs = interpretPaths(_paths, _indexed_manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;
