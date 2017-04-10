@@ -447,21 +447,21 @@ void deleteBuildProduct(
     FileSystem &file_system,
     const Invocations &invocations,
     InvocationLog &invocation_log,
-    Path path) throw(IoError) {
+    const std::string &path) throw(IoError) {
   try {
-    file_system.unlink(path.original());
+    file_system.unlink(path);
   } catch (const IoError &error) {
     if (error.code != ENOENT) {
       throw IoError(
           std::string("Failed to unlink build product ") +
-          path.original() + ": " + error.what(),
+          path + ": " + error.what(),
           error.code);
     }
   }
 
   // Delete all ancestor directories that have been previously created by
   // builds and that have now become empty.
-  auto dir = path.original();  // Initially point to the created file
+  auto dir = path;  // Initially point to the created file
   for (;;) {
     auto parent = dirname(dir);
     if (parent == dir) {
@@ -542,7 +542,7 @@ void commandDone(
         params.file_system,
         params.invocations,
         params.invocation_log,
-        path);
+        path.original());
   });
   step.rspfile.each([&](const Path &path) {
     if (result.exit_status != ExitStatus::FAILURE) {
@@ -550,7 +550,7 @@ void commandDone(
           params.file_system,
           params.invocations,
           params.invocation_log,
-          path);
+          path.original());
     }
   });
 
@@ -622,7 +622,7 @@ void deleteOldOutputs(
         file_system,
         invocations,
         invocation_log,
-        output.first);
+        output.first.original());
   }
 }
 
@@ -710,7 +710,7 @@ void deleteStaleOutputs(
             file_system,
             invocations,
             invocation_log,
-            output_file.first);
+            output_file.first.original());
       }
       invocation_log.cleanedCommand(entry.first);
     }
