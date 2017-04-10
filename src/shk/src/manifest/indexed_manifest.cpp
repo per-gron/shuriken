@@ -46,12 +46,28 @@ StepHashes computeStepHashes(const std::vector<RawStep> &steps) {
 
 namespace {
 
+Step convertRawStep(RawStep &&raw) {
+  Step::Builder builder;
+  builder.setInputs(std::move(raw.inputs));
+  builder.setImplicitInputs(std::move(raw.implicit_inputs));
+  builder.setDependencies(std::move(raw.dependencies));
+  builder.setOutputs(std::move(raw.outputs));
+  builder.setPoolName(std::move(raw.pool_name));
+  builder.setCommand(std::move(raw.command));
+  builder.setDescription(std::move(raw.description));
+  builder.setGenerator(std::move(raw.generator));
+  builder.setDepfile(std::move(raw.depfile));
+  builder.setRspfile(std::move(raw.rspfile));
+  builder.setRspfileContent(std::move(raw.rspfile_content));
+  return builder.build();
+}
+
 std::vector<Step> convertStepVector(std::vector<RawStep> &&steps) {
   std::vector<Step> ans;
   ans.reserve(steps.size());
 
   for (auto &step : steps) {
-    ans.emplace_back(std::move(step));
+    ans.push_back(convertRawStep(std::move(step)));
   }
 
   return ans;

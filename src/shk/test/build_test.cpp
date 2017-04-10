@@ -274,39 +274,68 @@ TEST_CASE("Build") {
   }
 
   SECTION("rootSteps") {
+    auto single_output = Step::Builder()
+        .setCommand("cmd")
+        .setOutputs({ paths.get("a") })
+        .build();
+
+    auto single_output_b = Step::Builder()
+        .setCommand("cmd")
+        .setOutputs({ paths.get("b") })
+        .build();
+
+    auto multiple_outputs = Step::Builder()
+        .setCommand("cmd")
+        .setOutputs({ paths.get("c"), paths.get("d") })
+        .build();
+
+    auto single_input = Step::Builder()
+        .setCommand("cmd")
+        .setInputs({ paths.get("a") })
+        .build();
+
+    auto single_implicit_input = Step::Builder()
+        .setCommand("cmd")
+        .setImplicitInputs({ paths.get("a") })
+        .build();
+
+    auto single_dependency = Step::Builder()
+        .setCommand("cmd")
+        .setDependencies({ paths.get("a") })
+        .build();
+
     CHECK(rootSteps({}).empty());
-    CHECK(rootSteps(
-        { Step(RawStep(single_output)) }) == std::vector<StepIndex>{ 0 });
+    CHECK(rootSteps({ single_output }) == std::vector<StepIndex>{ 0 });
     CHECK(
         rootSteps({
-            Step(RawStep(single_output)),
-            Step(RawStep(single_output_b)) }) ==
+            single_output,
+            single_output_b }) ==
         vec({ 0, 1 }));
     CHECK(
         rootSteps({
-            Step(RawStep(single_output)),
-            Step(RawStep(single_input)) }) ==
+            single_output,
+            single_input }) ==
         std::vector<StepIndex>{ 1 });
     CHECK(
         rootSteps({
-            Step(RawStep(single_output)),
-            Step(RawStep(single_implicit_input)) }) ==
+            single_output,
+            single_implicit_input }) ==
         std::vector<StepIndex>{ 1 });
     CHECK(
         rootSteps({
-            Step(RawStep(single_output)),
-            Step(RawStep(single_dependency)) }) ==
+            single_output,
+            single_dependency }) ==
         std::vector<StepIndex>{ 1 });
     CHECK(
         rootSteps({
-            Step(RawStep(single_dependency)),
-            Step(RawStep(single_output)) }) ==
+            single_dependency,
+            single_output }) ==
         std::vector<StepIndex>{ 0 });
     CHECK(
         rootSteps({
-            Step(RawStep(single_dependency)),
-            Step(RawStep(single_output)),
-            Step(RawStep(multiple_outputs)) }) ==
+            single_dependency,
+            single_output,
+            multiple_outputs }) ==
         (std::vector<StepIndex>{ 0, 2 }));
 
     auto one = Step::Builder()

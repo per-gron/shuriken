@@ -67,7 +67,6 @@ struct Step {
       Optional<Path> &&rspfile,
       std::string &&rspfile_content);
   Step();
-  Step(RawStep &&step);
 
   Builder toBuilder() const;
 
