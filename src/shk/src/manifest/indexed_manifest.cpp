@@ -65,9 +65,7 @@ Step convertRawStep(RawStep &&raw) {
   builder.setDescription(std::move(raw.description));
   builder.setGenerator(std::move(raw.generator));
   builder.setDepfile(std::move(raw.depfile));
-  if (raw.rspfile) {
-    builder.setRspfile(std::string(raw.rspfile->original()));
-  }
+  builder.setRspfile(std::move(raw.rspfile));
   builder.setRspfileContent(std::move(raw.rspfile_content));
   return builder.build();
 }

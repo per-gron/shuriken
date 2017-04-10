@@ -125,8 +125,7 @@ TEST_CASE("RawManifest") {
     CHECK(step.depfile->original() == "b");
     CHECK(step.description == "d");
     CHECK(step.generator);
-    REQUIRE(step.rspfile);
-    CHECK(step.rspfile->original() == "g");
+    CHECK(step.rspfile == "g");
     CHECK(step.rspfile_content == "h");
   }
 
@@ -155,8 +154,7 @@ TEST_CASE("RawManifest") {
         "build out: cat_rsp in\n"
         "  rspfile=out.rsp\n");
 
-    REQUIRE(step.rspfile);
-    CHECK(step.rspfile->original() == "out.rsp");
+    CHECK(step.rspfile == "out.rsp");
     CHECK(step.rspfile_content == "in");
   }
 
@@ -807,8 +805,7 @@ TEST_CASE("RawManifest") {
       CHECK(step.generator);
       REQUIRE(step.depfile);
       CHECK(step.depfile->original() == "new");
-      REQUIRE(step.rspfile);
-      CHECK(step.rspfile->original() == "new");
+      CHECK(step.rspfile == "new");
       CHECK(step.rspfile_content == "new");
     }
   }

@@ -112,7 +112,7 @@ struct ManifestParser {
       step.description = get_binding("description");
       step.generator = to_bool(get_binding("generator"));
       step.depfile = toPathAllowEmpty(get_binding("depfile"));
-      step.rspfile = toPathAllowEmpty(get_binding("rspfile"));
+      step.rspfile = get_binding("rspfile");
       step.rspfile_content = get_binding("rspfile_content");
     }
 

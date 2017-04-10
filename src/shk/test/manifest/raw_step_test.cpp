@@ -23,7 +23,7 @@ TEST_CASE("RawStep") {
     a.command = "cmd";
     a.description = "desc";
     a.depfile = paths.get("dep");
-    a.rspfile = paths.get("rsp");
+    a.rspfile = "rsp";
     a.rspfile_content = "rsp_content";
 
     RawStep b = a;
@@ -100,7 +100,7 @@ TEST_CASE("RawStep") {
 
     SECTION("Rspfile") {
       // The rspfile path is not significant for the build results
-      b.rspfile = paths.get("other");
+      b.rspfile = "other";
       CHECK(a.hash() == b.hash());
     }
 

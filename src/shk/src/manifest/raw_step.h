@@ -95,7 +95,7 @@ struct RawStep {
    * after the build step has finished running. Useful on Windows, where
    * commands have a rather short maximum length.
    */
-  Optional<Path> rspfile;
+  std::string rspfile;
   std::string rspfile_content;
 
   Hash hash() const;
