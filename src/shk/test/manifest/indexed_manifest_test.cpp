@@ -95,6 +95,75 @@ TEST_CASE("IndexedManifest") {
       CHECK(indexed_manifest.steps[0].hash == single_output.hash());
     }
 
+    SECTION("input_path_map") {
+      SECTION("empty") {
+        RawManifest manifest;
+        manifest.steps = { single_output };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+
+        CHECK(indexed_manifest.input_path_map.empty());
+      }
+
+      SECTION("inputs") {
+        RawManifest manifest;
+        manifest.steps = { single_input };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+
+        CHECK(
+            indexed_manifest.input_path_map ==
+            PathToStepMap({ { paths.get("a"), 0 } }));
+      }
+
+      SECTION("implicit_inputs") {
+        RawManifest manifest;
+        manifest.steps = { single_implicit_input };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+
+        CHECK(
+            indexed_manifest.input_path_map ==
+            PathToStepMap({ { paths.get("a"), 0 } }));
+      }
+
+      SECTION("dependencies") {
+        RawManifest manifest;
+        manifest.steps = { single_dependency };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+
+        CHECK(
+            indexed_manifest.input_path_map ==
+            PathToStepMap({ { paths.get("a"), 0 } }));
+      }
+
+      SECTION("shared inputs") {
+        RawManifest manifest;
+        manifest.steps = { single_dependency, single_input };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+
+        CHECK(
+            indexed_manifest.input_path_map ==
+            PathToStepMap({ { paths.get("a"), 0 } }));
+      }
+
+      SECTION("different inputs") {
+        RawStep single_input_b;
+        single_input_b.inputs = { paths.get("b") };
+
+        RawManifest manifest;
+        manifest.steps = { single_dependency, single_input_b };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+
+        CHECK(
+            indexed_manifest.input_path_map ==
+            PathToStepMap({ { paths.get("a"), 0 }, { paths.get("b"), 1 } }));
+      }
+    }
+
     SECTION("inputs") {
       RawManifest manifest;
       manifest.steps = { single_input };

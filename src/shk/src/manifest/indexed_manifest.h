@@ -63,6 +63,12 @@ struct IndexedManifest {
    */
   PathToStepMap output_path_map;
 
+  /**
+   * Map of path => index of a step that has this file as an input. If there are
+   * more than one, the map will contain one of them, chosen arbitrarily.
+   */
+  PathToStepMap input_path_map;
+
   std::vector<Step> steps;
   std::vector<StepIndex> defaults;
   std::unordered_map<std::string, int> pools;

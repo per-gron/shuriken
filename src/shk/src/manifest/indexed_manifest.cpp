@@ -24,6 +24,27 @@ PathToStepMap computeOutputPathMap(
 
 namespace {
 
+PathToStepMap computeInputPathMap(
+    const std::vector<RawStep> &steps) throw(BuildError) {
+  PathToStepMap result;
+
+  auto process = [&](int idx, const std::vector<Path> &paths) {
+    for (const auto path : paths) {
+      result.emplace(path, idx);
+    }
+  };
+
+  for (size_t i = 0; i < steps.size(); i++) {
+    const auto &step = steps[i];
+
+    process(i, step.inputs);
+    process(i, step.implicit_inputs);
+    process(i, step.dependencies);
+  }
+
+  return result;
+}
+
 Step convertRawStep(RawStep &&raw) {
   Step::Builder builder;
   builder.setHash(raw.hash());
@@ -104,6 +125,7 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
 
 IndexedManifest::IndexedManifest(RawManifest &&manifest)
     : output_path_map(detail::computeOutputPathMap(manifest.steps)),
+      input_path_map(computeInputPathMap(manifest.steps)),
       steps(convertStepVector(std::move(manifest.steps))),
       defaults(computeStepsToBuildFromPaths(
           manifest.defaults, output_path_map)),
