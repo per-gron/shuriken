@@ -121,8 +121,7 @@ TEST_CASE("RawManifest") {
         "build result: cat\n");
 
     CHECK(step.command == "a");
-    REQUIRE(step.depfile);
-    CHECK(step.depfile->original() == "b");
+    CHECK(step.depfile == "b");
     CHECK(step.description == "d");
     CHECK(step.generator);
     CHECK(step.rspfile == "g");
@@ -803,8 +802,7 @@ TEST_CASE("RawManifest") {
       CHECK(step.command == "echo result new");
       CHECK(step.description == "Hi new");
       CHECK(step.generator);
-      REQUIRE(step.depfile);
-      CHECK(step.depfile->original() == "new");
+      CHECK(step.depfile == "new");
       CHECK(step.rspfile == "new");
       CHECK(step.rspfile_content == "new");
     }

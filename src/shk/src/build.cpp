@@ -537,13 +537,13 @@ void commandDone(
   // TODO(peck): Validate that the command did not read a file that is an output
   //   of a target that it does not depend on directly or indirectly.
 
-  step.depfile.each([&](const Path &path) {
+  if (!step.depfile.empty()) {
     deleteBuildProduct(
         params.file_system,
         params.invocations,
         params.invocation_log,
-        path.original());
-  });
+        step.depfile);
+  }
   if (!step.rspfile.empty() && result.exit_status != ExitStatus::FAILURE) {
     deleteBuildProduct(
         params.file_system,

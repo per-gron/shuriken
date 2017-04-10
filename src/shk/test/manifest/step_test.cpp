@@ -91,13 +91,13 @@ TEST_CASE("Step") {
 
     SECTION("Depfile") {
       auto a = Step::Builder()
-          .setDepfile(Optional<Path>(paths.get("a")))
+          .setDepfile("a")
           .build();
       auto b = a.toBuilder()
-          .setDepfile(Optional<Path>(paths.get("b")))
+          .setDepfile("b")
           .build();
-      CHECK(a.depfile == paths.get("a"));
-      CHECK(b.depfile == paths.get("b"));
+      CHECK(a.depfile == "a");
+      CHECK(b.depfile == "b");
     }
 
     SECTION("Generator") {

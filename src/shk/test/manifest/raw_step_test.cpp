@@ -22,7 +22,7 @@ TEST_CASE("RawStep") {
     a.pool_name = "pool";
     a.command = "cmd";
     a.description = "desc";
-    a.depfile = paths.get("dep");
+    a.depfile = "dep";
     a.rspfile = "rsp";
     a.rspfile_content = "rsp_content";
 
@@ -81,7 +81,7 @@ TEST_CASE("RawStep") {
 
     SECTION("Depfile") {
       // The depfile path is not significant for the build results
-      b.depfile = paths.get("other");
+      b.depfile = "other";
       CHECK(a.hash() == b.hash());
     }
 

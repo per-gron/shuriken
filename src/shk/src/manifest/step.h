@@ -30,7 +30,7 @@ struct Step {
     Builder &setCommand(std::string &&command);
     Builder &setDescription(std::string &&description);
     Builder &setGenerator(bool &&generator);
-    Builder &setDepfile(Optional<Path> &&depfile);
+    Builder &setDepfile(std::string &&depfile);
     Builder &setRspfile(std::string &&rspfile);
     Builder &setRspfileContent(std::string &&rspfile_content);
 
@@ -44,7 +44,7 @@ struct Step {
     std::string _command;
     std::string _description;
     bool _generator = false;
-    Optional<Path> _depfile;
+    std::string _depfile;
     std::string _rspfile;
     std::string _rspfile_content;
   };
@@ -60,7 +60,7 @@ struct Step {
       std::string &&command,
       std::string &&description,
       bool &&generator,
-      Optional<Path> &&depfile,
+      std::string &&depfile,
       std::string &&rspfile,
       std::string &&rspfile_content);
   Step();
@@ -123,7 +123,7 @@ struct Step {
    * this file, it just removes it immediately after the build step has
    * completed.
    */
-  const Optional<Path> depfile;
+  const std::string depfile;
 
   /**
    * If rspfile is not empty, Shuriken will write rspfile_content to the path

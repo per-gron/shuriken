@@ -111,7 +111,7 @@ struct ManifestParser {
       step.command = get_binding("command", StepEnv::EscapeKind::SHELL_ESCAPE);
       step.description = get_binding("description");
       step.generator = to_bool(get_binding("generator"));
-      step.depfile = toPathAllowEmpty(get_binding("depfile"));
+      step.depfile = get_binding("depfile");
       step.rspfile = get_binding("rspfile");
       step.rspfile_content = get_binding("rspfile_content");
     }
@@ -253,17 +253,6 @@ private:
     *key = _lexer.readIdent("variable name");
     expectToken(_lexer, Lexer::EQUALS);
     _lexer.readVarValue(val);
-  }
-
-  Optional<Path> toPathAllowEmpty(const std::string &str) throw(ParseError) {
-    try {
-      if (str.empty()) {
-        return Optional<Path>();
-      }
-      return Optional<Path>(_paths.get(str));
-    } catch (PathError &error) {
-      _lexer.throwError(error.what());
-    }
   }
 
   Path toPath(const std::string &str) throw(ParseError) {
