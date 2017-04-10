@@ -113,13 +113,13 @@ TEST_CASE("Step") {
 
     SECTION("Rspfile") {
       auto a = Step::Builder()
-          .setRspfile(Optional<Path>(paths.get("a")))
+          .setRspfile("a")
           .build();
       auto b = a.toBuilder()
-          .setRspfile(Optional<Path>(paths.get("b")))
+          .setRspfile("b")
           .build();
-      CHECK(a.rspfile == paths.get("a"));
-      CHECK(b.rspfile == paths.get("b"));
+      CHECK(a.rspfile == "a");
+      CHECK(b.rspfile == "b");
     }
 
     SECTION("RspfileContent") {

@@ -44,7 +44,7 @@ Step::Builder &Step::Builder::setDepfile(Optional<Path> &&depfile) {
   return *this;
 }
 
-Step::Builder &Step::Builder::setRspfile(Optional<Path> &&rspfile) {
+Step::Builder &Step::Builder::setRspfile(std::string &&rspfile) {
   _rspfile = std::move(rspfile);
   return *this;
 }
@@ -78,7 +78,7 @@ Step::Step(
     std::string &&description,
     bool &&generator,
     Optional<Path> &&depfile,
-    Optional<Path> &&rspfile,
+    std::string &&rspfile,
     std::string &&rspfile_content)
     : hash(std::move(hash)),
       dependencies(std::move(dependencies)),
@@ -103,7 +103,7 @@ Step::Builder Step::toBuilder() const {
   builder.setDescription(std::string(description));
   builder.setGenerator(bool(generator));
   builder.setDepfile(Optional<Path>(depfile));
-  builder.setRspfile(Optional<Path>(rspfile));
+  builder.setRspfile(std::string(rspfile));
   builder.setRspfileContent(std::string(rspfile_content));
   return builder;
 }

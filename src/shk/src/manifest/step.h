@@ -31,7 +31,7 @@ struct Step {
     Builder &setDescription(std::string &&description);
     Builder &setGenerator(bool &&generator);
     Builder &setDepfile(Optional<Path> &&depfile);
-    Builder &setRspfile(Optional<Path> &&rspfile);
+    Builder &setRspfile(std::string &&rspfile);
     Builder &setRspfileContent(std::string &&rspfile_content);
 
     Step build();
@@ -45,7 +45,7 @@ struct Step {
     std::string _description;
     bool _generator = false;
     Optional<Path> _depfile;
-    Optional<Path> _rspfile;
+    std::string _rspfile;
     std::string _rspfile_content;
   };
 
@@ -61,7 +61,7 @@ struct Step {
       std::string &&description,
       bool &&generator,
       Optional<Path> &&depfile,
-      Optional<Path> &&rspfile,
+      std::string &&rspfile,
       std::string &&rspfile_content);
   Step();
 
@@ -131,7 +131,7 @@ struct Step {
    * after the build step has finished running. Useful on Windows, where
    * commands have a rather short maximum length.
    */
-  const Optional<Path> rspfile;
+  const std::string rspfile;
   const std::string rspfile_content;
 };
 
