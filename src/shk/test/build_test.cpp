@@ -65,11 +65,6 @@ class MaxCapacityCommandRunner : public CommandRunner {
   CommandRunner &_inner;
 };
 
-std::vector<StepIndex> rootSteps(
-    const std::vector<Step> &steps) {
-  return ::shk::detail::rootSteps(steps, computeOutputFileMap(steps));
-}
-
 std::vector<StepIndex> computeStepsToBuild(
     const RawManifest &manifest,
     std::vector<StepIndex> &&specified_paths = {}) throw(BuildError) {
@@ -290,19 +285,8 @@ TEST_CASE("Build") {
   }
 
   SECTION("rootSteps") {
-    auto single_output = Step::Builder()
+    auto step = Step::Builder()
         .setCommand("cmd")
-        .setOutputs({ paths.get("a") })
-        .build();
-
-    auto single_output_b = Step::Builder()
-        .setCommand("cmd")
-        .setOutputs({ paths.get("b") })
-        .build();
-
-    auto multiple_outputs = Step::Builder()
-        .setCommand("cmd")
-        .setOutputs({ paths.get("c"), paths.get("d") })
         .build();
 
     auto single_dependency = Step::Builder()
@@ -310,39 +294,46 @@ TEST_CASE("Build") {
         .setDependencies({ paths.get("a") })
         .build();
 
-    CHECK(rootSteps({}).empty());
-    CHECK(rootSteps({ single_output }) == std::vector<StepIndex>{ 0 });
+    CHECK(rootSteps({}, {}).empty());
     CHECK(
-        rootSteps({
-            single_output,
-            single_output_b }) ==
-        vec({ 0, 1 }));
-    CHECK(
-        rootSteps({
-            single_output,
-            single_dependency }) ==
-        std::vector<StepIndex>{ 1 });
-    CHECK(
-        rootSteps({
-            single_dependency,
-            single_output }) ==
+        rootSteps({ step }, { { paths.get("a"), 0 } }) ==
         std::vector<StepIndex>{ 0 });
     CHECK(
-        rootSteps({
-            single_dependency,
-            single_output,
-            multiple_outputs }) ==
+        rootSteps(
+            { step, step },
+            { { paths.get("a"), 0 }, { paths.get("b"), 1 } }) ==
+        vec({ 0, 1 }));
+    CHECK(
+        rootSteps(
+            { step, single_dependency },
+            { { paths.get("a"), 0 } }) ==
+        std::vector<StepIndex>{ 1 });
+    CHECK(
+        rootSteps(
+            { single_dependency, step },
+            { { paths.get("a"), 1 } }) ==
+        std::vector<StepIndex>{ 0 });
+    CHECK(
+        rootSteps(
+            { single_dependency, step, step },
+            {
+                { paths.get("a"), 1 },
+                { paths.get("c"), 2 },
+                { paths.get("d"), 2 }
+            }) ==
         (std::vector<StepIndex>{ 0, 2 }));
 
     auto one = Step::Builder()
-        .setOutputs({ paths.get("a") })
         .setDependencies({ paths.get("b") })
         .build();
     auto two = Step::Builder()
         .setDependencies({ paths.get("a") })
-        .setOutputs({ paths.get("b") })
         .build();
-    CHECK_THROWS_AS(rootSteps({ one, two }), BuildError);  // Cycle
+    CHECK_THROWS_AS(
+        rootSteps(
+            { one, two },
+            { { paths.get("a"), 0 }, { paths.get("b"), 1 } }),
+        BuildError);  // Cycle
   }
 
   SECTION("computeStepsToBuild helper") {

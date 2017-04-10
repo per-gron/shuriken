@@ -3,9 +3,8 @@
 namespace shk {
 namespace detail {
 
-template <typename Step>
-OutputFileMap computeOutputFileMapGeneric(
-    const std::vector<Step> &steps) throw(BuildError) {
+OutputFileMap computeOutputFileMap(
+    const std::vector<RawStep> &steps) throw(BuildError) {
   OutputFileMap result;
 
   for (size_t i = 0; i < steps.size(); i++) {
@@ -19,16 +18,6 @@ OutputFileMap computeOutputFileMapGeneric(
   }
 
   return result;
-}
-
-OutputFileMap computeOutputFileMap(
-    const std::vector<RawStep> &steps) throw(BuildError) {
-  return computeOutputFileMapGeneric(steps);
-}
-
-OutputFileMap computeOutputFileMap(
-    const std::vector<Step> &steps) throw(BuildError) {
-  return computeOutputFileMapGeneric(steps);
 }
 
 }  // namespace detail
@@ -74,7 +63,6 @@ Step convertRawStep(RawStep &&raw) {
   }
   builder.setOutputDirs(std::move(output_dirs));
 
-  builder.setOutputs(std::move(raw.outputs));
   builder.setPoolName(std::move(raw.pool_name));
   builder.setCommand(std::move(raw.command));
   builder.setDescription(std::move(raw.description));

@@ -21,11 +21,6 @@ Step::Builder &Step::Builder::setOutputDirs(
   return *this;
 }
 
-Step::Builder &Step::Builder::setOutputs(std::vector<Path> &&outputs) {
-  _outputs = std::move(outputs);
-  return *this;
-}
-
 Step::Builder &Step::Builder::setPoolName(std::string &&pool_name) {
   _pool_name = std::move(pool_name);
   return *this;
@@ -67,7 +62,6 @@ Step Step::Builder::build() {
       std::move(_hash),
       std::move(_dependencies),
       std::move(_output_dirs),
-      std::move(_outputs),
       std::move(_pool_name),
       std::move(_command),
       std::move(_description),
@@ -81,7 +75,6 @@ Step::Step(
     Hash &&hash,
     std::vector<Path> &&dependencies,
     std::vector<std::string> &&output_dirs,
-    std::vector<Path> &&outputs,
     std::string &&pool_name,
     std::string &&command,
     std::string &&description,
@@ -92,7 +85,6 @@ Step::Step(
     : hash(std::move(hash)),
       dependencies(std::move(dependencies)),
       output_dirs(std::move(output_dirs)),
-      outputs(std::move(outputs)),
       pool_name(std::move(pool_name)),
       command(std::move(command)),
       description(std::move(description)),
@@ -108,7 +100,6 @@ Step::Builder Step::toBuilder() const {
   builder.setHash(Hash(hash));
   builder.setDependencies(std::vector<Path>(dependencies));
   builder.setOutputDirs(std::vector<std::string>(output_dirs));
-  builder.setOutputs(std::vector<Path>(outputs));
   builder.setPoolName(std::string(pool_name));
   builder.setCommand(std::string(command));
   builder.setDescription(std::string(description));

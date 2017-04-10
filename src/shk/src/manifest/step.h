@@ -26,7 +26,6 @@ struct Step {
     Builder &setHash(Hash &&hash);
     Builder &setDependencies(std::vector<Path> &&dependencies);
     Builder &setOutputDirs(std::vector<std::string> &&output_dirs);
-    Builder &setOutputs(std::vector<Path> &&outputs);
     Builder &setPoolName(std::string &&pool_name);
     Builder &setCommand(std::string &&command);
     Builder &setDescription(std::string &&description);
@@ -41,7 +40,6 @@ struct Step {
     Hash _hash;
     std::vector<Path> _dependencies;
     std::vector<std::string> _output_dirs;
-    std::vector<Path> _outputs;
     std::string _pool_name;
     std::string _command;
     std::string _description;
@@ -58,7 +56,6 @@ struct Step {
       Hash &&hash,
       std::vector<Path> &&dependencies,
       std::vector<std::string> &&output_dirs,
-      std::vector<Path> &&outputs,
       std::string &&pool_name,
       std::string &&command,
       std::string &&description,
@@ -88,14 +85,6 @@ struct Step {
    * invoking the command.
    */
   const std::vector<std::string> output_dirs;
-
-  /**
-   * Output files, as specified in the manifest. These are used as names for
-   * targets, to deduce the dependencies between different build steps and to
-   * make sure that the directory where the outputs should live exists before
-   * the command is invoked.
-   */
-  const std::vector<Path> outputs;
 
   const std::string pool_name;
 

@@ -44,13 +44,6 @@ namespace detail {
 OutputFileMap computeOutputFileMap(
     const std::vector<RawStep> &steps) throw(BuildError);
 
-/**
- * Throws BuildError if there exists an output file that more than one step
- * generates.
- */
-OutputFileMap computeOutputFileMap(
-    const std::vector<Step> &steps) throw(BuildError);
-
 }  // namespace detail
 
 /**

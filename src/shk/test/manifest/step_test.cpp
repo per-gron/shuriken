@@ -56,17 +56,6 @@ TEST_CASE("Step") {
       CHECK(b.output_dirs == std::vector<std::string>{ "o2" });
     }
 
-    SECTION("Outputs") {
-      auto a = Step::Builder()
-          .setOutputs({ paths.get("input") })
-          .build();
-      auto b = a.toBuilder()
-          .setOutputs({})
-          .build();
-      CHECK(a.outputs == std::vector<Path>{ paths.get("input") });
-      CHECK(b.outputs == std::vector<Path>{});
-    }
-
     SECTION("PoolName") {
       auto a = Step::Builder()
           .setPoolName("a")
