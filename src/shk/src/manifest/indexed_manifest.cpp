@@ -84,12 +84,29 @@ std::vector<Step> convertStepVector(std::vector<RawStep> &&steps) {
   return ans;
 }
 
+std::vector<StepIndex> computeStepsToBuildFromPaths(
+    const std::vector<Path> &paths,
+    const OutputFileMap &output_file_map) throw(BuildError) {
+  std::vector<StepIndex> result;
+  for (const auto &default_path : paths) {
+    const auto it = output_file_map.find(default_path);
+    if (it == output_file_map.end()) {
+      throw BuildError(
+          "Specified target does not exist: " + default_path.original());
+    }
+    // This may result in duplicate values in result, which is ok
+    result.push_back(it->second);
+  }
+  return result;
+}
+
 }  // anonymous namespace
 
 IndexedManifest::IndexedManifest(RawManifest &&manifest)
     : output_file_map(detail::computeOutputFileMap(manifest.steps)),
       steps(convertStepVector(std::move(manifest.steps))),
-      defaults(std::move(manifest.defaults)),
+      defaults(computeStepsToBuildFromPaths(
+          manifest.defaults, output_file_map)),
       pools(std::move(manifest.pools)),
       build_dir(std::move(manifest.build_dir)) {}
 

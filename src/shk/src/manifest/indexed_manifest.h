@@ -66,7 +66,7 @@ struct IndexedManifest {
   OutputFileMap output_file_map;
 
   std::vector<Step> steps;
-  std::vector<Path> defaults;
+  std::vector<StepIndex> defaults;
   std::unordered_map<std::string, int> pools;
 
   /**

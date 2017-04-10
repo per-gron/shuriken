@@ -113,35 +113,13 @@ std::vector<StepIndex> rootSteps(
   return result;
 }
 
-/**
- * Compute indices of steps to build from a list of output paths. Helper for
- * computeStepsToBuild, used both for defaults specified in the manifest and
- * paths specified from the command line.
- */
-std::vector<StepIndex> computeStepsToBuildFromPaths(
-    const std::vector<Path> &paths,
-    const OutputFileMap &output_file_map) throw(BuildError) {
-  std::vector<StepIndex> result;
-  for (const auto &default_path : paths) {
-    const auto it = output_file_map.find(default_path);
-    if (it == output_file_map.end()) {
-      throw BuildError(
-          "Specified target does not exist: " + default_path.original());
-    }
-    // This may result in duplicate values in result, which is ok
-    result.push_back(it->second);
-  }
-  return result;
-}
-
 std::vector<StepIndex> computeStepsToBuild(
     const IndexedManifest &manifest,
     std::vector<StepIndex> &&specified_steps) throw(BuildError) {
   if (!specified_steps.empty()) {
     return specified_steps;
   } else if (!manifest.defaults.empty()) {
-    return computeStepsToBuildFromPaths(
-        manifest.defaults, manifest.output_file_map);
+    return manifest.defaults;
   } else {
     return rootSteps(manifest.steps, manifest.output_file_map);
   }

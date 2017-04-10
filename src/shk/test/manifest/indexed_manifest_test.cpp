@@ -128,6 +128,37 @@ TEST_CASE("IndexedManifest") {
           std::vector<Path>{ paths.get("a") });
     }
 
+    SECTION("defaults") {
+      SECTION("empty") {
+        RawManifest manifest;
+        manifest.steps = { single_output };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+        CHECK(indexed_manifest.defaults.empty());
+      }
+
+      SECTION("one") {
+        RawManifest manifest;
+        manifest.steps = { single_output, single_output_b };
+        manifest.defaults = { paths.get("b") };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+        REQUIRE(indexed_manifest.defaults.size() == 1);
+        CHECK(indexed_manifest.defaults[0] == 1);
+      }
+
+      SECTION("two") {
+        RawManifest manifest;
+        manifest.steps = { single_output, single_output_b };
+        manifest.defaults = { paths.get("b"), paths.get("a") };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+        REQUIRE(indexed_manifest.defaults.size() == 2);
+        CHECK(indexed_manifest.defaults[0] == 1);
+        CHECK(indexed_manifest.defaults[1] == 0);
+      }
+    }
+
     SECTION("output dirs") {
       SECTION("current working directory") {
         RawStep step;
