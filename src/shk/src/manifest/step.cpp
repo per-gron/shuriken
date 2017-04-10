@@ -61,21 +61,18 @@ Step::Builder &Step::Builder::setRspfileContent(std::string &&rspfile_content) {
 
 
 Step Step::Builder::build() {
-  Step step;
-
-  step.inputs = std::move(_inputs);
-  step.implicit_inputs = std::move(_implicit_inputs);
-  step.dependencies = std::move(_dependencies);
-  step.outputs = std::move(_outputs);
-  step.pool_name = std::move(_pool_name);
-  step.command = std::move(_command);
-  step.description = std::move(_description);
-  step.generator = std::move(_generator);
-  step.depfile = std::move(_depfile);
-  step.rspfile = std::move(_rspfile);
-  step.rspfile_content = std::move(_rspfile_content);
-
-  return step;
+  return Step(
+      std::move(_inputs),
+      std::move(_implicit_inputs),
+      std::move(_dependencies),
+      std::move(_outputs),
+      std::move(_pool_name),
+      std::move(_command),
+      std::move(_description),
+      std::move(_generator),
+      std::move(_depfile),
+      std::move(_rspfile),
+      std::move(_rspfile_content));
 }
 
 Step::Step(
@@ -116,6 +113,22 @@ Step::Step(RawStep &&raw_step)
       depfile(raw_step.depfile),
       rspfile(raw_step.rspfile),
       rspfile_content(std::move(raw_step.rspfile_content)) {}
+
+Step::Builder Step::toBuilder() const {
+  Builder builder;
+  builder.setInputs(std::vector<Path>(inputs));
+  builder.setImplicitInputs(std::vector<Path>(implicit_inputs));
+  builder.setDependencies(std::vector<Path>(dependencies));
+  builder.setOutputs(std::vector<Path>(outputs));
+  builder.setPoolName(std::string(pool_name));
+  builder.setCommand(std::string(command));
+  builder.setDescription(std::string(description));
+  builder.setGenerator(bool(generator));
+  builder.setDepfile(Optional<Path>(depfile));
+  builder.setRspfile(Optional<Path>(rspfile));
+  builder.setRspfileContent(std::string(rspfile_content));
+  return builder;
+}
 
 Hash Step::hash() const {
   Hash hash;

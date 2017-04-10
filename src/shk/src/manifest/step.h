@@ -69,12 +69,14 @@ struct Step {
   Step();
   Step(RawStep &&step);
 
+  Builder toBuilder() const;
+
   /**
    * Input files, as specified in the manifest. These, together with the
    * implicit dependencies are files that the build step is expected to read
    * from directly.
    */
-  std::vector<Path> inputs;
+  const std::vector<Path> inputs;
 
   /**
    * Input files, as specified in the manifest. Like inputs, but the implicit

@@ -309,12 +309,14 @@ TEST_CASE("Build") {
             Step(RawStep(multiple_outputs)) }) ==
         (std::vector<StepIndex>{ 0, 2 }));
 
-    Step one;
-    one.outputs = { paths.get("a") };
-    one.inputs = { paths.get("b") };
-    Step two;
-    two.inputs = { paths.get("a") };
-    two.outputs = { paths.get("b") };
+    auto one = Step::Builder()
+        .setOutputs({ paths.get("a") })
+        .setInputs({ paths.get("b") })
+        .build();
+    auto two = Step::Builder()
+        .setInputs({ paths.get("a") })
+        .setOutputs({ paths.get("b") })
+        .build();
     CHECK_THROWS_AS(rootSteps({ one, two }), BuildError);  // Cycle
   }
 
