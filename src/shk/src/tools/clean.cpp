@@ -34,9 +34,9 @@ namespace shk {
  * tracking code of the build system, used when cleaning only certain targets.
  */
 int toolClean(int argc, char *argv[], const ToolParams &params) {
-  std::vector<Path> specified_outputs;
+  std::vector<StepIndex> specified_steps;
   try {
-    specified_outputs = interpretPaths(
+    specified_steps = interpretPaths(
         params.paths, params.indexed_manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
@@ -67,7 +67,7 @@ int toolClean(int argc, char *argv[], const ToolParams &params) {
         },
         invocation_log,
         1,
-        specified_outputs,
+        std::move(specified_steps),
         params.indexed_manifest,
         params.invocations);
 
@@ -91,7 +91,7 @@ int toolClean(int argc, char *argv[], const ToolParams &params) {
     return 1;
   }
 
-  if (specified_outputs.empty()) {
+  if (specified_steps.empty()) {
     // Clean up the invocation log only if we're cleaning everything
     try {
       // Use cleaning_file_system to make sure the file is counted

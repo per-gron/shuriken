@@ -72,9 +72,9 @@ std::vector<StepIndex> rootSteps(
 
 std::vector<StepIndex> computeStepsToBuild(
     const RawManifest &manifest,
-    const std::vector<Path> &specified_outputs = {}) throw(BuildError) {
+    std::vector<StepIndex> &&specified_paths = {}) throw(BuildError) {
   return ::shk::detail::computeStepsToBuild(
-      IndexedManifest(RawManifest(manifest)), specified_outputs);
+      IndexedManifest(RawManifest(manifest)), std::move(specified_paths));
 }
 
 std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
@@ -211,25 +211,38 @@ TEST_CASE("Build") {
 
     auto indexed_manifest = IndexedManifest(RawManifest(manifest));
 
+    const auto &steps = manifest.steps;
+
     SECTION("normal (non-^)") {
-      CHECK(interpretPath(paths, indexed_manifest, "a") == paths.get("a"));
+      CHECK(
+          steps[interpretPath(paths, indexed_manifest, "a")].hash() ==
+          single_output.hash());
       CHECK_THROWS_AS(interpretPath(paths, indexed_manifest, "x"), BuildError);
-      CHECK_THROWS_AS(interpretPath(paths, indexed_manifest, "other"), BuildError);
+      CHECK_THROWS_AS(
+          interpretPath(paths, indexed_manifest, "other"), BuildError);
     }
 
     SECTION("^") {
       CHECK_THROWS_AS(
-          interpretPath(paths, indexed_manifest, "fancy_schmanzy^"), BuildError);
-      CHECK(interpretPath(paths, indexed_manifest, "other^") == paths.get("foo"));
-      CHECK_THROWS_AS(
-          interpretPath(paths, indexed_manifest, "a^"), BuildError);  // No out edge
-      CHECK(interpretPath(paths, indexed_manifest, "hehe^") == paths.get("hej"));
+          interpretPath(paths, indexed_manifest, "fancy_schmanzy^"),
+          BuildError);
       CHECK(
-          interpretPath(paths, indexed_manifest, "implicit_input^") ==
-          paths.get("implicit_output"));
+          steps[interpretPath(paths, indexed_manifest, "other^")].hash() ==
+          other_input.hash());
+      CHECK(  // No out edge
+          steps[interpretPath(paths, indexed_manifest, "a^")].hash() ==
+          single_input.hash());
       CHECK(
-          interpretPath(paths, indexed_manifest, "dependency_input^") ==
-          paths.get("dependency_output"));
+          steps[interpretPath(paths, indexed_manifest, "hehe^")].hash() ==
+          multiple_outputs.hash());
+      CHECK(
+          steps[interpretPath(
+              paths, indexed_manifest, "implicit_input^")].hash() ==
+          implicit_input.hash());
+      CHECK(
+          steps[interpretPath(
+              paths, indexed_manifest, "dependency_input^")].hash() ==
+          dependency.hash());
     }
 
     SECTION("clean") {
@@ -268,8 +281,11 @@ TEST_CASE("Build") {
       std::string b = "b";
       char *in[] = { &a[0], &b[0] };
       const std::vector<Path> out = { paths.get("a"), paths.get("b") };
-      CHECK(interpretPaths(
-          paths, IndexedManifest(RawManifest(manifest)), 2, in) == out);
+      CHECK(
+          interpretPaths(
+              paths,
+              IndexedManifest(RawManifest(manifest)), 2, in) ==
+          std::vector<StepIndex>({ 0, 1 }));
     }
   }
 
@@ -374,16 +390,15 @@ TEST_CASE("Build") {
     SECTION("specified_outputs") {
       manifest.steps = { single_output_b, multiple_outputs };
 
-      CHECK(computeStepsToBuild(manifest, { paths.get("b") }) == vec({0}));
-      CHECK(computeStepsToBuild(manifest, { paths.get("c") }) == vec({1}));
-      CHECK(computeStepsToBuild(manifest, { paths.get("d") }) == vec({1}));
+      CHECK(computeStepsToBuild(manifest, { 0 }) == vec({0}));
+      CHECK(computeStepsToBuild(manifest, { 1 }) == vec({1}));
 
       // Duplicates are ok. We could deduplicate but that would just be an
       // unnecessary expense.
-      CHECK(computeStepsToBuild(manifest, { paths.get("d"), paths.get("c") }) ==
+      CHECK(computeStepsToBuild(manifest, { 1, 1 }) ==
           vec({1, 1}));
 
-      CHECK(computeStepsToBuild(manifest, { paths.get("b"), paths.get("c") }) ==
+      CHECK(computeStepsToBuild(manifest, { 0, 1 }) ==
           vec({0, 1}));
     }
 

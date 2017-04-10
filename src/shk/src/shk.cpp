@@ -197,7 +197,7 @@ struct ShurikenMain {
    * and for rebuilding the manifest.
    */
   BuildResult runBuild(
-      const std::vector<Path> &specified_outputs) throw(BuildError, IoError);
+      std::vector<StepIndex> &&specified_steps) throw(BuildError, IoError);
 
  private:
   const BuildConfig _config;
@@ -245,13 +245,14 @@ void usage(const BuildConfig &config) {
 bool ShurikenMain::rebuildManifest(const char *input_file, std::string *err) {
   const auto path = _paths.get(input_file);
 
-  if (_indexed_manifest.output_file_map.count(path) == 0) {
+  auto manifest_step_index_it = _indexed_manifest.output_file_map.find(path);
+  if (manifest_step_index_it == _indexed_manifest.output_file_map.end()) {
     // No rule generates the manifest file. There is nothing to do.
     return false;
   }
 
   try {
-    const auto result = runBuild({ path });
+    const auto result = runBuild({ manifest_step_index_it->second });
     switch (result) {
     case BuildResult::NO_WORK_TO_DO:
       return false;
@@ -417,7 +418,7 @@ bool ShurikenMain::openInvocationLog() {
 }
 
 BuildResult ShurikenMain::runBuild(
-    const std::vector<Path> &specified_outputs) throw(BuildError, IoError) {
+    std::vector<StepIndex> &&specified_steps) throw(BuildError, IoError) {
   const auto command_runner = _config.dry_run ?
       makeDryRunCommandRunner() :
       makePooledCommandRunner(
@@ -449,15 +450,15 @@ BuildResult ShurikenMain::runBuild(
       },
       *_invocation_log,
       _config.failures_allowed,
-      specified_outputs,
+      std::move(specified_steps),
       _indexed_manifest,
       _invocations);
 }
 
 int ShurikenMain::runBuild(int argc, char **argv) {
-  std::vector<Path> specified_outputs;
+  std::vector<StepIndex> specified_steps;
   try {
-    specified_outputs = interpretPaths(_paths, _indexed_manifest, argc, argv);
+    specified_steps = interpretPaths(_paths, _indexed_manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;
@@ -475,7 +476,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
   }
 
   try {
-    const auto result = runBuild(specified_outputs);
+    const auto result = runBuild(std::move(specified_steps));
 
     switch (result) {
     case BuildResult::NO_WORK_TO_DO:

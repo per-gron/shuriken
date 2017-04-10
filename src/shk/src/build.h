@@ -20,7 +20,7 @@ namespace shk {
  * Get the Path to a given output file for a step in the manifest. This handles
  * the ^ command line interface syntax.
  */
-Path interpretPath(
+StepIndex interpretPath(
     Paths &paths,
     const IndexedManifest &manifest,
     std::string &&path) throw(BuildError);
@@ -28,7 +28,7 @@ Path interpretPath(
 /**
  * Takes command line arguments and calls interpretPath on each of them.
  */
-std::vector<Path> interpretPaths(
+std::vector<StepIndex> interpretPaths(
     Paths &paths,
     const IndexedManifest &manifest,
     int argc,
@@ -195,7 +195,7 @@ std::vector<StepIndex> rootSteps(
     const OutputFileMap &output_file_map) throw(BuildError);
 
 /**
- * Find the steps that should be built. If there are no specified paths, this
+ * Find the steps that should be built. If there are no specified steps, this
  * function will use defaults specified in the manifest, or find the root nodes
  * to build.
  *
@@ -205,7 +205,7 @@ std::vector<StepIndex> rootSteps(
  */
 std::vector<StepIndex> computeStepsToBuild(
     const IndexedManifest &manifest,
-    const std::vector<Path> &specified_outputs) throw(BuildError);
+    std::vector<StepIndex> &&specified_steps) throw(BuildError);
 
 /**
  * Generate a string that describes a cycle, for example "a -> b -> a".
@@ -320,7 +320,7 @@ BuildResult build(
     const MakeBuildStatus &make_build_status,
     InvocationLog &invocation_log,
     size_t failures_allowed,
-    const std::vector<Path> &specified_outputs,
+    std::vector<StepIndex> &&specified_steps,
     const IndexedManifest &indexed_manifest,
     const Invocations &invocations) throw(IoError, BuildError);
 

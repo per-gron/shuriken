@@ -7,7 +7,7 @@
 
 namespace shk {
 
-Path interpretPath(
+StepIndex interpretPath(
     Paths &paths,
     const IndexedManifest &manifest,
     std::string &&path) throw(BuildError) {
@@ -27,16 +27,13 @@ Path interpretPath(
     return false;
   };
 
-  for (const auto &step : manifest.steps) {
+  for (int i = 0; i < manifest.steps.size(); i++) {
+    const auto &step = manifest.steps[i];
     const auto found = input ?
         search(step.dependencies) :
         search(step.outputs);
     if (found) {
-      if (step.outputs.empty()) {
-        throw BuildError("Step with input '" + path + "' has no output");
-      } else {
-        return step.outputs[0];
-      }
+      return i;
     }
   }
 
@@ -50,12 +47,12 @@ Path interpretPath(
   throw BuildError(error);
 }
 
-std::vector<Path> interpretPaths(
+std::vector<StepIndex> interpretPaths(
     Paths &paths,
     const IndexedManifest &manifest,
     int argc,
     char *argv[]) throw(BuildError) {
-  std::vector<Path> targets;
+  std::vector<StepIndex> targets;
   for (int i = 0; i < argc; ++i) {
     targets.push_back(interpretPath(paths, manifest, argv[i]));
   }
@@ -67,10 +64,10 @@ std::vector<StepIndex> computeStepsToBuild(
     const IndexedManifest &manifest,
     int argc,
     char *argv[0]) throw(BuildError) {
-  const auto specified_outputs = interpretPaths(
+  auto specified_outputs = interpretPaths(
       paths, manifest, argc, argv);
   return detail::computeStepsToBuild(
-      manifest, specified_outputs);
+      manifest, std::move(specified_outputs));
 }
 
 namespace detail {
@@ -141,10 +138,9 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
 
 std::vector<StepIndex> computeStepsToBuild(
     const IndexedManifest &manifest,
-    const std::vector<Path> &specified_outputs) throw(BuildError) {
-  if (!specified_outputs.empty()) {
-    return computeStepsToBuildFromPaths(
-        specified_outputs, manifest.output_file_map);
+    std::vector<StepIndex> &&specified_steps) throw(BuildError) {
+  if (!specified_steps.empty()) {
+    return specified_steps;
   } else if (!manifest.defaults.empty()) {
     return computeStepsToBuildFromPaths(
         manifest.defaults, manifest.output_file_map);
@@ -379,7 +375,7 @@ CleanSteps computeCleanSteps(
     const Invocations &invocations,
     const std::vector<Step> &steps,
     const Build &build) throw(IoError) {
-  assert(manifest.steps.size() == build.step_nodes.size());
+  assert(steps.size() == build.step_nodes.size());
 
   CleanSteps result(build.step_nodes.size(), false);
 
@@ -722,12 +718,12 @@ BuildResult build(
     const MakeBuildStatus &make_build_status,
     InvocationLog &invocation_log,
     size_t failures_allowed,
-    const std::vector<Path> &specified_outputs,
+    std::vector<StepIndex> &&specified_steps,
     const IndexedManifest &manifest,
     const Invocations &invocations) throw(IoError, BuildError) {
 
   auto steps_to_build = detail::computeStepsToBuild(
-      manifest, specified_outputs);
+      manifest, std::move(specified_steps));
 
   auto build = detail::computeBuild(
       invocations,
