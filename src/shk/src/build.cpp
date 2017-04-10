@@ -29,9 +29,7 @@ Path interpretPath(
 
   for (const auto &step : manifest.steps) {
     const auto found = input ?
-        (search(step.inputs) ||
-         search(step.implicit_inputs) ||
-         search(step.dependencies)) :
+        search(step.dependencies) :
         search(step.outputs);
     if (found) {
       if (step.outputs.empty()) {
@@ -97,20 +95,13 @@ std::vector<StepIndex> rootSteps(
   // that is in a given step's list of outputs. Such steps are not roots.
   std::vector<bool> roots(steps.size(), true);
 
-  const auto process_inputs = [&](const std::vector<Path> &inputs) {
-    for (const auto &input : inputs) {
+  for (size_t i = 0; i < steps.size(); i++) {
+    for (const auto &input : steps[i].dependencies) {
       const auto it = output_file_map.find(input);
       if (it != output_file_map.end()) {
         roots[it->second] = false;
       }
     }
-  };
-
-  for (size_t i = 0; i < steps.size(); i++) {
-    const auto &step = steps[i];
-    process_inputs(step.inputs);
-    process_inputs(step.implicit_inputs);
-    process_inputs(step.dependencies);
   }
 
   for (size_t i = 0; i < steps.size(); i++) {
@@ -235,15 +226,9 @@ void visitStepInputs(
     }
   } else {
     // There is no entry for this step in the invocation log.
-    const auto process_inputs = [&](const std::vector<Path> &inputs) {
-      for (const auto &input : inputs) {
-        callback(input);
-      }
-    };
-    const auto &step = manifest.steps[idx];
-    process_inputs(step.inputs);
-    process_inputs(step.implicit_inputs);
-    process_inputs(step.dependencies);
+    for (const auto &input : manifest.steps[idx].dependencies) {
+      callback(input);
+    }
   }
 }
 

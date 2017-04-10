@@ -11,15 +11,13 @@ TEST_CASE("Step") {
   InMemoryFileSystem fs;
   Paths paths(fs);
 
-  SECTION("Construct") {
+  SECTION("CopyConstructor") {
     auto a = Step::Builder()
-        .setInputs({ paths.get("input") })
+        .setDependencies({ paths.get("input") })
         .build();
 
-    SECTION("CopyConstructor") {
-      auto b = a;
-      CHECK(a.inputs == b.inputs);
-    }
+    auto b = a;
+    CHECK(a.dependencies == b.dependencies);
   }
 
   SECTION("ToAndFromBuilder") {
@@ -34,28 +32,6 @@ TEST_CASE("Step") {
           .build();
       CHECK(a.hash == Hash());
       CHECK(b.hash == other_hash);
-    }
-
-    SECTION("Inputs") {
-      auto a = Step::Builder()
-          .setInputs({ paths.get("input") })
-          .build();
-      auto b = a.toBuilder()
-          .setInputs({})
-          .build();
-      CHECK(a.inputs == std::vector<Path>{ paths.get("input") });
-      CHECK(b.inputs == std::vector<Path>{});
-    }
-
-    SECTION("ImplicitInputs") {
-      auto a = Step::Builder()
-          .setImplicitInputs({ paths.get("input") })
-          .build();
-      auto b = a.toBuilder()
-          .setImplicitInputs({})
-          .build();
-      CHECK(a.implicit_inputs == std::vector<Path>{ paths.get("input") });
-      CHECK(b.implicit_inputs == std::vector<Path>{});
     }
 
     SECTION("Dependencies") {

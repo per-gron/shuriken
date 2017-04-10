@@ -289,16 +289,6 @@ TEST_CASE("Build") {
         .setOutputs({ paths.get("c"), paths.get("d") })
         .build();
 
-    auto single_input = Step::Builder()
-        .setCommand("cmd")
-        .setInputs({ paths.get("a") })
-        .build();
-
-    auto single_implicit_input = Step::Builder()
-        .setCommand("cmd")
-        .setImplicitInputs({ paths.get("a") })
-        .build();
-
     auto single_dependency = Step::Builder()
         .setCommand("cmd")
         .setDependencies({ paths.get("a") })
@@ -311,16 +301,6 @@ TEST_CASE("Build") {
             single_output,
             single_output_b }) ==
         vec({ 0, 1 }));
-    CHECK(
-        rootSteps({
-            single_output,
-            single_input }) ==
-        std::vector<StepIndex>{ 1 });
-    CHECK(
-        rootSteps({
-            single_output,
-            single_implicit_input }) ==
-        std::vector<StepIndex>{ 1 });
     CHECK(
         rootSteps({
             single_output,
@@ -340,10 +320,10 @@ TEST_CASE("Build") {
 
     auto one = Step::Builder()
         .setOutputs({ paths.get("a") })
-        .setInputs({ paths.get("b") })
+        .setDependencies({ paths.get("b") })
         .build();
     auto two = Step::Builder()
-        .setInputs({ paths.get("a") })
+        .setDependencies({ paths.get("a") })
         .setOutputs({ paths.get("b") })
         .build();
     CHECK_THROWS_AS(rootSteps({ one, two }), BuildError);  // Cycle

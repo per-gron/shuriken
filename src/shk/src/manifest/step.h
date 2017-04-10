@@ -24,8 +24,6 @@ struct Step {
   class Builder {
    public:
     Builder &setHash(Hash &&hash);
-    Builder &setInputs(std::vector<Path> &&inputs);
-    Builder &setImplicitInputs(std::vector<Path> &&implicit_inputs);
     Builder &setDependencies(std::vector<Path> &&dependencies);
     Builder &setOutputs(std::vector<Path> &&outputs);
     Builder &setPoolName(std::string &&pool_name);
@@ -40,8 +38,6 @@ struct Step {
 
    private:
     Hash _hash;
-    std::vector<Path> _inputs;
-    std::vector<Path> _implicit_inputs;
     std::vector<Path> _dependencies;
     std::vector<Path> _outputs;
     std::string _pool_name;
@@ -58,8 +54,6 @@ struct Step {
    */
   Step(
       Hash &&hash,
-      std::vector<Path> &&inputs,
-      std::vector<Path> &&implicit_inputs,
       std::vector<Path> &&dependencies,
       std::vector<Path> &&outputs,
       std::string &&pool_name,
@@ -80,30 +74,9 @@ struct Step {
   const Hash hash{};
 
   /**
-   * Input files, as specified in the manifest. These, together with the
-   * implicit dependencies are files that the build step is expected to read
-   * from directly.
-   */
-  const std::vector<Path> inputs;
-
-  /**
-   * Input files, as specified in the manifest. Like inputs, but the implicit
-   * dependencies are not part of the $in and $in_newline variables. Once the
-   * manifest has been parsed into Steps objects like these, there isn't really
-   * much of a difference between inputs and implicit dependencies.
-   */
-  const std::vector<Path> implicit_inputs;
-
-  /**
-   * Dependencies are paths to targets that generate output files that this
-   * target may depend on. These are different from inputs because they
-   * themselves are often not read by the build step. A common use case for this
-   * is targets that generate headers that other targets may depend on.
-   *
-   * These correspond to "order only" dependencies in the Ninja manifest.
-   *
-   * dependencies and inputs are kept separate because persistent caching cares
-   * about the difference.
+   * A list of indices for steps that must be done and clean before this step
+   * can be run. These correspond to "order only", "implicit inputs" and
+   * "inputs" in a build.ninja manifest.
    */
   const std::vector<Path> dependencies;
 

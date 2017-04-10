@@ -38,9 +38,27 @@ namespace {
 Step convertRawStep(RawStep &&raw) {
   Step::Builder builder;
   builder.setHash(raw.hash());
-  builder.setInputs(std::move(raw.inputs));
-  builder.setImplicitInputs(std::move(raw.implicit_inputs));
-  builder.setDependencies(std::move(raw.dependencies));
+
+  std::vector<Path> dependencies;
+  dependencies.reserve(
+      raw.inputs.size() +
+      raw.implicit_inputs.size() +
+      raw.dependencies.size());
+
+  std::copy(
+      raw.inputs.begin(),
+      raw.inputs.end(),
+      std::back_inserter(dependencies));
+  std::copy(
+      raw.implicit_inputs.begin(),
+      raw.implicit_inputs.end(),
+      std::back_inserter(dependencies));
+  std::copy(
+      raw.dependencies.begin(),
+      raw.dependencies.end(),
+      std::back_inserter(dependencies));
+
+  builder.setDependencies(std::move(dependencies));
   builder.setOutputs(std::move(raw.outputs));
   builder.setPoolName(std::move(raw.pool_name));
   builder.setCommand(std::move(raw.command));

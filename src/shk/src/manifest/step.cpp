@@ -9,16 +9,6 @@ Step::Builder &Step::Builder::setHash(Hash &&hash) {
   return *this;
 }
 
-Step::Builder &Step::Builder::setInputs(std::vector<Path> &&inputs) {
-  _inputs = std::move(inputs);
-  return *this;
-}
-
-Step::Builder &Step::Builder::setImplicitInputs(std::vector<Path> &&implicit_inputs) {
-  _implicit_inputs = std::move(implicit_inputs);
-  return *this;
-}
-
 Step::Builder &Step::Builder::setDependencies(std::vector<Path> &&dependencies) {
   _dependencies = std::move(dependencies);
   return *this;
@@ -68,8 +58,6 @@ Step::Builder &Step::Builder::setRspfileContent(std::string &&rspfile_content) {
 Step Step::Builder::build() {
   return Step(
       std::move(_hash),
-      std::move(_inputs),
-      std::move(_implicit_inputs),
       std::move(_dependencies),
       std::move(_outputs),
       std::move(_pool_name),
@@ -83,8 +71,6 @@ Step Step::Builder::build() {
 
 Step::Step(
     Hash &&hash,
-    std::vector<Path> &&inputs,
-    std::vector<Path> &&implicit_inputs,
     std::vector<Path> &&dependencies,
     std::vector<Path> &&outputs,
     std::string &&pool_name,
@@ -95,8 +81,6 @@ Step::Step(
     Optional<Path> &&rspfile,
     std::string &&rspfile_content)
     : hash(std::move(hash)),
-      inputs(std::move(inputs)),
-      implicit_inputs(std::move(implicit_inputs)),
       dependencies(std::move(dependencies)),
       outputs(std::move(outputs)),
       pool_name(std::move(pool_name)),
@@ -112,8 +96,6 @@ Step::Step() {}
 Step::Builder Step::toBuilder() const {
   Builder builder;
   builder.setHash(Hash(hash));
-  builder.setInputs(std::vector<Path>(inputs));
-  builder.setImplicitInputs(std::vector<Path>(implicit_inputs));
   builder.setDependencies(std::vector<Path>(dependencies));
   builder.setOutputs(std::vector<Path>(outputs));
   builder.setPoolName(std::string(pool_name));

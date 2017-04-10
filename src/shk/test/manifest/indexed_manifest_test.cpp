@@ -70,18 +70,53 @@ TEST_CASE("IndexedManifest") {
   }
 
   SECTION("Constructor") {
-    RawManifest manifest;
-    manifest.steps = { single_output };
+    SECTION("basics") {
+      RawManifest manifest;
+      manifest.steps = { single_output };
 
-    IndexedManifest indexed_manifest(std::move(manifest));
+      IndexedManifest indexed_manifest(std::move(manifest));
 
-    CHECK(indexed_manifest.output_file_map.size() == 1);
-    const auto it = indexed_manifest.output_file_map.find(paths.get("a"));
-    REQUIRE(it != indexed_manifest.output_file_map.end());
-    CHECK(it->second == 0);
+      CHECK(indexed_manifest.output_file_map.size() == 1);
+      const auto it = indexed_manifest.output_file_map.find(paths.get("a"));
+      REQUIRE(it != indexed_manifest.output_file_map.end());
+      CHECK(it->second == 0);
 
-    REQUIRE(indexed_manifest.steps.size() == 1);
-    CHECK(indexed_manifest.steps[0].hash == single_output.hash());
+      REQUIRE(indexed_manifest.steps.size() == 1);
+      CHECK(indexed_manifest.steps[0].hash == single_output.hash());
+    }
+
+    SECTION("inputs") {
+      RawManifest manifest;
+      manifest.steps = { single_input };
+
+      IndexedManifest indexed_manifest(std::move(manifest));
+      REQUIRE(indexed_manifest.steps.size() == 1);
+      CHECK(
+          indexed_manifest.steps[0].dependencies ==
+          std::vector<Path>{ paths.get("a") });
+    }
+
+    SECTION("implicit inputs") {
+      RawManifest manifest;
+      manifest.steps = { single_implicit_input };
+
+      IndexedManifest indexed_manifest(std::move(manifest));
+      REQUIRE(indexed_manifest.steps.size() == 1);
+      CHECK(
+          indexed_manifest.steps[0].dependencies ==
+          std::vector<Path>{ paths.get("a") });
+    }
+
+    SECTION("dependencies") {
+      RawManifest manifest;
+      manifest.steps = { single_dependency };
+
+      IndexedManifest indexed_manifest(std::move(manifest));
+      REQUIRE(indexed_manifest.steps.size() == 1);
+      CHECK(
+          indexed_manifest.steps[0].dependencies ==
+          std::vector<Path>{ paths.get("a") });
+    }
   }
 }
 
