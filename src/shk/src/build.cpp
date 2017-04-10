@@ -18,21 +18,12 @@ StepIndex interpretPath(
 
   const auto p = paths.get(path);
 
-  if (input) {
-    for (int i = 0; i < manifest.steps.size(); i++) {
-      const auto &step = manifest.steps[i];
-
-      for (const auto &path_to_search : step.dependencies) {
-        if (p.isSame(path_to_search)) {
-          return i;
-        }
-      }
-    }
-  } else {
-    auto output_step_it = manifest.output_path_map.find(p);
-    if (output_step_it != manifest.output_path_map.end()) {
-      return output_step_it->second;
-    }
+  const auto &path_map = input ?
+      manifest.input_path_map :
+      manifest.output_path_map;
+  auto output_step_it = path_map.find(p);
+  if (output_step_it != path_map.end()) {
+    return output_step_it->second;
   }
 
   // Not found
