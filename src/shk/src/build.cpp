@@ -223,7 +223,7 @@ void visitStepInputs(
     StepIndex idx,
     Callback &&callback) {
   const auto invocation_it = invocations.entries.find(
-      manifest.step_hashes[idx]);
+      manifest.steps[idx].hash);
   if (invocation_it != invocations.entries.end()) {
     // There is an entry for this step in the invocation log. Use the real
     // inputs from the last invocation rather than the ones specified in the
@@ -392,9 +392,9 @@ CleanSteps computeCleanSteps(
     FileSystem &file_system,
     InvocationLog &invocation_log,
     const Invocations &invocations,
-    const StepHashes &step_hashes,
+    const std::vector<Step> &steps,
     const Build &build) throw(IoError) {
-  assert(step_hashes.size() == build.step_nodes.size());
+  assert(manifest.steps.size() == build.step_nodes.size());
 
   CleanSteps result(build.step_nodes.size(), false);
 
@@ -406,7 +406,7 @@ CleanSteps computeCleanSteps(
     if (!step_node.should_build) {
       continue;
     }
-    const auto &step_hash = step_hashes[i];
+    const auto &step_hash = steps[i].hash;
     result[i] = isClean(
         clock,
         file_system,
@@ -589,7 +589,7 @@ void commandDone(
       // immediately report the step as clean regardless of what it depends on.
 
       params.invocation_log.ranCommand(
-          params.manifest.step_hashes[step_idx],
+          params.manifest.steps[step_idx].hash,
           std::move(result.output_files),
           std::move(result.input_files));
     }
@@ -600,7 +600,7 @@ void commandDone(
         !outputsWereChanged(
             params.file_system,
             params.invocations,
-            params.manifest.step_hashes[step_idx])) {
+            params.manifest.steps[step_idx].hash)) {
       // TODO(peck): Mark this step as clean
       assert(!"Not implemented");
     } else {
@@ -652,7 +652,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   const auto &step = params.manifest.steps[step_idx];
   params.build.ready_steps.pop_back();
 
-  const auto &step_hash = params.manifest.step_hashes[step_idx];
+  const auto &step_hash = params.manifest.steps[step_idx].hash;
   deleteOldOutputs(
       params.file_system,
       params.invocations,
@@ -709,10 +709,13 @@ int countStepsToBuild(const std::vector<Step> &steps, const Build &build) {
 void deleteStaleOutputs(
     FileSystem &file_system,
     InvocationLog &invocation_log,
-    const StepHashes &step_hashes,
+    const std::vector<Step> &steps,
     const Invocations &invocations) throw(IoError) {
-  std::unordered_set<Hash> step_hashes_set(
-      step_hashes.begin(), step_hashes.end());
+  std::unordered_set<Hash> step_hashes_set;
+  step_hashes_set.reserve(steps.size());
+  for (const auto &step : steps) {
+    step_hashes_set.insert(step.hash);
+  }
 
   for (const auto &entry : invocations.entries) {
     if (step_hashes_set.count(entry.first) == 0) {
@@ -754,7 +757,7 @@ BuildResult build(
       file_system,
       invocation_log,
       invocations,
-      manifest.step_hashes,
+      manifest.steps,
       build);
 
   const auto discarded_steps = detail::discardCleanSteps(

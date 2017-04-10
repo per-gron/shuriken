@@ -245,7 +245,7 @@ CleanSteps computeCleanSteps(
     FileSystem &file_system,
     InvocationLog &invocation_log,
     const Invocations &invocations,
-    const StepHashes &step_hashes,
+    const std::vector<Step> &steps,
     const Build &build) throw(IoError);
 
 /**
@@ -305,7 +305,7 @@ using MakeBuildStatus = std::function<
 void deleteStaleOutputs(
     FileSystem &file_system,
     InvocationLog &invocation_log,
-    const StepHashes &step_hashes,
+    const std::vector<Step> &steps,
     const Invocations &invocations) throw(IoError);
 
 /**

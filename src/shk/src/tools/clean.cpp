@@ -50,7 +50,7 @@ int toolClean(int argc, char *argv[], const ToolParams &params) {
     deleteStaleOutputs(
         params.file_system,
         invocation_log,
-        params.indexed_manifest.step_hashes,
+        params.indexed_manifest.steps,
         params.invocations);
   } catch (const IoError &io_error) {
     printf("shk: failed to clean stale outputs: %s\n", io_error.what());

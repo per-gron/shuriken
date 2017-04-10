@@ -467,7 +467,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
     deleteStaleOutputs(
         _file_system,
         *_invocation_log,
-        _indexed_manifest.step_hashes,
+        _indexed_manifest.steps,
         _invocations);
   } catch (const IoError &io_error) {
     printf("shk: failed to clean stale outputs: %s\n", io_error.what());

@@ -13,7 +13,7 @@ namespace shk {
 /**
  * RawManifest objects contain an std::vector<Step>. A StepIndex is an index
  * into that vector, or into a vector of the same length that refers to the same
- * Step objects (for example StepHashes).
+ * Step objects (for example OutputFileMap).
  */
 using StepIndex = size_t;
 
@@ -35,12 +35,6 @@ using StepIndex = size_t;
 using OutputFileMap = std::unordered_map<
     Path, StepIndex, Path::IsSameHash, Path::IsSame>;
 
-/**
- * "Map" of StepIndex => Hash of that step. The hash includes everything about
- * that step but not information about its dependencies.
- */
-using StepHashes = std::vector<Hash>;
-
 namespace detail {
 
 /**
@@ -56,8 +50,6 @@ OutputFileMap computeOutputFileMap(
  */
 OutputFileMap computeOutputFileMap(
     const std::vector<Step> &steps) throw(BuildError);
-
-StepHashes computeStepHashes(const std::vector<RawStep> &steps);
 
 }  // namespace detail
 
@@ -79,7 +71,6 @@ struct IndexedManifest {
   IndexedManifest(RawManifest &&manifest);
 
   OutputFileMap output_file_map;
-  StepHashes step_hashes;
 
   std::vector<Step> steps;
   std::vector<Path> defaults;

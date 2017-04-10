@@ -792,7 +792,7 @@ TEST_CASE("Build") {
           fs,
           log,
           invocations,
-          StepHashes(),
+          {},
           Build()).empty());
     }
 
@@ -807,7 +807,7 @@ TEST_CASE("Build") {
           fs,
           log,
           invocations,
-          computeStepHashes(manifest.steps),
+          IndexedManifest(RawManifest(manifest)).steps,
           build);
 
       REQUIRE(clean_steps.size() == 2);
@@ -827,7 +827,7 @@ TEST_CASE("Build") {
           fs,
           log,
           invocations,
-          computeStepHashes(manifest.steps),
+          IndexedManifest(RawManifest(manifest)).steps,
           build);
 
       REQUIRE(clean_steps.size() == 2);
@@ -846,7 +846,7 @@ TEST_CASE("Build") {
           fs,
           log,
           invocations,
-          computeStepHashes(manifest.steps),
+          IndexedManifest(RawManifest(manifest)).steps,
           build);
     };
 
@@ -1202,7 +1202,7 @@ TEST_CASE("Build") {
       deleteStaleOutputs(
           fs,
           log,
-          indexed_manifest.step_hashes,
+          indexed_manifest.steps,
           log.invocations(paths));
     };
 

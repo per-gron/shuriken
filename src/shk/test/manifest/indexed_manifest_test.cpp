@@ -65,16 +65,6 @@ TEST_CASE("IndexedManifest") {
     }
   }
 
-  SECTION("computeStepHashes") {
-    CHECK(computeStepHashes({}).empty());
-    CHECK(
-        computeStepHashes({ single_output }) ==
-        StepHashes{ single_output.hash() });
-    CHECK(
-        computeStepHashes({ single_output, single_input }) ==
-        (StepHashes{ single_output.hash(), single_input.hash() }));
-  }
-
   SECTION("DefaultConstructor") {
     IndexedManifest indexed_manifest;
   }
@@ -90,7 +80,8 @@ TEST_CASE("IndexedManifest") {
     REQUIRE(it != indexed_manifest.output_file_map.end());
     CHECK(it->second == 0);
 
-    CHECK(indexed_manifest.step_hashes == StepHashes{ single_output.hash() });
+    REQUIRE(indexed_manifest.steps.size() == 1);
+    CHECK(indexed_manifest.steps[0].hash == single_output.hash());
   }
 }
 

@@ -31,23 +31,13 @@ OutputFileMap computeOutputFileMap(
   return computeOutputFileMapGeneric(steps);
 }
 
-StepHashes computeStepHashes(const std::vector<RawStep> &steps) {
-  StepHashes hashes;
-  hashes.reserve(steps.size());
-
-  for (const auto &step : steps) {
-    hashes.push_back(step.hash());
-  }
-
-  return hashes;
-}
-
 }  // namespace detail
 
 namespace {
 
 Step convertRawStep(RawStep &&raw) {
   Step::Builder builder;
+  builder.setHash(raw.hash());
   builder.setInputs(std::move(raw.inputs));
   builder.setImplicitInputs(std::move(raw.implicit_inputs));
   builder.setDependencies(std::move(raw.dependencies));
@@ -77,7 +67,6 @@ std::vector<Step> convertStepVector(std::vector<RawStep> &&steps) {
 
 IndexedManifest::IndexedManifest(RawManifest &&manifest)
     : output_file_map(detail::computeOutputFileMap(manifest.steps)),
-      step_hashes(detail::computeStepHashes(manifest.steps)),
       steps(convertStepVector(std::move(manifest.steps))),
       defaults(std::move(manifest.defaults)),
       pools(std::move(manifest.pools)),
