@@ -71,10 +71,6 @@ struct RawStep {
    */
   std::string description;
 
-  bool phony() const {
-    return command.empty();
-  }
-
   /**
    * It set to true, Shuriken will treat this build step as one that rewrites
    * manifest files. They are treated specially in the following ways:
