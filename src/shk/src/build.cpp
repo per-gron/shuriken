@@ -18,22 +18,20 @@ StepIndex interpretPath(
 
   const auto p = paths.get(path);
 
-  const auto search = [&](const std::vector<Path> &paths_to_search) {
-    for (const auto &path_to_search : paths_to_search) {
-      if (p.isSame(path_to_search)) {
-        return true;
+  if (input) {
+    for (int i = 0; i < manifest.steps.size(); i++) {
+      const auto &step = manifest.steps[i];
+
+      for (const auto &path_to_search : step.dependencies) {
+        if (p.isSame(path_to_search)) {
+          return i;
+        }
       }
     }
-    return false;
-  };
-
-  for (int i = 0; i < manifest.steps.size(); i++) {
-    const auto &step = manifest.steps[i];
-    const auto found = input ?
-        search(step.dependencies) :
-        search(step.outputs);
-    if (found) {
-      return i;
+  } else {
+    auto output_step_it = manifest.output_file_map.find(p);
+    if (output_step_it != manifest.output_file_map.end()) {
+      return output_step_it->second;
     }
   }
 
