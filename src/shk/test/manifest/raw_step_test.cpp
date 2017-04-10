@@ -99,9 +99,8 @@ TEST_CASE("RawStep") {
     }
 
     SECTION("Rspfile") {
-      // The rspfile path is not significant for the build results
       b.rspfile = "other";
-      CHECK(a.hash() == b.hash());
+      CHECK(a.hash() != b.hash());
     }
 
     SECTION("RspfileContent") {

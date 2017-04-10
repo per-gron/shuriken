@@ -29,6 +29,7 @@ Hash RawStep::hash() const {
   hash_paths(dependencies);
   hash_paths(outputs);
   hash_string(generator ? "" : command);
+  hash_string(rspfile);
   hash_string(rspfile_content);
 
   blake2b_final(&state, hash.data.data(), hash.data.size());
