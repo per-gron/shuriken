@@ -245,8 +245,8 @@ void usage(const BuildConfig &config) {
 bool ShurikenMain::rebuildManifest(const char *input_file, std::string *err) {
   const auto path = _paths.get(input_file);
 
-  auto manifest_step_index_it = _indexed_manifest.output_file_map.find(path);
-  if (manifest_step_index_it == _indexed_manifest.output_file_map.end()) {
+  auto manifest_step_index_it = _indexed_manifest.output_path_map.find(path);
+  if (manifest_step_index_it == _indexed_manifest.output_path_map.end()) {
     // No rule generates the manifest file. There is nothing to do.
     return false;
   }

@@ -192,7 +192,7 @@ struct BuildCommandParameters {
  */
 std::vector<StepIndex> rootSteps(
     const std::vector<Step> &steps,
-    const OutputFileMap &output_file_map) throw(BuildError);
+    const PathToStepMap &output_path_map) throw(BuildError);
 
 /**
  * Find the steps that should be built. If there are no specified steps, this

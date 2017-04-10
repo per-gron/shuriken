@@ -13,26 +13,21 @@ namespace shk {
 /**
  * RawManifest objects contain an std::vector<Step>. A StepIndex is an index
  * into that vector, or into a vector of the same length that refers to the same
- * Step objects (for example OutputFileMap).
+ * Step objects (for example PathToStepMap).
  */
 using StepIndex = size_t;
 
 /**
- * Map of path => index of the step that has this file as an output.
- *
- * Please note that this map contains only files that are in the RawManifest; it
+ * Please note that this map contains only paths that are in the RawManifest; it
  * does not have output files that may have been created but that are not
  * declared.
- *
- * This is useful for traversing the build graph in the direction of a build
- * step to a build step that it depends on.
  *
  * This map is configured to treat paths that are the same according to
  * Path::isSame as equal. This is important because otherwise the lookup
  * will miss paths that point to the same thing but with different original
  * path strings.
  */
-using OutputFileMap = std::unordered_map<
+using PathToStepMap = std::unordered_map<
     Path, StepIndex, Path::IsSameHash, Path::IsSame>;
 
 namespace detail {
@@ -41,7 +36,7 @@ namespace detail {
  * Throws BuildError if there exists an output file that more than one step
  * generates.
  */
-OutputFileMap computeOutputFileMap(
+PathToStepMap computeOutputPathMap(
     const std::vector<RawStep> &steps) throw(BuildError);
 
 }  // namespace detail
@@ -63,7 +58,10 @@ struct IndexedManifest {
   IndexedManifest() = default;
   IndexedManifest(RawManifest &&manifest);
 
-  OutputFileMap output_file_map;
+  /**
+   * Map of path => index of the step that has this file as an output.
+   */
+  PathToStepMap output_path_map;
 
   std::vector<Step> steps;
   std::vector<StepIndex> defaults;

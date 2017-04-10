@@ -42,17 +42,17 @@ TEST_CASE("IndexedManifest") {
   RawStep single_dependency;
   single_dependency.dependencies = { paths.get("a") };
 
-  SECTION("computeOutputFileMap") {
+  SECTION("computeOutputPathMap") {
     SECTION("basics") {
-      CHECK(computeOutputFileMap(std::vector<RawStep>()).empty());
-      CHECK(computeOutputFileMap({ empty }).empty());
-      CHECK(computeOutputFileMap({ single_input }).empty());
-      CHECK(computeOutputFileMap({ single_implicit_input }).empty());
-      CHECK(computeOutputFileMap({ single_dependency }).empty());
+      CHECK(computeOutputPathMap(std::vector<RawStep>()).empty());
+      CHECK(computeOutputPathMap({ empty }).empty());
+      CHECK(computeOutputPathMap({ single_input }).empty());
+      CHECK(computeOutputPathMap({ single_implicit_input }).empty());
+      CHECK(computeOutputPathMap({ single_dependency }).empty());
     }
 
     SECTION("single output") {
-      const auto map = computeOutputFileMap({ single_output });
+      const auto map = computeOutputPathMap({ single_output });
       CHECK(map.size() == 1);
       const auto it = map.find(paths.get("a"));
       REQUIRE(it != map.end());
@@ -60,7 +60,7 @@ TEST_CASE("IndexedManifest") {
     }
 
     SECTION("multiple outputs") {
-      auto map = computeOutputFileMap({
+      auto map = computeOutputPathMap({
           single_output, single_output_b, multiple_outputs });
       CHECK(map.size() == 4);
       CHECK(map[paths.get("a")] == 0);
@@ -71,7 +71,7 @@ TEST_CASE("IndexedManifest") {
 
     SECTION("duplicate outputs") {
       CHECK_THROWS_AS(
-          computeOutputFileMap({ single_output, single_output }), BuildError);
+          computeOutputPathMap({ single_output, single_output }), BuildError);
     }
   }
 
@@ -86,9 +86,9 @@ TEST_CASE("IndexedManifest") {
 
       IndexedManifest indexed_manifest(std::move(manifest));
 
-      CHECK(indexed_manifest.output_file_map.size() == 1);
-      const auto it = indexed_manifest.output_file_map.find(paths.get("a"));
-      REQUIRE(it != indexed_manifest.output_file_map.end());
+      CHECK(indexed_manifest.output_path_map.size() == 1);
+      const auto it = indexed_manifest.output_path_map.find(paths.get("a"));
+      REQUIRE(it != indexed_manifest.output_path_map.end());
       CHECK(it->second == 0);
 
       REQUIRE(indexed_manifest.steps.size() == 1);

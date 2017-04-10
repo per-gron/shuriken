@@ -3,9 +3,9 @@
 namespace shk {
 namespace detail {
 
-OutputFileMap computeOutputFileMap(
+PathToStepMap computeOutputPathMap(
     const std::vector<RawStep> &steps) throw(BuildError) {
-  OutputFileMap result;
+  PathToStepMap result;
 
   for (size_t i = 0; i < steps.size(); i++) {
     const auto &step = steps[i];
@@ -86,11 +86,11 @@ std::vector<Step> convertStepVector(std::vector<RawStep> &&steps) {
 
 std::vector<StepIndex> computeStepsToBuildFromPaths(
     const std::vector<Path> &paths,
-    const OutputFileMap &output_file_map) throw(BuildError) {
+    const PathToStepMap &output_path_map) throw(BuildError) {
   std::vector<StepIndex> result;
   for (const auto &default_path : paths) {
-    const auto it = output_file_map.find(default_path);
-    if (it == output_file_map.end()) {
+    const auto it = output_path_map.find(default_path);
+    if (it == output_path_map.end()) {
       throw BuildError(
           "Specified target does not exist: " + default_path.original());
     }
@@ -103,10 +103,10 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
 }  // anonymous namespace
 
 IndexedManifest::IndexedManifest(RawManifest &&manifest)
-    : output_file_map(detail::computeOutputFileMap(manifest.steps)),
+    : output_path_map(detail::computeOutputPathMap(manifest.steps)),
       steps(convertStepVector(std::move(manifest.steps))),
       defaults(computeStepsToBuildFromPaths(
-          manifest.defaults, output_file_map)),
+          manifest.defaults, output_path_map)),
       pools(std::move(manifest.pools)),
       build_dir(std::move(manifest.build_dir)) {}
 

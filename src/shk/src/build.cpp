@@ -29,8 +29,8 @@ StepIndex interpretPath(
       }
     }
   } else {
-    auto output_step_it = manifest.output_file_map.find(p);
-    if (output_step_it != manifest.output_file_map.end()) {
+    auto output_step_it = manifest.output_path_map.find(p);
+    if (output_step_it != manifest.output_path_map.end()) {
       return output_step_it->second;
     }
   }
@@ -84,7 +84,7 @@ void markStepNodeAsDone(Build &build, StepIndex step_idx) {
 
 std::vector<StepIndex> rootSteps(
     const std::vector<Step> &steps,
-    const OutputFileMap &output_file_map) throw(BuildError) {
+    const PathToStepMap &output_path_map) throw(BuildError) {
   std::vector<StepIndex> result;
   // Assume that all steps are roots until we find some step that has an input
   // that is in a given step's list of outputs. Such steps are not roots.
@@ -92,8 +92,8 @@ std::vector<StepIndex> rootSteps(
 
   for (size_t i = 0; i < steps.size(); i++) {
     for (const auto &input : steps[i].dependencies) {
-      const auto it = output_file_map.find(input);
-      if (it != output_file_map.end()) {
+      const auto it = output_path_map.find(input);
+      if (it != output_path_map.end()) {
         roots[it->second] = false;
       }
     }
@@ -121,7 +121,7 @@ std::vector<StepIndex> computeStepsToBuild(
   } else if (!manifest.defaults.empty()) {
     return manifest.defaults;
   } else {
-    return rootSteps(manifest.steps, manifest.output_file_map);
+    return rootSteps(manifest.steps, manifest.output_path_map);
   }
 }
 
@@ -230,8 +230,8 @@ void visitStep(
       manifest,
       idx,
       [&](const Path &input) {
-        const auto it = manifest.output_file_map.find(input);
-        if (it == manifest.output_file_map.end()) {
+        const auto it = manifest.output_path_map.find(input);
+        if (it == manifest.output_path_map.end()) {
           // This input is not an output of some other build step.
           return;
         }
