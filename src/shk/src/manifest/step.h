@@ -84,7 +84,7 @@ struct Step {
    * manifest has been parsed into Steps objects like these, there isn't really
    * much of a difference between inputs and implicit dependencies.
    */
-  std::vector<Path> implicit_inputs;
+  const std::vector<Path> implicit_inputs;
 
   /**
    * Dependencies are paths to targets that generate output files that this
@@ -97,7 +97,7 @@ struct Step {
    * dependencies and inputs are kept separate because persistent caching cares
    * about the difference.
    */
-  std::vector<Path> dependencies;
+  const std::vector<Path> dependencies;
 
   /**
    * Output files, as specified in the manifest. These are used as names for
@@ -105,22 +105,22 @@ struct Step {
    * make sure that the directory where the outputs should live exists before
    * the command is invoked.
    */
-  std::vector<Path> outputs;
+  const std::vector<Path> outputs;
 
-  std::string pool_name;
+  const std::string pool_name;
 
   /**
    * Command that should be invoked in order to perform this build step.
    *
    * The command string is empty for phony rules.
    */
-  std::string command;
+  const std::string command;
 
   /**
    * A short description of the command. Used for prettifying output while
    * running builds.
    */
-  std::string description;
+  const std::string description;
 
   bool phony() const {
     return command.empty();
@@ -134,7 +134,7 @@ struct Step {
    * * Files are checked for dirtiness via mtime checks rather than file hashes
    * * They are not cleaned
    */
-  bool generator = false;
+  const bool generator = false;
 
   /**
    * For compatibility reasons with Ninja, Shuriken keeps track of the path to
@@ -142,7 +142,7 @@ struct Step {
    * this file, it just removes it immediately after the build step has
    * completed.
    */
-  Optional<Path> depfile;
+  const Optional<Path> depfile;
 
   /**
    * If rspfile is not empty, Shuriken will write rspfile_content to the path
@@ -150,8 +150,8 @@ struct Step {
    * after the build step has finished running. Useful on Windows, where
    * commands have a rather short maximum length.
    */
-  Optional<Path> rspfile;
-  std::string rspfile_content;
+  const Optional<Path> rspfile;
+  const std::string rspfile_content;
 
   Hash hash() const;
 };

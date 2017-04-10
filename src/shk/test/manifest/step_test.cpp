@@ -65,8 +65,6 @@ TEST_CASE("Step") {
         .setRspfileContent("rsp_content")
         .build();
 
-    auto b = a;
-
     SECTION("Basic") {
       CHECK(empty.hash() == empty.hash());
       CHECK(a.hash() == a.hash());
@@ -74,10 +72,14 @@ TEST_CASE("Step") {
     }
 
     SECTION("Bleed") {
-      a.dependencies = { paths.get("a") };
-      a.outputs = { paths.get("b") };
-      b.dependencies = {};
-      b.outputs = { paths.get("a"), paths.get("b") };
+      auto a = Step::Builder()
+          .setDependencies({ paths.get("a") })
+          .setOutputs({ paths.get("b") })
+          .build();
+      auto b = Step::Builder()
+          .setDependencies({})
+          .setOutputs({ paths.get("a"), paths.get("b") })
+          .build();
       CHECK(a.hash() != b.hash());
     }
 
@@ -89,64 +91,88 @@ TEST_CASE("Step") {
     }
 
     SECTION("ImplicitInputs") {
-      b.implicit_inputs.clear();
+      auto b = a.toBuilder()
+          .setImplicitInputs({})
+          .build();
       CHECK(a.hash() != b.hash());
     }
 
     SECTION("Dependencies") {
-      b.dependencies.clear();
+      auto b = a.toBuilder()
+          .setDependencies({})
+          .build();
       CHECK(a.hash() != b.hash());
     }
 
     SECTION("Outputs") {
-      b.outputs.clear();
+      auto b = a.toBuilder()
+          .setOutputs({})
+          .build();
       CHECK(a.hash() != b.hash());
     }
 
     SECTION("PoolName") {
       // The pool is not significant for the build results
-      b.pool_name.clear();
+      auto b = a.toBuilder()
+          .setPoolName("")
+          .build();
       CHECK(a.hash() == b.hash());
     }
 
     SECTION("Command") {
-      b.command.clear();
+      auto b = a.toBuilder()
+          .setCommand("")
+          .build();
       CHECK(a.hash() != b.hash());
     }
 
-    SECTION("PoolName") {
+    SECTION("Description") {
       // The description is not significant for the build results
-      b.description.clear();
+      auto b = a.toBuilder()
+          .setDescription("")
+          .build();
       CHECK(a.hash() == b.hash());
     }
 
     SECTION("Depfile") {
       // The depfile path is not significant for the build results
-      b.depfile = paths.get("other");
+      auto b = a.toBuilder()
+          .setDepfile(Optional<Path>(paths.get("other")))
+          .build();
       CHECK(a.hash() == b.hash());
     }
 
     SECTION("Generator") {
-      b.generator = !b.generator;
+      auto b = a.toBuilder()
+          .setGenerator(!a.generator)
+          .build();
       CHECK(a.hash() != b.hash());
     }
 
     SECTION("GeneratorCommandline") {
       // Generator rules don't include the command line when calculating
       // dirtiness
-      a.generator = b.generator = true;
-      b.command = a.command + "somethingelse";
-      CHECK(a.hash() == b.hash());
+      auto one = a.toBuilder()
+          .setGenerator(true)
+          .build();
+      auto two = one.toBuilder()
+          .setCommand(a.command + "somethingelse")
+          .build();
+      CHECK(one.hash() == two.hash());
     }
 
     SECTION("Rspfile") {
       // The rspfile path is not significant for the build results
-      b.rspfile = paths.get("other");
+      auto b = a.toBuilder()
+          .setRspfile(Optional<Path>(paths.get("other")))
+          .build();
       CHECK(a.hash() == b.hash());
     }
 
     SECTION("RspfileContent") {
-      b.rspfile_content = "other";
+      auto b = a.toBuilder()
+          .setRspfileContent("other")
+          .build();
       CHECK(a.hash() != b.hash());
     }
   }
