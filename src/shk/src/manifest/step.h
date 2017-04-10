@@ -21,6 +21,51 @@ namespace shk {
  * commands.
  */
 struct Step {
+  class Builder {
+   public:
+    Builder &setInputs(std::vector<Path> &&inputs);
+    Builder &setImplicitInputs(std::vector<Path> &&implicit_inputs);
+    Builder &setDependencies(std::vector<Path> &&dependencies);
+    Builder &setOutputs(std::vector<Path> &&outputs);
+    Builder &setPoolName(std::string &&pool_name);
+    Builder &setCommand(std::string &&command);
+    Builder &setDescription(std::string &&description);
+    Builder &setGenerator(bool &&generator);
+    Builder &setDepfile(Optional<Path> &&depfile);
+    Builder &setRspfile(Optional<Path> &&rspfile);
+    Builder &setRspfileContent(std::string &&rspfile_content);
+
+    Step build();
+
+   private:
+    std::vector<Path> _inputs;
+    std::vector<Path> _implicit_inputs;
+    std::vector<Path> _dependencies;
+    std::vector<Path> _outputs;
+    std::string _pool_name;
+    std::string _command;
+    std::string _description;
+    bool _generator = false;
+    Optional<Path> _depfile;
+    Optional<Path> _rspfile;
+    std::string _rspfile_content;
+  };
+
+  /**
+   * Builder is recommended to use over this constructor.
+   */
+  Step(
+      std::vector<Path> &&inputs,
+      std::vector<Path> &&implicit_inputs,
+      std::vector<Path> &&dependencies,
+      std::vector<Path> &&outputs,
+      std::string &&pool_name,
+      std::string &&command,
+      std::string &&description,
+      bool &&generator,
+      Optional<Path> &&depfile,
+      Optional<Path> &&rspfile,
+      std::string &&rspfile_content);
   Step();
   Step(RawStep &&step);
 

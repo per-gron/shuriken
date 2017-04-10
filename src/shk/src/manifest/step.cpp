@@ -4,6 +4,104 @@
 
 namespace shk {
 
+Step::Builder &Step::Builder::setInputs(std::vector<Path> &&inputs) {
+  _inputs = std::move(inputs);
+  return *this;
+}
+
+Step::Builder &Step::Builder::setImplicitInputs(std::vector<Path> &&implicit_inputs) {
+  _implicit_inputs = std::move(implicit_inputs);
+  return *this;
+}
+
+Step::Builder &Step::Builder::setDependencies(std::vector<Path> &&dependencies) {
+  _dependencies = std::move(dependencies);
+  return *this;
+}
+
+Step::Builder &Step::Builder::setOutputs(std::vector<Path> &&outputs) {
+  _outputs = std::move(outputs);
+  return *this;
+}
+
+Step::Builder &Step::Builder::setPoolName(std::string &&pool_name) {
+  _pool_name = std::move(pool_name);
+  return *this;
+}
+
+Step::Builder &Step::Builder::setCommand(std::string &&command) {
+  _command = std::move(command);
+  return *this;
+}
+
+Step::Builder &Step::Builder::setDescription(std::string &&description) {
+  _description = std::move(description);
+  return *this;
+}
+
+Step::Builder &Step::Builder::setGenerator(bool &&generator) {
+  _generator = std::move(generator);
+  return *this;
+}
+
+Step::Builder &Step::Builder::setDepfile(Optional<Path> &&depfile) {
+  _depfile = std::move(depfile);
+  return *this;
+}
+
+Step::Builder &Step::Builder::setRspfile(Optional<Path> &&rspfile) {
+  _rspfile = std::move(rspfile);
+  return *this;
+}
+
+Step::Builder &Step::Builder::setRspfileContent(std::string &&rspfile_content) {
+  _rspfile_content = std::move(rspfile_content);
+  return *this;
+}
+
+
+Step Step::Builder::build() {
+  Step step;
+
+  step.inputs = std::move(_inputs);
+  step.implicit_inputs = std::move(_implicit_inputs);
+  step.dependencies = std::move(_dependencies);
+  step.outputs = std::move(_outputs);
+  step.pool_name = std::move(_pool_name);
+  step.command = std::move(_command);
+  step.description = std::move(_description);
+  step.generator = std::move(_generator);
+  step.depfile = std::move(_depfile);
+  step.rspfile = std::move(_rspfile);
+  step.rspfile_content = std::move(_rspfile_content);
+
+  return step;
+}
+
+Step::Step(
+    std::vector<Path> &&inputs,
+    std::vector<Path> &&implicit_inputs,
+    std::vector<Path> &&dependencies,
+    std::vector<Path> &&outputs,
+    std::string &&pool_name,
+    std::string &&command,
+    std::string &&description,
+    bool &&generator,
+    Optional<Path> &&depfile,
+    Optional<Path> &&rspfile,
+    std::string &&rspfile_content)
+    : inputs(std::move(inputs)),
+      implicit_inputs(std::move(implicit_inputs)),
+      dependencies(std::move(dependencies)),
+      outputs(std::move(outputs)),
+      pool_name(std::move(pool_name)),
+      command(std::move(command)),
+      description(std::move(description)),
+      generator(std::move(generator)),
+      depfile(std::move(depfile)),
+      rspfile(std::move(rspfile)),
+      rspfile_content(std::move(rspfile_content)) {}
+
 Step::Step() {}
 
 Step::Step(RawStep &&raw_step)

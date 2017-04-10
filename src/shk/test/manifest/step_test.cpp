@@ -8,10 +8,71 @@
 namespace shk {
 
 TEST_CASE("Step") {
-  SECTION("Hash") {
-    InMemoryFileSystem fs;
-    Paths paths(fs);
+  InMemoryFileSystem fs;
+  Paths paths(fs);
 
+  SECTION("RawStepMoveConversionConstructor") {
+    RawStep a;
+    a.inputs.push_back(paths.get("input"));
+    a.implicit_inputs.push_back(paths.get("implicit_input"));
+    a.dependencies.push_back(paths.get("dependencies_input"));
+    a.outputs.push_back(paths.get("output"));
+    a.pool_name = "pool";
+    a.command = "cmd";
+    a.description = "desc";
+    a.depfile = paths.get("dep");
+    a.rspfile = paths.get("rsp");
+    a.rspfile_content = "rsp_content";
+
+    auto b = Step(RawStep(a));
+
+    CHECK(a.inputs == b.inputs);
+    CHECK(a.implicit_inputs == b.implicit_inputs);
+    CHECK(a.dependencies == b.dependencies);
+    CHECK(a.outputs == b.outputs);
+    CHECK(a.pool_name == b.pool_name);
+    CHECK(a.command == b.command);
+    CHECK(a.description == b.description);
+    CHECK(a.depfile == b.depfile);
+    CHECK(a.rspfile == b.rspfile);
+    CHECK(a.rspfile_content == b.rspfile_content);
+  }
+
+  SECTION("CopyConstructor") {
+    Step a;
+    a.inputs.push_back(paths.get("input"));
+
+    auto b = a;
+    CHECK(a.inputs == b.inputs);
+  }
+
+  SECTION("MoveCopyConstructor") {
+    Step a;
+    a.inputs.push_back(paths.get("input"));
+
+    auto b = std::move(a);
+    CHECK(a.inputs.empty());
+  }
+
+  SECTION("AssignmentOperator") {
+    Step a;
+    a.inputs.push_back(paths.get("input"));
+
+    Step b;
+    b = a;
+    CHECK(a.inputs == b.inputs);
+  }
+
+  SECTION("MoveAssignmentOperator") {
+    Step a;
+    a.inputs.push_back(paths.get("input"));
+
+    Step b;
+    b = std::move(a);
+    CHECK(a.inputs.empty());
+  }
+
+  SECTION("Hash") {
     Step empty;
 
     Step a;
