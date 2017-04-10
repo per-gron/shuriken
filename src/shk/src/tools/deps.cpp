@@ -26,7 +26,7 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
       continue;
     }
 
-    const auto entry_it = params.invocations.entries.find(step.hash());
+    const auto entry_it = params.invocations.entries.find(step.hash);
     if (entry_it == params.invocations.entries.end()) {
       continue;
     }

@@ -23,6 +23,7 @@ namespace shk {
 struct Step {
   class Builder {
    public:
+    Builder &setHash(Hash &&hash);
     Builder &setInputs(std::vector<Path> &&inputs);
     Builder &setImplicitInputs(std::vector<Path> &&implicit_inputs);
     Builder &setDependencies(std::vector<Path> &&dependencies);
@@ -38,6 +39,7 @@ struct Step {
     Step build();
 
    private:
+    Hash _hash;
     std::vector<Path> _inputs;
     std::vector<Path> _implicit_inputs;
     std::vector<Path> _dependencies;
@@ -55,6 +57,7 @@ struct Step {
    * Builder is recommended to use over this constructor.
    */
   Step(
+      Hash &&hash,
       std::vector<Path> &&inputs,
       std::vector<Path> &&implicit_inputs,
       std::vector<Path> &&dependencies,
@@ -69,6 +72,12 @@ struct Step {
   Step();
 
   Builder toBuilder() const;
+
+  /**
+   * A hash of this build step. The hash is used when comparing against old
+   * build steps that have been run to see if the build step is clean.
+   */
+  const Hash hash{};
 
   /**
    * Input files, as specified in the manifest. These, together with the
@@ -151,8 +160,6 @@ struct Step {
    */
   const Optional<Path> rspfile;
   const std::string rspfile_content;
-
-  Hash hash() const;
 };
 
 inline bool isConsolePool(const std::string &pool_name) {
