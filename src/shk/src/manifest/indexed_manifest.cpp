@@ -59,6 +59,21 @@ Step convertRawStep(RawStep &&raw) {
       std::back_inserter(dependencies));
 
   builder.setDependencies(std::move(dependencies));
+
+  std::unordered_set<std::string> output_dirs_set;
+  for (const auto &output : raw.outputs) {
+    output_dirs_set.insert(dirname(output.original()));
+  }
+  std::vector<std::string> output_dirs;
+  output_dirs.reserve(output_dirs_set.size());
+  for (auto &output : output_dirs_set) {
+    if (output == ".") {
+      continue;
+    }
+    output_dirs.push_back(std::move(output));
+  }
+  builder.setOutputDirs(std::move(output_dirs));
+
   builder.setOutputs(std::move(raw.outputs));
   builder.setPoolName(std::move(raw.pool_name));
   builder.setCommand(std::move(raw.command));

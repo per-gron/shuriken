@@ -45,6 +45,17 @@ TEST_CASE("Step") {
       CHECK(b.dependencies == std::vector<Path>{});
     }
 
+    SECTION("OutputDirs") {
+      auto a = Step::Builder()
+          .setOutputDirs({ "o1" })
+          .build();
+      auto b = a.toBuilder()
+          .setOutputDirs({ "o2" })
+          .build();
+      CHECK(a.output_dirs == std::vector<std::string>{ "o1" });
+      CHECK(b.output_dirs == std::vector<std::string>{ "o2" });
+    }
+
     SECTION("Outputs") {
       auto a = Step::Builder()
           .setOutputs({ paths.get("input") })

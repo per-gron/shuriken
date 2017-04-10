@@ -25,6 +25,7 @@ struct Step {
    public:
     Builder &setHash(Hash &&hash);
     Builder &setDependencies(std::vector<Path> &&dependencies);
+    Builder &setOutputDirs(std::vector<std::string> &&output_dirs);
     Builder &setOutputs(std::vector<Path> &&outputs);
     Builder &setPoolName(std::string &&pool_name);
     Builder &setCommand(std::string &&command);
@@ -39,6 +40,7 @@ struct Step {
    private:
     Hash _hash;
     std::vector<Path> _dependencies;
+    std::vector<std::string> _output_dirs;
     std::vector<Path> _outputs;
     std::string _pool_name;
     std::string _command;
@@ -55,6 +57,7 @@ struct Step {
   Step(
       Hash &&hash,
       std::vector<Path> &&dependencies,
+      std::vector<std::string> &&output_dirs,
       std::vector<Path> &&outputs,
       std::string &&pool_name,
       std::string &&command,
@@ -79,6 +82,12 @@ struct Step {
    * "inputs" in a build.ninja manifest.
    */
   const std::vector<Path> dependencies;
+
+  /**
+   * A list of directories that Shuriken should ensure are there prior to
+   * invoking the command.
+   */
+  const std::vector<std::string> output_dirs;
 
   /**
    * Output files, as specified in the manifest. These are used as names for

@@ -7,6 +7,16 @@
 namespace shk {
 namespace detail {
 
+namespace {
+
+template<typename Container, typename Value>
+bool contains(const Container &container, const Value &value) {
+  return std::find(
+      container.begin(), container.end(), value) != container.end();
+}
+
+}  // anonymous namespace
+
 TEST_CASE("IndexedManifest") {
   InMemoryFileSystem fs;
   Paths paths(fs);
@@ -116,6 +126,77 @@ TEST_CASE("IndexedManifest") {
       CHECK(
           indexed_manifest.steps[0].dependencies ==
           std::vector<Path>{ paths.get("a") });
+    }
+
+    SECTION("output dirs") {
+      SECTION("current working directory") {
+        RawStep step;
+        step.outputs = { paths.get("a") };
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+        REQUIRE(indexed_manifest.steps.size() == 1);
+        CHECK(indexed_manifest.steps[0].output_dirs.size() == 0);
+      }
+
+      SECTION("one directory") {
+        RawStep step;
+        step.outputs = { paths.get("dir/a") };
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+        REQUIRE(indexed_manifest.steps.size() == 1);
+        CHECK(indexed_manifest.steps[0].output_dirs.size() == 1);
+        CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir"));
+      }
+
+      SECTION("two stesps") {
+        RawStep step1;
+        step1.outputs = { paths.get("dir1/a") };
+        RawStep step2;
+        step2.outputs = { paths.get("dir2/a") };
+
+        RawManifest manifest;
+        manifest.steps = { step1, step2 };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+        REQUIRE(indexed_manifest.steps.size() == 2);
+        CHECK(indexed_manifest.steps[0].output_dirs.size() == 1);
+        CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir1"));
+        CHECK(indexed_manifest.steps[1].output_dirs.size() == 1);
+        CHECK(contains(indexed_manifest.steps[1].output_dirs, "dir2"));
+      }
+
+      SECTION("two directories") {
+        RawStep step;
+        step.outputs = { paths.get("dir1/a"), paths.get("dir2/a") };
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+        REQUIRE(indexed_manifest.steps.size() == 1);
+        CHECK(indexed_manifest.steps[0].output_dirs.size() == 2);
+        CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir1"));
+        CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir2"));
+      }
+
+      SECTION("duplicate directories") {
+        RawStep step;
+        step.outputs = { paths.get("dir/a"), paths.get("dir/b") };
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+        REQUIRE(indexed_manifest.steps.size() == 1);
+        CHECK(indexed_manifest.steps[0].output_dirs.size() == 1);
+        CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir"));
+      }
     }
   }
 }
