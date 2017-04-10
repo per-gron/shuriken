@@ -158,6 +158,12 @@ TEST_CASE("Step") {
     }
   }
 
+  SECTION("phony") {
+    CHECK(!Step::Builder().setCommand("cmd").build().phony());
+    CHECK(Step::Builder().build().phony());
+    CHECK(Step::Builder().setCommand("").build().phony());
+  }
+
   SECTION("isConsolePool") {
     CHECK(!isConsolePool(""));
     CHECK(!isConsolePool("a"));
