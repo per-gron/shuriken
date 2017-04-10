@@ -99,10 +99,4 @@ std::vector<std::string> mkdirs(
   return created_dirs;
 }
 
-std::vector<std::string> mkdirsFor(
-    FileSystem &file_system, const std::string &path) throw(IoError) {
-  const auto dirname = shk::dirname(path);
-  return mkdirs(file_system, dirname);
-}
-
 }  // namespace shk

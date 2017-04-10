@@ -195,13 +195,4 @@ class FileSystem {
 std::vector<std::string> mkdirs(
     FileSystem &file_system, const std::string &path) throw(IoError);
 
-/**
- * Make sure that there is a directory for the given path. Like
- * mkdir -p `dirname path`
- *
- * Returns vector of paths to directories that were created.
- */
-std::vector<std::string> mkdirsFor(
-    FileSystem &file_system, const std::string &path) throw(IoError);
-
 }  // namespace shk

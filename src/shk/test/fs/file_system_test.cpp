@@ -112,13 +112,6 @@ TEST_CASE("FileSystem") {
       fs.writeFile(file_path, "hello");
     }
   }
-
-  SECTION("mkdirsFor") {
-    const std::string file_path = "abc/def/ghi/jkl";
-    mkdirsFor(fs, file_path);
-    fs.open(file_path, "w");
-    CHECK(fs.stat(file_path).result == 0);
-  }
 }
 
 }  // namespace shk

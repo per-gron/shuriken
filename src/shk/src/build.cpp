@@ -489,11 +489,11 @@ void deleteBuildProduct(
   }
 }
 
-void mkdirsForPath(
+void mkdirsAndLog(
     FileSystem &file_system,
     InvocationLog &invocation_log,
     const std::string &path) throw(IoError) {
-  const auto created_dirs = mkdirsFor(file_system, path);
+  const auto created_dirs = mkdirs(file_system, path);
   for (const auto &path : created_dirs) {
     invocation_log.createdDirectory(path);
   }
@@ -639,12 +639,13 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
       step_hash);
 
   if (!step.rspfile.empty()) {
-    mkdirsForPath(params.file_system, params.invocation_log, step.rspfile);
+    mkdirsAndLog(
+        params.file_system, params.invocation_log, shk::dirname(step.rspfile));
     params.file_system.writeFile(step.rspfile, step.rspfile_content);
   }
 
-  for (const auto &output : step.outputs) {
-    mkdirsForPath(params.file_system, params.invocation_log, output.original());
+  for (const auto &output_dir : step.output_dirs) {
+    mkdirsAndLog(params.file_system, params.invocation_log, output_dir);
   }
 
   // TODO(peck): What about pools?

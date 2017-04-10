@@ -392,7 +392,7 @@ bool ShurikenMain::openInvocationLog() {
         new DryRunInvocationLog());
   } else {
     try {
-      mkdirsFor(_file_system, path);
+      mkdirs(_file_system, shk::dirname(path));
     } catch (const IoError &io_error) {
       error(
           "creating directory for invocation log %s: %s",
