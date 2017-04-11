@@ -248,20 +248,6 @@ int discardCleanSteps(
     Build &build);
 
 /**
- * For build steps that have been configured to restat outputs after completion,
- * this is the function that performs the restat check.
- *
- * This function is similar to isClean but it's not quite the same. It does not
- * look at inputs, it only checks output files. Also, it ignores
- * MatchesResult::should_update because it has already been handled by isClean
- * earlier.
- */
-bool outputsWereChanged(
-    FileSystem &file_system,
-    const Invocations &invocations,
-    const Hash &step_hash) throw(IoError);
-
-/**
  * Prior to invoking the command for a step, delete the files that it previously
  * created.
  */

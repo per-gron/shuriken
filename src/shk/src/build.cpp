@@ -439,29 +439,6 @@ void mkdirsAndLog(
   }
 }
 
-bool outputsWereChanged(
-    FileSystem &file_system,
-    const Invocations &invocations,
-    const Hash &step_hash) throw(IoError) {
-  const auto it = invocations.entries.find(step_hash);
-  if (it == invocations.entries.end()) {
-    return true;
-  }
-
-  for (const auto file_idx : it->second.output_files) {
-    const auto &file = invocations.fingerprints[file_idx];
-    const auto match = fingerprintMatches(
-        file_system,
-        file.first.original(),
-        file.second);
-    if (!match.clean) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 void enqueueBuildCommands(BuildCommandParameters &params) throw(IoError);
 
 void commandDone(
@@ -469,9 +446,6 @@ void commandDone(
     StepIndex step_idx,
     CommandRunner::Result &&result) throw(IoError) {
   const auto &step = params.manifest.steps[step_idx];
-
-  // TODO(peck): Validate that the command did not read a file that is an output
-  //   of a target that it does not depend on directly or indirectly.
 
   if (!step.depfile.empty()) {
     deleteBuildProduct(
@@ -513,18 +487,7 @@ void commandDone(
           std::move(result.input_files));
     }
 
-    // TODO(peck): Implement restat rules
-    if (false &&  // Ignore rather than trigger an assert.
-        /* step.restat && */
-        !outputsWereChanged(
-            params.file_system,
-            params.invocations,
-            params.manifest.steps[step_idx].hash)) {
-      // TODO(peck): Mark this step as clean
-      assert(!"Not implemented");
-    } else {
-      markStepNodeAsDone(params.build, step_idx);
-    }
+    markStepNodeAsDone(params.build, step_idx);
     break;
 
   case ExitStatus::INTERRUPTED:
@@ -587,8 +550,6 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   for (const auto &output_dir : step.output_dirs) {
     mkdirsAndLog(params.file_system, params.invocation_log, output_dir);
   }
-
-  // TODO(peck): What about pools?
 
   if (!step.phony()) {
     params.build_status.stepStarted(step);
