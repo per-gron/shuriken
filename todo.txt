@@ -26,9 +26,11 @@ Differences from Ninja:
 * Dependencies of builds steps that have been run are deduced from the files that the build
   step read instead of relying on the information in the manifest. (mscv_deps_prefix, deps
   and depfile are ignored, other than that the .d file is removed)
-* File hashes are used rather than mtimes (except for generator rules, they still use mtimes)
 * msvc_deps_prefix, deps, depfile are unnecessary (except that the .d file should be removed)
 * Supports multiple outputs even when deps is specified.
+* There is only one type of dependency in the manifest: they all behave like Ninja order-only dependencies
+* All rules behave as if restat=1
+* File hashes are used rather than mtimes (except for generator rules, they still use mtimes)
 * When the console pool is used, the command is always rebuilt. Reason being
   stdin is not a deterministic source, and it tends to be used for things as tests
   and generator rules anyway.

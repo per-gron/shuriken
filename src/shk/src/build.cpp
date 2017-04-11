@@ -260,7 +260,7 @@ MatchesResult checkFingerprintMatches(
   return *fingerprint_matches_memo[fingerprint_idx];
 }
 
-}  // namespace shk
+}  // anonymous namespace
 
 bool isClean(
     const Clock &clock,
