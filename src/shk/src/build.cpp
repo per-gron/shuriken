@@ -278,6 +278,14 @@ bool isClean(
   bool clean = true;
   const auto process_files = [&](const std::vector<size_t> &fingerprints) {
     for (const auto fingerprint_idx : fingerprints) {
+      if (!clean) {
+        // There is no need to do any further processing at this point. Because
+        // !clean, the command will not be relogged, and by now we already know
+        // that the return value of this function will be false, because no
+        // fingerprint can make a dirty build step clean.
+        return;
+      }
+
       const auto match = checkFingerprintMatches(
           file_system,
           invocations.fingerprints,
