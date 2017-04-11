@@ -570,7 +570,6 @@ TEST_CASE("Build") {
 
     SECTION("no matching Invocation entry") {
       CHECK(!isClean(
-          clock,
           fs,
           log,
           memo,
@@ -583,7 +582,6 @@ TEST_CASE("Build") {
     SECTION("no input or output files") {
       invocations.entries[hash_a] = Invocations::Entry();
       CHECK(isClean(
-          clock,
           fs,
           log,
           memo,
@@ -599,7 +597,6 @@ TEST_CASE("Build") {
       invocations.entries[hash_a] = entry;
       memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
-          clock,
           fs,
           log,
           memo,
@@ -616,7 +613,6 @@ TEST_CASE("Build") {
       fs.writeFile("one", "dirty");  // Make dirty
       memo.resize(invocations.fingerprints.size());
       CHECK(!isClean(
-          clock,
           fs,
           log,
           memo,
@@ -632,7 +628,6 @@ TEST_CASE("Build") {
       invocations.entries[hash_a] = entry;
       memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
-          clock,
           fs,
           log,
           memo,
@@ -649,7 +644,6 @@ TEST_CASE("Build") {
       fs.writeFile("one", "dirty");  // Make dirty
       memo.resize(invocations.fingerprints.size());
       CHECK(!isClean(
-          clock,
           fs,
           log,
           memo,
@@ -668,7 +662,6 @@ TEST_CASE("Build") {
       fs.writeFile("two", "dirty!");
       memo.resize(invocations.fingerprints.size());
       CHECK(!isClean(
-          clock,
           fs,
           log,
           memo,
@@ -684,7 +677,6 @@ TEST_CASE("Build") {
       invocations.entries[hash_a] = entry;
       memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
-          clock,
           fs,
           log,
           memo,
@@ -704,7 +696,6 @@ TEST_CASE("Build") {
       invocations.entries[hash_a] = entry;
       memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
-          clock,
           fs,
           log,
           memo,

@@ -263,7 +263,6 @@ MatchesResult checkFingerprintMatches(
 }  // anonymous namespace
 
 bool isClean(
-    const Clock &clock,
     FileSystem &file_system,
     InvocationLog &invocation_log,
     FingerprintMatchesMemo &fingerprint_matches_memo,
@@ -337,7 +336,6 @@ CleanSteps computeCleanSteps(
     }
     const auto &step_hash = steps[i].hash;
     result[i] = isClean(
-        clock,
         file_system,
         invocation_log,
         fingerprint_memo,
