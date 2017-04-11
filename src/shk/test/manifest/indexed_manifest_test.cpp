@@ -75,6 +75,57 @@ TEST_CASE("IndexedManifest") {
     }
   }
 
+  SECTION("rootSteps") {
+    auto step = Step::Builder()
+        .setCommand("cmd")
+        .build();
+
+    auto single_dependency = Step::Builder()
+        .setCommand("cmd")
+        .setDependencies({ paths.get("a") })
+        .build();
+
+    CHECK(rootSteps({}, {}).empty());
+    CHECK(
+        rootSteps({ step }, { { paths.get("a"), 0 } }) ==
+        std::vector<StepIndex>{ 0 });
+    CHECK(
+        rootSteps(
+            { step, step },
+            { { paths.get("a"), 0 }, { paths.get("b"), 1 } }) ==
+        std::vector<StepIndex>({ 0, 1 }));
+    CHECK(
+        rootSteps(
+            { step, single_dependency },
+            { { paths.get("a"), 0 } }) ==
+        std::vector<StepIndex>{ 1 });
+    CHECK(
+        rootSteps(
+            { single_dependency, step },
+            { { paths.get("a"), 1 } }) ==
+        std::vector<StepIndex>{ 0 });
+    CHECK(
+        rootSteps(
+            { single_dependency, step, step },
+            {
+                { paths.get("a"), 1 },
+                { paths.get("c"), 2 },
+                { paths.get("d"), 2 }
+            }) ==
+        (std::vector<StepIndex>{ 0, 2 }));
+
+    auto one = Step::Builder()
+        .setDependencies({ paths.get("b") })
+        .build();
+    auto two = Step::Builder()
+        .setDependencies({ paths.get("a") })
+        .build();
+    CHECK(
+        rootSteps(  // Cycle
+            { one, two },
+            { { paths.get("a"), 0 }, { paths.get("b"), 1 } }).empty());
+  }
+
   SECTION("DefaultConstructor") {
     IndexedManifest indexed_manifest;
   }

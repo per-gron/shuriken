@@ -39,6 +39,19 @@ namespace detail {
 PathToStepMap computeOutputPathMap(
     const std::vector<RawStep> &steps) throw(BuildError);
 
+/**
+ * Compute the "root steps," that is the steps that don't have an output that
+ * is an input to some other step. This is the set of steps that are built if
+ * there are no default statements in the manifest and no steps where
+ * specifically requested to be built.
+ *
+ * If no step can be identified as root (perhaps because there is a cyclic
+ * dependency), this function returns an empty vector.
+ */
+std::vector<StepIndex> rootSteps(
+    const std::vector<Step> &steps,
+    const PathToStepMap &output_path_map) throw(BuildError);
+
 }  // namespace detail
 
 /**
@@ -71,6 +84,7 @@ struct IndexedManifest {
 
   std::vector<Step> steps;
   std::vector<StepIndex> defaults;
+  std::vector<StepIndex> roots;
   std::unordered_map<std::string, int> pools;
 
   /**

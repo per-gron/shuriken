@@ -182,19 +182,6 @@ struct BuildCommandParameters {
 };
 
 /**
- * Compute the "root steps," that is the steps that don't have an output that
- * is an input to some other step. This is the set of steps that are built if
- * there are no default statements in the manifest and no steps where
- * specifically requested to be built.
- *
- * A BuildError is thrown if there are build steps, but none can be identified
- * as root. This happens when there is a cyclic dependency.
- */
-std::vector<StepIndex> rootSteps(
-    const std::vector<Step> &steps,
-    const PathToStepMap &output_path_map) throw(BuildError);
-
-/**
  * Find the steps that should be built. If there are no specified steps, this
  * function will use defaults specified in the manifest, or find the root nodes
  * to build.

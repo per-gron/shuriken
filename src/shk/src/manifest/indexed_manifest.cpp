@@ -20,6 +20,32 @@ PathToStepMap computeOutputPathMap(
   return result;
 }
 
+std::vector<StepIndex> rootSteps(
+    const std::vector<Step> &steps,
+    const PathToStepMap &output_path_map) throw(BuildError) {
+  std::vector<StepIndex> result;
+  // Assume that all steps are roots until we find some step that has an input
+  // that is in a given step's list of outputs. Such steps are not roots.
+  std::vector<bool> roots(steps.size(), true);
+
+  for (size_t i = 0; i < steps.size(); i++) {
+    for (const auto &input : steps[i].dependencies) {
+      const auto it = output_path_map.find(input);
+      if (it != output_path_map.end()) {
+        roots[it->second] = false;
+      }
+    }
+  }
+
+  for (size_t i = 0; i < steps.size(); i++) {
+    if (roots[i]) {
+      result.push_back(i);
+    }
+  }
+
+  return result;
+}
+
 }  // namespace detail
 
 namespace {
@@ -129,6 +155,7 @@ IndexedManifest::IndexedManifest(RawManifest &&manifest)
       steps(convertStepVector(std::move(manifest.steps))),
       defaults(computeStepsToBuildFromPaths(
           manifest.defaults, output_path_map)),
+      roots(detail::rootSteps(steps, output_path_map)),
       pools(std::move(manifest.pools)),
       build_dir(std::move(manifest.build_dir)) {}
 
