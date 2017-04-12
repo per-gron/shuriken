@@ -37,6 +37,10 @@ class DelayedInvocationLog : public InvocationLog {
     _inner_log->removedDirectory(path);
   }
 
+  Fingerprint fingerprint(const std::string &path) override {
+    return _inner_log->fingerprint(path);
+  }
+
   void ranCommand(
       const Hash &build_step_hash,
       std::vector<std::string> &&output_files,

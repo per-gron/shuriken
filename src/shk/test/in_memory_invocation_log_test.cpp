@@ -9,6 +9,8 @@ namespace shk {
 
 TEST_CASE("InMemoryInvocationLog") {
   InMemoryFileSystem fs;
+  fs.writeFile("test_file", "hello!");
+
   Paths paths(fs);
   InMemoryInvocationLog log(fs, [] { return 0; });
 
@@ -31,6 +33,10 @@ TEST_CASE("InMemoryInvocationLog") {
     CHECK(log.createdDirectories().size() == 1);
     log.removedDirectory("b");
     CHECK(log.createdDirectories().empty());
+  }
+
+  SECTION("Fingerprint") {
+    CHECK(log.fingerprint("test_file") == takeFingerprint(fs, 0, "test_file"));
   }
 
   SECTION("Commands") {

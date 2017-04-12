@@ -25,6 +25,7 @@ class InMemoryInvocationLog : public InvocationLog {
 
   void createdDirectory(const std::string &path) throw(IoError) override;
   void removedDirectory(const std::string &path) throw(IoError) override;
+  Fingerprint fingerprint(const std::string &path) override;
   void ranCommand(
       const Hash &build_step_hash,
       std::vector<std::string> &&output_files,

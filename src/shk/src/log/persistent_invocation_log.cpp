@@ -167,6 +167,18 @@ class PersistentInvocationLog : public InvocationLog {
     _entry_count++;
   }
 
+  Fingerprint fingerprint(const std::string &path) override {
+    const auto it = _fingerprint_ids.find(path);
+    if (it == _fingerprint_ids.end()) {
+      // No prior entry for that path. Need to take fingerprint.
+      return takeFingerprint(_fs, _clock(), path);
+    } else {
+      // There is a fingerprint entry for the given path already.
+      const auto &old_fingerprint = it->second.fingerprint;
+      return retakeFingerprint(_fs, _clock(), path, old_fingerprint);
+    }
+  }
+
   void ranCommand(
       const Hash &build_step_hash,
       std::vector<std::string> &&output_files,
@@ -351,11 +363,11 @@ class PersistentInvocationLog : public InvocationLog {
     const auto path_id = ensurePathIsWritten(path);
 
     FingerprintIdsValue value;
+    value.fingerprint = fingerprint(path);
     value.record_id = _entry_count;
     const auto it = _fingerprint_ids.find(path);
     if (it == _fingerprint_ids.end()) {
-      // No prior entry for that path. Need to take fingerprint.
-      value.fingerprint = takeFingerprint(_fs, _clock(), path);
+      // No prior entry for that path.
       writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
       _fingerprint_ids[path] = value;
       return value.fingerprint;
@@ -363,8 +375,6 @@ class PersistentInvocationLog : public InvocationLog {
       // There is a fingerprint entry for the given path already. Find out if it
       // can be reused or if a new fingerprint is required.
       const auto &old_fingerprint = it->second.fingerprint;
-      value.fingerprint = retakeFingerprint(
-          _fs, _clock(), path, old_fingerprint);
       if (old_fingerprint == value.fingerprint) {
         return it->second.fingerprint;
       } else {

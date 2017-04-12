@@ -42,6 +42,10 @@ void InMemoryInvocationLog::removedDirectory(const std::string &path) throw(IoEr
   _created_directories.erase(path);
 }
 
+Fingerprint InMemoryInvocationLog::fingerprint(const std::string &path) {
+  return takeFingerprint(_fs, _clock(), path);
+}
+
 void InMemoryInvocationLog::ranCommand(
     const Hash &build_step_hash,
     std::vector<std::string> &&output_files,

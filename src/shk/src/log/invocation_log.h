@@ -44,6 +44,15 @@ class InvocationLog {
   virtual void removedDirectory(const std::string &path) throw(IoError) = 0;
 
   /**
+   * Take a fingerprint of the provided path. Implementations of this method
+   * will probably use takeFingerprint and retakeFingerprint. The reason this
+   * method is offered by the InvocationLog interface is that this object has
+   * the information required to use retakeFingerprint, which can be
+   * significantly more efficient than always using takeFingerprint.
+   */
+  virtual Fingerprint fingerprint(const std::string &path) = 0;
+
+  /**
    * Writes an entry in the invocation log that says that the build step with
    * the given hash has been successfully run with information about outputs and
    * dependencies.

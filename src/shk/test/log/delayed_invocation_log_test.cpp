@@ -16,6 +16,8 @@ TEST_CASE("DelayedInvocationLog") {
   const auto clock = [&] { return now; };
 
   InMemoryFileSystem fs;
+  fs.writeFile("test_file", "hello!");
+
   auto memory_log_ptr = std::unique_ptr<InMemoryInvocationLog>(
       new InMemoryInvocationLog(fs, clock));
   auto &memory_log = *memory_log_ptr;
@@ -35,6 +37,11 @@ TEST_CASE("DelayedInvocationLog") {
     log->createdDirectory("foo");
     log->removedDirectory("foo");
     CHECK(memory_log.createdDirectories().count("foo") == 0);
+  }
+
+  SECTION("Fingerprint") {
+    CHECK(
+        log->fingerprint("test_file") == takeFingerprint(fs, now, "test_file"));
   }
 
   SECTION("RanCommand") {

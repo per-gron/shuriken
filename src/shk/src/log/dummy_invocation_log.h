@@ -12,6 +12,10 @@ class DummyInvocationLog : public InvocationLog {
   void removedDirectory(const std::string &path)
       throw(IoError) override {}
 
+  Fingerprint fingerprint(const std::string &path) override {
+    return Fingerprint();
+  }
+
   void ranCommand(
       const Hash &build_step_hash,
       std::vector<std::string> &&output_files,

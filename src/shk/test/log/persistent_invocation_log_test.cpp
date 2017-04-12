@@ -44,8 +44,8 @@ void roundtrip(const Callback &callback) {
       [] { return 0; },
       "file",
       InvocationLogParseResult::ParseData());
-  callback(*persistent_log);
-  callback(in_memory_log);
+  callback(*persistent_log, fs);
+  callback(in_memory_log, fs);
   auto result = parsePersistentInvocationLog(paths, fs, "file");
   sortInvocations(result.invocations);
 
@@ -60,7 +60,7 @@ template<typename Callback>
 void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
   Paths paths(fs);
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
-  callback(in_memory_log);
+  callback(in_memory_log, fs);
   for (size_t i = 0; i < 5; i++) {
     auto result = parsePersistentInvocationLog(paths, fs, "file");
     CHECK(result.warning == "");
@@ -69,7 +69,7 @@ void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
         [] { return 0; },
         "file",
         std::move(result.parse_data));
-    callback(*persistent_log);
+    callback(*persistent_log, fs);
   }
 
   auto result = parsePersistentInvocationLog(paths, fs, "file");
@@ -92,7 +92,7 @@ void shouldEventuallyRequestRecompaction(const Callback &callback) {
         [] { return 0; },
         "file",
         InvocationLogParseResult::ParseData());
-    callback(*persistent_log);
+    callback(*persistent_log, fs);
     const auto result = parsePersistentInvocationLog(paths, fs, "file");
     if (result.needs_recompaction) {
       CHECK(attempts > 10);  // Should not immediately request recompaction
@@ -110,7 +110,7 @@ void recompact(const Callback &callback) {
   InMemoryFileSystem fs;
   Paths paths(fs);
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
-  callback(in_memory_log);
+  callback(in_memory_log, fs);
   for (size_t i = 0; i < 5; i++) {
     auto result = parsePersistentInvocationLog(paths, fs, "file");
     CHECK(result.warning == "");
@@ -119,7 +119,7 @@ void recompact(const Callback &callback) {
         [] { return 0; },
         "file",
         std::move(result.parse_data));
-    callback(*persistent_log);
+    callback(*persistent_log, fs);
   }
   recompactPersistentInvocationLog(
       fs,
@@ -154,7 +154,7 @@ void warnOnTruncatedInput(const Callback &callback) {
     fs.unlink("file");
     const auto persistent_log = openPersistentInvocationLog(
         fs, [] { return 0; }, "file", InvocationLogParseResult::ParseData());
-    callback(*persistent_log);
+    callback(*persistent_log, fs);
     const auto stat = fs.stat("file");
     const auto truncated_size = stat.metadata.size - i;
     if (truncated_size <= kFileSignatureSize) {
@@ -261,39 +261,52 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("Empty") {
-      const auto callback = [](InvocationLog &log) {};
+      const auto callback = [](InvocationLog &log, FileSystem &fs) {};
       // Don't use the shouldEventuallyRequestRecompaction test
       roundtrip(callback);
       multipleWriteCycles(callback, InMemoryFileSystem());
     }
 
     SECTION("CreatedDirectory") {
-      writeEntries([](InvocationLog &log) {
+      writeEntries([](InvocationLog &log, FileSystem &fs) {
         log.createdDirectory("dir");
       });
     }
 
     SECTION("CreatedThenDeletedDirectory") {
-      writeEntries([](InvocationLog &log) {
+      writeEntries([](InvocationLog &log, FileSystem &fs) {
         log.createdDirectory("dir");
         log.removedDirectory("dir");
       });
     }
 
+    SECTION("Fingerprint") {
+      writeEntries([hash_0](InvocationLog &log, FileSystem &fs) {
+        fs.writeFile("test_file", "hello!");
+        CHECK(
+            log.fingerprint("test_file") ==
+            takeFingerprint(fs, 0, "test_file"));
+        log.ranCommand(
+            hash_0,
+            { "test_file" },
+            {});
+      });
+    }
+
     SECTION("InvocationNoFiles") {
-      writeEntries([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(hash_0, {}, {});
       });
     }
 
     SECTION("InvocationSingleInputFile") {
-      writeEntries([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(hash_0, {}, { "hi" });
       });
     }
 
     SECTION("InvocationTwoInputFiles") {
-      writeEntries([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(
             hash_0,
             {},
@@ -302,66 +315,66 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("InvocationSingleOutputFile") {
-      writeEntries([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(hash_0, { "hi" }, {});
       });
     }
 
     SECTION("InvocationSingleInputDir") {
       fs.mkdir("dir");
-      multipleWriteCycles([&](InvocationLog &log) {
+      multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(hash_0, {}, { "dir" });
       }, fs);
     }
 
     SECTION("InvocationSingleOutputDir") {
       fs.mkdir("dir");
-      multipleWriteCycles([&](InvocationLog &log) {
+      multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(hash_0, { "dir" }, {});
       }, fs);
     }
 
     SECTION("InvocationSingleOutputFileAndDir") {
       fs.mkdir("dir");
-      multipleWriteCycles([&](InvocationLog &log) {
+      multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(hash_0, { "dir", "hi" }, {});
       }, fs);
     }
 
     SECTION("InvocationTwoOutputFiles") {
-      writeEntries([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(hash_0, { "aah", "hi" }, {});
       });
     }
 
     SECTION("InvocationInputAndOutputFiles") {
-      writeEntries([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(hash_0, { "aah" }, { "hi" });
       });
     }
 
     SECTION("OverwrittenInvocation") {
-      writeEntries([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(hash_0, {}, {});
         log.ranCommand(hash_0, { "hi" }, {});
       });
     }
 
     SECTION("DeletedMissingInvocation") {
-      writeEntries([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
         log.cleanedCommand(hash_0);
       });
     }
 
     SECTION("DeletedInvocation") {
-      writeEntries([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
         log.ranCommand(hash_0, {}, {});
         log.cleanedCommand(hash_0);
       });
     }
 
     SECTION("MixAndMatch") {
-      writeEntries([&](InvocationLog &log) {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
         log.createdDirectory("dir");
         log.createdDirectory("dir_2");
         log.removedDirectory("dir");
