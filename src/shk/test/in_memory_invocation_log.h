@@ -29,7 +29,9 @@ class InMemoryInvocationLog : public InvocationLog {
   void ranCommand(
       const Hash &build_step_hash,
       std::vector<std::string> &&output_files,
-      std::vector<std::string> &&input_files)
+      std::vector<Fingerprint> &&output_fingerprints,
+      std::vector<std::string> &&input_files,
+      std::vector<Fingerprint> &&input_fingerprints)
           throw(IoError) override;
   void cleanedCommand(
       const Hash &build_step_hash) throw(IoError) override;

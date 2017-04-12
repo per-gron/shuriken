@@ -41,7 +41,7 @@ TEST_CASE("InMemoryInvocationLog") {
 
   SECTION("Commands") {
     SECTION("Empty") {
-      log.ranCommand(hash, {}, {});
+      log.ranCommand(hash, {}, {}, {}, {});
       CHECK(log.entries().count(hash) == 1);
       log.cleanedCommand(hash);
       CHECK(log.entries().empty());
@@ -49,7 +49,8 @@ TEST_CASE("InMemoryInvocationLog") {
 
     SECTION("Input") {
       fs.writeFile("file", "");
-      log.ranCommand(hash, {}, { "file" });
+      log.ranCommand(
+          hash, {}, {}, { "file" }, { takeFingerprint(fs, 0, "file") });
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
@@ -61,7 +62,7 @@ TEST_CASE("InMemoryInvocationLog") {
     SECTION("IgnoreDir") {
       fs.mkdir("dir");
       log.ranCommand(
-          hash, {}, { "dir" });
+          hash, {}, {}, { "dir" }, { takeFingerprint(fs, 0, "dir") });
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
@@ -71,7 +72,8 @@ TEST_CASE("InMemoryInvocationLog") {
 
     SECTION("OutputDir") {
       fs.mkdir("dir");
-      log.ranCommand(hash, { "dir" }, {});
+      log.ranCommand(
+          hash, { "dir" }, { takeFingerprint(fs, 0, "dir") }, {}, {});
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
@@ -82,7 +84,12 @@ TEST_CASE("InMemoryInvocationLog") {
 
     SECTION("OutputDirAndFile") {
       fs.mkdir("dir");
-      log.ranCommand(hash, { "dir", "file" }, {});
+      log.ranCommand(
+          hash,
+          { "dir", "file" },
+          { takeFingerprint(fs, 0, "dir"), takeFingerprint(fs, 0, "file") },
+          {},
+          {});
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
@@ -111,7 +118,7 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("Commands") {
-      log.ranCommand(hash, {}, {});
+      log.ranCommand(hash, {}, {}, {}, {});
       CHECK(log.invocations(paths).entries.size() == 1);
       CHECK(log.invocations(paths).entries.count(hash) == 1);
 

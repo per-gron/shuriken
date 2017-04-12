@@ -30,6 +30,19 @@ void sortInvocations(Invocations &invocations) {
   }
 }
 
+void ranCommand(
+    InvocationLog &log,
+    const Hash &build_step_hash,
+    std::vector<std::string> &&output_files,
+    std::vector<std::string> &&input_files) {
+  log.ranCommand(
+      build_step_hash,
+      std::move(output_files),
+      log.fingerprintFiles(output_files),
+      std::move(input_files),
+      log.fingerprintFiles(input_files));
+}
+
 /**
  * Test that committing a set of entries to the log and reading it back does
  * the same thing as just writing those entries to an Invocations object.
@@ -134,7 +147,16 @@ void recompact(const Callback &callback) {
   sortInvocations(in_memory_result);
 
   CHECK(result.warning == "");
+
   CHECK(in_memory_result == result.invocations);
+
+  // These checks are just here for getting more detailed information in case
+  // the invocations check above fails.
+  CHECK(in_memory_result.fingerprints == result.invocations.fingerprints);
+  CHECK(in_memory_result.entries == result.invocations.entries);
+  CHECK(
+      in_memory_result.created_directories ==
+      result.invocations.created_directories);
 }
 
 template<typename Callback>
@@ -249,8 +271,8 @@ TEST_CASE("PersistentInvocationLog") {
           "file",
           InvocationLogParseResult::ParseData());
 
-      persistent_log->ranCommand(
-          hash_0, {}, { "dir" });
+      ranCommand(
+          *persistent_log, hash_0, {}, { "dir" });
 
       const auto result = parsePersistentInvocationLog(paths, fs, "file");
       CHECK(result.warning == "");
@@ -286,7 +308,8 @@ TEST_CASE("PersistentInvocationLog") {
         CHECK(
             log.fingerprint("test_file") ==
             takeFingerprint(fs, 0, "test_file"));
-        log.ranCommand(
+        ranCommand(
+            log,
             hash_0,
             { "test_file" },
             {});
@@ -295,19 +318,20 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("InvocationNoFiles") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(hash_0, {}, {});
+        ranCommand(log, hash_0, {}, {});
       });
     }
 
     SECTION("InvocationSingleInputFile") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(hash_0, {}, { "hi" });
+        ranCommand(log, hash_0, {}, { "hi" });
       });
     }
 
     SECTION("InvocationTwoInputFiles") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(
+        ranCommand(
+            log,
             hash_0,
             {},
             { "hi", "duh" });
@@ -316,47 +340,47 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("InvocationSingleOutputFile") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(hash_0, { "hi" }, {});
+        ranCommand(log, hash_0, { "hi" }, {});
       });
     }
 
     SECTION("InvocationSingleInputDir") {
       fs.mkdir("dir");
       multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(hash_0, {}, { "dir" });
+        ranCommand(log, hash_0, {}, { "dir" });
       }, fs);
     }
 
     SECTION("InvocationSingleOutputDir") {
       fs.mkdir("dir");
       multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(hash_0, { "dir" }, {});
+        ranCommand(log, hash_0, { "dir" }, {});
       }, fs);
     }
 
     SECTION("InvocationSingleOutputFileAndDir") {
       fs.mkdir("dir");
       multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(hash_0, { "dir", "hi" }, {});
+        ranCommand(log, hash_0, { "dir", "hi" }, {});
       }, fs);
     }
 
     SECTION("InvocationTwoOutputFiles") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(hash_0, { "aah", "hi" }, {});
+        ranCommand(log, hash_0, { "aah", "hi" }, {});
       });
     }
 
     SECTION("InvocationInputAndOutputFiles") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(hash_0, { "aah" }, { "hi" });
+        ranCommand(log, hash_0, { "aah" }, { "hi" });
       });
     }
 
     SECTION("OverwrittenInvocation") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(hash_0, {}, {});
-        log.ranCommand(hash_0, { "hi" }, {});
+        ranCommand(log, hash_0, {}, {});
+        ranCommand(log, hash_0, { "hi" }, {});
       });
     }
 
@@ -368,7 +392,7 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("DeletedInvocation") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        log.ranCommand(hash_0, {}, {});
+        ranCommand(log, hash_0, {}, {});
         log.cleanedCommand(hash_0);
       });
     }
@@ -379,9 +403,9 @@ TEST_CASE("PersistentInvocationLog") {
         log.createdDirectory("dir_2");
         log.removedDirectory("dir");
 
-        log.ranCommand(hash_0, { "hi" }, { "aah" });
+        ranCommand(log, hash_0, { "hi" }, { "aah" });
         log.cleanedCommand(hash_1);
-        log.ranCommand(hash_1, {}, {});
+        ranCommand(log, hash_1, {}, {});
         log.cleanedCommand(hash_0);
       });
     }

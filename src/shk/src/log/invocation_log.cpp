@@ -7,22 +7,38 @@ void InvocationLog::relogCommand(
     const std::vector<std::pair<Path, Fingerprint>> &fingerprints,
     const std::vector<size_t> &output_files,
     const std::vector<size_t> &input_files) {
-  std::vector<std::string> outputs;
+  std::vector<std::string> output_paths;
+  std::vector<Fingerprint> output_fingerprints;
   for (const auto &file_idx : output_files) {
     const auto &file = fingerprints[file_idx];
-    outputs.push_back(file.first.original());
+    output_paths.push_back(file.first.original());
+    output_fingerprints.push_back(file.second);
   }
 
-  std::vector<std::string> inputs;
+  std::vector<std::string> input_paths;
+  std::vector<Fingerprint> input_fingerprints;
   for (const auto &file_idx : input_files) {
     const auto &file = fingerprints[file_idx];
-    inputs.push_back(file.first.original());
+    input_paths.push_back(file.first.original());
+    input_fingerprints.push_back(file.second);
   }
 
   ranCommand(
       build_step_hash,
-      std::move(outputs),
-      std::move(inputs));
+      std::move(output_paths),
+      std::move(output_fingerprints),
+      std::move(input_paths),
+      std::move(input_fingerprints));
+}
+
+std::vector<Fingerprint> InvocationLog::fingerprintFiles(
+    const std::vector<std::string> &files) {
+  std::vector<Fingerprint> ans;
+  ans.reserve(files.size());
+  for (const auto &file : files) {
+    ans.push_back(fingerprint(file));
+  }
+  return ans;
 }
 
 }  // namespace shk

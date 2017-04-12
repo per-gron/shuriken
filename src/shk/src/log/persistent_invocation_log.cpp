@@ -182,12 +182,17 @@ class PersistentInvocationLog : public InvocationLog {
   void ranCommand(
       const Hash &build_step_hash,
       std::vector<std::string> &&output_files,
-      std::vector<std::string> &&input_files_map)
+      std::vector<Fingerprint> &&output_fingerprints,
+      std::vector<std::string> &&input_files_map,
+      std::vector<Fingerprint> &&input_fingerprints)
           throw(IoError) override {
 
-    output_files = writeOutputPathsAndFingerprints(std::move(output_files));
+    output_files = writeOutputPathsAndFingerprints(
+        std::move(output_files),
+        std::move(output_fingerprints));
     const auto input_files = writeInputPathsAndFingerprints(
-        std::move(input_files_map));
+        std::move(input_files_map),
+        std::move(input_fingerprints));
 
     const auto total_entries = output_files.size() + input_files.size();
     const uint32_t size =
@@ -226,11 +231,18 @@ class PersistentInvocationLog : public InvocationLog {
    * Used for output files.
    */
   std::vector<std::string> writeOutputPathsAndFingerprints(
-      std::vector<std::string> &&paths) {
+      std::vector<std::string> &&paths,
+      std::vector<Fingerprint> &&output_fingerprints) {
+    if (paths.size() != output_fingerprints.size()) {
+      // Should never happen
+      throw std::runtime_error("mismatching path and fingerprint vector sizes");
+    }
     std::vector<std::string> result;
-    for (auto &path : paths) {
-      const auto fingerprint = ensureRecentFingerprintIsWritten(
-          path, WriteType::DIRECTORY_AS_DIRECTORY_ENTRY);
+    for (int i = 0; i < paths.size(); i++) {
+      const auto &path = paths[i];
+      const auto &fingerprint = output_fingerprints[i];
+      ensureRecentFingerprintIsWritten(
+          path, fingerprint, WriteType::DIRECTORY_AS_DIRECTORY_ENTRY);
       if (!fingerprint.stat.isDir()) {
         result.push_back(std::move(path));
       }
@@ -239,13 +251,20 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
   std::vector<std::string> writeInputPathsAndFingerprints(
-      const std::vector<std::string> &dependencies) {
+      std::vector<std::string> &&input_files,
+      std::vector<Fingerprint> &&input_fingerprints) {
+    if (input_files.size() != input_fingerprints.size()) {
+      // Should never happen
+      throw std::runtime_error("mismatching path and fingerprint vector sizes");
+    }
     std::vector<std::string> result;
-    for (auto &&dep : dependencies) {
-      const auto fingerprint = ensureRecentFingerprintIsWritten(
-          dep, WriteType::ALWAYS_FINGERPRINT);
+    for (int i = 0; i < input_files.size(); i++) {
+      auto &path = input_files[i];
+      const auto &fingerprint = input_fingerprints[i];
+      ensureRecentFingerprintIsWritten(
+          path, fingerprint, WriteType::ALWAYS_FINGERPRINT);
       if (!fingerprint.stat.isDir()) {
-        result.push_back(std::move(dep));
+        result.push_back(std::move(path));
       }
     }
     return result;
@@ -346,41 +365,33 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
   /**
-   * Get the id for a fingerprint of a path. If there is no fingerprint written
-   * for the given path, just take the fingerprint. If there is a fingerprint
-   * already for that path, attempt to reuse it, in an effort to avoid
-   * re-hashing the file. This is important for performance, because otherwise
-   * the build would hash every input file for every build step, including files
-   * that are used for every build step, such as system libraries.
-   *
-   * Returns the fingerprint for the given path.
+   * Given a fingerprint, ensure that it is written in the log. If there already
+   * is one, this method does not modify the log.
    *
    * Because this might write an entry to the log, this method cannot be called
    * in the middle of writing another entry.
    */
-  Fingerprint ensureRecentFingerprintIsWritten(
-        const std::string &path, WriteType type) {
+  void ensureRecentFingerprintIsWritten(
+        const std::string &path,
+        const Fingerprint &fingerprint,
+        WriteType type) {
     const auto path_id = ensurePathIsWritten(path);
 
     FingerprintIdsValue value;
-    value.fingerprint = fingerprint(path);
+    value.fingerprint = fingerprint;
     value.record_id = _entry_count;
     const auto it = _fingerprint_ids.find(path);
     if (it == _fingerprint_ids.end()) {
       // No prior entry for that path.
       writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
       _fingerprint_ids[path] = value;
-      return value.fingerprint;
     } else {
       // There is a fingerprint entry for the given path already. Find out if it
       // can be reused or if a new fingerprint is required.
       const auto &old_fingerprint = it->second.fingerprint;
-      if (old_fingerprint == value.fingerprint) {
-        return it->second.fingerprint;
-      } else {
+      if (old_fingerprint != value.fingerprint) {
         writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
         _fingerprint_ids[path] = value;
-        return value.fingerprint;
       }
     }
   }

@@ -260,6 +260,31 @@ MatchesResult checkFingerprintMatches(
   return *fingerprint_matches_memo[fingerprint_idx];
 }
 
+void relogCommand(
+    InvocationLog &invocation_log,
+    const Invocations &invocations,
+    const Invocations::Entry &entry,
+    const Hash &step_hash) {
+  auto make_files_vector = [&](const std::vector<size_t> &file_indices) {
+    std::vector<std::string> files;
+    files.reserve(file_indices.size());
+    for (const size_t file_index : file_indices) {
+      files.push_back(invocations.fingerprints[file_index].first.original());
+    }
+    return files;
+  };
+
+  auto output_files = make_files_vector(entry.output_files);
+  auto input_files = make_files_vector(entry.input_files);
+
+  invocation_log.ranCommand(
+      step_hash,
+      std::move(output_files),
+      invocation_log.fingerprintFiles(output_files),
+      std::move(input_files),
+      invocation_log.fingerprintFiles(input_files));
+}
+
 }  // anonymous namespace
 
 bool isClean(
@@ -304,12 +329,10 @@ bool isClean(
 
   if (should_update && clean) {
     // There is no need to update the invocation log when dirty; it will be
-    // updated anyway as part of the build.
-    invocation_log.relogCommand(
-        step_hash,
-        invocations.fingerprints,
-        entry.output_files,
-        entry.input_files);
+    // updated anyway as part of the build. Also, updating the invocation log
+    // when dirty will fingerprint it and effectively mark it as clean, which
+    // is not the intention here.
+    relogCommand(invocation_log, invocations, entry, step_hash);
   }
 
   return clean;
@@ -490,7 +513,9 @@ void commandDone(
       params.invocation_log.ranCommand(
           params.manifest.steps[step_idx].hash,
           std::move(result.output_files),
-          std::move(result.input_files));
+          params.invocation_log.fingerprintFiles(result.output_files),
+          std::move(result.input_files),
+          params.invocation_log.fingerprintFiles(result.input_files));
     }
 
     markStepNodeAsDone(params.build, step_idx);

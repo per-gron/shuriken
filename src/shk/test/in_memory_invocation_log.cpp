@@ -1,29 +1,39 @@
 #include "in_memory_invocation_log.h"
 
+#include <stdlib.h>
+
 namespace shk {
 namespace {
 
 std::vector<std::pair<std::string, Fingerprint>> processInputPaths(
     FileSystem &fs,
     const Clock &clock,
-    std::vector<std::string> &&dependencies) {
+    std::vector<std::string> &&input_paths,
+    std::vector<Fingerprint> &&input_fingerprints) {
   std::vector<std::pair<std::string, Fingerprint>> files;
-  for (auto &dep : dependencies) {
-    const auto fingerprint = takeFingerprint(fs, clock(), dep);
+  if (input_paths.size() != input_fingerprints.size()) {
+    abort();
+  }
+
+  for (int i = 0; i < input_paths.size(); i++) {
+    auto &path = input_paths[i];
+    const auto &fingerprint = input_fingerprints[i];
     if (!fingerprint.stat.isDir()) {
-      files.emplace_back(std::move(dep), fingerprint);
+      files.emplace_back(std::move(path), fingerprint);
     }
   }
   return files;
 }
 
-std::vector<std::pair<std::string, Fingerprint>> processOutputPaths(
-    FileSystem &fs,
-    const Clock &clock,
-    std::vector<std::string> &&paths) {
+std::vector<std::pair<std::string, Fingerprint>> mergeOutputVectors(
+    std::vector<std::string> &&paths,
+    std::vector<Fingerprint> &&output_fingerprints) {
   std::vector<std::pair<std::string, Fingerprint>> files;
-  for (auto &&path : paths) {
-    files.emplace_back(std::move(path), takeFingerprint(fs, clock(), path));
+  if (paths.size() != output_fingerprints.size()) {
+    abort();
+  }
+  for (int i = 0; i < paths.size(); i++) {
+    files.emplace_back(std::move(paths[i]), std::move(output_fingerprints[i]));
   }
   return files;
 }
@@ -49,8 +59,12 @@ Fingerprint InMemoryInvocationLog::fingerprint(const std::string &path) {
 void InMemoryInvocationLog::ranCommand(
     const Hash &build_step_hash,
     std::vector<std::string> &&output_files,
-    std::vector<std::string> &&input_files) throw(IoError) {
-  auto output_file_fingerprints = processOutputPaths(_fs, _clock, std::move(output_files));
+    std::vector<Fingerprint> &&output_fingerprints,
+    std::vector<std::string> &&input_files,
+    std::vector<Fingerprint> &&input_fingerprints) throw(IoError) {
+  auto output_file_fingerprints = mergeOutputVectors(
+      std::move(output_files),
+      std::move(output_fingerprints));
 
   auto files_end = std::partition(
       output_file_fingerprints.begin(),
@@ -66,7 +80,11 @@ void InMemoryInvocationLog::ranCommand(
 
   _entries[build_step_hash] = {
       output_file_fingerprints,
-      processInputPaths(_fs, _clock, std::move(input_files)) };
+      processInputPaths(
+          _fs,
+          _clock,
+          std::move(input_files),
+          std::move(input_fingerprints)) };
 }
 
 void InMemoryInvocationLog::cleanedCommand(

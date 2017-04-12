@@ -44,7 +44,9 @@ class DelayedInvocationLog : public InvocationLog {
   void ranCommand(
       const Hash &build_step_hash,
       std::vector<std::string> &&output_files,
-      std::vector<std::string> &&input_files)
+      std::vector<Fingerprint> &&output_fingerprints,
+      std::vector<std::string> &&input_files,
+      std::vector<Fingerprint> &&input_fingerprints)
           throw(IoError) override {
     const auto now = _clock();
     writeDelayedEntries(now);
@@ -53,7 +55,9 @@ class DelayedInvocationLog : public InvocationLog {
     entry.timestamp = now;
     entry.build_step_hash = build_step_hash;
     entry.output_files = std::move(output_files);
+    entry.output_fingerprints = std::move(output_fingerprints);
     entry.input_files = std::move(input_files);
+    entry.input_fingerprints = std::move(input_fingerprints);
     _delayed_entries.push_back(std::move(entry));
   }
 
@@ -84,13 +88,35 @@ class DelayedInvocationLog : public InvocationLog {
       if (delayed_entry.cleaned) {
         _inner_log->cleanedCommand(delayed_entry.build_step_hash);
       } else {
+        // Because Shuriken assumes that output files and input files of the
+        // build are not modified by anything except build steps (which are
+        // monitored for file modifications), and that Shuriken ensures that
+        // only one build step modifies each output file and that there are no
+        // steps that modify previous steps' inputs, it is safe to assume that
+        // the fingerprint that was taken prior to invoking ranCommand (about
+        // one second ago) has not been changed since. Because of that it is
+        // safe to update the fingerprint timestamp to now, which in turn will
+        // avoid racily clean fingerprints.
+        setFingerprintTimestamps(delayed_entry.output_fingerprints, now);
+        setFingerprintTimestamps(delayed_entry.input_fingerprints, now);
+
         _inner_log->ranCommand(
             delayed_entry.build_step_hash,
             std::move(delayed_entry.output_files),
-            std::move(delayed_entry.input_files));
+            std::move(delayed_entry.output_fingerprints),
+            std::move(delayed_entry.input_files),
+            std::move(delayed_entry.input_fingerprints));
       }
     }
     _delayed_entries.erase(_delayed_entries.begin(), it);
+  }
+
+  static void setFingerprintTimestamps(
+      std::vector<Fingerprint> &fingerprints,
+      time_t now) {
+    for (auto &fingerprint : fingerprints) {
+      fingerprint.timestamp = now;
+    }
   }
 
   struct DelayedEntry {
@@ -99,7 +125,9 @@ class DelayedInvocationLog : public InvocationLog {
     bool cleaned = false;
     Hash build_step_hash;
     std::vector<std::string> output_files;
+    std::vector<Fingerprint> output_fingerprints;
     std::vector<std::string> input_files;
+    std::vector<Fingerprint> input_fingerprints;
   };
 
   const Clock _clock;

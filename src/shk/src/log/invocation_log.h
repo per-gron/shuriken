@@ -57,8 +57,14 @@ class InvocationLog {
    * the given hash has been successfully run with information about outputs and
    * dependencies.
    *
-   * The InvocationLog will fingerprint the provided paths, reusing existing
-   * fingerprints if possible.
+   * The InvocationLog will fingerprint the provided input paths, reusing
+   * existing fingerprints if possible.
+   *
+   * Because Reasons(tm) (the main use case of this function needs to have the
+   * fingerprint of the outputs), the InvocationLog requires the caller to
+   * fingerprint the output paths. It is recommended to use
+   * InvocationLog::fingerprint for that, in order to re-use existing
+   * fingerprints and avoid re-hashing of file contents whenever possible.
    *
    * Output files that are directories are treated the same as calling
    * createdDirectory. For more info, see Invocations::created_directories.
@@ -66,13 +72,16 @@ class InvocationLog {
   virtual void ranCommand(
       const Hash &build_step_hash,
       std::vector<std::string> &&output_files,
-      std::vector<std::string> &&input_files)
+      std::vector<Fingerprint> &&output_fingerprints,
+      std::vector<std::string> &&input_files,
+      std::vector<Fingerprint> &&input_fingerprints)
           throw(IoError) = 0;
 
   /**
    * Helper function that is useful when rewriting an already existing
-   * invocation log entry, for example when recompacting or when rewriting it
-   * because it is racily clean.
+   * invocation log entry, for example when recompacting. This method does not
+   * re-take fingerprints so it is not suitable for re-logging a racily clean
+   * entry.
    *
    * The fingerprints parameter has the same format and purpose as
    * Invocations::fingerprints. The output_files and input_files vectors contain
@@ -93,6 +102,13 @@ class InvocationLog {
    */
   virtual void cleanedCommand(
       const Hash &build_step_hash) throw(IoError) = 0;
+
+  /**
+   * Helper function that calls the fingerprint method for each of the provided
+   * paths and returns the results in a vector.
+   */
+  std::vector<Fingerprint> fingerprintFiles(
+      const std::vector<std::string> &files);
 };
 
 }  // namespace shk
