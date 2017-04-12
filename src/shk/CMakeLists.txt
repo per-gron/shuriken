@@ -60,7 +60,6 @@ add_library(shklib
   src/io_error.h
   src/log/delayed_invocation_log.cpp
   src/log/delayed_invocation_log.h
-  src/log/dry_run_invocation_log.h
   src/log/dummy_invocation_log.h
   src/log/invocation_log.cpp
   src/log/invocation_log.h

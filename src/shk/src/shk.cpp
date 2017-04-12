@@ -44,7 +44,7 @@
 #include "fs/file_lock.h"
 #include "fs/persistent_file_system.h"
 #include "log/delayed_invocation_log.h"
-#include "log/dry_run_invocation_log.h"
+#include "log/dummy_invocation_log.h"
 #include "log/invocations.h"
 #include "log/persistent_invocation_log.h"
 #include "manifest/indexed_manifest.h"
@@ -389,7 +389,7 @@ bool ShurikenMain::openInvocationLog() {
 
   if (_config.dry_run) {
     _invocation_log = std::unique_ptr<InvocationLog>(
-        new DryRunInvocationLog());
+        new DummyInvocationLog());
   } else {
     try {
       mkdirs(_file_system, shk::dirname(path));
