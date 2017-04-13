@@ -97,10 +97,11 @@ Invocations InMemoryInvocationLog::invocations(Paths &paths) const {
   Invocations result;
 
   for (const auto &dir : _created_directories) {
-    const auto path = paths.get(dir);
-    path.fileId().each([&](const FileId file_id) {
-      result.created_directories.emplace(file_id, path);
-    });
+    const auto stat = _fs.lstat(dir);
+    if (stat.result == 0) {
+      const auto file_id = FileId(stat);
+      result.created_directories.emplace(file_id, dir);
+    }
   }
 
   const auto files = [&](

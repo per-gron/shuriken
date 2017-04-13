@@ -72,7 +72,7 @@ struct Invocations {
    * removed since it was last created by the build, it is ok (and actually
    * desired) for Shuriken to not track it anymore.
    */
-  std::unordered_map<FileId, Path> created_directories;
+  std::unordered_map<FileId, std::string> created_directories;
 };
 
 inline bool operator==(const Invocations::Entry &a, const Invocations::Entry &b) {

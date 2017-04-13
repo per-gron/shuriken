@@ -979,7 +979,7 @@ TEST_CASE("Build") {
       invocations.entries[hash] = entry;
 
       invocations.created_directories.emplace(
-          FileId(fs.stat("dir_single_file")), paths.get("dir_single_file"));
+          FileId(fs.lstat("dir_single_file")), "dir_single_file");
 
       deleteOldOutputs(fs, invocations, log, hash);
 
@@ -997,9 +997,9 @@ TEST_CASE("Build") {
       invocations.entries[hash] = entry;
 
       invocations.created_directories.emplace(
-          FileId(fs.stat("dir")), paths.get("dir"));
+          FileId(fs.lstat("dir")), "dir");
       invocations.created_directories.emplace(
-          FileId(fs.stat("dir/subdir")), paths.get("dir/subdir"));
+          FileId(fs.lstat("dir/subdir")), "dir/subdir");
 
       deleteOldOutputs(fs, invocations, log, hash);
 
@@ -1018,9 +1018,9 @@ TEST_CASE("Build") {
       invocations.entries[hash] = entry;
 
       invocations.created_directories.emplace(
-          FileId(fs.stat("dir")), paths.get("dir"));
+          FileId(fs.lstat("dir")), "dir");
       invocations.created_directories.emplace(
-          FileId(fs.stat("dir/subdir")), paths.get("dir/subdir"));
+          FileId(fs.lstat("dir/subdir")), "dir/subdir");
 
       deleteOldOutputs(fs, invocations, log, hash);
 

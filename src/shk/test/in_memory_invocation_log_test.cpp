@@ -114,10 +114,8 @@ TEST_CASE("InMemoryInvocationLog") {
       fs.mkdir("a");
       log.createdDirectory("a");
 
-      const auto path = paths.get("a");
-      std::unordered_map<FileId, Path> created_directories;
-      REQUIRE(path.fileId());
-      created_directories.emplace(*path.fileId(), path);
+      std::unordered_map<FileId, std::string> created_directories{
+        { FileId(fs.lstat("a")), "a" } };
       CHECK(log.invocations(paths).created_directories == created_directories);
     }
 
