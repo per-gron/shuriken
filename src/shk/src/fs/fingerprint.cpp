@@ -30,25 +30,7 @@ bool fingerprintStat(
   const auto stat = file_system.lstat(path);
   *file_id = FileId(stat);
 
-  if (stat.result == 0) {
-    out->size = stat.metadata.size;
-    out->ino = stat.metadata.ino;
-    static constexpr auto mode_mask =
-        S_IFMT | S_IRWXU | S_IRWXG | S_IXOTH | S_ISUID | S_ISGID | S_ISVTX;
-    out->mode = stat.metadata.mode & mode_mask;
-    out->mtime = stat.timestamps.mtime;
-    out->ctime = stat.timestamps.ctime;
-
-    if (!S_ISLNK(out->mode) &&
-        !S_ISREG(out->mode) &&
-        !S_ISDIR(out->mode)) {
-      *err =
-          "Can only fingerprint regular files, directories and links: " + path;
-      return false;
-    }
-  }
-
-  return true;
+  return Fingerprint::Stat::fromStat(stat, out, err);
 }
 
 /**
@@ -88,7 +70,7 @@ MatchesResult fingerprintMatches(
       // same. In order to know if it's dirty or not, we need to hash the file
       // again.
       computeFingerprintHash(file_system, fp.stat, path, hash);
-      result.clean = (*hash == fp.hash);
+      result.clean = fingerprintMatches(fp, current, *hash);
 
       // At this point, the fingerprint in the invocation log should be
       // re-calculated to avoid this expensive file content check in the future.
@@ -99,6 +81,31 @@ MatchesResult fingerprintMatches(
 }
 
 }  // anonymous namespace
+
+Fingerprint::Stat::Stat() {}
+
+bool Fingerprint::Stat::fromStat(
+    const ::shk::Stat &stat, Stat *out, std::string *err) {
+  if (stat.result == 0) {
+    out->size = stat.metadata.size;
+    out->ino = stat.metadata.ino;
+    static constexpr auto mode_mask =
+        S_IFMT | S_IRWXU | S_IRWXG | S_IXOTH | S_ISUID | S_ISGID | S_ISVTX;
+    out->mode = stat.metadata.mode & mode_mask;
+    out->mtime = stat.timestamps.mtime;
+    out->ctime = stat.timestamps.ctime;
+
+    if (!S_ISLNK(out->mode) &&
+        !S_ISREG(out->mode) &&
+        !S_ISDIR(out->mode)) {
+      *err =
+          "Can only fingerprint regular files, directories and links";
+      return false;
+    }
+  }
+
+  return true;
+}
 
 bool Fingerprint::Stat::couldAccess() const {
   return mode != 0;
@@ -221,6 +228,29 @@ MatchesResult fingerprintMatches(
       fp,
       fingerprint_stat,
       &discard1);
+}
+
+bool fingerprintMatches(
+    const Fingerprint &original_fingerprint,
+    const Fingerprint::Stat &new_stat,
+    const Hash &new_hash) {
+  return
+      original_fingerprint.stat.size == new_stat.size &&
+      original_fingerprint.stat.mode == new_stat.mode &&
+      original_fingerprint.hash == new_hash;
+}
+
+bool fingerprintMatches(
+    const Fingerprint &original_fingerprint,
+    const Stat &new_stat,
+    const Hash &new_hash) {
+  Fingerprint::Stat new_fingerprint_stat;
+  std::string err;
+  if (!Fingerprint::Stat::fromStat(new_stat, &new_fingerprint_stat, &err)) {
+    return false;
+  }
+  return fingerprintMatches(
+      original_fingerprint, new_fingerprint_stat, new_hash);
 }
 
 }  // namespace shk

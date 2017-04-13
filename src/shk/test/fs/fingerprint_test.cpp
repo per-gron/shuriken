@@ -25,6 +25,45 @@ TEST_CASE("Fingerprint") {
     a.ctime = 5;
     Fingerprint::Stat b = a;
 
+    SECTION("fromStat") {
+      SECTION("missing file") {
+        auto stat = fs.stat("missing");
+        Fingerprint::Stat fp_stat;
+        std::string err;
+        CHECK(Fingerprint::Stat::fromStat(stat, &fp_stat, &err));
+        CHECK(err.empty());
+        CHECK(fp_stat == Fingerprint::Stat());
+      }
+
+      SECTION("directory") {
+        auto stat = fs.stat("dir");
+        Fingerprint::Stat fp_stat;
+        std::string err;
+        CHECK(Fingerprint::Stat::fromStat(stat, &fp_stat, &err));
+        CHECK(err.empty());
+
+        CHECK(fp_stat.size == 0);
+        CHECK(fp_stat.ino == stat.metadata.ino);
+        CHECK(S_ISDIR(fp_stat.mode));
+        CHECK(fp_stat.mtime == stat.timestamps.mtime);
+        CHECK(fp_stat.ctime == stat.timestamps.ctime);
+      }
+
+      SECTION("file") {
+        auto stat = fs.stat("a");
+        Fingerprint::Stat fp_stat;
+        std::string err;
+        CHECK(Fingerprint::Stat::fromStat(stat, &fp_stat, &err));
+        CHECK(err.empty());
+
+        CHECK(fp_stat.size == stat.metadata.size);
+        CHECK(fp_stat.ino == stat.metadata.ino);
+        CHECK(S_ISREG(fp_stat.mode));
+        CHECK(fp_stat.mtime == stat.timestamps.mtime);
+        CHECK(fp_stat.ctime == stat.timestamps.ctime);
+      }
+    }
+
     SECTION("equal") {
       CHECK(a == b);
       CHECK(!(a != b));
@@ -292,7 +331,7 @@ TEST_CASE("Fingerprint") {
     }
   }
 
-  SECTION("fingerprintMatches") {
+  SECTION("fingerprintMatches (stating variant)") {
     SECTION("no changes, fingerprint taken at the same time as file mtime") {
       Fingerprint initial_fp;
       FileId file_id;
@@ -417,6 +456,73 @@ TEST_CASE("Fingerprint") {
       const auto result = fingerprintMatches(fs, "d", initial_fp);
       CHECK(result.clean);
       CHECK(result.should_update);
+    }
+  }
+
+  SECTION("fingerprintMatches (non-stating variant)") {
+    static const char *kPaths[] = { "a", "dir", "missing" };
+    static const char *kPathsNoMissing[] = { "a", "dir" };
+
+    SECTION("match") {
+      for (const char *path : kPaths) {
+        const auto fingerprint = takeFingerprint(fs, now, path).first;
+
+        const auto new_stat = fs.lstat(path);
+
+        const auto new_hash =
+            std::string(path) == "dir" ? fs.hashDir(path) :
+            std::string(path) == "missing" ? Hash{} :
+            fs.hashFile(path);
+
+        CHECK(fingerprintMatches(fingerprint, new_stat, new_hash));
+      }
+    }
+
+    SECTION("size mismatch") {
+      for (const char *path : kPathsNoMissing) {
+        const auto fingerprint = takeFingerprint(fs, now, path).first;
+
+        auto new_stat = fs.lstat(path);
+        new_stat.metadata.size++;
+
+        const auto new_hash =
+            std::string(path) == "dir" ? fs.hashDir(path) :
+            fs.hashFile(path);
+
+        CHECK(!fingerprintMatches(fingerprint, new_stat, new_hash));
+      }
+    }
+
+    SECTION("mode mismatch") {
+      for (const char *path : kPathsNoMissing) {
+        const auto fingerprint = takeFingerprint(fs, now, path).first;
+
+        auto new_stat = fs.lstat(path);
+        new_stat.metadata.mode++;
+
+        const auto new_hash =
+            std::string(path) == "dir" ? fs.hashDir(path) :
+            fs.hashFile(path);
+
+        CHECK(!fingerprintMatches(fingerprint, new_stat, new_hash));
+      }
+    }
+
+    SECTION("hash mismatch") {
+      for (const char *path : kPaths) {
+        const auto fingerprint = takeFingerprint(fs, now, path).first;
+
+        const auto new_stat = fs.lstat(path);
+
+        auto new_hash =
+            std::string(path) == "dir" ? fs.hashDir(path) :
+            std::string(path) == "missing" ? Hash{} :
+            fs.hashFile(path);
+
+        new_hash.data[0]++;
+
+        CHECK(!fingerprintMatches(fingerprint, new_stat, new_hash));
+      }
     }
   }
 }

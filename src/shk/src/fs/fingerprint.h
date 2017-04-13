@@ -43,6 +43,10 @@ struct Fingerprint {
    * contain st_dev, because it's not stable over time on network file systems.
    */
   struct Stat {
+    Stat();
+
+    static bool fromStat(const ::shk::Stat &stat, Stat *out, std::string *err);
+
     size_t size = 0;
     ino_t ino = 0;
     /**
@@ -123,6 +127,24 @@ MatchesResult fingerprintMatches(
     FileSystem &file_system,
     const std::string &path,
     const Fingerprint &fingerprint) throw(IoError);
+
+/**
+ * Check if a given fingerprint is still clean given a Stat and a Hash of a
+ * file.
+ */
+bool fingerprintMatches(
+    const Fingerprint &original_fingerprint,
+    const Fingerprint::Stat &new_stat,
+    const Hash &new_hash);
+
+/**
+ * Check if a given fingerprint is still clean given a Stat and a Hash of a
+ * file.
+ */
+bool fingerprintMatches(
+    const Fingerprint &original_fingerprint,
+    const Stat &new_stat,
+    const Hash &new_hash);
 
 }  // namespace shk
 
