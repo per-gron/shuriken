@@ -171,11 +171,11 @@ class PersistentInvocationLog : public InvocationLog {
     const auto it = _fingerprint_ids.find(path);
     if (it == _fingerprint_ids.end()) {
       // No prior entry for that path. Need to take fingerprint.
-      return takeFingerprint(_fs, _clock(), path);
+      return takeFingerprint(_fs, _clock(), path).first;
     } else {
       // There is a fingerprint entry for the given path already.
       const auto &old_fingerprint = it->second.fingerprint;
-      return retakeFingerprint(_fs, _clock(), path, old_fingerprint);
+      return retakeFingerprint(_fs, _clock(), path, old_fingerprint).first;
     }
   }
 

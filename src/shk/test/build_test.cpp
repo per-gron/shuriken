@@ -561,10 +561,10 @@ TEST_CASE("Build") {
     std::fill(hash_a.data.begin(), hash_a.data.end(), 0);
 
     fs.writeFile("one", "one_content");
-    const auto one_fp = takeFingerprint(fs, clock() + 1, "one");
-    const auto one_fp_racy = takeFingerprint(fs, clock(), "one");
+    const auto one_fp = takeFingerprint(fs, clock() + 1, "one").first;
+    const auto one_fp_racy = takeFingerprint(fs, clock(), "one").first;
     fs.writeFile("two", "two_content");
-    const auto two_fp = takeFingerprint(fs, clock() + 1, "two");
+    const auto two_fp = takeFingerprint(fs, clock() + 1, "two").first;
 
     FingerprintMatchesMemo memo;
 
@@ -903,15 +903,16 @@ TEST_CASE("Build") {
 
   SECTION("deleteOldOutputs") {
     fs.writeFile("file", "contents");
-    const auto fingerprint = takeFingerprint(fs, clock(), "file");
+    const auto fingerprint = takeFingerprint(fs, clock(), "file").first;
     fs.mkdir("dir_single_file");
     fs.writeFile("dir_single_file/file", "contents!");
     fs.mkdir("dir");
     fs.writeFile("dir/file2", "contents2");
-    const auto fingerprint2 = takeFingerprint(fs, clock(), "dir/file2");
+    const auto fingerprint2 = takeFingerprint(fs, clock(), "dir/file2").first;
     fs.mkdir("dir/subdir");
     fs.writeFile("dir/subdir/file3", "contents3");
-    const auto fingerprint3 = takeFingerprint(fs, clock(), "dir/subdir/file3");
+    const auto fingerprint3 =
+        takeFingerprint(fs, clock(), "dir/subdir/file3").first;
 
     Invocations::Entry entry;
     Hash hash;

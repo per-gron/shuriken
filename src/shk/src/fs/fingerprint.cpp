@@ -25,8 +25,11 @@ bool fingerprintStat(
     FileSystem &file_system,
     const std::string &path,
     Fingerprint::Stat *out,
+    FileId *file_id,
     std::string *err) {
   const auto stat = file_system.lstat(path);
+  *file_id = FileId(stat);
+
   if (stat.result == 0) {
     out->size = stat.metadata.size;
     out->ino = stat.metadata.ino;
@@ -59,7 +62,7 @@ MatchesResult fingerprintMatches(
     const std::string &path,
     const Fingerprint &fp,
     const Fingerprint::Stat &current,
-    Hash &hash) throw(IoError) {
+    Hash *hash) throw(IoError) {
   MatchesResult result;
   if (current == fp.stat &&
       (fp.stat.mode == 0 || (
@@ -84,8 +87,8 @@ MatchesResult fingerprintMatches(
       // already known for sure that the file is different, but now they are the
       // same. In order to know if it's dirty or not, we need to hash the file
       // again.
-      computeFingerprintHash(file_system, fp.stat, path, &hash);
-      result.clean = (hash == fp.hash);
+      computeFingerprintHash(file_system, fp.stat, path, hash);
+      result.clean = (*hash == fp.hash);
 
       // At this point, the fingerprint in the invocation log should be
       // re-calculated to avoid this expensive file content check in the future.
@@ -151,46 +154,49 @@ bool MatchesResult::operator!=(const MatchesResult &other) const {
   return !(*this == other);
 }
 
-Fingerprint takeFingerprint(
+std::pair<Fingerprint, FileId> takeFingerprint(
     FileSystem &file_system,
     time_t timestamp,
     const std::string &path) throw(IoError) {
-  Fingerprint fp;
+  std::pair<Fingerprint, FileId> ans;
+  Fingerprint &fp = ans.first;
+  FileId &file_id = ans.second;
 
   std::string err;
-  if (!fingerprintStat(file_system, path, &fp.stat, &err)) {
+  if (!fingerprintStat(file_system, path, &fp.stat, &file_id, &err)) {
     throw IoError(err, 0);
   }
   fp.timestamp = timestamp;
   computeFingerprintHash(file_system, fp.stat, path, &fp.hash);
 
-  return fp;
+  return ans;
 }
 
-Fingerprint retakeFingerprint(
+std::pair<Fingerprint, FileId> retakeFingerprint(
     FileSystem &file_system,
     time_t timestamp,
     const std::string &path,
     const Fingerprint &old_fingerprint) {
-  Fingerprint new_fingerprint;
+  std::pair<Fingerprint, FileId> ans(old_fingerprint, FileId());
+  Fingerprint &new_fingerprint = ans.first;
+  FileId &file_id = ans.second;
 
   std::string err;
-  if (!fingerprintStat(file_system, path, &new_fingerprint.stat, &err)) {
+  if (!fingerprintStat(file_system, path, &new_fingerprint.stat, &file_id, &err)) {
     throw IoError(err, 0);
   }
 
-  new_fingerprint.timestamp = timestamp;
   const auto result = fingerprintMatches(
       file_system,
       path,
       old_fingerprint,
       new_fingerprint.stat,
-      new_fingerprint.hash);
+      &new_fingerprint.hash);
   if (result.clean && !result.should_update) {
-    return old_fingerprint;
+    return ans;
   } else if (result.should_update) {
-    // new_fingerprint.hash has been set by fingerprintMatches
-    return new_fingerprint;
+    new_fingerprint.timestamp = timestamp;
+    return ans;
   } else {
     return takeFingerprint(file_system, timestamp, path);
   }
@@ -200,11 +206,12 @@ MatchesResult fingerprintMatches(
     FileSystem &file_system,
     const std::string &path,
     const Fingerprint &fp) throw(IoError) {
-  Hash discard;
+  Hash discard1;
+  FileId discard2;
 
   std::string err;
   Fingerprint::Stat fingerprint_stat;
-  if (!fingerprintStat(file_system, path, &fingerprint_stat, &err)) {
+  if (!fingerprintStat(file_system, path, &fingerprint_stat, &discard2, &err)) {
     throw IoError(err, 0);
   }
 
@@ -213,7 +220,7 @@ MatchesResult fingerprintMatches(
       path,
       fp,
       fingerprint_stat,
-      discard);
+      &discard1);
 }
 
 }  // namespace shk

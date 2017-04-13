@@ -41,7 +41,8 @@ TEST_CASE("DelayedInvocationLog") {
 
   SECTION("Fingerprint") {
     CHECK(
-        log->fingerprint("test_file") == takeFingerprint(fs, now, "test_file"));
+        log->fingerprint("test_file") ==
+        takeFingerprint(fs, now, "test_file").first);
   }
 
   SECTION("RanCommand") {
@@ -78,7 +79,7 @@ TEST_CASE("DelayedInvocationLog") {
     }
 
     SECTION("WriteOutputs") {
-      auto fingerprint = takeFingerprint(fs, now, "test_file");
+      auto fingerprint = takeFingerprint(fs, now, "test_file").first;
       log->ranCommand(
           hash_a,
           { "test_file" },
@@ -100,7 +101,7 @@ TEST_CASE("DelayedInvocationLog") {
     }
 
     SECTION("WriteInputs") {
-      auto fingerprint = takeFingerprint(fs, now, "test_file");
+      auto fingerprint = takeFingerprint(fs, now, "test_file").first;
       log->ranCommand(
           hash_a,
           {},

@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 
+#include "fs/file_id.h"
 #include "fs/file_system.h"
 #include "hash.h"
 
@@ -94,7 +95,7 @@ struct MatchesResult {
 /**
  * Take the fingerprint of a file.
  */
-Fingerprint takeFingerprint(
+std::pair<Fingerprint, FileId> takeFingerprint(
     FileSystem &file_system,
     time_t timestamp,
     const std::string &path) throw(IoError);
@@ -109,7 +110,7 @@ Fingerprint takeFingerprint(
  * clean, then this function is significantly faster than takeFingerprint,
  * because it only has to do a stat rather than a full hash of the file.
  */
-Fingerprint retakeFingerprint(
+std::pair<Fingerprint, FileId> retakeFingerprint(
     FileSystem &file_system,
     time_t timestamp,
     const std::string &path,

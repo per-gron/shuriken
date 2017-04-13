@@ -53,7 +53,7 @@ void InMemoryInvocationLog::removedDirectory(const std::string &path) throw(IoEr
 }
 
 Fingerprint InMemoryInvocationLog::fingerprint(const std::string &path) {
-  return takeFingerprint(_fs, _clock(), path);
+  return takeFingerprint(_fs, _clock(), path).first;
 }
 
 void InMemoryInvocationLog::ranCommand(

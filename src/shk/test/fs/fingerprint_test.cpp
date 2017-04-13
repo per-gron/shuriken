@@ -105,7 +105,11 @@ TEST_CASE("Fingerprint") {
 
   SECTION("takeFingerprint") {
     SECTION("regular file") {
-      const auto fp = takeFingerprint(fs, 12345, "a");
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, 12345, "a");
+
+      CHECK(file_id == FileId(fs.lstat("a")));
 
       CHECK(fp.stat.size == initial_contents.size());
       CHECK(fp.stat.ino == fs.stat("a").metadata.ino);
@@ -119,7 +123,11 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("missing file") {
-      const auto fp = takeFingerprint(fs, 12345, "b");
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, 12345, "b");
+
+      CHECK(file_id == FileId(fs.lstat("b")));
 
       CHECK(fp.stat.size == 0);
       CHECK(fp.stat.ino == 0);
@@ -135,7 +143,11 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("directory") {
-      const auto fp = takeFingerprint(fs, 12345, "dir");
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, 12345, "dir");
+
+      CHECK(file_id == FileId(fs.lstat("dir")));
 
       CHECK(fp.stat.size == 0);
       CHECK(fp.stat.ino == fs.stat("dir").metadata.ino);
@@ -149,7 +161,11 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("symlink") {
-      const auto fp = takeFingerprint(fs, 12345, "link");
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, 12345, "link");
+
+      CHECK(file_id == FileId(fs.lstat("link")));
 
       CHECK(fp.stat.size == fs.readSymlink("link").size());
       CHECK(fp.stat.ino == fs.lstat("link").metadata.ino);
@@ -165,53 +181,93 @@ TEST_CASE("Fingerprint") {
 
   SECTION("retakeFingerprint") {
     SECTION("matching old_fingerprint (missing file)") {
-      const auto fp = takeFingerprint(fs, now, "nonexisting");
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, now, "nonexisting");
       now++;
-      const auto new_fp = retakeFingerprint(fs, now, "nonexisting", fp);
+      Fingerprint new_fp;
+      FileId new_file_id;
+      std::tie(new_fp, new_file_id) = retakeFingerprint(fs, now, "nonexisting", fp);
       CHECK(fp == new_fp);
+
+      CHECK(new_file_id == FileId(fs.lstat("nonexisting")));
     }
 
     SECTION("matching old_fingerprint (file)") {
       fs.writeFile("b", "data");
       now++;
-      const auto fp = takeFingerprint(fs, now, "b");
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, now, "b");
       now++;
-      const auto new_fp = retakeFingerprint(fs, now, "b", fp);
+      Fingerprint new_fp;
+      FileId new_file_id;
+      std::tie(new_fp, new_file_id) = retakeFingerprint(fs, now, "b", fp);
       CHECK(fp == new_fp);
+
+      CHECK(new_file_id == FileId(fs.lstat("b")));
     }
 
     SECTION("matching old_fingerprint (file, should_update)") {
       fs.writeFile("b", "data");
-      const auto fp = takeFingerprint(fs, now, "b");
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, now, "b");
       now++;
-      const auto new_fp = retakeFingerprint(fs, now, "b", fp);
+      Fingerprint new_fp;
+      FileId new_file_id;
+      std::tie(new_fp, new_file_id) = retakeFingerprint(fs, now, "b", fp);
       CHECK(fp != new_fp);
-      CHECK(new_fp == takeFingerprint(fs, now, "b"));
+      CHECK(
+          std::make_pair(new_fp, new_file_id) == takeFingerprint(fs, now, "b"));
+
+      CHECK(new_file_id == FileId(fs.lstat("b")));
     }
 
     SECTION("matching old_fingerprint (dir)") {
       now++;
-      const auto fp = takeFingerprint(fs, now, "dir");
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, now, "dir");
       now++;
-      const auto new_fp = retakeFingerprint(fs, now, "dir", fp);
+      Fingerprint new_fp;
+      FileId new_file_id;
+      std::tie(new_fp, new_file_id) = retakeFingerprint(fs, now, "dir", fp);
       CHECK(fp == new_fp);
+
+      CHECK(new_file_id == FileId(fs.lstat("dir")));
     }
 
     SECTION("matching old_fingerprint (dir, should_update)") {
-      const auto fp = takeFingerprint(fs, now, "dir");
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, now, "dir");
       now++;
-      const auto new_fp = retakeFingerprint(fs, now, "dir", fp);
+      Fingerprint new_fp;
+      FileId new_file_id;
+      std::tie(new_fp, new_file_id) = retakeFingerprint(fs, now, "dir", fp);
       CHECK(fp != new_fp);
-      CHECK(new_fp == takeFingerprint(fs, now, "dir"));
+      CHECK(
+          std::make_pair(new_fp, new_file_id) ==
+          takeFingerprint(fs, now, "dir"));
+
+      CHECK(new_file_id == FileId(fs.lstat("dir")));
     }
 
     SECTION("not matching old_fingerprint") {
-      const auto fp = takeFingerprint(fs, now, "a");
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, now, "a");
       fs.writeFile("a", "data");
       now++;
-      const auto new_fp = retakeFingerprint(fs, now, "a", fp);
+      Fingerprint new_fp;
+      FileId new_file_id;
+      std::tie(new_fp, new_file_id) = retakeFingerprint(fs, now, "a", fp);
       CHECK(fp != new_fp);
-      CHECK(new_fp == takeFingerprint(fs, now, "a"));
+      CHECK(
+          std::make_pair(new_fp, new_file_id) == takeFingerprint(fs, now, "a"));
+
+      CHECK(new_file_id == FileId(fs.lstat("a")));
     }
   }
 
@@ -238,21 +294,27 @@ TEST_CASE("Fingerprint") {
 
   SECTION("fingerprintMatches") {
     SECTION("no changes, fingerprint taken at the same time as file mtime") {
-      const auto initial_fp = takeFingerprint(fs, now, "a");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(result.clean);
       CHECK(result.should_update);
     }
 
     SECTION("no changes, fingerprint taken later") {
-      const auto initial_fp = takeFingerprint(fs, now + 1, "a");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now + 1, "a");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(result.clean);
       CHECK(!result.should_update);
     }
 
     SECTION("file changed, everything at the same time, same size") {
-      const auto initial_fp = takeFingerprint(fs, now, "a");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       fs.writeFile("a", "initial_content>");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
@@ -260,7 +322,9 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("file changed, everything at the same time, different size") {
-      const auto initial_fp = takeFingerprint(fs, now, "a");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       fs.writeFile("a", "changed");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
@@ -270,7 +334,9 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("file changed, including timestamps, same size") {
-      const auto initial_fp = takeFingerprint(fs, now, "a");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       now++;
       fs.writeFile("a", "initial_content>");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
@@ -282,7 +348,9 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("file changed, including timestamps, different size") {
-      const auto initial_fp = takeFingerprint(fs, now, "a");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       now++;
       fs.writeFile("a", "changed");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
@@ -293,7 +361,9 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("only timestamps changed") {
-      const auto initial_fp = takeFingerprint(fs, now, "a");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       now++;
       fs.writeFile("a", initial_contents);
       const auto result = fingerprintMatches(fs, "a", initial_fp);
@@ -302,21 +372,27 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("missing file before and after") {
-      const auto initial_fp = takeFingerprint(fs, now, "b");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "b");
       const auto result = fingerprintMatches(fs, "b", initial_fp);
       CHECK(result.clean);
       CHECK(!result.should_update);
     }
 
     SECTION("missing file before and after, zero timestamp") {
-      const auto initial_fp = takeFingerprint(fs, 0, "b");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, 0, "b");
       const auto result = fingerprintMatches(fs, "b", initial_fp);
       CHECK(result.clean);
       CHECK(!result.should_update);
     }
 
     SECTION("missing file before but not after") {
-      const auto initial_fp = takeFingerprint(fs, now, "b");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "b");
       fs.writeFile("b", initial_contents);
       const auto result = fingerprintMatches(fs, "b", initial_fp);
       CHECK(!result.clean);
@@ -324,7 +400,9 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("missing file after but not before") {
-      const auto initial_fp = takeFingerprint(fs, now, "a");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       fs.unlink("a");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
@@ -333,7 +411,9 @@ TEST_CASE("Fingerprint") {
 
     SECTION("dir: no changes, fingerprint taken at the same time as file mtime") {
       fs.mkdir("d");
-      const auto initial_fp = takeFingerprint(fs, now, "d");
+      Fingerprint initial_fp;
+      FileId file_id;
+      std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "d");
       const auto result = fingerprintMatches(fs, "d", initial_fp);
       CHECK(result.clean);
       CHECK(result.should_update);

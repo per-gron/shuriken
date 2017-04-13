@@ -307,7 +307,7 @@ TEST_CASE("PersistentInvocationLog") {
         fs.writeFile("test_file", "hello!");
         CHECK(
             log.fingerprint("test_file") ==
-            takeFingerprint(fs, 0, "test_file"));
+            takeFingerprint(fs, 0, "test_file").first);
         ranCommand(
             log,
             hash_0,
