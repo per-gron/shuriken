@@ -174,11 +174,19 @@ struct BuildCommandParameters {
   InvocationLog &invocation_log;
   const IndexedManifest &manifest;
   Build &build;
+
   /**
    * The number of commands that have been run as part of the build, excluding
    * phony build steps.
    */
   size_t invoked_commands = 0;
+
+  /**
+   * Files that have been written to during the build. This is used when
+   * invoking subsequent build steps when computing if they are already clean
+   * and don't need to be invoked (similar to Ninja's "restat" behavior).
+   */
+  std::unordered_map<FileId, Hash> written_files;
 };
 
 /**

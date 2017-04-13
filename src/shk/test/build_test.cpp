@@ -4,7 +4,7 @@
 
 #include "build.h"
 
-#include "status/dummy_build_status.h"
+#include "status/build_status.h"
 
 #include "dummy_command_runner.h"
 #include "in_memory_file_system.h"
@@ -13,6 +13,26 @@
 namespace shk {
 namespace detail {
 namespace {
+
+class OutputCapturerBuildStatus : public BuildStatus {
+ public:
+  OutputCapturerBuildStatus(std::vector<std::string> &latest_build_output)
+      : _latest_build_output(latest_build_output) {
+    latest_build_output.clear();
+  }
+
+  void stepStarted(const Step &step) override {}
+
+  void stepFinished(
+      const Step &step,
+      bool success,
+      const std::string &output) override {
+    _latest_build_output.push_back(output);
+  }
+
+ private:
+  std::vector<std::string> &_latest_build_output;
+};
 
 class FailingCommandRunner : public CommandRunner {
  public:
@@ -150,6 +170,8 @@ TEST_CASE("Build") {
 
   DummyCommandRunner dummy_runner(fs);
 
+  std::vector<std::string> latest_build_output;
+
   const auto build_or_rebuild_manifest = [&](
       const std::string &manifest,
       size_t failures_allowed,
@@ -161,9 +183,9 @@ TEST_CASE("Build") {
         clock,
         fs,
         runner,
-        [](int total_steps) {
+        [&latest_build_output](int total_steps) {
           return std::unique_ptr<BuildStatus>(
-              new DummyBuildStatus());
+              new OutputCapturerBuildStatus(latest_build_output));
         },
         log,
         failures_allowed,
@@ -1149,6 +1171,43 @@ TEST_CASE("Build") {
             "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
+      }
+
+      SECTION("two steps overwriting each other's outputs") {
+        const auto cmd1 = dummy_runner.constructCommand({}, {"out"});
+        const auto cmd2 = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest =
+            "rule cmd1\n"
+            "  command = " + cmd1 + "\n"
+            "rule cmd2\n"
+            "  command = " + cmd2 + "\n"
+            "build cmd1: cmd1\n"
+            "build cmd2: cmd2\n";
+        CHECK(build_manifest(manifest) == BuildResult::FAILURE);
+
+        REQUIRE(latest_build_output.size() == 2);
+        CHECK(latest_build_output[0] == "");
+        CHECK(
+            latest_build_output[1] ==
+            "shk: Build step wrote to file that other build step has already "
+            "written to: out\n");
+      }
+
+      SECTION("two steps with depfile") {
+        const auto cmd1 = dummy_runner.constructCommand({}, {"dep1"});
+        const auto cmd2 = dummy_runner.constructCommand({}, {"dep2"});
+        const auto manifest =
+            "rule cmd1\n"
+            "  command = " + cmd1 + "\n"
+            "  depfile = dep1\n"
+            "  deps = gcc\n"
+            "rule cmd2\n"
+            "  command = " + cmd2 + "\n"
+            "  depfile = dep2\n"
+            "  deps = gcc\n"
+            "build cmd1: cmd1\n"
+            "build cmd2: cmd2\n";
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
       }
 
       SECTION("create directory for output") {

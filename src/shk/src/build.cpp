@@ -491,6 +491,29 @@ void commandDone(
         step.rspfile);
   }
 
+  std::vector<Fingerprint> output_fingerprints;
+  for (const auto &output_file : result.output_files) {
+    Fingerprint fingerprint;
+    FileId file_id;
+    std::tie(fingerprint, file_id) =
+        params.invocation_log.fingerprint(output_file);
+
+    output_fingerprints.push_back(fingerprint);
+
+    // fingerprint.stat.couldAccess() can be false for example for a depfile,
+    // which will have already been deleted above.
+    if (fingerprint.stat.couldAccess()) {
+      if (!params.written_files.emplace(file_id, fingerprint.hash).second) {
+        // This is a sanity check, but it is not complete, since it is
+        // possible to overwrite a file in a way so that the FileId changes.
+        result.exit_status = ExitStatus::FAILURE;
+        result.output +=
+            "shk: Build step wrote to file that other build step has already "
+            "written to: " + output_file + "\n";
+      }
+    }
+  }
+
   if (!step.phony()) {
     params.build_status.stepFinished(
         step,
