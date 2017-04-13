@@ -264,6 +264,25 @@ void deleteOldOutputs(
     InvocationLog &invocation_log,
     const Hash &step_hash) throw(IoError);
 
+/**
+ * This function is called when Shuriken is just about to invoke a build
+ * command. It does a quick check if it's possible to just not run the command
+ * because it's already clean. (This is similar to restat rules in Ninja.)
+ *
+ * This function is never slower than stat-ing all inputs, which ought to be
+ * either fast (if it's already in the OS file system cache), or be fast in
+ * the long run, since if the command turns out to be clean it was worth it
+ * and if it turns out that it was dirty, this warms up the file system cache
+ * so that the files are faster to access by the build command itself.
+ */
+bool canSkipBuildCommand(
+    FileSystem &file_system,
+    const CleanSteps &clean_steps,
+    const std::unordered_map<FileId, Hash> &written_files,
+    const Invocations &invocations,
+    const Step &step,
+    StepIndex step_idx);
+
 int countStepsToBuild(const Build &build);
 
 }  // namespace detail

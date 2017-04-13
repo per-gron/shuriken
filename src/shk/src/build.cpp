@@ -577,6 +577,55 @@ void deleteOldOutputs(
   }
 }
 
+bool canSkipBuildCommand(
+    FileSystem &file_system,
+    const CleanSteps &clean_steps,
+    const std::unordered_map<FileId, Hash> &written_files,
+    const Invocations &invocations,
+    const Step &step,
+    StepIndex step_idx) {
+  if (!clean_steps[step_idx]) {
+    // The step was not clean at the start of the build.
+    //
+    // Technically, we could check if the step has become clean here and return
+    // true, but that doesn't seem like a common use case.
+    return false;
+  }
+
+  const auto invocation_entry_it = invocations.entries.find(step.hash);
+  if (invocation_entry_it == invocations.entries.end()) {
+    // Should not happen, but if we do get here it means the step is dirty so
+    // we can't skip.
+    return false;
+  }
+  const auto &invocation_entry = invocation_entry_it->second;
+
+  // There is no need to process entry.output_files; we know that they were
+  // clean at the start of the build (otherwise we would have returned early)
+  // and we know that there are checks that verify that each file is written
+  // to by only one step. If this build command is skipped and some other
+  // build command wrote to the outputs too, the build will fail anyway.
+  for (const auto fingerprint_idx : invocation_entry.input_files) {
+    const auto &path =
+        invocations.fingerprints[fingerprint_idx].first.original();
+    const auto original_fingerprint =
+        invocations.fingerprints[fingerprint_idx].second;
+
+    const auto new_stat = file_system.lstat(path);
+    const auto written_file_it = written_files.find(FileId(new_stat));
+    if (written_file_it == written_files.end()) {
+      continue;
+    }
+    const auto &new_hash = written_file_it->second;
+
+    if (!fingerprintMatches(original_fingerprint, new_stat, new_hash)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   if (params.build.ready_steps.empty() ||
       !params.command_runner.canRunMore() ||

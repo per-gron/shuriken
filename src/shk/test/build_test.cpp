@@ -1071,6 +1071,133 @@ TEST_CASE("Build") {
     }
   }
 
+  SECTION("canSkipBuildCommand") {
+    fs.writeFile("file", "contents");
+    const auto file_fingerprint = takeFingerprint(
+        fs, clock(), "file").first;
+    const auto file_id = FileId(fs.lstat("file"));
+
+    SECTION("dirty step") {
+      CHECK(!canSkipBuildCommand(
+          fs,
+          CleanSteps{ false },
+          {},
+          Invocations(),
+          Step(),
+          0));
+    }
+
+    SECTION("no Invocations entry") {
+      CHECK(!canSkipBuildCommand(
+          fs,
+          CleanSteps{ true },
+          {},
+          Invocations(),
+          Step(),
+          0));
+    }
+
+    SECTION("no input files") {
+      const Step step{};
+      Invocations invocations;
+      invocations.entries[step.hash] = Invocations::Entry();
+
+      CHECK(canSkipBuildCommand(
+          fs,
+          CleanSteps{ true },
+          {},
+          invocations,
+          step,
+          0));
+    }
+
+    SECTION("input file that has not been written") {
+      const Step step{};
+
+      Invocations::Entry entry;
+      entry.input_files = { 0 };
+
+      Invocations invocations;
+      invocations.fingerprints.emplace_back(
+          paths.get("file"), file_fingerprint);
+      invocations.entries[step.hash] = entry;
+
+      CHECK(canSkipBuildCommand(
+          fs,
+          CleanSteps{ true },
+          {},
+          invocations,
+          step,
+          0));
+    }
+
+    SECTION("input file that has been written but is clean") {
+      const Step step{};
+
+      Invocations::Entry entry;
+      entry.input_files = { 0 };
+
+      Invocations invocations;
+      invocations.fingerprints.emplace_back(
+          paths.get("file"), file_fingerprint);
+      invocations.entries[step.hash] = entry;
+
+      CHECK(canSkipBuildCommand(
+          fs,
+          CleanSteps{ true },
+          { { file_id, file_fingerprint.hash } },
+          invocations,
+          step,
+          0));
+    }
+
+    SECTION("input file that has been overwritten") {
+      const Step step{};
+
+      Invocations::Entry entry;
+      entry.input_files = { 0 };
+
+      Invocations invocations;
+      invocations.fingerprints.emplace_back(
+          paths.get("file"), file_fingerprint);
+      invocations.entries[step.hash] = entry;
+
+      Hash different_hash = file_fingerprint.hash;
+      different_hash.data[0]++;
+
+      CHECK(!canSkipBuildCommand(
+          fs,
+          CleanSteps{ true },
+          { { file_id, different_hash } },
+          invocations,
+          step,
+          0));
+    }
+
+    SECTION("output file that has been overwritten") {
+      const Step step{};
+
+      Invocations::Entry entry;
+      entry.output_files = { 0 };
+
+      Invocations invocations;
+      invocations.fingerprints.emplace_back(
+          paths.get("file"), file_fingerprint);
+      invocations.entries[step.hash] = entry;
+
+      Hash different_hash = file_fingerprint.hash;
+      different_hash.data[0]++;
+
+      CHECK(canSkipBuildCommand(
+          fs,
+          CleanSteps{ true },
+          { { file_id, different_hash } },
+          invocations,
+          step,
+          0));
+    }
+  }
+
   SECTION("countStepsToBuild") {
     // TODO(peck): Test this
   }
