@@ -101,6 +101,20 @@ TEST_CASE("DummyCommandRunner") {
     runner.runCommands();
   }
 
+  SECTION("getCommandsRun") {
+    CHECK(runner.getCommandsRun() == 0);
+    runner.runCommands();
+    CHECK(runner.getCommandsRun() == 0);
+
+    const auto command = DummyCommandRunner::constructCommand({}, { "abc" });
+    runner.invoke(command, "pool", CommandRunner::noopCallback);
+    while (!runner.empty()) {
+      runner.runCommands();
+    }
+
+    CHECK(runner.getCommandsRun() == 1);
+  }
+
   SECTION("runCommand") {
     SECTION("empty command should do nothing") {
       const auto empty_file_system = file_system;

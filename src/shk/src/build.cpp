@@ -470,6 +470,23 @@ void mkdirsAndLog(
 
 void enqueueBuildCommands(BuildCommandParameters &params) throw(IoError);
 
+void commandBypassed(
+    BuildCommandParameters &params,
+    StepIndex step_idx) throw(IoError) {
+  const auto &step = params.manifest.steps[step_idx];
+
+  // commandBypassed should not be called with phony build steps. This check is
+  // here just to be sure.
+  if (!step.phony()) {
+    params.build_status.stepFinished(
+        step,
+        true,
+        /* command output: */"");
+  }
+
+  markStepNodeAsDone(params.build, step_idx);
+}
+
 void commandDone(
     BuildCommandParameters &params,
     StepIndex step_idx,
@@ -637,6 +654,17 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   const auto &step = params.manifest.steps[step_idx];
   params.build.ready_steps.pop_back();
 
+  if (canSkipBuildCommand(
+          params.file_system,
+          params.clean_steps,
+          params.written_files,
+          params.invocations,
+          step,
+          step_idx)) {
+    commandBypassed(params, step_idx);
+    return true;
+  }
+
   deleteOldOutputs(
       params.file_system,
       params.invocations,
@@ -756,6 +784,7 @@ BuildResult build(
       *build_status,
       invocation_log,
       invocations,
+      clean_steps,
       manifest,
       build);
   detail::enqueueBuildCommands(params);

@@ -1829,6 +1829,83 @@ TEST_CASE("Build") {
         dummy_runner.checkCommand(fs, cmd);
       }
 
+      SECTION("bypass commands (restat)") {
+        // It should not rebuild steps where all inputs and ouputs were clean,
+        // even if steps that depend on them had to be rebuilt.
+
+        const auto cmd1 = dummy_runner.constructCommand({}, { "out1" });
+        const auto cmd2 = dummy_runner.constructCommand({ "out1" }, { "out2" });
+        const auto cmd3 = dummy_runner.constructCommand({ "out2" }, { "out3" });
+        const auto manifest =
+            "rule cmd1\n"
+            "  command = " + cmd1 + "\n"
+            "rule cmd2\n"
+            "  command = " + cmd2 + "\n"
+            "rule cmd3\n"
+            "  command = " + cmd3 + "\n"
+            "build out1: cmd1\n"
+            "build out2: cmd2 out1\n"
+            "build out3: cmd3 out2\n";
+        CHECK(latest_build_output.size() == 0);
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        CHECK(dummy_runner.getCommandsRun() == 3);
+        CHECK(latest_build_output.size() == 3);
+        fs.unlink("out1");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd1);
+        dummy_runner.checkCommand(fs, cmd2);
+        dummy_runner.checkCommand(fs, cmd3);
+
+        // Should be 3 commands run from the initial run, and then 2 from the
+        // second one. The second time, cmd3 should not have been invoked.
+        CHECK(dummy_runner.getCommandsRun() == 5);
+
+        // Should have reported 3 finished build steps to the BuildStatus during
+        // the build.
+        CHECK(latest_build_output.size() == 3);
+      }
+
+      SECTION("bypass commands (restat) in longer chain") {
+        // This test is primarily for ensuring that the build continues
+        // (that markStepNodeAsDone is called) even for steps that are bypassed.
+
+        const auto cmd1 = dummy_runner.constructCommand({}, { "out1" });
+        const auto cmd2 = dummy_runner.constructCommand({ "out1" }, { "out2" });
+        const auto cmd3 = dummy_runner.constructCommand({ "out2" }, { "out3" });
+        const auto cmd4 = dummy_runner.constructCommand({ "out3" }, { "out4" });
+        const auto manifest =
+            "rule cmd1\n"
+            "  command = " + cmd1 + "\n"
+            "rule cmd2\n"
+            "  command = " + cmd2 + "\n"
+            "rule cmd3\n"
+            "  command = " + cmd3 + "\n"
+            "rule cmd4\n"
+            "  command = " + cmd4 + "\n"
+            "build out1: cmd1\n"
+            "build out2: cmd2 out1\n"
+            "build out3: cmd3 out2\n"
+            "build out4: cmd4 out3\n";
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        CHECK(dummy_runner.getCommandsRun() == 4);
+        CHECK(latest_build_output.size() == 4);
+        fs.unlink("out1");
+        fs.unlink("out4");
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd1);
+        dummy_runner.checkCommand(fs, cmd2);
+        dummy_runner.checkCommand(fs, cmd3);
+        dummy_runner.checkCommand(fs, cmd4);
+
+        // Should be 3 commands run from the initial run, and then 2 from the
+        // second one. The second time, cmd3 should not have been invoked.
+        CHECK(dummy_runner.getCommandsRun() == 7);
+
+        // Should have reported 4 finished build steps to the BuildStatus during
+        // the build.
+        CHECK(latest_build_output.size() == 4);
+      }
+
       SECTION("rebuild when output file removed with phony root") {
         const auto cmd = dummy_runner.constructCommand({}, {"out"});
         const auto manifest =

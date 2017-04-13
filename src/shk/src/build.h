@@ -155,6 +155,7 @@ struct BuildCommandParameters {
       BuildStatus &build_status,
       InvocationLog &invocation_log,
       const Invocations &invocations,
+      const CleanSteps &clean_steps,
       const IndexedManifest &manifest,
       Build &build)
       : clock(clock),
@@ -163,6 +164,7 @@ struct BuildCommandParameters {
         build_status(build_status),
         invocations(invocations),
         invocation_log(invocation_log),
+        clean_steps(clean_steps),
         manifest(manifest),
         build(build) {}
 
@@ -172,6 +174,7 @@ struct BuildCommandParameters {
   BuildStatus &build_status;
   const Invocations &invocations;
   InvocationLog &invocation_log;
+  const CleanSteps &clean_steps;
   const IndexedManifest &manifest;
   Build &build;
 
