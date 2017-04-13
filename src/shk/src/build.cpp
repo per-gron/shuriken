@@ -588,12 +588,11 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   const auto &step = params.manifest.steps[step_idx];
   params.build.ready_steps.pop_back();
 
-  const auto &step_hash = params.manifest.steps[step_idx].hash;
   deleteOldOutputs(
       params.file_system,
       params.invocations,
       params.invocation_log,
-      step_hash);
+      step.hash);
 
   if (!step.rspfile.empty()) {
     mkdirsAndLog(
