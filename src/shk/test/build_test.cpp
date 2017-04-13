@@ -520,30 +520,6 @@ TEST_CASE("Build") {
       }
     }
 
-    SECTION("Deps from invocations") {
-      RawStep three;
-      three.inputs = { paths.get("a"), paths.get("b") };
-
-      Invocations::Entry entry;
-      // Didn't read all declared inputs
-      addInput(invocations, entry, paths.get("a"), Fingerprint());
-      invocations.entries[three.hash()] = entry;
-
-      RawManifest manifest;
-      manifest.steps = { single_output, single_output_b, three };
-      const auto build = computeBuild(manifest, invocations);
-      REQUIRE(build.step_nodes.size() == 3);
-
-      CHECK(build.step_nodes[0].dependencies == 0);
-      CHECK(build.step_nodes[0].dependents == vec({2}));
-
-      CHECK(build.step_nodes[1].dependencies == 0);
-      CHECK(build.step_nodes[1].dependents == vec({}));
-
-      CHECK(build.step_nodes[2].dependencies == 1);
-      CHECK(build.step_nodes[2].dependents == vec({}));
-    }
-
     SECTION("Dependency cycle") {
       RawStep one;
       one.outputs = { paths.get("a") };
@@ -914,11 +890,11 @@ TEST_CASE("Build") {
       invocations.entries[root.hash()];
       auto build = computeBuild(manifest, invocations);
       REQUIRE(build.ready_steps.size() == 1);
-      CHECK(build.ready_steps[0] == 1);
+      CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
           IndexedManifest(RawManifest(manifest)).steps,
           compute_clean_steps(build, invocations, manifest),
-          build) == 1);
+          build) == 2);
       CHECK(build.ready_steps.empty());
     }
   }

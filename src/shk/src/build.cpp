@@ -119,56 +119,6 @@ std::string cycleErrorMessage(const std::vector<Path> &cycle) {
 }
 
 /**
- * In the process of calculating a build graph out of the build steps that are
- * declared in the manifest (the computeBuild function does this), Shuriken
- * traverses the build steps via its dependencies. This function helps this
- * process by taking a step and (via callback invocations) providing the files
- * that the given step depends on.
- *
- * This function operates differently on the initial build compared to
- * subsequent builds, and this difference is rather central to the whole design
- * of Shuriken and how Shuriken is different compared to Ninja. During the first
- * build, Shuriken does not care about the difference between inputs, implicit
- * dependencies and order-only dependencies; they are all dependencies and are
- * treated equally.
- *
- * On subsequent builds, Ninja treats order-only dependencies differently from
- * other dependencies, and also brings depfile dependencies into the mix by
- * counting them as part of the implicit dependencies.
- *
- * Shuriken does not do this. It doesn't have to, because it has accurate
- * dependency information from when the build step was last invoked. When there
- * is an up-to-date invocation log entry for the given step, Shuriken completely
- * ignores the dependencies declared in the manifest and uses only the
- * calculated dependencies. This simplifies the logic a bit and unties manifest
- * specified dependencies from dependencies retrieved from running the command.
- */
-template<typename Callback>
-void visitStepInputs(
-    const Invocations &invocations,
-    const IndexedManifest &manifest,
-    StepIndex idx,
-    Callback &&callback) {
-  const auto invocation_it = invocations.entries.find(
-      manifest.steps[idx].hash);
-  if (invocation_it != invocations.entries.end()) {
-    // There is an entry for this step in the invocation log. Use the real
-    // inputs from the last invocation rather than the ones specified in the
-    // manifest.
-    const auto &input_files = invocation_it->second.input_files;
-    for (const auto input_file_idx : input_files) {
-      const auto &input_file = invocations.fingerprints[input_file_idx];
-      callback(input_file.first);
-    }
-  } else {
-    // There is no entry for this step in the invocation log.
-    for (const auto &input : manifest.steps[idx].dependencies) {
-      callback(input);
-    }
-  }
-}
-
-/**
  * Recursive helper for computeBuild. Implements the DFS traversal.
  */
 void visitStep(
@@ -189,31 +139,27 @@ void visitStep(
   step_node.should_build = true;
 
   step_node.currently_visited = true;
-  visitStepInputs(
-      invocations,
-      manifest,
-      idx,
-      [&](const Path &input) {
-        const auto it = manifest.output_path_map.find(input);
-        if (it == manifest.output_path_map.end()) {
-          // This input is not an output of some other build step.
-          return;
-        }
+  for (const auto &input : manifest.steps[idx].dependencies) {
+    const auto it = manifest.output_path_map.find(input);
+    if (it == manifest.output_path_map.end()) {
+      // This input is not an output of some other build step.
+      continue;
+    }
 
-        const auto dependency_idx = it->second;
-        auto &dependency_node = build.step_nodes[dependency_idx];
-        dependency_node.dependents.push_back(idx);
-        step_node.dependencies++;
+    const auto dependency_idx = it->second;
+    auto &dependency_node = build.step_nodes[dependency_idx];
+    dependency_node.dependents.push_back(idx);
+    step_node.dependencies++;
 
-        cycle.push_back(input);
-        visitStep(
-            manifest,
-            invocations,
-            build,
-            cycle,
-            dependency_idx);
-        cycle.pop_back();
-      });
+    cycle.push_back(input);
+    visitStep(
+        manifest,
+        invocations,
+        build,
+        cycle,
+        dependency_idx);
+    cycle.pop_back();
+  }
   step_node.currently_visited = false;
 }
 
