@@ -42,7 +42,7 @@ TEST_CASE("DelayedInvocationLog") {
   SECTION("Fingerprint") {
     CHECK(
         log->fingerprint("test_file") ==
-        takeFingerprint(fs, now, "test_file").first);
+        takeFingerprint(fs, now, "test_file"));
   }
 
   SECTION("RanCommand") {

@@ -12,8 +12,8 @@ class DummyInvocationLog : public InvocationLog {
   void removedDirectory(const std::string &path)
       throw(IoError) override {}
 
-  Fingerprint fingerprint(const std::string &path) override {
-    return Fingerprint();
+  std::pair<Fingerprint, FileId> fingerprint(const std::string &path) override {
+    return std::make_pair(Fingerprint(), FileId());
   }
 
   void ranCommand(

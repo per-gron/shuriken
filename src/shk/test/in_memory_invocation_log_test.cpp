@@ -38,7 +38,7 @@ TEST_CASE("InMemoryInvocationLog") {
   SECTION("Fingerprint") {
     CHECK(
         log.fingerprint("test_file") ==
-        takeFingerprint(fs, 0, "test_file").first);
+        takeFingerprint(fs, 0, "test_file"));
   }
 
   SECTION("Commands") {

@@ -36,7 +36,7 @@ std::vector<Fingerprint> InvocationLog::fingerprintFiles(
   std::vector<Fingerprint> ans;
   ans.reserve(files.size());
   for (const auto &file : files) {
-    ans.push_back(fingerprint(file));
+    ans.push_back(fingerprint(file).first);
   }
   return ans;
 }

@@ -37,7 +37,7 @@ class DelayedInvocationLog : public InvocationLog {
     _inner_log->removedDirectory(path);
   }
 
-  Fingerprint fingerprint(const std::string &path) override {
+  std::pair<Fingerprint, FileId> fingerprint(const std::string &path) override {
     return _inner_log->fingerprint(path);
   }
 

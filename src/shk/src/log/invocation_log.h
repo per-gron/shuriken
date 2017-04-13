@@ -50,7 +50,7 @@ class InvocationLog {
    * the information required to use retakeFingerprint, which can be
    * significantly more efficient than always using takeFingerprint.
    */
-  virtual Fingerprint fingerprint(const std::string &path) = 0;
+  virtual std::pair<Fingerprint, FileId> fingerprint(const std::string &path) = 0;
 
   /**
    * Writes an entry in the invocation log that says that the build step with

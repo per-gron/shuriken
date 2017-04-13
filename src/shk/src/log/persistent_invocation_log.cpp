@@ -167,15 +167,15 @@ class PersistentInvocationLog : public InvocationLog {
     _entry_count++;
   }
 
-  Fingerprint fingerprint(const std::string &path) override {
+  std::pair<Fingerprint, FileId> fingerprint(const std::string &path) override {
     const auto it = _fingerprint_ids.find(path);
     if (it == _fingerprint_ids.end()) {
       // No prior entry for that path. Need to take fingerprint.
-      return takeFingerprint(_fs, _clock(), path).first;
+      return takeFingerprint(_fs, _clock(), path);
     } else {
       // There is a fingerprint entry for the given path already.
       const auto &old_fingerprint = it->second.fingerprint;
-      return retakeFingerprint(_fs, _clock(), path, old_fingerprint).first;
+      return retakeFingerprint(_fs, _clock(), path, old_fingerprint);
     }
   }
 
