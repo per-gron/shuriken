@@ -78,16 +78,9 @@ struct Invocations {
   std::unordered_map<FileId, std::string> created_directories;
 };
 
-inline bool operator==(const Invocations::Entry &a, const Invocations::Entry &b) {
-  return
-      a.output_files == b.output_files &&
-      a.input_files == b.input_files;
-}
-
-inline bool operator==(const Invocations &a, const Invocations &b) {
-  return
-      a.entries == b.entries &&
-      a.created_directories == b.created_directories;
-}
+bool operator==(const Invocations::Entry &a, const Invocations::Entry &b);
+bool operator!=(const Invocations::Entry &a, const Invocations::Entry &b);
+bool operator==(const Invocations &a, const Invocations &b);
+bool operator!=(const Invocations &a, const Invocations &b);
 
 }  // namespace shk

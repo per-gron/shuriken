@@ -63,6 +63,7 @@ add_library(shklib
   src/log/dummy_invocation_log.h
   src/log/invocation_log.cpp
   src/log/invocation_log.h
+  src/log/invocations.cpp
   src/log/invocations.h
   src/log/persistent_invocation_log.cpp
   src/log/persistent_invocation_log.h
@@ -139,6 +140,7 @@ add_executable(shk_test
   test/in_memory_invocation_log_test.cpp
   test/log/delayed_invocation_log_test.cpp
   test/log/invocation_log_test.cpp
+  test/log/invocations_test.cpp
   test/log/persistent_invocation_log_test.cpp
   test/main.cpp
   test/manifest/indexed_manifest_test.cpp
