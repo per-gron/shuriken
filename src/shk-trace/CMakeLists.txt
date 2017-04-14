@@ -78,7 +78,10 @@ add_executable(shktrace_integrationtest_helper
   integrationtest/test.cpp)
 target_link_libraries(shktrace_integrationtest_helper shkutil pthread)
 set_target_properties(shktrace_integrationtest_helper PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-set_target_properties(shktrace_integrationtest_helper PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations")
+# For some reason, calls to __guarded_open_dprotected_np and __guarded_open_np
+# seem to misbehave when optimization is enabled, so pass -O0. This program is
+# just a test helper anyway so it doesn't need optimization.
+set_target_properties(shktrace_integrationtest_helper PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations -O0")
 set_property(TARGET shktrace_integrationtest_helper PROPERTY CXX_STANDARD 11)
 
 add_custom_command(
