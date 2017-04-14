@@ -4,7 +4,6 @@
 
 #include "clock.h"
 #include "fs/file_system.h"
-#include "fs/path.h"
 #include "log/invocation_log.h"
 #include "log/invocations.h"
 #include "parse_error.h"
@@ -132,7 +131,6 @@ struct InvocationLogParseResult {
  * before that entry.
  */
 InvocationLogParseResult parsePersistentInvocationLog(
-    Paths &paths,
     FileSystem &file_system,
     const std::string &log_path) throw(IoError, ParseError);
 

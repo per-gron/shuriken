@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "fs/fingerprint.h"
-#include "fs/path.h"
 #include "hash.h"
 #include "io_error.h"
 

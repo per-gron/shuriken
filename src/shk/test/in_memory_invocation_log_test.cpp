@@ -1,6 +1,5 @@
 #include <catch.hpp>
 
-#include "fs/path.h"
 #include "in_memory_file_system.h"
 #include "in_memory_invocation_log.h"
 #include "log/invocations.h"
@@ -11,7 +10,6 @@ TEST_CASE("InMemoryInvocationLog") {
   InMemoryFileSystem fs;
   fs.writeFile("test_file", "hello!");
 
-  Paths paths(fs);
   InMemoryInvocationLog log(fs, [] { return 0; });
 
   Hash hash;
@@ -106,8 +104,8 @@ TEST_CASE("InMemoryInvocationLog") {
 
   SECTION("Invocations") {
     SECTION("InitialState") {
-      CHECK(log.invocations(paths).created_directories.empty());
-      CHECK(log.invocations(paths).entries.empty());
+      CHECK(log.invocations().created_directories.empty());
+      CHECK(log.invocations().entries.empty());
     }
 
     SECTION("Directories") {
@@ -116,16 +114,16 @@ TEST_CASE("InMemoryInvocationLog") {
 
       std::unordered_map<FileId, std::string> created_directories{
         { FileId(fs.lstat("a")), "a" } };
-      CHECK(log.invocations(paths).created_directories == created_directories);
+      CHECK(log.invocations().created_directories == created_directories);
     }
 
     SECTION("Commands") {
       log.ranCommand(hash, {}, {}, {}, {});
-      CHECK(log.invocations(paths).entries.size() == 1);
-      CHECK(log.invocations(paths).entries.count(hash) == 1);
+      CHECK(log.invocations().entries.size() == 1);
+      CHECK(log.invocations().entries.count(hash) == 1);
 
       log.cleanedCommand(hash);
-      CHECK(log.invocations(paths).entries.empty());
+      CHECK(log.invocations().entries.empty());
     }
   }
 }

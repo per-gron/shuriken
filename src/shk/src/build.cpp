@@ -381,7 +381,7 @@ void deleteBuildProduct(
     }
     dir = std::move(parent);
 
-    const auto stat = file_system.stat(dir);
+    const auto stat = file_system.lstat(dir);
     if (stat.result != 0) {
       // Can't access the directory, can't go further.
       break;

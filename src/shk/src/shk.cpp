@@ -353,7 +353,7 @@ bool ShurikenMain::readInvocationLog(bool will_run_tool) {
   InvocationLogParseResult parse_result;
 
   try {
-    parse_result = parsePersistentInvocationLog(_paths, _file_system, path);
+    parse_result = parsePersistentInvocationLog(_file_system, path);
     _invocations = std::move(parse_result.invocations);
     _invocation_parse_data =  std::move(parse_result.parse_data);
     if (!parse_result.warning.empty()) {

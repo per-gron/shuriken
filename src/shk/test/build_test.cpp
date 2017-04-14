@@ -191,7 +191,7 @@ TEST_CASE("Build") {
         failures_allowed,
         {},
         parseManifest(paths, fs, "build.ninja"),
-        log.invocations(paths));
+        log.invocations());
   };
 
   const auto build_manifest = [&](
@@ -1181,15 +1181,13 @@ TEST_CASE("Build") {
   SECTION("deleteStaleOutputs") {
     const auto delete_stale_outputs = [&](
         const std::string &manifest) {
-      Paths paths(fs);
-
       const IndexedManifest indexed_manifest(parse(manifest));
 
       deleteStaleOutputs(
           fs,
           log,
           indexed_manifest.steps,
-          log.invocations(paths));
+          log.invocations());
     };
 
     SECTION("delete stale outputs") {

@@ -2,7 +2,6 @@
 
 #include <stdexcept>
 
-#include "fs/path.h"
 #include "log/delayed_invocation_log.h"
 #include "log/persistent_invocation_log.h"
 
@@ -176,9 +175,7 @@ TEST_CASE("DelayedInvocationLog") {
         // pending writes.
       }
 
-      Paths paths(fs);
       const auto invocations = parsePersistentInvocationLog(
-          paths,
           fs,
           "shk.log").invocations;
       CHECK(invocations.entries.count(hash_a) == 1);

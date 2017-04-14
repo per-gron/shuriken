@@ -41,7 +41,7 @@ class InMemoryInvocationLog : public InvocationLog {
    * object. This emulates what would happen if the invocation log would have
    * been read from disk.
    */
-  Invocations invocations(Paths &paths) const;
+  Invocations invocations() const;
 
   const std::unordered_set<std::string> &createdDirectories() const {
     return _created_directories;

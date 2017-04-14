@@ -1,6 +1,5 @@
 #include <catch.hpp>
 
-#include "fs/path.h"
 #include "log/persistent_invocation_log.h"
 
 #include "../in_memory_file_system.h"
@@ -50,7 +49,6 @@ void ranCommand(
 template<typename Callback>
 void roundtrip(const Callback &callback) {
   InMemoryFileSystem fs;
-  Paths paths(fs);
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
   const auto persistent_log = openPersistentInvocationLog(
       fs,
@@ -59,10 +57,10 @@ void roundtrip(const Callback &callback) {
       InvocationLogParseResult::ParseData());
   callback(*persistent_log, fs);
   callback(in_memory_log, fs);
-  auto result = parsePersistentInvocationLog(paths, fs, "file");
+  auto result = parsePersistentInvocationLog(fs, "file");
   sortInvocations(result.invocations);
 
-  auto in_memory_result = in_memory_log.invocations(paths);
+  auto in_memory_result = in_memory_log.invocations();
   sortInvocations(in_memory_result);
 
   CHECK(result.warning == "");
@@ -71,11 +69,10 @@ void roundtrip(const Callback &callback) {
 
 template<typename Callback>
 void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
-  Paths paths(fs);
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
   callback(in_memory_log, fs);
   for (size_t i = 0; i < 5; i++) {
-    auto result = parsePersistentInvocationLog(paths, fs, "file");
+    auto result = parsePersistentInvocationLog(fs, "file");
     CHECK(result.warning == "");
     const auto persistent_log = openPersistentInvocationLog(
         fs,
@@ -85,10 +82,10 @@ void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
     callback(*persistent_log, fs);
   }
 
-  auto result = parsePersistentInvocationLog(paths, fs, "file");
+  auto result = parsePersistentInvocationLog(fs, "file");
   sortInvocations(result.invocations);
 
-  auto in_memory_result = in_memory_log.invocations(paths);
+  auto in_memory_result = in_memory_log.invocations();
   sortInvocations(in_memory_result);
 
   CHECK(result.warning == "");
@@ -98,7 +95,6 @@ void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
 template<typename Callback>
 void shouldEventuallyRequestRecompaction(const Callback &callback) {
   InMemoryFileSystem fs;
-  Paths paths(fs);
   for (size_t attempts = 0;; attempts++) {
     const auto persistent_log = openPersistentInvocationLog(
         fs,
@@ -106,7 +102,7 @@ void shouldEventuallyRequestRecompaction(const Callback &callback) {
         "file",
         InvocationLogParseResult::ParseData());
     callback(*persistent_log, fs);
-    const auto result = parsePersistentInvocationLog(paths, fs, "file");
+    const auto result = parsePersistentInvocationLog(fs, "file");
     if (result.needs_recompaction) {
       CHECK(attempts > 10);  // Should not immediately request recompaction
       break;
@@ -121,11 +117,10 @@ void shouldEventuallyRequestRecompaction(const Callback &callback) {
 template<typename Callback>
 void recompact(const Callback &callback) {
   InMemoryFileSystem fs;
-  Paths paths(fs);
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
   callback(in_memory_log, fs);
   for (size_t i = 0; i < 5; i++) {
-    auto result = parsePersistentInvocationLog(paths, fs, "file");
+    auto result = parsePersistentInvocationLog(fs, "file");
     CHECK(result.warning == "");
     const auto persistent_log = openPersistentInvocationLog(
         fs,
@@ -137,13 +132,13 @@ void recompact(const Callback &callback) {
   recompactPersistentInvocationLog(
       fs,
       [] { return 0; },
-      parsePersistentInvocationLog(paths, fs, "file").invocations,
+      parsePersistentInvocationLog(fs, "file").invocations,
       "file");
 
-  auto result = parsePersistentInvocationLog(paths, fs, "file");
+  auto result = parsePersistentInvocationLog(fs, "file");
   sortInvocations(result.invocations);
 
-  auto in_memory_result = in_memory_log.invocations(paths);
+  auto in_memory_result = in_memory_log.invocations();
   sortInvocations(in_memory_result);
 
   CHECK(result.warning == "");
@@ -162,7 +157,6 @@ void recompact(const Callback &callback) {
 template<typename Callback>
 void warnOnTruncatedInput(const Callback &callback) {
   InMemoryFileSystem fs;
-  Paths paths(fs);
 
   const size_t kFileSignatureSize = 16;
 
@@ -183,13 +177,13 @@ void warnOnTruncatedInput(const Callback &callback) {
       break;
     }
     fs.truncate("file", truncated_size);
-    const auto result = parsePersistentInvocationLog(paths, fs, "file");
+    const auto result = parsePersistentInvocationLog(fs, "file");
     if (result.warning != "") {
       warnings++;
     }
 
     // parsePersistentInvocationLog should have truncated the file now
-    const auto result_after = parsePersistentInvocationLog(paths, fs, "file");
+    const auto result_after = parsePersistentInvocationLog(fs, "file");
     CHECK(result_after.warning == "");
   }
 
@@ -225,7 +219,6 @@ void writeFileWithHeader(
 
 TEST_CASE("PersistentInvocationLog") {
   InMemoryFileSystem fs;
-  Paths paths(fs);
 
   Hash hash_0;
   std::fill(hash_0.data.begin(), hash_0.data.end(), 0);
@@ -234,12 +227,12 @@ TEST_CASE("PersistentInvocationLog") {
 
   SECTION("Parsing") {
     SECTION("Missing") {
-      parsePersistentInvocationLog(paths, fs, "missing");
+      parsePersistentInvocationLog(fs, "missing");
     }
 
     SECTION("Empty") {
       fs.writeFile("empty", "");
-      auto result = parsePersistentInvocationLog(paths, fs, "empty");
+      auto result = parsePersistentInvocationLog(fs, "empty");
       CHECK(
           result.warning ==
           "invalid invocation log file signature (too short)");
@@ -248,7 +241,7 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("InvalidHeader") {
       writeFileWithHeader(fs, "invalid_header", 3);
-      auto result = parsePersistentInvocationLog(paths, fs, "invalid_header");
+      auto result = parsePersistentInvocationLog(fs, "invalid_header");
       CHECK(
           result.warning ==
           "invalid invocation log file version or bad byte order");
@@ -257,7 +250,7 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("JustHeader") {
       writeFileWithHeader(fs, "just_header", 1);
-      checkEmpty(parsePersistentInvocationLog(paths, fs, "just_header"));
+      checkEmpty(parsePersistentInvocationLog(fs, "just_header"));
     }
   }
 
@@ -274,7 +267,7 @@ TEST_CASE("PersistentInvocationLog") {
       ranCommand(
           *persistent_log, hash_0, {}, { "dir" });
 
-      const auto result = parsePersistentInvocationLog(paths, fs, "file");
+      const auto result = parsePersistentInvocationLog(fs, "file");
       CHECK(result.warning == "");
       REQUIRE(result.invocations.entries.size() == 1);
       CHECK(result.invocations.entries.begin()->first == hash_0);

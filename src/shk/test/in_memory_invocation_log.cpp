@@ -93,7 +93,7 @@ void InMemoryInvocationLog::cleanedCommand(
   _entries.erase(build_step_hash);
 }
 
-Invocations InMemoryInvocationLog::invocations(Paths &paths) const {
+Invocations InMemoryInvocationLog::invocations() const {
   Invocations result;
 
   for (const auto &dir : _created_directories) {
