@@ -107,17 +107,6 @@ std::vector<StepIndex> computeReadySteps(
   return result;
 }
 
-std::string cycleErrorMessage(const std::vector<Path> &cycle) {
-  assert(!cycle.empty());
-
-  std::string error;
-  for (const auto &path : cycle) {
-    error += path.original() + " -> ";
-  }
-  error += cycle.front().original();
-  return error;
-}
-
 /**
  * Recursive helper for computeBuild. Implements the DFS traversal.
  */

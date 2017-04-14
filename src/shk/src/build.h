@@ -206,12 +206,6 @@ std::vector<StepIndex> computeStepsToBuild(
     std::vector<StepIndex> &&specified_steps) throw(BuildError);
 
 /**
- * Generate a string that describes a cycle, for example "a -> b -> a".
- * cycle must be a non-empty vector.
- */
-std::string cycleErrorMessage(const std::vector<Path> &cycle);
-
-/**
  * Create a Build object suitable for use as a starting point for the build.
  */
 Build computeBuild(

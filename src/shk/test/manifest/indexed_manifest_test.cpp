@@ -126,6 +126,15 @@ TEST_CASE("IndexedManifest") {
             { { paths.get("a"), 0 }, { paths.get("b"), 1 } }).empty());
   }
 
+  SECTION("cycleErrorMessage") {
+    CHECK(
+        cycleErrorMessage({}) == "[internal error]");
+    CHECK(
+        cycleErrorMessage({ paths.get("a") }) == "a -> a");
+    CHECK(
+        cycleErrorMessage({ paths.get("a"), paths.get("b") }) == "a -> b -> a");
+  }
+
   SECTION("DefaultConstructor") {
     IndexedManifest indexed_manifest;
   }

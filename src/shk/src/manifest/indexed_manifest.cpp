@@ -46,6 +46,20 @@ std::vector<StepIndex> rootSteps(
   return result;
 }
 
+std::string cycleErrorMessage(const std::vector<Path> &cycle) {
+  if (cycle.empty()) {
+    // There can't be a cycle without any nodes. Then it's not a cycle...
+    return "[internal error]";
+  }
+
+  std::string error;
+  for (const auto &path : cycle) {
+    error += path.original() + " -> ";
+  }
+  error += cycle.front().original();
+  return error;
+}
+
 }  // namespace detail
 
 namespace {
