@@ -112,7 +112,6 @@ std::vector<StepIndex> computeReadySteps(
  */
 void visitStep(
     const IndexedManifest &manifest,
-    const Invocations &invocations,
     Build &build,
     std::vector<Path> &cycle,
     StepIndex idx) throw(BuildError) {
@@ -143,7 +142,6 @@ void visitStep(
     cycle.push_back(input);
     visitStep(
         manifest,
-        invocations,
         build,
         cycle,
         dependency_idx);
@@ -153,7 +151,6 @@ void visitStep(
 }
 
 Build computeBuild(
-    const Invocations &invocations,
     const IndexedManifest &manifest,
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError) {
@@ -165,7 +162,6 @@ Build computeBuild(
   for (const auto step_idx : steps_to_build) {
     visitStep(
         manifest,
-        invocations,
         build,
         cycle,
         step_idx);
@@ -693,7 +689,6 @@ BuildResult build(
       manifest, std::move(specified_steps));
 
   auto build = detail::computeBuild(
-      invocations,
       manifest,
       failures_allowed,
       std::move(steps_to_build));

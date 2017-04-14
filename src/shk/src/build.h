@@ -209,7 +209,6 @@ std::vector<StepIndex> computeStepsToBuild(
  * Create a Build object suitable for use as a starting point for the build.
  */
 Build computeBuild(
-    const Invocations &invocations,
     const IndexedManifest &manifest,
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError);

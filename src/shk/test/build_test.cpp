@@ -98,11 +98,9 @@ std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
 
 Build computeBuild(
     const RawManifest &manifest,
-    const Invocations &invocations = Invocations(),
     size_t allowed_failures = 1) throw(BuildError) {
   auto indexed_manifest = IndexedManifest(RawManifest(manifest));
   return ::shk::detail::computeBuild(
-      invocations,
       indexed_manifest,
       allowed_failures,
       ::shk::detail::computeStepsToBuild(indexed_manifest, {}));
@@ -378,7 +376,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("remaining_failures") {
-      const auto build = computeBuild(RawManifest(), Invocations(), 543);
+      const auto build = computeBuild(RawManifest(), 543);
       CHECK(build.remaining_failures == 543);
     }
 
@@ -717,7 +715,7 @@ TEST_CASE("Build") {
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
 
-      const auto build = computeBuild(manifest, invocations);
+      const auto build = computeBuild(manifest);
       const auto clean_steps = computeCleanSteps(
           clock,
           fs,
@@ -737,7 +735,7 @@ TEST_CASE("Build") {
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
 
-      const auto build = computeBuild(manifest, invocations);
+      const auto build = computeBuild(manifest);
       const auto clean_steps = computeCleanSteps(
           clock,
           fs,
@@ -776,7 +774,7 @@ TEST_CASE("Build") {
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
       invocations.entries[multiple_outputs.hash()];
-      auto build = computeBuild(manifest, invocations);
+      auto build = computeBuild(manifest);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
           IndexedManifest(RawManifest(manifest)).steps,
@@ -787,7 +785,7 @@ TEST_CASE("Build") {
 
     SECTION("all dirty") {
       manifest.steps = { single_output_b, multiple_outputs };
-      auto build = computeBuild(manifest, invocations);
+      auto build = computeBuild(manifest);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
           IndexedManifest(RawManifest(manifest)).steps,
@@ -800,7 +798,7 @@ TEST_CASE("Build") {
       manifest.steps = { single_output_b, multiple_outputs };
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
-      auto build = computeBuild(manifest, invocations);
+      auto build = computeBuild(manifest);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
           IndexedManifest(RawManifest(manifest)).steps,
@@ -819,7 +817,7 @@ TEST_CASE("Build") {
 
     SECTION("phony step") {
       manifest.steps = { phony };
-      auto build = computeBuild(manifest, invocations);
+      auto build = computeBuild(manifest);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
@@ -838,7 +836,7 @@ TEST_CASE("Build") {
           invocations.entries[root.hash()],
           single_output.outputs[0].original(),
           Fingerprint());
-      auto build = computeBuild(manifest, invocations);
+      auto build = computeBuild(manifest);
       CHECK(build.ready_steps.size() == 1);
       CHECK(discardCleanSteps(
           IndexedManifest(RawManifest(manifest)).steps,
@@ -851,7 +849,7 @@ TEST_CASE("Build") {
       manifest.steps = { single_output, root };
       // Add empty entry to mark clean
       invocations.entries[single_output.hash()];
-      auto build = computeBuild(manifest, invocations);
+      auto build = computeBuild(manifest);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
@@ -866,7 +864,7 @@ TEST_CASE("Build") {
       manifest.steps = { single_output, root };
       // Add empty entry to mark clean
       invocations.entries[single_input.hash()];
-      auto build = computeBuild(manifest, invocations);
+      auto build = computeBuild(manifest);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
@@ -881,7 +879,7 @@ TEST_CASE("Build") {
       manifest.steps = { phony, root };
       // Add empty entry to mark clean
       invocations.entries[root.hash()];
-      auto build = computeBuild(manifest, invocations);
+      auto build = computeBuild(manifest);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
