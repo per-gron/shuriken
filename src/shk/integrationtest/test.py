@@ -142,7 +142,7 @@ class IntegrationTest(unittest.TestCase):
   @with_testdir('cyclic_dependency')
   def test_cyclic_dependency(self):
     output = run_cmd_expect_fail(shk)
-    self.assertRegexpMatches(output, r'Cyclic dependency\?')
+    self.assertRegexpMatches(output, r'Dependency cycle: in -> out -> in$')
 
   @with_testdir('cyclic_dependency')
   def test_cyclic_dependency_specified_target(self):

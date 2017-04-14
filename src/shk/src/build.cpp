@@ -113,11 +113,10 @@ std::vector<StepIndex> computeReadySteps(
 void visitStep(
     const IndexedManifest &manifest,
     Build &build,
-    std::vector<Path> &cycle,
     StepIndex idx) throw(BuildError) {
   auto &step_node = build.step_nodes[idx];
   if (step_node.currently_visited) {
-    throw BuildError("Dependency cycle: " + cycleErrorMessage(cycle));
+    throw BuildError("Dependency cycle");
   }
 
   if (step_node.should_build) {
@@ -139,13 +138,10 @@ void visitStep(
     dependency_node.dependents.push_back(idx);
     step_node.dependencies++;
 
-    cycle.push_back(input);
     visitStep(
         manifest,
         build,
-        cycle,
         dependency_idx);
-    cycle.pop_back();
   }
   step_node.currently_visited = false;
 }
@@ -157,13 +153,10 @@ Build computeBuild(
   Build build;
   build.step_nodes.resize(manifest.steps.size());
 
-  std::vector<Path> cycle;
-  cycle.reserve(32);  // Guess at largest typical build dependency depth
   for (const auto step_idx : steps_to_build) {
     visitStep(
         manifest,
         build,
-        cycle,
         step_idx);
   }
 

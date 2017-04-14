@@ -223,6 +223,7 @@ bool IndexedManifest::hasDependencyCycle(
   std::vector<bool> currently_visited(steps.size());
   std::vector<bool> already_visited(steps.size());
   std::vector<Path> cycle_paths;
+  cycle_paths.reserve(32);  // Guess at largest typical build dependency depth
 
   for (StepIndex idx = 0; idx < steps.size(); idx++) {
     if (::shk::hasDependencyCycle(

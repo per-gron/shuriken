@@ -326,6 +326,11 @@ void ShurikenMain::parseManifest(
     const std::string &input_file) throw(IoError, ParseError) {
   _indexed_manifest = IndexedManifest(
       ::shk::parseManifest(_paths, _file_system, input_file));
+
+  std::string cycle;
+  if (_indexed_manifest.hasDependencyCycle(&cycle)) {
+    throw ParseError("Dependency cycle: " + cycle);
+  }
 }
 
 std::string ShurikenMain::invocationLogPath() const {
