@@ -36,7 +36,7 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
 
     const auto file_to_str = [&](size_t idx) {
       const auto &file = fingerprint[idx];
-      const auto &path = file.first.original();
+      const auto &path = file.first;
       const auto &fp = file.second;
       const auto result = fingerprintMatches(params.file_system, path, fp);
       return path +

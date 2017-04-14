@@ -111,7 +111,7 @@ Build computeBuild(
 void addOutput(
     Invocations &invocations,
     Invocations::Entry &entry,
-    Path path,
+    const std::string &path,
     const Fingerprint &fingerprint) {
   entry.output_files.push_back(invocations.fingerprints.size());
   invocations.fingerprints.emplace_back(path, fingerprint);
@@ -120,7 +120,7 @@ void addOutput(
 void addInput(
     Invocations &invocations,
     Invocations::Entry &entry,
-    Path path,
+    const std::string &path,
     const Fingerprint &fingerprint) {
   entry.input_files.push_back(invocations.fingerprints.size());
   invocations.fingerprints.emplace_back(path, fingerprint);
@@ -591,7 +591,7 @@ TEST_CASE("Build") {
 
     SECTION("clean input") {
       Invocations::Entry entry;
-      addInput(invocations, entry, paths.get("one"), one_fp);
+      addInput(invocations, entry, "one", one_fp);
       invocations.entries[hash_a] = entry;
       memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
@@ -606,7 +606,7 @@ TEST_CASE("Build") {
 
     SECTION("dirty input") {
       Invocations::Entry entry;
-      addInput(invocations, entry, paths.get("one"), one_fp);
+      addInput(invocations, entry, "one", one_fp);
       invocations.entries[hash_a] = entry;
       fs.writeFile("one", "dirty");  // Make dirty
       memo.resize(invocations.fingerprints.size());
@@ -622,7 +622,7 @@ TEST_CASE("Build") {
 
     SECTION("clean output") {
       Invocations::Entry entry;
-      addOutput(invocations, entry, paths.get("one"), one_fp);
+      addOutput(invocations, entry, "one", one_fp);
       invocations.entries[hash_a] = entry;
       memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
@@ -637,7 +637,7 @@ TEST_CASE("Build") {
 
     SECTION("dirty output") {
       Invocations::Entry entry;
-      addOutput(invocations, entry, paths.get("one"), one_fp);
+      addOutput(invocations, entry, "one", one_fp);
       invocations.entries[hash_a] = entry;
       fs.writeFile("one", "dirty");  // Make dirty
       memo.resize(invocations.fingerprints.size());
@@ -653,8 +653,8 @@ TEST_CASE("Build") {
 
     SECTION("dirty input and output") {
       Invocations::Entry entry;
-      addOutput(invocations, entry, paths.get("one"), one_fp);
-      addInput(invocations, entry, paths.get("two"), two_fp);
+      addOutput(invocations, entry, "one", one_fp);
+      addInput(invocations, entry, "two", two_fp);
       invocations.entries[hash_a] = entry;
       fs.writeFile("one", "dirty");
       fs.writeFile("two", "dirty!");
@@ -671,7 +671,7 @@ TEST_CASE("Build") {
 
     SECTION("racily clean input") {
       Invocations::Entry entry;
-      addInput(invocations, entry, paths.get("one"), one_fp_racy);
+      addInput(invocations, entry, "one", one_fp_racy);
       invocations.entries[hash_a] = entry;
       memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
@@ -690,7 +690,7 @@ TEST_CASE("Build") {
 
     SECTION("racily clean output") {
       Invocations::Entry entry;
-      addOutput(invocations, entry, paths.get("one"), one_fp_racy);
+      addOutput(invocations, entry, "one", one_fp_racy);
       invocations.entries[hash_a] = entry;
       memo.resize(invocations.fingerprints.size());
       CHECK(isClean(
@@ -843,7 +843,7 @@ TEST_CASE("Build") {
       addInput(
           invocations,
           invocations.entries[root.hash()],
-          single_output.outputs[0],
+          single_output.outputs[0].original(),
           Fingerprint());
       auto build = computeBuild(manifest, invocations);
       CHECK(build.ready_steps.size() == 1);
@@ -928,14 +928,14 @@ TEST_CASE("Build") {
     SECTION("step with missing file") {
       fs.unlink("file");
 
-      addOutput(invocations, entry, paths.get("file"), fingerprint);
+      addOutput(invocations, entry, "file", fingerprint);
 
       invocations.entries[hash] = entry;
       deleteOldOutputs(fs, invocations, log, hash);
     }
 
     SECTION("don't delete inputs") {
-      addInput(invocations, entry, paths.get("file"), fingerprint);
+      addInput(invocations, entry, "file", fingerprint);
 
       invocations.entries[hash] = entry;
       deleteOldOutputs(fs, invocations, log, hash);
@@ -944,7 +944,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("delete output") {
-      addInput(invocations, entry, paths.get("file"), fingerprint);
+      addInput(invocations, entry, "file", fingerprint);
 
       invocations.entries[hash] = entry;
       deleteOldOutputs(fs, invocations, log, hash);
@@ -953,7 +953,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("delete output with mismatching fingerprint") {
-      addInput(invocations, entry, paths.get("file"), fingerprint2);
+      addInput(invocations, entry, "file", fingerprint2);
 
       invocations.entries[hash] = entry;
       deleteOldOutputs(fs, invocations, log, hash);
@@ -962,7 +962,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("delete outputs") {
-      addOutput(invocations, entry, paths.get("file"), fingerprint);
+      addOutput(invocations, entry, "file", fingerprint);
 
       invocations.entries[hash] = entry;
       deleteOldOutputs(fs, invocations, log, hash);
@@ -974,7 +974,7 @@ TEST_CASE("Build") {
       addOutput(
           invocations,
           entry,
-          paths.get("dir_single_file/file"),
+          "dir_single_file/file",
           fingerprint2);
       invocations.entries[hash] = entry;
 
@@ -988,11 +988,11 @@ TEST_CASE("Build") {
     }
 
     SECTION("delete created directories") {
-      addOutput(invocations, entry, paths.get("dir/file2"), fingerprint2);
+      addOutput(invocations, entry, "dir/file2", fingerprint2);
       addOutput(
           invocations,
           entry,
-          paths.get("dir/subdir/file3"),
+          "dir/subdir/file3",
           fingerprint3);
       invocations.entries[hash] = entry;
 
@@ -1013,7 +1013,7 @@ TEST_CASE("Build") {
       addOutput(
           invocations,
           entry,
-          paths.get("dir/subdir/file3"),
+          "dir/subdir/file3",
           fingerprint3);
       invocations.entries[hash] = entry;
 
@@ -1030,11 +1030,11 @@ TEST_CASE("Build") {
     }
 
     SECTION("leave directories that weren't created by previous build") {
-      addOutput(invocations, entry, paths.get("dir/file2"), fingerprint2);
+      addOutput(invocations, entry, "dir/file2", fingerprint2);
       addOutput(
           invocations,
           entry,
-          paths.get("dir/subdir/file3"),
+          "dir/subdir/file3",
           fingerprint3);
       invocations.entries[hash] = entry;
 
@@ -1095,7 +1095,7 @@ TEST_CASE("Build") {
 
       Invocations invocations;
       invocations.fingerprints.emplace_back(
-          paths.get("file"), file_fingerprint);
+          "file", file_fingerprint);
       invocations.entries[step.hash] = entry;
 
       CHECK(canSkipBuildCommand(
@@ -1115,7 +1115,7 @@ TEST_CASE("Build") {
 
       Invocations invocations;
       invocations.fingerprints.emplace_back(
-          paths.get("file"), file_fingerprint);
+          "file", file_fingerprint);
       invocations.entries[step.hash] = entry;
 
       CHECK(canSkipBuildCommand(
@@ -1135,7 +1135,7 @@ TEST_CASE("Build") {
 
       Invocations invocations;
       invocations.fingerprints.emplace_back(
-          paths.get("file"), file_fingerprint);
+          "file", file_fingerprint);
       invocations.entries[step.hash] = entry;
 
       Hash different_hash = file_fingerprint.hash;
@@ -1158,7 +1158,7 @@ TEST_CASE("Build") {
 
       Invocations invocations;
       invocations.fingerprints.emplace_back(
-          paths.get("file"), file_fingerprint);
+          "file", file_fingerprint);
       invocations.entries[step.hash] = entry;
 
       Hash different_hash = file_fingerprint.hash;

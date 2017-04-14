@@ -109,7 +109,7 @@ Invocations InMemoryInvocationLog::invocations(Paths &paths) const {
     std::vector<size_t> out;
     for (const auto &file : files) {
       out.push_back(result.fingerprints.size());
-      result.fingerprints.emplace_back(paths.get(file.first), file.second);
+      result.fingerprints.emplace_back(file.first, file.second);
     }
     return out;
   };

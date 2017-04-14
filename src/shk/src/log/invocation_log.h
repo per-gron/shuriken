@@ -89,7 +89,7 @@ class InvocationLog {
    */
   void relogCommand(
       const Hash &build_step_hash,
-      const std::vector<std::pair<Path, Fingerprint>> &fingerprints,
+      const std::vector<std::pair<std::string, Fingerprint>> &fingerprints,
       const std::vector<size_t> &output_files,
       const std::vector<size_t> &input_files);
 

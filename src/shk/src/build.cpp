@@ -191,7 +191,7 @@ namespace {
 
 MatchesResult checkFingerprintMatches(
     FileSystem &file_system,
-    const std::vector<std::pair<Path, Fingerprint>> &fingerprints,
+    const std::vector<std::pair<std::string, Fingerprint>> &fingerprints,
     size_t fingerprint_idx,
     FingerprintMatchesMemo &fingerprint_matches_memo) {
   assert(fingerprint_idx < fingerprint_matches_memo.size());
@@ -200,7 +200,7 @@ MatchesResult checkFingerprintMatches(
     fingerprint_matches_memo[fingerprint_idx] =
         fingerprintMatches(
             file_system,
-            file.first.original(),
+            file.first,
             file.second);
   }
   return *fingerprint_matches_memo[fingerprint_idx];
@@ -215,7 +215,7 @@ void relogCommand(
     std::vector<std::string> files;
     files.reserve(file_indices.size());
     for (const size_t file_index : file_indices) {
-      files.push_back(invocations.fingerprints[file_index].first.original());
+      files.push_back(invocations.fingerprints[file_index].first);
     }
     return files;
   };
@@ -536,7 +536,7 @@ void deleteOldOutputs(
         file_system,
         invocations,
         invocation_log,
-        output.first.original());
+        output.first);
   }
 }
 
@@ -570,7 +570,7 @@ bool canSkipBuildCommand(
   // build command wrote to the outputs too, the build will fail anyway.
   for (const auto fingerprint_idx : invocation_entry.input_files) {
     const auto &path =
-        invocations.fingerprints[fingerprint_idx].first.original();
+        invocations.fingerprints[fingerprint_idx].first;
     const auto original_fingerprint =
         invocations.fingerprints[fingerprint_idx].second;
 
@@ -682,7 +682,7 @@ void deleteStaleOutputs(
             file_system,
             invocations,
             invocation_log,
-            output_file.first.original());
+            output_file.first);
       }
       invocation_log.cleanedCommand(entry.first);
     }

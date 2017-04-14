@@ -490,7 +490,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
           fingerprints_by_id[entry_count] =
               result.invocations.fingerprints.size();
           result.invocations.fingerprints.emplace_back(
-              path, value.fingerprint);
+              path.original(), value.fingerprint);
         } else {
           throw ParseError("invalid invocation log: truncated invocation");
         }
