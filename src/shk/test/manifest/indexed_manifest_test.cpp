@@ -359,6 +359,69 @@ TEST_CASE("IndexedManifest") {
       }
     }
   }
+
+  SECTION("hasDependencyCycle") {
+    SECTION("Empty") {
+      std::string cycle;
+      CHECK(!IndexedManifest().hasDependencyCycle(&cycle));
+      CHECK(cycle.empty());
+    }
+
+    SECTION("Single input") {
+      RawManifest raw_manifest;
+      raw_manifest.steps = { single_input };
+
+      IndexedManifest manifest(std::move(raw_manifest));
+
+      std::string cycle;
+      CHECK(!manifest.hasDependencyCycle(&cycle));
+      CHECK(cycle.empty());
+    }
+
+    SECTION("Single output") {
+      RawManifest raw_manifest;
+      raw_manifest.steps = { single_input };
+
+      IndexedManifest manifest(std::move(raw_manifest));
+
+      std::string cycle;
+      CHECK(!manifest.hasDependencyCycle(&cycle));
+      CHECK(cycle.empty());
+    }
+
+    SECTION("Single cyclic step") {
+      RawStep cyclic_step;
+      cyclic_step.outputs = { paths.get("a") };
+      cyclic_step.inputs = { paths.get("a") };
+
+      RawManifest raw_manifest;
+      raw_manifest.steps = { cyclic_step };
+
+      IndexedManifest manifest(std::move(raw_manifest));
+
+      std::string cycle;
+      CHECK(manifest.hasDependencyCycle(&cycle));
+      CHECK(cycle == "a -> a");
+    }
+
+    SECTION("Two cyclic steps") {
+      RawStep cyclic_step_1;
+      cyclic_step_1.outputs = { paths.get("b") };
+      cyclic_step_1.inputs = { paths.get("a") };
+      RawStep cyclic_step_2;
+      cyclic_step_2.outputs = { paths.get("a") };
+      cyclic_step_2.inputs = { paths.get("b") };
+
+      RawManifest raw_manifest;
+      raw_manifest.steps = { cyclic_step_1, cyclic_step_2 };
+
+      IndexedManifest manifest(std::move(raw_manifest));
+
+      std::string cycle;
+      CHECK(manifest.hasDependencyCycle(&cycle));
+      CHECK(cycle == "a -> b -> a");
+    }
+  }
 }
 
 }  // namespace detail

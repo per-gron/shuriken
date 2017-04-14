@@ -78,6 +78,13 @@ struct IndexedManifest {
   IndexedManifest(RawManifest &&manifest);
 
   /**
+   * Checks if the build graph has a dependency cycle. If so, it returns true
+   * and sets cycle to a string that describes the cycle (for
+   * example "a -> b -> a").
+   */
+  bool hasDependencyCycle(std::string *cycle) const;
+
+  /**
    * Map of path => index of the step that has this file as an output.
    */
   PathToStepMap output_path_map;

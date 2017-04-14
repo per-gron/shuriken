@@ -161,6 +161,51 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
   return result;
 }
 
+bool hasDependencyCycle(
+    const IndexedManifest &manifest,
+    std::vector<bool> &currently_visited,
+    std::vector<bool> &already_visited,
+    std::vector<Path> &cycle_paths,
+    StepIndex idx,
+    std::string *cycle) {
+  if (currently_visited[idx]) {
+    *cycle = detail::cycleErrorMessage(cycle_paths);
+    return true;
+  }
+
+  if (already_visited[idx]) {
+    // The step has already been processed.
+    return false;
+  }
+  already_visited[idx] = true;
+
+  currently_visited[idx] = true;
+  for (const auto &input : manifest.steps[idx].dependencies) {
+    const auto it = manifest.output_path_map.find(input);
+    if (it == manifest.output_path_map.end()) {
+      // This input is not an output of some other build step.
+      continue;
+    }
+
+    const auto dependency_idx = it->second;
+
+    cycle_paths.push_back(input);
+    if (hasDependencyCycle(
+            manifest,
+            currently_visited,
+            already_visited,
+            cycle_paths,
+            dependency_idx,
+            cycle)) {
+      return true;
+    }
+    cycle_paths.pop_back();
+  }
+  currently_visited[idx] = false;
+
+  return false;
+}
+
 }  // anonymous namespace
 
 IndexedManifest::IndexedManifest(RawManifest &&manifest)
@@ -172,5 +217,26 @@ IndexedManifest::IndexedManifest(RawManifest &&manifest)
       roots(detail::rootSteps(steps, output_path_map)),
       pools(std::move(manifest.pools)),
       build_dir(std::move(manifest.build_dir)) {}
+
+bool IndexedManifest::hasDependencyCycle(
+    std::string *cycle) const {
+  std::vector<bool> currently_visited(steps.size());
+  std::vector<bool> already_visited(steps.size());
+  std::vector<Path> cycle_paths;
+
+  for (StepIndex idx = 0; idx < steps.size(); idx++) {
+    if (::shk::hasDependencyCycle(
+            *this,
+            currently_visited,
+            already_visited,
+            cycle_paths,
+            idx,
+            cycle)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 }  // namespace shk
