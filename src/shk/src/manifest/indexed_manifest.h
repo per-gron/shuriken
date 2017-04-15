@@ -23,6 +23,17 @@ namespace shk {
 using PathToStepMap = std::unordered_map<
     Path, StepIndex, Path::IsSameHash, Path::IsSame>;
 
+/**
+ * Similar to PathToStepMap, but is a sorted list of canonicalized paths along
+ * with the associated StepIndex for each path.
+ *
+ * The paths are canonicalized without consulting the file system. This means
+ * that these paths will be broken if there are symlinks around. These lists are
+ * intended to be used for selecting build steps based on command line input,
+ * not where correctness is required.
+ */
+using PathToStepList = std::vector<std::pair<std::string, StepIndex>>;
+
 namespace detail {
 
 /**
@@ -79,6 +90,18 @@ struct IndexedManifest {
    * more than one, the map will contain one of them, chosen arbitrarily.
    */
   PathToStepMap input_path_map;
+
+  /**
+   * Associative list of path => index of the step that has this file as an
+   * output.
+   */
+  PathToStepList outputs;
+
+  /**
+   * Associative list of path => index of the step that has this file as an
+   * input.
+   */
+  PathToStepList inputs;
 
   std::vector<Step> steps;
   std::vector<StepIndex> defaults;

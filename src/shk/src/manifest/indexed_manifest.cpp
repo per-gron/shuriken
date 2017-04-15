@@ -81,6 +81,25 @@ PathToStepMap computeInputPathMap(
   return result;
 }
 
+PathToStepList computePathList(
+    const PathToStepMap &path_map) {
+  PathToStepList result;
+
+  for (const auto &path_pair : path_map) {
+    auto path = path_pair.first.original();
+    try {
+      canonicalizePath(&path);
+    } catch (const PathError &) {
+      continue;
+    }
+    result.emplace_back(std::move(path), path_pair.second);
+  }
+
+  std::sort(result.begin(), result.end());
+
+  return result;
+}
+
 Step convertRawStep(
     const PathToStepMap &output_path_map,
     RawStep &&raw) {
@@ -245,6 +264,8 @@ bool hasDependencyCycle(
 IndexedManifest::IndexedManifest(RawManifest &&manifest)
     : output_path_map(detail::computeOutputPathMap(manifest.steps)),
       input_path_map(computeInputPathMap(manifest.steps)),
+      outputs(computePathList(output_path_map)),
+      inputs(computePathList(input_path_map)),
       steps(convertStepVector(output_path_map, std::move(manifest.steps))),
       defaults(computeStepsToBuildFromPaths(
           manifest.defaults, output_path_map)),

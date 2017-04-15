@@ -146,14 +146,14 @@ TEST_CASE("IndexedManifest") {
       CHECK(indexed_manifest.steps[0].hash == single_output.hash());
     }
 
-    SECTION("input_path_map") {
+    SECTION("inputs") {
       SECTION("empty") {
         RawManifest manifest;
         manifest.steps = { single_output };
 
         IndexedManifest indexed_manifest(std::move(manifest));
 
-        CHECK(indexed_manifest.input_path_map.empty());
+        CHECK(indexed_manifest.inputs.empty());
       }
 
       SECTION("inputs") {
@@ -163,8 +163,8 @@ TEST_CASE("IndexedManifest") {
         IndexedManifest indexed_manifest(std::move(manifest));
 
         CHECK(
-            indexed_manifest.input_path_map ==
-            PathToStepMap({ { paths.get("a"), 0 } }));
+            indexed_manifest.inputs ==
+            PathToStepList({ { "a", 0 } }));
       }
 
       SECTION("implicit_inputs") {
@@ -174,8 +174,8 @@ TEST_CASE("IndexedManifest") {
         IndexedManifest indexed_manifest(std::move(manifest));
 
         CHECK(
-            indexed_manifest.input_path_map ==
-            PathToStepMap({ { paths.get("a"), 0 } }));
+            indexed_manifest.inputs ==
+            PathToStepList({ { "a", 0 } }));
       }
 
       SECTION("dependencies") {
@@ -185,8 +185,8 @@ TEST_CASE("IndexedManifest") {
         IndexedManifest indexed_manifest(std::move(manifest));
 
         CHECK(
-            indexed_manifest.input_path_map ==
-            PathToStepMap({ { paths.get("a"), 0 } }));
+            indexed_manifest.inputs ==
+            PathToStepList({ { "a", 0 } }));
       }
 
       SECTION("shared inputs") {
@@ -196,22 +196,95 @@ TEST_CASE("IndexedManifest") {
         IndexedManifest indexed_manifest(std::move(manifest));
 
         CHECK(
-            indexed_manifest.input_path_map ==
-            PathToStepMap({ { paths.get("a"), 0 } }));
+            indexed_manifest.inputs ==
+            PathToStepList({ { "a", 0 } }));
       }
 
       SECTION("different inputs") {
-        RawStep single_input_b;
-        single_input_b.inputs = { paths.get("b") };
+        for (int swap_steps = 0; swap_steps <= 1; swap_steps++) {
+          RawStep single_input_b;
+          single_input_b.inputs = { paths.get("b") };
+
+          RawManifest manifest;
+          if (swap_steps) {
+            manifest.steps = { single_input_b, single_dependency };
+          } else {
+            manifest.steps = { single_dependency, single_input_b };
+          }
+
+          IndexedManifest indexed_manifest(std::move(manifest));
+
+          CHECK(
+              indexed_manifest.inputs ==
+              PathToStepList({ { "a", swap_steps }, { "b", !swap_steps } }));
+        }
+      }
+
+      SECTION("canonicalize path") {
+        RawStep step;
+        step.inputs = { paths.get("a/../b") };
 
         RawManifest manifest;
-        manifest.steps = { single_dependency, single_input_b };
+        manifest.steps = { step };
 
         IndexedManifest indexed_manifest(std::move(manifest));
 
         CHECK(
-            indexed_manifest.input_path_map ==
-            PathToStepMap({ { paths.get("a"), 0 }, { paths.get("b"), 1 } }));
+            indexed_manifest.inputs ==
+            PathToStepList({ { "b", 0 } }));
+      }
+    }
+
+    SECTION("outputs") {
+      SECTION("empty") {
+        RawManifest manifest;
+        manifest.steps = { single_input };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+
+        CHECK(indexed_manifest.outputs.empty());
+      }
+
+      SECTION("outputs") {
+        RawManifest manifest;
+        manifest.steps = { single_output };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+
+        CHECK(
+            indexed_manifest.outputs ==
+            PathToStepList({ { "a", 0 } }));
+      }
+
+      SECTION("different outputs") {
+        for (int swap_steps = 0; swap_steps <= 1; swap_steps++) {
+          RawManifest manifest;
+          if (swap_steps) {
+            manifest.steps = { single_output_b, single_output };
+          } else {
+            manifest.steps = { single_output, single_output_b };
+          }
+
+          IndexedManifest indexed_manifest(std::move(manifest));
+
+          CHECK(
+              indexed_manifest.outputs ==
+              PathToStepList({ { "a", swap_steps }, { "b", !swap_steps } }));
+        }
+      }
+
+      SECTION("canonicalize path") {
+        RawStep step;
+        step.outputs = { paths.get("a/../b") };
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        IndexedManifest indexed_manifest(std::move(manifest));
+
+        CHECK(
+            indexed_manifest.outputs ==
+            PathToStepList({ { "b", 0 } }));
       }
     }
 
