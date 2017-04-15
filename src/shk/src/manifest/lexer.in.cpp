@@ -27,8 +27,8 @@ std::string Lexer::error(const std::string& message) const {
 
   // Compute line/column.
   int line = 1;
-  const char* context = _input._str;
-  for (const char* p = _input._str; p < _last_token; ++p) {
+  const char* context = _input.data();
+  for (const char* p = _input.data(); p < _last_token; ++p) {
     if (*p == '\n') {
       ++line;
       context = p + 1;
@@ -37,7 +37,8 @@ std::string Lexer::error(const std::string& message) const {
   int col = _last_token ? (int)(_last_token - context) : 0;
 
   char buf[1024];
-  snprintf(buf, sizeof(buf), "%s:%d: ", _filename.asString().c_str(), line);
+  const auto filename = std::string(_filename.data(), _filename.size());
+  snprintf(buf, sizeof(buf), "%s:%d: ", filename.data(), line);
   err = buf;
   err += message + "\n";
 
@@ -67,10 +68,10 @@ Lexer::Lexer(const char* input) {
   start("input", input);
 }
 
-void Lexer::start(StringPiece filename, StringPiece input) {
+void Lexer::start(string_view filename, string_view input) {
   _filename = filename;
   _input = input;
-  _ofs = _input._str;
+  _ofs = _input.data();
   _last_token = NULL;
 }
 
@@ -212,7 +213,7 @@ void Lexer::readEvalString(EvalString* eval, bool path) throw(ParseError) {
     start = p;
     /*!re2c
     [^$ :\r\n|\000]+ {
-      eval->addText(StringPiece(start, p - start));
+      eval->addText(string_view(start, p - start));
       continue;
     }
     "\r\n" {
@@ -227,16 +228,16 @@ void Lexer::readEvalString(EvalString* eval, bool path) throw(ParseError) {
       } else {
         if (*start == '\n')
           break;
-        eval->addText(StringPiece(start, 1));
+        eval->addText(string_view(start, 1));
         continue;
       }
     }
     "$$" {
-      eval->addText(StringPiece("$", 1));
+      eval->addText(string_view("$", 1));
       continue;
     }
     "$ " {
-      eval->addText(StringPiece(" ", 1));
+      eval->addText(string_view(" ", 1));
       continue;
     }
     "$\r\n"[ ]* {
@@ -246,15 +247,15 @@ void Lexer::readEvalString(EvalString* eval, bool path) throw(ParseError) {
       continue;
     }
     "${"varname"}" {
-      eval->addSpecial(StringPiece(start + 2, p - start - 3));
+      eval->addSpecial(string_view(start + 2, p - start - 3));
       continue;
     }
     "$"simple_varname {
-      eval->addSpecial(StringPiece(start + 1, p - start - 1));
+      eval->addSpecial(string_view(start + 1, p - start - 1));
       continue;
     }
     "$:" {
-      eval->addText(StringPiece(":", 1));
+      eval->addText(string_view(":", 1));
       continue;
     }
     "$". {

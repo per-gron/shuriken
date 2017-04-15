@@ -28,16 +28,20 @@ std::string EvalString::evaluate(Env &env) const {
   return result;
 }
 
-void EvalString::addText(StringPiece text) {
+void EvalString::addText(string_view text) {
   // Add it to the end of an existing TokenType::RAW token if possible.
   if (!_parsed.empty() && _parsed.back().second == TokenType::RAW) {
-    _parsed.back().first.append(text._str, text._len);
+    _parsed.back().first.append(text.data(), text.size());
   } else {
-    _parsed.push_back(make_pair(text.asString(), TokenType::RAW));
+    _parsed.push_back(std::make_pair(
+        std::string(text.data(), text.size()),
+        TokenType::RAW));
   }
 }
-void EvalString::addSpecial(StringPiece text) {
-  _parsed.push_back(make_pair(text.asString(), TokenType::SPECIAL));
+void EvalString::addSpecial(string_view text) {
+  _parsed.push_back(std::make_pair(
+      std::string(text.data(), text.size()),
+      TokenType::SPECIAL));
 }
 
 std::string EvalString::serialize() const {

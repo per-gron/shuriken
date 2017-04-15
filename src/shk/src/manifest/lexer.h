@@ -15,7 +15,7 @@
 #pragma once
 
 #include "parse_error.h"
-#include "string_piece.h"
+#include "string_view.h"
 #include "util.h"
 
 // Windows may #define ERROR.
@@ -71,7 +71,7 @@ struct Lexer {
   /**
    * Start parsing some input.
    */
-  void start(StringPiece filename, StringPiece input);
+  void start(string_view filename, string_view input);
 
   /**
    * Read a Token from the Token enum.
@@ -137,8 +137,8 @@ private:
    */
   void readEvalString(EvalString* eval, bool path) throw(ParseError);
 
-  StringPiece _filename;
-  StringPiece _input;
+  string_view _filename;
+  string_view _input;
   const char *_ofs;
   const char *_last_token;
 };

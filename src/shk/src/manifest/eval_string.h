@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "string_piece.h"
+#include "string_view.h"
 
 namespace shk {
 
@@ -37,8 +37,8 @@ class EvalString {
   void clear() { _parsed.clear(); }
   bool empty() const { return _parsed.empty(); }
 
-  void addText(StringPiece text);
-  void addSpecial(StringPiece text);
+  void addText(string_view text);
+  void addSpecial(string_view text);
 
   /**
    * Construct a human-readable representation of the parsed state,
