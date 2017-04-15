@@ -168,7 +168,7 @@ struct ShurikenMain {
    * Fills in \a err on error.
    * @return true if the manifest was rebuilt.
    */
-  bool rebuildManifest(const char *input_file, std::string *err);
+  bool rebuildManifest(std::string *err);
 
   Paths &paths() {
     return _paths;
@@ -242,17 +242,14 @@ void usage(const BuildConfig &config) {
  * Rebuild the build manifest, if necessary.
  * Returns true if the manifest was rebuilt.
  */
-bool ShurikenMain::rebuildManifest(const char *input_file, std::string *err) {
-  const auto path = _paths.get(input_file);
-
-  auto manifest_step_index_it = _indexed_manifest.output_path_map.find(path);
-  if (manifest_step_index_it == _indexed_manifest.output_path_map.end()) {
+bool ShurikenMain::rebuildManifest(std::string *err) {
+  if (_indexed_manifest.manifest_step == -1) {
     // No rule generates the manifest file. There is nothing to do.
     return false;
   }
 
   try {
-    const auto result = runBuild({ manifest_step_index_it->second });
+    const auto result = runBuild({ _indexed_manifest.manifest_step });
     switch (result) {
     case BuildResult::NO_WORK_TO_DO:
       return false;
@@ -687,7 +684,7 @@ int real_main(int argc, char **argv) {
 
     // Attempt to rebuild the manifest before building anything else
     std::string err;
-    if (shk.rebuildManifest(options.input_file, &err)) {
+    if (shk.rebuildManifest(&err)) {
       // In dry_run mode the regeneration will succeed without changing the
       // manifest forever. Better to return immediately.
       if (config.dry_run) {
