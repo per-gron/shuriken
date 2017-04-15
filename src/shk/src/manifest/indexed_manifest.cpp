@@ -263,9 +263,8 @@ bool hasDependencyCycle(
 
 IndexedManifest::IndexedManifest(RawManifest &&manifest)
     : output_path_map(detail::computeOutputPathMap(manifest.steps)),
-      input_path_map(computeInputPathMap(manifest.steps)),
       outputs(computePathList(output_path_map)),
-      inputs(computePathList(input_path_map)),
+      inputs(computePathList(computeInputPathMap(manifest.steps))),
       steps(convertStepVector(output_path_map, std::move(manifest.steps))),
       defaults(computeStepsToBuildFromPaths(
           manifest.defaults, output_path_map)),
