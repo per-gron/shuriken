@@ -40,12 +40,12 @@ TEST_CASE("PersistentFileSystem") {
 
     SECTION("FileWithContents") {
       fs->writeFile(kTestFilename1, "data");
-      CHECK(fs->mmap(kTestFilename1)->memory().asString() == "data");
+      CHECK(fs->mmap(kTestFilename1)->memory() == "data");
     }
 
     SECTION("EmptyFile") {
       fs->writeFile(kTestFilename1, "");
-      CHECK(fs->mmap(kTestFilename1)->memory().asString() == "");
+      CHECK(fs->mmap(kTestFilename1)->memory() == "");
     }
   }
 

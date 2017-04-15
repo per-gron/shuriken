@@ -24,7 +24,7 @@ TEST_CASE("CleaningFileSystem") {
     CHECK_THROWS_AS(fs.mmap("dir"), IoError);
     CHECK_THROWS_AS(fs.mmap("dir/nonexisting"), IoError);
     CHECK_THROWS_AS(fs.mmap("nonexisting/nonexisting"), IoError);
-    CHECK(fs.mmap("f")->memory().asString() == "contents");
+    CHECK(fs.mmap("f")->memory() == "contents");
     CHECK(fs.getRemovedCount() == 0);
   }
 

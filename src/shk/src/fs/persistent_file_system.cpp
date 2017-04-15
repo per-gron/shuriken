@@ -116,8 +116,8 @@ class PersistentFileSystem : public FileSystem {
       }
     }
 
-    StringPiece memory() override {
-      return StringPiece(static_cast<const char *>(_memory), _size);
+    string_view memory() override {
+      return string_view(static_cast<const char *>(_memory), _size);
     }
 
    private:

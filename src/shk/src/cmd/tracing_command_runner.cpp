@@ -148,17 +148,17 @@ class TracingCommandRunner : public CommandRunner {
 
 namespace detail {
 
-void parseTrace(StringPiece trace_slice, CommandRunner::Result *result) {
+void parseTrace(string_view trace_view, CommandRunner::Result *result) {
   flatbuffers::Verifier verifier(
-      reinterpret_cast<const uint8_t *>(trace_slice._str),
-      trace_slice._len);
+      reinterpret_cast<const uint8_t *>(trace_view.data()),
+      trace_view.size());
   if (!VerifyTraceBuffer(verifier)) {
     result->output += "shk: Trace file did not pass validation\n";
     result->exit_status = ExitStatus::FAILURE;
     return;
   }
 
-  auto trace = GetTrace(trace_slice._str);
+  auto trace = GetTrace(trace_view.data());
 
   for (int i = 0; i < trace->inputs()->size(); i++) {
     const auto *input = trace->inputs()->Get(i);

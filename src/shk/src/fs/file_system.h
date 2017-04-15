@@ -6,7 +6,7 @@
 
 #include "hash.h"
 #include "io_error.h"
-#include "string_piece.h"
+#include "string_view.h"
 
 namespace shk {
 
@@ -101,7 +101,7 @@ class FileSystem {
    public:
     virtual ~Mmap() = default;
 
-    virtual StringPiece memory() = 0;
+    virtual string_view memory() = 0;
   };
 
   virtual std::unique_ptr<Stream> open(

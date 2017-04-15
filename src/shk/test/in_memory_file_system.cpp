@@ -400,8 +400,8 @@ void InMemoryFileSystem::InMemoryFileStream::checkNotEof()
 InMemoryFileSystem::InMemoryMmap::InMemoryMmap(const std::shared_ptr<File> &file)
     : _file(file) {}
 
-StringPiece InMemoryFileSystem::InMemoryMmap::memory() {
-  return StringPiece(_file->contents);
+string_view InMemoryFileSystem::InMemoryMmap::memory() {
+  return string_view(_file->contents.c_str(), _file->contents.size());
 }
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(

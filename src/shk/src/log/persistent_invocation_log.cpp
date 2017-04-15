@@ -18,6 +18,7 @@
 #include <errno.h>
 
 #include "optional.h"
+#include "string_view.h"
 
 namespace shk {
 namespace {
@@ -33,31 +34,31 @@ const std::string kFileSignature = "invocations:";
 const uint32_t kFileVersion = 1;
 const uint32_t kInvocationLogEntryTypeMask = 3;
 
-StringPiece advance(StringPiece piece, size_t len) {
-  assert(len <= piece._len);
-  return StringPiece(piece._str + len, piece._len - len);
+string_view advance(string_view view, size_t len) {
+  assert(len <= view.size());
+  return string_view(view.data() + len, view.size() - len);
 }
 
-bool parseInvocationLogSignature(StringPiece *piece, std::string *err) {
+bool parseInvocationLogSignature(string_view *view, std::string *err) {
   const auto signature_size = kFileSignature.size() + sizeof(kFileVersion);
-  if (piece->_len < signature_size) {
+  if (view->size() < signature_size) {
     *err = "invalid invocation log file signature (too short)";
     return false;
   }
 
-  if (!std::equal(kFileSignature.begin(), kFileSignature.end(), piece->_str)) {
+  if (!std::equal(kFileSignature.begin(), kFileSignature.end(), view->data())) {
     *err = "invalid invocation log file signature";
     return false;
   }
 
   const auto version =
-      *reinterpret_cast<const uint32_t *>(piece->_str + kFileSignature.size());
+      *reinterpret_cast<const uint32_t *>(view->data() + kFileSignature.size());
   if (version != kFileVersion) {
     *err = "invalid invocation log file version or bad byte order";
     return false;
   }
 
-  *piece = advance(*piece, signature_size);
+  *view = advance(*view, signature_size);
 
   return true;
 }
@@ -66,12 +67,12 @@ class EntryHeader {
  public:
   using Value = uint32_t;
 
-  EntryHeader(StringPiece piece) throw(ParseError) {
-    if (piece._len < sizeof(Value)) {
+  EntryHeader(string_view view) throw(ParseError) {
+    if (view.size() < sizeof(Value)) {
       throw ParseError("invalid invocation log: encountered truncated entry");
     }
 
-    _header = *reinterpret_cast<const uint32_t *>(piece._str);
+    _header = *reinterpret_cast<const uint32_t *>(view.data());
   }
 
   uint32_t entrySize() const {
@@ -88,23 +89,23 @@ class EntryHeader {
 };
 
 void ensureEntryLen(
-    const StringPiece &piece, size_t min_size) throw(ParseError) {
-  if (piece._len < min_size) {
+    string_view view, size_t min_size) throw(ParseError) {
+  if (view.size() < min_size) {
     throw ParseError("invalid invocation log: encountered invalid entry");
   }
 }
 
 template<typename T>
-const T &read(const StringPiece &piece) {
-  ensureEntryLen(piece, sizeof(T));
-  return *reinterpret_cast<const T *>(piece._str);
+const T &read(string_view view) {
+  ensureEntryLen(view, sizeof(T));
+  return *reinterpret_cast<const T *>(view.data());
 }
 
 template<typename T>
 T readEntryById(
     const std::vector<Optional<T>> &entries_by_id,
-    StringPiece piece) throw(ParseError) {
-  const auto entry_id = read<uint32_t>(piece);
+    string_view view) throw(ParseError) {
+  const auto entry_id = read<uint32_t>(view);
   if (entry_id >= entries_by_id.size() || !entries_by_id[entry_id]) {
     throw ParseError(
         "invalid invocation log: encountered invalid fingerprint ref");
@@ -114,12 +115,12 @@ T readEntryById(
 
 std::vector<size_t> readFingerprints(
     const std::vector<Optional<size_t>> &fingerprints_by_id,
-    StringPiece piece) {
+    string_view view) {
   std::vector<size_t> result;
-  result.reserve(piece._len / sizeof(uint32_t));
+  result.reserve(view.size() / sizeof(uint32_t));
 
-  for (; piece._len; piece = advance(piece, sizeof(uint32_t))) {
-    result.push_back(readEntryById(fingerprints_by_id, piece));
+  for (; view.size(); view = advance(view, sizeof(uint32_t))) {
+    result.push_back(readEntryById(fingerprints_by_id, view));
   }
 
   return result;
@@ -127,8 +128,8 @@ std::vector<size_t> readFingerprints(
 
 const std::string &readPath(
     const std::vector<Optional<std::string>> &paths_by_id,
-    StringPiece piece) throw(ParseError) {
-  const auto path_id = read<uint32_t>(piece);
+    string_view view) throw(ParseError) {
+  const auto path_id = read<uint32_t>(view);
   if (path_id >= paths_by_id.size() || !paths_by_id[path_id]) {
     throw ParseError(
         "invalid invocation log: encountered invalid path ref");
@@ -421,11 +422,11 @@ InvocationLogParseResult parsePersistentInvocationLog(
       throw;
     }
   }
-  auto piece = mmap->memory();
-  const auto file_size = piece._len;
+  auto view = mmap->memory();
+  const auto file_size = view.size();
 
   std::string err;
-  if (!parseInvocationLogSignature(&piece, &err)) {
+  if (!parseInvocationLogSignature(&view, &err)) {
     // Parsing of log signature failed. Remove the file so that the error goes
     // away.
     file_system.unlink(log_path);
@@ -445,22 +446,22 @@ InvocationLogParseResult parsePersistentInvocationLog(
   auto &entry_count = result.parse_data.entry_count;
 
   try {
-    for (; piece._len; entry_count++) {
-      EntryHeader header(piece);
+    for (; view.size(); entry_count++) {
+      EntryHeader header(view);
       const auto entry_size = header.entrySize();
-      ensureEntryLen(piece, entry_size + sizeof(EntryHeader::Value));
-      StringPiece entry(piece._str + sizeof(EntryHeader::Value), entry_size);
+      ensureEntryLen(view, entry_size + sizeof(EntryHeader::Value));
+      string_view entry(view.data() + sizeof(EntryHeader::Value), entry_size);
 
       switch (header.entryType()) {
       case InvocationLogEntryType::PATH: {
         paths_by_id.resize(entry_count + 1);
-        if (strnlen(entry._str, entry._len) == entry._len) {
+        if (strnlen(entry.data(), entry.size()) == entry.size()) {
           throw ParseError(
               "invalid invocation log: Encountered non null terminated path");
         }
         // Don't use entry.asString() because it could make the string contain
         // trailing \0s
-        auto path_string = std::string(entry._str);
+        auto path_string = std::string(entry.data());
         result.parse_data.path_ids[path_string] = entry_count;
         paths_by_id[entry_count] = std::move(path_string);
         break;
@@ -485,7 +486,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
           FingerprintIdsValue value;
           value.record_id = entry_count;
           value.fingerprint =
-              *reinterpret_cast<const Fingerprint *>(entry._str);
+              *reinterpret_cast<const Fingerprint *>(entry.data());
           result.parse_data.fingerprint_ids[path] = value;
 
           fingerprints_by_id.resize(entry_count + 1);
@@ -505,14 +506,14 @@ InvocationLogParseResult parsePersistentInvocationLog(
         const auto outputs = read<uint32_t>(entry);
         entry = advance(entry, sizeof(outputs));
         const auto output_size = sizeof(uint32_t) * outputs;
-        if (entry._len < output_size) {
+        if (entry.size() < output_size) {
           throw ParseError("invalid invocation log: truncated invocation");
         }
 
         result.invocations.entries[hash] = {
             readFingerprints(
                 fingerprints_by_id,
-                StringPiece(entry._str, output_size)),
+                string_view(entry.data(), output_size)),
             readFingerprints(
                 fingerprints_by_id,
                 advance(entry, output_size)) };
@@ -520,7 +521,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
       }
 
       case InvocationLogEntryType::DELETED: {
-        if (entry._len == sizeof(uint32_t)) {
+        if (entry.size() == sizeof(uint32_t)) {
           // Deleted directory
           const auto path = readPath(paths_by_id, entry);
           const auto stat = file_system.lstat(path);
@@ -528,7 +529,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
             const auto file_id = FileId(stat);
             result.invocations.created_directories.erase(file_id);
           }
-        } else if (entry._len == sizeof(Hash)) {
+        } else if (entry.size() == sizeof(Hash)) {
           // Deleted invocation
           result.invocations.entries.erase(read<Hash>(entry));
         } else {
@@ -538,10 +539,10 @@ InvocationLogParseResult parsePersistentInvocationLog(
       }
       }
 
-      // Now that we are sure that the parsing succeeded, advance piece. This
-      // is important because the truncation logic below depends on piece
+      // Now that we are sure that the parsing succeeded, advance view. This
+      // is important because the truncation logic below depends on view
       // pointing to the end of a valid entry.
-      piece = advance(piece, sizeof(EntryHeader::Value) + entry_size);
+      view = advance(view, sizeof(EntryHeader::Value) + entry_size);
     }
   } catch (ParseError &error) {
     // Parse error while parsing the invocation log. Treat this as a warning and
@@ -549,9 +550,9 @@ InvocationLogParseResult parsePersistentInvocationLog(
     result.warning = error.what();
   }
 
-  if (piece._len != 0) {
+  if (view.size() != 0) {
     // Parsing failed. Truncate the file to a known valid state
-    file_system.truncate(log_path, file_size - piece._len);
+    file_system.truncate(log_path, file_size - view.size());
   }
 
   // Rebuild the log if there are too many dead records.

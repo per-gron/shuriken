@@ -136,7 +136,7 @@ class InMemoryFileSystem : public FileSystem {
    public:
     InMemoryMmap(const std::shared_ptr<File> &file);
 
-    StringPiece memory() override;
+    string_view memory() override;
 
    private:
     const std::shared_ptr<File> _file;

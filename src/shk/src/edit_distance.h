@@ -16,13 +16,13 @@
 
 #include <vector>
 
-#include "string_piece.h"
+#include "string_view.h"
 
 namespace shk {
 
 int editDistance(
-    const StringPiece &s1,
-    const StringPiece &s2,
+    string_view s1,
+    string_view s2,
     bool allow_replacements = true,
     int max_edit_distance = 0);
 

@@ -5,6 +5,7 @@
 #include "cmd/command_runner.h"
 #include "cmd/trace_server_handle.h"
 #include "fs/file_system.h"
+#include "string_view.h"
 
 namespace shk {
 namespace detail {
@@ -14,7 +15,7 @@ namespace detail {
  * and potentially errors to this Result. If there are errors, exit_status
  * is set accordingly.
  */
-void parseTrace(StringPiece trace_slice, CommandRunner::Result *result);
+void parseTrace(string_view trace, CommandRunner::Result *result);
 
 }  // namespace detail
 
