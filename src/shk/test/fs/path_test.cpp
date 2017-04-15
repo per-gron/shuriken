@@ -28,10 +28,10 @@ void checkBasenameSplit(
     const std::string &path,
     const std::string &dirname,
     const std::string &basename) {
-  StringPiece dn, bn;
+  string_view dn, bn;
   std::tie(dn, bn) = basenameSplitPiece(path);
-  CHECK(dn.asString() == dirname);
-  CHECK(bn.asString() == basename);
+  CHECK(std::string(dn) == dirname);
+  CHECK(std::string(bn) == basename);
 }
 
 class FailingStatFileSystem : public FileSystem {

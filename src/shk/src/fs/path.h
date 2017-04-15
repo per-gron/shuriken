@@ -22,7 +22,7 @@
 #include "fs/file_system.h"
 #include "fs/path_error.h"
 #include "optional.h"
-#include "string_piece.h"
+#include "string_view.h"
 
 namespace shk {
 
@@ -32,7 +32,7 @@ namespace shk {
  *
  * Acts like the dirname and basename functions in the standard library.
  */
-std::pair<StringPiece, StringPiece> basenameSplitPiece(const std::string &path);
+std::pair<string_view, string_view> basenameSplitPiece(const std::string &path);
 
 std::string dirname(const std::string &path);
 

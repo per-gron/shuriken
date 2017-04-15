@@ -19,28 +19,30 @@
 
 namespace shk {
 
-std::pair<StringPiece, StringPiece> basenameSplitPiece(
+std::pair<string_view, string_view> basenameSplitPiece(
     const std::string &path) {
   const auto last_nonslash = path.find_last_not_of('/');
   const auto slash_pos = path.find_last_of('/', last_nonslash);
 
   if (slash_pos == std::string::npos) {
-    return std::make_pair(StringPiece(".", 1), StringPiece(path));
+    return std::make_pair(
+        string_view(".", 1),
+        string_view(path.c_str(), path.size()));
   } else if (last_nonslash == std::string::npos) {
-    return std::make_pair(StringPiece("/", 1), StringPiece("/", 1));
+    return std::make_pair(string_view("/", 1), string_view("/", 1));
   } else {
     return std::make_pair(
         slash_pos == 0 ?
-            StringPiece("/", 1) :
-            StringPiece(path.data(), slash_pos),
-        StringPiece(
+            string_view("/", 1) :
+            string_view(path.data(), slash_pos),
+        string_view(
             path.data() + slash_pos + 1,
             last_nonslash - slash_pos));
   }
 }
 
 std::string dirname(const std::string &path) {
-  return basenameSplitPiece(path).first.asString();
+  return std::string(basenameSplitPiece(path).first);
 }
 
 void canonicalizePath(std::string *path) throw(PathError) {
@@ -157,12 +159,12 @@ class Stater {
       : _memo(memo),
         _file_system(file_system) {}
 
-  Stat stat(const std::string &path) {
-    return stat(path, _memo.stat, &FileSystem::stat);
+  Stat stat(string_view path) {
+    return stat(std::string(path), _memo.stat, &FileSystem::stat);
   }
 
-  Stat lstat(const std::string &path) {
-    return stat(path, _memo.lstat, &FileSystem::lstat);
+  Stat lstat(string_view path) {
+    return stat(std::string(path), _memo.lstat, &FileSystem::lstat);
   }
 
  private:
@@ -227,9 +229,9 @@ detail::CanonicalizedPath makeCanonicalizedPath(
       pos--;
     }
 
-    const auto path_to_try = StringPiece(
+    const auto path_to_try = string_view(
         at_relative_root ? "." : path.c_str(),
-        pos + 1).asString();
+        pos + 1);
     stat = use_lstat ? stater.lstat(path_to_try) : stater.stat(path_to_try);
 
     if (stat.result == 0) {

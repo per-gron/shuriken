@@ -20,7 +20,6 @@
 
 #include "manifest/eval_string.h"
 #include "manifest/rule.h"
-#include "string_piece.h"
 
 namespace shk {
 

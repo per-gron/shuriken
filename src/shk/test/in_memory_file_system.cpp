@@ -522,12 +522,12 @@ InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
     return result;
   }
 
-  StringPiece dirname_piece;
-  StringPiece basename_piece;
+  string_view dirname_piece;
+  string_view basename_piece;
   std::tie(dirname_piece, basename_piece) = basenameSplitPiece(
       result.canonicalized);
-  const auto dirname = dirname_piece.asString();
-  const auto basename = basename_piece.asString();
+  const auto dirname = std::string(dirname_piece);
+  const auto basename = std::string(basename_piece);
 
   const auto it = _directories.find(dirname);
   if (it == _directories.end()) {
