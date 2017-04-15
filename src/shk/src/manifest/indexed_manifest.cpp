@@ -177,6 +177,7 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
 
 bool hasDependencyCycle(
     const IndexedManifest &manifest,
+    const PathToStepMap &output_path_map,
     const std::vector<RawStep> &raw_steps,
     std::vector<bool> &currently_visited,
     std::vector<bool> &already_visited,
@@ -201,8 +202,8 @@ bool hasDependencyCycle(
     }
 
     for (const auto &input : inputs) {
-      const auto it = manifest.output_path_map.find(input);
-      if (it == manifest.output_path_map.end()) {
+      const auto it = output_path_map.find(input);
+      if (it == output_path_map.end()) {
         // This input is not an output of some other build step.
         continue;
       }
@@ -212,6 +213,7 @@ bool hasDependencyCycle(
       cycle_paths.push_back(input);
       if (hasDependencyCycle(
               manifest,
+              output_path_map,
               raw_steps,
               currently_visited,
               already_visited,
@@ -236,6 +238,7 @@ bool hasDependencyCycle(
 
 bool hasDependencyCycle(
     const IndexedManifest &indexed_manifest,
+    const PathToStepMap &output_path_map,
     const std::vector<RawStep> &raw_steps,
     std::string *cycle) {
   std::vector<bool> currently_visited(indexed_manifest.steps.size());
@@ -244,8 +247,9 @@ bool hasDependencyCycle(
   cycle_paths.reserve(32);  // Guess at largest typical build dependency depth
 
   for (StepIndex idx = 0; idx < indexed_manifest.steps.size(); idx++) {
-    if (::shk::hasDependencyCycle(
+    if (hasDependencyCycle(
             indexed_manifest,
+            output_path_map,
             raw_steps,
             currently_visited,
             already_visited,
@@ -275,8 +279,16 @@ StepIndex getManifestStep(
 IndexedManifest::IndexedManifest(
     Path manifest_path,
     RawManifest &&manifest)
-    : output_path_map(detail::computeOutputPathMap(manifest.steps)),
-      outputs(computePathList(output_path_map)),
+    : IndexedManifest(
+          detail::computeOutputPathMap(manifest.steps),
+          manifest_path,
+          std::move(manifest)) {}
+
+IndexedManifest::IndexedManifest(
+    const PathToStepMap &output_path_map,
+    Path manifest_path,
+    RawManifest &&manifest)
+    : outputs(computePathList(output_path_map)),
       inputs(computePathList(computeInputPathMap(manifest.steps))),
       steps(convertStepVector(output_path_map, std::move(manifest.steps))),
       defaults(computeStepsToBuildFromPaths(
@@ -284,8 +296,13 @@ IndexedManifest::IndexedManifest(
       roots(detail::rootSteps(steps)),
       pools(std::move(manifest.pools)),
       build_dir(std::move(manifest.build_dir)),
-      manifest_step(getManifestStep(output_path_map, manifest_path)) {
-  hasDependencyCycle(*this, manifest.steps, &dependency_cycle);
+      manifest_step(
+          getManifestStep(output_path_map, manifest_path)) {
+  hasDependencyCycle(
+      *this,
+      output_path_map,
+      manifest.steps,
+      &dependency_cycle);
 }
 
 }  // namespace shk

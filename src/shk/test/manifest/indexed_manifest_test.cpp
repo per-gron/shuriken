@@ -139,11 +139,6 @@ TEST_CASE("IndexedManifest") {
 
       IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
 
-      CHECK(indexed_manifest.output_path_map.size() == 1);
-      const auto it = indexed_manifest.output_path_map.find(paths.get("a"));
-      REQUIRE(it != indexed_manifest.output_path_map.end());
-      CHECK(it->second == 0);
-
       REQUIRE(indexed_manifest.steps.size() == 1);
       CHECK(indexed_manifest.steps[0].hash == single_output.hash());
     }

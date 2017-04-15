@@ -82,10 +82,12 @@ struct IndexedManifest {
       Path manifest_path,
       RawManifest &&manifest);
 
-  /**
-   * Map of path => index of the step that has this file as an output.
-   */
-  PathToStepMap output_path_map;
+ private:
+  IndexedManifest(
+      const PathToStepMap &output_path_map,
+      Path manifest_path,
+      RawManifest &&manifest);
+ public:
 
   /**
    * Associative list of path => index of the step that has this file as an
