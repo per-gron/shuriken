@@ -261,7 +261,9 @@ bool hasDependencyCycle(
 
 }  // anonymous namespace
 
-IndexedManifest::IndexedManifest(RawManifest &&manifest)
+IndexedManifest::IndexedManifest(
+    Path manifest_path,
+    RawManifest &&manifest)
     : output_path_map(detail::computeOutputPathMap(manifest.steps)),
       outputs(computePathList(output_path_map)),
       inputs(computePathList(computeInputPathMap(manifest.steps))),

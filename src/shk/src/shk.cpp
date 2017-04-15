@@ -325,6 +325,7 @@ const Tool *chooseTool(const std::string &tool_name) {
 void ShurikenMain::parseManifest(
     const std::string &input_file) throw(IoError, ParseError) {
   _indexed_manifest = IndexedManifest(
+      _paths.get(input_file),
       ::shk::parseManifest(_paths, _file_system, input_file));
 
   std::string cycle;

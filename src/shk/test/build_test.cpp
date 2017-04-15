@@ -86,10 +86,13 @@ class MaxCapacityCommandRunner : public CommandRunner {
 };
 
 std::vector<StepIndex> computeStepsToBuild(
+    Paths &paths,
     const RawManifest &manifest,
     std::vector<StepIndex> &&specified_paths = {}) throw(BuildError) {
   return ::shk::detail::computeStepsToBuild(
-      IndexedManifest(RawManifest(manifest)), std::move(specified_paths));
+      IndexedManifest(
+          paths.get("build.ninja"),
+          RawManifest(manifest)), std::move(specified_paths));
 }
 
 std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
@@ -97,9 +100,12 @@ std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
 }
 
 Build computeBuild(
+    Paths &paths,
     const RawManifest &manifest,
     size_t allowed_failures = 1) throw(BuildError) {
-  auto indexed_manifest = IndexedManifest(RawManifest(manifest));
+  auto indexed_manifest = IndexedManifest(
+      paths.get("build.ninja"),
+      RawManifest(manifest));
   return ::shk::detail::computeBuild(
       indexed_manifest,
       allowed_failures,
@@ -188,7 +194,9 @@ TEST_CASE("Build") {
         log,
         failures_allowed,
         {},
-        parseManifest(paths, fs, "build.ninja"),
+        IndexedManifest(
+            paths.get("build.ninja"),
+            parseManifest(paths, fs, "build.ninja")),
         log.invocations());
   };
 
@@ -196,6 +204,12 @@ TEST_CASE("Build") {
       const std::string &manifest,
       size_t failures_allowed = 1) {
     return build_or_rebuild_manifest(manifest, failures_allowed, dummy_runner);
+  };
+
+  const auto to_indexed_manifest = [&](const RawManifest &manifest) {
+    return IndexedManifest(
+        paths.get("build.ninja"),
+        RawManifest(manifest));
   };
 
   SECTION("interpretPath") {
@@ -224,7 +238,7 @@ TEST_CASE("Build") {
         implicit_input,
         dependency };
 
-    auto indexed_manifest = IndexedManifest(RawManifest(manifest));
+    auto indexed_manifest = to_indexed_manifest(manifest);
 
     const auto &steps = manifest.steps;
 
@@ -263,7 +277,7 @@ TEST_CASE("Build") {
 
     SECTION("clean") {
       try {
-        interpretPath(IndexedManifest(RawManifest(manifest)), "clean");
+        interpretPath(to_indexed_manifest(manifest), "clean");
         CHECK(!"Should throw");
       } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
@@ -273,7 +287,7 @@ TEST_CASE("Build") {
 
     SECTION("help") {
       try {
-        interpretPath(IndexedManifest(RawManifest(manifest)), "help");
+        interpretPath(to_indexed_manifest(manifest), "help");
         CHECK(!"Should throw");
       } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
@@ -285,7 +299,7 @@ TEST_CASE("Build") {
   SECTION("interpretPath") {
     SECTION("Empty") {
       CHECK(interpretPaths(
-          IndexedManifest(RawManifest(manifest)), 0, nullptr).empty());
+          to_indexed_manifest(manifest), 0, nullptr).empty());
     }
 
     SECTION("Paths") {
@@ -299,7 +313,7 @@ TEST_CASE("Build") {
       const std::vector<Path> out = { paths.get("a"), paths.get("b") };
       CHECK(
           interpretPaths(
-              IndexedManifest(RawManifest(manifest)), 2, in) ==
+              to_indexed_manifest(manifest), 2, in) ==
           std::vector<StepIndex>({ 0, 1 }));
     }
   }
@@ -311,92 +325,92 @@ TEST_CASE("Build") {
     // function is simple enough that I expect it to not have significant bugs.
     manifest.defaults = { paths.get("b") };
 
-    IndexedManifest indexed_manifest(std::move(manifest));
+    auto indexed_manifest = to_indexed_manifest(manifest);
     CHECK(computeStepsToBuild(indexed_manifest, 0, nullptr) == vec({0}));
   }
 
   SECTION("computeStepsToBuild") {
     SECTION("trivial") {
-      CHECK(computeStepsToBuild(RawManifest()).empty());
+      CHECK(computeStepsToBuild(paths, RawManifest()).empty());
     }
 
     SECTION("invalid defaults") {
       manifest.defaults = { paths.get("missing") };
-      CHECK_THROWS_AS(computeStepsToBuild(manifest), BuildError);
+      CHECK_THROWS_AS(computeStepsToBuild(paths, manifest), BuildError);
     }
 
     SECTION("defaults") {
       manifest.steps = { single_output_b, multiple_outputs };
 
       manifest.defaults = { paths.get("b") };
-      CHECK(computeStepsToBuild(manifest) == vec({0}));
+      CHECK(computeStepsToBuild(paths, manifest) == vec({0}));
 
       manifest.defaults = { paths.get("c") };
-      CHECK(computeStepsToBuild(manifest) == vec({1}));
+      CHECK(computeStepsToBuild(paths, manifest) == vec({1}));
 
       manifest.defaults = { paths.get("d") };
-      CHECK(computeStepsToBuild(manifest) == vec({1}));
+      CHECK(computeStepsToBuild(paths, manifest) == vec({1}));
 
       manifest.defaults = { paths.get("d"), paths.get("c") };
       // Duplicates are ok. We could deduplicate but that would just be an
       // unnecessary expense.
-      CHECK(computeStepsToBuild(manifest) == vec({1, 1}));
+      CHECK(computeStepsToBuild(paths, manifest) == vec({1, 1}));
 
       manifest.defaults = { paths.get("b"), paths.get("c") };
-      CHECK(computeStepsToBuild(manifest) == vec({0, 1}));
+      CHECK(computeStepsToBuild(paths, manifest) == vec({0, 1}));
     }
 
     SECTION("specified_outputs") {
       manifest.steps = { single_output_b, multiple_outputs };
 
-      CHECK(computeStepsToBuild(manifest, { 0 }) == vec({0}));
-      CHECK(computeStepsToBuild(manifest, { 1 }) == vec({1}));
+      CHECK(computeStepsToBuild(paths, manifest, { 0 }) == vec({0}));
+      CHECK(computeStepsToBuild(paths, manifest, { 1 }) == vec({1}));
 
       // Duplicates are ok. We could deduplicate but that would just be an
       // unnecessary expense.
-      CHECK(computeStepsToBuild(manifest, { 1, 1 }) ==
+      CHECK(computeStepsToBuild(paths, manifest, { 1, 1 }) ==
           vec({1, 1}));
 
-      CHECK(computeStepsToBuild(manifest, { 0, 1 }) ==
+      CHECK(computeStepsToBuild(paths, manifest, { 0, 1 }) ==
           vec({0, 1}));
     }
 
     SECTION("use root steps when defaults are missing") {
       manifest.steps = { single_output, single_input };
-      CHECK(computeStepsToBuild(manifest) == vec({1}));
+      CHECK(computeStepsToBuild(paths, manifest) == vec({1}));
     }
   }
 
   SECTION("computeBuild") {
     SECTION("empty") {
-      const auto build = computeBuild(RawManifest());
+      const auto build = computeBuild(paths, RawManifest());
       CHECK(build.step_nodes.empty());
       CHECK(build.ready_steps.empty());
       CHECK(build.remaining_failures == 1);
     }
 
     SECTION("remaining_failures") {
-      const auto build = computeBuild(RawManifest(), 543);
+      const auto build = computeBuild(paths, RawManifest(), 543);
       CHECK(build.remaining_failures == 543);
     }
 
     SECTION("ready_steps") {
       SECTION("basic") {
         manifest.steps = { single_output };
-        CHECK(computeBuild(manifest).ready_steps == vec({ 0 }));
+        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 0 }));
       }
 
       SECTION("two steps") {
         manifest.steps = { single_output, single_output_b };
-        CHECK(computeBuild(manifest).ready_steps == vec({ 0, 1 }));
+        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 0, 1 }));
       }
 
       SECTION("single dep") {
         manifest.steps = { single_output, single_input };
-        CHECK(computeBuild(manifest).ready_steps == vec({ 0 }));
+        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 0 }));
 
         manifest.steps = { single_input, single_output };
-        CHECK(computeBuild(manifest).ready_steps == vec({ 1 }));
+        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 1 }));
       }
 
       SECTION("dep chain") {
@@ -409,10 +423,10 @@ TEST_CASE("Build") {
         three.inputs = { paths.get("b") };
 
         manifest.steps = { three, one, two };
-        CHECK(computeBuild(manifest).ready_steps == vec({ 1 }));
+        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 1 }));
 
         manifest.steps = { one, two, three };
-        CHECK(computeBuild(manifest).ready_steps == vec({ 0 }));
+        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 0 }));
       }
 
       SECTION("diamond dep") {
@@ -428,10 +442,10 @@ TEST_CASE("Build") {
         three.inputs = { paths.get("b"), paths.get("c") };
 
         manifest.steps = { three, one, two_1, two_2 };
-        CHECK(computeBuild(manifest).ready_steps == vec({ 1 }));
+        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 1 }));
 
         manifest.steps = { three, two_2, two_1, one };
-        CHECK(computeBuild(manifest).ready_steps == vec({ 3 }));
+        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 3 }));
       }
     }
 
@@ -446,7 +460,7 @@ TEST_CASE("Build") {
 
       SECTION("everything") {
         manifest.steps = { one, two, three };
-        const auto build = computeBuild(manifest);
+        const auto build = computeBuild(paths, manifest);
         REQUIRE(build.step_nodes.size() == 3);
         CHECK(build.step_nodes[0].should_build);
         CHECK(build.step_nodes[1].should_build);
@@ -456,7 +470,7 @@ TEST_CASE("Build") {
       SECTION("just some") {
         manifest.steps = { one, two, three };
         manifest.defaults = { paths.get("b") };
-        const auto build = computeBuild(manifest);
+        const auto build = computeBuild(paths, manifest);
         REQUIRE(build.step_nodes.size() == 3);
         CHECK(build.step_nodes[0].should_build);
         CHECK(build.step_nodes[1].should_build);
@@ -467,7 +481,7 @@ TEST_CASE("Build") {
     SECTION("dependencies") {
       SECTION("independent") {
         manifest.steps = { single_output, single_output_b };
-        const auto build = computeBuild(manifest);
+        const auto build = computeBuild(paths, manifest);
         REQUIRE(build.step_nodes.size() == 2);
 
         CHECK(build.step_nodes[0].dependencies == 0);
@@ -490,7 +504,7 @@ TEST_CASE("Build") {
         three.inputs = { paths.get("b"), paths.get("c") };
 
         manifest.steps = { three, two_2, two_1, one };
-        const auto build = computeBuild(manifest);
+        const auto build = computeBuild(paths, manifest);
         REQUIRE(build.step_nodes.size() == 4);
 
         // three
@@ -521,7 +535,7 @@ TEST_CASE("Build") {
 
       RawManifest manifest;
       manifest.steps = { one, two };
-      CHECK_THROWS_AS(computeBuild(manifest), BuildError);
+      CHECK_THROWS_AS(computeBuild(paths, manifest), BuildError);
     }
 
     SECTION("Dependency cycle with specified target") {
@@ -537,7 +551,7 @@ TEST_CASE("Build") {
       // nothing is "built".
       manifest.defaults = { paths.get("a") };
       manifest.steps = { one, two };
-      CHECK_THROWS_AS(computeBuild(manifest), BuildError);
+      CHECK_THROWS_AS(computeBuild(paths, manifest), BuildError);
     }
   }
 
@@ -715,13 +729,13 @@ TEST_CASE("Build") {
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
 
-      const auto build = computeBuild(manifest);
+      const auto build = computeBuild(paths, manifest);
       const auto clean_steps = computeCleanSteps(
           clock,
           fs,
           log,
           invocations,
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           build);
 
       REQUIRE(clean_steps.size() == 2);
@@ -735,13 +749,13 @@ TEST_CASE("Build") {
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
 
-      const auto build = computeBuild(manifest);
+      const auto build = computeBuild(paths, manifest);
       const auto clean_steps = computeCleanSteps(
           clock,
           fs,
           log,
           invocations,
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           build);
 
       REQUIRE(clean_steps.size() == 2);
@@ -760,7 +774,7 @@ TEST_CASE("Build") {
           fs,
           log,
           invocations,
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           build);
     };
 
@@ -774,10 +788,10 @@ TEST_CASE("Build") {
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
       invocations.entries[multiple_outputs.hash()];
-      auto build = computeBuild(manifest);
+      auto build = computeBuild(paths, manifest);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
@@ -785,10 +799,10 @@ TEST_CASE("Build") {
 
     SECTION("all dirty") {
       manifest.steps = { single_output_b, multiple_outputs };
-      auto build = computeBuild(manifest);
+      auto build = computeBuild(paths, manifest);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 0);
       CHECK(build.ready_steps.size() == 2);
@@ -798,10 +812,10 @@ TEST_CASE("Build") {
       manifest.steps = { single_output_b, multiple_outputs };
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
-      auto build = computeBuild(manifest);
+      auto build = computeBuild(paths, manifest);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       CHECK(build.ready_steps.size() == 1);
@@ -817,11 +831,11 @@ TEST_CASE("Build") {
 
     SECTION("phony step") {
       manifest.steps = { phony };
-      auto build = computeBuild(manifest);
+      auto build = computeBuild(paths, manifest);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       CHECK(build.ready_steps.empty());
@@ -836,10 +850,10 @@ TEST_CASE("Build") {
           invocations.entries[root.hash()],
           single_output.outputs[0].original(),
           Fingerprint());
-      auto build = computeBuild(manifest);
+      auto build = computeBuild(paths, manifest);
       CHECK(build.ready_steps.size() == 1);
       CHECK(discardCleanSteps(
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
@@ -849,11 +863,11 @@ TEST_CASE("Build") {
       manifest.steps = { single_output, root };
       // Add empty entry to mark clean
       invocations.entries[single_output.hash()];
-      auto build = computeBuild(manifest);
+      auto build = computeBuild(paths, manifest);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       REQUIRE(build.ready_steps.size() == 1);
@@ -864,11 +878,11 @@ TEST_CASE("Build") {
       manifest.steps = { single_output, root };
       // Add empty entry to mark clean
       invocations.entries[single_input.hash()];
-      auto build = computeBuild(manifest);
+      auto build = computeBuild(paths, manifest);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 0);
       REQUIRE(build.ready_steps.size() == 1);
@@ -879,11 +893,11 @@ TEST_CASE("Build") {
       manifest.steps = { phony, root };
       // Add empty entry to mark clean
       invocations.entries[root.hash()];
-      auto build = computeBuild(manifest);
+      auto build = computeBuild(paths, manifest);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          IndexedManifest(RawManifest(manifest)).steps,
+          to_indexed_manifest(manifest).steps,
           compute_clean_steps(build, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
@@ -1172,7 +1186,8 @@ TEST_CASE("Build") {
   SECTION("deleteStaleOutputs") {
     const auto delete_stale_outputs = [&](
         const std::string &manifest) {
-      const IndexedManifest indexed_manifest(parse(manifest));
+      const auto indexed_manifest =
+          to_indexed_manifest(parse(manifest));
 
       deleteStaleOutputs(
           fs,

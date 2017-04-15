@@ -78,7 +78,9 @@ std::string cycleErrorMessage(const std::vector<Path> &cycle);
  */
 struct IndexedManifest {
   IndexedManifest() = default;
-  IndexedManifest(RawManifest &&manifest);
+  IndexedManifest(
+      Path manifest_path,
+      RawManifest &&manifest);
 
   /**
    * Map of path => index of the step that has this file as an output.
