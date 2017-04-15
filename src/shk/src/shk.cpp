@@ -328,8 +328,8 @@ void ShurikenMain::parseManifest(
       ::shk::parseManifest(_paths, _file_system, input_file));
 
   std::string cycle;
-  if (_indexed_manifest.hasDependencyCycle(&cycle)) {
-    throw ParseError("Dependency cycle: " + cycle);
+  if (!_indexed_manifest.dependency_cycle.empty()) {
+    throw ParseError("Dependency cycle: " + _indexed_manifest.dependency_cycle);
   }
 }
 

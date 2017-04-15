@@ -126,14 +126,7 @@ void visitStep(
   step_node.should_build = true;
 
   step_node.currently_visited = true;
-  for (const auto &input : manifest.steps[idx].dependencies) {
-    const auto it = manifest.output_path_map.find(input);
-    if (it == manifest.output_path_map.end()) {
-      // This input is not an output of some other build step.
-      continue;
-    }
-
-    const auto dependency_idx = it->second;
+  for (const auto &dependency_idx : manifest.steps[idx].dependencies) {
     auto &dependency_node = build.step_nodes[dependency_idx];
     dependency_node.dependents.push_back(idx);
     step_node.dependencies++;

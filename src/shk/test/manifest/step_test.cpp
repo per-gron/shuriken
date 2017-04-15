@@ -13,7 +13,7 @@ TEST_CASE("Step") {
 
   SECTION("CopyConstructor") {
     auto a = Step::Builder()
-        .setDependencies({ paths.get("input") })
+        .setDependencies({ 0 })
         .build();
 
     auto b = a;
@@ -36,13 +36,13 @@ TEST_CASE("Step") {
 
     SECTION("Dependencies") {
       auto a = Step::Builder()
-          .setDependencies({ paths.get("input") })
+          .setDependencies({ 0 })
           .build();
       auto b = a.toBuilder()
           .setDependencies({})
           .build();
-      CHECK(a.dependencies == std::vector<Path>{ paths.get("input") });
-      CHECK(b.dependencies == std::vector<Path>{});
+      CHECK(a.dependencies == std::vector<StepIndex>{ 0 });
+      CHECK(b.dependencies == std::vector<StepIndex>{});
     }
 
     SECTION("OutputDirs") {

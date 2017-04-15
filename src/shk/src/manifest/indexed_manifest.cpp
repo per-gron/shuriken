@@ -21,19 +21,15 @@ PathToStepMap computeOutputPathMap(
 }
 
 std::vector<StepIndex> rootSteps(
-    const std::vector<Step> &steps,
-    const PathToStepMap &output_path_map) throw(BuildError) {
+    const std::vector<Step> &steps) throw(BuildError) {
   std::vector<StepIndex> result;
   // Assume that all steps are roots until we find some step that has an input
   // that is in a given step's list of outputs. Such steps are not roots.
   std::vector<bool> roots(steps.size(), true);
 
   for (size_t i = 0; i < steps.size(); i++) {
-    for (const auto &input : steps[i].dependencies) {
-      const auto it = output_path_map.find(input);
-      if (it != output_path_map.end()) {
-        roots[it->second] = false;
-      }
+    for (const auto dependency_idx : steps[i].dependencies) {
+      roots[dependency_idx] = false;
     }
   }
 
@@ -85,28 +81,25 @@ PathToStepMap computeInputPathMap(
   return result;
 }
 
-Step convertRawStep(RawStep &&raw) {
+Step convertRawStep(
+    const PathToStepMap &output_path_map,
+    RawStep &&raw) {
   Step::Builder builder;
   builder.setHash(raw.hash());
 
-  std::vector<Path> dependencies;
-  dependencies.reserve(
-      raw.inputs.size() +
-      raw.implicit_inputs.size() +
-      raw.dependencies.size());
-
-  std::copy(
-      raw.inputs.begin(),
-      raw.inputs.end(),
-      std::back_inserter(dependencies));
-  std::copy(
-      raw.implicit_inputs.begin(),
-      raw.implicit_inputs.end(),
-      std::back_inserter(dependencies));
-  std::copy(
-      raw.dependencies.begin(),
-      raw.dependencies.end(),
-      std::back_inserter(dependencies));
+  std::vector<StepIndex> dependencies;
+  const auto process_inputs = [&](
+      const std::vector<Path> &paths) {
+    for (const auto &path : paths) {
+      const auto it = output_path_map.find(path);
+      if (it != output_path_map.end()) {
+        dependencies.push_back(it->second);
+      }
+    }
+  };
+  process_inputs(raw.inputs);
+  process_inputs(raw.implicit_inputs);
+  process_inputs(raw.dependencies);
 
   builder.setDependencies(std::move(dependencies));
 
@@ -134,12 +127,14 @@ Step convertRawStep(RawStep &&raw) {
   return builder.build();
 }
 
-std::vector<Step> convertStepVector(std::vector<RawStep> &&steps) {
+std::vector<Step> convertStepVector(
+    const PathToStepMap &output_path_map,
+    std::vector<RawStep> &&steps) {
   std::vector<Step> ans;
   ans.reserve(steps.size());
 
   for (auto &step : steps) {
-    ans.push_back(convertRawStep(std::move(step)));
+    ans.push_back(convertRawStep(output_path_map, std::move(step)));
   }
 
   return ans;
@@ -163,6 +158,7 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
 
 bool hasDependencyCycle(
     const IndexedManifest &manifest,
+    const std::vector<RawStep> &raw_steps,
     std::vector<bool> &currently_visited,
     std::vector<bool> &already_visited,
     std::vector<Path> &cycle_paths,
@@ -179,55 +175,59 @@ bool hasDependencyCycle(
   }
   already_visited[idx] = true;
 
+  bool found_cycle = false;
+  const auto process_inputs = [&](const std::vector<Path> &inputs) {
+    if (found_cycle) {
+      return;
+    }
+
+    for (const auto &input : inputs) {
+      const auto it = manifest.output_path_map.find(input);
+      if (it == manifest.output_path_map.end()) {
+        // This input is not an output of some other build step.
+        continue;
+      }
+
+      const auto dependency_idx = it->second;
+
+      cycle_paths.push_back(input);
+      if (hasDependencyCycle(
+              manifest,
+              raw_steps,
+              currently_visited,
+              already_visited,
+              cycle_paths,
+              dependency_idx,
+              cycle)) {
+        found_cycle = true;
+        return;
+      }
+      cycle_paths.pop_back();
+    }
+  };
+
   currently_visited[idx] = true;
-  for (const auto &input : manifest.steps[idx].dependencies) {
-    const auto it = manifest.output_path_map.find(input);
-    if (it == manifest.output_path_map.end()) {
-      // This input is not an output of some other build step.
-      continue;
-    }
-
-    const auto dependency_idx = it->second;
-
-    cycle_paths.push_back(input);
-    if (hasDependencyCycle(
-            manifest,
-            currently_visited,
-            already_visited,
-            cycle_paths,
-            dependency_idx,
-            cycle)) {
-      return true;
-    }
-    cycle_paths.pop_back();
-  }
+  process_inputs(raw_steps[idx].inputs);
+  process_inputs(raw_steps[idx].implicit_inputs);
+  process_inputs(raw_steps[idx].dependencies);
   currently_visited[idx] = false;
 
-  return false;
+  return found_cycle;
 }
 
-}  // anonymous namespace
-
-IndexedManifest::IndexedManifest(RawManifest &&manifest)
-    : output_path_map(detail::computeOutputPathMap(manifest.steps)),
-      input_path_map(computeInputPathMap(manifest.steps)),
-      steps(convertStepVector(std::move(manifest.steps))),
-      defaults(computeStepsToBuildFromPaths(
-          manifest.defaults, output_path_map)),
-      roots(detail::rootSteps(steps, output_path_map)),
-      pools(std::move(manifest.pools)),
-      build_dir(std::move(manifest.build_dir)) {}
-
-bool IndexedManifest::hasDependencyCycle(
-    std::string *cycle) const {
-  std::vector<bool> currently_visited(steps.size());
-  std::vector<bool> already_visited(steps.size());
+bool hasDependencyCycle(
+    const IndexedManifest &indexed_manifest,
+    const std::vector<RawStep> &raw_steps,
+    std::string *cycle) {
+  std::vector<bool> currently_visited(indexed_manifest.steps.size());
+  std::vector<bool> already_visited(indexed_manifest.steps.size());
   std::vector<Path> cycle_paths;
   cycle_paths.reserve(32);  // Guess at largest typical build dependency depth
 
-  for (StepIndex idx = 0; idx < steps.size(); idx++) {
+  for (StepIndex idx = 0; idx < indexed_manifest.steps.size(); idx++) {
     if (::shk::hasDependencyCycle(
-            *this,
+            indexed_manifest,
+            raw_steps,
             currently_visited,
             already_visited,
             cycle_paths,
@@ -238,6 +238,20 @@ bool IndexedManifest::hasDependencyCycle(
   }
 
   return false;
+}
+
+}  // anonymous namespace
+
+IndexedManifest::IndexedManifest(RawManifest &&manifest)
+    : output_path_map(detail::computeOutputPathMap(manifest.steps)),
+      input_path_map(computeInputPathMap(manifest.steps)),
+      steps(convertStepVector(output_path_map, std::move(manifest.steps))),
+      defaults(computeStepsToBuildFromPaths(
+          manifest.defaults, output_path_map)),
+      roots(detail::rootSteps(steps)),
+      pools(std::move(manifest.pools)),
+      build_dir(std::move(manifest.build_dir)) {
+  hasDependencyCycle(*this, manifest.steps, &dependency_cycle);
 }
 
 }  // namespace shk

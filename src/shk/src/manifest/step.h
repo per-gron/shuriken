@@ -5,10 +5,16 @@
 
 #include "hash.h"
 #include "optional.h"
-#include "fs/path.h"
 #include "manifest/raw_step.h"
 
 namespace shk {
+
+/**
+ * Manifest objects contain an std::vector<Step>. A StepIndex is an index into
+ * that vector, or into a vector of the same length that refers to the same Step
+ * objects.
+ */
+using StepIndex = size_t;
 
 /**
  * A Step is a dumb data object that represents one build statment in the
@@ -24,7 +30,7 @@ struct Step {
   class Builder {
    public:
     Builder &setHash(Hash &&hash);
-    Builder &setDependencies(std::vector<Path> &&dependencies);
+    Builder &setDependencies(std::vector<StepIndex> &&dependencies);
     Builder &setOutputDirs(std::vector<std::string> &&output_dirs);
     Builder &setPoolName(std::string &&pool_name);
     Builder &setCommand(std::string &&command);
@@ -38,7 +44,7 @@ struct Step {
 
    private:
     Hash _hash;
-    std::vector<Path> _dependencies;
+    std::vector<StepIndex> _dependencies;
     std::vector<std::string> _output_dirs;
     std::string _pool_name;
     std::string _command;
@@ -54,7 +60,7 @@ struct Step {
    */
   Step(
       Hash &&hash,
-      std::vector<Path> &&dependencies,
+      std::vector<StepIndex> &&dependencies,
       std::vector<std::string> &&output_dirs,
       std::string &&pool_name,
       std::string &&command,
@@ -78,7 +84,7 @@ struct Step {
    * can be run. These correspond to "order only", "implicit inputs" and
    * "inputs" in a build.ninja manifest.
    */
-  const std::vector<Path> dependencies;
+  const std::vector<StepIndex> dependencies;
 
   /**
    * A list of directories that Shuriken should ensure are there prior to

@@ -11,13 +11,6 @@
 namespace shk {
 
 /**
- * RawManifest objects contain an std::vector<Step>. A StepIndex is an index
- * into that vector, or into a vector of the same length that refers to the same
- * Step objects (for example PathToStepMap).
- */
-using StepIndex = size_t;
-
-/**
  * Please note that this map contains only paths that are in the RawManifest; it
  * does not have output files that may have been created but that are not
  * declared.
@@ -49,8 +42,7 @@ PathToStepMap computeOutputPathMap(
  * dependency), this function returns an empty vector.
  */
 std::vector<StepIndex> rootSteps(
-    const std::vector<Step> &steps,
-    const PathToStepMap &output_path_map) throw(BuildError);
+    const std::vector<Step> &steps) throw(BuildError);
 
 /**
  * Generate a string that describes a cycle, for example "a -> b -> a".
@@ -78,13 +70,6 @@ struct IndexedManifest {
   IndexedManifest(RawManifest &&manifest);
 
   /**
-   * Checks if the build graph has a dependency cycle. If so, it returns true
-   * and sets cycle to a string that describes the cycle (for
-   * example "a -> b -> a").
-   */
-  bool hasDependencyCycle(std::string *cycle) const;
-
-  /**
    * Map of path => index of the step that has this file as an output.
    */
   PathToStepMap output_path_map;
@@ -104,6 +89,12 @@ struct IndexedManifest {
    * The build directory, used for storing the invocation log.
    */
   std::string build_dir;
+
+  /**
+   * Is a non-empty string describing a cycle in the build graph if one exists.
+   * For example: "a -> b -> a"
+   */
+  std::string dependency_cycle;
 };
 
 }  // namespace shk

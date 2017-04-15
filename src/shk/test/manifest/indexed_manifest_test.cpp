@@ -80,50 +80,41 @@ TEST_CASE("IndexedManifest") {
         .setCommand("cmd")
         .build();
 
-    auto single_dependency = Step::Builder()
+    auto single_dependency_0 = Step::Builder()
         .setCommand("cmd")
-        .setDependencies({ paths.get("a") })
+        .setDependencies({ 0 })
         .build();
 
-    CHECK(rootSteps({}, {}).empty());
+    auto single_dependency_1 = Step::Builder()
+        .setCommand("cmd")
+        .setDependencies({ 1 })
+        .build();
+
+    CHECK(rootSteps({}).empty());
     CHECK(
-        rootSteps({ step }, { { paths.get("a"), 0 } }) ==
+        rootSteps({ step }) ==
         std::vector<StepIndex>{ 0 });
     CHECK(
-        rootSteps(
-            { step, step },
-            { { paths.get("a"), 0 }, { paths.get("b"), 1 } }) ==
+        rootSteps({ step, step }) ==
         std::vector<StepIndex>({ 0, 1 }));
     CHECK(
-        rootSteps(
-            { step, single_dependency },
-            { { paths.get("a"), 0 } }) ==
+        rootSteps({ step, single_dependency_0 }) ==
         std::vector<StepIndex>{ 1 });
     CHECK(
-        rootSteps(
-            { single_dependency, step },
-            { { paths.get("a"), 1 } }) ==
+        rootSteps({ single_dependency_1, step }) ==
         std::vector<StepIndex>{ 0 });
     CHECK(
-        rootSteps(
-            { single_dependency, step, step },
-            {
-                { paths.get("a"), 1 },
-                { paths.get("c"), 2 },
-                { paths.get("d"), 2 }
-            }) ==
+        rootSteps({ single_dependency_1, step, step }) ==
         (std::vector<StepIndex>{ 0, 2 }));
 
     auto one = Step::Builder()
-        .setDependencies({ paths.get("b") })
+        .setDependencies({ 0 })
         .build();
     auto two = Step::Builder()
-        .setDependencies({ paths.get("a") })
+        .setDependencies({ 1 })
         .build();
-    CHECK(
-        rootSteps(  // Cycle
-            { one, two },
-            { { paths.get("a"), 0 }, { paths.get("b"), 1 } }).empty());
+    // Cycle
+    CHECK(rootSteps({ one, two }).empty());
   }
 
   SECTION("cycleErrorMessage") {
@@ -224,7 +215,7 @@ TEST_CASE("IndexedManifest") {
       }
     }
 
-    SECTION("inputs") {
+    SECTION("input without corresponding step") {
       RawManifest manifest;
       manifest.steps = { single_input };
 
@@ -232,29 +223,49 @@ TEST_CASE("IndexedManifest") {
       REQUIRE(indexed_manifest.steps.size() == 1);
       CHECK(
           indexed_manifest.steps[0].dependencies ==
-          std::vector<Path>{ paths.get("a") });
+          std::vector<StepIndex>{});
+    }
+
+    SECTION("inputs") {
+      RawManifest manifest;
+      manifest.steps = { single_output, single_input };
+
+      IndexedManifest indexed_manifest(std::move(manifest));
+      REQUIRE(indexed_manifest.steps.size() == 2);
+      CHECK(
+          indexed_manifest.steps[0].dependencies ==
+          std::vector<StepIndex>{});
+      CHECK(
+          indexed_manifest.steps[1].dependencies ==
+          std::vector<StepIndex>{ 0 });
     }
 
     SECTION("implicit inputs") {
       RawManifest manifest;
-      manifest.steps = { single_implicit_input };
+      manifest.steps = { single_output, single_implicit_input };
 
       IndexedManifest indexed_manifest(std::move(manifest));
-      REQUIRE(indexed_manifest.steps.size() == 1);
+      REQUIRE(indexed_manifest.steps.size() == 2);
       CHECK(
           indexed_manifest.steps[0].dependencies ==
-          std::vector<Path>{ paths.get("a") });
+          std::vector<StepIndex>{});
+      CHECK(
+          indexed_manifest.steps[1].dependencies ==
+          std::vector<StepIndex>{ 0 });
     }
 
     SECTION("dependencies") {
       RawManifest manifest;
-      manifest.steps = { single_dependency };
+      manifest.steps = { single_output, single_dependency };
 
       IndexedManifest indexed_manifest(std::move(manifest));
-      REQUIRE(indexed_manifest.steps.size() == 1);
+      REQUIRE(indexed_manifest.steps.size() == 2);
       CHECK(
           indexed_manifest.steps[0].dependencies ==
-          std::vector<Path>{ paths.get("a") });
+          std::vector<StepIndex>{});
+      CHECK(
+          indexed_manifest.steps[1].dependencies ==
+          std::vector<StepIndex>{ 0 });
     }
 
     SECTION("defaults") {
@@ -358,68 +369,85 @@ TEST_CASE("IndexedManifest") {
         CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir"));
       }
     }
-  }
 
-  SECTION("hasDependencyCycle") {
-    SECTION("Empty") {
-      std::string cycle;
-      CHECK(!IndexedManifest().hasDependencyCycle(&cycle));
-      CHECK(cycle.empty());
-    }
+    SECTION("dependency_cycle") {
+      SECTION("Empty") {
+        const auto &cycle = IndexedManifest().dependency_cycle;
+        CHECK(cycle.empty());
+      }
 
-    SECTION("Single input") {
-      RawManifest raw_manifest;
-      raw_manifest.steps = { single_input };
+      SECTION("Single input") {
+        RawManifest raw_manifest;
+        raw_manifest.steps = { single_input };
 
-      IndexedManifest manifest(std::move(raw_manifest));
+        IndexedManifest manifest(std::move(raw_manifest));
 
-      std::string cycle;
-      CHECK(!manifest.hasDependencyCycle(&cycle));
-      CHECK(cycle.empty());
-    }
+        CHECK(manifest.dependency_cycle.empty());
+      }
 
-    SECTION("Single output") {
-      RawManifest raw_manifest;
-      raw_manifest.steps = { single_input };
+      SECTION("Single output") {
+        RawManifest raw_manifest;
+        raw_manifest.steps = { single_input };
 
-      IndexedManifest manifest(std::move(raw_manifest));
+        IndexedManifest manifest(std::move(raw_manifest));
 
-      std::string cycle;
-      CHECK(!manifest.hasDependencyCycle(&cycle));
-      CHECK(cycle.empty());
-    }
+        CHECK(manifest.dependency_cycle.empty());
+      }
 
-    SECTION("Single cyclic step") {
-      RawStep cyclic_step;
-      cyclic_step.outputs = { paths.get("a") };
-      cyclic_step.inputs = { paths.get("a") };
+      SECTION("Single cyclic step through input") {
+        RawStep cyclic_step;
+        cyclic_step.outputs = { paths.get("a") };
+        cyclic_step.inputs = { paths.get("a") };
 
-      RawManifest raw_manifest;
-      raw_manifest.steps = { cyclic_step };
+        RawManifest raw_manifest;
+        raw_manifest.steps = { cyclic_step };
 
-      IndexedManifest manifest(std::move(raw_manifest));
+        IndexedManifest manifest(std::move(raw_manifest));
 
-      std::string cycle;
-      CHECK(manifest.hasDependencyCycle(&cycle));
-      CHECK(cycle == "a -> a");
-    }
+        CHECK(manifest.dependency_cycle == "a -> a");
+      }
 
-    SECTION("Two cyclic steps") {
-      RawStep cyclic_step_1;
-      cyclic_step_1.outputs = { paths.get("b") };
-      cyclic_step_1.inputs = { paths.get("a") };
-      RawStep cyclic_step_2;
-      cyclic_step_2.outputs = { paths.get("a") };
-      cyclic_step_2.inputs = { paths.get("b") };
+      SECTION("Single cyclic step through implicit input") {
+        RawStep cyclic_step;
+        cyclic_step.outputs = { paths.get("a") };
+        cyclic_step.implicit_inputs = { paths.get("a") };
 
-      RawManifest raw_manifest;
-      raw_manifest.steps = { cyclic_step_1, cyclic_step_2 };
+        RawManifest raw_manifest;
+        raw_manifest.steps = { cyclic_step };
 
-      IndexedManifest manifest(std::move(raw_manifest));
+        IndexedManifest manifest(std::move(raw_manifest));
 
-      std::string cycle;
-      CHECK(manifest.hasDependencyCycle(&cycle));
-      CHECK(cycle == "a -> b -> a");
+        CHECK(manifest.dependency_cycle == "a -> a");
+      }
+
+      SECTION("Single cyclic step through dependency") {
+        RawStep cyclic_step;
+        cyclic_step.outputs = { paths.get("a") };
+        cyclic_step.dependencies = { paths.get("a") };
+
+        RawManifest raw_manifest;
+        raw_manifest.steps = { cyclic_step };
+
+        IndexedManifest manifest(std::move(raw_manifest));
+
+        CHECK(manifest.dependency_cycle == "a -> a");
+      }
+
+      SECTION("Two cyclic steps") {
+        RawStep cyclic_step_1;
+        cyclic_step_1.outputs = { paths.get("b") };
+        cyclic_step_1.inputs = { paths.get("a") };
+        RawStep cyclic_step_2;
+        cyclic_step_2.outputs = { paths.get("a") };
+        cyclic_step_2.inputs = { paths.get("b") };
+
+        RawManifest raw_manifest;
+        raw_manifest.steps = { cyclic_step_1, cyclic_step_2 };
+
+        IndexedManifest manifest(std::move(raw_manifest));
+
+        CHECK(manifest.dependency_cycle == "a -> b -> a");
+      }
     }
   }
 }
