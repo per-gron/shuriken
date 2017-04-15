@@ -60,9 +60,9 @@ std::string cycleErrorMessage(const std::vector<Path> &cycle) {
 
 namespace {
 
-PathToStepMap computeInputPathMap(
+detail::PathToStepMap computeInputPathMap(
     const std::vector<RawStep> &steps) throw(BuildError) {
-  PathToStepMap result;
+  detail::PathToStepMap result;
 
   auto process = [&](int idx, const std::vector<Path> &paths) {
     for (const auto path : paths) {
@@ -82,7 +82,7 @@ PathToStepMap computeInputPathMap(
 }
 
 PathToStepList computePathList(
-    const PathToStepMap &path_map) {
+    const detail::PathToStepMap &path_map) {
   PathToStepList result;
 
   for (const auto &path_pair : path_map) {
@@ -101,7 +101,7 @@ PathToStepList computePathList(
 }
 
 Step convertRawStep(
-    const PathToStepMap &output_path_map,
+    const detail::PathToStepMap &output_path_map,
     RawStep &&raw) {
   Step::Builder builder;
   builder.setHash(raw.hash());
@@ -147,7 +147,7 @@ Step convertRawStep(
 }
 
 std::vector<Step> convertStepVector(
-    const PathToStepMap &output_path_map,
+    const detail::PathToStepMap &output_path_map,
     std::vector<RawStep> &&steps) {
   std::vector<Step> ans;
   ans.reserve(steps.size());
@@ -161,7 +161,7 @@ std::vector<Step> convertStepVector(
 
 std::vector<StepIndex> computeStepsToBuildFromPaths(
     const std::vector<Path> &paths,
-    const PathToStepMap &output_path_map) throw(BuildError) {
+    const detail::PathToStepMap &output_path_map) throw(BuildError) {
   std::vector<StepIndex> result;
   for (const auto &default_path : paths) {
     const auto it = output_path_map.find(default_path);
@@ -177,7 +177,7 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
 
 bool hasDependencyCycle(
     const IndexedManifest &manifest,
-    const PathToStepMap &output_path_map,
+    const detail::PathToStepMap &output_path_map,
     const std::vector<RawStep> &raw_steps,
     std::vector<bool> &currently_visited,
     std::vector<bool> &already_visited,
@@ -238,7 +238,7 @@ bool hasDependencyCycle(
 
 bool hasDependencyCycle(
     const IndexedManifest &indexed_manifest,
-    const PathToStepMap &output_path_map,
+    const detail::PathToStepMap &output_path_map,
     const std::vector<RawStep> &raw_steps,
     std::string *cycle) {
   std::vector<bool> currently_visited(indexed_manifest.steps.size());
@@ -264,7 +264,7 @@ bool hasDependencyCycle(
 }
 
 StepIndex getManifestStep(
-    const PathToStepMap &output_path_map,
+    const detail::PathToStepMap &output_path_map,
     Path manifest_path) {
   auto step_it = output_path_map.find(manifest_path);
   if (step_it == output_path_map.end()) {
@@ -285,7 +285,7 @@ IndexedManifest::IndexedManifest(
           std::move(manifest)) {}
 
 IndexedManifest::IndexedManifest(
-    const PathToStepMap &output_path_map,
+    const detail::PathToStepMap &output_path_map,
     Path manifest_path,
     RawManifest &&manifest)
     : outputs(computePathList(output_path_map)),

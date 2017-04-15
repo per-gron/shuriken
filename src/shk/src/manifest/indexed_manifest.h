@@ -11,19 +11,6 @@
 namespace shk {
 
 /**
- * Please note that this map contains only paths that are in the RawManifest; it
- * does not have output files that may have been created but that are not
- * declared.
- *
- * This map is configured to treat paths that are the same according to
- * Path::isSame as equal. This is important because otherwise the lookup
- * will miss paths that point to the same thing but with different original
- * path strings.
- */
-using PathToStepMap = std::unordered_map<
-    Path, StepIndex, Path::IsSameHash, Path::IsSame>;
-
-/**
  * Similar to PathToStepMap, but is a sorted list of canonicalized paths along
  * with the associated StepIndex for each path.
  *
@@ -35,6 +22,19 @@ using PathToStepMap = std::unordered_map<
 using PathToStepList = std::vector<std::pair<std::string, StepIndex>>;
 
 namespace detail {
+
+/**
+ * Please note that this map contains only paths that are in the RawManifest; it
+ * does not have output files that may have been created but that are not
+ * declared.
+ *
+ * This map is configured to treat paths that are the same according to
+ * Path::isSame as equal. This is important because otherwise the lookup
+ * will miss paths that point to the same thing but with different original
+ * path strings.
+ */
+using PathToStepMap = std::unordered_map<
+    Path, StepIndex, Path::IsSameHash, Path::IsSame>;
 
 /**
  * Throws BuildError if there exists an output file that more than one step
@@ -84,7 +84,7 @@ struct IndexedManifest {
 
  private:
   IndexedManifest(
-      const PathToStepMap &output_path_map,
+      const detail::PathToStepMap &output_path_map,
       Path manifest_path,
       RawManifest &&manifest);
  public:
