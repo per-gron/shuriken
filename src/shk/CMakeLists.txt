@@ -76,7 +76,6 @@ add_library(shklib
   src/status/stopwatch.h
   src/status/terminal_build_status.cpp
   src/status/terminal_build_status.h
-  src/string_piece.h
   src/string_view.h
   src/tools/clean.cpp
   src/tools/clean.h
