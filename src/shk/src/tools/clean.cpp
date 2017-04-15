@@ -36,8 +36,7 @@ namespace shk {
 int toolClean(int argc, char *argv[], const ToolParams &params) {
   std::vector<StepIndex> specified_steps;
   try {
-    specified_steps = interpretPaths(
-        params.paths, params.indexed_manifest, argc, argv);
+    specified_steps = interpretPaths(params.indexed_manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;

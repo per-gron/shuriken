@@ -8,7 +8,6 @@
 namespace shk {
 
 StepIndex interpretPath(
-    Paths &paths,
     const IndexedManifest &manifest,
     std::string &&path) throw(BuildError) {
   const bool input = !path.empty() && path[path.size() - 1] == '^';
@@ -16,14 +15,27 @@ StepIndex interpretPath(
     path.resize(path.size() - 1);
   }
 
-  const auto p = paths.get(path);
+  try {
+    canonicalizePath(&path);
+  } catch (const PathError &error) {
+    throw BuildError(
+        std::string("Invalid target path: ") + error.what());
+  }
 
-  const auto &path_map = input ?
-      manifest.input_path_map :
-      manifest.output_path_map;
-  auto output_step_it = path_map.find(p);
-  if (output_step_it != path_map.end()) {
-    return output_step_it->second;
+  const auto &path_list = input ?
+      manifest.inputs :
+      manifest.outputs;
+  auto step_it = std::lower_bound(
+      path_list.begin(),
+      path_list.end(),
+      std::make_pair(path, 0),
+      [&](
+          const std::pair<std::string, StepIndex> &a,
+          const std::pair<std::string, StepIndex> &b) {
+        return a.first < b.first;
+      });
+  if (step_it != path_list.end() && step_it->first == path) {
+    return step_it->second;
   }
 
   // Not found
@@ -37,24 +49,21 @@ StepIndex interpretPath(
 }
 
 std::vector<StepIndex> interpretPaths(
-    Paths &paths,
     const IndexedManifest &manifest,
     int argc,
     char *argv[]) throw(BuildError) {
   std::vector<StepIndex> targets;
   for (int i = 0; i < argc; ++i) {
-    targets.push_back(interpretPath(paths, manifest, argv[i]));
+    targets.push_back(interpretPath(manifest, argv[i]));
   }
   return targets;
 }
 
 std::vector<StepIndex> computeStepsToBuild(
-    Paths &paths,
     const IndexedManifest &manifest,
     int argc,
     char *argv[0]) throw(BuildError) {
-  auto specified_outputs = interpretPaths(
-      paths, manifest, argc, argv);
+  auto specified_outputs = interpretPaths(manifest, argc, argv);
   return detail::computeStepsToBuild(
       manifest, std::move(specified_outputs));
 }

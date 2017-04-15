@@ -463,7 +463,7 @@ BuildResult ShurikenMain::runBuild(
 int ShurikenMain::runBuild(int argc, char **argv) {
   std::vector<StepIndex> specified_steps;
   try {
-    specified_steps = interpretPaths(_paths, _indexed_manifest, argc, argv);
+    specified_steps = interpretPaths(_indexed_manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;

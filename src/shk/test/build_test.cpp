@@ -230,39 +230,40 @@ TEST_CASE("Build") {
 
     SECTION("normal (non-^)") {
       CHECK(
-          steps[interpretPath(paths, indexed_manifest, "a")].hash() ==
+          steps[interpretPath(indexed_manifest, "a")].hash() ==
           single_output.hash());
-      CHECK_THROWS_AS(interpretPath(paths, indexed_manifest, "x"), BuildError);
+      CHECK(
+          steps[interpretPath(indexed_manifest, "b/../a")].hash() ==
+          single_output.hash());
+      CHECK_THROWS_AS(interpretPath(indexed_manifest, "x"), BuildError);
       CHECK_THROWS_AS(
-          interpretPath(paths, indexed_manifest, "other"), BuildError);
+          interpretPath(indexed_manifest, "other"), BuildError);
     }
 
     SECTION("^") {
       CHECK_THROWS_AS(
-          interpretPath(paths, indexed_manifest, "fancy_schmanzy^"),
+          interpretPath(indexed_manifest, "fancy_schmanzy^"),
           BuildError);
       CHECK(
-          steps[interpretPath(paths, indexed_manifest, "other^")].hash() ==
+          steps[interpretPath(indexed_manifest, "other^")].hash() ==
           other_input.hash());
       CHECK(  // No out edge
-          steps[interpretPath(paths, indexed_manifest, "a^")].hash() ==
+          steps[interpretPath(indexed_manifest, "a^")].hash() ==
           single_input.hash());
       CHECK(
-          steps[interpretPath(paths, indexed_manifest, "hehe^")].hash() ==
+          steps[interpretPath(indexed_manifest, "hehe^")].hash() ==
           multiple_outputs.hash());
       CHECK(
-          steps[interpretPath(
-              paths, indexed_manifest, "implicit_input^")].hash() ==
+          steps[interpretPath(indexed_manifest, "implicit_input^")].hash() ==
           implicit_input.hash());
       CHECK(
-          steps[interpretPath(
-              paths, indexed_manifest, "dependency_input^")].hash() ==
+          steps[interpretPath(indexed_manifest, "dependency_input^")].hash() ==
           dependency.hash());
     }
 
     SECTION("clean") {
       try {
-        interpretPath(paths, IndexedManifest(RawManifest(manifest)), "clean");
+        interpretPath(IndexedManifest(RawManifest(manifest)), "clean");
         CHECK(!"Should throw");
       } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
@@ -272,7 +273,7 @@ TEST_CASE("Build") {
 
     SECTION("help") {
       try {
-        interpretPath(paths, IndexedManifest(RawManifest(manifest)), "help");
+        interpretPath(IndexedManifest(RawManifest(manifest)), "help");
         CHECK(!"Should throw");
       } catch (const BuildError &error) {
         CHECK(error.what() == std::string(
@@ -284,7 +285,7 @@ TEST_CASE("Build") {
   SECTION("interpretPath") {
     SECTION("Empty") {
       CHECK(interpretPaths(
-          paths, IndexedManifest(RawManifest(manifest)), 0, nullptr).empty());
+          IndexedManifest(RawManifest(manifest)), 0, nullptr).empty());
     }
 
     SECTION("Paths") {
@@ -298,7 +299,6 @@ TEST_CASE("Build") {
       const std::vector<Path> out = { paths.get("a"), paths.get("b") };
       CHECK(
           interpretPaths(
-              paths,
               IndexedManifest(RawManifest(manifest)), 2, in) ==
           std::vector<StepIndex>({ 0, 1 }));
     }
@@ -312,7 +312,7 @@ TEST_CASE("Build") {
     manifest.defaults = { paths.get("b") };
 
     IndexedManifest indexed_manifest(std::move(manifest));
-    CHECK(computeStepsToBuild(paths, indexed_manifest, 0, nullptr) == vec({0}));
+    CHECK(computeStepsToBuild(indexed_manifest, 0, nullptr) == vec({0}));
   }
 
   SECTION("computeStepsToBuild") {

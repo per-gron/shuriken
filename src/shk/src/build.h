@@ -21,7 +21,6 @@ namespace shk {
  * the ^ command line interface syntax.
  */
 StepIndex interpretPath(
-    Paths &paths,
     const IndexedManifest &manifest,
     std::string &&path) throw(BuildError);
 
@@ -29,7 +28,6 @@ StepIndex interpretPath(
  * Takes command line arguments and calls interpretPath on each of them.
  */
 std::vector<StepIndex> interpretPaths(
-    Paths &paths,
     const IndexedManifest &manifest,
     int argc,
     char *argv[]) throw(BuildError);
@@ -39,7 +37,6 @@ std::vector<StepIndex> interpretPaths(
  * use by tools.
  */
 std::vector<StepIndex> computeStepsToBuild(
-    Paths &paths,
     const IndexedManifest &indexed_manifest,
     int argc,
     char *argv[0]) throw(BuildError);
