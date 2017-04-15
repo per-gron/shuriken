@@ -445,6 +445,34 @@ TEST_CASE("IndexedManifest") {
       }
     }
 
+    SECTION("manifest_step") {
+      SECTION("default value") {
+        IndexedManifest indexed_manifest;
+        CHECK(indexed_manifest.manifest_step == -1);
+      }
+
+      SECTION("present") {
+        RawStep step;
+        step.outputs = { manifest_path };
+
+        RawManifest manifest;
+        manifest.steps = { single_input, step };
+
+        IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
+
+        CHECK(indexed_manifest.manifest_step == 1);
+      }
+
+      SECTION("missing") {
+        RawManifest manifest;
+        manifest.steps = { single_input };
+
+        IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
+
+        CHECK(indexed_manifest.manifest_step == -1);
+      }
+    }
+
     SECTION("dependency_cycle") {
       SECTION("Empty") {
         const auto &cycle = IndexedManifest().dependency_cycle;

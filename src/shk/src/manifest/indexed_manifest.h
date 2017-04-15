@@ -110,6 +110,12 @@ struct IndexedManifest {
   std::string build_dir;
 
   /**
+   * Index of the build step that rebuilds the manifest file, or -1 if there is
+   * no such step.
+   */
+  StepIndex manifest_step = -1;
+
+  /**
    * Is a non-empty string describing a cycle in the build graph if one exists.
    * For example: "a -> b -> a"
    */

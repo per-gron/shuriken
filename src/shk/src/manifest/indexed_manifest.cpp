@@ -259,6 +259,17 @@ bool hasDependencyCycle(
   return false;
 }
 
+StepIndex getManifestStep(
+    const PathToStepMap &output_path_map,
+    Path manifest_path) {
+  auto step_it = output_path_map.find(manifest_path);
+  if (step_it == output_path_map.end()) {
+    return -1;
+  } else {
+    return step_it->second;
+  }
+}
+
 }  // anonymous namespace
 
 IndexedManifest::IndexedManifest(
@@ -272,7 +283,8 @@ IndexedManifest::IndexedManifest(
           manifest.defaults, output_path_map)),
       roots(detail::rootSteps(steps)),
       pools(std::move(manifest.pools)),
-      build_dir(std::move(manifest.build_dir)) {
+      build_dir(std::move(manifest.build_dir)),
+      manifest_step(getManifestStep(output_path_map, manifest_path)) {
   hasDependencyCycle(*this, manifest.steps, &dependency_cycle);
 }
 
