@@ -14,7 +14,7 @@ namespace shk {
  * that vector, or into a vector of the same length that refers to the same Step
  * objects.
  */
-using StepIndex = size_t;
+using StepIndex = int;
 
 /**
  * A Step is a dumb data object that represents one build statment in the
