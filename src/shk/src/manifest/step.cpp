@@ -82,31 +82,31 @@ Step::Step(
     std::string &&depfile,
     std::string &&rspfile,
     std::string &&rspfile_content)
-    : hash(std::move(hash)),
-      dependencies(std::move(dependencies)),
-      output_dirs(std::move(output_dirs)),
-      pool_name(std::move(pool_name)),
-      command(std::move(command)),
-      description(std::move(description)),
-      generator(std::move(generator)),
-      depfile(std::move(depfile)),
-      rspfile(std::move(rspfile)),
-      rspfile_content(std::move(rspfile_content)) {}
+    : _hash(std::move(hash)),
+      _dependencies(std::move(dependencies)),
+      _output_dirs(std::move(output_dirs)),
+      _pool_name(std::move(pool_name)),
+      _command(std::move(command)),
+      _description(std::move(description)),
+      _generator(std::move(generator)),
+      _depfile(std::move(depfile)),
+      _rspfile(std::move(rspfile)),
+      _rspfile_content(std::move(rspfile_content)) {}
 
 Step::Step() {}
 
 Step::Builder Step::toBuilder() const {
   Builder builder;
-  builder.setHash(Hash(hash));
-  builder.setDependencies(std::vector<StepIndex>(dependencies));
-  builder.setOutputDirs(std::vector<std::string>(output_dirs));
-  builder.setPoolName(std::string(pool_name));
-  builder.setCommand(std::string(command));
-  builder.setDescription(std::string(description));
-  builder.setGenerator(bool(generator));
-  builder.setDepfile(std::string(depfile));
-  builder.setRspfile(std::string(rspfile));
-  builder.setRspfileContent(std::string(rspfile_content));
+  builder.setHash(Hash(_hash));
+  builder.setDependencies(std::vector<StepIndex>(_dependencies));
+  builder.setOutputDirs(std::vector<std::string>(_output_dirs));
+  builder.setPoolName(std::string(_pool_name));
+  builder.setCommand(std::string(_command));
+  builder.setDescription(std::string(_description));
+  builder.setGenerator(bool(_generator));
+  builder.setDepfile(std::string(_depfile));
+  builder.setRspfile(std::string(_rspfile));
+  builder.setRspfileContent(std::string(_rspfile_content));
   return builder;
 }
 

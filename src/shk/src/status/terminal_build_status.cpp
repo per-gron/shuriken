@@ -41,7 +41,7 @@ class TerminalBuildStatus : public BuildStatus {
   void stepStarted(const Step &step) override {
     ++_started_steps;
 
-    const auto use_console = isConsolePool(step.pool_name);
+    const auto use_console = isConsolePool(step.poolName());
 
     if (use_console || _printer.isSmartTerminal()) {
       printStatus(step);
@@ -58,7 +58,7 @@ class TerminalBuildStatus : public BuildStatus {
       const std::string &output) override {
     ++_finished_steps;
 
-    const auto use_console = isConsolePool(step.pool_name);
+    const auto use_console = isConsolePool(step.poolName());
 
     if (use_console) {
       _printer.setConsoleLocked(false);
@@ -70,7 +70,7 @@ class TerminalBuildStatus : public BuildStatus {
 
     // Print the command that is spewing before printing its output.
     if (!success) {
-      _printer.printOnNewLine("FAILED: " + step.command + "\n");
+      _printer.printOnNewLine("FAILED: " + std::string(step.command()) + "\n");
     }
 
     if (!output.empty()) {
@@ -188,9 +188,9 @@ class TerminalBuildStatus : public BuildStatus {
 
  private:
   void printStatus(const Step &step) {
-    const auto *to_print = &step.description;
-    if (to_print->empty() || _verbose) {
-      to_print = &step.command;
+    nt_string_view to_print = step.description();
+    if (to_print.empty() || _verbose) {
+      to_print = step.command();
     }
 
     if (_finished_steps == 0) {
@@ -199,7 +199,7 @@ class TerminalBuildStatus : public BuildStatus {
     }
 
     _printer.print(
-        formatProgressStatus(_progress_status_format) + *to_print,
+        formatProgressStatus(_progress_status_format) + std::string(to_print),
         _verbose ? LinePrinter::FULL : LinePrinter::ELIDE);
   }
 

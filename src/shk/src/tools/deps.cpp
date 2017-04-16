@@ -14,6 +14,7 @@
 
 #include "build.h"
 #include "tools/deps.h"
+#include "nullterminated_string.h"
 
 namespace shk {
 
@@ -26,7 +27,7 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
       continue;
     }
 
-    const auto entry_it = params.invocations.entries.find(step.hash);
+    const auto entry_it = params.invocations.entries.find(step.hash());
     if (entry_it == params.invocations.entries.end()) {
       continue;
     }
@@ -44,7 +45,7 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
           (result.should_update ? " [should update]" : "");
     };
 
-    printf("%s\n", step.command.c_str());
+    printf("%s\n", NullterminatedString(step.command()).c_str());
 
     bool first = true;
     for (const auto &output : entry.output_files) {

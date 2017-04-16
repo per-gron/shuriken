@@ -28,7 +28,7 @@ std::vector<StepIndex> rootSteps(
   std::vector<bool> roots(steps.size(), true);
 
   for (size_t i = 0; i < steps.size(); i++) {
-    for (const auto dependency_idx : steps[i].dependencies) {
+    for (const auto dependency_idx : steps[i].dependencies()) {
       roots[dependency_idx] = false;
     }
   }

@@ -17,7 +17,7 @@ TEST_CASE("Step") {
         .build();
 
     auto b = a;
-    CHECK(a.dependencies == b.dependencies);
+    CHECK(a.dependencies() == b.dependencies());
   }
 
   SECTION("ToAndFromBuilder") {
@@ -30,8 +30,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setHash(std::move(other_hash))
           .build();
-      CHECK(a.hash == Hash());
-      CHECK(b.hash == other_hash);
+      CHECK(a.hash() == Hash());
+      CHECK(b.hash() == other_hash);
     }
 
     SECTION("Dependencies") {
@@ -41,8 +41,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setDependencies({})
           .build();
-      CHECK(a.dependencies == std::vector<StepIndex>{ 0 });
-      CHECK(b.dependencies == std::vector<StepIndex>{});
+      CHECK(a.dependencies() == std::vector<StepIndex>{ 0 });
+      CHECK(b.dependencies() == std::vector<StepIndex>{});
     }
 
     SECTION("OutputDirs") {
@@ -52,8 +52,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setOutputDirs({ "o2" })
           .build();
-      CHECK(a.output_dirs == std::vector<std::string>{ "o1" });
-      CHECK(b.output_dirs == std::vector<std::string>{ "o2" });
+      CHECK(a.outputDirs() == std::vector<std::string>{ "o1" });
+      CHECK(b.outputDirs() == std::vector<std::string>{ "o2" });
     }
 
     SECTION("PoolName") {
@@ -63,8 +63,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setPoolName("b")
           .build();
-      CHECK(a.pool_name == "a");
-      CHECK(b.pool_name == "b");
+      CHECK(a.poolName() == "a");
+      CHECK(b.poolName() == "b");
     }
 
     SECTION("Command") {
@@ -74,8 +74,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setCommand("b")
           .build();
-      CHECK(a.command == "a");
-      CHECK(b.command == "b");
+      CHECK(a.command() == "a");
+      CHECK(b.command() == "b");
     }
 
     SECTION("Description") {
@@ -85,8 +85,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setDescription("b")
           .build();
-      CHECK(a.description == "a");
-      CHECK(b.description == "b");
+      CHECK(a.description() == "a");
+      CHECK(b.description() == "b");
     }
 
     SECTION("Depfile") {
@@ -96,8 +96,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setDepfile("b")
           .build();
-      CHECK(a.depfile == "a");
-      CHECK(b.depfile == "b");
+      CHECK(a.depfile() == "a");
+      CHECK(b.depfile() == "b");
     }
 
     SECTION("Generator") {
@@ -107,8 +107,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setGenerator(false)
           .build();
-      CHECK(a.generator);
-      CHECK(!b.generator);
+      CHECK(a.generator());
+      CHECK(!b.generator());
     }
 
     SECTION("Rspfile") {
@@ -118,8 +118,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setRspfile("b")
           .build();
-      CHECK(a.rspfile == "a");
-      CHECK(b.rspfile == "b");
+      CHECK(a.rspfile() == "a");
+      CHECK(b.rspfile() == "b");
     }
 
     SECTION("RspfileContent") {
@@ -129,8 +129,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setRspfileContent("b")
           .build();
-      CHECK(a.rspfile_content == "a");
-      CHECK(b.rspfile_content == "b");
+      CHECK(a.rspfileContent() == "a");
+      CHECK(b.rspfileContent() == "b");
     }
   }
 

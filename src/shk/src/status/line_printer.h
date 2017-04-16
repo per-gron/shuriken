@@ -51,7 +51,7 @@ struct LinePrinter {
   /**
    * Prints a string on a new line, not overprinting previous output.
    */
-  void printOnNewLine(const std::string& to_print);
+  void printOnNewLine(const std::string &to_print);
 
   /**
    * Lock or unlock the console.  Any output sent to the LinePrinter while the

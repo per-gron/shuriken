@@ -135,7 +135,7 @@ void visitStep(
   step_node.should_build = true;
 
   step_node.currently_visited = true;
-  for (const auto &dependency_idx : manifest.steps[idx].dependencies) {
+  for (const auto &dependency_idx : manifest.steps[idx].dependencies()) {
     auto &dependency_node = build.step_nodes[dependency_idx];
     dependency_node.dependents.push_back(idx);
     step_node.dependencies++;
@@ -283,7 +283,7 @@ CleanSteps computeCleanSteps(
     if (!step_node.should_build) {
       continue;
     }
-    const auto &step_hash = steps[i].hash;
+    const auto &step_hash = steps[i].hash();
     result[i] = isClean(
         file_system,
         invocation_log,
@@ -419,19 +419,19 @@ void commandDone(
     CommandRunner::Result &&result) throw(IoError) {
   const auto &step = params.manifest.steps[step_idx];
 
-  if (!step.depfile.empty()) {
+  if (!step.depfile().empty()) {
     deleteBuildProduct(
         params.file_system,
         params.invocations,
         params.invocation_log,
-        step.depfile);
+        std::string(step.depfile()));
   }
-  if (!step.rspfile.empty() && result.exit_status != ExitStatus::FAILURE) {
+  if (!step.rspfile().empty() && result.exit_status != ExitStatus::FAILURE) {
     deleteBuildProduct(
         params.file_system,
         params.invocations,
         params.invocation_log,
-        step.rspfile);
+        std::string(step.rspfile()));
   }
 
   std::vector<Fingerprint> output_fingerprints;
@@ -466,7 +466,7 @@ void commandDone(
 
   switch (result.exit_status) {
   case ExitStatus::SUCCESS:
-    if (!isConsolePool(step.pool_name) && !step.phony()) {
+    if (!isConsolePool(step.poolName()) && !step.phony()) {
       // The console pool gives the command access to stdin which is clearly not
       // a deterministic source. Because of this, steps using the console pool
       // are never counted as clean.
@@ -477,7 +477,7 @@ void commandDone(
       // immediately report the step as clean regardless of what it depends on.
 
       params.invocation_log.ranCommand(
-          params.manifest.steps[step_idx].hash,
+          params.manifest.steps[step_idx].hash(),
           std::move(result.output_files),
           params.invocation_log.fingerprintFiles(result.output_files),
           std::move(result.input_files),
@@ -535,7 +535,7 @@ bool canSkipBuildCommand(
     return false;
   }
 
-  const auto invocation_entry_it = invocations.entries.find(step.hash);
+  const auto invocation_entry_it = invocations.entries.find(step.hash());
   if (invocation_entry_it == invocations.entries.end()) {
     // Should not happen, but if we do get here it means the step is dirty so
     // we can't skip.
@@ -595,15 +595,17 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
       params.file_system,
       params.invocations,
       params.invocation_log,
-      step.hash);
+      step.hash());
 
-  if (!step.rspfile.empty()) {
+  if (!step.rspfile().empty()) {
     mkdirsAndLog(
-        params.file_system, params.invocation_log, shk::dirname(step.rspfile));
-    params.file_system.writeFile(step.rspfile, step.rspfile_content);
+        params.file_system,
+        params.invocation_log,
+        shk::dirname(step.rspfile()));
+    params.file_system.writeFile(step.rspfile(), step.rspfileContent());
   }
 
-  for (const auto &output_dir : step.output_dirs) {
+  for (const auto &output_dir : step.outputDirs()) {
     mkdirsAndLog(params.file_system, params.invocation_log, output_dir);
   }
 
@@ -612,8 +614,8 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
     params.invoked_commands++;
   }
   params.command_runner.invoke(
-      step.command,
-      step.pool_name,
+      step.command(),
+      step.poolName(),
       [&params, step_idx](CommandRunner::Result &&result) {
         commandDone(params, step_idx, std::move(result));
       });
@@ -651,7 +653,7 @@ void deleteStaleOutputs(
   std::unordered_set<Hash> step_hashes_set;
   step_hashes_set.reserve(steps.size());
   for (const auto &step : steps) {
-    step_hashes_set.insert(step.hash);
+    step_hashes_set.insert(step.hash());
   }
 
   for (const auto &entry : invocations.entries) {

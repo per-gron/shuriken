@@ -1081,7 +1081,7 @@ TEST_CASE("Build") {
     SECTION("no input files") {
       const Step step{};
       Invocations invocations;
-      invocations.entries[step.hash] = Invocations::Entry();
+      invocations.entries[step.hash()] = Invocations::Entry();
 
       CHECK(canSkipBuildCommand(
           fs,
@@ -1101,7 +1101,7 @@ TEST_CASE("Build") {
       Invocations invocations;
       invocations.fingerprints.emplace_back(
           "file", file_fingerprint);
-      invocations.entries[step.hash] = entry;
+      invocations.entries[step.hash()] = entry;
 
       CHECK(canSkipBuildCommand(
           fs,
@@ -1121,7 +1121,7 @@ TEST_CASE("Build") {
       Invocations invocations;
       invocations.fingerprints.emplace_back(
           "file", file_fingerprint);
-      invocations.entries[step.hash] = entry;
+      invocations.entries[step.hash()] = entry;
 
       CHECK(canSkipBuildCommand(
           fs,
@@ -1141,7 +1141,7 @@ TEST_CASE("Build") {
       Invocations invocations;
       invocations.fingerprints.emplace_back(
           "file", file_fingerprint);
-      invocations.entries[step.hash] = entry;
+      invocations.entries[step.hash()] = entry;
 
       Hash different_hash = file_fingerprint.hash;
       different_hash.data[0]++;
@@ -1164,7 +1164,7 @@ TEST_CASE("Build") {
       Invocations invocations;
       invocations.fingerprints.emplace_back(
           "file", file_fingerprint);
-      invocations.entries[step.hash] = entry;
+      invocations.entries[step.hash()] = entry;
 
       Hash different_hash = file_fingerprint.hash;
       different_hash.data[0]++;

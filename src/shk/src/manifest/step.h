@@ -77,38 +77,50 @@ struct Step {
    * A hash of this build step. The hash is used when comparing against old
    * build steps that have been run to see if the build step is clean.
    */
-  const Hash hash{};
+  const Hash &hash() const {
+    return _hash;
+  }
 
   /**
    * A list of indices for steps that must be done and clean before this step
    * can be run. These correspond to "order only", "implicit inputs" and
    * "inputs" in a build.ninja manifest.
    */
-  const std::vector<StepIndex> dependencies;
+  const std::vector<StepIndex> dependencies() const {
+    return _dependencies;
+  }
 
   /**
    * A list of directories that Shuriken should ensure are there prior to
    * invoking the command.
    */
-  const std::vector<std::string> output_dirs;
+  const std::vector<std::string> &outputDirs() const {
+    return _output_dirs;
+  }
 
-  const std::string pool_name;
+  nt_string_view poolName() const {
+    return _pool_name;
+  }
 
   /**
    * Command that should be invoked in order to perform this build step.
    *
    * The command string is empty for phony rules.
    */
-  const std::string command;
+  nt_string_view command() const {
+    return _command;
+  }
 
   /**
    * A short description of the command. Used for prettifying output while
    * running builds.
    */
-  const std::string description;
+  nt_string_view description() const {
+    return _description;
+  }
 
   bool phony() const {
-    return command.empty();
+    return _command.empty();
   }
 
   /**
@@ -119,7 +131,9 @@ struct Step {
    * * Files are checked for dirtiness via mtime checks rather than file hashes
    * * They are not cleaned
    */
-  const bool generator = false;
+  bool generator() const {
+    return _generator;
+  }
 
   /**
    * For compatibility reasons with Ninja, Shuriken keeps track of the path to
@@ -127,7 +141,9 @@ struct Step {
    * this file, it just removes it immediately after the build step has
    * completed.
    */
-  const std::string depfile;
+  nt_string_view depfile() const {
+    return _depfile;
+  }
 
   /**
    * If rspfile is not empty, Shuriken will write rspfile_content to the path
@@ -135,8 +151,25 @@ struct Step {
    * after the build step has finished running. Useful on Windows, where
    * commands have a rather short maximum length.
    */
-  const std::string rspfile;
-  const std::string rspfile_content;
+  nt_string_view rspfile() const {
+    return _rspfile;
+  }
+
+  nt_string_view rspfileContent() const {
+    return _rspfile_content;
+  }
+
+ private:
+  const Hash _hash{};
+  const std::vector<StepIndex> _dependencies;
+  const std::vector<std::string> _output_dirs;
+  const std::string _pool_name;
+  const std::string _command;
+  const std::string _description;
+  const bool _generator = false;
+  const std::string _depfile;
+  const std::string _rspfile;
+  const std::string _rspfile_content;
 };
 
 inline bool isConsolePool(nt_string_view pool_name) {

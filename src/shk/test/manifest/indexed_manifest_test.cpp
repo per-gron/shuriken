@@ -140,7 +140,7 @@ TEST_CASE("IndexedManifest") {
       IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
 
       REQUIRE(indexed_manifest.steps.size() == 1);
-      CHECK(indexed_manifest.steps[0].hash == single_output.hash());
+      CHECK(indexed_manifest.steps[0].hash() == single_output.hash());
     }
 
     SECTION("inputs") {
@@ -292,7 +292,7 @@ TEST_CASE("IndexedManifest") {
       IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
       REQUIRE(indexed_manifest.steps.size() == 1);
       CHECK(
-          indexed_manifest.steps[0].dependencies ==
+          indexed_manifest.steps[0].dependencies() ==
           std::vector<StepIndex>{});
     }
 
@@ -303,10 +303,10 @@ TEST_CASE("IndexedManifest") {
       IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
       REQUIRE(indexed_manifest.steps.size() == 2);
       CHECK(
-          indexed_manifest.steps[0].dependencies ==
+          indexed_manifest.steps[0].dependencies() ==
           std::vector<StepIndex>{});
       CHECK(
-          indexed_manifest.steps[1].dependencies ==
+          indexed_manifest.steps[1].dependencies() ==
           std::vector<StepIndex>{ 0 });
     }
 
@@ -317,10 +317,10 @@ TEST_CASE("IndexedManifest") {
       IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
       REQUIRE(indexed_manifest.steps.size() == 2);
       CHECK(
-          indexed_manifest.steps[0].dependencies ==
+          indexed_manifest.steps[0].dependencies() ==
           std::vector<StepIndex>{});
       CHECK(
-          indexed_manifest.steps[1].dependencies ==
+          indexed_manifest.steps[1].dependencies() ==
           std::vector<StepIndex>{ 0 });
     }
 
@@ -331,10 +331,10 @@ TEST_CASE("IndexedManifest") {
       IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
       REQUIRE(indexed_manifest.steps.size() == 2);
       CHECK(
-          indexed_manifest.steps[0].dependencies ==
+          indexed_manifest.steps[0].dependencies() ==
           std::vector<StepIndex>{});
       CHECK(
-          indexed_manifest.steps[1].dependencies ==
+          indexed_manifest.steps[1].dependencies() ==
           std::vector<StepIndex>{ 0 });
     }
 
@@ -379,7 +379,7 @@ TEST_CASE("IndexedManifest") {
 
         IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
         REQUIRE(indexed_manifest.steps.size() == 1);
-        CHECK(indexed_manifest.steps[0].output_dirs.size() == 0);
+        CHECK(indexed_manifest.steps[0].outputDirs().size() == 0);
       }
 
       SECTION("one directory") {
@@ -391,8 +391,8 @@ TEST_CASE("IndexedManifest") {
 
         IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
         REQUIRE(indexed_manifest.steps.size() == 1);
-        CHECK(indexed_manifest.steps[0].output_dirs.size() == 1);
-        CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir"));
+        CHECK(indexed_manifest.steps[0].outputDirs().size() == 1);
+        CHECK(contains(indexed_manifest.steps[0].outputDirs(), "dir"));
       }
 
       SECTION("two stesps") {
@@ -406,10 +406,10 @@ TEST_CASE("IndexedManifest") {
 
         IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
         REQUIRE(indexed_manifest.steps.size() == 2);
-        CHECK(indexed_manifest.steps[0].output_dirs.size() == 1);
-        CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir1"));
-        CHECK(indexed_manifest.steps[1].output_dirs.size() == 1);
-        CHECK(contains(indexed_manifest.steps[1].output_dirs, "dir2"));
+        CHECK(indexed_manifest.steps[0].outputDirs().size() == 1);
+        CHECK(contains(indexed_manifest.steps[0].outputDirs(), "dir1"));
+        CHECK(indexed_manifest.steps[1].outputDirs().size() == 1);
+        CHECK(contains(indexed_manifest.steps[1].outputDirs(), "dir2"));
       }
 
       SECTION("two directories") {
@@ -421,9 +421,9 @@ TEST_CASE("IndexedManifest") {
 
         IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
         REQUIRE(indexed_manifest.steps.size() == 1);
-        CHECK(indexed_manifest.steps[0].output_dirs.size() == 2);
-        CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir1"));
-        CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir2"));
+        CHECK(indexed_manifest.steps[0].outputDirs().size() == 2);
+        CHECK(contains(indexed_manifest.steps[0].outputDirs(), "dir1"));
+        CHECK(contains(indexed_manifest.steps[0].outputDirs(), "dir2"));
       }
 
       SECTION("duplicate directories") {
@@ -435,8 +435,8 @@ TEST_CASE("IndexedManifest") {
 
         IndexedManifest indexed_manifest(manifest_path, std::move(manifest));
         REQUIRE(indexed_manifest.steps.size() == 1);
-        CHECK(indexed_manifest.steps[0].output_dirs.size() == 1);
-        CHECK(contains(indexed_manifest.steps[0].output_dirs, "dir"));
+        CHECK(indexed_manifest.steps[0].outputDirs().size() == 1);
+        CHECK(contains(indexed_manifest.steps[0].outputDirs(), "dir"));
       }
     }
 
