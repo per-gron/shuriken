@@ -139,7 +139,7 @@ struct Step {
   const std::string rspfile_content;
 };
 
-inline bool isConsolePool(const std::string &pool_name) {
+inline bool isConsolePool(nt_string_view pool_name) {
   return pool_name == "console";
 }
 

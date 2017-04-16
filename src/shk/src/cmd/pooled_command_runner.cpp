@@ -16,9 +16,10 @@ class PooledCommandRunner : public CommandRunner {
   }
 
   virtual void invoke(
-      const std::string &command,
-      const std::string &pool,
+      nt_string_view command,
+      nt_string_view pool_view,
       const Callback &callback) override {
+    std::string pool(pool_view);
     if (canRunNow(pool)) {
       invokeNow(command, pool, callback);
     } else {
@@ -45,11 +46,12 @@ class PooledCommandRunner : public CommandRunner {
   };
 
   void delay(
-      const std::string &command,
+      nt_string_view command,
       const std::string &pool,
       const Callback &callback) {
     _delayed_commands_count++;
-    _delayed_commands[pool].push_front(Command{ command, callback });
+    _delayed_commands[pool].push_front(
+        Command{ std::string(command), callback });
   }
 
   void invokeDelayedJob(const std::string &pool) {
@@ -63,7 +65,7 @@ class PooledCommandRunner : public CommandRunner {
   }
 
   void invokeNow(
-      const std::string &command,
+      nt_string_view command,
       const std::string &pool,
       const Callback &callback) {
     if (!pool.empty()) {

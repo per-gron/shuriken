@@ -111,10 +111,10 @@ DummyCommandRunner::DummyCommandRunner(FileSystem &file_system)
     : _file_system(file_system) {}
 
 void DummyCommandRunner::invoke(
-    const std::string &command,
-    const std::string &pool_name,
+    nt_string_view command,
+    nt_string_view pool_name,
     const Callback &callback) {
-  _enqueued_commands.emplace_back(command, callback);
+  _enqueued_commands.emplace_back(std::string(command), callback);
 }
 
 size_t DummyCommandRunner::size() const {

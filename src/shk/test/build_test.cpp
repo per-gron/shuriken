@@ -37,8 +37,8 @@ class OutputCapturerBuildStatus : public BuildStatus {
 class FailingCommandRunner : public CommandRunner {
  public:
   void invoke(
-      const std::string &command,
-      const std::string &pool_name,
+      nt_string_view command,
+      nt_string_view pool_name,
       const Callback &callback) override {
     if (!command.empty()) {
       CHECK(!"Should not be invoked");
@@ -61,8 +61,8 @@ class MaxCapacityCommandRunner : public CommandRunner {
       : _max_capacity(max_capacity), _inner(inner) {}
 
   void invoke(
-      const std::string &command,
-      const std::string &pool_name,
+      nt_string_view command,
+      nt_string_view pool_name,
       const Callback &callback) override {
     CHECK(_inner.size() < _max_capacity);
     _inner.invoke(command, pool_name, callback);

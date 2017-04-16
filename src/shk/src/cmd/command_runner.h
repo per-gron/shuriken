@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "exit_status.h"
+#include "string_view.h"
 
 namespace shk {
 
@@ -61,8 +62,8 @@ class CommandRunner {
    * until the CommandRunner is empty().
    */
   virtual void invoke(
-      const std::string &command,
-      const std::string &pool_name,
+      nt_string_view command,
+      nt_string_view pool_name,
       const Callback &callback) = 0;
 
   /**

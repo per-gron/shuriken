@@ -116,25 +116,25 @@ static bool isKnownWin32SafeCharacter(char ch) {
   }
 }
 
-static bool stringNeedsShellEscaping(const std::string &input) {
+static bool stringNeedsShellEscaping(nt_string_view input) {
   for (size_t i = 0; i < input.size(); ++i) {
     if (!isKnownShellSafeCharacter(input[i])) return true;
   }
   return false;
 }
 
-static bool stringNeedsWin32Escaping(const std::string &input) {
+static bool stringNeedsWin32Escaping(nt_string_view input) {
   for (size_t i = 0; i < input.size(); ++i) {
     if (!isKnownWin32SafeCharacter(input[i])) return true;
   }
   return false;
 }
 
-void getShellEscapedString(const std::string &input, std::string *result) {
+void getShellEscapedString(nt_string_view input, std::string *result) {
   assert(result);
 
   if (!stringNeedsShellEscaping(input)) {
-    result->append(input);
+    result->append(input.data(), input.size());
     return;
   }
 
@@ -156,10 +156,10 @@ void getShellEscapedString(const std::string &input, std::string *result) {
 }
 
 
-void getWin32EscapedString(const std::string &input, std::string *result) {
+void getWin32EscapedString(nt_string_view input, std::string *result) {
   assert(result);
   if (!stringNeedsWin32Escaping(input)) {
-    result->append(input);
+    result->append(input.data(), input.size());
     return;
   }
 

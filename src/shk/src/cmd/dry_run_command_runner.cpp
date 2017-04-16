@@ -8,8 +8,8 @@ namespace {
 class DryRunCommandRunner : public CommandRunner {
  public:
   void invoke(
-      const std::string &command,
-      const std::string &pool_name,
+      nt_string_view command,
+      nt_string_view pool_name,
       const Callback &callback) override {
     _enqueued_commands.push_back(callback);
   }

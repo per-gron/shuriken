@@ -23,6 +23,8 @@
 #include <string>
 #include <vector>
 
+#include "string_view.h"
+
 #ifdef _MSC_VER
 #define NORETURN __declspec(noreturn)
 #else
@@ -52,8 +54,8 @@ void error(const char *msg, ...);
  * Appends the string directly to |result| without modification if we can
  * determine that it contains no problematic characters.
  */
-void getShellEscapedString(const std::string &input, std::string *result);
-void getWin32EscapedString(const std::string &input, std::string *result);
+void getShellEscapedString(nt_string_view input, std::string *result);
+void getWin32EscapedString(nt_string_view input, std::string *result);
 
 /**
  * Mark a file descriptor to not be inherited on exec()s.

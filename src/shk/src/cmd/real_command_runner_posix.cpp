@@ -29,6 +29,7 @@
 #include <sys/wait.h>
 
 #include "manifest/step.h"
+#include "nullterminated_string.h"
 #include "util.h"
 
 namespace shk {
@@ -54,7 +55,7 @@ class Subprocess {
   Subprocess(const CommandRunner::Callback &callback, UseConsole use_console);
 
   void finish(bool invoke_callback);
-  void start(class SubprocessSet *set, const std::string &command);
+  void start(class SubprocessSet *set, nt_string_view command);
   void onPipeReady();
 
   const CommandRunner::Callback _callback;
@@ -73,8 +74,8 @@ class SubprocessSet : public CommandRunner {
   ~SubprocessSet();
 
   void invoke(
-      const std::string &command,
-      const std::string &pool_name,
+      nt_string_view command,
+      nt_string_view pool_name,
       const Callback &callback) override;
   bool runCommands() override;
   void clear();
@@ -125,7 +126,7 @@ Subprocess::~Subprocess() {
   }
 }
 
-void Subprocess::start(SubprocessSet *set, const std::string &command) {
+void Subprocess::start(SubprocessSet *set, nt_string_view command) {
   int output_pipe[2];
   if (pipe(output_pipe) < 0) {
     fatal("pipe: %s", strerror(errno));
@@ -195,7 +196,12 @@ void Subprocess::start(SubprocessSet *set, const std::string &command) {
       // In the console case, output_pipe is still inherited by the child and
       // closed when the subprocess finishes, which then notifies ninja.
 
-      execl("/bin/sh", "/bin/sh", "-c", command.c_str(), (char *) NULL);
+      execl(
+          "/bin/sh",
+          "/bin/sh",
+          "-c",
+          NullterminatedString(command).c_str(),
+          static_cast<char *>(nullptr));
     } while (false);
 
     // If we get here, something went wrong; the execl should have
@@ -336,8 +342,8 @@ SubprocessSet::~SubprocessSet() {
 }
 
 void SubprocessSet::invoke(
-    const std::string &command,
-    const std::string &pool_name,
+    nt_string_view command,
+    nt_string_view pool_name,
     const CommandRunner::Callback &callback) {
   auto use_console =
       isConsolePool(pool_name) ? UseConsole::YES : UseConsole::NO;

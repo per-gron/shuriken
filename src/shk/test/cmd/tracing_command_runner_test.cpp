@@ -194,12 +194,12 @@ class MockCommandRunner : public CommandRunner {
   }
 
   virtual void invoke(
-      const std::string &command,
-      const std::string &pool_name,
+      nt_string_view command,
+      nt_string_view pool_name,
       const Callback &callback) override {
     Command cmd;
-    cmd.command = command;
-    cmd.pool_name = pool_name;
+    cmd.command = std::string(command);
+    cmd.pool_name = std::string(pool_name);
     cmd.callback = callback;
     _commands.push_back(std::move(cmd));
   }
