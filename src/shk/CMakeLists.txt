@@ -67,6 +67,7 @@ add_library(shklib
   src/log/invocations.h
   src/log/persistent_invocation_log.cpp
   src/log/persistent_invocation_log.h
+  src/nullterminated_string.h
   src/optional.h
   src/parse_error.h
   src/status/build_status.h
@@ -148,6 +149,7 @@ add_executable(shk_test
   test/manifest/raw_manifest_test.cpp
   test/manifest/raw_step_test.cpp
   test/manifest/step_test.cpp
+  test/nullterminated_string_test.cpp
   test/optional_test.cpp
   test/status/line_printer_test.cpp
   test/status/stopwatch_test.cpp
