@@ -152,12 +152,12 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::mkdir(NullterminatedString(path).c_str(), 0777));
   }
 
-  void rmdir(const std::string &path) throw(IoError) override {
-    checkForMinusOne(::rmdir(path.c_str()));
+  void rmdir(nt_string_view path) throw(IoError) override {
+    checkForMinusOne(::rmdir(NullterminatedString(path).c_str()));
   }
 
-  void unlink(const std::string &path) throw(IoError) override {
-    checkForMinusOne(::unlink(path.c_str()));
+  void unlink(nt_string_view path) throw(IoError) override {
+    checkForMinusOne(::unlink(NullterminatedString(path).c_str()));
   }
 
   void symlink(

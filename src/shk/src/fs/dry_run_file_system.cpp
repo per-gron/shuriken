@@ -43,9 +43,9 @@ class DryRunFileSystem : public FileSystem {
 
   void mkdir(nt_string_view path) throw(IoError) override {}
 
-  void rmdir(const std::string &path) throw(IoError) override {}
+  void rmdir(nt_string_view path) throw(IoError) override {}
 
-  void unlink(const std::string &path) throw(IoError) override {}
+  void unlink(nt_string_view path) throw(IoError) override {}
 
   void symlink(
       const std::string &target,

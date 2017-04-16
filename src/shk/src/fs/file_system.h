@@ -114,8 +114,8 @@ class FileSystem {
   virtual Stat stat(const std::string &path) = 0;
   virtual Stat lstat(const std::string &path) = 0;
   virtual void mkdir(nt_string_view path) throw(IoError) = 0;
-  virtual void rmdir(const std::string &path) throw(IoError) = 0;
-  virtual void unlink(const std::string &path) throw(IoError) = 0;
+  virtual void rmdir(nt_string_view path) throw(IoError) = 0;
+  virtual void unlink(nt_string_view path) throw(IoError) = 0;
   virtual void symlink(
       const std::string &target, const std::string &source) throw(IoError) = 0;
   virtual void rename(

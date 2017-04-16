@@ -75,10 +75,10 @@ class FailingMkstempFileSystem : public FileSystem {
   void mkdir(nt_string_view path) throw(IoError) override {
     _fs.mkdir(path);
   }
-  void rmdir(const std::string &path) throw(IoError) override {
+  void rmdir(nt_string_view path) throw(IoError) override {
     _fs.rmdir(path);
   }
-  void unlink(const std::string &path) throw(IoError) override {
+  void unlink(nt_string_view path) throw(IoError) override {
     _fs.unlink(path);
   }
   void symlink(
@@ -134,10 +134,10 @@ class FailingUnlinkFileSystem : public FileSystem {
   void mkdir(nt_string_view path) throw(IoError) override {
     _fs.mkdir(path);
   }
-  void rmdir(const std::string &path) throw(IoError) override {
+  void rmdir(nt_string_view path) throw(IoError) override {
     _fs.rmdir(path);
   }
-  void unlink(const std::string &path) throw(IoError) override {
+  void unlink(nt_string_view path) throw(IoError) override {
     throw IoError("Test-induced unlink error", 0);
   }
   void symlink(

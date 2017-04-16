@@ -39,13 +39,13 @@ void CleaningFileSystem::mkdir(nt_string_view path)
   // for things that are about to be built.
 }
 
-void CleaningFileSystem::rmdir(const std::string &path)
+void CleaningFileSystem::rmdir(nt_string_view path)
     throw(IoError) {
   _inner.rmdir(path);
   _removed_count++;
 }
 
-void CleaningFileSystem::unlink(const std::string &path)
+void CleaningFileSystem::unlink(nt_string_view path)
     throw(IoError) {
   _inner.unlink(path);
   _removed_count++;

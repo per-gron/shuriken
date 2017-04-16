@@ -67,7 +67,7 @@ void InMemoryFileSystem::mkdir(nt_string_view path) throw(IoError) {
   }
 }
 
-void InMemoryFileSystem::rmdir(const std::string &path) throw(IoError) {
+void InMemoryFileSystem::rmdir(nt_string_view path) throw(IoError) {
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
@@ -91,7 +91,7 @@ void InMemoryFileSystem::rmdir(const std::string &path) throw(IoError) {
   }
 }
 
-void InMemoryFileSystem::unlink(const std::string &path) throw(IoError) {
+void InMemoryFileSystem::unlink(nt_string_view path) throw(IoError) {
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:

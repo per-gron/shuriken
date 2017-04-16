@@ -28,8 +28,8 @@ class InMemoryFileSystem : public FileSystem {
   Stat stat(const std::string &path) override;
   Stat lstat(const std::string &path) override;
   void mkdir(nt_string_view path) throw(IoError) override;
-  void rmdir(const std::string &path) throw(IoError) override;
-  void unlink(const std::string &path) throw(IoError) override;
+  void rmdir(nt_string_view path) throw(IoError) override;
+  void unlink(nt_string_view path) throw(IoError) override;
   void symlink(
       const std::string &target,
       const std::string &source) throw(IoError) override;
