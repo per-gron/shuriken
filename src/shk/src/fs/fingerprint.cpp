@@ -8,7 +8,7 @@ namespace {
 void computeFingerprintHash(
     FileSystem &file_system,
     const Fingerprint::Stat &stat,
-    const std::string &path,
+    nt_string_view path,
     Hash *hash) {
   if (S_ISDIR(stat.mode)) {
     *hash = file_system.hashDir(path);
@@ -23,7 +23,7 @@ void computeFingerprintHash(
 
 bool fingerprintStat(
     FileSystem &file_system,
-    const std::string &path,
+    nt_string_view path,
     Fingerprint::Stat *out,
     FileId *file_id,
     std::string *err) {
@@ -41,7 +41,7 @@ bool fingerprintStat(
  */
 MatchesResult fingerprintMatches(
     FileSystem &file_system,
-    const std::string &path,
+    nt_string_view path,
     const Fingerprint &fp,
     const Fingerprint::Stat &current,
     Hash *hash) throw(IoError) {
@@ -164,7 +164,7 @@ bool MatchesResult::operator!=(const MatchesResult &other) const {
 std::pair<Fingerprint, FileId> takeFingerprint(
     FileSystem &file_system,
     time_t timestamp,
-    const std::string &path) throw(IoError) {
+    nt_string_view path) throw(IoError) {
   std::pair<Fingerprint, FileId> ans;
   Fingerprint &fp = ans.first;
   FileId &file_id = ans.second;
@@ -182,7 +182,7 @@ std::pair<Fingerprint, FileId> takeFingerprint(
 std::pair<Fingerprint, FileId> retakeFingerprint(
     FileSystem &file_system,
     time_t timestamp,
-    const std::string &path,
+    nt_string_view path,
     const Fingerprint &old_fingerprint) {
   std::pair<Fingerprint, FileId> ans(old_fingerprint, FileId());
   Fingerprint &new_fingerprint = ans.first;
@@ -211,7 +211,7 @@ std::pair<Fingerprint, FileId> retakeFingerprint(
 
 MatchesResult fingerprintMatches(
     FileSystem &file_system,
-    const std::string &path,
+    nt_string_view path,
     const Fingerprint &fp) throw(IoError) {
   Hash discard1;
   FileId discard2;

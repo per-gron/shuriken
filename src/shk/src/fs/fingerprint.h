@@ -8,6 +8,7 @@
 #include "fs/file_id.h"
 #include "fs/file_system.h"
 #include "hash.h"
+#include "string_view.h"
 
 namespace shk {
 
@@ -102,7 +103,7 @@ struct MatchesResult {
 std::pair<Fingerprint, FileId> takeFingerprint(
     FileSystem &file_system,
     time_t timestamp,
-    const std::string &path) throw(IoError);
+    nt_string_view path) throw(IoError);
 
 /**
  * Like takeFingerprint, but uses old_fingerprint if possible. If
@@ -117,7 +118,7 @@ std::pair<Fingerprint, FileId> takeFingerprint(
 std::pair<Fingerprint, FileId> retakeFingerprint(
     FileSystem &file_system,
     time_t timestamp,
-    const std::string &path,
+    nt_string_view path,
     const Fingerprint &old_fingerprint);
 
 /**
@@ -125,7 +126,7 @@ std::pair<Fingerprint, FileId> retakeFingerprint(
  */
 MatchesResult fingerprintMatches(
     FileSystem &file_system,
-    const std::string &path,
+    nt_string_view path,
     const Fingerprint &fingerprint) throw(IoError);
 
 /**
