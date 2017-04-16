@@ -52,7 +52,7 @@ Hash FileSystem::hashSymlink(const std::string &path) throw(IoError) {
 
 void FileSystem::writeFile(
     const std::string &path,
-    const std::string &contents) throw(IoError) {
+    string_view contents) throw(IoError) {
   const auto stream = open(path, "wb");
   const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
   stream->write(data, 1, contents.size());

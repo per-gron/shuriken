@@ -172,7 +172,7 @@ class FileSystem {
    */
   void writeFile(
       const std::string &path,
-      const std::string &contents) throw(IoError);
+      string_view contents) throw(IoError);
 
   /**
    * Create a temporary file that follows a template. See the man page for

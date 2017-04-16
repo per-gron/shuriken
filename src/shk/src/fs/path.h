@@ -32,9 +32,9 @@ namespace shk {
  *
  * Acts like the dirname and basename functions in the standard library.
  */
-std::pair<string_view, string_view> basenameSplitPiece(const std::string &path);
+std::pair<string_view, string_view> basenameSplitPiece(string_view path);
 
-std::string dirname(const std::string &path);
+std::string dirname(string_view path);
 
 /**
  * Canonicalize a path like "foo/../bar.h" into just "bar.h".

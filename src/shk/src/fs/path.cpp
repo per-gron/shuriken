@@ -19,16 +19,13 @@
 
 namespace shk {
 
-std::pair<string_view, string_view> basenameSplitPiece(
-    const std::string &path) {
+std::pair<string_view, string_view> basenameSplitPiece(string_view path) {
   const auto last_nonslash = path.find_last_not_of('/');
   const auto slash_pos = path.find_last_of('/', last_nonslash);
 
-  if (slash_pos == std::string::npos) {
-    return std::make_pair(
-        string_view(".", 1),
-        string_view(path.c_str(), path.size()));
-  } else if (last_nonslash == std::string::npos) {
+  if (slash_pos == string_view::npos) {
+    return std::make_pair(string_view(".", 1), path);
+  } else if (last_nonslash == string_view::npos) {
     return std::make_pair(string_view("/", 1), string_view("/", 1));
   } else {
     return std::make_pair(
@@ -41,7 +38,7 @@ std::pair<string_view, string_view> basenameSplitPiece(
   }
 }
 
-std::string dirname(const std::string &path) {
+std::string dirname(string_view path) {
   return std::string(basenameSplitPiece(path).first);
 }
 
