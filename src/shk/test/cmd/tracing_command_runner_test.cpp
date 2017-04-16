@@ -82,13 +82,13 @@ class FailingMkstempFileSystem : public FileSystem {
     _fs.unlink(path);
   }
   void symlink(
-      const std::string &target,
-      const std::string &source) throw(IoError) override {
+      nt_string_view target,
+      nt_string_view source) throw(IoError) override {
     _fs.symlink(target, source);
   }
   void rename(
-      const std::string &old_path,
-      const std::string &new_path) throw(IoError) override {
+      nt_string_view old_path,
+      nt_string_view new_path) throw(IoError) override {
     _fs.rename(old_path, new_path);
   }
   void truncate(
@@ -102,7 +102,7 @@ class FailingMkstempFileSystem : public FileSystem {
   std::string readSymlink(const std::string &path) throw(IoError) override {
     return _fs.readSymlink(path);
   }
-  std::string readFile(const std::string &path) throw(IoError) override {
+  std::string readFile(nt_string_view path) throw(IoError) override {
     return _fs.readFile(path);
   }
   Hash hashFile(const std::string &path) throw(IoError) override {
@@ -141,13 +141,13 @@ class FailingUnlinkFileSystem : public FileSystem {
     throw IoError("Test-induced unlink error", 0);
   }
   void symlink(
-      const std::string &target,
-      const std::string &source) throw(IoError) override {
+      nt_string_view target,
+      nt_string_view source) throw(IoError) override {
     _fs.symlink(target, source);
   }
   void rename(
-      const std::string &old_path,
-      const std::string &new_path) throw(IoError) override {
+      nt_string_view old_path,
+      nt_string_view new_path) throw(IoError) override {
     _fs.rename(old_path, new_path);
   }
   void truncate(
@@ -161,7 +161,7 @@ class FailingUnlinkFileSystem : public FileSystem {
   std::string readSymlink(const std::string &path) throw(IoError) override {
     return _fs.readSymlink(path);
   }
-  std::string readFile(const std::string &path) throw(IoError) override {
+  std::string readFile(nt_string_view path) throw(IoError) override {
     return _fs.readFile(path);
   }
   Hash hashFile(const std::string &path) throw(IoError) override {

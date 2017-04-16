@@ -52,13 +52,13 @@ void CleaningFileSystem::unlink(nt_string_view path)
 }
 
 void CleaningFileSystem::symlink(
-    const std::string &target, const std::string &source) throw(IoError) {
+    nt_string_view target, nt_string_view source) throw(IoError) {
   _inner.symlink(target, source);
 }
 
 void CleaningFileSystem::rename(
-    const std::string &old_path,
-    const std::string &new_path) throw(IoError) {
+    nt_string_view old_path,
+    nt_string_view new_path) throw(IoError) {
   _inner.rename(old_path, new_path);
 }
 
@@ -77,7 +77,7 @@ std::string CleaningFileSystem::readSymlink(const std::string &path)
   return _inner.readSymlink(path);
 }
 
-std::string CleaningFileSystem::readFile(const std::string &path)
+std::string CleaningFileSystem::readFile(nt_string_view path)
     throw(IoError) {
   return _inner.readFile(path);
 }

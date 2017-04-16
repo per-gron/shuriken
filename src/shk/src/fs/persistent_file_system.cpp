@@ -161,15 +161,19 @@ class PersistentFileSystem : public FileSystem {
   }
 
   void symlink(
-      const std::string &target,
-      const std::string &source) throw(IoError) override {
-    checkForMinusOne(::symlink(target.c_str(), source.c_str()));
+      nt_string_view target,
+      nt_string_view source) throw(IoError) override {
+    checkForMinusOne(::symlink(
+        NullterminatedString(target).c_str(),
+        NullterminatedString(source).c_str()));
   }
 
   void rename(
-      const std::string &old_path,
-      const std::string &new_path) throw(IoError) override {
-    checkForMinusOne(::rename(old_path.c_str(), new_path.c_str()));
+      nt_string_view old_path,
+      nt_string_view new_path) throw(IoError) override {
+    checkForMinusOne(::rename(
+        NullterminatedString(old_path).c_str(),
+        NullterminatedString(new_path).c_str()));
   }
 
   void truncate(
@@ -217,7 +221,7 @@ class PersistentFileSystem : public FileSystem {
     return buf.data();
   }
 
-  std::string readFile(const std::string &path) throw(IoError) override {
+  std::string readFile(nt_string_view path) throw(IoError) override {
     std::string contents;
     processFile(path, [&contents](const char *buf, size_t len) {
       contents.append(buf, len);
@@ -276,14 +280,14 @@ class PersistentFileSystem : public FileSystem {
 
   template<typename Append>
   void processFile(
-      const std::string &path,
+      nt_string_view path,
       Append &&append) throw(IoError) {
 #ifdef _WIN32
     // This makes a ninja run on a set of 1500 manifest files about 4% faster
     // than using the generic fopen code below.
     err->clear();
     HANDLE f = ::CreateFile(
-        path.c_str(),
+        NullterminatedString(path).c_str(),
         GENERIC_READ,
         FILE_SHARE_READ,
         NULL,
@@ -307,7 +311,7 @@ class PersistentFileSystem : public FileSystem {
     }
     ::CloseHandle(f);
 #else
-    FileHandle f(fopen(path.c_str(), "rb"));
+    FileHandle f(fopen(NullterminatedString(path).c_str(), "rb"));
     if (!f.get()) {
       throw IoError(strerror(errno), errno);
     }

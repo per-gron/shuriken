@@ -117,10 +117,10 @@ class FileSystem {
   virtual void rmdir(nt_string_view path) throw(IoError) = 0;
   virtual void unlink(nt_string_view path) throw(IoError) = 0;
   virtual void symlink(
-      const std::string &target, const std::string &source) throw(IoError) = 0;
+      nt_string_view target, nt_string_view source) throw(IoError) = 0;
   virtual void rename(
-      const std::string &old_path,
-      const std::string &new_path) throw(IoError) = 0;
+      nt_string_view old_path,
+      nt_string_view new_path) throw(IoError) = 0;
   virtual void truncate(
       const std::string &path, size_t size) throw(IoError) = 0;
   /**
@@ -158,7 +158,7 @@ class FileSystem {
    * Utility function for reading files. It is on this interface because on
    * Windows reading the file as a whole is faster than reading it using Stream.
    */
-  virtual std::string readFile(const std::string &path) throw(IoError) = 0;
+  virtual std::string readFile(nt_string_view path) throw(IoError) = 0;
 
   /**
    * Utility function for hashing the contents of a file. This method uses
@@ -171,7 +171,7 @@ class FileSystem {
    * Helper function for writing a string to a file.
    */
   void writeFile(
-      const std::string &path,
+      nt_string_view path,
       string_view contents) throw(IoError);
 
   /**

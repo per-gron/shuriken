@@ -108,8 +108,8 @@ void InMemoryFileSystem::unlink(nt_string_view path) throw(IoError) {
 }
 
 void InMemoryFileSystem::symlink(
-    const std::string &target,
-    const std::string &source) throw(IoError) {
+    nt_string_view target,
+    nt_string_view source) throw(IoError) {
   writeFile(source, target);
   const auto l = lookup(source);
   assert(l.entry_type == EntryType::FILE);
@@ -119,8 +119,8 @@ void InMemoryFileSystem::symlink(
 }
 
 void InMemoryFileSystem::rename(
-    const std::string &old_path,
-    const std::string &new_path) throw(IoError) {
+    nt_string_view old_path,
+    nt_string_view new_path) throw(IoError) {
   const auto old_l = lookup(old_path);
   const auto new_l = lookup(new_path);
 
@@ -256,7 +256,7 @@ std::string InMemoryFileSystem::readSymlink(const std::string &path) throw(IoErr
   return result;
 }
 
-std::string InMemoryFileSystem::readFile(const std::string &path) throw(IoError) {
+std::string InMemoryFileSystem::readFile(nt_string_view path) throw(IoError) {
   std::string result;
 
   const auto stream = open(path, "r");
