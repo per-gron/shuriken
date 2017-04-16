@@ -1,4 +1,4 @@
-#include "manifest/indexed_manifest.h"
+#include "manifest/compiled_manifest.h"
 
 namespace shk {
 namespace detail {
@@ -176,7 +176,7 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
 }
 
 bool hasDependencyCycle(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     const detail::PathToStepMap &output_path_map,
     const std::vector<RawStep> &raw_steps,
     std::vector<bool> &currently_visited,
@@ -237,18 +237,18 @@ bool hasDependencyCycle(
 }
 
 std::string getDependencyCycle(
-    const IndexedManifest &indexed_manifest,
+    const CompiledManifest &compiled_manifest,
     const detail::PathToStepMap &output_path_map,
     const std::vector<RawStep> &raw_steps) {
-  std::vector<bool> currently_visited(indexed_manifest.steps().size());
-  std::vector<bool> already_visited(indexed_manifest.steps().size());
+  std::vector<bool> currently_visited(compiled_manifest.steps().size());
+  std::vector<bool> already_visited(compiled_manifest.steps().size());
   std::vector<Path> cycle_paths;
   cycle_paths.reserve(32);  // Guess at largest typical build dependency depth
 
   std::string cycle;
-  for (StepIndex idx = 0; idx < indexed_manifest.steps().size(); idx++) {
+  for (StepIndex idx = 0; idx < compiled_manifest.steps().size(); idx++) {
     if (hasDependencyCycle(
-            indexed_manifest,
+            compiled_manifest,
             output_path_map,
             raw_steps,
             currently_visited,
@@ -276,15 +276,15 @@ StepIndex getManifestStep(
 
 }  // anonymous namespace
 
-IndexedManifest::IndexedManifest(
+CompiledManifest::CompiledManifest(
     Path manifest_path,
     RawManifest &&manifest)
-    : IndexedManifest(
+    : CompiledManifest(
           detail::computeOutputPathMap(manifest.steps),
           manifest_path,
           std::move(manifest)) {}
 
-IndexedManifest::IndexedManifest(
+CompiledManifest::CompiledManifest(
     const detail::PathToStepMap &output_path_map,
     Path manifest_path,
     RawManifest &&manifest)

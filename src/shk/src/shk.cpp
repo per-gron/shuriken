@@ -47,7 +47,7 @@
 #include "log/dummy_invocation_log.h"
 #include "log/invocations.h"
 #include "log/persistent_invocation_log.h"
-#include "manifest/indexed_manifest.h"
+#include "manifest/compiled_manifest.h"
 #include "status/terminal_build_status.h"
 #include "tools/clean.h"
 #include "tools/compilation_database.h"
@@ -182,8 +182,8 @@ struct ShurikenMain {
     return _invocations;
   }
 
-  const IndexedManifest &indexedManifest() const {
-    return _indexed_manifest;
+  const CompiledManifest &compiledManifest() const {
+    return _compiled_manifest;
   }
 
   /**
@@ -209,7 +209,7 @@ struct ShurikenMain {
   InvocationLogParseResult::ParseData _invocation_parse_data;
   std::unique_ptr<FileLock> _invocation_log_lock;
   std::unique_ptr<InvocationLog> _invocation_log;
-  IndexedManifest _indexed_manifest;
+  CompiledManifest _compiled_manifest;
 };
 
 /**
@@ -243,13 +243,13 @@ void usage(const BuildConfig &config) {
  * Returns true if the manifest was rebuilt.
  */
 bool ShurikenMain::rebuildManifest(std::string *err) {
-  if (_indexed_manifest.manifestStep() == -1) {
+  if (_compiled_manifest.manifestStep() == -1) {
     // No rule generates the manifest file. There is nothing to do.
     return false;
   }
 
   try {
-    const auto result = runBuild({ _indexed_manifest.manifestStep() });
+    const auto result = runBuild({ _compiled_manifest.manifestStep() });
     switch (result) {
     case BuildResult::NO_WORK_TO_DO:
       return false;
@@ -321,22 +321,22 @@ const Tool *chooseTool(const std::string &tool_name) {
 
 void ShurikenMain::parseManifest(
     const std::string &input_file) throw(IoError, ParseError) {
-  _indexed_manifest = IndexedManifest(
+  _compiled_manifest = CompiledManifest(
       _paths.get(input_file),
       ::shk::parseManifest(_paths, _file_system, input_file));
 
   std::string cycle;
-  if (!_indexed_manifest.dependencyCycle().empty()) {
+  if (!_compiled_manifest.dependencyCycle().empty()) {
     throw ParseError(
         "Dependency cycle: " +
-        std::string(_indexed_manifest.dependencyCycle()));
+        std::string(_compiled_manifest.dependencyCycle()));
   }
 }
 
 std::string ShurikenMain::invocationLogPath() const {
   std::string path = ".shk_log";
-  if (!_indexed_manifest.buildDir().empty()) {
-    path = std::string(_indexed_manifest.buildDir()) + "/" + path;
+  if (!_compiled_manifest.buildDir().empty()) {
+    path = std::string(_compiled_manifest.buildDir()) + "/" + path;
   }
   return path;
 }
@@ -427,7 +427,7 @@ BuildResult ShurikenMain::runBuild(
   const auto command_runner = _config.dry_run ?
       makeDryRunCommandRunner() :
       makePooledCommandRunner(
-        _indexed_manifest.pools(),
+        _compiled_manifest.pools(),
         makeLimitedCommandRunner(
           getLoadAverage,
           _config.max_load_average,
@@ -456,14 +456,14 @@ BuildResult ShurikenMain::runBuild(
       *_invocation_log,
       _config.failures_allowed,
       std::move(specified_steps),
-      _indexed_manifest,
+      _compiled_manifest,
       _invocations);
 }
 
 int ShurikenMain::runBuild(int argc, char **argv) {
   std::vector<StepIndex> specified_steps;
   try {
-    specified_steps = interpretPaths(_indexed_manifest, argc, argv);
+    specified_steps = interpretPaths(_compiled_manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;
@@ -473,7 +473,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
     deleteStaleOutputs(
         _file_system,
         *_invocation_log,
-        _indexed_manifest.steps(),
+        _compiled_manifest.steps(),
         _invocations);
   } catch (const IoError &io_error) {
     printf("shk: failed to clean stale outputs: %s\n", io_error.what());
@@ -661,7 +661,7 @@ int real_main(int argc, char **argv) {
         getTime,
         shk.paths(),
         shk.invocations(),
-        shk.indexedManifest(),
+        shk.compiledManifest(),
         shk.fileSystem(),
         shk.invocationLogPath() };
 

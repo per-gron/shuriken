@@ -9,7 +9,7 @@
 #include "fs/file_system.h"
 #include "log/invocation_log.h"
 #include "log/invocations.h"
-#include "manifest/indexed_manifest.h"
+#include "manifest/compiled_manifest.h"
 #include "manifest/step.h"
 #include "optional.h"
 #include "status/build_status.h"
@@ -21,14 +21,14 @@ namespace shk {
  * the ^ command line interface syntax.
  */
 StepIndex interpretPath(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     std::string &&path) throw(BuildError);
 
 /**
  * Takes command line arguments and calls interpretPath on each of them.
  */
 std::vector<StepIndex> interpretPaths(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     int argc,
     char *argv[]) throw(BuildError);
 
@@ -37,7 +37,7 @@ std::vector<StepIndex> interpretPaths(
  * use by tools.
  */
 std::vector<StepIndex> computeStepsToBuild(
-    const IndexedManifest &indexed_manifest,
+    const CompiledManifest &compiled_manifest,
     int argc,
     char *argv[0]) throw(BuildError);
 
@@ -153,7 +153,7 @@ struct BuildCommandParameters {
       InvocationLog &invocation_log,
       const Invocations &invocations,
       const CleanSteps &clean_steps,
-      const IndexedManifest &manifest,
+      const CompiledManifest &manifest,
       Build &build)
       : clock(clock),
         file_system(file_system),
@@ -172,7 +172,7 @@ struct BuildCommandParameters {
   const Invocations &invocations;
   InvocationLog &invocation_log;
   const CleanSteps &clean_steps;
-  const IndexedManifest &manifest;
+  const CompiledManifest &manifest;
   Build &build;
 
   /**
@@ -199,14 +199,14 @@ struct BuildCommandParameters {
  * Uses defaults or the root steps.
  */
 std::vector<StepIndex> computeStepsToBuild(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     std::vector<StepIndex> &&specified_steps) throw(BuildError);
 
 /**
  * Create a Build object suitable for use as a starting point for the build.
  */
 Build computeBuild(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError);
 
@@ -313,7 +313,7 @@ BuildResult build(
     InvocationLog &invocation_log,
     size_t failures_allowed,
     std::vector<StepIndex> &&specified_steps,
-    const IndexedManifest &indexed_manifest,
+    const CompiledManifest &compiled_manifest,
     const Invocations &invocations) throw(IoError, BuildError);
 
 }  // namespace shk

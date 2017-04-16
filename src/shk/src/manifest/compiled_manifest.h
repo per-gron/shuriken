@@ -69,21 +69,21 @@ std::string cycleErrorMessage(const std::vector<Path> &cycle);
  * steps. This is nice because it is close to what the input is like, but it is
  * not necessarily efficient to work with when actually building.
  *
- * IndexedManifest has all the information that the RawManifest has, plus some
+ * CompiledManifest has all the information that the RawManifest has, plus some
  * info that makes is fast to look up things that are often used in a build,
  * including Step hashes and a output file Path => Step map.
  *
- * Computing an IndexedManifest from a RawManifest is a pure function. This
- * means that an IndexedManifest can be reused between different builds.
+ * Computing an CompiledManifest from a RawManifest is a pure function. This
+ * means that an CompiledManifest can be reused between different builds.
  */
-struct IndexedManifest {
-  IndexedManifest() = default;
-  IndexedManifest(
+struct CompiledManifest {
+  CompiledManifest() = default;
+  CompiledManifest(
       Path manifest_path,
       RawManifest &&manifest);
 
  private:
-  IndexedManifest(
+  CompiledManifest(
       const detail::PathToStepMap &output_path_map,
       Path manifest_path,
       RawManifest &&manifest);

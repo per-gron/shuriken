@@ -46,8 +46,8 @@ add_library(shklib
   src/manifest/eval_env.h
   src/manifest/eval_string.cpp
   src/manifest/eval_string.h
-  src/manifest/indexed_manifest.cpp
-  src/manifest/indexed_manifest.h
+  src/manifest/compiled_manifest.cpp
+  src/manifest/compiled_manifest.h
   src/manifest/lexer.h
   src/manifest/raw_manifest.cpp
   src/manifest/raw_manifest.h
@@ -90,6 +90,7 @@ add_library(shklib
   src/tools/recompact.h
   src/tools/targets.cpp
   src/tools/targets.h
+  src/tools/tool_params.h
   src/util.cpp
   src/util.h
   src/version.cpp
@@ -144,7 +145,7 @@ add_executable(shk_test
   test/log/invocations_test.cpp
   test/log/persistent_invocation_log_test.cpp
   test/main.cpp
-  test/manifest/indexed_manifest_test.cpp
+  test/manifest/compiled_manifest_test.cpp
   test/manifest/lexer_test.cpp
   test/manifest/raw_manifest_test.cpp
   test/manifest/raw_step_test.cpp

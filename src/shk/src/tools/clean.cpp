@@ -36,7 +36,7 @@ namespace shk {
 int toolClean(int argc, char *argv[], const ToolParams &params) {
   std::vector<StepIndex> specified_steps;
   try {
-    specified_steps = interpretPaths(params.indexed_manifest, argc, argv);
+    specified_steps = interpretPaths(params.compiled_manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;
@@ -49,7 +49,7 @@ int toolClean(int argc, char *argv[], const ToolParams &params) {
     deleteStaleOutputs(
         params.file_system,
         invocation_log,
-        params.indexed_manifest.steps(),
+        params.compiled_manifest.steps(),
         params.invocations);
   } catch (const IoError &io_error) {
     printf("shk: failed to clean stale outputs: %s\n", io_error.what());
@@ -67,7 +67,7 @@ int toolClean(int argc, char *argv[], const ToolParams &params) {
         invocation_log,
         1,
         std::move(specified_steps),
-        params.indexed_manifest,
+        params.compiled_manifest,
         params.invocations);
 
     switch (result) {

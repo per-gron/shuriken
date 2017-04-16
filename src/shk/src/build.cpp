@@ -8,7 +8,7 @@
 namespace shk {
 
 StepIndex interpretPath(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     std::string &&path) throw(BuildError) {
   const bool input = !path.empty() && path[path.size() - 1] == '^';
   if (input) {
@@ -49,7 +49,7 @@ StepIndex interpretPath(
 }
 
 std::vector<StepIndex> interpretPaths(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     int argc,
     char *argv[]) throw(BuildError) {
   std::vector<StepIndex> targets;
@@ -60,7 +60,7 @@ std::vector<StepIndex> interpretPaths(
 }
 
 std::vector<StepIndex> computeStepsToBuild(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     int argc,
     char *argv[0]) throw(BuildError) {
   auto specified_outputs = interpretPaths(manifest, argc, argv);
@@ -83,7 +83,7 @@ void markStepNodeAsDone(Build &build, StepIndex step_idx) {
 }
 
 std::vector<StepIndex> computeStepsToBuild(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     std::vector<StepIndex> &&specified_steps) throw(BuildError) {
   if (!specified_steps.empty()) {
     return specified_steps;
@@ -120,7 +120,7 @@ std::vector<StepIndex> computeReadySteps(
  * Recursive helper for computeBuild. Implements the DFS traversal.
  */
 void visitStep(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     Build &build,
     StepIndex idx) throw(BuildError) {
   auto &step_node = build.step_nodes[idx];
@@ -149,7 +149,7 @@ void visitStep(
 }
 
 Build computeBuild(
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError) {
   Build build;
@@ -679,7 +679,7 @@ BuildResult build(
     InvocationLog &invocation_log,
     size_t failures_allowed,
     std::vector<StepIndex> &&specified_steps,
-    const IndexedManifest &manifest,
+    const CompiledManifest &manifest,
     const Invocations &invocations) throw(IoError, BuildError) {
 
   auto steps_to_build = detail::computeStepsToBuild(
