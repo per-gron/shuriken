@@ -129,7 +129,7 @@ class FileSystem {
    * necessarily sorted in any particular order.
    */
   virtual std::vector<DirEntry> readDir(
-      const std::string &path) throw(IoError) = 0;
+      nt_string_view path) throw(IoError) = 0;
 
   /**
    * Utility function for hashing a directory. It is rather important that this
@@ -140,19 +140,19 @@ class FileSystem {
    * files that it contains. It does not hash the contents of those files or go
    * through subdirectories recursively.
    */
-  Hash hashDir(const std::string &path) throw(IoError);
+  Hash hashDir(nt_string_view path) throw(IoError);
 
   /**
    * Read the contents of a symlink.
    */
-  virtual std::string readSymlink(const std::string &path) throw(IoError) = 0;
+  virtual std::string readSymlink(nt_string_view path) throw(IoError) = 0;
 
   /**
    * Utility function for hashing a symlink. It is rather important that this
    * hash function works the same for all FileSystem implementations, so it is
    * defined directly here. It is implemented in terms of readlink.
    */
-  Hash hashSymlink(const std::string &path) throw(IoError);
+  Hash hashSymlink(nt_string_view path) throw(IoError);
 
   /**
    * Utility function for reading files. It is on this interface because on
@@ -165,7 +165,7 @@ class FileSystem {
    * the blake2b hash function. Like readFile, it is directly on the FileSystem
    * interface because this is a highly performance sensitive operation.
    */
-  virtual Hash hashFile(const std::string &path) throw(IoError) = 0;
+  virtual Hash hashFile(nt_string_view path) throw(IoError) = 0;
 
   /**
    * Helper function for writing a string to a file.

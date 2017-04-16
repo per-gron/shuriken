@@ -11,7 +11,7 @@
 
 namespace shk {
 
-Hash FileSystem::hashDir(const std::string &path) throw(IoError) {
+Hash FileSystem::hashDir(nt_string_view path) throw(IoError) {
   Hash hash;
 
   blake2b_state state;
@@ -34,7 +34,7 @@ Hash FileSystem::hashDir(const std::string &path) throw(IoError) {
   return hash;
 }
 
-Hash FileSystem::hashSymlink(const std::string &path) throw(IoError) {
+Hash FileSystem::hashSymlink(nt_string_view path) throw(IoError) {
   Hash hash;
 
   blake2b_state state;

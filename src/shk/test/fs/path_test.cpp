@@ -75,16 +75,16 @@ class FailingStatFileSystem : public FileSystem {
     _fs.truncate(path, size);
   }
   std::vector<DirEntry> readDir(
-      const std::string &path) throw(IoError) override {
+      nt_string_view path) throw(IoError) override {
     return _fs.readDir(path);
   }
-  std::string readSymlink(const std::string &path) throw(IoError) override {
+  std::string readSymlink(nt_string_view path) throw(IoError) override {
     return _fs.readSymlink(path);
   }
   std::string readFile(nt_string_view path) throw(IoError) override {
     return _fs.readFile(path);
   }
-  Hash hashFile(const std::string &path) throw(IoError) override {
+  Hash hashFile(nt_string_view path) throw(IoError) override {
     return _fs.hashFile(path);
   }
   std::string mkstemp(std::string &&filename_template) throw(IoError) override {

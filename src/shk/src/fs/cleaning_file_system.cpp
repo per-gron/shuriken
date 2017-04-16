@@ -68,11 +68,11 @@ void CleaningFileSystem::truncate(
 }
 
 std::vector<DirEntry> CleaningFileSystem::readDir(
-    const std::string &path) throw(IoError) {
+    nt_string_view path) throw(IoError) {
   return _inner.readDir(path);
 }
 
-std::string CleaningFileSystem::readSymlink(const std::string &path)
+std::string CleaningFileSystem::readSymlink(nt_string_view path)
     throw(IoError) {
   return _inner.readSymlink(path);
 }
@@ -82,7 +82,7 @@ std::string CleaningFileSystem::readFile(nt_string_view path)
   return _inner.readFile(path);
 }
 
-Hash CleaningFileSystem::hashFile(const std::string &path)
+Hash CleaningFileSystem::hashFile(nt_string_view path)
     throw(IoError) {
   return _inner.hashFile(path);
 }

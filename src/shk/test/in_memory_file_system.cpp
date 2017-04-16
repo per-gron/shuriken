@@ -219,7 +219,7 @@ void InMemoryFileSystem::truncate(
 }
 
 std::vector<DirEntry> InMemoryFileSystem::readDir(
-    const std::string &path) throw(IoError) {
+    nt_string_view path) throw(IoError) {
   std::vector<DirEntry> result;
   const auto l = lookup(path);
   switch (l.entry_type) {
@@ -243,7 +243,7 @@ std::vector<DirEntry> InMemoryFileSystem::readDir(
   return result;
 }
 
-std::string InMemoryFileSystem::readSymlink(const std::string &path) throw(IoError) {
+std::string InMemoryFileSystem::readSymlink(nt_string_view path) throw(IoError) {
   std::string result;
 
   const auto stream = open(/*expect_symlink:*/true, path, "r");
@@ -269,7 +269,7 @@ std::string InMemoryFileSystem::readFile(nt_string_view path) throw(IoError) {
   return result;
 }
 
-Hash InMemoryFileSystem::hashFile(const std::string &path) throw(IoError) {
+Hash InMemoryFileSystem::hashFile(nt_string_view path) throw(IoError) {
   // This is optimized for readability rather than speed
   Hash hash;
   blake2b_state state;

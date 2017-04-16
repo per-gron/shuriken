@@ -182,10 +182,10 @@ class PersistentFileSystem : public FileSystem {
   }
 
   std::vector<DirEntry> readDir(
-      const std::string &path) throw(IoError) override {
+      nt_string_view path) throw(IoError) override {
     std::vector<DirEntry> result;
 
-    DIR *dp = opendir(path.c_str());
+    DIR *dp = opendir(NullterminatedString(path).c_str());
     if (!dp) {
       throw IoError(strerror(errno), errno);
     }
@@ -199,14 +199,17 @@ class PersistentFileSystem : public FileSystem {
     return result;
   }
 
-  std::string readSymlink(const std::string &path) throw(IoError) override {
+  std::string readSymlink(nt_string_view path) throw(IoError) override {
     std::vector<char> buf;
     int to_reserve = 128;
 
     int res = 0;
     for (;;) {
       buf.resize(to_reserve);
-      res = readlink(path.c_str(), buf.data(), buf.capacity());
+      res = readlink(
+          NullterminatedString(path).c_str(),
+          buf.data(),
+          buf.capacity());
       if (res == to_reserve) {
         to_reserve *= 2;
       } else {
@@ -229,7 +232,7 @@ class PersistentFileSystem : public FileSystem {
     return contents;
   }
 
-  Hash hashFile(const std::string &path) throw(IoError) override {
+  Hash hashFile(nt_string_view path) throw(IoError) override {
     Hash hash;
     blake2b_state state;
     blake2b_init(&state, hash.data.size());

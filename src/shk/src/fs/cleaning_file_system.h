@@ -47,13 +47,13 @@ class CleaningFileSystem : public FileSystem {
       const std::string &path, size_t size) throw(IoError) override;
 
   std::vector<DirEntry> readDir(
-      const std::string &path) throw(IoError) override;
+      nt_string_view path) throw(IoError) override;
 
-  std::string readSymlink(const std::string &path) throw(IoError) override;
+  std::string readSymlink(nt_string_view path) throw(IoError) override;
 
   std::string readFile(nt_string_view path) throw(IoError) override;
 
-  Hash hashFile(const std::string &path) throw(IoError) override;
+  Hash hashFile(nt_string_view path) throw(IoError) override;
 
   std::string mkstemp(
       std::string &&filename_template) throw(IoError) override;
