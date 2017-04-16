@@ -24,8 +24,7 @@ class InMemoryFileSystem : public FileSystem {
 
   std::unique_ptr<Stream> open(
       nt_string_view path, const char *mode) throw(IoError) override;
-  std::unique_ptr<Mmap> mmap(
-      const std::string &path) throw(IoError) override;
+  std::unique_ptr<Mmap> mmap(nt_string_view path) throw(IoError) override;
   Stat stat(const std::string &path) override;
   Stat lstat(const std::string &path) override;
   void mkdir(const std::string &path) throw(IoError) override;
@@ -52,7 +51,7 @@ class InMemoryFileSystem : public FileSystem {
  private:
   std::unique_ptr<Stream> open(
       bool expect_symlink,
-      string_view path,
+      nt_string_view path,
       const char *mode) throw(IoError);
 
   Stat stat(bool follow_symlink, const std::string &path);
@@ -142,7 +141,7 @@ class InMemoryFileSystem : public FileSystem {
     const std::shared_ptr<File> _file;
   };
 
-  LookupResult lookup(string_view path);
+  LookupResult lookup(nt_string_view path);
 
   std::deque<std::string> _mkstemp_paths;
   const std::function<time_t ()> _clock;

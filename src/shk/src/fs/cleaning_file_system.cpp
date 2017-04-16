@@ -17,7 +17,7 @@ std::unique_ptr<FileSystem::Stream> CleaningFileSystem::open(
 }
 
 std::unique_ptr<FileSystem::Mmap> CleaningFileSystem::mmap(
-    const std::string &path) throw(IoError) {
+    nt_string_view path) throw(IoError) {
   return _inner.mmap(path);
 }
 

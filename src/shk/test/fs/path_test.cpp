@@ -40,7 +40,7 @@ class FailingStatFileSystem : public FileSystem {
       nt_string_view path, const char *mode) throw(IoError) override {
     return _fs.open(path, mode);
   }
-  std::unique_ptr<Mmap> mmap(const std::string &path) throw(IoError) override {
+  std::unique_ptr<Mmap> mmap(nt_string_view path) throw(IoError) override {
     return _fs.mmap(path);
   }
   Stat stat(const std::string &path) override {

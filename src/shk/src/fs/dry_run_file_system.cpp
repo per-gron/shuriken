@@ -29,7 +29,7 @@ class DryRunFileSystem : public FileSystem {
   }
 
   std::unique_ptr<Mmap> mmap(
-      const std::string &path) throw(IoError) override {
+      nt_string_view path) throw(IoError) override {
     return _inner.mmap(path);
   }
 

@@ -23,7 +23,7 @@ class CleaningFileSystem : public FileSystem {
       nt_string_view path, const char *mode) throw(IoError) override;
 
   std::unique_ptr<Mmap> mmap(
-      const std::string &path) throw(IoError) override;
+      nt_string_view path) throw(IoError) override;
 
   Stat stat(const std::string &path) override;
 

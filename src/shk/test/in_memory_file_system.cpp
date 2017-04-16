@@ -26,7 +26,7 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
 }
 
 std::unique_ptr<FileSystem::Mmap> InMemoryFileSystem::mmap(
-    const std::string &path) throw(IoError) {
+    nt_string_view path) throw(IoError) {
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
@@ -406,7 +406,7 @@ string_view InMemoryFileSystem::InMemoryMmap::memory() {
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
     bool expect_symlink,
-    string_view path,
+    nt_string_view path,
     const char *mode) throw(IoError) {
   const auto mode_string = std::string(mode);
   bool read = false;
@@ -512,7 +512,7 @@ Stat InMemoryFileSystem::stat(
 }
 
 InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
-    string_view path) {
+    nt_string_view path) {
   LookupResult result;
   result.canonicalized = "/" + std::string(path);
   try {

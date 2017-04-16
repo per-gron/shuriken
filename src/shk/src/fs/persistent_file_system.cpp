@@ -87,16 +87,17 @@ class PersistentFileSystem : public FileSystem {
 
   class FileMmap : public Mmap {
    public:
-    FileMmap(const std::string &path) {
+    FileMmap(nt_string_view path) {
       struct stat input;
-      auto ret = ::stat(path.c_str(), &input);
+      NullterminatedString nt_path(path);
+      auto ret = ::stat(nt_path.c_str(), &input);
       if (ret == -1) {
         throw IoError(strerror(errno), errno);
       }
       _size = input.st_size;
 
       if (_size) {
-        _f = ::open(path.c_str(), O_RDONLY);
+        _f = ::open(nt_path.c_str(), O_RDONLY);
         if (_f == -1) {
           throw IoError(strerror(errno), errno);
         }
@@ -135,7 +136,7 @@ class PersistentFileSystem : public FileSystem {
   }
 
   std::unique_ptr<Mmap> mmap(
-      const std::string &path) throw(IoError) override {
+      nt_string_view path) throw(IoError) override {
     return std::unique_ptr<Mmap>(new FileMmap(path));
   }
 
