@@ -52,7 +52,7 @@ Stat InMemoryFileSystem::lstat(const std::string &path) {
   return stat(/*follow_symlink:*/false, path);
 }
 
-void InMemoryFileSystem::mkdir(const std::string &path) throw(IoError) {
+void InMemoryFileSystem::mkdir(nt_string_view path) throw(IoError) {
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:

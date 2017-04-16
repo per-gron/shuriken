@@ -41,7 +41,7 @@ class DryRunFileSystem : public FileSystem {
     return _inner.lstat(path);
   }
 
-  void mkdir(const std::string &path) throw(IoError) override {}
+  void mkdir(nt_string_view path) throw(IoError) override {}
 
   void rmdir(const std::string &path) throw(IoError) override {}
 

@@ -29,7 +29,7 @@ class CleaningFileSystem : public FileSystem {
 
   Stat lstat(const std::string &path) override;
 
-  void mkdir(const std::string &path) throw(IoError) override;
+  void mkdir(nt_string_view path) throw(IoError) override;
 
   void rmdir(const std::string &path) throw(IoError) override;
 

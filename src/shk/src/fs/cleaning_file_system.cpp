@@ -33,7 +33,7 @@ Stat CleaningFileSystem::lstat(const std::string &path) {
   return stat;
 }
 
-void CleaningFileSystem::mkdir(const std::string &path)
+void CleaningFileSystem::mkdir(nt_string_view path)
     throw(IoError) {
   // Don't make directories; the build process creates directories
   // for things that are about to be built.

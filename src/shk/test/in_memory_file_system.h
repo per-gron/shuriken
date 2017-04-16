@@ -27,7 +27,7 @@ class InMemoryFileSystem : public FileSystem {
   std::unique_ptr<Mmap> mmap(nt_string_view path) throw(IoError) override;
   Stat stat(const std::string &path) override;
   Stat lstat(const std::string &path) override;
-  void mkdir(const std::string &path) throw(IoError) override;
+  void mkdir(nt_string_view path) throw(IoError) override;
   void rmdir(const std::string &path) throw(IoError) override;
   void unlink(const std::string &path) throw(IoError) override;
   void symlink(
