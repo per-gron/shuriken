@@ -1,4 +1,4 @@
-namespace Shk;
+namespace ShkManifest;
 
 /// Hash is a 20 byte struct containing a hash.
 struct Hash {
@@ -30,6 +30,7 @@ table Step {
   dependencies:[int];
   output_dirs:[string];
   pool_name:string;
+  command:string;
   description:string;
   generator:bool = false;
   depfile:string;

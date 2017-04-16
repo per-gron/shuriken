@@ -141,7 +141,7 @@ TEST_CASE("Build") {
   Invocations invocations;
   RawManifest manifest;
 
-  const Step empty{};
+  auto empty = Step::Builder().build();
 
   RawStep single_output;
   single_output.command = "cmd";
@@ -1064,7 +1064,7 @@ TEST_CASE("Build") {
           CleanSteps{ false },
           {},
           Invocations(),
-          Step(),
+          Step::Builder().build(),
           0));
     }
 
@@ -1074,12 +1074,12 @@ TEST_CASE("Build") {
           CleanSteps{ true },
           {},
           Invocations(),
-          Step(),
+          Step::Builder().build(),
           0));
     }
 
     SECTION("no input files") {
-      const Step step{};
+      const auto step = Step::Builder().build();
       Invocations invocations;
       invocations.entries[step.hash()] = Invocations::Entry();
 
@@ -1093,7 +1093,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("input file that has not been written") {
-      const Step step{};
+      const auto step = Step::Builder().build();
 
       Invocations::Entry entry;
       entry.input_files = { 0 };
@@ -1113,7 +1113,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("input file that has been written but is clean") {
-      const Step step{};
+      const auto step = Step::Builder().build();
 
       Invocations::Entry entry;
       entry.input_files = { 0 };
@@ -1133,7 +1133,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("input file that has been overwritten") {
-      const Step step{};
+      const auto step = Step::Builder().build();
 
       Invocations::Entry entry;
       entry.input_files = { 0 };
@@ -1156,7 +1156,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("output file that has been overwritten") {
-      const Step step{};
+      const auto step = Step::Builder().build();
 
       Invocations::Entry entry;
       entry.output_files = { 0 };

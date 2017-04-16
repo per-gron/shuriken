@@ -5,6 +5,7 @@
 
 #include "hash.h"
 #include "optional.h"
+#include "manifest/manifest_generated.h"
 #include "manifest/raw_step.h"
 
 namespace shk {
@@ -55,21 +56,7 @@ struct Step {
     std::string _rspfile_content;
   };
 
-  /**
-   * Builder is recommended to use over this constructor.
-   */
-  Step(
-      Hash &&hash,
-      std::vector<StepIndex> &&dependencies,
-      std::vector<std::string> &&output_dirs,
-      std::string &&pool_name,
-      std::string &&command,
-      std::string &&description,
-      bool &&generator,
-      std::string &&depfile,
-      std::string &&rspfile,
-      std::string &&rspfile_content);
-  Step();
+  Step(std::shared_ptr<flatbuffers::FlatBufferBuilder> &&data);
 
   Builder toBuilder() const;
 
@@ -78,7 +65,7 @@ struct Step {
    * build steps that have been run to see if the build step is clean.
    */
   const Hash &hash() const {
-    return _hash;
+    return *reinterpret_cast<const Hash *>(_step->hash());
   }
 
   /**
@@ -87,19 +74,32 @@ struct Step {
    * "inputs" in a build.ninja manifest.
    */
   const std::vector<StepIndex> dependencies() const {
-    return _dependencies;
+    const auto *deps = _step->dependencies();
+    if (!deps) {
+      return {};
+    } else {
+      return std::vector<StepIndex>(deps->data(), deps->data() + deps->size());
+    }
   }
 
   /**
    * A list of directories that Shuriken should ensure are there prior to
    * invoking the command.
    */
-  const std::vector<std::string> &outputDirs() const {
-    return _output_dirs;
+  std::vector<std::string> outputDirs() const {
+    std::vector<std::string> ans;
+
+    const auto *dirs = _step->output_dirs();
+    if (dirs) {
+      for (int i = 0; i < dirs->size(); i++) {
+        ans.push_back(dirs->Get(i)->c_str());
+      }
+    }
+    return ans;
   }
 
   nt_string_view poolName() const {
-    return _pool_name;
+    return toStringView(_step->pool_name());
   }
 
   /**
@@ -108,7 +108,7 @@ struct Step {
    * The command string is empty for phony rules.
    */
   nt_string_view command() const {
-    return _command;
+    return toStringView(_step->command());
   }
 
   /**
@@ -116,11 +116,11 @@ struct Step {
    * running builds.
    */
   nt_string_view description() const {
-    return _description;
+    return toStringView(_step->description());
   }
 
   bool phony() const {
-    return _command.empty();
+    return command().empty();
   }
 
   /**
@@ -132,7 +132,7 @@ struct Step {
    * * They are not cleaned
    */
   bool generator() const {
-    return _generator;
+    return _step->generator();
   }
 
   /**
@@ -142,7 +142,7 @@ struct Step {
    * completed.
    */
   nt_string_view depfile() const {
-    return _depfile;
+    return toStringView(_step->depfile());
   }
 
   /**
@@ -152,24 +152,22 @@ struct Step {
    * commands have a rather short maximum length.
    */
   nt_string_view rspfile() const {
-    return _rspfile;
+    return toStringView(_step->rspfile());
   }
 
   nt_string_view rspfileContent() const {
-    return _rspfile_content;
+    return toStringView(_step->rspfile_content());
   }
 
  private:
-  const Hash _hash{};
-  const std::vector<StepIndex> _dependencies;
-  const std::vector<std::string> _output_dirs;
-  const std::string _pool_name;
-  const std::string _command;
-  const std::string _description;
-  const bool _generator = false;
-  const std::string _depfile;
-  const std::string _rspfile;
-  const std::string _rspfile_content;
+  static nt_string_view toStringView(const flatbuffers::String *str) {
+    return str ?
+        nt_string_view(str->data(), str->size()) :
+        nt_string_view();
+  }
+
+  std::shared_ptr<flatbuffers::FlatBufferBuilder> _data;
+  const ShkManifest::Step *_step;
 };
 
 inline bool isConsolePool(nt_string_view pool_name) {

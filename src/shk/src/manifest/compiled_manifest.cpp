@@ -143,6 +143,7 @@ Step convertRawStep(
   builder.setDepfile(std::move(raw.depfile));
   builder.setRspfile(std::move(raw.rspfile));
   builder.setRspfileContent(std::move(raw.rspfile_content));
+
   return builder.build();
 }
 

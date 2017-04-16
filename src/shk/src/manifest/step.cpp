@@ -58,55 +58,60 @@ Step::Builder &Step::Builder::setRspfileContent(std::string &&rspfile_content) {
 
 
 Step Step::Builder::build() {
-  return Step(
-      std::move(_hash),
-      std::move(_dependencies),
-      std::move(_output_dirs),
-      std::move(_pool_name),
-      std::move(_command),
-      std::move(_description),
-      std::move(_generator),
-      std::move(_depfile),
-      std::move(_rspfile),
-      std::move(_rspfile_content));
+  auto builder = std::make_shared<flatbuffers::FlatBufferBuilder>(1024);
+
+  auto deps_vector = builder->CreateVector(
+      _dependencies.data(), _dependencies.size());
+
+  std::vector<flatbuffers::Offset<flatbuffers::String>> output_dirs;
+  output_dirs.reserve(_output_dirs.size());
+  for (const auto &output_dir : _output_dirs) {
+    output_dirs.push_back(builder->CreateString(output_dir));
+  }
+  auto output_dirs_vector = builder->CreateVector(
+      output_dirs.data(), output_dirs.size());
+
+  auto pool_name_string = builder->CreateString(_pool_name);
+  auto command_string = builder->CreateString(_command);
+  auto description_string = builder->CreateString(_description);
+  auto depfile_string = builder->CreateString(_depfile);
+  auto rspfile_string = builder->CreateString(_rspfile);
+  auto rspfile_content_string = builder->CreateString(_rspfile_content);
+
+  ShkManifest::StepBuilder step_builder(*builder);
+  step_builder.add_hash(
+      reinterpret_cast<const ShkManifest::Hash *>(_hash.data.data()));
+  step_builder.add_dependencies(deps_vector);
+  step_builder.add_output_dirs(output_dirs_vector);
+  step_builder.add_pool_name(pool_name_string);
+  step_builder.add_command(command_string);
+  step_builder.add_description(description_string);
+  step_builder.add_generator(_generator);
+  step_builder.add_depfile(depfile_string);
+  step_builder.add_rspfile(rspfile_string);
+  step_builder.add_rspfile_content(rspfile_content_string);
+  builder->Finish(step_builder.Finish());
+
+  return Step(std::move(builder));
 }
 
-Step::Step(
-    Hash &&hash,
-    std::vector<StepIndex> &&dependencies,
-    std::vector<std::string> &&output_dirs,
-    std::string &&pool_name,
-    std::string &&command,
-    std::string &&description,
-    bool &&generator,
-    std::string &&depfile,
-    std::string &&rspfile,
-    std::string &&rspfile_content)
-    : _hash(std::move(hash)),
-      _dependencies(std::move(dependencies)),
-      _output_dirs(std::move(output_dirs)),
-      _pool_name(std::move(pool_name)),
-      _command(std::move(command)),
-      _description(std::move(description)),
-      _generator(std::move(generator)),
-      _depfile(std::move(depfile)),
-      _rspfile(std::move(rspfile)),
-      _rspfile_content(std::move(rspfile_content)) {}
-
-Step::Step() {}
+Step::Step(std::shared_ptr<flatbuffers::FlatBufferBuilder> &&data)
+    : _data(std::move(data)),
+      _step(flatbuffers::GetRoot<ShkManifest::Step>(
+          _data->GetBufferPointer())) {}
 
 Step::Builder Step::toBuilder() const {
   Builder builder;
-  builder.setHash(Hash(_hash));
-  builder.setDependencies(std::vector<StepIndex>(_dependencies));
-  builder.setOutputDirs(std::vector<std::string>(_output_dirs));
-  builder.setPoolName(std::string(_pool_name));
-  builder.setCommand(std::string(_command));
-  builder.setDescription(std::string(_description));
-  builder.setGenerator(bool(_generator));
-  builder.setDepfile(std::string(_depfile));
-  builder.setRspfile(std::string(_rspfile));
-  builder.setRspfileContent(std::string(_rspfile_content));
+  builder.setHash(Hash(hash()));
+  builder.setDependencies(std::vector<StepIndex>(dependencies()));
+  builder.setOutputDirs(std::vector<std::string>(outputDirs()));
+  builder.setPoolName(std::string(poolName()));
+  builder.setCommand(std::string(command()));
+  builder.setDescription(std::string(description()));
+  builder.setGenerator(bool(generator()));
+  builder.setDepfile(std::string(depfile()));
+  builder.setRspfile(std::string(rspfile()));
+  builder.setRspfileContent(std::string(rspfileContent()));
   return builder;
 }
 
