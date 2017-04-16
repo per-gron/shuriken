@@ -12,7 +12,7 @@ int CleaningFileSystem::getRemovedCount() const {
 }
 
 std::unique_ptr<FileSystem::Stream> CleaningFileSystem::open(
-    string_view path, const char *mode) throw(IoError) {
+    nt_string_view path, const char *mode) throw(IoError) {
   return _inner.open(path, mode);
 }
 

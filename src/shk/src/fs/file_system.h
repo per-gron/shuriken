@@ -105,7 +105,7 @@ class FileSystem {
   };
 
   virtual std::unique_ptr<Stream> open(
-      string_view path, const char *mode) throw(IoError) = 0;
+      nt_string_view path, const char *mode) throw(IoError) = 0;
   /**
    * Memory map a file in read only mode.
    */

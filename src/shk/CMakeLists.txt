@@ -153,6 +153,7 @@ add_executable(shk_test
   test/optional_test.cpp
   test/status/line_printer_test.cpp
   test/status/stopwatch_test.cpp
+  test/string_view_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_link_libraries(shk_test shklib catch)

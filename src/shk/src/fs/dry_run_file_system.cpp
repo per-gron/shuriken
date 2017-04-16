@@ -24,7 +24,7 @@ class DryRunFileSystem : public FileSystem {
       : _inner(inner_file_system) {}
 
   std::unique_ptr<Stream> open(
-      string_view path, const char *mode) throw(IoError) override {
+      nt_string_view path, const char *mode) throw(IoError) override {
     throw IoError("open not implemented for DryRunFileSystem", 0);
   }
 

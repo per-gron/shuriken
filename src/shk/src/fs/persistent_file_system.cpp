@@ -46,7 +46,7 @@ class PersistentFileSystem : public FileSystem {
 
   class FileStream : public FileSystem::Stream {
    public:
-    FileStream(string_view path, const char *mode) throw(IoError)
+    FileStream(nt_string_view path, const char *mode) throw(IoError)
         : _f(fopen(NullterminatedString(path).c_str(), mode)) {
       if (!_f.get()) {
         throw IoError(strerror(errno), errno);
@@ -130,7 +130,7 @@ class PersistentFileSystem : public FileSystem {
 
  public:
   std::unique_ptr<Stream> open(
-      string_view path, const char *mode) throw(IoError) override {
+      nt_string_view path, const char *mode) throw(IoError) override {
     return std::unique_ptr<Stream>(new FileStream(path, mode));
   }
 

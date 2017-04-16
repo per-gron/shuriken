@@ -20,7 +20,7 @@ void InMemoryFileSystem::enqueueMkstempResult(std::string &&path) {
 }
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
-    string_view path,
+    nt_string_view path,
     const char *mode) throw(IoError) {
   return open(/*expect_symlink:*/false, path, mode);
 }
