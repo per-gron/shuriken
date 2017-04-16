@@ -60,7 +60,7 @@ CommandRunner::Result runCommand(
 class FailingMkstempFileSystem : public FileSystem {
  public:
   std::unique_ptr<Stream> open(
-      const std::string &path, const char *mode) throw(IoError) override {
+      string_view path, const char *mode) throw(IoError) override {
     return _fs.open(path, mode);
   }
   std::unique_ptr<Mmap> mmap(
@@ -120,7 +120,7 @@ class FailingMkstempFileSystem : public FileSystem {
 class FailingUnlinkFileSystem : public FileSystem {
  public:
   std::unique_ptr<Stream> open(
-      const std::string &path, const char *mode) throw(IoError) override {
+      string_view path, const char *mode) throw(IoError) override {
     return _fs.open(path, mode);
   }
   std::unique_ptr<Mmap> mmap(

@@ -20,7 +20,7 @@ class CleaningFileSystem : public FileSystem {
   int getRemovedCount() const;
 
   std::unique_ptr<Stream> open(
-      const std::string &path, const char *mode) throw(IoError) override;
+      string_view path, const char *mode) throw(IoError) override;
 
   std::unique_ptr<Mmap> mmap(
       const std::string &path) throw(IoError) override;

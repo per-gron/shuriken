@@ -20,7 +20,7 @@ void InMemoryFileSystem::enqueueMkstempResult(std::string &&path) {
 }
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
-    const std::string &path,
+    string_view path,
     const char *mode) throw(IoError) {
   return open(/*expect_symlink:*/false, path, mode);
 }
@@ -406,7 +406,7 @@ string_view InMemoryFileSystem::InMemoryMmap::memory() {
 
 std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
     bool expect_symlink,
-    const std::string &path,
+    string_view path,
     const char *mode) throw(IoError) {
   const auto mode_string = std::string(mode);
   bool read = false;
@@ -512,9 +512,9 @@ Stat InMemoryFileSystem::stat(
 }
 
 InMemoryFileSystem::LookupResult InMemoryFileSystem::lookup(
-    const std::string &path) {
+    string_view path) {
   LookupResult result;
-  result.canonicalized = "/" + path;
+  result.canonicalized = "/" + std::string(path);
   try {
     canonicalizePath(&result.canonicalized);
   } catch (const PathError &path_error) {

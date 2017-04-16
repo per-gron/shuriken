@@ -27,6 +27,8 @@
 
 #include <util/raii_helper.h>
 
+#include "nullterminated_string.h"
+
 namespace shk {
 namespace {
 
@@ -44,8 +46,8 @@ class PersistentFileSystem : public FileSystem {
 
   class FileStream : public FileSystem::Stream {
    public:
-    FileStream(const std::string &path, const char *mode) throw(IoError)
-        : _f(fopen(path.c_str(), mode)) {
+    FileStream(string_view path, const char *mode) throw(IoError)
+        : _f(fopen(NullterminatedString(path).c_str(), mode)) {
       if (!_f.get()) {
         throw IoError(strerror(errno), errno);
       }
@@ -128,7 +130,7 @@ class PersistentFileSystem : public FileSystem {
 
  public:
   std::unique_ptr<Stream> open(
-      const std::string &path, const char *mode) throw(IoError) override {
+      string_view path, const char *mode) throw(IoError) override {
     return std::unique_ptr<Stream>(new FileStream(path, mode));
   }
 
