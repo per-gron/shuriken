@@ -9,10 +9,15 @@ namespace detail {
 
 namespace {
 
-template<typename Container, typename Value>
+template <typename Container, typename Value>
 bool contains(const Container &container, const Value &value) {
   return std::find(
       container.begin(), container.end(), value) != container.end();
+}
+
+template <typename T>
+std::vector<T> toVector(std::experimental::basic_string_view<T> view) {
+  return std::vector<T>(view.data(), view.data() + view.size());
 }
 
 }  // anonymous namespace
@@ -292,7 +297,7 @@ TEST_CASE("CompiledManifest") {
       CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
       REQUIRE(compiled_manifest.steps().size() == 1);
       CHECK(
-          compiled_manifest.steps()[0].dependencies() ==
+          toVector(compiled_manifest.steps()[0].dependencies()) ==
           std::vector<StepIndex>{});
     }
 
@@ -303,10 +308,10 @@ TEST_CASE("CompiledManifest") {
       CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
       REQUIRE(compiled_manifest.steps().size() == 2);
       CHECK(
-          compiled_manifest.steps()[0].dependencies() ==
+          toVector(compiled_manifest.steps()[0].dependencies()) ==
           std::vector<StepIndex>{});
       CHECK(
-          compiled_manifest.steps()[1].dependencies() ==
+          toVector(compiled_manifest.steps()[1].dependencies()) ==
           std::vector<StepIndex>{ 0 });
     }
 
@@ -317,10 +322,10 @@ TEST_CASE("CompiledManifest") {
       CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
       REQUIRE(compiled_manifest.steps().size() == 2);
       CHECK(
-          compiled_manifest.steps()[0].dependencies() ==
+          toVector(compiled_manifest.steps()[0].dependencies()) ==
           std::vector<StepIndex>{});
       CHECK(
-          compiled_manifest.steps()[1].dependencies() ==
+          toVector(compiled_manifest.steps()[1].dependencies()) ==
           std::vector<StepIndex>{ 0 });
     }
 
@@ -331,10 +336,10 @@ TEST_CASE("CompiledManifest") {
       CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
       REQUIRE(compiled_manifest.steps().size() == 2);
       CHECK(
-          compiled_manifest.steps()[0].dependencies() ==
+          toVector(compiled_manifest.steps()[0].dependencies()) ==
           std::vector<StepIndex>{});
       CHECK(
-          compiled_manifest.steps()[1].dependencies() ==
+          toVector(compiled_manifest.steps()[1].dependencies()) ==
           std::vector<StepIndex>{ 0 });
     }
 

@@ -103,7 +103,9 @@ Step::Step(std::shared_ptr<flatbuffers::FlatBufferBuilder> &&data)
 Step::Builder Step::toBuilder() const {
   Builder builder;
   builder.setHash(Hash(hash()));
-  builder.setDependencies(std::vector<StepIndex>(dependencies()));
+  builder.setDependencies(std::vector<StepIndex>(
+      dependencies().data(),
+      dependencies().data() + dependencies().size()));
   builder.setOutputDirs(std::vector<std::string>(outputDirs()));
   builder.setPoolName(std::string(poolName()));
   builder.setCommand(std::string(command()));

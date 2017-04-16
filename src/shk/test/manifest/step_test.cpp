@@ -41,8 +41,9 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setDependencies({})
           .build();
-      CHECK(a.dependencies() == std::vector<StepIndex>{ 0 });
-      CHECK(b.dependencies() == std::vector<StepIndex>{});
+      REQUIRE(a.dependencies().size() == 1);
+      CHECK(a.dependencies().data()[0] == 0);
+      CHECK(b.dependencies().empty());
     }
 
     SECTION("OutputDirs") {

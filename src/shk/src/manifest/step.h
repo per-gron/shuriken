@@ -68,18 +68,18 @@ struct Step {
     return *reinterpret_cast<const Hash *>(_step->hash());
   }
 
+  using StepIndices = std::experimental::basic_string_view<StepIndex>;
+
   /**
    * A list of indices for steps that must be done and clean before this step
    * can be run. These correspond to "order only", "implicit inputs" and
    * "inputs" in a build.ninja manifest.
    */
-  const std::vector<StepIndex> dependencies() const {
+  const StepIndices dependencies() const {
     const auto *deps = _step->dependencies();
-    if (!deps) {
-      return {};
-    } else {
-      return std::vector<StepIndex>(deps->data(), deps->data() + deps->size());
-    }
+    return deps ?
+        StepIndices(deps->data(), deps->size()) :
+        StepIndices();
   }
 
   /**
