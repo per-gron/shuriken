@@ -7,9 +7,9 @@
 
 namespace shk {
 
-FileLock::FileLock(const std::string &path) throw(IoError)
+FileLock::FileLock(nt_string_view path) throw(IoError)
     : _path(path),
-      _f(fopen(path.c_str(), "w")) {
+      _f(fopen(_path.c_str(), "w")) {
   if (!_f.get()) {
     throw IoError(strerror(errno), errno);
   }

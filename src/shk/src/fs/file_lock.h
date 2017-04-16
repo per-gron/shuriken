@@ -7,12 +7,13 @@
 #include <util/raii_helper.h>
 
 #include "io_error.h"
+#include "string_view.h"
 
 namespace shk {
 
 class FileLock {
  public:
-  FileLock(const std::string &path) throw(IoError);
+  FileLock(nt_string_view path) throw(IoError);
   ~FileLock();
 
  private:
