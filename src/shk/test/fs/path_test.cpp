@@ -43,12 +43,12 @@ class FailingStatFileSystem : public FileSystem {
   std::unique_ptr<Mmap> mmap(nt_string_view path) throw(IoError) override {
     return _fs.mmap(path);
   }
-  Stat stat(const std::string &path) override {
+  Stat stat(nt_string_view path) override {
     Stat stat;
     stat.result = ENOENT;
     return stat;
   }
-  Stat lstat(const std::string &path) override {
+  Stat lstat(nt_string_view path) override {
     return stat(path);
   }
   void mkdir(nt_string_view path) throw(IoError) override {
@@ -71,7 +71,7 @@ class FailingStatFileSystem : public FileSystem {
     _fs.rename(old_path, new_path);
   }
   void truncate(
-      const std::string &path, size_t size) throw(IoError) override {
+      nt_string_view path, size_t size) throw(IoError) override {
     _fs.truncate(path, size);
   }
   std::vector<DirEntry> readDir(

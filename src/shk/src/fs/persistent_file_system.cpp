@@ -140,11 +140,11 @@ class PersistentFileSystem : public FileSystem {
     return std::unique_ptr<Mmap>(new FileMmap(path));
   }
 
-  Stat stat(const std::string &path) override {
+  Stat stat(nt_string_view path) override {
     return genericStat(::stat, path);
   }
 
-  Stat lstat(const std::string &path) override {
+  Stat lstat(nt_string_view path) override {
     return genericStat(::lstat, path);
   }
 
@@ -177,8 +177,8 @@ class PersistentFileSystem : public FileSystem {
   }
 
   void truncate(
-      const std::string &path, size_t size) throw(IoError) override {
-    checkForMinusOne(::truncate(path.c_str(), size));
+      nt_string_view path, size_t size) throw(IoError) override {
+    checkForMinusOne(::truncate(NullterminatedString(path).c_str(), size));
   }
 
   std::vector<DirEntry> readDir(
@@ -333,10 +333,10 @@ class PersistentFileSystem : public FileSystem {
   }
 
   template<typename StatFunction>
-  Stat genericStat(StatFunction fn, const std::string &path) {
+  Stat genericStat(StatFunction fn, nt_string_view path) {
     Stat result;
     struct stat input;
-    auto ret = fn(path.c_str(), &input);
+    auto ret = fn(NullterminatedString(path).c_str(), &input);
     if (ret == -1) {
       result.result = errno;
     } else {

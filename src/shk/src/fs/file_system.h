@@ -111,8 +111,8 @@ class FileSystem {
    */
   virtual std::unique_ptr<Mmap> mmap(
       nt_string_view path) throw(IoError) = 0;
-  virtual Stat stat(const std::string &path) = 0;
-  virtual Stat lstat(const std::string &path) = 0;
+  virtual Stat stat(nt_string_view path) = 0;
+  virtual Stat lstat(nt_string_view path) = 0;
   virtual void mkdir(nt_string_view path) throw(IoError) = 0;
   virtual void rmdir(nt_string_view path) throw(IoError) = 0;
   virtual void unlink(nt_string_view path) throw(IoError) = 0;
@@ -122,7 +122,7 @@ class FileSystem {
       nt_string_view old_path,
       nt_string_view new_path) throw(IoError) = 0;
   virtual void truncate(
-      const std::string &path, size_t size) throw(IoError) = 0;
+      nt_string_view path, size_t size) throw(IoError) = 0;
   /**
    * Return the files, directories and other entries in a given directory. Fails
    * if the path does not point to a directory. The returned entries are not
@@ -193,6 +193,6 @@ class FileSystem {
  * Returns vector of paths to directories that were created.
  */
 std::vector<std::string> mkdirs(
-    FileSystem &file_system, const std::string &path) throw(IoError);
+    FileSystem &file_system, nt_string_view path) throw(IoError);
 
 }  // namespace shk

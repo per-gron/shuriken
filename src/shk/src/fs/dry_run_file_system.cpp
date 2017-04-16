@@ -33,11 +33,11 @@ class DryRunFileSystem : public FileSystem {
     return _inner.mmap(path);
   }
 
-  Stat stat(const std::string &path) override {
+  Stat stat(nt_string_view path) override {
     return _inner.stat(path);
   }
 
-  Stat lstat(const std::string &path) override {
+  Stat lstat(nt_string_view path) override {
     return _inner.lstat(path);
   }
 
@@ -56,7 +56,7 @@ class DryRunFileSystem : public FileSystem {
       nt_string_view new_path) throw(IoError) override {}
 
   void truncate(
-      const std::string &path, size_t size) throw(IoError) override {}
+      nt_string_view path, size_t size) throw(IoError) override {}
 
   std::vector<DirEntry> readDir(
       nt_string_view path) throw(IoError) override {

@@ -62,7 +62,7 @@ namespace {
 
 void mkdirs(
     FileSystem &file_system,
-    const std::string &noncanonical_path,
+    std::string noncanonical_path,
     std::vector<std::string> &created_dirs) throw(IoError) {
   auto path = noncanonical_path;
   try {
@@ -93,9 +93,9 @@ void mkdirs(
 
 std::vector<std::string> mkdirs(
     FileSystem &file_system,
-    const std::string &noncanonical_path) throw(IoError) {
+    nt_string_view noncanonical_path) throw(IoError) {
   std::vector<std::string> created_dirs;
-  mkdirs(file_system, noncanonical_path, created_dirs);
+  mkdirs(file_system, std::string(noncanonical_path), created_dirs);
   return created_dirs;
 }
 

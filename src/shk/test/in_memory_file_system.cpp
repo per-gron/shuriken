@@ -43,12 +43,12 @@ std::unique_ptr<FileSystem::Mmap> InMemoryFileSystem::mmap(
   }
 }
 
-Stat InMemoryFileSystem::stat(const std::string &path) {
+Stat InMemoryFileSystem::stat(nt_string_view path) {
   // Symlinks are not fully supported so stat is the same as lstat
   return stat(/*follow_symlink:*/true, path);
 }
 
-Stat InMemoryFileSystem::lstat(const std::string &path) {
+Stat InMemoryFileSystem::lstat(nt_string_view path) {
   return stat(/*follow_symlink:*/false, path);
 }
 
@@ -201,7 +201,7 @@ void InMemoryFileSystem::rename(
 }
 
 void InMemoryFileSystem::truncate(
-    const std::string &path, size_t size) throw(IoError) {
+    nt_string_view path, size_t size) throw(IoError) {
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
@@ -473,7 +473,7 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
 }
 
 Stat InMemoryFileSystem::stat(
-    bool follow_symlink, const std::string &path) {
+    bool follow_symlink, nt_string_view path) {
   Stat stat;
 
   const auto l = lookup(path);

@@ -21,13 +21,13 @@ std::unique_ptr<FileSystem::Mmap> CleaningFileSystem::mmap(
   return _inner.mmap(path);
 }
 
-Stat CleaningFileSystem::stat(const std::string &path) {
+Stat CleaningFileSystem::stat(nt_string_view path) {
   Stat stat;
   stat.result = ENOENT;
   return stat;
 }
 
-Stat CleaningFileSystem::lstat(const std::string &path) {
+Stat CleaningFileSystem::lstat(nt_string_view path) {
   Stat stat;
   stat.result = ENOENT;
   return stat;
@@ -63,7 +63,7 @@ void CleaningFileSystem::rename(
 }
 
 void CleaningFileSystem::truncate(
-    const std::string &path, size_t size) throw(IoError) {
+    nt_string_view path, size_t size) throw(IoError) {
   _inner.truncate(path, size);
 }
 

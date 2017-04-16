@@ -168,7 +168,7 @@ class Stater {
   Stat stat(
       const std::string &path,
       std::unordered_map<std::string, Stat> &memo,
-      Stat (FileSystem::*stat_fn)(const std::string &)) {
+      Stat (FileSystem::*stat_fn)(nt_string_view)) {
     const auto it = memo.find(path);
     if (it == memo.end()) {
       Stat stat = (_file_system.*stat_fn)(path);
