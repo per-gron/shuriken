@@ -236,16 +236,16 @@ bool hasDependencyCycle(
   return found_cycle;
 }
 
-bool hasDependencyCycle(
+std::string getDependencyCycle(
     const IndexedManifest &indexed_manifest,
     const detail::PathToStepMap &output_path_map,
-    const std::vector<RawStep> &raw_steps,
-    std::string *cycle) {
+    const std::vector<RawStep> &raw_steps) {
   std::vector<bool> currently_visited(indexed_manifest.steps.size());
   std::vector<bool> already_visited(indexed_manifest.steps.size());
   std::vector<Path> cycle_paths;
   cycle_paths.reserve(32);  // Guess at largest typical build dependency depth
 
+  std::string cycle;
   for (StepIndex idx = 0; idx < indexed_manifest.steps.size(); idx++) {
     if (hasDependencyCycle(
             indexed_manifest,
@@ -255,12 +255,12 @@ bool hasDependencyCycle(
             already_visited,
             cycle_paths,
             idx,
-            cycle)) {
-      return true;
+            &cycle)) {
+      break;
     }
   }
 
-  return false;
+  return cycle;
 }
 
 StepIndex getManifestStep(
@@ -297,12 +297,10 @@ IndexedManifest::IndexedManifest(
       pools(std::move(manifest.pools)),
       build_dir(std::move(manifest.build_dir)),
       manifest_step(
-          getManifestStep(output_path_map, manifest_path)) {
-  hasDependencyCycle(
-      *this,
-      output_path_map,
-      manifest.steps,
-      &dependency_cycle);
-}
+          getManifestStep(output_path_map, manifest_path)),
+      dependency_cycle(getDependencyCycle(
+          *this,
+          output_path_map,
+          manifest.steps)) {}
 
 }  // namespace shk
