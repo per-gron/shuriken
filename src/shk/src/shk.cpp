@@ -243,13 +243,13 @@ void usage(const BuildConfig &config) {
  * Returns true if the manifest was rebuilt.
  */
 bool ShurikenMain::rebuildManifest(std::string *err) {
-  if (_indexed_manifest.manifest_step == -1) {
+  if (_indexed_manifest.manifestStep() == -1) {
     // No rule generates the manifest file. There is nothing to do.
     return false;
   }
 
   try {
-    const auto result = runBuild({ _indexed_manifest.manifest_step });
+    const auto result = runBuild({ _indexed_manifest.manifestStep() });
     switch (result) {
     case BuildResult::NO_WORK_TO_DO:
       return false;
@@ -326,15 +326,17 @@ void ShurikenMain::parseManifest(
       ::shk::parseManifest(_paths, _file_system, input_file));
 
   std::string cycle;
-  if (!_indexed_manifest.dependency_cycle.empty()) {
-    throw ParseError("Dependency cycle: " + _indexed_manifest.dependency_cycle);
+  if (!_indexed_manifest.dependencyCycle().empty()) {
+    throw ParseError(
+        "Dependency cycle: " +
+        std::string(_indexed_manifest.dependencyCycle()));
   }
 }
 
 std::string ShurikenMain::invocationLogPath() const {
   std::string path = ".shk_log";
-  if (!_indexed_manifest.build_dir.empty()) {
-    path = _indexed_manifest.build_dir + "/" + path;
+  if (!_indexed_manifest.buildDir().empty()) {
+    path = std::string(_indexed_manifest.buildDir()) + "/" + path;
   }
   return path;
 }
@@ -425,7 +427,7 @@ BuildResult ShurikenMain::runBuild(
   const auto command_runner = _config.dry_run ?
       makeDryRunCommandRunner() :
       makePooledCommandRunner(
-        _indexed_manifest.pools,
+        _indexed_manifest.pools(),
         makeLimitedCommandRunner(
           getLoadAverage,
           _config.max_load_average,
@@ -471,7 +473,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
     deleteStaleOutputs(
         _file_system,
         *_invocation_log,
-        _indexed_manifest.steps,
+        _indexed_manifest.steps(),
         _invocations);
   } catch (const IoError &io_error) {
     printf("shk: failed to clean stale outputs: %s\n", io_error.what());

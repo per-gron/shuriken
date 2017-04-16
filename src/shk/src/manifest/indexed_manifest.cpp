@@ -240,13 +240,13 @@ std::string getDependencyCycle(
     const IndexedManifest &indexed_manifest,
     const detail::PathToStepMap &output_path_map,
     const std::vector<RawStep> &raw_steps) {
-  std::vector<bool> currently_visited(indexed_manifest.steps.size());
-  std::vector<bool> already_visited(indexed_manifest.steps.size());
+  std::vector<bool> currently_visited(indexed_manifest.steps().size());
+  std::vector<bool> already_visited(indexed_manifest.steps().size());
   std::vector<Path> cycle_paths;
   cycle_paths.reserve(32);  // Guess at largest typical build dependency depth
 
   std::string cycle;
-  for (StepIndex idx = 0; idx < indexed_manifest.steps.size(); idx++) {
+  for (StepIndex idx = 0; idx < indexed_manifest.steps().size(); idx++) {
     if (hasDependencyCycle(
             indexed_manifest,
             output_path_map,
@@ -288,17 +288,17 @@ IndexedManifest::IndexedManifest(
     const detail::PathToStepMap &output_path_map,
     Path manifest_path,
     RawManifest &&manifest)
-    : outputs(computePathList(output_path_map)),
-      inputs(computePathList(computeInputPathMap(manifest.steps))),
-      steps(convertStepVector(output_path_map, std::move(manifest.steps))),
-      defaults(computeStepsToBuildFromPaths(
+    : _outputs(computePathList(output_path_map)),
+      _inputs(computePathList(computeInputPathMap(manifest.steps))),
+      _steps(convertStepVector(output_path_map, std::move(manifest.steps))),
+      _defaults(computeStepsToBuildFromPaths(
           manifest.defaults, output_path_map)),
-      roots(detail::rootSteps(steps)),
-      pools(std::move(manifest.pools)),
-      build_dir(std::move(manifest.build_dir)),
-      manifest_step(
+      _roots(detail::rootSteps(_steps)),
+      _pools(std::move(manifest.pools)),
+      _build_dir(std::move(manifest.build_dir)),
+      _manifest_step(
           getManifestStep(output_path_map, manifest_path)),
-      dependency_cycle(getDependencyCycle(
+      _dependency_cycle(getDependencyCycle(
           *this,
           output_path_map,
           manifest.steps)) {}

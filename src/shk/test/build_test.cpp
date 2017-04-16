@@ -735,7 +735,7 @@ TEST_CASE("Build") {
           fs,
           log,
           invocations,
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           build);
 
       REQUIRE(clean_steps.size() == 2);
@@ -755,7 +755,7 @@ TEST_CASE("Build") {
           fs,
           log,
           invocations,
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           build);
 
       REQUIRE(clean_steps.size() == 2);
@@ -774,7 +774,7 @@ TEST_CASE("Build") {
           fs,
           log,
           invocations,
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           build);
     };
 
@@ -791,7 +791,7 @@ TEST_CASE("Build") {
       auto build = computeBuild(paths, manifest);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           compute_clean_steps(build, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
@@ -802,7 +802,7 @@ TEST_CASE("Build") {
       auto build = computeBuild(paths, manifest);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           compute_clean_steps(build, invocations, manifest),
           build) == 0);
       CHECK(build.ready_steps.size() == 2);
@@ -815,7 +815,7 @@ TEST_CASE("Build") {
       auto build = computeBuild(paths, manifest);
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       CHECK(build.ready_steps.size() == 1);
@@ -835,7 +835,7 @@ TEST_CASE("Build") {
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       CHECK(build.ready_steps.empty());
@@ -853,7 +853,7 @@ TEST_CASE("Build") {
       auto build = computeBuild(paths, manifest);
       CHECK(build.ready_steps.size() == 1);
       CHECK(discardCleanSteps(
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           compute_clean_steps(build, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
@@ -867,7 +867,7 @@ TEST_CASE("Build") {
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           compute_clean_steps(build, invocations, manifest),
           build) == 1);
       REQUIRE(build.ready_steps.size() == 1);
@@ -882,7 +882,7 @@ TEST_CASE("Build") {
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           compute_clean_steps(build, invocations, manifest),
           build) == 0);
       REQUIRE(build.ready_steps.size() == 1);
@@ -897,7 +897,7 @@ TEST_CASE("Build") {
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
-          to_indexed_manifest(manifest).steps,
+          to_indexed_manifest(manifest).steps(),
           compute_clean_steps(build, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
@@ -1192,7 +1192,7 @@ TEST_CASE("Build") {
       deleteStaleOutputs(
           fs,
           log,
-          indexed_manifest.steps,
+          indexed_manifest.steps(),
           log.invocations());
     };
 

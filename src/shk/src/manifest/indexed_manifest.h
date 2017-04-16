@@ -93,35 +93,67 @@ struct IndexedManifest {
    * Associative list of path => index of the step that has this file as an
    * output.
    */
-  PathToStepList outputs;
+  const PathToStepList &outputs() const {
+    return _outputs;
+  }
 
   /**
    * Associative list of path => index of the step that has this file as an
    * input.
    */
-  PathToStepList inputs;
+  const PathToStepList &inputs() const {
+    return _inputs;
+  }
 
-  std::vector<Step> steps;
-  std::vector<StepIndex> defaults;
-  std::vector<StepIndex> roots;
-  std::unordered_map<std::string, int> pools;
+  const std::vector<Step> &steps() const {
+    return _steps;
+  }
+
+  const std::vector<StepIndex> &defaults() const {
+    return _defaults;
+  }
+
+  const std::vector<StepIndex> &roots() const {
+    return _roots;
+  }
+
+  const std::unordered_map<std::string, int> &pools() const {
+    return _pools;
+  }
 
   /**
    * The build directory, used for storing the invocation log.
    */
-  std::string build_dir;
+  nt_string_view buildDir() const {
+    return _build_dir;
+  }
 
   /**
    * Index of the build step that rebuilds the manifest file, or -1 if there is
    * no such step.
    */
-  StepIndex manifest_step = -1;
+  StepIndex manifestStep() const {
+    return _manifest_step;
+  }
 
   /**
    * Is a non-empty string describing a cycle in the build graph if one exists.
    * For example: "a -> b -> a"
    */
-  std::string dependency_cycle;
+  nt_string_view dependencyCycle() const {
+    return _dependency_cycle;
+  }
+
+ private:
+  PathToStepList _outputs;
+  PathToStepList _inputs;
+  std::vector<Step> _steps;
+  std::vector<StepIndex> _defaults;
+  std::vector<StepIndex> _roots;
+  std::unordered_map<std::string, int> _pools;
+  std::string _build_dir;
+  StepIndex _manifest_step = -1;
+  std::string _dependency_cycle;
 };
 
 }  // namespace shk

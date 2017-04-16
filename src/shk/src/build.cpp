@@ -23,8 +23,8 @@ StepIndex interpretPath(
   }
 
   const auto &path_list = input ?
-      manifest.inputs :
-      manifest.outputs;
+      manifest.inputs() :
+      manifest.outputs();
   auto step_it = std::lower_bound(
       path_list.begin(),
       path_list.end(),
@@ -87,14 +87,14 @@ std::vector<StepIndex> computeStepsToBuild(
     std::vector<StepIndex> &&specified_steps) throw(BuildError) {
   if (!specified_steps.empty()) {
     return specified_steps;
-  } else if (!manifest.defaults.empty()) {
-    return manifest.defaults;
+  } else if (!manifest.defaults().empty()) {
+    return manifest.defaults();
   } else {
-    if (manifest.roots.empty() && !manifest.steps.empty()) {
+    if (manifest.roots().empty() && !manifest.steps().empty()) {
       throw BuildError(
           "Could not determine root nodes of build graph. Cyclic dependency?");
     }
-    return manifest.roots;
+    return manifest.roots();
   }
 }
 
@@ -135,7 +135,7 @@ void visitStep(
   step_node.should_build = true;
 
   step_node.currently_visited = true;
-  for (const auto &dependency_idx : manifest.steps[idx].dependencies()) {
+  for (const auto &dependency_idx : manifest.steps()[idx].dependencies()) {
     auto &dependency_node = build.step_nodes[dependency_idx];
     dependency_node.dependents.push_back(idx);
     step_node.dependencies++;
@@ -153,7 +153,7 @@ Build computeBuild(
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError) {
   Build build;
-  build.step_nodes.resize(manifest.steps.size());
+  build.step_nodes.resize(manifest.steps().size());
 
   for (const auto step_idx : steps_to_build) {
     visitStep(
@@ -399,7 +399,7 @@ void enqueueBuildCommands(BuildCommandParameters &params) throw(IoError);
 void commandBypassed(
     BuildCommandParameters &params,
     StepIndex step_idx) throw(IoError) {
-  const auto &step = params.manifest.steps[step_idx];
+  const auto &step = params.manifest.steps()[step_idx];
 
   // commandBypassed should not be called with phony build steps. This check is
   // here just to be sure.
@@ -417,7 +417,7 @@ void commandDone(
     BuildCommandParameters &params,
     StepIndex step_idx,
     CommandRunner::Result &&result) throw(IoError) {
-  const auto &step = params.manifest.steps[step_idx];
+  const auto &step = params.manifest.steps()[step_idx];
 
   if (!step.depfile().empty()) {
     deleteBuildProduct(
@@ -477,7 +477,7 @@ void commandDone(
       // immediately report the step as clean regardless of what it depends on.
 
       params.invocation_log.ranCommand(
-          params.manifest.steps[step_idx].hash(),
+          params.manifest.steps()[step_idx].hash(),
           std::move(result.output_files),
           params.invocation_log.fingerprintFiles(result.output_files),
           std::move(result.input_files),
@@ -577,7 +577,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   }
 
   const auto step_idx = params.build.ready_steps.back();
-  const auto &step = params.manifest.steps[step_idx];
+  const auto &step = params.manifest.steps()[step_idx];
   params.build.ready_steps.pop_back();
 
   if (canSkipBuildCommand(
@@ -695,14 +695,14 @@ BuildResult build(
       file_system,
       invocation_log,
       invocations,
-      manifest.steps,
+      manifest.steps(),
       build);
 
   const auto discarded_steps = detail::discardCleanSteps(
-      manifest.steps, clean_steps, build);
+      manifest.steps(), clean_steps, build);
 
   const auto build_status = make_build_status(
-      countStepsToBuild(manifest.steps, build) - discarded_steps);
+      countStepsToBuild(manifest.steps(), build) - discarded_steps);
 
   detail::BuildCommandParameters params(
       clock,
