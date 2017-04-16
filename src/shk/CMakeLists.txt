@@ -3,6 +3,11 @@ add_custom_command(
   COMMAND re2c -b -i --no-generation-date -o lexer.cpp ${CMAKE_CURRENT_LIST_DIR}/src/manifest/lexer.in.cpp
   DEPENDS src/manifest/lexer.in.cpp re2c)
 
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/manifest/manifest_generated.h
+  COMMAND flatc --binary --cpp --scoped-enums -o include/manifest ${CMAKE_CURRENT_LIST_DIR}/src/manifest/manifest.fbs
+  DEPENDS src/manifest/manifest.fbs flatc)
+
 add_library(shklib
   src/build.h
   src/build.cpp
@@ -95,9 +100,10 @@ add_library(shklib
   src/util.h
   src/version.cpp
   src/version.h
-  lexer.cpp)
+  lexer.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/include/manifest/manifest_generated.h)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
-target_include_directories(shklib PUBLIC src)
+target_include_directories(shklib PUBLIC src ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_link_libraries(shklib blake2 shkutil)
 set_target_properties(shklib PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 

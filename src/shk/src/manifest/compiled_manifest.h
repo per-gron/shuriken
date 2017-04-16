@@ -63,18 +63,22 @@ std::string cycleErrorMessage(const std::vector<Path> &cycle);
 
 }  // namespace detail
 
+
 /**
- * RawManifest objects contain information about the build that is structured in
- * a way that closely mirrors the manifest file itself: It has a list of build
- * steps. This is nice because it is close to what the input is like, but it is
- * not necessarily efficient to work with when actually building.
+ * A CompiledManifest is a build.ninja file compiled down to the bare
+ * essentials. Its purpose is to avoid most of the processing that is involved
+ * when parsing a build.ninja file:
  *
- * CompiledManifest has all the information that the RawManifest has, plus some
- * info that makes is fast to look up things that are often used in a build,
- * including Step hashes and a output file Path => Step map.
+ * * It is a binary Flatbuffer, so no parsing of the file is needed
+ * * Paths are already normalized, so no stat-ing or canonicalization has to
+ *   be done.
+ * * All string interpolation has already been performed
+ * * Circular dependencies are caught in the compilation stage
+ * * Dependencies are expressed directly as int indices, no hash lookups
+ *   required there.
  *
- * Computing an CompiledManifest from a RawManifest is a pure function. This
- * means that an CompiledManifest can be reused between different builds.
+ * In a way, a Manifest object is even more purely a build DAG than the
+ * build.ninja file is.
  */
 struct CompiledManifest {
   CompiledManifest() = default;
