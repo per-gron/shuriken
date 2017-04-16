@@ -387,7 +387,7 @@ void deleteBuildProduct(
 void mkdirsAndLog(
     FileSystem &file_system,
     InvocationLog &invocation_log,
-    const std::string &path) throw(IoError) {
+    nt_string_view path) throw(IoError) {
   const auto created_dirs = mkdirs(file_system, path);
   for (const auto &path : created_dirs) {
     invocation_log.createdDirectory(path);

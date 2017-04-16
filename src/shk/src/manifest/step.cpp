@@ -106,7 +106,14 @@ Step::Builder Step::toBuilder() const {
   builder.setDependencies(std::vector<StepIndex>(
       dependencies().data(),
       dependencies().data() + dependencies().size()));
-  builder.setOutputDirs(std::vector<std::string>(outputDirs()));
+
+  std::vector<std::string> output_dirs;
+  output_dirs.reserve(outputDirs().size());
+  for (const auto output_dir : outputDirs()) {
+    output_dirs.emplace_back(output_dir);
+  }
+  builder.setOutputDirs(std::move(output_dirs));
+
   builder.setPoolName(std::string(poolName()));
   builder.setCommand(std::string(command()));
   builder.setDescription(std::string(description()));

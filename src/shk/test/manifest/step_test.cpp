@@ -53,8 +53,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setOutputDirs({ "o2" })
           .build();
-      CHECK(a.outputDirs() == std::vector<std::string>{ "o1" });
-      CHECK(b.outputDirs() == std::vector<std::string>{ "o2" });
+      CHECK(a.outputDirs() == std::vector<nt_string_view>{ "o1" });
+      CHECK(b.outputDirs() == std::vector<nt_string_view>{ "o2" });
     }
 
     SECTION("PoolName") {

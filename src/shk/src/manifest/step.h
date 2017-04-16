@@ -86,13 +86,14 @@ struct Step {
    * A list of directories that Shuriken should ensure are there prior to
    * invoking the command.
    */
-  std::vector<std::string> outputDirs() const {
-    std::vector<std::string> ans;
+  std::vector<nt_string_view> outputDirs() const {
+    std::vector<nt_string_view> ans;
 
     const auto *dirs = _step->output_dirs();
     if (dirs) {
       for (int i = 0; i < dirs->size(); i++) {
-        ans.push_back(dirs->Get(i)->c_str());
+        const auto *str = dirs->Get(i);
+        ans.emplace_back(str->c_str(), str->size());
       }
     }
     return ans;
