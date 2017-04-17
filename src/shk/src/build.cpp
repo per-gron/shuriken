@@ -22,7 +22,7 @@ StepIndex interpretPath(
         std::string("Invalid target path: ") + error.what());
   }
 
-  const auto &path_list = input ?
+  const auto path_list = input ?
       manifest.inputs() :
       manifest.outputs();
   auto step_it = std::lower_bound(
@@ -30,12 +30,12 @@ StepIndex interpretPath(
       path_list.end(),
       std::make_pair(path, 0),
       [&](
-          const std::pair<std::string, StepIndex> &a,
-          const std::pair<std::string, StepIndex> &b) {
+          const std::pair<nt_string_view, StepIndex> &a,
+          const std::pair<nt_string_view, StepIndex> &b) {
         return a.first < b.first;
       });
-  if (step_it != path_list.end() && step_it->first == path) {
-    return step_it->second;
+  if (step_it != path_list.end() && (*step_it).first == path) {
+    return (*step_it).second;
   }
 
   // Not found

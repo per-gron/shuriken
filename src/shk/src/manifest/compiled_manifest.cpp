@@ -90,10 +90,11 @@ detail::PathToStepMap computeInputPathMap(
   return result;
 }
 
-PathToStepList computePathList(
-    const detail::PathToStepMap &path_map) {
-  PathToStepList result;
-
+std::vector<flatbuffers::Offset<
+    ShkManifest::StepPathReference>> computePathList(
+        flatbuffers::FlatBufferBuilder &builder,
+        const detail::PathToStepMap &path_map) {
+  std::vector<std::pair<std::string, StepIndex>> vec;
   for (const auto &path_pair : path_map) {
     auto path = path_pair.first.original();
     try {
@@ -101,10 +102,20 @@ PathToStepList computePathList(
     } catch (const PathError &) {
       continue;
     }
-    result.emplace_back(std::move(path), path_pair.second);
+
+    vec.emplace_back(std::move(path), path_pair.second);
   }
 
-  std::sort(result.begin(), result.end());
+  std::sort(vec.begin(), vec.end());
+
+  std::vector<flatbuffers::Offset<ShkManifest::StepPathReference>> result;
+  result.reserve(vec.size());
+  for (const auto &path_pair : vec) {
+    result.push_back(ShkManifest::CreateStepPathReference(
+        builder,
+        builder.CreateString(path_pair.first),
+        path_pair.second));
+  }
 
   return result;
 }
@@ -321,17 +332,15 @@ CompiledManifest::CompiledManifest(
     Path manifest_path,
     RawManifest &&manifest)
     : _builder(std::make_shared<flatbuffers::FlatBufferBuilder>(1024)),
-      _outputs(computePathList(output_path_map)),
-      _inputs(computePathList(computeInputPathMap(manifest.steps))),
       _steps(convertStepVector(
           output_path_map, _step_buffers, std::move(manifest.steps))),
       _pools(std::move(manifest.pools)) {
 
-  std::vector<flatbuffers::Offset<ShkManifest::StepPathReference>> outputs;
+  auto outputs = computePathList(*_builder, output_path_map);
   auto outputs_vector = _builder->CreateVector(
       outputs.data(), outputs.size());
 
-  std::vector<flatbuffers::Offset<ShkManifest::StepPathReference>> inputs;
+  auto inputs = computePathList(*_builder, computeInputPathMap(manifest.steps));
   auto inputs_vector = _builder->CreateVector(
       inputs.data(), inputs.size());
 

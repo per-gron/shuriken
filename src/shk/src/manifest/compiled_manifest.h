@@ -9,18 +9,6 @@
 #include "manifest/step.h"
 
 namespace shk {
-
-/**
- * Similar to PathToStepMap, but is a sorted list of canonicalized paths along
- * with the associated StepIndex for each path.
- *
- * The paths are canonicalized without consulting the file system. This means
- * that these paths will be broken if there are symlinks around. These lists are
- * intended to be used for selecting build steps based on command line input,
- * not where correctness is required.
- */
-using PathToStepList = std::vector<std::pair<std::string, StepIndex>>;
-
 namespace detail {
 
 /**
@@ -49,8 +37,44 @@ PathToStepMap computeOutputPathMap(
  */
 std::string cycleErrorMessage(const std::vector<Path> &cycle);
 
+inline std::pair<nt_string_view, StepIndex> fbStepPathReferenceToView(
+    const ShkManifest::StepPathReference *ref) {
+  return std::make_pair(fbStringToView(ref->path()), ref->step());
+}
+
+using FbStepPathReferenceIterator = flatbuffers::VectorIterator<
+    flatbuffers::Offset<ShkManifest::StepPathReference>,
+    const ShkManifest::StepPathReference *>;
+
 }  // namespace detail
 
+/**
+ * A sorted list of canonicalized paths along with the associated StepIndex for
+ * each path.
+ *
+ * The paths are canonicalized without consulting the file system. This means
+ * that these paths will be broken if there are symlinks around. These lists are
+ * intended to be used for selecting build steps based on command line input,
+ * not where correctness is required.
+ */
+using StepPathReferenceView = WrapperView<
+    detail::FbStepPathReferenceIterator,
+    std::pair<nt_string_view, StepIndex>,
+    &detail::fbStepPathReferenceToView>;
+
+namespace detail {
+
+inline StepPathReferenceView toStepPathReferenceView(
+    const flatbuffers::Vector<flatbuffers::Offset<
+        ShkManifest::StepPathReference>> *refs) {
+  return refs ?
+      StepPathReferenceView(refs->begin(), refs->end()) :
+      StepPathReferenceView(
+          detail::FbStepPathReferenceIterator(nullptr, 0),
+          detail::FbStepPathReferenceIterator(nullptr, 0));
+}
+
+}  // namespace detail
 
 /**
  * A CompiledManifest is a build.ninja file compiled down to the bare
@@ -84,16 +108,16 @@ struct CompiledManifest {
    * Associative list of path => index of the step that has this file as an
    * output.
    */
-  const PathToStepList &outputs() const {
-    return _outputs;
+  StepPathReferenceView outputs() const {
+    return detail::toStepPathReferenceView(_manifest->outputs());
   }
 
   /**
    * Associative list of path => index of the step that has this file as an
    * input.
    */
-  const PathToStepList &inputs() const {
-    return _inputs;
+  StepPathReferenceView inputs() const {
+    return detail::toStepPathReferenceView(_manifest->inputs());
   }
 
   const std::vector<Step> &steps() const {
@@ -138,8 +162,6 @@ struct CompiledManifest {
  private:
   std::shared_ptr<flatbuffers::FlatBufferBuilder> _builder;
   std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> _step_buffers;
-  PathToStepList _outputs;
-  PathToStepList _inputs;
   std::vector<Step> _steps;
   std::unordered_map<std::string, int> _pools;
   const ShkManifest::Manifest *_manifest;

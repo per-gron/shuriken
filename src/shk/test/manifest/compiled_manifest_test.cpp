@@ -52,6 +52,8 @@ TEST_CASE("CompiledManifest") {
   RawStep single_dependency;
   single_dependency.dependencies = { paths.get("a") };
 
+  using PathToStepList = std::vector<std::pair<nt_string_view, StepIndex>>;
+
   SECTION("computeOutputPathMap") {
     SECTION("basics") {
       CHECK(computeOutputPathMap(std::vector<RawStep>()).empty());
@@ -122,7 +124,7 @@ TEST_CASE("CompiledManifest") {
         CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
 
         CHECK(
-            compiled_manifest.inputs() ==
+            toVector(compiled_manifest.inputs()) ==
             PathToStepList({ { "a", 0 } }));
       }
 
@@ -133,7 +135,7 @@ TEST_CASE("CompiledManifest") {
         CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
 
         CHECK(
-            compiled_manifest.inputs() ==
+            toVector(compiled_manifest.inputs()) ==
             PathToStepList({ { "a", 0 } }));
       }
 
@@ -144,7 +146,7 @@ TEST_CASE("CompiledManifest") {
         CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
 
         CHECK(
-            compiled_manifest.inputs() ==
+            toVector(compiled_manifest.inputs()) ==
             PathToStepList({ { "a", 0 } }));
       }
 
@@ -155,7 +157,7 @@ TEST_CASE("CompiledManifest") {
         CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
 
         CHECK(
-            compiled_manifest.inputs() ==
+            toVector(compiled_manifest.inputs()) ==
             PathToStepList({ { "a", 0 } }));
       }
 
@@ -174,7 +176,7 @@ TEST_CASE("CompiledManifest") {
           CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
 
           CHECK(
-              compiled_manifest.inputs() ==
+              toVector(compiled_manifest.inputs()) ==
               PathToStepList({ { "a", swap_steps }, { "b", !swap_steps } }));
         }
       }
@@ -189,7 +191,7 @@ TEST_CASE("CompiledManifest") {
         CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
 
         CHECK(
-            compiled_manifest.inputs() ==
+            toVector(compiled_manifest.inputs()) ==
             PathToStepList({ { "b", 0 } }));
       }
     }
@@ -211,7 +213,7 @@ TEST_CASE("CompiledManifest") {
         CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
 
         CHECK(
-            compiled_manifest.outputs() ==
+            toVector(compiled_manifest.outputs()) ==
             PathToStepList({ { "a", 0 } }));
       }
 
@@ -227,7 +229,7 @@ TEST_CASE("CompiledManifest") {
           CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
 
           CHECK(
-              compiled_manifest.outputs() ==
+              toVector(compiled_manifest.outputs()) ==
               PathToStepList({ { "a", swap_steps }, { "b", !swap_steps } }));
         }
       }
@@ -242,7 +244,7 @@ TEST_CASE("CompiledManifest") {
         CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
 
         CHECK(
-            compiled_manifest.outputs() ==
+            toVector(compiled_manifest.outputs()) ==
             PathToStepList({ { "b", 0 } }));
       }
     }

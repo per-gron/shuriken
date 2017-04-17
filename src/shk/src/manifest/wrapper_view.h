@@ -30,7 +30,10 @@ class WrapperView {
   using pointer = value_type *;
   using const_pointer = const value_type *;
 
-  class iterator {
+  class iterator : public std::iterator<
+      std::random_access_iterator_tag,
+      value_type,
+      diff_type> {
    public:
     explicit iterator(Iter i) : _i(i) {}
     iterator(const iterator &) = default;
@@ -84,6 +87,16 @@ class WrapperView {
 
     iterator operator-(diff_type diff) const {
       return iterator(_i - diff);
+    }
+
+    iterator &operator+=(diff_type diff) {
+      _i += diff;
+      return *this;
+    }
+
+    iterator &operator-=(diff_type diff) {
+      _i -= diff;
+      return *this;
     }
 
     diff_type operator-(iterator other) const {

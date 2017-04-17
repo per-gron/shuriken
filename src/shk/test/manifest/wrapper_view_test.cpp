@@ -111,9 +111,25 @@ TEST_CASE("WrapperView") {
       CHECK(Iter(one.begin()) + 0 == Iter(one.begin()));
     }
 
+    SECTION("operator+=") {
+      auto a = Iter(one.begin());
+      CHECK((a += 0) == Iter(one.begin()));
+      CHECK(a == Iter(one.begin()));
+      CHECK((a += 1) == Iter(one.end()));
+      CHECK(a == Iter(one.end()));
+    }
+
     SECTION("diff_type operator-") {
       CHECK(Iter(one.end()) - 1 == Iter(one.begin()));
       CHECK(Iter(one.end()) - 0 == Iter(one.end()));
+    }
+
+    SECTION("operator-=") {
+      auto a = Iter(one.end());
+      CHECK((a -= 0) == Iter(one.end()));
+      CHECK(a == Iter(one.end()));
+      CHECK((a -= 1) == Iter(one.begin()));
+      CHECK(a == Iter(one.begin()));
     }
 
     SECTION("iterator operator-") {
