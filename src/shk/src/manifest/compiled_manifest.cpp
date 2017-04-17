@@ -319,11 +319,7 @@ CompiledManifest::CompiledManifest(
       _defaults(computeStepsToBuildFromPaths(
           manifest.defaults, output_path_map)),
       _roots(detail::rootSteps(_steps)),
-      _pools(std::move(manifest.pools)),
-      _dependency_cycle(getDependencyCycle(
-          *this,
-          output_path_map,
-          manifest.steps)) {
+      _pools(std::move(manifest.pools)) {
 
   std::vector<flatbuffers::Offset<ShkManifest::StepPathReference>> outputs;
   auto outputs_vector = _builder->CreateVector(
@@ -351,7 +347,11 @@ CompiledManifest::CompiledManifest(
 
   auto build_dir_string = _builder->CreateString(manifest.build_dir);
 
-  auto dependency_cycle_string = _builder->CreateString("");
+  auto dependency_cycle_string = _builder->CreateString(
+      getDependencyCycle(
+          *this,
+          output_path_map,
+          manifest.steps));
 
   ShkManifest::ManifestBuilder manifest_builder(*_builder);
   manifest_builder.add_outputs(outputs_vector);

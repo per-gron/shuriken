@@ -144,7 +144,7 @@ struct CompiledManifest {
    * For example: "a -> b -> a"
    */
   nt_string_view dependencyCycle() const {
-    return _dependency_cycle;
+    return detail::toStringView(_manifest->dependency_cycle());
   }
 
  private:
@@ -156,7 +156,6 @@ struct CompiledManifest {
   std::vector<StepIndex> _defaults;
   std::vector<StepIndex> _roots;
   std::unordered_map<std::string, int> _pools;
-  std::string _dependency_cycle;
   const ShkManifest::Manifest *_manifest;
 };
 
