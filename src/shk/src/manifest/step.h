@@ -24,7 +24,7 @@ inline nt_string_view fbStringToView(const flatbuffers::String *string) {
   return nt_string_view(string->c_str(), string->size());
 }
 
-inline int intToView(const int &index) {
+inline StepIndex indexToView(const StepIndex &index) {
   return index;
 }
 
@@ -32,18 +32,20 @@ using FbStringIterator = flatbuffers::VectorIterator<
     flatbuffers::Offset<flatbuffers::String>,
     const flatbuffers::String *>;
 
-template <typename Int>
-using IntsView = WrapperView<
-    const Int *,
-    Int,
-    &detail::intToView>;
+}  // namespace detail
 
-template <typename Int>
-inline const IntsView<Int> toIntsView(
+using StepIndicesView = WrapperView<
+    const StepIndex *,
+    StepIndex,
+    &detail::indexToView>;
+
+namespace detail {
+
+inline const StepIndicesView toStepIndicesView(
     const flatbuffers::Vector<int32_t> *ints) {
   return ints ?
-      IntsView<StepIndex>(ints->data(), ints->data() + ints->size()) :
-      IntsView<StepIndex>();
+      StepIndicesView(ints->data(), ints->data() + ints->size()) :
+      StepIndicesView();
 }
 
 using StringsView = WrapperView<
@@ -94,8 +96,8 @@ struct Step {
    * can be run. These correspond to "order only", "implicit inputs" and
    * "inputs" in a build.ninja manifest.
    */
-  const detail::IntsView<StepIndex> dependencies() const {
-    return detail::toIntsView<StepIndex>(_step->dependencies());
+  const StepIndicesView dependencies() const {
+    return detail::toStepIndicesView(_step->dependencies());
   }
 
   /**

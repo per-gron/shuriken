@@ -124,12 +124,12 @@ struct CompiledManifest {
     return _steps;
   }
 
-  detail::IntsView<StepIndex> defaults() const {
-    return detail::toIntsView<StepIndex>(_manifest->defaults());
+  StepIndicesView defaults() const {
+    return detail::toStepIndicesView(_manifest->defaults());
   }
 
-  detail::IntsView<StepIndex> roots() const {
-    return detail::toIntsView<StepIndex>(_manifest->roots());
+  StepIndicesView roots() const {
+    return detail::toStepIndicesView(_manifest->roots());
   }
 
   const std::unordered_map<std::string, int> &pools() const {
