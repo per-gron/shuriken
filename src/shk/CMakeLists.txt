@@ -62,6 +62,7 @@ add_library(shklib
   src/manifest/rule.h
   src/manifest/step.cpp
   src/manifest/step.h
+  src/manifest/wrapper_view.h
   src/io_error.h
   src/log/delayed_invocation_log.cpp
   src/log/delayed_invocation_log.h
@@ -156,6 +157,7 @@ add_executable(shk_test
   test/manifest/raw_manifest_test.cpp
   test/manifest/raw_step_test.cpp
   test/manifest/step_test.cpp
+  test/manifest/wrapper_view_test.cpp
   test/nullterminated_string_test.cpp
   test/optional_test.cpp
   test/status/line_printer_test.cpp
