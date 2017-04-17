@@ -129,7 +129,7 @@ struct CompiledManifest {
    * The build directory, used for storing the invocation log.
    */
   nt_string_view buildDir() const {
-    return _build_dir;
+    return detail::toStringView(_manifest->build_dir());
   }
 
   /**
@@ -149,6 +149,7 @@ struct CompiledManifest {
   }
 
  private:
+  std::shared_ptr<flatbuffers::FlatBufferBuilder> _builder;
   std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> _step_buffers;
   PathToStepList _outputs;
   PathToStepList _inputs;
@@ -159,6 +160,7 @@ struct CompiledManifest {
   std::string _build_dir;
   StepIndex _manifest_step = -1;
   std::string _dependency_cycle;
+  const ShkManifest::Manifest *_manifest;
 };
 
 }  // namespace shk

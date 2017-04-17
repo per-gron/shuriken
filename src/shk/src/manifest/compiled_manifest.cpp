@@ -311,7 +311,8 @@ CompiledManifest::CompiledManifest(
     const detail::PathToStepMap &output_path_map,
     Path manifest_path,
     RawManifest &&manifest)
-    : _outputs(computePathList(output_path_map)),
+    : _builder(std::make_shared<flatbuffers::FlatBufferBuilder>(1024)),
+      _outputs(computePathList(output_path_map)),
       _inputs(computePathList(computeInputPathMap(manifest.steps))),
       _steps(convertStepVector(
           output_path_map, _step_buffers, std::move(manifest.steps))),
@@ -319,12 +320,20 @@ CompiledManifest::CompiledManifest(
           manifest.defaults, output_path_map)),
       _roots(detail::rootSteps(_steps)),
       _pools(std::move(manifest.pools)),
-      _build_dir(std::move(manifest.build_dir)),
       _manifest_step(
           getManifestStep(output_path_map, manifest_path)),
       _dependency_cycle(getDependencyCycle(
           *this,
           output_path_map,
-          manifest.steps)) {}
+          manifest.steps)) {
+
+  auto build_dir_string = _builder->CreateString(manifest.build_dir);
+
+  ShkManifest::ManifestBuilder manifest_builder(*_builder);
+  manifest_builder.add_build_dir(build_dir_string);
+  _builder->Finish(manifest_builder.Finish());
+
+  _manifest = ShkManifest::GetManifest(_builder->GetBufferPointer());
+}
 
 }  // namespace shk

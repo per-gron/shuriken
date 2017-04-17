@@ -382,6 +382,14 @@ TEST_CASE("CompiledManifest") {
       }
     }
 
+    SECTION("build_dir") {
+      RawManifest manifest;
+      manifest.build_dir = "hello";
+
+      CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+      CHECK(compiled_manifest.buildDir() == "hello");
+    }
+
     SECTION("output dirs") {
       SECTION("current working directory") {
         RawStep step;
