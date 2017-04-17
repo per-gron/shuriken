@@ -6,7 +6,6 @@
 
 namespace shk {
 namespace detail {
-
 namespace {
 
 template <typename Container, typename Value>

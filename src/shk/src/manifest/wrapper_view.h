@@ -16,10 +16,13 @@ namespace shk {
  * interface without actually iterating over all the items at construction time.
  * It is a view that wraps the items lazily.
  */
-template <typename Iter, typename Wrapper>
+template <
+    typename Iter,
+    typename Wrapper,
+    Wrapper (Wrap(decltype(*std::declval<Iter>())))>
 class WrapperView {
  public:
-  using value_type = decltype(Wrapper(*std::declval<Iter>()));
+  using value_type = Wrapper;
   using size_type = size_t;
   using diff_type = ptrdiff_t;
   using reference = value_type &;
@@ -40,10 +43,10 @@ class WrapperView {
     }
 
     value_type operator*() const {
-      return Wrapper(*_i);
+      return Wrap(*_i);
     }
 
-    // Lacking operator-> because we can't return a pointer to Wrapper(*_i)
+    // Lacking operator-> because we can't return a pointer to Wrap(*_i)
 
     iterator &operator++() {
       ++_i;
@@ -105,19 +108,19 @@ class WrapperView {
     if (!(pos < size())) {
       throw std::out_of_range("WrapperView");
     }
-    return Wrapper(*(_begin + pos));
+    return Wrap(*(_begin + pos));
   }
 
   value_type operator[](size_type pos) const {
-    return Wrapper(*(_begin + pos));
+    return Wrap(*(_begin + pos));
   }
 
   value_type front() const {
-    return Wrapper(*_begin);
+    return Wrap(*_begin);
   }
 
   value_type back() const {
-    return Wrapper(*(_end - 1));
+    return Wrap(*(_end - 1));
   }
 
   const_iterator begin() const {

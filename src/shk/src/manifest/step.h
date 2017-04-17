@@ -18,6 +18,56 @@ namespace shk {
  */
 using StepIndex = int;
 
+namespace detail {
+
+inline nt_string_view fbStringToView(const flatbuffers::String *string) {
+  return nt_string_view(string->c_str(), string->size());
+}
+
+inline int intToView(const int &index) {
+  return index;
+}
+
+using FbStringIterator = flatbuffers::VectorIterator<
+    flatbuffers::Offset<flatbuffers::String>,
+    const flatbuffers::String *>;
+
+template <typename Int>
+using IntsView = WrapperView<
+    const Int *,
+    Int,
+    &detail::intToView>;
+
+template <typename Int>
+inline const IntsView<Int> toIntsView(
+    const flatbuffers::Vector<int32_t> *ints) {
+  return ints ?
+      IntsView<StepIndex>(ints->data(), ints->data() + ints->size()) :
+      IntsView<StepIndex>();
+}
+
+using StringsView = WrapperView<
+    detail::FbStringIterator,
+    nt_string_view,
+    &detail::fbStringToView>;
+
+inline StringsView toStringsView(
+    const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>> *strs) {
+  return strs ?
+      StringsView(strs->begin(), strs->end()) :
+      StringsView(
+          detail::FbStringIterator(nullptr, 0),
+          detail::FbStringIterator(nullptr, 0));
+}
+
+inline nt_string_view toStringView(const flatbuffers::String *str) {
+  return str ?
+      nt_string_view(str->data(), str->size()) :
+      nt_string_view();
+}
+
+}  // namespace detail
+
 /**
  * A Step is a dumb data object that represents one build statment in the
  * build manifest.
@@ -69,39 +119,25 @@ struct Step {
     return *reinterpret_cast<const Hash *>(_step->hash());
   }
 
-  using StepIndices = WrapperView<const StepIndex *, StepIndex>;
-
   /**
    * A list of indices for steps that must be done and clean before this step
    * can be run. These correspond to "order only", "implicit inputs" and
    * "inputs" in a build.ninja manifest.
    */
-  const StepIndices dependencies() const {
-    const auto *deps = _step->dependencies();
-    return deps ?
-        StepIndices(deps->data(), deps->data() + deps->size()) :
-        StepIndices();
+  const detail::IntsView<StepIndex> dependencies() const {
+    return detail::toIntsView<StepIndex>(_step->dependencies());
   }
 
   /**
    * A list of directories that Shuriken should ensure are there prior to
    * invoking the command.
    */
-  std::vector<nt_string_view> outputDirs() const {
-    std::vector<nt_string_view> ans;
-
-    const auto *dirs = _step->output_dirs();
-    if (dirs) {
-      for (int i = 0; i < dirs->size(); i++) {
-        const auto *str = dirs->Get(i);
-        ans.emplace_back(str->c_str(), str->size());
-      }
-    }
-    return ans;
+  detail::StringsView outputDirs() const {
+    return detail::toStringsView(_step->output_dirs());
   }
 
   nt_string_view poolName() const {
-    return toStringView(_step->pool_name());
+    return detail::toStringView(_step->pool_name());
   }
 
   /**
@@ -110,7 +146,7 @@ struct Step {
    * The command string is empty for phony rules.
    */
   nt_string_view command() const {
-    return toStringView(_step->command());
+    return detail::toStringView(_step->command());
   }
 
   /**
@@ -118,7 +154,7 @@ struct Step {
    * running builds.
    */
   nt_string_view description() const {
-    return toStringView(_step->description());
+    return detail::toStringView(_step->description());
   }
 
   bool phony() const {
@@ -144,7 +180,7 @@ struct Step {
    * completed.
    */
   nt_string_view depfile() const {
-    return toStringView(_step->depfile());
+    return detail::toStringView(_step->depfile());
   }
 
   /**
@@ -154,20 +190,14 @@ struct Step {
    * commands have a rather short maximum length.
    */
   nt_string_view rspfile() const {
-    return toStringView(_step->rspfile());
+    return detail::toStringView(_step->rspfile());
   }
 
   nt_string_view rspfileContent() const {
-    return toStringView(_step->rspfile_content());
+    return detail::toStringView(_step->rspfile_content());
   }
 
  private:
-  static nt_string_view toStringView(const flatbuffers::String *str) {
-    return str ?
-        nt_string_view(str->data(), str->size()) :
-        nt_string_view();
-  }
-
   std::shared_ptr<flatbuffers::FlatBufferBuilder> _data;
   const ShkManifest::Step *_step;
 };

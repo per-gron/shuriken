@@ -6,6 +6,17 @@
 #include "../in_memory_file_system.h"
 
 namespace shk {
+namespace {
+
+template <typename View>
+std::vector<typename View::value_type> toVector(View view) {
+  auto ans = std::vector<typename View::value_type>();
+  ans.reserve(view.size());
+  std::copy(view.begin(), view.end(), std::back_inserter(ans));
+  return ans;
+}
+
+}  // anonymous namespace
 
 TEST_CASE("Step") {
   InMemoryFileSystem fs;
@@ -53,8 +64,8 @@ TEST_CASE("Step") {
       auto b = a.toBuilder()
           .setOutputDirs({ "o2" })
           .build();
-      CHECK(a.outputDirs() == std::vector<nt_string_view>{ "o1" });
-      CHECK(b.outputDirs() == std::vector<nt_string_view>{ "o2" });
+      CHECK(toVector(a.outputDirs()) == std::vector<nt_string_view>{ "o1" });
+      CHECK(toVector(b.outputDirs()) == std::vector<nt_string_view>{ "o2" });
     }
 
     SECTION("PoolName") {

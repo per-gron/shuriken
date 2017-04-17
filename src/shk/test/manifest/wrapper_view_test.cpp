@@ -6,9 +6,19 @@
 #include "string_view.h"
 
 namespace shk {
+namespace {
+
+string_view toStringView(const std::string &str) {
+  return str;
+}
+
+}  // anonymous namespace
 
 TEST_CASE("WrapperView") {
-  using WV = WrapperView<std::vector<std::string>::const_iterator, string_view>;
+  using WV = WrapperView<
+      std::vector<std::string>::const_iterator,
+      string_view,
+      &toStringView>;
   auto empty = std::vector<std::string>{};
   auto one = std::vector<std::string>{ "hi" };
   auto two = std::vector<std::string>{ "one", "two" };
