@@ -20,6 +20,15 @@ PathToStepMap computeOutputPathMap(
   return result;
 }
 
+/**
+ * Compute the "root steps," that is the steps that don't have an output that
+ * is an input to some other step. This is the set of steps that are built if
+ * there are no default statements in the manifest and no steps where
+ * specifically requested to be built.
+ *
+ * If no step can be identified as root (perhaps because there is a cyclic
+ * dependency), this function returns an empty vector.
+ */
 std::vector<StepIndex> rootSteps(
     const std::vector<Step> &steps) throw(BuildError) {
   std::vector<StepIndex> result;
@@ -318,7 +327,6 @@ CompiledManifest::CompiledManifest(
           output_path_map, _step_buffers, std::move(manifest.steps))),
       _defaults(computeStepsToBuildFromPaths(
           manifest.defaults, output_path_map)),
-      _roots(detail::rootSteps(_steps)),
       _pools(std::move(manifest.pools)) {
 
   std::vector<flatbuffers::Offset<ShkManifest::StepPathReference>> outputs;
@@ -337,7 +345,7 @@ CompiledManifest::CompiledManifest(
   auto defaults_vector = _builder->CreateVector(
       defaults.data(), defaults.size());
 
-  std::vector<StepIndex> roots;
+  auto roots = detail::rootSteps(_steps);
   auto roots_vector = _builder->CreateVector(
       roots.data(), roots.size());
 

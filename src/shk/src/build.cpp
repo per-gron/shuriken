@@ -94,7 +94,10 @@ std::vector<StepIndex> computeStepsToBuild(
       throw BuildError(
           "Could not determine root nodes of build graph. Cyclic dependency?");
     }
-    return manifest.roots();
+    auto roots = manifest.roots();
+    std::vector<StepIndex> ans(roots.size());
+    std::copy(roots.begin(), roots.end(), ans.begin());
+    return ans;
   }
 }
 

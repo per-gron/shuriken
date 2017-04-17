@@ -85,53 +85,6 @@ TEST_CASE("CompiledManifest") {
     }
   }
 
-  SECTION("rootSteps") {
-    flatbuffers::FlatBufferBuilder builder_1(1024);
-    auto step = StepBuilder()
-        .setCommand("cmd")
-        .build(builder_1);
-
-    flatbuffers::FlatBufferBuilder builder_2(1024);
-    auto single_dependency_0 = StepBuilder()
-        .setCommand("cmd")
-        .setDependencies({ 0 })
-        .build(builder_2);
-
-    flatbuffers::FlatBufferBuilder builder_3(1024);
-    auto single_dependency_1 = StepBuilder()
-        .setCommand("cmd")
-        .setDependencies({ 1 })
-        .build(builder_3);
-
-    CHECK(rootSteps({}).empty());
-    CHECK(
-        rootSteps({ step }) ==
-        std::vector<StepIndex>{ 0 });
-    CHECK(
-        rootSteps({ step, step }) ==
-        std::vector<StepIndex>({ 0, 1 }));
-    CHECK(
-        rootSteps({ step, single_dependency_0 }) ==
-        std::vector<StepIndex>{ 1 });
-    CHECK(
-        rootSteps({ single_dependency_1, step }) ==
-        std::vector<StepIndex>{ 0 });
-    CHECK(
-        rootSteps({ single_dependency_1, step, step }) ==
-        (std::vector<StepIndex>{ 0, 2 }));
-
-    flatbuffers::FlatBufferBuilder builder_4(1024);
-    auto one = StepBuilder()
-        .setDependencies({ 0 })
-        .build(builder_4);
-    flatbuffers::FlatBufferBuilder builder_5(1024);
-    auto two = StepBuilder()
-        .setDependencies({ 1 })
-        .build(builder_5);
-    // Cycle
-    CHECK(rootSteps({ one, two }).empty());
-  }
-
   SECTION("cycleErrorMessage") {
     CHECK(
         cycleErrorMessage({}) == "[internal error]");
@@ -375,6 +328,81 @@ TEST_CASE("CompiledManifest") {
         REQUIRE(compiled_manifest.defaults().size() == 2);
         CHECK(compiled_manifest.defaults()[0] == 1);
         CHECK(compiled_manifest.defaults()[1] == 0);
+      }
+    }
+
+    SECTION("roots") {
+      SECTION("empty") {
+        RawManifest manifest;
+        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        CHECK(compiled_manifest.roots().empty());
+      }
+
+      SECTION("single empty step") {
+        RawManifest manifest;
+        manifest.steps = { empty };
+
+        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        CHECK(
+            toVector(compiled_manifest.roots()) ==
+            std::vector<StepIndex>{ 0 });
+      }
+
+      SECTION("two empty steps") {
+        RawManifest manifest;
+        manifest.steps = { empty, empty };
+
+        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        CHECK(
+            toVector(compiled_manifest.roots()) ==
+            std::vector<StepIndex>({ 0, 1 }));
+      }
+
+      SECTION("one step depending on another") {
+        RawManifest manifest;
+        manifest.steps = { single_output, single_input };
+
+        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        CHECK(
+            toVector(compiled_manifest.roots()) ==
+            std::vector<StepIndex>{ 1 });
+      }
+
+      SECTION("one step depending on another, reverse order") {
+        RawManifest manifest;
+        manifest.steps = { single_input, single_output };
+
+        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        CHECK(
+            toVector(compiled_manifest.roots()) ==
+            std::vector<StepIndex>{ 0 });
+      }
+
+      SECTION("one step depending on another plus independent step") {
+        RawManifest manifest;
+        manifest.steps = { single_output, single_input, empty };
+
+        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        CHECK(
+            toVector(compiled_manifest.roots()) ==
+            std::vector<StepIndex>({ 1, 2 }));
+      }
+
+      SECTION("cycle") {
+        RawStep cyclic_step_1;
+        cyclic_step_1.outputs = { paths.get("b") };
+        cyclic_step_1.inputs = { paths.get("a") };
+        RawStep cyclic_step_2;
+        cyclic_step_2.outputs = { paths.get("a") };
+        cyclic_step_2.inputs = { paths.get("b") };
+
+        RawManifest manifest;
+        manifest.steps = { cyclic_step_1, cyclic_step_2 };
+
+        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        CHECK(
+            toVector(compiled_manifest.roots()) ==
+            std::vector<StepIndex>{});
       }
     }
 

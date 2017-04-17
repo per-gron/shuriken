@@ -44,18 +44,6 @@ PathToStepMap computeOutputPathMap(
     const std::vector<RawStep> &steps) throw(BuildError);
 
 /**
- * Compute the "root steps," that is the steps that don't have an output that
- * is an input to some other step. This is the set of steps that are built if
- * there are no default statements in the manifest and no steps where
- * specifically requested to be built.
- *
- * If no step can be identified as root (perhaps because there is a cyclic
- * dependency), this function returns an empty vector.
- */
-std::vector<StepIndex> rootSteps(
-    const std::vector<Step> &steps) throw(BuildError);
-
-/**
  * Generate a string that describes a cycle, for example "a -> b -> a".
  * cycle must be a non-empty vector.
  */
@@ -116,8 +104,8 @@ struct CompiledManifest {
     return _defaults;
   }
 
-  const std::vector<StepIndex> &roots() const {
-    return _roots;
+  detail::IntsView<StepIndex> roots() const {
+    return detail::toIntsView<StepIndex>(_manifest->roots());
   }
 
   const std::unordered_map<std::string, int> &pools() const {
@@ -154,7 +142,6 @@ struct CompiledManifest {
   PathToStepList _inputs;
   std::vector<Step> _steps;
   std::vector<StepIndex> _defaults;
-  std::vector<StepIndex> _roots;
   std::unordered_map<std::string, int> _pools;
   const ShkManifest::Manifest *_manifest;
 };
