@@ -100,8 +100,8 @@ struct CompiledManifest {
     return _steps;
   }
 
-  const std::vector<StepIndex> &defaults() const {
-    return _defaults;
+  detail::IntsView<StepIndex> defaults() const {
+    return detail::toIntsView<StepIndex>(_manifest->defaults());
   }
 
   detail::IntsView<StepIndex> roots() const {
@@ -141,7 +141,6 @@ struct CompiledManifest {
   PathToStepList _outputs;
   PathToStepList _inputs;
   std::vector<Step> _steps;
-  std::vector<StepIndex> _defaults;
   std::unordered_map<std::string, int> _pools;
   const ShkManifest::Manifest *_manifest;
 };

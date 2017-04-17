@@ -88,7 +88,10 @@ std::vector<StepIndex> computeStepsToBuild(
   if (!specified_steps.empty()) {
     return specified_steps;
   } else if (!manifest.defaults().empty()) {
-    return manifest.defaults();
+    auto defaults = manifest.defaults();
+    std::vector<StepIndex> ans(defaults.size());
+    std::copy(defaults.begin(), defaults.end(), ans.begin());
+    return ans;
   } else {
     if (manifest.roots().empty() && !manifest.steps().empty()) {
       throw BuildError(

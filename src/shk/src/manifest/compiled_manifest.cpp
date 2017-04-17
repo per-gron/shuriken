@@ -325,8 +325,6 @@ CompiledManifest::CompiledManifest(
       _inputs(computePathList(computeInputPathMap(manifest.steps))),
       _steps(convertStepVector(
           output_path_map, _step_buffers, std::move(manifest.steps))),
-      _defaults(computeStepsToBuildFromPaths(
-          manifest.defaults, output_path_map)),
       _pools(std::move(manifest.pools)) {
 
   std::vector<flatbuffers::Offset<ShkManifest::StepPathReference>> outputs;
@@ -341,7 +339,8 @@ CompiledManifest::CompiledManifest(
   auto steps_vector = _builder->CreateVector(
       steps.data(), steps.size());
 
-  std::vector<StepIndex> defaults;
+  auto defaults = computeStepsToBuildFromPaths(
+          manifest.defaults, output_path_map);
   auto defaults_vector = _builder->CreateVector(
       defaults.data(), defaults.size());
 
@@ -369,7 +368,8 @@ CompiledManifest::CompiledManifest(
   manifest_builder.add_roots(roots_vector);
   manifest_builder.add_pools(pools_vector);
   manifest_builder.add_build_dir(build_dir_string);
-  manifest_builder.add_manifest_step(getManifestStep(output_path_map, manifest_path));
+  manifest_builder.add_manifest_step(
+      getManifestStep(output_path_map, manifest_path));
   manifest_builder.add_dependency_cycle(dependency_cycle_string);
   _builder->Finish(manifest_builder.Finish());
 
