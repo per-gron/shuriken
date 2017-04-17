@@ -103,8 +103,7 @@ PathToStepList computePathList(
 Step convertRawStep(
     const detail::PathToStepMap &output_path_map,
     RawStep &&raw) {
-  Step::Builder builder;
-  builder.setHash(raw.hash());
+  auto builder = std::make_shared<flatbuffers::FlatBufferBuilder>(1024);
 
   std::vector<StepIndex> dependencies;
   const auto process_inputs = [&](
@@ -120,31 +119,47 @@ Step convertRawStep(
   process_inputs(raw.implicit_inputs);
   process_inputs(raw.dependencies);
 
-  builder.setDependencies(std::move(dependencies));
+  auto deps_vector = builder->CreateVector(
+      dependencies.data(), dependencies.size());
 
   std::unordered_set<std::string> output_dirs_set;
   for (const auto &output : raw.outputs) {
     output_dirs_set.insert(dirname(output.original()));
   }
-  std::vector<std::string> output_dirs;
+
+  std::vector<flatbuffers::Offset<flatbuffers::String>> output_dirs;
   output_dirs.reserve(output_dirs_set.size());
   for (auto &output : output_dirs_set) {
     if (output == ".") {
       continue;
     }
-    output_dirs.push_back(std::move(output));
+    output_dirs.push_back(builder->CreateString(output));
   }
-  builder.setOutputDirs(std::move(output_dirs));
+  auto output_dirs_vector = builder->CreateVector(
+      output_dirs.data(), output_dirs.size());
 
-  builder.setPoolName(std::move(raw.pool_name));
-  builder.setCommand(std::move(raw.command));
-  builder.setDescription(std::move(raw.description));
-  builder.setGenerator(std::move(raw.generator));
-  builder.setDepfile(std::move(raw.depfile));
-  builder.setRspfile(std::move(raw.rspfile));
-  builder.setRspfileContent(std::move(raw.rspfile_content));
+  auto pool_name_string = builder->CreateString(raw.pool_name);
+  auto command_string = builder->CreateString(raw.command);
+  auto description_string = builder->CreateString(raw.description);
+  auto depfile_string = builder->CreateString(raw.depfile);
+  auto rspfile_string = builder->CreateString(raw.rspfile);
+  auto rspfile_content_string = builder->CreateString(raw.rspfile_content);
 
-  return builder.build();
+  ShkManifest::StepBuilder step_builder(*builder);
+  step_builder.add_hash(
+      reinterpret_cast<const ShkManifest::Hash *>(raw.hash().data.data()));
+  step_builder.add_dependencies(deps_vector);
+  step_builder.add_output_dirs(output_dirs_vector);
+  step_builder.add_pool_name(pool_name_string);
+  step_builder.add_command(command_string);
+  step_builder.add_description(description_string);
+  step_builder.add_generator(raw.generator);
+  step_builder.add_depfile(depfile_string);
+  step_builder.add_rspfile(rspfile_string);
+  step_builder.add_rspfile_content(rspfile_content_string);
+  builder->Finish(step_builder.Finish());
+
+  return Step(std::move(builder));
 }
 
 std::vector<Step> convertStepVector(

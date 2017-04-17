@@ -4,6 +4,7 @@
 #include "manifest/step.h"
 
 #include "../in_memory_file_system.h"
+#include "step_builder.h"
 
 namespace shk {
 namespace {
@@ -23,7 +24,7 @@ TEST_CASE("Step") {
   Paths paths(fs);
 
   SECTION("CopyConstructor") {
-    auto a = Step::Builder()
+    auto a = StepBuilder()
         .setDependencies({ 0 })
         .build();
 
@@ -36,9 +37,9 @@ TEST_CASE("Step") {
       Hash other_hash{};
       other_hash.data[0] = 1;
 
-      auto a = Step::Builder()
+      auto a = StepBuilder()
           .build();
-      auto b = a.toBuilder()
+      auto b = StepBuilder::fromStep(a)
           .setHash(std::move(other_hash))
           .build();
       CHECK(a.hash() == Hash());
@@ -46,10 +47,10 @@ TEST_CASE("Step") {
     }
 
     SECTION("Dependencies") {
-      auto a = Step::Builder()
+      auto a = StepBuilder()
           .setDependencies({ 0 })
           .build();
-      auto b = a.toBuilder()
+      auto b = StepBuilder::fromStep(a)
           .setDependencies({})
           .build();
       REQUIRE(a.dependencies().size() == 1);
@@ -58,10 +59,10 @@ TEST_CASE("Step") {
     }
 
     SECTION("OutputDirs") {
-      auto a = Step::Builder()
+      auto a = StepBuilder()
           .setOutputDirs({ "o1" })
           .build();
-      auto b = a.toBuilder()
+      auto b = StepBuilder::fromStep(a)
           .setOutputDirs({ "o2" })
           .build();
       CHECK(toVector(a.outputDirs()) == std::vector<nt_string_view>{ "o1" });
@@ -69,10 +70,10 @@ TEST_CASE("Step") {
     }
 
     SECTION("PoolName") {
-      auto a = Step::Builder()
+      auto a = StepBuilder()
           .setPoolName("a")
           .build();
-      auto b = a.toBuilder()
+      auto b = StepBuilder::fromStep(a)
           .setPoolName("b")
           .build();
       CHECK(a.poolName() == "a");
@@ -80,10 +81,10 @@ TEST_CASE("Step") {
     }
 
     SECTION("Command") {
-      auto a = Step::Builder()
+      auto a = StepBuilder()
           .setCommand("a")
           .build();
-      auto b = a.toBuilder()
+      auto b = StepBuilder::fromStep(a)
           .setCommand("b")
           .build();
       CHECK(a.command() == "a");
@@ -91,10 +92,10 @@ TEST_CASE("Step") {
     }
 
     SECTION("Description") {
-      auto a = Step::Builder()
+      auto a = StepBuilder()
           .setDescription("a")
           .build();
-      auto b = a.toBuilder()
+      auto b = StepBuilder::fromStep(a)
           .setDescription("b")
           .build();
       CHECK(a.description() == "a");
@@ -102,10 +103,10 @@ TEST_CASE("Step") {
     }
 
     SECTION("Depfile") {
-      auto a = Step::Builder()
+      auto a = StepBuilder()
           .setDepfile("a")
           .build();
-      auto b = a.toBuilder()
+      auto b = StepBuilder::fromStep(a)
           .setDepfile("b")
           .build();
       CHECK(a.depfile() == "a");
@@ -113,10 +114,10 @@ TEST_CASE("Step") {
     }
 
     SECTION("Generator") {
-      auto a = Step::Builder()
+      auto a = StepBuilder()
           .setGenerator(true)
           .build();
-      auto b = a.toBuilder()
+      auto b = StepBuilder::fromStep(a)
           .setGenerator(false)
           .build();
       CHECK(a.generator());
@@ -124,10 +125,10 @@ TEST_CASE("Step") {
     }
 
     SECTION("Rspfile") {
-      auto a = Step::Builder()
+      auto a = StepBuilder()
           .setRspfile("a")
           .build();
-      auto b = a.toBuilder()
+      auto b = StepBuilder::fromStep(a)
           .setRspfile("b")
           .build();
       CHECK(a.rspfile() == "a");
@@ -135,10 +136,10 @@ TEST_CASE("Step") {
     }
 
     SECTION("RspfileContent") {
-      auto a = Step::Builder()
+      auto a = StepBuilder()
           .setRspfileContent("a")
           .build();
-      auto b = a.toBuilder()
+      auto b = StepBuilder::fromStep(a)
           .setRspfileContent("b")
           .build();
       CHECK(a.rspfileContent() == "a");
@@ -147,9 +148,9 @@ TEST_CASE("Step") {
   }
 
   SECTION("phony") {
-    CHECK(!Step::Builder().setCommand("cmd").build().phony());
-    CHECK(Step::Builder().build().phony());
-    CHECK(Step::Builder().setCommand("").build().phony());
+    CHECK(!StepBuilder().setCommand("cmd").build().phony());
+    CHECK(StepBuilder().build().phony());
+    CHECK(StepBuilder().setCommand("").build().phony());
   }
 
   SECTION("isConsolePool") {

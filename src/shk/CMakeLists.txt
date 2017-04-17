@@ -156,6 +156,8 @@ add_executable(shk_test
   test/manifest/lexer_test.cpp
   test/manifest/raw_manifest_test.cpp
   test/manifest/raw_step_test.cpp
+  test/manifest/step_builder.cpp
+  test/manifest/step_builder.h
   test/manifest/step_test.cpp
   test/manifest/wrapper_view_test.cpp
   test/nullterminated_string_test.cpp

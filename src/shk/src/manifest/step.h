@@ -79,37 +79,7 @@ inline nt_string_view toStringView(const flatbuffers::String *str) {
  * commands.
  */
 struct Step {
-  class Builder {
-   public:
-    Builder &setHash(Hash &&hash);
-    Builder &setDependencies(std::vector<StepIndex> &&dependencies);
-    Builder &setOutputDirs(std::vector<std::string> &&output_dirs);
-    Builder &setPoolName(std::string &&pool_name);
-    Builder &setCommand(std::string &&command);
-    Builder &setDescription(std::string &&description);
-    Builder &setGenerator(bool &&generator);
-    Builder &setDepfile(std::string &&depfile);
-    Builder &setRspfile(std::string &&rspfile);
-    Builder &setRspfileContent(std::string &&rspfile_content);
-
-    Step build();
-
-   private:
-    Hash _hash;
-    std::vector<StepIndex> _dependencies;
-    std::vector<std::string> _output_dirs;
-    std::string _pool_name;
-    std::string _command;
-    std::string _description;
-    bool _generator = false;
-    std::string _depfile;
-    std::string _rspfile;
-    std::string _rspfile_content;
-  };
-
   Step(std::shared_ptr<flatbuffers::FlatBufferBuilder> &&data);
-
-  Builder toBuilder() const;
 
   /**
    * A hash of this build step. The hash is used when comparing against old

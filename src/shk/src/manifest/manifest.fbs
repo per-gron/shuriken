@@ -48,6 +48,7 @@ table Pool {
   depth:int = 1;
 }
 
+/// See the wrapper type CompiledManifest in compiled_manifest.h for more info
 table Manifest {
   outputs:[StepPathReference] (required);
   inputs:[StepPathReference] (required);

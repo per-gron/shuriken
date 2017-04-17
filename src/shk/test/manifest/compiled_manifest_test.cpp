@@ -3,6 +3,7 @@
 #include "manifest/compiled_manifest.h"
 
 #include "../in_memory_file_system.h"
+#include "step_builder.h"
 
 namespace shk {
 namespace detail {
@@ -85,16 +86,16 @@ TEST_CASE("CompiledManifest") {
   }
 
   SECTION("rootSteps") {
-    auto step = Step::Builder()
+    auto step = StepBuilder()
         .setCommand("cmd")
         .build();
 
-    auto single_dependency_0 = Step::Builder()
+    auto single_dependency_0 = StepBuilder()
         .setCommand("cmd")
         .setDependencies({ 0 })
         .build();
 
-    auto single_dependency_1 = Step::Builder()
+    auto single_dependency_1 = StepBuilder()
         .setCommand("cmd")
         .setDependencies({ 1 })
         .build();
@@ -116,10 +117,10 @@ TEST_CASE("CompiledManifest") {
         rootSteps({ single_dependency_1, step, step }) ==
         (std::vector<StepIndex>{ 0, 2 }));
 
-    auto one = Step::Builder()
+    auto one = StepBuilder()
         .setDependencies({ 0 })
         .build();
-    auto two = Step::Builder()
+    auto two = StepBuilder()
         .setDependencies({ 1 })
         .build();
     // Cycle

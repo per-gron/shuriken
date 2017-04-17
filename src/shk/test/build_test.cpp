@@ -9,6 +9,7 @@
 #include "dummy_command_runner.h"
 #include "in_memory_file_system.h"
 #include "in_memory_invocation_log.h"
+#include "manifest/step_builder.h"
 
 namespace shk {
 namespace detail {
@@ -141,7 +142,7 @@ TEST_CASE("Build") {
   Invocations invocations;
   RawManifest manifest;
 
-  auto empty = Step::Builder().build();
+  auto empty = StepBuilder().build();
 
   RawStep single_output;
   single_output.command = "cmd";
@@ -1064,7 +1065,7 @@ TEST_CASE("Build") {
           CleanSteps{ false },
           {},
           Invocations(),
-          Step::Builder().build(),
+          StepBuilder().build(),
           0));
     }
 
@@ -1074,12 +1075,12 @@ TEST_CASE("Build") {
           CleanSteps{ true },
           {},
           Invocations(),
-          Step::Builder().build(),
+          StepBuilder().build(),
           0));
     }
 
     SECTION("no input files") {
-      const auto step = Step::Builder().build();
+      const auto step = StepBuilder().build();
       Invocations invocations;
       invocations.entries[step.hash()] = Invocations::Entry();
 
@@ -1093,7 +1094,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("input file that has not been written") {
-      const auto step = Step::Builder().build();
+      const auto step = StepBuilder().build();
 
       Invocations::Entry entry;
       entry.input_files = { 0 };
@@ -1113,7 +1114,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("input file that has been written but is clean") {
-      const auto step = Step::Builder().build();
+      const auto step = StepBuilder().build();
 
       Invocations::Entry entry;
       entry.input_files = { 0 };
@@ -1133,7 +1134,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("input file that has been overwritten") {
-      const auto step = Step::Builder().build();
+      const auto step = StepBuilder().build();
 
       Invocations::Entry entry;
       entry.input_files = { 0 };
@@ -1156,7 +1157,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("output file that has been overwritten") {
-      const auto step = Step::Builder().build();
+      const auto step = StepBuilder().build();
 
       Invocations::Entry entry;
       entry.output_files = { 0 };
