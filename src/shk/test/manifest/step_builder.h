@@ -17,7 +17,7 @@ class StepBuilder {
   StepBuilder &setRspfile(std::string &&rspfile);
   StepBuilder &setRspfileContent(std::string &&rspfile_content);
 
-  Step build();
+  Step build(flatbuffers::FlatBufferBuilder &builder);
 
   static StepBuilder fromStep(const Step &step);
 

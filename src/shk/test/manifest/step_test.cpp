@@ -23,10 +23,12 @@ TEST_CASE("Step") {
   InMemoryFileSystem fs;
   Paths paths(fs);
 
+  flatbuffers::FlatBufferBuilder builder(1024);
+
   SECTION("CopyConstructor") {
     auto a = StepBuilder()
         .setDependencies({ 0 })
-        .build();
+        .build(builder);
 
     auto b = a;
     CHECK(a.dependencies() == b.dependencies());
@@ -38,10 +40,10 @@ TEST_CASE("Step") {
       other_hash.data[0] = 1;
 
       auto a = StepBuilder()
-          .build();
+          .build(builder);
       auto b = StepBuilder::fromStep(a)
           .setHash(std::move(other_hash))
-          .build();
+          .build(builder);
       CHECK(a.hash() == Hash());
       CHECK(b.hash() == other_hash);
     }
@@ -49,10 +51,10 @@ TEST_CASE("Step") {
     SECTION("Dependencies") {
       auto a = StepBuilder()
           .setDependencies({ 0 })
-          .build();
+          .build(builder);
       auto b = StepBuilder::fromStep(a)
           .setDependencies({})
-          .build();
+          .build(builder);
       REQUIRE(a.dependencies().size() == 1);
       CHECK(a.dependencies().front() == 0);
       CHECK(b.dependencies().empty());
@@ -61,10 +63,10 @@ TEST_CASE("Step") {
     SECTION("OutputDirs") {
       auto a = StepBuilder()
           .setOutputDirs({ "o1" })
-          .build();
+          .build(builder);
       auto b = StepBuilder::fromStep(a)
           .setOutputDirs({ "o2" })
-          .build();
+          .build(builder);
       CHECK(toVector(a.outputDirs()) == std::vector<nt_string_view>{ "o1" });
       CHECK(toVector(b.outputDirs()) == std::vector<nt_string_view>{ "o2" });
     }
@@ -72,10 +74,10 @@ TEST_CASE("Step") {
     SECTION("PoolName") {
       auto a = StepBuilder()
           .setPoolName("a")
-          .build();
+          .build(builder);
       auto b = StepBuilder::fromStep(a)
           .setPoolName("b")
-          .build();
+          .build(builder);
       CHECK(a.poolName() == "a");
       CHECK(b.poolName() == "b");
     }
@@ -83,10 +85,10 @@ TEST_CASE("Step") {
     SECTION("Command") {
       auto a = StepBuilder()
           .setCommand("a")
-          .build();
+          .build(builder);
       auto b = StepBuilder::fromStep(a)
           .setCommand("b")
-          .build();
+          .build(builder);
       CHECK(a.command() == "a");
       CHECK(b.command() == "b");
     }
@@ -94,10 +96,10 @@ TEST_CASE("Step") {
     SECTION("Description") {
       auto a = StepBuilder()
           .setDescription("a")
-          .build();
+          .build(builder);
       auto b = StepBuilder::fromStep(a)
           .setDescription("b")
-          .build();
+          .build(builder);
       CHECK(a.description() == "a");
       CHECK(b.description() == "b");
     }
@@ -105,10 +107,10 @@ TEST_CASE("Step") {
     SECTION("Depfile") {
       auto a = StepBuilder()
           .setDepfile("a")
-          .build();
+          .build(builder);
       auto b = StepBuilder::fromStep(a)
           .setDepfile("b")
-          .build();
+          .build(builder);
       CHECK(a.depfile() == "a");
       CHECK(b.depfile() == "b");
     }
@@ -116,10 +118,10 @@ TEST_CASE("Step") {
     SECTION("Generator") {
       auto a = StepBuilder()
           .setGenerator(true)
-          .build();
+          .build(builder);
       auto b = StepBuilder::fromStep(a)
           .setGenerator(false)
-          .build();
+          .build(builder);
       CHECK(a.generator());
       CHECK(!b.generator());
     }
@@ -127,10 +129,10 @@ TEST_CASE("Step") {
     SECTION("Rspfile") {
       auto a = StepBuilder()
           .setRspfile("a")
-          .build();
+          .build(builder);
       auto b = StepBuilder::fromStep(a)
           .setRspfile("b")
-          .build();
+          .build(builder);
       CHECK(a.rspfile() == "a");
       CHECK(b.rspfile() == "b");
     }
@@ -138,19 +140,27 @@ TEST_CASE("Step") {
     SECTION("RspfileContent") {
       auto a = StepBuilder()
           .setRspfileContent("a")
-          .build();
+          .build(builder);
       auto b = StepBuilder::fromStep(a)
           .setRspfileContent("b")
-          .build();
+          .build(builder);
       CHECK(a.rspfileContent() == "a");
       CHECK(b.rspfileContent() == "b");
     }
   }
 
   SECTION("phony") {
-    CHECK(!StepBuilder().setCommand("cmd").build().phony());
-    CHECK(StepBuilder().build().phony());
-    CHECK(StepBuilder().setCommand("").build().phony());
+    SECTION("Not phony") {
+      CHECK(!StepBuilder().setCommand("cmd").build(builder).phony());
+    }
+
+    SECTION("No command") {
+      CHECK(StepBuilder().build(builder).phony());
+    }
+
+    SECTION("Empty command") {
+      CHECK(StepBuilder().setCommand("").build(builder).phony());
+    }
   }
 
   SECTION("isConsolePool") {

@@ -149,6 +149,7 @@ struct CompiledManifest {
   }
 
  private:
+  std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> _step_buffers;
   PathToStepList _outputs;
   PathToStepList _inputs;
   std::vector<Step> _steps;

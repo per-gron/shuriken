@@ -142,7 +142,8 @@ TEST_CASE("Build") {
   Invocations invocations;
   RawManifest manifest;
 
-  auto empty = StepBuilder().build();
+  flatbuffers::FlatBufferBuilder empty_step_builder(1024);
+  auto empty = StepBuilder().build(empty_step_builder);
 
   RawStep single_output;
   single_output.command = "cmd";
@@ -1059,13 +1060,15 @@ TEST_CASE("Build") {
         fs, clock(), "file").first;
     const auto file_id = FileId(fs.lstat("file"));
 
+    flatbuffers::FlatBufferBuilder fb_builder(1024);
+
     SECTION("dirty step") {
       CHECK(!canSkipBuildCommand(
           fs,
           CleanSteps{ false },
           {},
           Invocations(),
-          StepBuilder().build(),
+          StepBuilder().build(fb_builder),
           0));
     }
 
@@ -1075,12 +1078,12 @@ TEST_CASE("Build") {
           CleanSteps{ true },
           {},
           Invocations(),
-          StepBuilder().build(),
+          StepBuilder().build(fb_builder),
           0));
     }
 
     SECTION("no input files") {
-      const auto step = StepBuilder().build();
+      const auto step = StepBuilder().build(fb_builder);
       Invocations invocations;
       invocations.entries[step.hash()] = Invocations::Entry();
 
@@ -1094,7 +1097,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("input file that has not been written") {
-      const auto step = StepBuilder().build();
+      const auto step = StepBuilder().build(fb_builder);
 
       Invocations::Entry entry;
       entry.input_files = { 0 };
@@ -1114,7 +1117,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("input file that has been written but is clean") {
-      const auto step = StepBuilder().build();
+      const auto step = StepBuilder().build(fb_builder);
 
       Invocations::Entry entry;
       entry.input_files = { 0 };
@@ -1134,7 +1137,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("input file that has been overwritten") {
-      const auto step = StepBuilder().build();
+      const auto step = StepBuilder().build(fb_builder);
 
       Invocations::Entry entry;
       entry.input_files = { 0 };
@@ -1157,7 +1160,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("output file that has been overwritten") {
-      const auto step = StepBuilder().build();
+      const auto step = StepBuilder().build(fb_builder);
 
       Invocations::Entry entry;
       entry.output_files = { 0 };

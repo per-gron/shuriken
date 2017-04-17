@@ -54,28 +54,26 @@ StepBuilder &StepBuilder::setRspfileContent(std::string &&rspfile_content) {
   return *this;
 }
 
-Step StepBuilder::build() {
-  auto builder = std::make_shared<flatbuffers::FlatBufferBuilder>(1024);
-
-  auto deps_vector = builder->CreateVector(
+Step StepBuilder::build(flatbuffers::FlatBufferBuilder &builder) {
+  auto deps_vector = builder.CreateVector(
       _dependencies.data(), _dependencies.size());
 
   std::vector<flatbuffers::Offset<flatbuffers::String>> output_dirs;
   output_dirs.reserve(_output_dirs.size());
   for (const auto &output_dir : _output_dirs) {
-    output_dirs.push_back(builder->CreateString(output_dir));
+    output_dirs.push_back(builder.CreateString(output_dir));
   }
-  auto output_dirs_vector = builder->CreateVector(
+  auto output_dirs_vector = builder.CreateVector(
       output_dirs.data(), output_dirs.size());
 
-  auto pool_name_string = builder->CreateString(_pool_name);
-  auto command_string = builder->CreateString(_command);
-  auto description_string = builder->CreateString(_description);
-  auto depfile_string = builder->CreateString(_depfile);
-  auto rspfile_string = builder->CreateString(_rspfile);
-  auto rspfile_content_string = builder->CreateString(_rspfile_content);
+  auto pool_name_string = builder.CreateString(_pool_name);
+  auto command_string = builder.CreateString(_command);
+  auto description_string = builder.CreateString(_description);
+  auto depfile_string = builder.CreateString(_depfile);
+  auto rspfile_string = builder.CreateString(_rspfile);
+  auto rspfile_content_string = builder.CreateString(_rspfile_content);
 
-  ShkManifest::StepBuilder step_builder(*builder);
+  ShkManifest::StepBuilder step_builder(builder);
   step_builder.add_hash(
       reinterpret_cast<const ShkManifest::Hash *>(_hash.data.data()));
   step_builder.add_dependencies(deps_vector);
@@ -87,9 +85,10 @@ Step StepBuilder::build() {
   step_builder.add_depfile(depfile_string);
   step_builder.add_rspfile(rspfile_string);
   step_builder.add_rspfile_content(rspfile_content_string);
-  builder->Finish(step_builder.Finish());
+  builder.Finish(step_builder.Finish());
 
-  return Step(std::move(builder));
+  return Step(*flatbuffers::GetRoot<ShkManifest::Step>(
+      builder.GetBufferPointer()));
 }
 
 StepBuilder StepBuilder::fromStep(const Step &step) {

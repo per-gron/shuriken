@@ -60,7 +60,6 @@ add_library(shklib
   src/manifest/raw_step.h
   src/manifest/rule.cpp
   src/manifest/rule.h
-  src/manifest/step.cpp
   src/manifest/step.h
   src/manifest/wrapper_view.h
   src/io_error.h

@@ -79,7 +79,7 @@ inline nt_string_view toStringView(const flatbuffers::String *str) {
  * commands.
  */
 struct Step {
-  Step(std::shared_ptr<flatbuffers::FlatBufferBuilder> &&data);
+  Step(const ShkManifest::Step &step) : _step(&step) {}
 
   /**
    * A hash of this build step. The hash is used when comparing against old
@@ -168,7 +168,6 @@ struct Step {
   }
 
  private:
-  std::shared_ptr<flatbuffers::FlatBufferBuilder> _data;
   const ShkManifest::Step *_step;
 };
 

@@ -86,19 +86,22 @@ TEST_CASE("CompiledManifest") {
   }
 
   SECTION("rootSteps") {
+    flatbuffers::FlatBufferBuilder builder_1(1024);
     auto step = StepBuilder()
         .setCommand("cmd")
-        .build();
+        .build(builder_1);
 
+    flatbuffers::FlatBufferBuilder builder_2(1024);
     auto single_dependency_0 = StepBuilder()
         .setCommand("cmd")
         .setDependencies({ 0 })
-        .build();
+        .build(builder_2);
 
+    flatbuffers::FlatBufferBuilder builder_3(1024);
     auto single_dependency_1 = StepBuilder()
         .setCommand("cmd")
         .setDependencies({ 1 })
-        .build();
+        .build(builder_3);
 
     CHECK(rootSteps({}).empty());
     CHECK(
@@ -117,12 +120,14 @@ TEST_CASE("CompiledManifest") {
         rootSteps({ single_dependency_1, step, step }) ==
         (std::vector<StepIndex>{ 0, 2 }));
 
+    flatbuffers::FlatBufferBuilder builder_4(1024);
     auto one = StepBuilder()
         .setDependencies({ 0 })
-        .build();
+        .build(builder_4);
+    flatbuffers::FlatBufferBuilder builder_5(1024);
     auto two = StepBuilder()
         .setDependencies({ 1 })
-        .build();
+        .build(builder_5);
     // Cycle
     CHECK(rootSteps({ one, two }).empty());
   }

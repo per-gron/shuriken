@@ -102,8 +102,10 @@ PathToStepList computePathList(
 
 Step convertRawStep(
     const detail::PathToStepMap &output_path_map,
+    std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> &step_buffers,
     RawStep &&raw) {
-  auto builder = std::make_shared<flatbuffers::FlatBufferBuilder>(1024);
+  step_buffers.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
+  auto &builder = *step_buffers.back();
 
   std::vector<StepIndex> dependencies;
   const auto process_inputs = [&](
@@ -119,7 +121,7 @@ Step convertRawStep(
   process_inputs(raw.implicit_inputs);
   process_inputs(raw.dependencies);
 
-  auto deps_vector = builder->CreateVector(
+  auto deps_vector = builder.CreateVector(
       dependencies.data(), dependencies.size());
 
   std::unordered_set<std::string> output_dirs_set;
@@ -133,19 +135,19 @@ Step convertRawStep(
     if (output == ".") {
       continue;
     }
-    output_dirs.push_back(builder->CreateString(output));
+    output_dirs.push_back(builder.CreateString(output));
   }
-  auto output_dirs_vector = builder->CreateVector(
+  auto output_dirs_vector = builder.CreateVector(
       output_dirs.data(), output_dirs.size());
 
-  auto pool_name_string = builder->CreateString(raw.pool_name);
-  auto command_string = builder->CreateString(raw.command);
-  auto description_string = builder->CreateString(raw.description);
-  auto depfile_string = builder->CreateString(raw.depfile);
-  auto rspfile_string = builder->CreateString(raw.rspfile);
-  auto rspfile_content_string = builder->CreateString(raw.rspfile_content);
+  auto pool_name_string = builder.CreateString(raw.pool_name);
+  auto command_string = builder.CreateString(raw.command);
+  auto description_string = builder.CreateString(raw.description);
+  auto depfile_string = builder.CreateString(raw.depfile);
+  auto rspfile_string = builder.CreateString(raw.rspfile);
+  auto rspfile_content_string = builder.CreateString(raw.rspfile_content);
 
-  ShkManifest::StepBuilder step_builder(*builder);
+  ShkManifest::StepBuilder step_builder(builder);
   step_builder.add_hash(
       reinterpret_cast<const ShkManifest::Hash *>(raw.hash().data.data()));
   step_builder.add_dependencies(deps_vector);
@@ -157,19 +159,24 @@ Step convertRawStep(
   step_builder.add_depfile(depfile_string);
   step_builder.add_rspfile(rspfile_string);
   step_builder.add_rspfile_content(rspfile_content_string);
-  builder->Finish(step_builder.Finish());
+  builder.Finish(step_builder.Finish());
 
-  return Step(std::move(builder));
+  Step step(*flatbuffers::GetRoot<ShkManifest::Step>(
+      builder.GetBufferPointer()));
+
+  return step;
 }
 
 std::vector<Step> convertStepVector(
     const detail::PathToStepMap &output_path_map,
+    std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> &step_buffers,
     std::vector<RawStep> &&steps) {
   std::vector<Step> ans;
   ans.reserve(steps.size());
 
   for (auto &step : steps) {
-    ans.push_back(convertRawStep(output_path_map, std::move(step)));
+    ans.push_back(convertRawStep(
+        output_path_map, step_buffers, std::move(step)));
   }
 
   return ans;
@@ -306,7 +313,8 @@ CompiledManifest::CompiledManifest(
     RawManifest &&manifest)
     : _outputs(computePathList(output_path_map)),
       _inputs(computePathList(computeInputPathMap(manifest.steps))),
-      _steps(convertStepVector(output_path_map, std::move(manifest.steps))),
+      _steps(convertStepVector(
+          output_path_map, _step_buffers, std::move(manifest.steps))),
       _defaults(computeStepsToBuildFromPaths(
           manifest.defaults, output_path_map)),
       _roots(detail::rootSteps(_steps)),
