@@ -183,7 +183,7 @@ struct ShurikenMain {
   }
 
   const CompiledManifest &compiledManifest() const {
-    return _compiled_manifest;
+    return *_compiled_manifest;
   }
 
   /**
@@ -209,7 +209,7 @@ struct ShurikenMain {
   InvocationLogParseResult::ParseData _invocation_parse_data;
   std::unique_ptr<FileLock> _invocation_log_lock;
   std::unique_ptr<InvocationLog> _invocation_log;
-  CompiledManifest _compiled_manifest;
+  Optional<CompiledManifest> _compiled_manifest;
 };
 
 /**
@@ -243,13 +243,13 @@ void usage(const BuildConfig &config) {
  * Returns true if the manifest was rebuilt.
  */
 bool ShurikenMain::rebuildManifest(std::string *err) {
-  if (_compiled_manifest.manifestStep() == -1) {
+  if (_compiled_manifest->manifestStep() == -1) {
     // No rule generates the manifest file. There is nothing to do.
     return false;
   }
 
   try {
-    const auto result = runBuild({ _compiled_manifest.manifestStep() });
+    const auto result = runBuild({ _compiled_manifest->manifestStep() });
     switch (result) {
     case BuildResult::NO_WORK_TO_DO:
       return false;
@@ -326,17 +326,17 @@ void ShurikenMain::parseManifest(
       ::shk::parseManifest(_paths, _file_system, input_file));
 
   std::string cycle;
-  if (!_compiled_manifest.dependencyCycle().empty()) {
+  if (!_compiled_manifest->dependencyCycle().empty()) {
     throw ParseError(
         "Dependency cycle: " +
-        std::string(_compiled_manifest.dependencyCycle()));
+        std::string(_compiled_manifest->dependencyCycle()));
   }
 }
 
 std::string ShurikenMain::invocationLogPath() const {
   std::string path = ".shk_log";
-  if (!_compiled_manifest.buildDir().empty()) {
-    path = std::string(_compiled_manifest.buildDir()) + "/" + path;
+  if (!_compiled_manifest->buildDir().empty()) {
+    path = std::string(_compiled_manifest->buildDir()) + "/" + path;
   }
   return path;
 }
@@ -427,7 +427,7 @@ BuildResult ShurikenMain::runBuild(
   const auto command_runner = _config.dry_run ?
       makeDryRunCommandRunner() :
       makePooledCommandRunner(
-        _compiled_manifest.pools(),
+        _compiled_manifest->pools(),
         makeLimitedCommandRunner(
           getLoadAverage,
           _config.max_load_average,
@@ -456,14 +456,14 @@ BuildResult ShurikenMain::runBuild(
       *_invocation_log,
       _config.failures_allowed,
       std::move(specified_steps),
-      _compiled_manifest,
+      *_compiled_manifest,
       _invocations);
 }
 
 int ShurikenMain::runBuild(int argc, char **argv) {
   std::vector<StepIndex> specified_steps;
   try {
-    specified_steps = interpretPaths(_compiled_manifest, argc, argv);
+    specified_steps = interpretPaths(*_compiled_manifest, argc, argv);
   } catch (const BuildError &build_error) {
     error("%s", build_error.what());
     return 1;
@@ -473,7 +473,7 @@ int ShurikenMain::runBuild(int argc, char **argv) {
     deleteStaleOutputs(
         _file_system,
         *_invocation_log,
-        _compiled_manifest.steps(),
+        _compiled_manifest->steps(),
         _invocations);
   } catch (const IoError &io_error) {
     printf("shk: failed to clean stale outputs: %s\n", io_error.what());

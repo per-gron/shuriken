@@ -141,10 +141,6 @@ TEST_CASE("CompiledManifest") {
         cycleErrorMessage({ paths.get("a"), paths.get("b") }) == "a -> b -> a");
   }
 
-  SECTION("DefaultConstructor") {
-    CompiledManifest compiled_manifest;
-  }
-
   SECTION("Constructor") {
     SECTION("basics") {
       RawManifest manifest;
@@ -462,11 +458,6 @@ TEST_CASE("CompiledManifest") {
     }
 
     SECTION("manifest_step") {
-      SECTION("default value") {
-        CompiledManifest compiled_manifest;
-        CHECK(compiled_manifest.manifestStep() == -1);
-      }
-
       SECTION("present") {
         RawStep step;
         step.outputs = { manifest_path };
@@ -491,8 +482,10 @@ TEST_CASE("CompiledManifest") {
 
     SECTION("dependency_cycle") {
       SECTION("Empty") {
-        const auto cycle = CompiledManifest().dependencyCycle();
-        CHECK(cycle.empty());
+        RawManifest raw_manifest;
+
+        CompiledManifest manifest(manifest_path, std::move(raw_manifest));
+        CHECK(manifest.dependencyCycle().empty());
       }
 
       SECTION("Single input") {

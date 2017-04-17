@@ -81,7 +81,6 @@ std::string cycleErrorMessage(const std::vector<Path> &cycle);
  * build.ninja file is.
  */
 struct CompiledManifest {
-  CompiledManifest() = default;
   CompiledManifest(
       Path manifest_path,
       RawManifest &&manifest);
@@ -137,7 +136,7 @@ struct CompiledManifest {
    * no such step.
    */
   StepIndex manifestStep() const {
-    return _manifest_step;
+    return _manifest->manifest_step();
   }
 
   /**
@@ -157,8 +156,6 @@ struct CompiledManifest {
   std::vector<StepIndex> _defaults;
   std::vector<StepIndex> _roots;
   std::unordered_map<std::string, int> _pools;
-  std::string _build_dir;
-  StepIndex _manifest_step = -1;
   std::string _dependency_cycle;
   const ShkManifest::Manifest *_manifest;
 };

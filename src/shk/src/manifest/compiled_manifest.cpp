@@ -320,17 +320,49 @@ CompiledManifest::CompiledManifest(
           manifest.defaults, output_path_map)),
       _roots(detail::rootSteps(_steps)),
       _pools(std::move(manifest.pools)),
-      _manifest_step(
-          getManifestStep(output_path_map, manifest_path)),
       _dependency_cycle(getDependencyCycle(
           *this,
           output_path_map,
           manifest.steps)) {
 
+  std::vector<flatbuffers::Offset<ShkManifest::StepPathReference>> outputs;
+  auto outputs_vector = _builder->CreateVector(
+      outputs.data(), outputs.size());
+
+  std::vector<flatbuffers::Offset<ShkManifest::StepPathReference>> inputs;
+  auto inputs_vector = _builder->CreateVector(
+      inputs.data(), inputs.size());
+
+  std::vector<flatbuffers::Offset<ShkManifest::Step>> steps;
+  auto steps_vector = _builder->CreateVector(
+      steps.data(), steps.size());
+
+  std::vector<StepIndex> defaults;
+  auto defaults_vector = _builder->CreateVector(
+      defaults.data(), defaults.size());
+
+  std::vector<StepIndex> roots;
+  auto roots_vector = _builder->CreateVector(
+      roots.data(), roots.size());
+
+  std::vector<flatbuffers::Offset<ShkManifest::Pool>> pools;
+  auto pools_vector = _builder->CreateVector(
+      pools.data(), pools.size());
+
   auto build_dir_string = _builder->CreateString(manifest.build_dir);
 
+  auto dependency_cycle_string = _builder->CreateString("");
+
   ShkManifest::ManifestBuilder manifest_builder(*_builder);
+  manifest_builder.add_outputs(outputs_vector);
+  manifest_builder.add_inputs(inputs_vector);
+  manifest_builder.add_steps(steps_vector);
+  manifest_builder.add_defaults(defaults_vector);
+  manifest_builder.add_roots(roots_vector);
+  manifest_builder.add_pools(pools_vector);
   manifest_builder.add_build_dir(build_dir_string);
+  manifest_builder.add_manifest_step(getManifestStep(output_path_map, manifest_path));
+  manifest_builder.add_dependency_cycle(dependency_cycle_string);
   _builder->Finish(manifest_builder.Finish());
 
   _manifest = ShkManifest::GetManifest(_builder->GetBufferPointer());
