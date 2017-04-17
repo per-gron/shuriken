@@ -42,7 +42,7 @@ TEST_CASE("Step") {
           .setDependencies({})
           .build();
       REQUIRE(a.dependencies().size() == 1);
-      CHECK(a.dependencies().data()[0] == 0);
+      CHECK(a.dependencies().front() == 0);
       CHECK(b.dependencies().empty());
     }
 

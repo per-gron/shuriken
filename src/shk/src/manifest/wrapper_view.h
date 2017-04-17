@@ -93,6 +93,7 @@ class WrapperView {
 
   using const_iterator = iterator;
 
+  WrapperView() = default;
   WrapperView(Iter begin, Iter end)
       : _begin(begin), _end(end) {}
   WrapperView(const WrapperView &) = default;
@@ -171,8 +172,8 @@ class WrapperView {
   }
 
  private:
-  Iter _begin;
-  Iter _end;
+  Iter _begin{};
+  Iter _end{};
 };
 
 }  // namespace shk

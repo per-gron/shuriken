@@ -15,9 +15,12 @@ bool contains(const Container &container, const Value &value) {
       container.begin(), container.end(), value) != container.end();
 }
 
-template <typename T>
-std::vector<T> toVector(std::experimental::basic_string_view<T> view) {
-  return std::vector<T>(view.data(), view.data() + view.size());
+template <typename View>
+std::vector<typename View::value_type> toVector(View view) {
+  auto ans = std::vector<typename View::value_type>();
+  ans.reserve(view.size());
+  std::copy(view.begin(), view.end(), std::back_inserter(ans));
+  return ans;
 }
 
 }  // anonymous namespace

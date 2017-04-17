@@ -7,6 +7,7 @@
 #include "optional.h"
 #include "manifest/manifest_generated.h"
 #include "manifest/raw_step.h"
+#include "manifest/wrapper_view.h"
 
 namespace shk {
 
@@ -68,7 +69,7 @@ struct Step {
     return *reinterpret_cast<const Hash *>(_step->hash());
   }
 
-  using StepIndices = std::experimental::basic_string_view<StepIndex>;
+  using StepIndices = WrapperView<const StepIndex *, StepIndex>;
 
   /**
    * A list of indices for steps that must be done and clean before this step
@@ -78,7 +79,7 @@ struct Step {
   const StepIndices dependencies() const {
     const auto *deps = _step->dependencies();
     return deps ?
-        StepIndices(deps->data(), deps->size()) :
+        StepIndices(deps->data(), deps->data() + deps->size()) :
         StepIndices();
   }
 

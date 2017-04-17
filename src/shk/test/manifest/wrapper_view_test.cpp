@@ -113,6 +113,12 @@ TEST_CASE("WrapperView") {
   }
 
   SECTION("Constructor") {
+    SECTION("Default") {
+      auto v = WV();
+      CHECK(v.empty());
+      CHECK(v.begin() == v.end());
+    }
+
     SECTION("Range") {
       WV(empty.begin(), empty.end());
     }
