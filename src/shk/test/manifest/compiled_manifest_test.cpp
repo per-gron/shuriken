@@ -408,6 +408,28 @@ TEST_CASE("CompiledManifest") {
       }
     }
 
+    SECTION("pools") {
+      SECTION("empty") {
+        RawManifest manifest;
+
+        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        CHECK(
+            toVector(compiled_manifest.pools()) ==
+            (std::vector<std::pair<nt_string_view, int>>{}));
+      }
+
+      SECTION("one") {
+        RawManifest manifest;
+        manifest.pools["a_pool"] = 123;
+
+        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        CHECK(
+            toVector(compiled_manifest.pools()) ==
+            (std::vector<std::pair<nt_string_view, int>>(
+                { { "a_pool", 123 } })));
+      }
+    }
+
     SECTION("build_dir") {
       RawManifest manifest;
       manifest.build_dir = "hello";

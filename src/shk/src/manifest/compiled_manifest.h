@@ -42,9 +42,18 @@ inline std::pair<nt_string_view, StepIndex> fbStepPathReferenceToView(
   return std::make_pair(fbStringToView(ref->path()), ref->step());
 }
 
+inline std::pair<nt_string_view, int> fbPoolToView(
+    const ShkManifest::Pool *pool) {
+  return std::make_pair(fbStringToView(pool->name()), pool->depth());
+}
+
 using FbStepPathReferenceIterator = flatbuffers::VectorIterator<
     flatbuffers::Offset<ShkManifest::StepPathReference>,
     const ShkManifest::StepPathReference *>;
+
+using FbPoolIterator = flatbuffers::VectorIterator<
+    flatbuffers::Offset<ShkManifest::Pool>,
+    const ShkManifest::Pool *>;
 
 }  // namespace detail
 
@@ -57,21 +66,39 @@ using FbStepPathReferenceIterator = flatbuffers::VectorIterator<
  * intended to be used for selecting build steps based on command line input,
  * not where correctness is required.
  */
-using StepPathReferenceView = WrapperView<
+using StepPathReferencesView = WrapperView<
     detail::FbStepPathReferenceIterator,
     std::pair<nt_string_view, StepIndex>,
     &detail::fbStepPathReferenceToView>;
 
+/**
+ * View of an associative list of pool name to pool depth.
+ */
+using PoolsView = WrapperView<
+    detail::FbPoolIterator,
+    std::pair<nt_string_view, int>,
+    &detail::fbPoolToView>;
+
 namespace detail {
 
-inline StepPathReferenceView toStepPathReferenceView(
+inline StepPathReferencesView toStepPathReferencesView(
     const flatbuffers::Vector<flatbuffers::Offset<
         ShkManifest::StepPathReference>> *refs) {
   return refs ?
-      StepPathReferenceView(refs->begin(), refs->end()) :
-      StepPathReferenceView(
+      StepPathReferencesView(refs->begin(), refs->end()) :
+      StepPathReferencesView(
           detail::FbStepPathReferenceIterator(nullptr, 0),
           detail::FbStepPathReferenceIterator(nullptr, 0));
+}
+
+inline PoolsView toPoolsView(
+    const flatbuffers::Vector<flatbuffers::Offset<
+        ShkManifest::Pool>> *pools) {
+  return pools ?
+      PoolsView(pools->begin(), pools->end()) :
+      PoolsView(
+          detail::FbPoolIterator(nullptr, 0),
+          detail::FbPoolIterator(nullptr, 0));
 }
 
 }  // namespace detail
@@ -108,16 +135,16 @@ struct CompiledManifest {
    * Associative list of path => index of the step that has this file as an
    * output.
    */
-  StepPathReferenceView outputs() const {
-    return detail::toStepPathReferenceView(_manifest->outputs());
+  StepPathReferencesView outputs() const {
+    return detail::toStepPathReferencesView(_manifest->outputs());
   }
 
   /**
    * Associative list of path => index of the step that has this file as an
    * input.
    */
-  StepPathReferenceView inputs() const {
-    return detail::toStepPathReferenceView(_manifest->inputs());
+  StepPathReferencesView inputs() const {
+    return detail::toStepPathReferencesView(_manifest->inputs());
   }
 
   const std::vector<Step> &steps() const {
@@ -132,8 +159,8 @@ struct CompiledManifest {
     return detail::toStepIndicesView(_manifest->roots());
   }
 
-  const std::unordered_map<std::string, int> &pools() const {
-    return _pools;
+  PoolsView pools() const {
+    return detail::toPoolsView(_manifest->pools());
   }
 
   /**
@@ -163,7 +190,6 @@ struct CompiledManifest {
   std::shared_ptr<flatbuffers::FlatBufferBuilder> _builder;
   std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> _step_buffers;
   std::vector<Step> _steps;
-  std::unordered_map<std::string, int> _pools;
   const ShkManifest::Manifest *_manifest;
 };
 

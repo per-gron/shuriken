@@ -333,8 +333,7 @@ CompiledManifest::CompiledManifest(
     RawManifest &&manifest)
     : _builder(std::make_shared<flatbuffers::FlatBufferBuilder>(1024)),
       _steps(convertStepVector(
-          output_path_map, _step_buffers, std::move(manifest.steps))),
-      _pools(std::move(manifest.pools)) {
+          output_path_map, _step_buffers, std::move(manifest.steps))) {
 
   auto outputs = computePathList(*_builder, output_path_map);
   auto outputs_vector = _builder->CreateVector(
@@ -358,6 +357,12 @@ CompiledManifest::CompiledManifest(
       roots.data(), roots.size());
 
   std::vector<flatbuffers::Offset<ShkManifest::Pool>> pools;
+  for (const auto &pool : manifest.pools) {
+    pools.push_back(ShkManifest::CreatePool(
+        *_builder,
+        _builder->CreateString(pool.first),
+        pool.second));
+  }
   auto pools_vector = _builder->CreateVector(
       pools.data(), pools.size());
 

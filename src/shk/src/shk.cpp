@@ -424,10 +424,15 @@ bool ShurikenMain::openInvocationLog() {
 
 BuildResult ShurikenMain::runBuild(
     std::vector<StepIndex> &&specified_steps) throw(BuildError, IoError) {
+  std::unordered_map<std::string, int> pools;
+  for (const auto pool : _compiled_manifest->pools()) {
+    pools.emplace(std::string(pool.first), pool.second);
+  }
+
   const auto command_runner = _config.dry_run ?
       makeDryRunCommandRunner() :
       makePooledCommandRunner(
-        _compiled_manifest->pools(),
+        pools,
         makeLimitedCommandRunner(
           getLoadAverage,
           _config.max_load_average,
