@@ -47,6 +47,11 @@ inline std::pair<nt_string_view, int> fbPoolToView(
   return std::make_pair(fbStringToView(pool->name()), pool->depth());
 }
 
+inline Step fbStepToView(
+    const ShkManifest::Step *step) {
+  return Step(*step);
+}
+
 using FbStepPathReferenceIterator = flatbuffers::VectorIterator<
     flatbuffers::Offset<ShkManifest::StepPathReference>,
     const ShkManifest::StepPathReference *>;
@@ -54,6 +59,10 @@ using FbStepPathReferenceIterator = flatbuffers::VectorIterator<
 using FbPoolIterator = flatbuffers::VectorIterator<
     flatbuffers::Offset<ShkManifest::Pool>,
     const ShkManifest::Pool *>;
+
+using FbStepIterator = flatbuffers::VectorIterator<
+    flatbuffers::Offset<ShkManifest::Step>,
+    const ShkManifest::Step *>;
 
 }  // namespace detail
 
@@ -79,6 +88,14 @@ using PoolsView = WrapperView<
     std::pair<nt_string_view, int>,
     &detail::fbPoolToView>;
 
+/**
+ * View of the list of build steps in the manifest.
+ */
+using StepsView = WrapperView<
+    detail::FbStepIterator,
+    Step,
+    &detail::fbStepToView>;
+
 namespace detail {
 
 inline StepPathReferencesView toStepPathReferencesView(
@@ -99,6 +116,16 @@ inline PoolsView toPoolsView(
       PoolsView(
           detail::FbPoolIterator(nullptr, 0),
           detail::FbPoolIterator(nullptr, 0));
+}
+
+inline StepsView toStepsView(
+    const flatbuffers::Vector<flatbuffers::Offset<
+        ShkManifest::Step>> *steps) {
+  return steps ?
+      StepsView(steps->begin(), steps->end()) :
+      StepsView(
+          detail::FbStepIterator(nullptr, 0),
+          detail::FbStepIterator(nullptr, 0));
 }
 
 }  // namespace detail
@@ -147,8 +174,8 @@ struct CompiledManifest {
     return detail::toStepPathReferencesView(_manifest->inputs());
   }
 
-  const std::vector<Step> &steps() const {
-    return _steps;
+  StepsView steps() const {
+    return detail::toStepsView(_manifest->steps());
   }
 
   StepIndicesView defaults() const {
@@ -188,8 +215,6 @@ struct CompiledManifest {
 
  private:
   std::shared_ptr<flatbuffers::FlatBufferBuilder> _builder;
-  std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> _step_buffers;
-  std::vector<Step> _steps;
   const ShkManifest::Manifest *_manifest;
 };
 

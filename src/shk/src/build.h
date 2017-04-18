@@ -232,7 +232,7 @@ CleanSteps computeCleanSteps(
     FileSystem &file_system,
     InvocationLog &invocation_log,
     const Invocations &invocations,
-    const std::vector<Step> &steps,
+    StepsView steps,
     const Build &build) throw(IoError);
 
 /**
@@ -243,7 +243,7 @@ CleanSteps computeCleanSteps(
  * Returns the number of discarded steps.
  */
 int discardCleanSteps(
-    const std::vector<Step> &steps,
+    StepsView steps,
     const CleanSteps &clean_steps,
     Build &build);
 
@@ -276,7 +276,7 @@ bool canSkipBuildCommand(
     const Step &step,
     StepIndex step_idx);
 
-int countStepsToBuild(const Build &build);
+int countStepsToBuild(StepsView steps, const Build &build);
 
 }  // namespace detail
 
@@ -297,7 +297,7 @@ using MakeBuildStatus = std::function<
 void deleteStaleOutputs(
     FileSystem &file_system,
     InvocationLog &invocation_log,
-    const std::vector<Step> &steps,
+    StepsView steps,
     const Invocations &invocations) throw(IoError);
 
 /**

@@ -275,7 +275,7 @@ CleanSteps computeCleanSteps(
     FileSystem &file_system,
     InvocationLog &invocation_log,
     const Invocations &invocations,
-    const std::vector<Step> &steps,
+    StepsView steps,
     const Build &build) throw(IoError) {
   assert(steps.size() == build.step_nodes.size());
 
@@ -302,7 +302,7 @@ CleanSteps computeCleanSteps(
 }
 
 int discardCleanSteps(
-    const std::vector<Step> &steps,
+    StepsView steps,
     const CleanSteps &clean_steps,
     Build &build) {
   int discarded_steps = 0;
@@ -634,13 +634,13 @@ void enqueueBuildCommands(BuildCommandParameters &params) throw(IoError) {
   while (enqueueBuildCommand(params)) {}
 }
 
-int countStepsToBuild(const std::vector<Step> &steps, const Build &build) {
+int countStepsToBuild(StepsView steps, const Build &build) {
   int step_count = 0;
 
   assert(steps.size() == build.step_nodes.size());
   for (size_t i = 0; i < steps.size(); i++) {
     const auto &step_node = build.step_nodes[i];
-    const auto &step = steps[i];
+    const auto step = steps[i];
     if (step_node.should_build && !step.phony()) {
       step_count++;
     }
@@ -654,11 +654,11 @@ int countStepsToBuild(const std::vector<Step> &steps, const Build &build) {
 void deleteStaleOutputs(
     FileSystem &file_system,
     InvocationLog &invocation_log,
-    const std::vector<Step> &steps,
+    StepsView steps,
     const Invocations &invocations) throw(IoError) {
   std::unordered_set<Hash> step_hashes_set;
   step_hashes_set.reserve(steps.size());
-  for (const auto &step : steps) {
+  for (const auto step : steps) {
     step_hashes_set.insert(step.hash());
   }
 

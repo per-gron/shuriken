@@ -722,7 +722,7 @@ TEST_CASE("Build") {
           fs,
           log,
           invocations,
-          {},
+          to_compiled_manifest(manifest).steps(),
           Build()).empty());
     }
 
@@ -782,7 +782,10 @@ TEST_CASE("Build") {
 
     SECTION("empty input") {
       Build build;
-      CHECK(discardCleanSteps({}, CleanSteps(), build) == 0);
+      CHECK(discardCleanSteps(
+          to_compiled_manifest(manifest).steps(),
+          CleanSteps(),
+          build) == 0);
     }
 
     SECTION("all clean (independent)") {

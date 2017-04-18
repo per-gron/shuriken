@@ -20,37 +20,6 @@ PathToStepMap computeOutputPathMap(
   return result;
 }
 
-/**
- * Compute the "root steps," that is the steps that don't have an output that
- * is an input to some other step. This is the set of steps that are built if
- * there are no default statements in the manifest and no steps where
- * specifically requested to be built.
- *
- * If no step can be identified as root (perhaps because there is a cyclic
- * dependency), this function returns an empty vector.
- */
-std::vector<StepIndex> rootSteps(
-    const std::vector<Step> &steps) throw(BuildError) {
-  std::vector<StepIndex> result;
-  // Assume that all steps are roots until we find some step that has an input
-  // that is in a given step's list of outputs. Such steps are not roots.
-  std::vector<bool> roots(steps.size(), true);
-
-  for (size_t i = 0; i < steps.size(); i++) {
-    for (const auto dependency_idx : steps[i].dependencies()) {
-      roots[dependency_idx] = false;
-    }
-  }
-
-  for (size_t i = 0; i < steps.size(); i++) {
-    if (roots[i]) {
-      result.push_back(i);
-    }
-  }
-
-  return result;
-}
-
 std::string cycleErrorMessage(const std::vector<Path> &cycle) {
   if (cycle.empty()) {
     // There can't be a cycle without any nodes. Then it's not a cycle...
@@ -120,20 +89,20 @@ std::vector<flatbuffers::Offset<
   return result;
 }
 
-Step convertRawStep(
+flatbuffers::Offset<ShkManifest::Step> convertRawStep(
     const detail::PathToStepMap &output_path_map,
-    std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> &step_buffers,
-    RawStep &&raw) {
-  step_buffers.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
-  auto &builder = *step_buffers.back();
-
+    std::vector<bool> &roots,
+    flatbuffers::FlatBufferBuilder &builder,
+    const RawStep &raw) {
   std::vector<StepIndex> dependencies;
   const auto process_inputs = [&](
       const std::vector<Path> &paths) {
     for (const auto &path : paths) {
       const auto it = output_path_map.find(path);
       if (it != output_path_map.end()) {
-        dependencies.push_back(it->second);
+        auto dependency_idx = it->second;
+        dependencies.push_back(dependency_idx);
+        roots[dependency_idx] = false;
       }
     }
   };
@@ -179,24 +148,21 @@ Step convertRawStep(
   step_builder.add_depfile(depfile_string);
   step_builder.add_rspfile(rspfile_string);
   step_builder.add_rspfile_content(rspfile_content_string);
-  builder.Finish(step_builder.Finish());
 
-  Step step(*flatbuffers::GetRoot<ShkManifest::Step>(
-      builder.GetBufferPointer()));
-
-  return step;
+  return step_builder.Finish();
 }
 
-std::vector<Step> convertStepVector(
+std::vector<flatbuffers::Offset<ShkManifest::Step>> convertStepVector(
     const detail::PathToStepMap &output_path_map,
-    std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> &step_buffers,
-    std::vector<RawStep> &&steps) {
-  std::vector<Step> ans;
+    std::vector<bool> &roots,
+    flatbuffers::FlatBufferBuilder &builder,
+    const std::vector<RawStep> &steps) {
+  std::vector<flatbuffers::Offset<ShkManifest::Step>> ans;
   ans.reserve(steps.size());
 
-  for (auto &step : steps) {
+  for (const auto &step : steps) {
     ans.push_back(convertRawStep(
-        output_path_map, step_buffers, std::move(step)));
+        output_path_map, roots, builder, step));
   }
 
   return ans;
@@ -219,7 +185,6 @@ std::vector<StepIndex> computeStepsToBuildFromPaths(
 }
 
 bool hasDependencyCycle(
-    const CompiledManifest &manifest,
     const detail::PathToStepMap &output_path_map,
     const std::vector<RawStep> &raw_steps,
     std::vector<bool> &currently_visited,
@@ -255,7 +220,6 @@ bool hasDependencyCycle(
 
       cycle_paths.push_back(input);
       if (hasDependencyCycle(
-              manifest,
               output_path_map,
               raw_steps,
               currently_visited,
@@ -280,18 +244,16 @@ bool hasDependencyCycle(
 }
 
 std::string getDependencyCycle(
-    const CompiledManifest &compiled_manifest,
     const detail::PathToStepMap &output_path_map,
     const std::vector<RawStep> &raw_steps) {
-  std::vector<bool> currently_visited(compiled_manifest.steps().size());
-  std::vector<bool> already_visited(compiled_manifest.steps().size());
+  std::vector<bool> currently_visited(raw_steps.size());
+  std::vector<bool> already_visited(raw_steps.size());
   std::vector<Path> cycle_paths;
   cycle_paths.reserve(32);  // Guess at largest typical build dependency depth
 
   std::string cycle;
-  for (StepIndex idx = 0; idx < compiled_manifest.steps().size(); idx++) {
+  for (StepIndex idx = 0; idx < raw_steps.size(); idx++) {
     if (hasDependencyCycle(
-            compiled_manifest,
             output_path_map,
             raw_steps,
             currently_visited,
@@ -331,9 +293,7 @@ CompiledManifest::CompiledManifest(
     const detail::PathToStepMap &output_path_map,
     Path manifest_path,
     RawManifest &&manifest)
-    : _builder(std::make_shared<flatbuffers::FlatBufferBuilder>(1024)),
-      _steps(convertStepVector(
-          output_path_map, _step_buffers, std::move(manifest.steps))) {
+    : _builder(std::make_shared<flatbuffers::FlatBufferBuilder>(1024)) {
 
   auto outputs = computePathList(*_builder, output_path_map);
   auto outputs_vector = _builder->CreateVector(
@@ -343,7 +303,14 @@ CompiledManifest::CompiledManifest(
   auto inputs_vector = _builder->CreateVector(
       inputs.data(), inputs.size());
 
-  std::vector<flatbuffers::Offset<ShkManifest::Step>> steps;
+  // "Map" from StepIndex to whether the step is root or not.
+  //
+  // Assume that all steps are roots until we find some step that has an input
+  // that is in a given step's list of outputs. Such steps are not roots.
+  std::vector<bool> roots(manifest.steps.size(), true);
+
+  auto steps = convertStepVector(
+      output_path_map, roots, *_builder, manifest.steps);
   auto steps_vector = _builder->CreateVector(
       steps.data(), steps.size());
 
@@ -352,9 +319,14 @@ CompiledManifest::CompiledManifest(
   auto defaults_vector = _builder->CreateVector(
       defaults.data(), defaults.size());
 
-  auto roots = detail::rootSteps(_steps);
+  std::vector<StepIndex> root_step_indices;
+  for (size_t i = 0; i < steps.size(); i++) {
+    if (roots[i]) {
+      root_step_indices.push_back(i);
+    }
+  }
   auto roots_vector = _builder->CreateVector(
-      roots.data(), roots.size());
+      root_step_indices.data(), root_step_indices.size());
 
   std::vector<flatbuffers::Offset<ShkManifest::Pool>> pools;
   for (const auto &pool : manifest.pools) {
@@ -370,7 +342,6 @@ CompiledManifest::CompiledManifest(
 
   auto dependency_cycle_string = _builder->CreateString(
       getDependencyCycle(
-          *this,
           output_path_map,
           manifest.steps));
 
