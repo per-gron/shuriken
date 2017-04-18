@@ -52,18 +52,6 @@ inline Step fbStepToView(
   return Step(*step);
 }
 
-using FbStepPathReferenceIterator = flatbuffers::VectorIterator<
-    flatbuffers::Offset<ShkManifest::StepPathReference>,
-    const ShkManifest::StepPathReference *>;
-
-using FbPoolIterator = flatbuffers::VectorIterator<
-    flatbuffers::Offset<ShkManifest::Pool>,
-    const ShkManifest::Pool *>;
-
-using FbStepIterator = flatbuffers::VectorIterator<
-    flatbuffers::Offset<ShkManifest::Step>,
-    const ShkManifest::Step *>;
-
 }  // namespace detail
 
 /**
@@ -76,7 +64,7 @@ using FbStepIterator = flatbuffers::VectorIterator<
  * not where correctness is required.
  */
 using StepPathReferencesView = WrapperView<
-    detail::FbStepPathReferenceIterator,
+    detail::FbIterator<ShkManifest::StepPathReference>,
     std::pair<nt_string_view, StepIndex>,
     &detail::fbStepPathReferenceToView>;
 
@@ -84,7 +72,7 @@ using StepPathReferencesView = WrapperView<
  * View of an associative list of pool name to pool depth.
  */
 using PoolsView = WrapperView<
-    detail::FbPoolIterator,
+    detail::FbIterator<ShkManifest::Pool>,
     std::pair<nt_string_view, int>,
     &detail::fbPoolToView>;
 
@@ -92,43 +80,9 @@ using PoolsView = WrapperView<
  * View of the list of build steps in the manifest.
  */
 using StepsView = WrapperView<
-    detail::FbStepIterator,
+    detail::FbIterator<ShkManifest::Step>,
     Step,
     &detail::fbStepToView>;
-
-namespace detail {
-
-inline StepPathReferencesView toStepPathReferencesView(
-    const flatbuffers::Vector<flatbuffers::Offset<
-        ShkManifest::StepPathReference>> *refs) {
-  return refs ?
-      StepPathReferencesView(refs->begin(), refs->end()) :
-      StepPathReferencesView(
-          detail::FbStepPathReferenceIterator(nullptr, 0),
-          detail::FbStepPathReferenceIterator(nullptr, 0));
-}
-
-inline PoolsView toPoolsView(
-    const flatbuffers::Vector<flatbuffers::Offset<
-        ShkManifest::Pool>> *pools) {
-  return pools ?
-      PoolsView(pools->begin(), pools->end()) :
-      PoolsView(
-          detail::FbPoolIterator(nullptr, 0),
-          detail::FbPoolIterator(nullptr, 0));
-}
-
-inline StepsView toStepsView(
-    const flatbuffers::Vector<flatbuffers::Offset<
-        ShkManifest::Step>> *steps) {
-  return steps ?
-      StepsView(steps->begin(), steps->end()) :
-      StepsView(
-          detail::FbStepIterator(nullptr, 0),
-          detail::FbStepIterator(nullptr, 0));
-}
-
-}  // namespace detail
 
 /**
  * A CompiledManifest is a build.ninja file compiled down to the bare
@@ -163,7 +117,8 @@ struct CompiledManifest {
    * output.
    */
   StepPathReferencesView outputs() const {
-    return detail::toStepPathReferencesView(_manifest->outputs());
+    return detail::toFlatbufferView<StepPathReferencesView>(
+        _manifest->outputs());
   }
 
   /**
@@ -171,11 +126,12 @@ struct CompiledManifest {
    * input.
    */
   StepPathReferencesView inputs() const {
-    return detail::toStepPathReferencesView(_manifest->inputs());
+    return detail::toFlatbufferView<StepPathReferencesView>(
+        _manifest->inputs());
   }
 
   StepsView steps() const {
-    return detail::toStepsView(_manifest->steps());
+    return detail::toFlatbufferView<StepsView>(_manifest->steps());
   }
 
   StepIndicesView defaults() const {
@@ -187,7 +143,7 @@ struct CompiledManifest {
   }
 
   PoolsView pools() const {
-    return detail::toPoolsView(_manifest->pools());
+    return detail::toFlatbufferView<PoolsView>(_manifest->pools());
   }
 
   /**

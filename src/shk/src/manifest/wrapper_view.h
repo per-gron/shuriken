@@ -108,6 +108,7 @@ class WrapperView {
   };
 
   using const_iterator = iterator;
+  using inner_iterator = Iter;
 
   WrapperView() = default;
   WrapperView(Iter begin, Iter end)

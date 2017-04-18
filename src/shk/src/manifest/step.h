@@ -28,9 +28,22 @@ inline StepIndex indexToView(const StepIndex &index) {
   return index;
 }
 
-using FbStringIterator = flatbuffers::VectorIterator<
-    flatbuffers::Offset<flatbuffers::String>,
-    const flatbuffers::String *>;
+template <typename T>
+using FbIterator = flatbuffers::VectorIterator<
+    flatbuffers::Offset<T>,
+    const T *>;
+
+template <typename View>
+inline View toFlatbufferView(
+    const flatbuffers::Vector<flatbuffers::Offset<
+        typename std::remove_const<typename std::remove_pointer<
+            typename View::inner_iterator::value_type>::type>::type>> *vec) {
+  return vec ?
+      View(vec->begin(), vec->end()) :
+      View(
+          typename View::inner_iterator(nullptr, 0),
+          typename View::inner_iterator(nullptr, 0));
+}
 
 }  // namespace detail
 
@@ -39,6 +52,11 @@ using StepIndicesView = WrapperView<
     StepIndex,
     &detail::indexToView>;
 
+using StringsView = WrapperView<
+    detail::FbIterator<flatbuffers::String>,
+    nt_string_view,
+    &detail::fbStringToView>;
+
 namespace detail {
 
 inline const StepIndicesView toStepIndicesView(
@@ -46,20 +64,6 @@ inline const StepIndicesView toStepIndicesView(
   return ints ?
       StepIndicesView(ints->data(), ints->data() + ints->size()) :
       StepIndicesView();
-}
-
-using StringsView = WrapperView<
-    detail::FbStringIterator,
-    nt_string_view,
-    &detail::fbStringToView>;
-
-inline StringsView toStringsView(
-    const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>> *strs) {
-  return strs ?
-      StringsView(strs->begin(), strs->end()) :
-      StringsView(
-          detail::FbStringIterator(nullptr, 0),
-          detail::FbStringIterator(nullptr, 0));
 }
 
 inline nt_string_view toStringView(const flatbuffers::String *str) {
@@ -104,8 +108,8 @@ struct Step {
    * A list of directories that Shuriken should ensure are there prior to
    * invoking the command.
    */
-  detail::StringsView outputDirs() const {
-    return detail::toStringsView(_step->output_dirs());
+  StringsView outputDirs() const {
+    return detail::toFlatbufferView<StringsView>(_step->output_dirs());
   }
 
   nt_string_view poolName() const {
