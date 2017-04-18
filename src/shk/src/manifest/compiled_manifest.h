@@ -113,11 +113,16 @@ struct CompiledManifest {
   /**
    * Takes a RawManifest and the path to the original manifest file and compiles
    * it into a Flatbuffer Manifest object that can be wrapped by this class.
+   *
+   * Returns false and sets *err if compilation fails, for example because a
+   * cycle was found. If compilation fails, builder should be discarded because
+   * it might have a partial compiled manifest object written to it.
    */
-  static void compile(
+  static bool compile(
       flatbuffers::FlatBufferBuilder &builder,
       Path manifest_path,
-      const RawManifest &manifest);
+      const RawManifest &manifest,
+      std::string *err);
 
   /**
    * Associative list of path => index of the step that has this file as an
@@ -166,14 +171,6 @@ struct CompiledManifest {
    */
   StepIndex manifestStep() const {
     return _manifest->manifest_step();
-  }
-
-  /**
-   * Is a non-empty string describing a cycle in the build graph if one exists.
-   * For example: "a -> b -> a"
-   */
-  nt_string_view dependencyCycle() const {
-    return detail::toStringView(_manifest->dependency_cycle());
   }
 
  private:

@@ -33,11 +33,19 @@ TEST_CASE("CompiledManifest") {
   const auto manifest_path = paths.get("b.ninja");
 
   std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> builders;
-  const auto compile_manifest = [&](const RawManifest &raw_manifest) {
+  const auto compile_manifest = [&](
+      const RawManifest &raw_manifest,
+      bool allow_compile_error = false) {
     builders.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
     auto &builder = *builders.back();
-    CompiledManifest::compile(builder, manifest_path, raw_manifest);
     std::string err;
+    bool success = CompiledManifest::compile(
+        builder, manifest_path, raw_manifest, &err);
+    if (!allow_compile_error) {
+      CHECK(success);
+      CHECK(err.empty());
+    }
+    err.clear();
     const auto maybe_manifest = CompiledManifest::load(
         string_view(
             reinterpret_cast<const char *>(builder.GetBufferPointer()),
@@ -46,6 +54,18 @@ TEST_CASE("CompiledManifest") {
     CHECK(err == "");
     CHECK(maybe_manifest);
     return *maybe_manifest;
+  };
+
+  const auto get_manifest_compile_error = [&](const RawManifest &raw_manifest) {
+    flatbuffers::FlatBufferBuilder builder(1024);
+    std::string err;
+    bool success = CompiledManifest::compile(builder, manifest_path, raw_manifest, &err);
+    if (success) {
+      CHECK(err == "");
+    } else {
+      CHECK(err != "");
+    }
+    return err;
   };
 
   const RawStep empty{};
@@ -112,7 +132,7 @@ TEST_CASE("CompiledManifest") {
         cycleErrorMessage({ paths.get("a"), paths.get("b") }) == "a -> b -> a");
   }
 
-  SECTION("Constructor") {
+  SECTION("compile") {
     SECTION("basics") {
       RawManifest manifest;
       manifest.steps = { single_output };
@@ -417,7 +437,8 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { cyclic_step_1, cyclic_step_2 };
 
-        auto compiled_manifest = compile_manifest(manifest);
+        auto compiled_manifest = compile_manifest(
+            manifest, /*allow_compile_error:*/true);
         CHECK(
             toVector(compiled_manifest.roots()) ==
             std::vector<StepIndex>{});
@@ -552,24 +573,21 @@ TEST_CASE("CompiledManifest") {
       SECTION("Empty") {
         RawManifest raw_manifest;
 
-        auto manifest = compile_manifest(raw_manifest);
-        CHECK(manifest.dependencyCycle().empty());
+        CHECK(get_manifest_compile_error(raw_manifest).empty());
       }
 
       SECTION("Single input") {
         RawManifest raw_manifest;
         raw_manifest.steps = { single_input };
 
-        auto manifest = compile_manifest(raw_manifest);
-        CHECK(manifest.dependencyCycle().empty());
+        CHECK(get_manifest_compile_error(raw_manifest).empty());
       }
 
       SECTION("Single output") {
         RawManifest raw_manifest;
         raw_manifest.steps = { single_input };
 
-        auto manifest = compile_manifest(raw_manifest);
-        CHECK(manifest.dependencyCycle().empty());
+        CHECK(get_manifest_compile_error(raw_manifest).empty());
       }
 
       SECTION("Single cyclic step through input") {
@@ -580,8 +598,9 @@ TEST_CASE("CompiledManifest") {
         RawManifest raw_manifest;
         raw_manifest.steps = { cyclic_step };
 
-        auto manifest = compile_manifest(raw_manifest);
-        CHECK(manifest.dependencyCycle() == "a -> a");
+        CHECK(
+            get_manifest_compile_error(raw_manifest) ==
+            "Dependency cycle: a -> a");
       }
 
       SECTION("Single cyclic step through implicit input") {
@@ -592,8 +611,9 @@ TEST_CASE("CompiledManifest") {
         RawManifest raw_manifest;
         raw_manifest.steps = { cyclic_step };
 
-        auto manifest = compile_manifest(raw_manifest);
-        CHECK(manifest.dependencyCycle() == "a -> a");
+        CHECK(
+            get_manifest_compile_error(raw_manifest) ==
+            "Dependency cycle: a -> a");
       }
 
       SECTION("Single cyclic step through dependency") {
@@ -604,8 +624,9 @@ TEST_CASE("CompiledManifest") {
         RawManifest raw_manifest;
         raw_manifest.steps = { cyclic_step };
 
-        auto manifest = compile_manifest(raw_manifest);
-        CHECK(manifest.dependencyCycle() == "a -> a");
+        CHECK(
+            get_manifest_compile_error(raw_manifest) ==
+            "Dependency cycle: a -> a");
       }
 
       SECTION("Two cyclic steps") {
@@ -619,8 +640,9 @@ TEST_CASE("CompiledManifest") {
         RawManifest raw_manifest;
         raw_manifest.steps = { cyclic_step_1, cyclic_step_2 };
 
-        auto manifest = compile_manifest(raw_manifest);
-        CHECK(manifest.dependencyCycle() == "a -> b -> a");
+        CHECK(
+            get_manifest_compile_error(raw_manifest) ==
+            "Dependency cycle: a -> b -> a");
       }
     }
   }

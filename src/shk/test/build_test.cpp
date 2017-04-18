@@ -94,8 +94,10 @@ CompiledManifest compileManifest(
   gBuilders.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
   auto &builder = *gBuilders.back();
 
-  CompiledManifest::compile(builder, manifest_path, raw_manifest);
   std::string err;
+  CompiledManifest::compile(
+      builder, manifest_path, raw_manifest, &err);
+  err.clear();
   const auto maybe_manifest = CompiledManifest::load(
       string_view(
           reinterpret_cast<const char *>(builder.GetBufferPointer()),

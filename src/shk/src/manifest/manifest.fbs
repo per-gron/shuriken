@@ -58,7 +58,6 @@ table Manifest {
   pools:[Pool] (required);
   build_dir:string;
   manifest_step:int = 0;
-  dependency_cycle:string (required);
 }
 
 file_extension "manifest";

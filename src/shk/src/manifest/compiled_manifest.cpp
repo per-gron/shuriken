@@ -299,10 +299,11 @@ Optional<CompiledManifest> CompiledManifest::load(
   return Optional<CompiledManifest>(CompiledManifest(manifest));
 }
 
-void CompiledManifest::compile(
+bool CompiledManifest::compile(
       flatbuffers::FlatBufferBuilder &builder,
       Path manifest_path,
-      const RawManifest &manifest) {
+      const RawManifest &manifest,
+      std::string *err) {
   auto output_path_map = detail::computeOutputPathMap(manifest.steps);
 
   auto outputs = computePathList(builder, output_path_map);
@@ -350,10 +351,12 @@ void CompiledManifest::compile(
 
   auto build_dir_string = builder.CreateString(manifest.build_dir);
 
-  auto dependency_cycle_string = builder.CreateString(
-      getDependencyCycle(
-          output_path_map,
-          manifest.steps));
+  auto cycle = getDependencyCycle(
+      output_path_map,
+      manifest.steps);
+  if (!cycle.empty()) {
+    *err = "Dependency cycle: "+ cycle;
+  }
 
   ShkManifest::ManifestBuilder manifest_builder(builder);
   manifest_builder.add_outputs(outputs_vector);
@@ -365,8 +368,9 @@ void CompiledManifest::compile(
   manifest_builder.add_build_dir(build_dir_string);
   manifest_builder.add_manifest_step(
       getManifestStep(output_path_map, manifest_path));
-  manifest_builder.add_dependency_cycle(dependency_cycle_string);
   builder.Finish(manifest_builder.Finish());
+
+  return err->empty();
 }
 
 }  // namespace shk

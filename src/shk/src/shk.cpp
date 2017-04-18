@@ -322,12 +322,15 @@ const Tool *chooseTool(const std::string &tool_name) {
 
 void ShurikenMain::parseManifest(
     const std::string &input_file) throw(IoError, ParseError) {
-  CompiledManifest::compile(
-      _manifest_builder,
-      _paths.get(input_file),
-      ::shk::parseManifest(_paths, _file_system, input_file));
-
   std::string err;
+  if (!CompiledManifest::compile(
+          _manifest_builder,
+          _paths.get(input_file),
+          ::shk::parseManifest(_paths, _file_system, input_file),
+          &err)) {
+    throw ParseError(err);
+  }
+
   const auto maybe_manifest = CompiledManifest::load(
       string_view(
           reinterpret_cast<const char *>(_manifest_builder.GetBufferPointer()),
@@ -338,13 +341,6 @@ void ShurikenMain::parseManifest(
   }
 
   _compiled_manifest = *maybe_manifest;
-
-  std::string cycle;
-  if (!_compiled_manifest->dependencyCycle().empty()) {
-    throw ParseError(
-        "Dependency cycle: " +
-        std::string(_compiled_manifest->dependencyCycle()));
-  }
 }
 
 std::string ShurikenMain::invocationLogPath() const {
