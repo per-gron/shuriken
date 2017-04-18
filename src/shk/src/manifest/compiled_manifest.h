@@ -105,13 +105,6 @@ struct CompiledManifest {
       Path manifest_path,
       RawManifest &&manifest);
 
- private:
-  CompiledManifest(
-      const detail::PathToStepMap &output_path_map,
-      Path manifest_path,
-      RawManifest &&manifest);
- public:
-
   /**
    * Associative list of path => index of the step that has this file as an
    * output.

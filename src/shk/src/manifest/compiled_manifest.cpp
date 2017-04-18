@@ -284,16 +284,8 @@ StepIndex getManifestStep(
 CompiledManifest::CompiledManifest(
     Path manifest_path,
     RawManifest &&manifest)
-    : CompiledManifest(
-          detail::computeOutputPathMap(manifest.steps),
-          manifest_path,
-          std::move(manifest)) {}
-
-CompiledManifest::CompiledManifest(
-    const detail::PathToStepMap &output_path_map,
-    Path manifest_path,
-    RawManifest &&manifest)
     : _builder(std::make_shared<flatbuffers::FlatBufferBuilder>(1024)) {
+  auto output_path_map = detail::computeOutputPathMap(manifest.steps);
 
   auto outputs = computePathList(*_builder, output_path_map);
   auto outputs_vector = _builder->CreateVector(
