@@ -86,14 +86,35 @@ class MaxCapacityCommandRunner : public CommandRunner {
   CommandRunner &_inner;
 };
 
+
+CompiledManifest compileManifest(
+    Path manifest_path, const RawManifest &raw_manifest) {
+  // Globally leak memory for every invocation because it's the easiest thing.
+  static std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> gBuilders;
+  gBuilders.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
+  auto &builder = *gBuilders.back();
+
+  CompiledManifest::compile(builder, manifest_path, raw_manifest);
+  std::string err;
+  const auto maybe_manifest = CompiledManifest::load(
+      string_view(
+          reinterpret_cast<const char *>(builder.GetBufferPointer()),
+          builder.GetSize()),
+      &err);
+  CHECK(err == "");
+  CHECK(maybe_manifest);
+  return *maybe_manifest;
+}
+
 std::vector<StepIndex> computeStepsToBuild(
     Paths &paths,
     const RawManifest &manifest,
     std::vector<StepIndex> &&specified_paths = {}) throw(BuildError) {
   return ::shk::detail::computeStepsToBuild(
-      CompiledManifest(
+      compileManifest(
           paths.get("build.ninja"),
-          RawManifest(manifest)), std::move(specified_paths));
+          manifest),
+      std::move(specified_paths));
 }
 
 std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
@@ -104,9 +125,7 @@ Build computeBuild(
     Paths &paths,
     const RawManifest &manifest,
     size_t allowed_failures = 1) throw(BuildError) {
-  auto compiled_manifest = CompiledManifest(
-      paths.get("build.ninja"),
-      RawManifest(manifest));
+  auto compiled_manifest = compileManifest(paths.get("build.ninja"), manifest);
   return ::shk::detail::computeBuild(
       compiled_manifest,
       allowed_failures,
@@ -196,7 +215,7 @@ TEST_CASE("Build") {
         log,
         failures_allowed,
         {},
-        CompiledManifest(
+        compileManifest(
             paths.get("build.ninja"),
             parseManifest(paths, fs, "build.ninja")),
         log.invocations());
@@ -208,10 +227,8 @@ TEST_CASE("Build") {
     return build_or_rebuild_manifest(manifest, failures_allowed, dummy_runner);
   };
 
-  const auto to_compiled_manifest = [&](const RawManifest &manifest) {
-    return CompiledManifest(
-        paths.get("build.ninja"),
-        RawManifest(manifest));
+  const auto to_compiled_manifest = [&](const RawManifest &raw_manifest) {
+    return compileManifest(paths.get("build.ninj"), raw_manifest);
   };
 
   SECTION("interpretPath") {

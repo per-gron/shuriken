@@ -32,6 +32,22 @@ TEST_CASE("CompiledManifest") {
 
   const auto manifest_path = paths.get("b.ninja");
 
+  std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> builders;
+  const auto compile_manifest = [&](const RawManifest &raw_manifest) {
+    builders.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
+    auto &builder = *builders.back();
+    CompiledManifest::compile(builder, manifest_path, raw_manifest);
+    std::string err;
+    const auto maybe_manifest = CompiledManifest::load(
+        string_view(
+            reinterpret_cast<const char *>(builder.GetBufferPointer()),
+            builder.GetSize()),
+        &err);
+    CHECK(err == "");
+    CHECK(maybe_manifest);
+    return *maybe_manifest;
+  };
+
   const RawStep empty{};
 
   RawStep single_output;
@@ -101,7 +117,7 @@ TEST_CASE("CompiledManifest") {
       RawManifest manifest;
       manifest.steps = { single_output };
 
-      CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+      auto compiled_manifest = compile_manifest(manifest);
 
       REQUIRE(compiled_manifest.steps().size() == 1);
       CHECK(compiled_manifest.steps()[0].hash() == single_output.hash());
@@ -112,7 +128,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_output };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(compiled_manifest.inputs().empty());
       }
@@ -121,7 +137,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_input };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(
             toVector(compiled_manifest.inputs()) ==
@@ -132,7 +148,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_implicit_input };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(
             toVector(compiled_manifest.inputs()) ==
@@ -143,7 +159,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_dependency };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(
             toVector(compiled_manifest.inputs()) ==
@@ -154,7 +170,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_dependency, single_input };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(
             toVector(compiled_manifest.inputs()) ==
@@ -173,7 +189,7 @@ TEST_CASE("CompiledManifest") {
             manifest.steps = { single_dependency, single_input_b };
           }
 
-          CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+          auto compiled_manifest = compile_manifest(manifest);
 
           CHECK(
               toVector(compiled_manifest.inputs()) ==
@@ -188,7 +204,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { step };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(
             toVector(compiled_manifest.inputs()) ==
@@ -201,7 +217,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_input };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(compiled_manifest.outputs().empty());
       }
@@ -210,7 +226,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_output };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(
             toVector(compiled_manifest.outputs()) ==
@@ -226,7 +242,7 @@ TEST_CASE("CompiledManifest") {
             manifest.steps = { single_output, single_output_b };
           }
 
-          CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+          auto compiled_manifest = compile_manifest(manifest);
 
           CHECK(
               toVector(compiled_manifest.outputs()) ==
@@ -241,7 +257,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { step };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(
             toVector(compiled_manifest.outputs()) ==
@@ -253,7 +269,7 @@ TEST_CASE("CompiledManifest") {
       RawManifest manifest;
       manifest.steps = { single_input };
 
-      CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+      auto compiled_manifest = compile_manifest(manifest);
       REQUIRE(compiled_manifest.steps().size() == 1);
       CHECK(
           toVector(compiled_manifest.steps()[0].dependencies()) ==
@@ -264,7 +280,7 @@ TEST_CASE("CompiledManifest") {
       RawManifest manifest;
       manifest.steps = { single_output, single_input };
 
-      CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+      auto compiled_manifest = compile_manifest(manifest);
       REQUIRE(compiled_manifest.steps().size() == 2);
       CHECK(
           toVector(compiled_manifest.steps()[0].dependencies()) ==
@@ -278,7 +294,7 @@ TEST_CASE("CompiledManifest") {
       RawManifest manifest;
       manifest.steps = { single_output, single_implicit_input };
 
-      CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+      auto compiled_manifest = compile_manifest(manifest);
       REQUIRE(compiled_manifest.steps().size() == 2);
       CHECK(
           toVector(compiled_manifest.steps()[0].dependencies()) ==
@@ -292,7 +308,7 @@ TEST_CASE("CompiledManifest") {
       RawManifest manifest;
       manifest.steps = { single_output, single_dependency };
 
-      CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+      auto compiled_manifest = compile_manifest(manifest);
       REQUIRE(compiled_manifest.steps().size() == 2);
       CHECK(
           toVector(compiled_manifest.steps()[0].dependencies()) ==
@@ -307,7 +323,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_output };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         CHECK(compiled_manifest.defaults().empty());
       }
 
@@ -316,7 +332,7 @@ TEST_CASE("CompiledManifest") {
         manifest.steps = { single_output, single_output_b };
         manifest.defaults = { paths.get("b") };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         REQUIRE(compiled_manifest.defaults().size() == 1);
         CHECK(compiled_manifest.defaults()[0] == 1);
       }
@@ -326,7 +342,7 @@ TEST_CASE("CompiledManifest") {
         manifest.steps = { single_output, single_output_b };
         manifest.defaults = { paths.get("b"), paths.get("a") };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         REQUIRE(compiled_manifest.defaults().size() == 2);
         CHECK(compiled_manifest.defaults()[0] == 1);
         CHECK(compiled_manifest.defaults()[1] == 0);
@@ -336,7 +352,7 @@ TEST_CASE("CompiledManifest") {
     SECTION("roots") {
       SECTION("empty") {
         RawManifest manifest;
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         CHECK(compiled_manifest.roots().empty());
       }
 
@@ -344,7 +360,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { empty };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         CHECK(
             toVector(compiled_manifest.roots()) ==
             std::vector<StepIndex>{ 0 });
@@ -354,7 +370,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { empty, empty };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         CHECK(
             toVector(compiled_manifest.roots()) ==
             std::vector<StepIndex>({ 0, 1 }));
@@ -364,7 +380,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_output, single_input };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         CHECK(
             toVector(compiled_manifest.roots()) ==
             std::vector<StepIndex>{ 1 });
@@ -374,7 +390,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_input, single_output };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         CHECK(
             toVector(compiled_manifest.roots()) ==
             std::vector<StepIndex>{ 0 });
@@ -384,7 +400,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_output, single_input, empty };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         CHECK(
             toVector(compiled_manifest.roots()) ==
             std::vector<StepIndex>({ 1, 2 }));
@@ -401,7 +417,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { cyclic_step_1, cyclic_step_2 };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         CHECK(
             toVector(compiled_manifest.roots()) ==
             std::vector<StepIndex>{});
@@ -412,7 +428,7 @@ TEST_CASE("CompiledManifest") {
       SECTION("empty") {
         RawManifest manifest;
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         CHECK(
             toVector(compiled_manifest.pools()) ==
             (std::vector<std::pair<nt_string_view, int>>{}));
@@ -422,7 +438,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.pools["a_pool"] = 123;
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         CHECK(
             toVector(compiled_manifest.pools()) ==
             (std::vector<std::pair<nt_string_view, int>>(
@@ -434,7 +450,7 @@ TEST_CASE("CompiledManifest") {
       RawManifest manifest;
       manifest.build_dir = "hello";
 
-      CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+      auto compiled_manifest = compile_manifest(manifest);
       CHECK(compiled_manifest.buildDir() == "hello");
     }
 
@@ -446,7 +462,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { step };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         REQUIRE(compiled_manifest.steps().size() == 1);
         CHECK(compiled_manifest.steps()[0].outputDirs().size() == 0);
       }
@@ -458,7 +474,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { step };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         REQUIRE(compiled_manifest.steps().size() == 1);
         CHECK(compiled_manifest.steps()[0].outputDirs().size() == 1);
         CHECK(contains(compiled_manifest.steps()[0].outputDirs(), "dir"));
@@ -473,7 +489,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { step1, step2 };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         REQUIRE(compiled_manifest.steps().size() == 2);
         CHECK(compiled_manifest.steps()[0].outputDirs().size() == 1);
         CHECK(contains(compiled_manifest.steps()[0].outputDirs(), "dir1"));
@@ -488,7 +504,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { step };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         REQUIRE(compiled_manifest.steps().size() == 1);
         CHECK(compiled_manifest.steps()[0].outputDirs().size() == 2);
         CHECK(contains(compiled_manifest.steps()[0].outputDirs(), "dir1"));
@@ -502,7 +518,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { step };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
         REQUIRE(compiled_manifest.steps().size() == 1);
         CHECK(compiled_manifest.steps()[0].outputDirs().size() == 1);
         CHECK(contains(compiled_manifest.steps()[0].outputDirs(), "dir"));
@@ -517,7 +533,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_input, step };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(compiled_manifest.manifestStep() == 1);
       }
@@ -526,7 +542,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest manifest;
         manifest.steps = { single_input };
 
-        CompiledManifest compiled_manifest(manifest_path, std::move(manifest));
+        auto compiled_manifest = compile_manifest(manifest);
 
         CHECK(compiled_manifest.manifestStep() == -1);
       }
@@ -536,7 +552,7 @@ TEST_CASE("CompiledManifest") {
       SECTION("Empty") {
         RawManifest raw_manifest;
 
-        CompiledManifest manifest(manifest_path, std::move(raw_manifest));
+        auto manifest = compile_manifest(raw_manifest);
         CHECK(manifest.dependencyCycle().empty());
       }
 
@@ -544,8 +560,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest raw_manifest;
         raw_manifest.steps = { single_input };
 
-        CompiledManifest manifest(manifest_path, std::move(raw_manifest));
-
+        auto manifest = compile_manifest(raw_manifest);
         CHECK(manifest.dependencyCycle().empty());
       }
 
@@ -553,8 +568,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest raw_manifest;
         raw_manifest.steps = { single_input };
 
-        CompiledManifest manifest(manifest_path, std::move(raw_manifest));
-
+        auto manifest = compile_manifest(raw_manifest);
         CHECK(manifest.dependencyCycle().empty());
       }
 
@@ -566,8 +580,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest raw_manifest;
         raw_manifest.steps = { cyclic_step };
 
-        CompiledManifest manifest(manifest_path, std::move(raw_manifest));
-
+        auto manifest = compile_manifest(raw_manifest);
         CHECK(manifest.dependencyCycle() == "a -> a");
       }
 
@@ -579,8 +592,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest raw_manifest;
         raw_manifest.steps = { cyclic_step };
 
-        CompiledManifest manifest(manifest_path, std::move(raw_manifest));
-
+        auto manifest = compile_manifest(raw_manifest);
         CHECK(manifest.dependencyCycle() == "a -> a");
       }
 
@@ -592,8 +604,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest raw_manifest;
         raw_manifest.steps = { cyclic_step };
 
-        CompiledManifest manifest(manifest_path, std::move(raw_manifest));
-
+        auto manifest = compile_manifest(raw_manifest);
         CHECK(manifest.dependencyCycle() == "a -> a");
       }
 
@@ -608,8 +619,7 @@ TEST_CASE("CompiledManifest") {
         RawManifest raw_manifest;
         raw_manifest.steps = { cyclic_step_1, cyclic_step_2 };
 
-        CompiledManifest manifest(manifest_path, std::move(raw_manifest));
-
+        auto manifest = compile_manifest(raw_manifest);
         CHECK(manifest.dependencyCycle() == "a -> b -> a");
       }
     }

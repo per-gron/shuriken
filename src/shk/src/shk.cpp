@@ -209,6 +209,7 @@ struct ShurikenMain {
   InvocationLogParseResult::ParseData _invocation_parse_data;
   std::unique_ptr<FileLock> _invocation_log_lock;
   std::unique_ptr<InvocationLog> _invocation_log;
+  flatbuffers::FlatBufferBuilder _manifest_builder;
   Optional<CompiledManifest> _compiled_manifest;
 };
 
@@ -321,9 +322,22 @@ const Tool *chooseTool(const std::string &tool_name) {
 
 void ShurikenMain::parseManifest(
     const std::string &input_file) throw(IoError, ParseError) {
-  _compiled_manifest = CompiledManifest(
+  CompiledManifest::compile(
+      _manifest_builder,
       _paths.get(input_file),
       ::shk::parseManifest(_paths, _file_system, input_file));
+
+  std::string err;
+  const auto maybe_manifest = CompiledManifest::load(
+      string_view(
+          reinterpret_cast<const char *>(_manifest_builder.GetBufferPointer()),
+          _manifest_builder.GetSize()),
+      &err);
+  if (!maybe_manifest) {
+    throw ParseError(err);
+  }
+
+  _compiled_manifest = *maybe_manifest;
 
   std::string cycle;
   if (!_compiled_manifest->dependencyCycle().empty()) {

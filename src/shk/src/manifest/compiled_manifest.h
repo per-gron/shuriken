@@ -101,9 +101,14 @@ using StepsView = WrapperView<
  * build.ninja file is.
  */
 struct CompiledManifest {
-  CompiledManifest(
-      Path manifest_path,
-      const RawManifest &manifest);
+  CompiledManifest(const ShkManifest::Manifest &manifest);
+
+  /**
+   * Validate a raw flatbuffer blob and make a CompiledManifest out of it.
+   *
+   * If validation fails, returns an empty optional and sets *err.
+   */
+  static Optional<CompiledManifest> load(string_view data, std::string *err);
 
   /**
    * Takes a RawManifest and the path to the original manifest file and compiles
@@ -172,7 +177,6 @@ struct CompiledManifest {
   }
 
  private:
-  std::shared_ptr<flatbuffers::FlatBufferBuilder> _builder;
   const ShkManifest::Manifest *_manifest;
 };
 

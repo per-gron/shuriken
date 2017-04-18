@@ -281,12 +281,22 @@ StepIndex getManifestStep(
 
 }  // anonymous namespace
 
-CompiledManifest::CompiledManifest(
-    Path manifest_path,
-    const RawManifest &manifest)
-    : _builder(std::make_shared<flatbuffers::FlatBufferBuilder>(1024)) {
-  compile(*_builder, manifest_path, manifest);
-  _manifest = ShkManifest::GetManifest(_builder->GetBufferPointer());
+CompiledManifest::CompiledManifest(const ShkManifest::Manifest &manifest)
+    : _manifest(&manifest) {}
+
+Optional<CompiledManifest> CompiledManifest::load(
+    string_view data, std::string *err) {
+  flatbuffers::Verifier verifier(
+      reinterpret_cast<const uint8_t *>(data.data()),
+      data.size());
+  if (!ShkManifest::VerifyManifestBuffer(verifier)) {
+    *err = "Manifest file did not pass Flatbuffer validation";
+    return Optional<CompiledManifest>();
+  }
+
+  const auto &manifest = *ShkManifest::GetManifest(data.data());
+
+  return Optional<CompiledManifest>(CompiledManifest(manifest));
 }
 
 void CompiledManifest::compile(
