@@ -283,16 +283,24 @@ StepIndex getManifestStep(
 
 CompiledManifest::CompiledManifest(
     Path manifest_path,
-    RawManifest &&manifest)
+    const RawManifest &manifest)
     : _builder(std::make_shared<flatbuffers::FlatBufferBuilder>(1024)) {
+  compile(*_builder, manifest_path, manifest);
+  _manifest = ShkManifest::GetManifest(_builder->GetBufferPointer());
+}
+
+void CompiledManifest::compile(
+      flatbuffers::FlatBufferBuilder &builder,
+      Path manifest_path,
+      const RawManifest &manifest) {
   auto output_path_map = detail::computeOutputPathMap(manifest.steps);
 
-  auto outputs = computePathList(*_builder, output_path_map);
-  auto outputs_vector = _builder->CreateVector(
+  auto outputs = computePathList(builder, output_path_map);
+  auto outputs_vector = builder.CreateVector(
       outputs.data(), outputs.size());
 
-  auto inputs = computePathList(*_builder, computeInputPathMap(manifest.steps));
-  auto inputs_vector = _builder->CreateVector(
+  auto inputs = computePathList(builder, computeInputPathMap(manifest.steps));
+  auto inputs_vector = builder.CreateVector(
       inputs.data(), inputs.size());
 
   // "Map" from StepIndex to whether the step is root or not.
@@ -302,13 +310,13 @@ CompiledManifest::CompiledManifest(
   std::vector<bool> roots(manifest.steps.size(), true);
 
   auto steps = convertStepVector(
-      output_path_map, roots, *_builder, manifest.steps);
-  auto steps_vector = _builder->CreateVector(
+      output_path_map, roots, builder, manifest.steps);
+  auto steps_vector = builder.CreateVector(
       steps.data(), steps.size());
 
   auto defaults = computeStepsToBuildFromPaths(
           manifest.defaults, output_path_map);
-  auto defaults_vector = _builder->CreateVector(
+  auto defaults_vector = builder.CreateVector(
       defaults.data(), defaults.size());
 
   std::vector<StepIndex> root_step_indices;
@@ -317,27 +325,27 @@ CompiledManifest::CompiledManifest(
       root_step_indices.push_back(i);
     }
   }
-  auto roots_vector = _builder->CreateVector(
+  auto roots_vector = builder.CreateVector(
       root_step_indices.data(), root_step_indices.size());
 
   std::vector<flatbuffers::Offset<ShkManifest::Pool>> pools;
   for (const auto &pool : manifest.pools) {
     pools.push_back(ShkManifest::CreatePool(
-        *_builder,
-        _builder->CreateString(pool.first),
+        builder,
+        builder.CreateString(pool.first),
         pool.second));
   }
-  auto pools_vector = _builder->CreateVector(
+  auto pools_vector = builder.CreateVector(
       pools.data(), pools.size());
 
-  auto build_dir_string = _builder->CreateString(manifest.build_dir);
+  auto build_dir_string = builder.CreateString(manifest.build_dir);
 
-  auto dependency_cycle_string = _builder->CreateString(
+  auto dependency_cycle_string = builder.CreateString(
       getDependencyCycle(
           output_path_map,
           manifest.steps));
 
-  ShkManifest::ManifestBuilder manifest_builder(*_builder);
+  ShkManifest::ManifestBuilder manifest_builder(builder);
   manifest_builder.add_outputs(outputs_vector);
   manifest_builder.add_inputs(inputs_vector);
   manifest_builder.add_steps(steps_vector);
@@ -348,9 +356,7 @@ CompiledManifest::CompiledManifest(
   manifest_builder.add_manifest_step(
       getManifestStep(output_path_map, manifest_path));
   manifest_builder.add_dependency_cycle(dependency_cycle_string);
-  _builder->Finish(manifest_builder.Finish());
-
-  _manifest = ShkManifest::GetManifest(_builder->GetBufferPointer());
+  builder.Finish(manifest_builder.Finish());
 }
 
 }  // namespace shk

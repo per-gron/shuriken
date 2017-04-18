@@ -103,7 +103,16 @@ using StepsView = WrapperView<
 struct CompiledManifest {
   CompiledManifest(
       Path manifest_path,
-      RawManifest &&manifest);
+      const RawManifest &manifest);
+
+  /**
+   * Takes a RawManifest and the path to the original manifest file and compiles
+   * it into a Flatbuffer Manifest object that can be wrapped by this class.
+   */
+  static void compile(
+      flatbuffers::FlatBufferBuilder &builder,
+      Path manifest_path,
+      const RawManifest &manifest);
 
   /**
    * Associative list of path => index of the step that has this file as an
