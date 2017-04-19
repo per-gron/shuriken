@@ -100,7 +100,7 @@ Large things remaining to do:
 * New (post shk-trace) tracer race(?):
   * shk: build failed: Dependency cycle: systemtest/systemtest -> /Users/peck/prog/client-core/build.shk/vendor/cmake/libvorbis/libvorbis.a -> /Users/peck/prog/client-core/build.shk/vendor/cmake/libvorbis/CMakeFiles/vorbis.dir/__/__/libvorbis/lib/floor1.c.o -> /Users/peck/prog/client-core/build.shk/vendor/cmake/libogg/libogg.a -> /Users/peck/prog/client-core/build.shk/vendor/cmake/libogg/CMakeFiles/ogg.dir/__/__/libogg/src/framing.c.o -> /Users/peck/prog/client-core/build.shk/vendor/cmake/libogg/libogg.a -> systemtest/systemtest
 * Detect and reject undeclared dependencies
-* Handle restat rules. OR: Make it the default somehow. Shuriken will not just stat but even hash all output files.
+* Protect build steps from outside environment variables.
 * Distributed caching
   * Cache key generation logic
   * Logic to make and receive cache lookup requests
