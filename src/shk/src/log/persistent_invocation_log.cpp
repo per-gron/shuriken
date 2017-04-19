@@ -219,6 +219,44 @@ class PersistentInvocationLog : public InvocationLog {
     _entry_count++;
   }
 
+  /**
+   * Helper function that is useful when recompacting. This method does not
+   * re-take fingerprints so it is not suitable for re-logging a racily clean
+   * entry.
+   *
+   * The fingerprints parameter has the same format and purpose as
+   * Invocations::fingerprints. The output_files and input_files vectors contain
+   * indices into this array.
+   */
+  void relogCommand(
+      const Hash &build_step_hash,
+      const std::vector<std::pair<std::string, Fingerprint>> &fingerprints,
+      const std::vector<size_t> &output_files,
+      const std::vector<size_t> &input_files) {
+    std::vector<std::string> output_paths;
+    std::vector<Fingerprint> output_fingerprints;
+    for (const auto &file_idx : output_files) {
+      const auto &file = fingerprints[file_idx];
+      output_paths.push_back(file.first);
+      output_fingerprints.push_back(file.second);
+    }
+
+    std::vector<std::string> input_paths;
+    std::vector<Fingerprint> input_fingerprints;
+    for (const auto &file_idx : input_files) {
+      const auto &file = fingerprints[file_idx];
+      input_paths.push_back(file.first);
+      input_fingerprints.push_back(file.second);
+    }
+
+    ranCommand(
+        build_step_hash,
+        std::move(output_paths),
+        std::move(output_fingerprints),
+        std::move(input_paths),
+        std::move(input_fingerprints));
+  }
+
  private:
   void writeFiles(const std::vector<std::string> &paths) {
     for (const auto &path : paths) {
@@ -326,7 +364,9 @@ class PersistentInvocationLog : public InvocationLog {
 
     write(path_id);
     _stream->write(
-        reinterpret_cast<const uint8_t *>(&fingerprint), sizeof(fingerprint), 1);
+        reinterpret_cast<const uint8_t *>(&fingerprint),
+        sizeof(fingerprint),
+        1);
 
     _entry_count++;
   }
@@ -588,16 +628,18 @@ void recompactPersistentInvocationLog(
     const Invocations &invocations,
     const std::string &log_path) throw(IoError) {
   const auto tmp_path = file_system.mkstemp("shk.tmp.log.XXXXXXXX");
-  const auto log =
-      openPersistentInvocationLog(
-          file_system, clock, tmp_path, InvocationLogParseResult::ParseData());
+  PersistentInvocationLog log(
+      file_system,
+      clock,
+      file_system.open(tmp_path, "ab"),
+      InvocationLogParseResult::ParseData());
 
   for (const auto &dir : invocations.created_directories) {
-    log->createdDirectory(dir.second);
+    log.createdDirectory(dir.second);
   }
 
   for (const auto &entry : invocations.entries) {
-    log->relogCommand(
+    log.relogCommand(
         entry.first,
         invocations.fingerprints,
         entry.second.output_files,

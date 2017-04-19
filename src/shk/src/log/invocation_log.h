@@ -77,22 +77,6 @@ class InvocationLog {
           throw(IoError) = 0;
 
   /**
-   * Helper function that is useful when rewriting an already existing
-   * invocation log entry, for example when recompacting. This method does not
-   * re-take fingerprints so it is not suitable for re-logging a racily clean
-   * entry.
-   *
-   * The fingerprints parameter has the same format and purpose as
-   * Invocations::fingerprints. The output_files and input_files vectors contain
-   * indices into this array.
-   */
-  void relogCommand(
-      const Hash &build_step_hash,
-      const std::vector<std::pair<std::string, Fingerprint>> &fingerprints,
-      const std::vector<size_t> &output_files,
-      const std::vector<size_t> &input_files);
-
-  /**
    * Writes an entry in the invocation log that says that the build step with
    * the given hash has been cleaned and can be treated as if it was never run.
    *
