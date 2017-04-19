@@ -19,13 +19,13 @@ namespace shk {
  */
 struct Invocations {
   /**
-   * List of Path + Fingerprint pairs. This is just for deduplication in storage
+   * List of path + Fingerprint pairs. This is just for deduplication in storage
    * and to be in a format that is easily processable later. It only has meaning
    * when used together with entries, which contains indices into this array.
    *
-   * In particular, there may be (possibly many) entries in this vector that
-   * have no corresponding uses in entries. Because of this it is usually not a
-   * good idea to go though and process all the entries in this vector.
+   * Note that there may be (possibly many) entries in this vector that have no
+   * corresponding uses in entries. Because of this it is usually not a good
+   * idea to go though and process all the entries in this vector.
    */
   std::vector<std::pair<std::string, Fingerprint>> fingerprints;
 
