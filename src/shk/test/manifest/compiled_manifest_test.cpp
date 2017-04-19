@@ -23,6 +23,14 @@ std::vector<typename View::value_type> toVector(View view) {
   return ans;
 }
 
+template <typename TableType>
+void setAtOffset(const TableType *table, int offset, int value) {
+  const_cast<int *>(reinterpret_cast<const int *>(table))[
+      reinterpret_cast<const flatbuffers::Table *>(table)
+          ->GetOptionalFieldOffset(offset)] =
+                  flatbuffers::EndianScalar(value);
+}
+
 }  // anonymous namespace
 
 TEST_CASE("CompiledManifest") {
@@ -32,32 +40,8 @@ TEST_CASE("CompiledManifest") {
 
   const auto manifest_path = paths.get("b.ninja");
 
-  std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> builders;
-  const auto compile_manifest = [&](
-      const RawManifest &raw_manifest,
-      bool allow_compile_error = false) {
-    builders.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
-    auto &builder = *builders.back();
-    std::string err;
-    bool success = CompiledManifest::compile(
-        builder, manifest_path, raw_manifest, &err);
-    if (!allow_compile_error) {
-      CHECK(success);
-      CHECK(err.empty());
-    }
-    err.clear();
-    const auto maybe_manifest = CompiledManifest::load(
-        string_view(
-            reinterpret_cast<const char *>(builder.GetBufferPointer()),
-            builder.GetSize()),
-        &err);
-    CHECK(err == "");
-    CHECK(maybe_manifest);
-    return *maybe_manifest;
-  };
-
   const auto get_manifest_compile_error = [&](const RawManifest &raw_manifest) {
-    flatbuffers::FlatBufferBuilder builder(1024);
+    flatbuffers::FlatBufferBuilder builder;
     std::string err;
     bool success = CompiledManifest::compile(builder, manifest_path, raw_manifest, &err);
     if (success) {
@@ -133,6 +117,30 @@ TEST_CASE("CompiledManifest") {
   }
 
   SECTION("compile") {
+    std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> builders;
+    const auto compile_manifest = [&](
+        const RawManifest &raw_manifest,
+        bool allow_compile_error = false) {
+      builders.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
+      auto &builder = *builders.back();
+      std::string err;
+      bool success = CompiledManifest::compile(
+          builder, manifest_path, raw_manifest, &err);
+      if (!allow_compile_error) {
+        CHECK(success);
+        CHECK(err.empty());
+      }
+      err.clear();
+      const auto maybe_manifest = CompiledManifest::load(
+          string_view(
+              reinterpret_cast<const char *>(builder.GetBufferPointer()),
+              builder.GetSize()),
+          &err);
+      CHECK(err == "");
+      CHECK(maybe_manifest);
+      return *maybe_manifest;
+    };
+
     SECTION("basics") {
       RawManifest manifest;
       manifest.steps = { single_output };
@@ -644,6 +652,92 @@ TEST_CASE("CompiledManifest") {
             get_manifest_compile_error(raw_manifest) ==
             "Dependency cycle: a -> b -> a");
       }
+    }
+  }
+
+  SECTION("load") {
+    RawManifest manifest;
+    manifest.steps = { empty, single_input, single_output };
+    manifest.defaults = { paths.get("a") };
+    manifest.pools["a_pool"] = 5;
+
+    flatbuffers::FlatBufferBuilder builder;
+    std::string err;
+    CHECK(CompiledManifest::compile(
+        builder, paths.get("a"), manifest, &err));
+    CHECK(err.empty());
+
+    auto *fb = ShkManifest::GetManifest(builder.GetBufferPointer());
+
+    const auto get_load_error = [&]() {
+      const auto maybe_manifest = CompiledManifest::load(
+          string_view(
+              reinterpret_cast<const char *>(builder.GetBufferPointer()),
+              builder.GetSize()),
+          &err);
+      CHECK(!maybe_manifest);
+      return err;
+    };
+
+    SECTION("outputs") {
+      REQUIRE(fb->outputs());
+      REQUIRE(fb->outputs()->size() == 1);
+      const_cast<char *>(reinterpret_cast<const char *>(
+          fb->outputs()->Get(0)))[
+              // +3 here is for modifying the least significant byte. Assumes
+              // little endian.
+              ShkManifest::StepPathReference::VT_STEP + 3] += 3;
+      CHECK(get_load_error() == "Encountered invalid step index");
+    }
+
+    SECTION("inputs") {
+      REQUIRE(fb->inputs());
+      REQUIRE(fb->inputs()->size() == 1);
+      const_cast<char *>(reinterpret_cast<const char *>(
+          fb->inputs()->Get(0)))[
+              // +3 here is for modifying the least significant byte. Assumes
+              // little endian.
+              ShkManifest::StepPathReference::VT_STEP + 3] += 3;
+      CHECK(get_load_error() == "Encountered invalid step index");
+    }
+
+    SECTION("step.dependencies") {
+      REQUIRE(fb->steps());
+      REQUIRE(fb->steps()->size() == 3);
+      auto &step = *fb->steps()->Get(1);
+      REQUIRE(step.dependencies());
+      REQUIRE(step.dependencies()->size() == 1);
+      const_cast<flatbuffers::Vector<int32_t> *>(
+          step.dependencies())->Mutate(0, 4);
+      CHECK(get_load_error() == "Encountered invalid step index");
+    }
+
+    SECTION("defaults") {
+      REQUIRE(fb->defaults());
+      REQUIRE(fb->defaults()->size() == 1);
+      const_cast<flatbuffers::Vector<int32_t> *>(
+          fb->defaults())->Mutate(0, 4);
+      CHECK(get_load_error() == "Encountered invalid step index");
+    }
+
+    SECTION("roots") {
+      REQUIRE(fb->roots());
+      REQUIRE(fb->roots()->size() >= 1);
+      const_cast<flatbuffers::Vector<int32_t> *>(
+          fb->roots())->Mutate(0, 4);
+      CHECK(get_load_error() == "Encountered invalid step index");
+    }
+
+    SECTION("pools.depth") {
+      REQUIRE(fb->pools());
+      REQUIRE(fb->pools()->size() >= 1);
+      setAtOffset(fb->pools()->Get(0), ShkManifest::Pool::VT_DEPTH, -1);
+      CHECK(get_load_error() == "Encountered invalid step index");
+    }
+
+    SECTION("manifest_path") {
+      setAtOffset(fb, ShkManifest::Manifest::VT_MANIFEST_STEP, 4);
+      CHECK(get_load_error() == "Encountered invalid step index");
     }
   }
 }

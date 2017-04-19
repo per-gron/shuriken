@@ -296,7 +296,62 @@ Optional<CompiledManifest> CompiledManifest::load(
 
   const auto &manifest = *ShkManifest::GetManifest(data.data());
 
-  return Optional<CompiledManifest>(CompiledManifest(manifest));
+  int num_steps = manifest.steps() ? manifest.steps()->size() : 0;
+
+  const auto fail_validation = [err]() {
+    *err = "Encountered invalid step index";
+    return Optional<CompiledManifest>();
+  };
+
+  const auto is_valid_index = [num_steps](StepIndex index) {
+    return index >= 0 && index < num_steps;
+  };
+
+  auto compiled_manifest = CompiledManifest(manifest);
+
+  StepPathReferencesView step_path_refs_list[] = {
+      compiled_manifest.outputs(), compiled_manifest.inputs() };
+  for (auto step_path_refs : step_path_refs_list) {
+    for (auto ref : step_path_refs) {
+      if (!is_valid_index(ref.second)) {
+        return fail_validation();
+      }
+    }
+  }
+
+  for (auto step : compiled_manifest.steps()) {
+    for (StepIndex step_index : step.dependencies()) {
+      if (!is_valid_index(step_index)) {
+        return fail_validation();
+      }
+    }
+  }
+
+  for (auto step_index : compiled_manifest.defaults()) {
+    if (!is_valid_index(step_index)) {
+      return fail_validation();
+    }
+  }
+
+  for (auto step_index : compiled_manifest.roots()) {
+    if (!is_valid_index(step_index)) {
+      return fail_validation();
+    }
+  }
+
+  for (auto pool : compiled_manifest.pools()) {
+    if (pool.second < 0) {
+      *err = "Encountered invalid pool depth";
+      return Optional<CompiledManifest>();
+    }
+  }
+
+  if (!is_valid_index(compiled_manifest.manifestStep()) &&
+      compiled_manifest.manifestStep() != -1) {
+    return fail_validation();
+  }
+
+  return Optional<CompiledManifest>(compiled_manifest);
 }
 
 bool CompiledManifest::compile(
