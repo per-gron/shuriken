@@ -28,7 +28,7 @@ void parseTrace(string_view trace, CommandRunner::Result *result);
  * tracking; that might be overwritten by this object.
  */
 std::unique_ptr<CommandRunner> makeTracingCommandRunner(
-    std::unique_ptr<TraceServerHandle> &&trace_sever_handle,
+    const std::shared_ptr<TraceServerHandle> &trace_sever_handle,
     FileSystem &file_system,
     std::unique_ptr<CommandRunner> &&command_runner);
 

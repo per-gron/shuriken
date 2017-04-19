@@ -136,13 +136,15 @@ time_t getTime() {
  */
 struct ShurikenMain {
   ShurikenMain(
+      std::shared_ptr<TraceServerHandle> &trace_server_handle,
       const BuildConfig &config)
       : _config(config),
         _real_file_system(persistentFileSystem()),
         _dry_run_file_system(dryRunFileSystem(*_real_file_system)),
         _file_system(config.dry_run ?
             *_dry_run_file_system : *_real_file_system),
-        _paths(_file_system) {}
+        _paths(_file_system),
+        _trace_server_handle(trace_server_handle) {}
 
   void parseManifest(const std::string &input_file) throw(IoError, ParseError);
 
@@ -211,6 +213,7 @@ struct ShurikenMain {
   std::unique_ptr<InvocationLog> _invocation_log;
   flatbuffers::FlatBufferBuilder _manifest_builder;
   Optional<CompiledManifest> _compiled_manifest;
+  std::shared_ptr<TraceServerHandle> &_trace_server_handle;
 };
 
 /**
@@ -440,6 +443,10 @@ BuildResult ShurikenMain::runBuild(
     pools.emplace(std::string(pool.first), pool.second);
   }
 
+  if (!_trace_server_handle) {
+    _trace_server_handle = TraceServerHandle::open("shk-trace");
+  }
+
   const auto command_runner = _config.dry_run ?
       makeDryRunCommandRunner() :
       makePooledCommandRunner(
@@ -449,7 +456,7 @@ BuildResult ShurikenMain::runBuild(
           _config.max_load_average,
           _config.parallelism,
           makeTracingCommandRunner(
-              TraceServerHandle::open("shk-trace"),
+              _trace_server_handle,
               _file_system,
               makeRealCommandRunner())));
 
@@ -658,10 +665,12 @@ int real_main(int argc, char **argv) {
     }
   }
 
+  std::shared_ptr<TraceServerHandle> trace_server_handle;
+
   // Limit number of rebuilds, to prevent infinite loops.
   const int kCycleLimit = 100;
   for (int cycle = 1; cycle <= kCycleLimit; ++cycle) {
-    ShurikenMain shk(config);
+    ShurikenMain shk(trace_server_handle, config);
 
     try {
       shk.parseManifest(options.input_file);

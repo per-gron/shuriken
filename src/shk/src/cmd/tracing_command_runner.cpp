@@ -58,10 +58,10 @@ std::string shellEscape(const std::string &cmd) {
 class TracingCommandRunner : public CommandRunner {
  public:
   TracingCommandRunner(
-      std::unique_ptr<TraceServerHandle> &&trace_sever_handle,
+      const std::shared_ptr<TraceServerHandle> &trace_sever_handle,
       FileSystem &file_system,
       std::unique_ptr<CommandRunner> &&inner)
-      : _trace_server_handle(std::move(trace_sever_handle)),
+      : _trace_server_handle(trace_sever_handle),
         _escaped_shk_trace_cmd(
             shellEscape(_trace_server_handle->getShkTracePath())),
         _file_system(file_system),
@@ -138,7 +138,7 @@ class TracingCommandRunner : public CommandRunner {
     }
   }
 
-  const std::unique_ptr<TraceServerHandle> _trace_server_handle;
+  const std::shared_ptr<TraceServerHandle> _trace_server_handle;
   const std::string _escaped_shk_trace_cmd;
   FileSystem &_file_system;
   const std::unique_ptr<CommandRunner> _inner;
@@ -184,7 +184,7 @@ void parseTrace(string_view trace_view, CommandRunner::Result *result) {
 }  // namespace detail
 
 std::unique_ptr<CommandRunner> makeTracingCommandRunner(
-    std::unique_ptr<TraceServerHandle> &&trace_sever_handle,
+    const std::shared_ptr<TraceServerHandle> &trace_sever_handle,
     FileSystem &file_system,
     std::unique_ptr<CommandRunner> &&command_runner) {
   return std::unique_ptr<CommandRunner>(
