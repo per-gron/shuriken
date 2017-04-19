@@ -392,7 +392,7 @@ bool ShurikenMain::readInvocationLog(bool will_run_tool) {
   if (!will_run_tool && parse_result.needs_recompaction) {
     printf("recompacting build log...\n");
     try {
-      recompactPersistentInvocationLog(
+      _invocation_parse_data = recompactPersistentInvocationLog(
           _file_system, getTime, _invocations, path);
     } catch (const IoError &err) {
       error("failed recompaction: %s", err.what());

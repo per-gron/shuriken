@@ -158,8 +158,12 @@ std::unique_ptr<InvocationLog> openPersistentInvocationLog(
  * The invocation log is designed to be used by only one process at a time. This
  * function assumes that the user of these functions has somehow acquired
  * exclusive access to the invocation log file.
+ *
+ * After recompacting the invocation log, any previous ParseData object from
+ * parseInvocationLog is invalid. Instead, use the return value of this
+ * function.
  */
-void recompactPersistentInvocationLog(
+InvocationLogParseResult::ParseData recompactPersistentInvocationLog(
     FileSystem &file_system,
     const Clock &clock,
     const Invocations &invocations,

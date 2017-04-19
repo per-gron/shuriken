@@ -129,7 +129,7 @@ void recompact(const Callback &callback) {
         std::move(result.parse_data));
     callback(*persistent_log, fs);
   }
-  recompactPersistentInvocationLog(
+  auto parse_data = recompactPersistentInvocationLog(
       fs,
       [] { return 0; },
       parsePersistentInvocationLog(fs, "file").invocations,
@@ -144,6 +144,37 @@ void recompact(const Callback &callback) {
   CHECK(result.warning == "");
 
   CHECK(in_memory_result == result.invocations);
+
+  // Sanity check parse_data
+  std::unordered_set<size_t> entry_ids;
+  const auto add_entry_id = [&](size_t id) {
+    bool no_id_duplicate = entry_ids.emplace(id).second;
+    CHECK(no_id_duplicate);
+  };
+  for (const auto &fingerprint : in_memory_result.fingerprints) {
+    const auto &path = fingerprint.first;
+    CHECK(parse_data.path_ids.count(path));
+    const auto path_id_it = parse_data.path_ids.find(path);
+    if (path_id_it != parse_data.path_ids.end()) {
+      add_entry_id(path_id_it->second);
+    }
+    parse_data.path_ids.erase(path);
+
+    CHECK(parse_data.fingerprint_ids.count(path));
+    const auto fingerprint_id_it = parse_data.fingerprint_ids.find(path);
+    if (fingerprint_id_it != parse_data.fingerprint_ids.end()) {
+      add_entry_id(fingerprint_id_it->second.record_id);
+    }
+    parse_data.fingerprint_ids.erase(path);
+  }
+  for (const auto &dir : in_memory_result.created_directories) {
+    CHECK(parse_data.path_ids.count(dir.second));
+  }
+  CHECK(parse_data.path_ids.empty());  // path_ids contains extraenous entries
+  CHECK(  // fingerprint_ids contains extraenous entries
+      parse_data.fingerprint_ids.empty());
+  CHECK(parse_data.entry_count >= entry_ids.size());
+
 
   // These checks are just here for getting more detailed information in case
   // the invocations check above fails.

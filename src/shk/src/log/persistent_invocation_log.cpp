@@ -257,6 +257,20 @@ class PersistentInvocationLog : public InvocationLog {
         std::move(input_fingerprints));
   }
 
+  /**
+   * Extract a ParseData object that can be used when creating a future
+   * PersistentInvocationLog instance. This steals information from the
+   * object. After calling this method it is not legal to modify the log
+   * through this object anymore.
+   */
+  InvocationLogParseResult::ParseData extractParseData() {
+    InvocationLogParseResult::ParseData ans;
+    ans.path_ids = std::move(_path_ids);
+    ans.fingerprint_ids = std::move(_fingerprint_ids);
+    ans.entry_count = _entry_count;
+    return ans;
+  }
+
  private:
   void writeFiles(const std::vector<std::string> &paths) {
     for (const auto &path : paths) {
@@ -622,7 +636,7 @@ std::unique_ptr<InvocationLog> openPersistentInvocationLog(
           std::move(parse_data)));
 }
 
-void recompactPersistentInvocationLog(
+InvocationLogParseResult::ParseData recompactPersistentInvocationLog(
     FileSystem &file_system,
     const Clock &clock,
     const Invocations &invocations,
@@ -647,6 +661,8 @@ void recompactPersistentInvocationLog(
   }
 
   file_system.rename(tmp_path, log_path);
+
+  return log.extractParseData();
 }
 
 }  // namespace shk
