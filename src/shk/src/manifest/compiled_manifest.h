@@ -166,11 +166,13 @@ struct CompiledManifest {
   }
 
   /**
-   * Index of the build step that rebuilds the manifest file, or -1 if there is
-   * no such step.
+   * Index of the build step that rebuilds the manifest file (if there is one).
    */
-  StepIndex manifestStep() const {
-    return _manifest->manifest_step();
+  Optional<StepIndex> manifestStep() const {
+    StepIndex step = _manifest->manifest_step();
+    return step == -1 ?
+        Optional<StepIndex>() :
+        Optional<StepIndex>(_manifest->manifest_step());
   }
 
  private:

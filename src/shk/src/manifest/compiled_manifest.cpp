@@ -346,8 +346,8 @@ Optional<CompiledManifest> CompiledManifest::load(
     }
   }
 
-  if (!is_valid_index(compiled_manifest.manifestStep()) &&
-      compiled_manifest.manifestStep() != -1) {
+  if (compiled_manifest.manifestStep() &&
+      !is_valid_index(*compiled_manifest.manifestStep())) {
     return fail_validation();
   }
 

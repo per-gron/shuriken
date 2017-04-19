@@ -244,13 +244,14 @@ void usage(const BuildConfig &config) {
  * Returns true if the manifest was rebuilt.
  */
 bool ShurikenMain::rebuildManifest(std::string *err) {
-  if (_compiled_manifest->manifestStep() == -1) {
+  if (!_compiled_manifest->manifestStep()) {
     // No rule generates the manifest file. There is nothing to do.
     return false;
   }
+  const auto manifest_step = *_compiled_manifest->manifestStep();
 
   try {
-    const auto result = runBuild({ _compiled_manifest->manifestStep() });
+    const auto result = runBuild({ manifest_step });
     switch (result) {
     case BuildResult::NO_WORK_TO_DO:
       return false;

@@ -573,7 +573,7 @@ TEST_CASE("CompiledManifest") {
 
         auto compiled_manifest = compile_manifest(manifest);
 
-        CHECK(compiled_manifest.manifestStep() == -1);
+        CHECK(!compiled_manifest.manifestStep());
       }
     }
 
