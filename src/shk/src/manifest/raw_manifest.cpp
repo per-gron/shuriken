@@ -71,6 +71,7 @@ struct ManifestParser {
       throw ParseError(err);
     }
 
+    _manifest.manifest_files.push_back(filename);
     parse(filename, contents);
   }
 

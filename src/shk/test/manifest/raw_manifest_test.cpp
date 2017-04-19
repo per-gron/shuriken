@@ -69,6 +69,12 @@ TEST_CASE("RawManifest") {
     CHECK(parse(paths, fs, "builddir = a/b\n").build_dir == "a/b");
   }
 
+  SECTION("ManifestFiles") {
+    CHECK(
+        parse(paths, fs, "").manifest_files ==
+        std::vector<std::string>{ "build.ninja" });
+  }
+
   SECTION("Rules") {
     const auto step = parseStep(paths, fs,
         "rule cat\n"
@@ -575,6 +581,10 @@ TEST_CASE("RawManifest") {
     CHECK(manifest.steps[0].command == "varref outer");
     CHECK(manifest.steps[1].command == "varref inner");
     CHECK(manifest.steps[2].command == "varref outer");
+
+    CHECK(
+        manifest.manifest_files ==
+        std::vector<std::string>({ "build.ninja", "test.ninja" }));
   }
 
   SECTION("MissingSubNinja") {
@@ -612,14 +622,19 @@ TEST_CASE("RawManifest") {
   SECTION("Include") {
     fs.writeFile("include.ninja",
         "var = inner\n");
-    const auto step = parseStep(paths, fs,
+    const auto manifest = parse(paths, fs,
         "var = outer\n"
         "include include.ninja\n"
         "rule r\n"
         "  command = $var\n"
         "build out: r\n");
 
-    CHECK(step.command == "inner");
+    REQUIRE(manifest.steps.size() == 1);
+    CHECK(manifest.steps[0].command == "inner");
+
+    CHECK(
+        manifest.manifest_files ==
+        std::vector<std::string>({ "build.ninja", "include.ninja" }));
   }
 
   SECTION("BrokenInclude") {

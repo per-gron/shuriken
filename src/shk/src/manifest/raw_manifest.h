@@ -24,6 +24,11 @@ struct RawManifest {
    * The build directory, used for storing the invocation log.
    */
   std::string build_dir;
+
+  /**
+   * Paths to all the manifest files that were read parsing this Manifest.
+   */
+  std::vector<std::string> manifest_files;
 };
 
 /**
