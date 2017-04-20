@@ -566,6 +566,178 @@ TEST_CASE("CompiledManifest") {
       }
     }
 
+    SECTION("pool name") {
+      SECTION("no value") {
+        RawManifest manifest;
+        manifest.steps = { RawStep() };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].poolName() == "");
+      }
+
+      SECTION("with value") {
+        RawStep step;
+        step.pool_name = "my_pool";
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].poolName() == "my_pool");
+      }
+    }
+
+    SECTION("command") {
+      SECTION("no value") {
+        RawManifest manifest;
+        manifest.steps = { RawStep() };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].command() == "");
+      }
+
+      SECTION("with value") {
+        RawStep step;
+        step.command = "my_cmd";
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].command() == "my_cmd");
+      }
+    }
+
+    SECTION("description") {
+      SECTION("no value") {
+        RawManifest manifest;
+        manifest.steps = { RawStep() };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].description() == "");
+      }
+
+      SECTION("with value") {
+        RawStep step;
+        step.description = "my_description";
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].description() == "my_description");
+      }
+    }
+
+    SECTION("depfile") {
+      SECTION("no value") {
+        RawManifest manifest;
+        manifest.steps = { RawStep() };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].depfile() == "");
+      }
+
+      SECTION("with value") {
+        RawStep step;
+        step.depfile = "my_depfile";
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].depfile() == "my_depfile");
+      }
+    }
+
+    SECTION("rspfile") {
+      SECTION("no value") {
+        RawManifest manifest;
+        manifest.steps = { RawStep() };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].rspfile() == "");
+      }
+
+      SECTION("with value") {
+        RawStep step;
+        step.rspfile = "my_rspfile";
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].rspfile() == "my_rspfile");
+      }
+    }
+
+    SECTION("rspfileContent") {
+      SECTION("no value") {
+        RawManifest manifest;
+        manifest.steps = { RawStep() };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].rspfileContent() == "");
+      }
+
+      SECTION("with value") {
+        RawStep step;
+        step.rspfile_content = "my_rspfile_c";
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].rspfileContent() == "my_rspfile_c");
+      }
+    }
+
+    SECTION("generator") {
+      SECTION("false") {
+        RawStep step;
+        step.inputs = { paths.get("a") };
+        step.implicit_inputs = { paths.get("a2") };
+        step.dependencies = { paths.get("a3") };
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(!compiled_manifest.steps()[0].generator());
+        CHECK(compiled_manifest.steps()[0].generatorInputs().empty());
+      }
+
+      SECTION("true") {
+        RawStep step;
+        step.inputs = { paths.get("a") };
+        step.implicit_inputs = { paths.get("a2") };
+        step.dependencies = { paths.get("a3") };
+        step.generator = true;
+
+        RawManifest manifest;
+        manifest.steps = { step };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(compiled_manifest.steps()[0].generator());
+        CHECK(
+            toVector(compiled_manifest.steps()[0].generatorInputs()) ==
+            std::vector<nt_string_view>({ "a", "a2", "a3" }));
+      }
+    }
+
     SECTION("manifest_step") {
       SECTION("present") {
         RawStep step;

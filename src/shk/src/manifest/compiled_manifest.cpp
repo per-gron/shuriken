@@ -144,6 +144,27 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
   auto rspfile_string = builder.CreateString(raw.rspfile);
   auto rspfile_content_string = builder.CreateString(raw.rspfile_content);
 
+  flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<
+        flatbuffers::String>>> generator_inputs_vector;
+  if (raw.generator) {
+    std::vector<flatbuffers::Offset<flatbuffers::String>> generator_inputs;
+    generator_inputs.reserve(generator_inputs.size());
+
+    const auto process_generator_inputs = [&](
+        const std::vector<Path> &paths) {
+      for (const auto &path : paths) {
+        generator_inputs.push_back(builder.CreateString(path.original()));
+      }
+    };
+
+    process_generator_inputs(raw.inputs);
+    process_generator_inputs(raw.implicit_inputs);
+    process_generator_inputs(raw.dependencies);
+
+    generator_inputs_vector = builder.CreateVector(
+        generator_inputs.data(), generator_inputs.size());
+  }
+
   ShkManifest::StepBuilder step_builder(builder);
   step_builder.add_hash(
       reinterpret_cast<const ShkManifest::Hash *>(raw.hash().data.data()));
@@ -152,10 +173,13 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
   step_builder.add_pool_name(pool_name_string);
   step_builder.add_command(command_string);
   step_builder.add_description(description_string);
-  step_builder.add_generator(raw.generator);
   step_builder.add_depfile(depfile_string);
   step_builder.add_rspfile(rspfile_string);
   step_builder.add_rspfile_content(rspfile_content_string);
+  step_builder.add_generator(raw.generator);
+  if (raw.generator) {
+    step_builder.add_generator_inputs(generator_inputs_vector);
+  }
 
   return step_builder.Finish();
 }
