@@ -1,6 +1,7 @@
 #include <catch.hpp>
 
 #include "cmd/dry_run_command_runner.h"
+#include "../manifest/step_builder.h"
 
 namespace shk {
 
@@ -12,7 +13,8 @@ TEST_CASE("DryRunCommandRunner") {
   CHECK(!runner->runCommands());
 
   bool invoked = false;
-  runner->invoke("cmd", "a_pool", [&invoked](
+  flatbuffers::FlatBufferBuilder builder;
+  runner->invoke("cmd", StepBuilder().build(builder), [&invoked](
       CommandRunner::Result &&result) {
     invoked = true;
   });

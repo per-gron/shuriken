@@ -2,54 +2,54 @@
 
 namespace shk {
 
-StepBuilder &StepBuilder::setHash(Hash &&hash) {
+StepBuilder &StepBuilder::setHash(Hash hash) {
   _hash = std::move(hash);
   return *this;
 }
 
 StepBuilder &StepBuilder::setDependencies(
-    std::vector<StepIndex> &&dependencies) {
+    std::vector<StepIndex> dependencies) {
   _dependencies = std::move(dependencies);
   return *this;
 }
 
 StepBuilder &StepBuilder::setOutputDirs(
-    std::vector<std::string> &&output_dirs) {
+    std::vector<std::string> output_dirs) {
   _output_dirs = std::move(output_dirs);
   return *this;
 }
 
-StepBuilder &StepBuilder::setPoolName(std::string &&pool_name) {
+StepBuilder &StepBuilder::setPoolName(std::string pool_name) {
   _pool_name = std::move(pool_name);
   return *this;
 }
 
-StepBuilder &StepBuilder::setCommand(std::string &&command) {
+StepBuilder &StepBuilder::setCommand(std::string command) {
   _command = std::move(command);
   return *this;
 }
 
-StepBuilder &StepBuilder::setDescription(std::string &&description) {
+StepBuilder &StepBuilder::setDescription(std::string description) {
   _description = std::move(description);
   return *this;
 }
 
-StepBuilder &StepBuilder::setGenerator(bool &&generator) {
+StepBuilder &StepBuilder::setGenerator(bool generator) {
   _generator = std::move(generator);
   return *this;
 }
 
-StepBuilder &StepBuilder::setDepfile(std::string &&depfile) {
+StepBuilder &StepBuilder::setDepfile(std::string depfile) {
   _depfile = std::move(depfile);
   return *this;
 }
 
-StepBuilder &StepBuilder::setRspfile(std::string &&rspfile) {
+StepBuilder &StepBuilder::setRspfile(std::string rspfile) {
   _rspfile = std::move(rspfile);
   return *this;
 }
 
-StepBuilder &StepBuilder::setRspfileContent(std::string &&rspfile_content) {
+StepBuilder &StepBuilder::setRspfileContent(std::string rspfile_content) {
   _rspfile_content = std::move(rspfile_content);
   return *this;
 }

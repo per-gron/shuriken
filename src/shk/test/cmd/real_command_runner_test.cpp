@@ -16,6 +16,8 @@
 
 #include "cmd/real_command_runner.h"
 
+#include "../manifest/step_builder.h"
+
 #include <string>
 
 #ifndef _WIN32
@@ -40,10 +42,13 @@ CommandRunner::Result runCommand(
   CommandRunner::Result result;
   const auto runner = makeRealCommandRunner();
 
+  flatbuffers::FlatBufferBuilder builder;
+  auto step = StepBuilder().setPoolName(pool_name).build(builder);
+
   bool did_finish = false;
   runner->invoke(
       command,
-      pool_name,
+      step,
       [&](CommandRunner::Result &&result_) {
         result = std::move(result_);
         did_finish = true;
@@ -63,9 +68,10 @@ CommandRunner::Result runCommand(
 
 void verifyInterrupted(const std::string &command) {
   const auto runner = makeRealCommandRunner();
+  flatbuffers::FlatBufferBuilder builder;
   runner->invoke(
       command,
-      "",
+      StepBuilder().build(builder),
       [](CommandRunner::Result &&result) {
       });
 
@@ -80,6 +86,9 @@ void verifyInterrupted(const std::string &command) {
 }
 
 TEST_CASE("SubprocessSet") {
+  flatbuffers::FlatBufferBuilder builder;
+  auto step = StepBuilder().setPoolName("a_pool").build(builder);
+
   // Run a command that fails and emits to stderr.
   SECTION("BadCommandStderr") {
     const auto result = runCommand("cmd /c ninja_no_such_command");
@@ -108,12 +117,12 @@ TEST_CASE("SubprocessSet") {
     size_t done = 0;
     runner->invoke(
         "/bin/echo",
-        "a_pool",
+        step,
         [&](CommandRunner::Result &&result) {
           for (size_t i = 0; i < num_cmds; i++) {
             runner->invoke(
                 "/bin/echo",
-                "a_pool",
+                step,
                 [&](CommandRunner::Result &&result) {
                   done++;
                 });
@@ -131,7 +140,7 @@ TEST_CASE("SubprocessSet") {
     const auto runner = makeRealCommandRunner();
 
     bool invoked = false;
-    runner->invoke("/bin/echo", "a_pool", [&](CommandRunner::Result &&result) {
+    runner->invoke("/bin/echo", step, [&](CommandRunner::Result &&result) {
       CHECK(runner->empty());
       invoked = true;
     });
@@ -149,7 +158,7 @@ TEST_CASE("SubprocessSet") {
       const auto runner = makeRealCommandRunner();
       runner->invoke(
           "/bin/echo",
-          "a_pool",
+          step,
           [&](CommandRunner::Result &&result) {
             called = true;
           });
@@ -242,7 +251,7 @@ TEST_CASE("SubprocessSet") {
     for (int i = 0; i < 3; ++i) {
       runner->invoke(
           kCommands[i],
-          "",
+          step,
           [i, &processes_done, &finished_processes](
               CommandRunner::Result &&result) {
             CHECK(result.exit_status == ExitStatus::SUCCESS);

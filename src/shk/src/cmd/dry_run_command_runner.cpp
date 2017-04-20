@@ -9,7 +9,7 @@ class DryRunCommandRunner : public CommandRunner {
  public:
   void invoke(
       nt_string_view command,
-      nt_string_view pool_name,
+      Step step,
       const Callback &callback) override {
     _enqueued_commands.push_back(callback);
   }

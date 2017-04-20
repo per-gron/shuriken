@@ -112,7 +112,7 @@ DummyCommandRunner::DummyCommandRunner(FileSystem &file_system)
 
 void DummyCommandRunner::invoke(
     nt_string_view command,
-    nt_string_view pool_name,
+    Step step,
     const Callback &callback) {
   _enqueued_commands.emplace_back(std::string(command), callback);
 }

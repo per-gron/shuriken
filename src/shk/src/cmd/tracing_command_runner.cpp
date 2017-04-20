@@ -69,10 +69,10 @@ class TracingCommandRunner : public CommandRunner {
 
   void invoke(
       nt_string_view command,
-      nt_string_view pool_name,
+      Step step,
       const Callback &callback) override {
     if (command.empty()) {
-      _inner->invoke("", pool_name, callback);
+      _inner->invoke("", step, callback);
       return;
     }
 
@@ -93,7 +93,7 @@ class TracingCommandRunner : public CommandRunner {
           _escaped_shk_trace_cmd + ""
               " -f '" + tmp->path + "'"
               " -c " + escaped_command,
-          pool_name,
+          step,
           [this, tmp, callback](CommandRunner::Result &&result) {
             computeResults(tmp->path, result);
             callback(std::move(result));
@@ -101,7 +101,7 @@ class TracingCommandRunner : public CommandRunner {
     } catch (const IoError &error) {
       _inner->invoke(
           "/bin/echo Failed to create temporary file && exit 1",
-          pool_name,
+          step,
           callback);
     }
   }

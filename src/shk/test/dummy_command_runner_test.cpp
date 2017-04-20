@@ -2,6 +2,7 @@
 
 #include "dummy_command_runner.h"
 #include "in_memory_file_system.h"
+#include "manifest/step_builder.h"
 
 namespace shk {
 namespace {
@@ -24,6 +25,9 @@ void checkSplitConstructCommandIdentity(
 void checkRunCommand(
     const std::vector<std::string> &inputs,
     const std::vector<std::string> &outputs) {
+  flatbuffers::FlatBufferBuilder builder;
+  auto step = StepBuilder().build(builder);
+
   InMemoryFileSystem file_system;
   DummyCommandRunner runner(file_system);
 
@@ -44,7 +48,7 @@ void checkRunCommand(
     CHECK_THROWS(DummyCommandRunner::checkCommand(file_system, command));
   }
 
-  runner.invoke(command, "pool", CommandRunner::noopCallback);
+  runner.invoke(command, step, CommandRunner::noopCallback);
   while (!runner.empty()) {
     runner.runCommands();
   }
@@ -55,6 +59,9 @@ void checkRunCommand(
 }  // anonymous namespace
 
 TEST_CASE("DummyCommandRunner") {
+  flatbuffers::FlatBufferBuilder builder;
+  auto step = StepBuilder().build(builder);
+
   SECTION("splitCommand of constructCommand") {
     checkSplitConstructCommandIdentity({}, {});
     checkSplitConstructCommandIdentity({ "in" }, {});
@@ -78,12 +85,12 @@ TEST_CASE("DummyCommandRunner") {
     size_t done = 0;
     runner.invoke(
         "/bin/echo",
-        "pool",
+        step,
         [&](CommandRunner::Result &&result) {
           for (size_t i = 0; i < num_cmds; i++) {
             runner.invoke(
                 "/bin/echo",
-                "pool",
+                step,
                 [&](CommandRunner::Result &&result) {
                   done++;
                 });
@@ -107,7 +114,7 @@ TEST_CASE("DummyCommandRunner") {
     CHECK(runner.getCommandsRun() == 0);
 
     const auto command = DummyCommandRunner::constructCommand({}, { "abc" });
-    runner.invoke(command, "pool", CommandRunner::noopCallback);
+    runner.invoke(command, step, CommandRunner::noopCallback);
     while (!runner.empty()) {
       runner.runCommands();
     }
@@ -158,7 +165,7 @@ TEST_CASE("DummyCommandRunner") {
       const std::string path = "abc";
       const auto command = DummyCommandRunner::constructCommand({}, { path });
 
-      runner.invoke(command, "pool", CommandRunner::noopCallback);
+      runner.invoke(command, step, CommandRunner::noopCallback);
       while (!runner.empty()) {
         runner.runCommands();
       }
@@ -171,7 +178,7 @@ TEST_CASE("DummyCommandRunner") {
       const auto command = DummyCommandRunner::constructCommand({ path }, {});
 
       auto exit_status = ExitStatus::SUCCESS;
-      runner.invoke(command, "pool", [&](CommandRunner::Result &&result) {
+      runner.invoke(command, step, [&](CommandRunner::Result &&result) {
         exit_status = result.exit_status;
       });
       while (!runner.empty()) {
@@ -186,7 +193,7 @@ TEST_CASE("DummyCommandRunner") {
       const auto command = DummyCommandRunner::constructCommand({ path }, {});
 
       bool invoked = false;
-      runner.invoke(command, "pool", [&](CommandRunner::Result &&result) {
+      runner.invoke(command, step, [&](CommandRunner::Result &&result) {
         CHECK(runner.empty());
         invoked = true;
       });

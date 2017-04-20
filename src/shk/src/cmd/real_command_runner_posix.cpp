@@ -75,7 +75,7 @@ class SubprocessSet : public CommandRunner {
 
   void invoke(
       nt_string_view command,
-      nt_string_view pool_name,
+      Step step,
       const Callback &callback) override;
   bool runCommands() override;
   void clear();
@@ -343,10 +343,10 @@ SubprocessSet::~SubprocessSet() {
 
 void SubprocessSet::invoke(
     nt_string_view command,
-    nt_string_view pool_name,
+    Step step,
     const CommandRunner::Callback &callback) {
   auto use_console =
-      isConsolePool(pool_name) ? UseConsole::YES : UseConsole::NO;
+      isConsolePool(step.poolName()) ? UseConsole::YES : UseConsole::NO;
   auto subprocess = std::unique_ptr<Subprocess>(
       new Subprocess(callback, use_console));
   subprocess->start(this, command);

@@ -31,9 +31,9 @@ class LimitedCommandRunner : public CommandRunner {
 
   void invoke(
       nt_string_view command,
-      nt_string_view pool_name,
+      Step step,
       const Callback &callback) override {
-    _inner->invoke(command, pool_name, callback);
+    _inner->invoke(command, step, callback);
   }
 
   size_t size() const override {

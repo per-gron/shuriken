@@ -3,6 +3,7 @@
 #include <util/shktrace.h>
 
 #include "../in_memory_file_system.h"
+#include "../manifest/step_builder.h"
 #include "cmd/tracing_command_runner.h"
 #include "util.h"
 
@@ -38,10 +39,12 @@ CommandRunner::Result runCommand(
     const std::string &command) {
   CommandRunner::Result result;
 
+  flatbuffers::FlatBufferBuilder builder;
+
   bool did_finish = false;
   runner.invoke(
       command,
-      "a_pool",
+      StepBuilder().setPoolName("a_pool").build(builder),
       [&](CommandRunner::Result &&result_) {
         result = std::move(result_);
         did_finish = true;
@@ -185,7 +188,7 @@ class MockCommandRunner : public CommandRunner {
  public:
   struct Command {
     std::string command;
-    std::string pool_name;
+    Step step;
     Callback callback;
   };
 
@@ -195,12 +198,12 @@ class MockCommandRunner : public CommandRunner {
 
   virtual void invoke(
       nt_string_view command,
-      nt_string_view pool_name,
+      Step step,
       const Callback &callback) override {
-    Command cmd;
-    cmd.command = std::string(command);
-    cmd.pool_name = std::string(pool_name);
-    cmd.callback = callback;
+    Command cmd{
+        std::string(command),
+        step,
+        callback };
     _commands.push_back(std::move(cmd));
   }
 
@@ -419,8 +422,11 @@ TEST_CASE("TracingCommandRunner") {
   }
 
   SECTION("Size") {
+    flatbuffers::FlatBufferBuilder builder;
+    auto step = StepBuilder().setPoolName("b").build(builder);
+
     CHECK(runner->size() == 0);
-    mock_command_runner.invoke("a", "b", [](
+    mock_command_runner.invoke("a", step, [](
         CommandRunner::Result &&result) {});
     CHECK(runner->size() == 1);
     mock_command_runner.popCommand();

@@ -17,13 +17,13 @@ class PooledCommandRunner : public CommandRunner {
 
   virtual void invoke(
       nt_string_view command,
-      nt_string_view pool_view,
+      Step step,
       const Callback &callback) override {
-    std::string pool(pool_view);
+    std::string pool(step.poolName());
     if (canRunNow(pool)) {
-      invokeNow(command, pool, callback);
+      invokeNow(command, step, pool, callback);
     } else {
-      delay(command, pool, callback);
+      delay(command, step, pool, callback);
     }
   }
 
@@ -42,16 +42,18 @@ class PooledCommandRunner : public CommandRunner {
  private:
   struct Command {
     std::string command;
+    Step step;
     Callback callback;
   };
 
   void delay(
       nt_string_view command,
+      Step step,
       const std::string &pool,
       const Callback &callback) {
     _delayed_commands_count++;
     _delayed_commands[pool].push_front(
-        Command{ std::string(command), callback });
+        Command{ std::string(command), step, callback });
   }
 
   void invokeDelayedJob(const std::string &pool) {
@@ -59,19 +61,20 @@ class PooledCommandRunner : public CommandRunner {
     if (!commands.empty()) {
       _delayed_commands_count--;
       const auto &command = commands.back();
-      invokeNow(command.command, pool, command.callback);
+      invokeNow(command.command, command.step, pool, command.callback);
       commands.pop_back();
     }
   }
 
   void invokeNow(
       nt_string_view command,
+      Step step,
       const std::string &pool,
       const Callback &callback) {
     if (!pool.empty()) {
       _pools[pool]--;
     }
-    _inner->invoke(command, pool, [this, pool, callback](Result &&result) {
+    _inner->invoke(command, step, [this, pool, callback](Result &&result) {
       if (_pools[pool]++ == 0) {
         // Pool was empty. Try to schedule a delayed job
         invokeDelayedJob(pool);

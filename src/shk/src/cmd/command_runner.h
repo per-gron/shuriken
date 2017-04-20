@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "exit_status.h"
+#include "manifest/step.h"
 #include "string_view.h"
 
 namespace shk {
@@ -49,6 +50,9 @@ class CommandRunner {
    * the result. It is allowed to call invoke() and empty() from the callback,
    * but it is not allowed to call runCommands() from there.
    *
+   * The command parameter is the command that should be invoked. step.command()
+   * may or may not be the same, but it should not be used.
+   *
    * It is legal to call invoke with an empty command string. That should
    * act as if it executed a command that does nothing.
    *
@@ -63,7 +67,7 @@ class CommandRunner {
    */
   virtual void invoke(
       nt_string_view command,
-      nt_string_view pool_name,
+      Step step,
       const Callback &callback) = 0;
 
   /**

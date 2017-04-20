@@ -2,12 +2,16 @@
 
 #include "cmd/limited_command_runner.h"
 
-#include "../in_memory_file_system.h"
 #include "../dummy_command_runner.h"
+#include "../in_memory_file_system.h"
+#include "../manifest/step_builder.h"
 
 namespace shk {
 
 TEST_CASE("LimitedCommandRunner") {
+  flatbuffers::FlatBufferBuilder builder;
+  auto step = StepBuilder().setPoolName("a_pool").build(builder);
+
   InMemoryFileSystem fs;
   double current_load_average = 0;
   const auto runner = makeLimitedCommandRunner(
@@ -22,7 +26,7 @@ TEST_CASE("LimitedCommandRunner") {
   SECTION("ForwardedMethods") {
     CHECK(runner->size() == 0);
     bool callback_called = false;
-    runner->invoke(cmd, "a_pool", [&](CommandRunner::Result &&) {
+    runner->invoke(cmd, step, [&](CommandRunner::Result &&) {
       callback_called = true;
     });
     CHECK(runner->size() == 1);
@@ -34,9 +38,9 @@ TEST_CASE("LimitedCommandRunner") {
 
   SECTION("Parallelism") {
     CHECK(runner->canRunMore());
-    runner->invoke(cmd, "a_pool", [&](CommandRunner::Result &&) {});
+    runner->invoke(cmd, step, [&](CommandRunner::Result &&) {});
     CHECK(runner->canRunMore());
-    runner->invoke(cmd, "a_pool", [&](CommandRunner::Result &&) {});
+    runner->invoke(cmd, step, [&](CommandRunner::Result &&) {});
     CHECK(!runner->canRunMore());
   }
 
@@ -46,7 +50,7 @@ TEST_CASE("LimitedCommandRunner") {
   }
 
   SECTION("LoadAverageWhenEmpty") {
-    runner->invoke(cmd, "a_pool", [&](CommandRunner::Result &&) {});
+    runner->invoke(cmd, step, [&](CommandRunner::Result &&) {});
     CHECK(runner->canRunMore());
     current_load_average = 0.5;
     CHECK(!runner->canRunMore());
