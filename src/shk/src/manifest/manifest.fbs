@@ -32,10 +32,11 @@ table Step {
   pool_name:string;
   command:string;
   description:string;
-  generator:bool = false;
   depfile:string;
   rspfile:string;
   rspfile_content:string;
+  generator:bool = false;
+  generator_inputs:[string];  // Optional. Set only if generator=true
 }
 
 table StepPathReference {

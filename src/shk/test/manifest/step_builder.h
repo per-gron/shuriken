@@ -12,10 +12,11 @@ class StepBuilder {
   StepBuilder &setPoolName(std::string pool_name);
   StepBuilder &setCommand(std::string command);
   StepBuilder &setDescription(std::string description);
-  StepBuilder &setGenerator(bool generator);
   StepBuilder &setDepfile(std::string depfile);
   StepBuilder &setRspfile(std::string rspfile);
   StepBuilder &setRspfileContent(std::string rspfile_content);
+  StepBuilder &setGenerator(bool generator);
+  StepBuilder &setGeneratorInputs(std::vector<std::string> generator_inputs);
 
   Step build(flatbuffers::FlatBufferBuilder &builder);
 
@@ -28,10 +29,11 @@ class StepBuilder {
   std::string _pool_name;
   std::string _command;
   std::string _description;
-  bool _generator = false;
   std::string _depfile;
   std::string _rspfile;
   std::string _rspfile_content;
+  bool _generator = false;
+  std::vector<std::string> _generator_inputs;
 };
 
 }  // namespace shk

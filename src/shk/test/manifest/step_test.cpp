@@ -115,17 +115,6 @@ TEST_CASE("Step") {
       CHECK(b.depfile() == "b");
     }
 
-    SECTION("Generator") {
-      auto a = StepBuilder()
-          .setGenerator(true)
-          .build(builder);
-      auto b = StepBuilder::fromStep(a)
-          .setGenerator(false)
-          .build(builder);
-      CHECK(a.generator());
-      CHECK(!b.generator());
-    }
-
     SECTION("Rspfile") {
       auto a = StepBuilder()
           .setRspfile("a")
@@ -146,6 +135,30 @@ TEST_CASE("Step") {
           .build(builder);
       CHECK(a.rspfileContent() == "a");
       CHECK(b.rspfileContent() == "b");
+    }
+
+    SECTION("Generator") {
+      auto a = StepBuilder()
+          .setGenerator(true)
+          .build(builder);
+      auto b = StepBuilder::fromStep(a)
+          .setGenerator(false)
+          .build(builder);
+      CHECK(a.generator());
+      CHECK(!b.generator());
+    }
+
+    SECTION("GeneratorInputs") {
+      auto a = StepBuilder()
+          .setGeneratorInputs({ "a" })
+          .build(builder);
+      auto b = StepBuilder::fromStep(a)
+          .setGeneratorInputs({})
+          .build(builder);
+      CHECK(
+          toVector(a.generatorInputs()) ==
+          std::vector<nt_string_view>{ "a" });
+      CHECK(toVector(b.generatorInputs()) == std::vector<nt_string_view>{});
     }
   }
 
