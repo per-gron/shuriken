@@ -610,12 +610,14 @@ InvocationLogParseResult parsePersistentInvocationLog(
   }
 
   // Rebuild the log if there are too many dead records.
-  int kMinCompactionEntryCount = 1000;
-  int kCompactionRatio = 3;
+  static constexpr int kMinCompactionEntryCount = 1000;
+  static constexpr int kCompactionRatio = 3;
   const auto unique_record_count =
       result.invocations.entries.size() +
       result.invocations.created_directories.size() +
-      result.parse_data.path_ids.size();
+      result.parse_data.path_ids.size() +
+      result.invocations.countUsedFingerprints();
+
   result.needs_recompaction = (
       entry_count > kMinCompactionEntryCount &&
       entry_count > unique_record_count * kCompactionRatio);

@@ -115,11 +115,11 @@ void shouldEventuallyRequestRecompaction(const Callback &callback) {
 }
 
 template<typename Callback>
-void recompact(const Callback &callback) {
+void recompact(const Callback &callback, int run_times = 5) {
   InMemoryFileSystem fs;
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
   callback(in_memory_log, fs);
-  for (size_t i = 0; i < 5; i++) {
+  for (size_t i = 0; i < run_times; i++) {
     auto result = parsePersistentInvocationLog(fs, "file");
     CHECK(result.warning == "");
     const auto persistent_log = openPersistentInvocationLog(
@@ -136,6 +136,7 @@ void recompact(const Callback &callback) {
       "file");
 
   auto result = parsePersistentInvocationLog(fs, "file");
+  CHECK(!result.needs_recompaction);
   sortInvocations(result.invocations);
 
   auto in_memory_result = in_memory_log.invocations();
@@ -146,6 +147,12 @@ void recompact(const Callback &callback) {
   CHECK(in_memory_result == result.invocations);
 
   // Sanity check parse_data
+  for (const auto &fingerprint : in_memory_result.fingerprints) {
+    const auto &path = fingerprint.first;
+    CHECK(parse_data.path_ids.count(path));
+    CHECK(parse_data.fingerprint_ids.count(path));
+  }
+
   std::unordered_set<size_t> entry_ids;
   const auto add_entry_id = [&](size_t id) {
     bool no_id_duplicate = entry_ids.emplace(id).second;
@@ -153,27 +160,26 @@ void recompact(const Callback &callback) {
   };
   for (const auto &fingerprint : in_memory_result.fingerprints) {
     const auto &path = fingerprint.first;
-    CHECK(parse_data.path_ids.count(path));
     const auto path_id_it = parse_data.path_ids.find(path);
     if (path_id_it != parse_data.path_ids.end()) {
       add_entry_id(path_id_it->second);
     }
     parse_data.path_ids.erase(path);
 
-    CHECK(parse_data.fingerprint_ids.count(path));
     const auto fingerprint_id_it = parse_data.fingerprint_ids.find(path);
     if (fingerprint_id_it != parse_data.fingerprint_ids.end()) {
       add_entry_id(fingerprint_id_it->second.record_id);
     }
     parse_data.fingerprint_ids.erase(path);
   }
-  for (const auto &dir : in_memory_result.created_directories) {
-    CHECK(parse_data.path_ids.count(dir.second));
-  }
   CHECK(parse_data.path_ids.empty());  // path_ids contains extraenous entries
   CHECK(  // fingerprint_ids contains extraenous entries
       parse_data.fingerprint_ids.empty());
+
   CHECK(parse_data.entry_count >= entry_ids.size());
+  for (const auto &dir : in_memory_result.created_directories) {
+    CHECK(parse_data.path_ids.count(dir.second));
+  }
 
 
   // These checks are just here for getting more detailed information in case
@@ -399,6 +405,77 @@ TEST_CASE("PersistentInvocationLog") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
         ranCommand(log, hash_0, { "aah" }, { "hi" });
       });
+    }
+
+    SECTION("InvocationDifferentFingerprintsSameStep") {
+      // This test requires recompaction to work; PersistentInvocationLog
+      // will not remove the overwritten fingerprints until a recompaction.
+      recompact([&](InvocationLog &log, FileSystem &fs) {
+        for (int i = 0; i < 2; i++) {
+          std::vector<std::string> output_files = { "aah" };
+
+          auto output_fingerprints = log.fingerprintFiles(output_files);
+          for (int j = 0; j < output_files.size(); j++) {
+            output_fingerprints[0].hash.data[0] = i;
+          }
+
+          log.ranCommand(
+              hash_0,
+              std::move(output_files),
+              std::move(output_fingerprints),
+              {},
+              {});
+        }
+      });
+    }
+
+    SECTION("InvocationDifferentStepsSameFingerprints") {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
+        fs.writeFile("ooh", "");
+        fs.writeFile("iih", "");
+
+        for (int i = 0; i < 2; i++) {
+          std::vector<std::string> output_files = { "aah", "ooh" };
+
+          auto output_fingerprints = log.fingerprintFiles(output_files);
+          hash_0.data.data()[0] = i;
+          log.ranCommand(
+              hash_0,
+              std::move(output_files),
+              std::move(output_fingerprints),
+              {},
+              {});
+        }
+      });
+    }
+
+    SECTION("InvocationsWithLotsOfDifferentFingerprints") {
+      // If the needs_recompaction logic is inaccurate, it might be possible to
+      // trigger a state where needs_recompaction is true immediately after a
+      // recompaction. This test tries to trigger that.
+
+      recompact([&](InvocationLog &log, FileSystem &fs) {
+        fs.writeFile("ooh", "ooh");
+        fs.writeFile("iih", "iih");
+
+        for (int i = 0; i < 3000; i++) {
+          std::vector<std::string> output_files = { "aah" , "ooh", "iih" };
+
+          auto output_fingerprints = log.fingerprintFiles(output_files);
+          for (int j = 0; j < output_files.size(); j++) {
+            *reinterpret_cast<int *>(
+                output_fingerprints[j].hash.data.data()) = i;
+          }
+
+          *reinterpret_cast<int *>(hash_0.data.data()) = i;
+          log.ranCommand(
+              hash_0,
+              std::move(output_files),
+              std::move(output_fingerprints),
+              {},
+              {});
+        }
+      }, /*run_times:*/1);
     }
 
     SECTION("OverwrittenInvocation") {
