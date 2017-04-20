@@ -104,12 +104,21 @@ Invocations InMemoryInvocationLog::invocations() const {
     }
   }
 
+  // For deduplication
+  std::unordered_map<std::string, std::unordered_map<Fingerprint, size_t>>
+      fp_paths;
+
   const auto files = [&](
       const std::vector<std::pair<std::string, Fingerprint>> &files) {
     std::vector<size_t> out;
     for (const auto &file : files) {
-      out.push_back(result.fingerprints.size());
-      result.fingerprints.emplace_back(file.first, file.second);
+      auto &fps = fp_paths[file.first];
+      const auto fps_it = fps.find(file.second);
+      if (fps_it == fps.end()) {
+        fps[file.second] = result.fingerprints.size();
+        result.fingerprints.emplace_back(file.first, file.second);
+      }
+      out.push_back(fps[file.second]);
     }
     return out;
   };

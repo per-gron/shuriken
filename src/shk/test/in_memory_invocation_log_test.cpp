@@ -59,6 +59,23 @@ TEST_CASE("InMemoryInvocationLog") {
       CHECK(entry.input_files[0].first == "file");
     }
 
+    SECTION("InputsOutputsWithSharedFingerprints") {
+      auto hash_2 = hash;
+      hash_2.data[0]++;
+
+      const auto fp = takeFingerprint(fs, 0, "file").first;
+      log.ranCommand(
+          hash, { "file" }, { fp }, { "file" }, { fp });
+      log.ranCommand(
+          hash_2, {}, {}, { "file" }, { fp });
+
+      const auto invocations = log.invocations();
+      REQUIRE(invocations.fingerprints.size() == 1);
+      CHECK(
+          invocations.fingerprints[0] ==
+          (std::make_pair(std::string("file"), fp)));
+    }
+
     SECTION("IgnoreDir") {
       fs.mkdir("dir");
       log.ranCommand(
