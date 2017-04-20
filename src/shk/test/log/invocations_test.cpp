@@ -40,6 +40,65 @@ TEST_CASE("Invocations") {
     }
   }
 
+  SECTION("CountUsedFingerprints") {
+    SECTION("Empty") {
+      CHECK(Invocations().countUsedFingerprints() == 0);
+    }
+
+    SECTION("OneUnused") {
+      Invocations i;
+      i.fingerprints.emplace_back();
+
+      CHECK(i.countUsedFingerprints() == 0);
+    }
+
+    SECTION("OneUsedAsOutput") {
+      Invocations i;
+      i.fingerprints.emplace_back();
+
+      Invocations::Entry e;
+      e.output_files.push_back(0);
+      i.entries[Hash()] = e;
+
+      CHECK(i.countUsedFingerprints() == 1);
+    }
+
+    SECTION("OneUsedAsInput") {
+      Invocations i;
+      i.fingerprints.emplace_back();
+
+      Invocations::Entry e;
+      e.input_files.push_back(0);
+      i.entries[Hash()] = e;
+
+      CHECK(i.countUsedFingerprints() == 1);
+    }
+
+    SECTION("OneUsedAsInputAndOutput") {
+      Invocations i;
+      i.fingerprints.emplace_back();
+
+      Invocations::Entry e;
+      e.input_files.push_back(0);
+      e.output_files.push_back(0);
+      i.entries[Hash()] = e;
+
+      CHECK(i.countUsedFingerprints() == 1);
+    }
+
+    SECTION("OneUsedAndOneUnused") {
+      Invocations i;
+      i.fingerprints.emplace_back();
+      i.fingerprints.emplace_back();
+
+      Invocations::Entry e;
+      e.input_files.push_back(1);
+      i.entries[Hash()] = e;
+
+      CHECK(i.countUsedFingerprints() == 1);
+    }
+  }
+
   SECTION("Equals") {
     Invocations a;
     Invocations b;

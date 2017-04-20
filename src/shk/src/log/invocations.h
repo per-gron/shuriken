@@ -48,6 +48,13 @@ struct Invocations {
   std::unordered_map<Hash, Entry> entries;
 
   /**
+   * The Invocation::fingerprints vector can contain entries that are not
+   * actually referred to by any entry in Invocations::entries. This method
+   * counts how of the fingerprints are actually used.
+   */
+  int countUsedFingerprints() const;
+
+  /**
    * The directories that Shuriken has created to make room for outputs of build
    * steps. They are kept track of to be able to remove then when cleaning up.
    *

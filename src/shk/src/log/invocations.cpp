@@ -2,6 +2,23 @@
 
 namespace shk {
 
+int Invocations::countUsedFingerprints() const {
+  // "Map" from fingerprint index (in the fingerprints vector) to a boolean
+  // indicating whether it is used by an actual entry.
+  std::vector<bool> used_fingerprints(fingerprints.size());
+
+  for (const auto &entry : entries) {
+    for (const auto idx : entry.second.output_files) {
+      used_fingerprints[idx] = true;
+    }
+    for (const auto idx : entry.second.input_files) {
+      used_fingerprints[idx] = true;
+    }
+  }
+
+  return std::count(used_fingerprints.begin(), used_fingerprints.end(), true);
+}
+
 bool operator==(
     const Invocations::Entry &a, const Invocations::Entry &b) {
   return
