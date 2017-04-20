@@ -151,6 +151,18 @@ TEST_CASE("CompiledManifest") {
       CHECK(compiled_manifest.steps()[0].hash() == single_output.hash());
     }
 
+    SECTION("disallow depfile+generator step") {
+      RawStep step;
+      step.generator = true;
+      step.depfile = "hej";
+
+      RawManifest manifest;
+      manifest.steps = { step };
+
+      auto error = get_manifest_compile_error(manifest);
+      CHECK(error == "Generator build steps must not have depfile");
+    }
+
     SECTION("inputs") {
       SECTION("empty") {
         RawManifest manifest;

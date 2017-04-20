@@ -93,7 +93,15 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
     const detail::PathToStepMap &output_path_map,
     std::vector<bool> &roots,
     flatbuffers::FlatBufferBuilder &builder,
-    const RawStep &raw) {
+    const RawStep &raw,
+    std::string *err) {
+  if (raw.generator && !raw.depfile.empty()) {
+    // Disallow depfile + generator rules. Otherwise it would be necessary to
+    // run the rule again just to get the deps, and we don't want to have to
+    // re-run the manifest file generator on the first build.
+    *err = "Generator build steps must not have depfile";
+  }
+
   std::vector<StepIndex> dependencies;
   const auto process_inputs = [&](
       const std::vector<Path> &paths) {
@@ -156,13 +164,17 @@ std::vector<flatbuffers::Offset<ShkManifest::Step>> convertStepVector(
     const detail::PathToStepMap &output_path_map,
     std::vector<bool> &roots,
     flatbuffers::FlatBufferBuilder &builder,
-    const std::vector<RawStep> &steps) {
+    const std::vector<RawStep> &steps,
+    std::string *err) {
   std::vector<flatbuffers::Offset<ShkManifest::Step>> ans;
   ans.reserve(steps.size());
 
   for (const auto &step : steps) {
     ans.push_back(convertRawStep(
-        output_path_map, roots, builder, step));
+        output_path_map, roots, builder, step, err));
+    if (!err->empty()) {
+      break;
+    }
   }
 
   return ans;
@@ -376,7 +388,10 @@ bool CompiledManifest::compile(
   std::vector<bool> roots(manifest.steps.size(), true);
 
   auto steps = convertStepVector(
-      output_path_map, roots, builder, manifest.steps);
+      output_path_map, roots, builder, manifest.steps, err);
+  if (!err->empty()) {
+    return false;
+  }
   auto steps_vector = builder.CreateVector(
       steps.data(), steps.size());
 
