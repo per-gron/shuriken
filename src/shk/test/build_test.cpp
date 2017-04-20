@@ -91,7 +91,7 @@ CompiledManifest compileManifest(
     Path manifest_path, const RawManifest &raw_manifest) {
   // Globally leak memory for every invocation because it's the easiest thing.
   static std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> gBuilders;
-  gBuilders.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
+  gBuilders.emplace_back(new flatbuffers::FlatBufferBuilder());
   auto &builder = *gBuilders.back();
 
   std::string err;
@@ -163,7 +163,7 @@ TEST_CASE("Build") {
   Invocations invocations;
   RawManifest manifest;
 
-  flatbuffers::FlatBufferBuilder empty_step_builder(1024);
+  flatbuffers::FlatBufferBuilder empty_step_builder;
   auto empty = StepBuilder().build(empty_step_builder);
 
   RawStep single_output;
@@ -592,13 +592,18 @@ TEST_CASE("Build") {
 
     FingerprintMatchesMemo memo;
 
+    flatbuffers::FlatBufferBuilder step_with_hash_a_builder;
+    auto step_with_hash_a = StepBuilder()
+        .setHash(hash_a)
+        .build(step_with_hash_a_builder);
+
     SECTION("no matching Invocation entry") {
       CHECK(!isClean(
           fs,
           log,
           memo,
           invocations,
-          hash_a));
+          step_with_hash_a));
       CHECK(log.createdDirectories().empty());
       CHECK(log.entries().empty());
     }
@@ -610,7 +615,7 @@ TEST_CASE("Build") {
           log,
           memo,
           invocations,
-          hash_a));
+          step_with_hash_a));
       CHECK(log.createdDirectories().empty());
       CHECK(log.entries().empty());
     }
@@ -625,7 +630,7 @@ TEST_CASE("Build") {
           log,
           memo,
           invocations,
-          hash_a));
+          step_with_hash_a));
       CHECK(log.createdDirectories().empty());
       CHECK(log.entries().empty());
     }
@@ -641,7 +646,7 @@ TEST_CASE("Build") {
           log,
           memo,
           invocations,
-          hash_a));
+          step_with_hash_a));
       CHECK(log.createdDirectories().empty());
       CHECK(log.entries().empty());
     }
@@ -656,7 +661,7 @@ TEST_CASE("Build") {
           log,
           memo,
           invocations,
-          hash_a));
+          step_with_hash_a));
       CHECK(log.createdDirectories().empty());
       CHECK(log.entries().empty());
     }
@@ -672,7 +677,7 @@ TEST_CASE("Build") {
           log,
           memo,
           invocations,
-          hash_a));
+          step_with_hash_a));
       CHECK(log.createdDirectories().empty());
       CHECK(log.entries().empty());
     }
@@ -690,7 +695,7 @@ TEST_CASE("Build") {
           log,
           memo,
           invocations,
-          hash_a));
+          step_with_hash_a));
       CHECK(log.createdDirectories().empty());
       CHECK(log.entries().empty());
     }
@@ -705,7 +710,7 @@ TEST_CASE("Build") {
           log,
           memo,
           invocations,
-          hash_a));
+          step_with_hash_a));
       CHECK(log.createdDirectories().empty());
       REQUIRE(log.entries().count(hash_a) == 1);
       const auto &computed_entry = log.entries().find(hash_a)->second;
@@ -724,7 +729,7 @@ TEST_CASE("Build") {
           log,
           memo,
           invocations,
-          hash_a));
+          step_with_hash_a));
       CHECK(log.createdDirectories().empty());
       REQUIRE(log.entries().count(hash_a) == 1);
       const auto &computed_entry = log.entries().find(hash_a)->second;
@@ -1082,7 +1087,7 @@ TEST_CASE("Build") {
         fs, clock(), "file").first;
     const auto file_id = FileId(fs.lstat("file"));
 
-    flatbuffers::FlatBufferBuilder fb_builder(1024);
+    flatbuffers::FlatBufferBuilder fb_builder;
 
     SECTION("dirty step") {
       CHECK(!canSkipBuildCommand(

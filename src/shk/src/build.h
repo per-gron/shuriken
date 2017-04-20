@@ -221,7 +221,7 @@ bool isClean(
     InvocationLog &invocation_log,
     FingerprintMatchesMemo &fingerprint_matches_memo,
     const Invocations &invocations,
-    const Hash &step_hash) throw(IoError);
+    Step step) throw(IoError);
 
 /**
  * Create a CleanSteps object. For more info, see the documentation for that

@@ -224,7 +224,8 @@ bool isClean(
     InvocationLog &invocation_log,
     FingerprintMatchesMemo &fingerprint_matches_memo,
     const Invocations &invocations,
-    const Hash &step_hash) throw(IoError) {
+    Step step) throw(IoError) {
+  const auto &step_hash = step.hash();
   const auto it = invocations.entries.find(step_hash);
   if (it == invocations.entries.end()) {
     return false;
@@ -289,13 +290,12 @@ CleanSteps computeCleanSteps(
     if (!step_node.should_build) {
       continue;
     }
-    const auto &step_hash = steps[i].hash();
     result[i] = isClean(
         file_system,
         invocation_log,
         fingerprint_memo,
         invocations,
-        step_hash);
+        steps[i]);
   }
 
   return result;
