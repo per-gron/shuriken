@@ -165,9 +165,11 @@ struct Step {
    * It set to true, Shuriken will treat this build step as one that rewrites
    * manifest files. They are treated specially in the following ways:
    *
-   * * They are not rebuilt if the command line changes
-   * * Files are checked for dirtiness via mtime checks rather than file hashes
-   * * They are not cleaned
+   * * They are not rebuilt if the command line changes.
+   * * Instead of tracing commands as usual, Shuriken uses inputs and outputs
+   *   declared in the manifest.
+   * * Files are checked for dirtiness via mtime checks rather than file hashes.
+   * * They are not cleaned.
    */
   bool generator() const {
     return _step->generator();
