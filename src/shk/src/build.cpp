@@ -228,7 +228,15 @@ bool generatorStepIsClean(FileSystem &file_system, Step step) throw(IoError) {
   auto output_mtime = CompiledManifest::minMtime(
       file_system, step.generatorOutputs());
 
-  return input_mtime && output_mtime && *input_mtime < *output_mtime;
+  // Use <= when comparing the times because happens (CMake does this) that
+  // it generates some files, like CMakeCache.txt, the same second as it
+  // generates the build.ninja file, which would make it dirty if < was used.
+  //
+  // This is technically racy. But using only mtimes is arguably not
+  // particularly correct in the first place. If this does the wrong thing, the
+  // build might fail, but at least the build steps if they are cached won't
+  // save information that makes the cache wrong.
+  return input_mtime && output_mtime && *input_mtime <= *output_mtime;
 }
 
 bool nonGeneratorStepIsClean(

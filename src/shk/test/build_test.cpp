@@ -698,9 +698,28 @@ TEST_CASE("Build") {
         CHECK(!isClean(fs, log, memo, invocations, step));
       }
 
-      SECTION("single output file same as input") {
+      SECTION("single output file as old as input") {
         fs.writeFile("out1", "out1");
-        fs.writeFile("in2", "in2");
+        fs.writeFile("in", "in");
+        time++;
+        fs.writeFile("out2", "out2");
+
+        auto step = compile_manifest_step(
+            "rule my_rule\n"
+            "  command = hi\n"
+            "  generator = 1\n"
+            "build out1 out2: my_rule in\n");
+
+        Invocations invocations;
+        // Put nothing in invocations; it should not be needed
+
+        CHECK(isClean(fs, log, memo, invocations, step));
+      }
+
+      SECTION("single output file as older than input") {
+        fs.writeFile("out1", "out1");
+        time++;
+        fs.writeFile("in", "in");
         time++;
         fs.writeFile("out2", "out2");
 
