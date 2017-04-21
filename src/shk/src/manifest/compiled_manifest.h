@@ -175,6 +175,14 @@ struct CompiledManifest {
         Optional<StepIndex>(_manifest->manifest_step());
   }
 
+  /**
+   * A list of files that were read when parsing the Ninja manifest. This is
+   * used to decide if the manifest needs to be recompiled or regenerated.
+   */
+  StringsView manifestFiles() const {
+    return detail::toFlatbufferView<StringsView>(_manifest->manifest_files());
+  }
+
  private:
   const ShkManifest::Manifest *_manifest;
 };

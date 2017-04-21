@@ -90,13 +90,10 @@ Large things remaining to do:
 * Optimize stat cache: We can share the entry if lstat said it was not a symlink.
 * Fix: Status often says things like [5/4]
 * Do something about generator rules. It's not nice that they are re-run directly after. Perhaps emulate ninja's behavior.
-  * Pass Step object to CommandRunner. That way we get dependencies, generator status etc.
   * Don't trace generator rules with shk-trace. Instead just use inputs + implicit_inputs + outputs from the manifest.
   * depfile + generator rules are not supported. Otherwise it would be necessary to run the rule again just to get the deps.
   * Use mtime and not file hash to decide if generator rules are clean or not
   * Update docs for generator rules in step.h
-* Mach port already in use. Is there already a server running?
-  ^^^ This happens almost always when running CMake, because it will start shk-trace again directly after
 * New (post shk-trace) tracer race(?):
   * shk: build failed: Dependency cycle: systemtest/systemtest -> /Users/peck/prog/client-core/build.shk/vendor/cmake/libvorbis/libvorbis.a -> /Users/peck/prog/client-core/build.shk/vendor/cmake/libvorbis/CMakeFiles/vorbis.dir/__/__/libvorbis/lib/floor1.c.o -> /Users/peck/prog/client-core/build.shk/vendor/cmake/libogg/libogg.a -> /Users/peck/prog/client-core/build.shk/vendor/cmake/libogg/CMakeFiles/ogg.dir/__/__/libogg/src/framing.c.o -> /Users/peck/prog/client-core/build.shk/vendor/cmake/libogg/libogg.a -> systemtest/systemtest
 * Detect and reject undeclared dependencies

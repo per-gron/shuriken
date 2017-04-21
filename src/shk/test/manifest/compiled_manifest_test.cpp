@@ -761,6 +761,24 @@ TEST_CASE("CompiledManifest") {
       }
     }
 
+    SECTION("manifest_files") {
+      SECTION("present") {
+        RawManifest manifest;
+        manifest.manifest_files = { "one", "two" };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        CHECK(
+            toVector(compiled_manifest.manifestFiles()) ==
+            std::vector<nt_string_view>({ "one", "two" }));
+      }
+
+      SECTION("missing") {
+        RawManifest manifest;
+        auto compiled_manifest = compile_manifest(manifest);
+        CHECK(compiled_manifest.manifestFiles().empty());
+      }
+    }
+
     SECTION("dependency_cycle") {
       SECTION("Empty") {
         RawManifest raw_manifest;
@@ -919,9 +937,47 @@ TEST_CASE("CompiledManifest") {
       CHECK(get_load_error() == "Encountered invalid step index");
     }
 
-    SECTION("manifest_path") {
-      setAtOffset(fb, ShkManifest::Manifest::VT_MANIFEST_STEP, 4);
-      CHECK(get_load_error() == "Encountered invalid step index");
+    SECTION("manifest_step") {
+      flatbuffers::FlatBufferBuilder builder;
+
+      std::vector<flatbuffers::Offset<ShkManifest::StepPathReference>> p_refs;
+      auto outputs_vector = builder.CreateVector(p_refs.data(), p_refs.size());
+      auto inputs_vector = builder.CreateVector(p_refs.data(), p_refs.size());
+
+      std::vector<flatbuffers::Offset<ShkManifest::Step>> steps;
+      auto steps_vector = builder.CreateVector(steps.data(), steps.size());
+
+      std::vector<StepIndex> s_indices;
+      auto defaults_vector = builder.CreateVector(
+          s_indices.data(), s_indices.size());
+
+      auto roots_vector = builder.CreateVector(
+          s_indices.data(), s_indices.size());
+
+      std::vector<flatbuffers::Offset<ShkManifest::Pool>> pools;
+      auto pools_vector = builder.CreateVector(pools.data(), pools.size());
+
+      std::vector<flatbuffers::Offset<flatbuffers::String>> manifest_files;
+      auto manifest_files_vector = builder.CreateVector(
+          manifest_files.data(), manifest_files.size());
+
+      ShkManifest::ManifestBuilder manifest_builder(builder);
+      manifest_builder.add_outputs(outputs_vector);
+      manifest_builder.add_inputs(inputs_vector);
+      manifest_builder.add_steps(steps_vector);
+      manifest_builder.add_defaults(defaults_vector);
+      manifest_builder.add_roots(roots_vector);
+      manifest_builder.add_pools(pools_vector);
+      manifest_builder.add_manifest_step(4);
+      manifest_builder.add_manifest_files(manifest_files_vector);
+      builder.Finish(manifest_builder.Finish());
+
+      CHECK(!CompiledManifest::load(
+          string_view(
+              reinterpret_cast<const char *>(builder.GetBufferPointer()),
+              builder.GetSize()),
+          &err));
+      CHECK(err == "Encountered invalid step index");
     }
   }
 }

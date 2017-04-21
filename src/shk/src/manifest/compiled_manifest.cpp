@@ -445,6 +445,14 @@ bool CompiledManifest::compile(
 
   auto build_dir_string = builder.CreateString(manifest.build_dir);
 
+  std::vector<flatbuffers::Offset<flatbuffers::String>> manifest_files;
+  manifest_files.reserve(manifest.manifest_files.size());
+  for (const auto &manifest_file : manifest.manifest_files) {
+    manifest_files.push_back(builder.CreateString(manifest_file));
+  }
+  auto manifest_files_vector = builder.CreateVector(
+      manifest_files.data(), manifest_files.size());
+
   auto cycle = getDependencyCycle(
       output_path_map,
       manifest.steps);
@@ -462,6 +470,7 @@ bool CompiledManifest::compile(
   manifest_builder.add_build_dir(build_dir_string);
   manifest_builder.add_manifest_step(
       getManifestStep(output_path_map, manifest_path));
+  manifest_builder.add_manifest_files(manifest_files_vector);
   builder.Finish(manifest_builder.Finish());
 
   return err->empty();
