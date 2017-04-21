@@ -37,6 +37,7 @@ table Step {
   rspfile_content:string;
   generator:bool = false;
   generator_inputs:[string];  // Optional. Set only if generator=true
+  generator_outputs:[string];  // Optional. Set only if generator=true
 }
 
 table StepPathReference {

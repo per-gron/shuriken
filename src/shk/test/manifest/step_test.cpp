@@ -160,6 +160,19 @@ TEST_CASE("Step") {
           std::vector<nt_string_view>{ "a" });
       CHECK(toVector(b.generatorInputs()) == std::vector<nt_string_view>{});
     }
+
+    SECTION("GeneratorOutputs") {
+      auto a = StepBuilder()
+          .setGeneratorOutputs({ "a" })
+          .build(builder);
+      auto b = StepBuilder::fromStep(a)
+          .setGeneratorOutputs({})
+          .build(builder);
+      CHECK(
+          toVector(a.generatorOutputs()) ==
+          std::vector<nt_string_view>{ "a" });
+      CHECK(toVector(b.generatorOutputs()) == std::vector<nt_string_view>{});
+    }
   }
 
   SECTION("phony") {

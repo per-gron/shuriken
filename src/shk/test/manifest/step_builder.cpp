@@ -60,32 +60,34 @@ StepBuilder &StepBuilder::setGeneratorInputs(
   return *this;
 }
 
+StepBuilder &StepBuilder::setGeneratorOutputs(
+    std::vector<std::string> generator_outputs) {
+  _generator_outputs = std::move(generator_outputs);
+  return *this;
+}
+
 Step StepBuilder::build(flatbuffers::FlatBufferBuilder &builder) {
   auto deps_vector = builder.CreateVector(
       _dependencies.data(), _dependencies.size());
 
-  std::vector<flatbuffers::Offset<flatbuffers::String>> output_dirs;
-  output_dirs.reserve(_output_dirs.size());
-  for (const auto &output_dir : _output_dirs) {
-    output_dirs.push_back(builder.CreateString(output_dir));
-  }
-  auto output_dirs_vector = builder.CreateVector(
-      output_dirs.data(), output_dirs.size());
+  const auto to_string_vector = [&](const std::vector<std::string> &strs) {
+    std::vector<flatbuffers::Offset<flatbuffers::String>> offsets;
+    offsets.reserve(strs.size());
+    for (const auto &str : strs) {
+      offsets.push_back(builder.CreateString(str));
+    }
+    return builder.CreateVector(offsets.data(), offsets.size());
+  };
 
+  auto output_dirs_vector = to_string_vector(_output_dirs);
   auto pool_name_string = builder.CreateString(_pool_name);
   auto command_string = builder.CreateString(_command);
   auto description_string = builder.CreateString(_description);
   auto depfile_string = builder.CreateString(_depfile);
   auto rspfile_string = builder.CreateString(_rspfile);
   auto rspfile_content_string = builder.CreateString(_rspfile_content);
-
-  std::vector<flatbuffers::Offset<flatbuffers::String>> generator_inputs;
-  generator_inputs.reserve(_generator_inputs.size());
-  for (const auto &generator_input : _generator_inputs) {
-    generator_inputs.push_back(builder.CreateString(generator_input));
-  }
-  auto generator_inputs_vector = builder.CreateVector(
-      generator_inputs.data(), generator_inputs.size());
+  auto generator_inputs_vector = to_string_vector(_generator_inputs);
+  auto generator_outputs_vector = to_string_vector(_generator_outputs);
 
   ShkManifest::StepBuilder step_builder(builder);
   step_builder.add_hash(
@@ -100,6 +102,7 @@ Step StepBuilder::build(flatbuffers::FlatBufferBuilder &builder) {
   step_builder.add_rspfile_content(rspfile_content_string);
   step_builder.add_generator(_generator);
   step_builder.add_generator_inputs(generator_inputs_vector);
+  step_builder.add_generator_outputs(generator_outputs_vector);
   builder.Finish(step_builder.Finish());
 
   return Step(*flatbuffers::GetRoot<ShkManifest::Step>(
@@ -117,13 +120,16 @@ StepBuilder StepBuilder::fromStep(const Step &step) {
       deps.begin());
   builder.setDependencies(std::move(deps));
 
-  std::vector<std::string> output_dirs;
-  output_dirs.reserve(step.outputDirs().size());
-  for (const auto output_dir : step.outputDirs()) {
-    output_dirs.emplace_back(output_dir);
-  }
-  builder.setOutputDirs(std::move(output_dirs));
+  const auto to_string_vector = [](StringsView view) {
+    std::vector<std::string> ans;
+    ans.reserve(view.size());
+    for (const auto str : view) {
+      ans.emplace_back(str);
+    }
+    return ans;
+  };
 
+  builder.setOutputDirs(to_string_vector(step.outputDirs()));
   builder.setPoolName(std::string(step.poolName()));
   builder.setCommand(std::string(step.command()));
   builder.setDescription(std::string(step.description()));
@@ -131,13 +137,8 @@ StepBuilder StepBuilder::fromStep(const Step &step) {
   builder.setRspfile(std::string(step.rspfile()));
   builder.setRspfileContent(std::string(step.rspfileContent()));
   builder.setGenerator(step.generator());
-
-  std::vector<std::string> generator_inputs;
-  generator_inputs.reserve(step.generatorInputs().size());
-  for (const auto generator_input : step.generatorInputs()) {
-    generator_inputs.emplace_back(generator_input);
-  }
-  builder.setGeneratorInputs(generator_inputs);
+  builder.setGeneratorInputs(to_string_vector(step.generatorInputs()));
+  builder.setGeneratorOutputs(to_string_vector(step.generatorOutputs()));
   return builder;
 }
 

@@ -17,6 +17,7 @@ class StepBuilder {
   StepBuilder &setRspfileContent(std::string rspfile_content);
   StepBuilder &setGenerator(bool generator);
   StepBuilder &setGeneratorInputs(std::vector<std::string> generator_inputs);
+  StepBuilder &setGeneratorOutputs(std::vector<std::string> generator_outputs);
 
   Step build(flatbuffers::FlatBufferBuilder &builder);
 
@@ -34,6 +35,7 @@ class StepBuilder {
   std::string _rspfile_content;
   bool _generator = false;
   std::vector<std::string> _generator_inputs;
+  std::vector<std::string> _generator_outputs;
 };
 
 }  // namespace shk

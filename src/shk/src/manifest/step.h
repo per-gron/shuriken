@@ -183,13 +183,25 @@ struct Step {
    * Empty if generator() == false.
    *
    * The use case for this is to emulate Ninja's mtime based cleanliness check
-   * for generator rules. Shuriken's normal hash-based dependencies don't work
-   * well with generator rules, because they force Shuriken to re-run the
+   * for generator rules. Shuriken's normal hash-based traced dependencies don't
+   * work well with generator rules, because they force Shuriken to re-run the
    * generator step first thing after the build.ninja file has been generated
    * and Shuriken is invoked for the first time.
    */
   StringsView generatorInputs() const {
     return detail::toFlatbufferView<StringsView>(_step->generator_inputs());
+  }
+
+  /**
+   * A list of paths to files that this step has as inputs. These are taken from
+   * the outputs declared in the manifest.
+   *
+   * Empty if generator() == false.
+   *
+   * Also see generatorInputs.
+   */
+  StringsView generatorOutputs() const {
+    return detail::toFlatbufferView<StringsView>(_step->generator_outputs());
   }
 
  private:
