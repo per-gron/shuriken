@@ -711,6 +711,7 @@ TEST_CASE("CompiledManifest") {
         step.inputs = { paths.get("a") };
         step.implicit_inputs = { paths.get("a2") };
         step.dependencies = { paths.get("a3") };
+        step.outputs = { paths.get("b") };
         RawManifest manifest;
         manifest.steps = { step };
 
@@ -718,6 +719,7 @@ TEST_CASE("CompiledManifest") {
         REQUIRE(compiled_manifest.steps().size() == 1);
         CHECK(!compiled_manifest.steps()[0].generator());
         CHECK(compiled_manifest.steps()[0].generatorInputs().empty());
+        CHECK(compiled_manifest.steps()[0].generatorOutputs().empty());
       }
 
       SECTION("true") {
@@ -725,6 +727,7 @@ TEST_CASE("CompiledManifest") {
         step.inputs = { paths.get("a") };
         step.implicit_inputs = { paths.get("a2") };
         step.dependencies = { paths.get("a3") };
+        step.outputs = { paths.get("b") };
         step.generator = true;
 
         RawManifest manifest;
@@ -736,6 +739,9 @@ TEST_CASE("CompiledManifest") {
         CHECK(
             toVector(compiled_manifest.steps()[0].generatorInputs()) ==
             std::vector<nt_string_view>({ "a", "a2", "a3" }));
+        CHECK(
+            toVector(compiled_manifest.steps()[0].generatorOutputs()) ==
+            std::vector<nt_string_view>({ "b" }));
       }
     }
 

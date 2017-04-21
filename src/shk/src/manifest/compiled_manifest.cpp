@@ -144,25 +144,33 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
   auto rspfile_string = builder.CreateString(raw.rspfile);
   auto rspfile_content_string = builder.CreateString(raw.rspfile_content);
 
-  flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<
-        flatbuffers::String>>> generator_inputs_vector;
+  using StringVectorOffset = flatbuffers::Offset<flatbuffers::Vector<
+      flatbuffers::Offset<flatbuffers::String>>>;
+  StringVectorOffset generator_inputs_vector;
+  StringVectorOffset generator_outputs_vector;
   if (raw.generator) {
     std::vector<flatbuffers::Offset<flatbuffers::String>> generator_inputs;
-    generator_inputs.reserve(generator_inputs.size());
+    generator_inputs.reserve(dependencies.size());
+    std::vector<flatbuffers::Offset<flatbuffers::String>> generator_outputs;
+    generator_outputs.reserve(raw.outputs.size());
 
-    const auto process_generator_inputs = [&](
+    const auto process_strings = [&](
+        std::vector<flatbuffers::Offset<flatbuffers::String>> &vec,
         const std::vector<Path> &paths) {
       for (const auto &path : paths) {
-        generator_inputs.push_back(builder.CreateString(path.original()));
+        vec.push_back(builder.CreateString(path.original()));
       }
     };
 
-    process_generator_inputs(raw.inputs);
-    process_generator_inputs(raw.implicit_inputs);
-    process_generator_inputs(raw.dependencies);
+    process_strings(generator_inputs, raw.inputs);
+    process_strings(generator_inputs, raw.implicit_inputs);
+    process_strings(generator_inputs, raw.dependencies);
+    process_strings(generator_outputs, raw.outputs);
 
     generator_inputs_vector = builder.CreateVector(
         generator_inputs.data(), generator_inputs.size());
+    generator_outputs_vector = builder.CreateVector(
+        generator_outputs.data(), generator_outputs.size());
   }
 
   ShkManifest::StepBuilder step_builder(builder);
@@ -179,6 +187,7 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
   step_builder.add_generator(raw.generator);
   if (raw.generator) {
     step_builder.add_generator_inputs(generator_inputs_vector);
+    step_builder.add_generator_outputs(generator_outputs_vector);
   }
 
   return step_builder.Finish();
