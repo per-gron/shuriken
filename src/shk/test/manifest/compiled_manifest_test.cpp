@@ -34,7 +34,8 @@ void setAtOffset(const TableType *table, int offset, int value) {
 }  // anonymous namespace
 
 TEST_CASE("CompiledManifest") {
-  InMemoryFileSystem fs;
+  time_t now = 0;
+  InMemoryFileSystem fs([&] { return now; });
   Paths paths(fs);
   RawManifest manifest;
 
@@ -73,6 +74,30 @@ TEST_CASE("CompiledManifest") {
   single_dependency.dependencies = { paths.get("a") };
 
   using PathToStepList = std::vector<std::pair<nt_string_view, StepIndex>>;
+
+  std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> builders;
+  const auto compile_manifest = [&](
+      const RawManifest &raw_manifest,
+      bool allow_compile_error = false) {
+    builders.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
+    auto &builder = *builders.back();
+    std::string err;
+    bool success = CompiledManifest::compile(
+        builder, manifest_path, raw_manifest, &err);
+    if (!allow_compile_error) {
+      CHECK(success);
+      CHECK(err.empty());
+    }
+    err.clear();
+    const auto maybe_manifest = CompiledManifest::load(
+        string_view(
+            reinterpret_cast<const char *>(builder.GetBufferPointer()),
+            builder.GetSize()),
+        &err);
+    CHECK(err == "");
+    CHECK(maybe_manifest);
+    return *maybe_manifest;
+  };
 
   SECTION("computeOutputPathMap") {
     SECTION("basics") {
@@ -117,30 +142,6 @@ TEST_CASE("CompiledManifest") {
   }
 
   SECTION("compile") {
-    std::vector<std::unique_ptr<flatbuffers::FlatBufferBuilder>> builders;
-    const auto compile_manifest = [&](
-        const RawManifest &raw_manifest,
-        bool allow_compile_error = false) {
-      builders.emplace_back(new flatbuffers::FlatBufferBuilder(1024));
-      auto &builder = *builders.back();
-      std::string err;
-      bool success = CompiledManifest::compile(
-          builder, manifest_path, raw_manifest, &err);
-      if (!allow_compile_error) {
-        CHECK(success);
-        CHECK(err.empty());
-      }
-      err.clear();
-      const auto maybe_manifest = CompiledManifest::load(
-          string_view(
-              reinterpret_cast<const char *>(builder.GetBufferPointer()),
-              builder.GetSize()),
-          &err);
-      CHECK(err == "");
-      CHECK(maybe_manifest);
-      return *maybe_manifest;
-    };
-
     SECTION("basics") {
       RawManifest manifest;
       manifest.steps = { single_output };
@@ -978,6 +979,63 @@ TEST_CASE("CompiledManifest") {
               builder.GetSize()),
           &err));
       CHECK(err == "Encountered invalid step index");
+    }
+  }
+
+  SECTION("maxMtime, minMtime") {
+    SECTION("empty") {
+      RawManifest raw_manifest;
+      auto manifest = compile_manifest(raw_manifest);
+
+      CHECK(!CompiledManifest::maxMtime(fs, manifest.manifestFiles()));
+      CHECK(!CompiledManifest::minMtime(fs, manifest.manifestFiles()));
+    }
+
+    SECTION("one missing file") {
+      RawManifest raw_manifest;
+      raw_manifest.manifest_files = { "missing" };
+      auto manifest = compile_manifest(raw_manifest);
+
+      CHECK(!CompiledManifest::maxMtime(fs, manifest.manifestFiles()));
+      CHECK(!CompiledManifest::minMtime(fs, manifest.manifestFiles()));
+    }
+
+    SECTION("one file") {
+      now = 1;
+      fs.writeFile("file", "");
+
+      RawManifest raw_manifest;
+      raw_manifest.manifest_files = { "file" };
+      auto manifest = compile_manifest(raw_manifest);
+
+      CHECK(CompiledManifest::maxMtime(fs, manifest.manifestFiles()) == 1);
+      CHECK(CompiledManifest::minMtime(fs, manifest.manifestFiles()) == 1);
+    }
+
+    SECTION("two files") {
+      now = 1;
+      fs.writeFile("file1", "");
+      now = 2;
+      fs.writeFile("file2", "");
+
+      RawManifest raw_manifest;
+      raw_manifest.manifest_files = { "file1", "file2" };
+      auto manifest = compile_manifest(raw_manifest);
+
+      CHECK(CompiledManifest::maxMtime(fs, manifest.manifestFiles()) == 2);
+      CHECK(CompiledManifest::minMtime(fs, manifest.manifestFiles()) == 1);
+    }
+
+    SECTION("one missing one present") {
+      now = 1;
+      fs.writeFile("file", "");
+
+      RawManifest raw_manifest;
+      raw_manifest.manifest_files = { "file", "missing" };
+      auto manifest = compile_manifest(raw_manifest);
+
+      CHECK(!CompiledManifest::maxMtime(fs, manifest.manifestFiles()));
+      CHECK(!CompiledManifest::minMtime(fs, manifest.manifestFiles()));
     }
   }
 }

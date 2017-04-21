@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "build_error.h"
+#include "fs/file_system.h"
 #include "fs/path.h"
 #include "manifest/raw_manifest.h"
 #include "manifest/step.h"
@@ -182,6 +183,25 @@ struct CompiledManifest {
   StringsView manifestFiles() const {
     return detail::toFlatbufferView<StringsView>(_manifest->manifest_files());
   }
+
+  /**
+   * Stat all the files and return the maximum mtime. If some file is missing or
+   * can't be stat-ed, returns empty.
+   *
+   * This method is useful to use with Step::generatorInputs (the inputs that
+   * were used to generate the build.ninja file) when determining if the
+   * compiled manifest is clean.
+   */
+  static Optional<time_t> maxMtime(FileSystem &file_system, StringsView files);
+
+  /**
+   * Stat all the files and return the minimum mtime. If some file is missing or
+   * can't be stat-ed, returns empty.
+   *
+   * This method is useful to use with manifestFiles (the build.ninja files)
+   * when determining if they need to be regenerated.
+   */
+  static Optional<time_t> minMtime(FileSystem &file_system, StringsView files);
 
  private:
   const ShkManifest::Manifest *_manifest;

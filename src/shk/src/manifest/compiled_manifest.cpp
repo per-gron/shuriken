@@ -476,4 +476,32 @@ bool CompiledManifest::compile(
   return err->empty();
 }
 
+template <typename Callback>
+Optional<time_t> foldMtime(
+    FileSystem &file_system, StringsView files, Callback &&cb) {
+  Optional<time_t> ans;
+  for (auto file : files) {
+    auto stat = file_system.stat(file);
+    if (stat.result != 0) {
+      return Optional<time_t>();
+    }
+    ans = ans ? cb(*ans, stat.timestamps.mtime) : stat.timestamps.mtime;
+  }
+  return ans;
+}
+
+Optional<time_t> CompiledManifest::maxMtime(
+    FileSystem &file_system, StringsView files) {
+  return foldMtime(file_system, files, [](time_t a, time_t b) {
+    return std::max(a, b);
+  });
+}
+
+Optional<time_t> CompiledManifest::minMtime(
+    FileSystem &file_system, StringsView files) {
+  return foldMtime(file_system, files, [](time_t a, time_t b) {
+    return std::min(a, b);
+  });
+}
+
 }  // namespace shk
