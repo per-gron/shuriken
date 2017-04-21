@@ -291,6 +291,7 @@ class IntegrationTest(unittest.TestCase):
     self.assertRegexpMatches(run_cmd(shk), 'no work to do')
     manifest = read_file('build.ninja.in') + '\nbuild new: phony\n'
     write_file('build.ninja.in', manifest.replace('[[GENERATOR_LINE]]', 'before'))
+    time.sleep(1)  # Wait, because the fs mtime only has second resolution
     self.assertRegexpMatches(run_cmd(shk), 'no work to do')
     self.assertEqual(read_file('build.ninja'), manifest)
 

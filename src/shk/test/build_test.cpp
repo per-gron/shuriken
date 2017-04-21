@@ -577,165 +577,324 @@ TEST_CASE("Build") {
   }
 
   SECTION("isClean") {
-    Hash hash_a;
-    std::fill(hash_a.data.begin(), hash_a.data.end(), 123);
-    Hash hash_b;
-    std::fill(hash_a.data.begin(), hash_a.data.end(), 321);
-    Hash hash_c;
-    std::fill(hash_a.data.begin(), hash_a.data.end(), 0);
-
-    fs.writeFile("one", "one_content");
-    const auto one_fp = takeFingerprint(fs, clock() + 1, "one").first;
-    const auto one_fp_racy = takeFingerprint(fs, clock(), "one").first;
-    fs.writeFile("two", "two_content");
-    const auto two_fp = takeFingerprint(fs, clock() + 1, "two").first;
-
     FingerprintMatchesMemo memo;
 
-    flatbuffers::FlatBufferBuilder step_with_hash_a_builder;
-    auto step_with_hash_a = StepBuilder()
-        .setHash(hash_a)
-        .build(step_with_hash_a_builder);
+    SECTION("timestamp based (generator)") {
+      const auto compile_manifest_step = [](const std::string &manifest_str) {
+        InMemoryFileSystem fs;
+        Paths paths(fs);
+        fs.writeFile("build.ninja", manifest_str);
 
-    SECTION("no matching Invocation entry") {
-      CHECK(!isClean(
-          fs,
-          log,
-          memo,
-          invocations,
-          step_with_hash_a));
-      CHECK(log.createdDirectories().empty());
-      CHECK(log.entries().empty());
+        const auto manifest = compileManifest(
+            paths.get("build.ninja"),
+            parseManifest(paths, fs, "build.ninja"));
+
+        REQUIRE(manifest.steps().size() == 1);
+        return manifest.steps()[0];
+      };
+
+      SECTION("no inputs") {
+        auto step = compile_manifest_step(
+            "rule my_rule\n"
+            "  command = hi\n"
+            "  generator = 1\n"
+            "build out: my_rule\n");
+
+        Invocations invocations;
+        // Put nothing in invocations; it should not be needed
+
+        CHECK(isClean(fs, log, memo, invocations, step));
+      }
+
+      SECTION("no outputs") {
+        RawStep raw_step;
+        raw_step.generator = true;
+        raw_step.inputs = { paths.get("in") };
+        RawManifest raw_manifest;
+        raw_manifest.steps = { raw_step };
+
+        const auto manifest = compileManifest(
+            paths.get("build.ninja"), raw_manifest);
+
+        REQUIRE(manifest.steps().size() == 1);
+        auto step = manifest.steps()[0];
+
+        Invocations invocations;
+        // Put nothing in invocations; it should not be needed
+
+        CHECK(isClean(fs, log, memo, invocations, step));
+      }
+
+      SECTION("missing input file") {
+        fs.writeFile("out", "out");
+
+        auto step = compile_manifest_step(
+            "rule my_rule\n"
+            "  command = hi\n"
+            "  generator = 1\n"
+            "build out: my_rule in\n");
+
+        Invocations::Entry entry;
+        Invocations invocations;
+        // Pretend the step is clean via Invocations; it should not be used
+        invocations.entries[step.hash()] = Invocations::Entry();
+
+        CHECK(!isClean(fs, log, memo, invocations, step));
+      }
+
+      SECTION("missing output file") {
+        fs.writeFile("in", "in");
+
+        auto step = compile_manifest_step(
+            "rule my_rule\n"
+            "  command = hi\n"
+            "  generator = 1\n"
+            "build out: my_rule in\n");
+
+        Invocations::Entry entry;
+        Invocations invocations;
+        // Pretend the step is clean via Invocations; it should not be used
+        invocations.entries[step.hash()] = Invocations::Entry();
+
+        CHECK(!isClean(fs, log, memo, invocations, step));
+      }
+
+      SECTION("input file newer") {
+        fs.writeFile("out", "out");
+        time++;
+        fs.writeFile("in", "in");
+
+        auto step = compile_manifest_step(
+            "rule my_rule\n"
+            "  command = hi\n"
+            "  generator = 1\n"
+            "build out: my_rule in\n");
+
+        Invocations::Entry entry;
+        Invocations invocations;
+        // Pretend the step is clean via Invocations; it should not be used
+        invocations.entries[step.hash()] = Invocations::Entry();
+
+        CHECK(!isClean(fs, log, memo, invocations, step));
+      }
+
+      SECTION("single input file newer") {
+        fs.writeFile("in1", "in1");
+        fs.writeFile("out", "out");
+        time++;
+        fs.writeFile("in2", "in2");
+
+        auto step = compile_manifest_step(
+            "rule my_rule\n"
+            "  command = hi\n"
+            "  generator = 1\n"
+            "build out: my_rule in1 in2\n");
+
+        Invocations::Entry entry;
+        Invocations invocations;
+        // Pretend the step is clean via Invocations; it should not be used
+        invocations.entries[step.hash()] = Invocations::Entry();
+
+        CHECK(!isClean(fs, log, memo, invocations, step));
+      }
+
+      SECTION("single output file same as input") {
+        fs.writeFile("out1", "out1");
+        fs.writeFile("in2", "in2");
+        time++;
+        fs.writeFile("out2", "out2");
+
+        auto step = compile_manifest_step(
+            "rule my_rule\n"
+            "  command = hi\n"
+            "  generator = 1\n"
+            "build out1 out2: my_rule in\n");
+
+        Invocations::Entry entry;
+        Invocations invocations;
+        // Pretend the step is clean via Invocations; it should not be used
+        invocations.entries[step.hash()] = Invocations::Entry();
+
+        CHECK(!isClean(fs, log, memo, invocations, step));
+      }
+
+      SECTION("clean") {
+        fs.writeFile("in", "in");
+        time++;
+        fs.writeFile("out", "out");
+
+        auto step = compile_manifest_step(
+            "rule my_rule\n"
+            "  command = hi\n"
+            "  generator = 1\n"
+            "build out: my_rule in\n");
+
+        Invocations invocations;
+        // Put nothing in invocations; it should not be needed
+
+        CHECK(isClean(fs, log, memo, invocations, step));
+      }
     }
 
-    SECTION("no input or output files") {
-      invocations.entries[hash_a] = Invocations::Entry();
-      CHECK(isClean(
-          fs,
-          log,
-          memo,
-          invocations,
-          step_with_hash_a));
-      CHECK(log.createdDirectories().empty());
-      CHECK(log.entries().empty());
-    }
+    SECTION("content based (non-generator)") {
+      Hash hash_a;
+      std::fill(hash_a.data.begin(), hash_a.data.end(), 123);
+      Hash hash_b;
+      std::fill(hash_a.data.begin(), hash_a.data.end(), 321);
+      Hash hash_c;
+      std::fill(hash_a.data.begin(), hash_a.data.end(), 0);
 
-    SECTION("clean input") {
-      Invocations::Entry entry;
-      addInput(invocations, entry, "one", one_fp);
-      invocations.entries[hash_a] = entry;
-      memo.resize(invocations.fingerprints.size());
-      CHECK(isClean(
-          fs,
-          log,
-          memo,
-          invocations,
-          step_with_hash_a));
-      CHECK(log.createdDirectories().empty());
-      CHECK(log.entries().empty());
-    }
+      fs.writeFile("one", "one_content");
+      const auto one_fp = takeFingerprint(fs, clock() + 1, "one").first;
+      const auto one_fp_racy = takeFingerprint(fs, clock(), "one").first;
+      fs.writeFile("two", "two_content");
+      const auto two_fp = takeFingerprint(fs, clock() + 1, "two").first;
 
-    SECTION("dirty input") {
-      Invocations::Entry entry;
-      addInput(invocations, entry, "one", one_fp);
-      invocations.entries[hash_a] = entry;
-      fs.writeFile("one", "dirty");  // Make dirty
-      memo.resize(invocations.fingerprints.size());
-      CHECK(!isClean(
-          fs,
-          log,
-          memo,
-          invocations,
-          step_with_hash_a));
-      CHECK(log.createdDirectories().empty());
-      CHECK(log.entries().empty());
-    }
+      flatbuffers::FlatBufferBuilder step_with_hash_a_builder;
+      auto step_with_hash_a = StepBuilder()
+          .setHash(hash_a)
+          .build(step_with_hash_a_builder);
 
-    SECTION("clean output") {
-      Invocations::Entry entry;
-      addOutput(invocations, entry, "one", one_fp);
-      invocations.entries[hash_a] = entry;
-      memo.resize(invocations.fingerprints.size());
-      CHECK(isClean(
-          fs,
-          log,
-          memo,
-          invocations,
-          step_with_hash_a));
-      CHECK(log.createdDirectories().empty());
-      CHECK(log.entries().empty());
-    }
+      SECTION("no matching Invocation entry") {
+        CHECK(!isClean(
+            fs,
+            log,
+            memo,
+            invocations,
+            step_with_hash_a));
+        CHECK(log.createdDirectories().empty());
+        CHECK(log.entries().empty());
+      }
 
-    SECTION("dirty output") {
-      Invocations::Entry entry;
-      addOutput(invocations, entry, "one", one_fp);
-      invocations.entries[hash_a] = entry;
-      fs.writeFile("one", "dirty");  // Make dirty
-      memo.resize(invocations.fingerprints.size());
-      CHECK(!isClean(
-          fs,
-          log,
-          memo,
-          invocations,
-          step_with_hash_a));
-      CHECK(log.createdDirectories().empty());
-      CHECK(log.entries().empty());
-    }
+      SECTION("no input or output files") {
+        invocations.entries[hash_a] = Invocations::Entry();
+        CHECK(isClean(
+            fs,
+            log,
+            memo,
+            invocations,
+            step_with_hash_a));
+        CHECK(log.createdDirectories().empty());
+        CHECK(log.entries().empty());
+      }
 
-    SECTION("dirty input and output") {
-      Invocations::Entry entry;
-      addOutput(invocations, entry, "one", one_fp);
-      addInput(invocations, entry, "two", two_fp);
-      invocations.entries[hash_a] = entry;
-      fs.writeFile("one", "dirty");
-      fs.writeFile("two", "dirty!");
-      memo.resize(invocations.fingerprints.size());
-      CHECK(!isClean(
-          fs,
-          log,
-          memo,
-          invocations,
-          step_with_hash_a));
-      CHECK(log.createdDirectories().empty());
-      CHECK(log.entries().empty());
-    }
+      SECTION("clean input") {
+        Invocations::Entry entry;
+        addInput(invocations, entry, "one", one_fp);
+        invocations.entries[hash_a] = entry;
+        memo.resize(invocations.fingerprints.size());
+        CHECK(isClean(
+            fs,
+            log,
+            memo,
+            invocations,
+            step_with_hash_a));
+        CHECK(log.createdDirectories().empty());
+        CHECK(log.entries().empty());
+      }
 
-    SECTION("racily clean input") {
-      Invocations::Entry entry;
-      addInput(invocations, entry, "one", one_fp_racy);
-      invocations.entries[hash_a] = entry;
-      memo.resize(invocations.fingerprints.size());
-      CHECK(isClean(
-          fs,
-          log,
-          memo,
-          invocations,
-          step_with_hash_a));
-      CHECK(log.createdDirectories().empty());
-      REQUIRE(log.entries().count(hash_a) == 1);
-      const auto &computed_entry = log.entries().find(hash_a)->second;
-      REQUIRE(computed_entry.input_files.size() == 1);
-      REQUIRE(computed_entry.input_files[0].first == "one");
-      CHECK(computed_entry.output_files.empty());
-    }
+      SECTION("dirty input") {
+        Invocations::Entry entry;
+        addInput(invocations, entry, "one", one_fp);
+        invocations.entries[hash_a] = entry;
+        fs.writeFile("one", "dirty");  // Make dirty
+        memo.resize(invocations.fingerprints.size());
+        CHECK(!isClean(
+            fs,
+            log,
+            memo,
+            invocations,
+            step_with_hash_a));
+        CHECK(log.createdDirectories().empty());
+        CHECK(log.entries().empty());
+      }
 
-    SECTION("racily clean output") {
-      Invocations::Entry entry;
-      addOutput(invocations, entry, "one", one_fp_racy);
-      invocations.entries[hash_a] = entry;
-      memo.resize(invocations.fingerprints.size());
-      CHECK(isClean(
-          fs,
-          log,
-          memo,
-          invocations,
-          step_with_hash_a));
-      CHECK(log.createdDirectories().empty());
-      REQUIRE(log.entries().count(hash_a) == 1);
-      const auto &computed_entry = log.entries().find(hash_a)->second;
-      CHECK(computed_entry.input_files.empty());
-      REQUIRE(computed_entry.output_files.size() == 1);
-      REQUIRE(computed_entry.output_files[0].first == "one");
+      SECTION("clean output") {
+        Invocations::Entry entry;
+        addOutput(invocations, entry, "one", one_fp);
+        invocations.entries[hash_a] = entry;
+        memo.resize(invocations.fingerprints.size());
+        CHECK(isClean(
+            fs,
+            log,
+            memo,
+            invocations,
+            step_with_hash_a));
+        CHECK(log.createdDirectories().empty());
+        CHECK(log.entries().empty());
+      }
+
+      SECTION("dirty output") {
+        Invocations::Entry entry;
+        addOutput(invocations, entry, "one", one_fp);
+        invocations.entries[hash_a] = entry;
+        fs.writeFile("one", "dirty");  // Make dirty
+        memo.resize(invocations.fingerprints.size());
+        CHECK(!isClean(
+            fs,
+            log,
+            memo,
+            invocations,
+            step_with_hash_a));
+        CHECK(log.createdDirectories().empty());
+        CHECK(log.entries().empty());
+      }
+
+      SECTION("dirty input and output") {
+        Invocations::Entry entry;
+        addOutput(invocations, entry, "one", one_fp);
+        addInput(invocations, entry, "two", two_fp);
+        invocations.entries[hash_a] = entry;
+        fs.writeFile("one", "dirty");
+        fs.writeFile("two", "dirty!");
+        memo.resize(invocations.fingerprints.size());
+        CHECK(!isClean(
+            fs,
+            log,
+            memo,
+            invocations,
+            step_with_hash_a));
+        CHECK(log.createdDirectories().empty());
+        CHECK(log.entries().empty());
+      }
+
+      SECTION("racily clean input") {
+        Invocations::Entry entry;
+        addInput(invocations, entry, "one", one_fp_racy);
+        invocations.entries[hash_a] = entry;
+        memo.resize(invocations.fingerprints.size());
+        CHECK(isClean(
+            fs,
+            log,
+            memo,
+            invocations,
+            step_with_hash_a));
+        CHECK(log.createdDirectories().empty());
+        REQUIRE(log.entries().count(hash_a) == 1);
+        const auto &computed_entry = log.entries().find(hash_a)->second;
+        REQUIRE(computed_entry.input_files.size() == 1);
+        REQUIRE(computed_entry.input_files[0].first == "one");
+        CHECK(computed_entry.output_files.empty());
+      }
+
+      SECTION("racily clean output") {
+        Invocations::Entry entry;
+        addOutput(invocations, entry, "one", one_fp_racy);
+        invocations.entries[hash_a] = entry;
+        memo.resize(invocations.fingerprints.size());
+        CHECK(isClean(
+            fs,
+            log,
+            memo,
+            invocations,
+            step_with_hash_a));
+        CHECK(log.createdDirectories().empty());
+        REQUIRE(log.entries().count(hash_a) == 1);
+        const auto &computed_entry = log.entries().find(hash_a)->second;
+        CHECK(computed_entry.input_files.empty());
+        REQUIRE(computed_entry.output_files.size() == 1);
+        REQUIRE(computed_entry.output_files[0].first == "one");
+      }
     }
   }
 

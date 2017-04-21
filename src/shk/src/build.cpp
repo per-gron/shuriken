@@ -217,9 +217,21 @@ void relogCommand(
       invocation_log.fingerprintFiles(input_files));
 }
 
-}  // anonymous namespace
+bool generatorStepIsClean(FileSystem &file_system, Step step) throw(IoError) {
+  if (step.generatorInputs().empty() || step.generatorOutputs().empty()) {
+    // Nothing to check here.
+    return true;
+  }
 
-bool isClean(
+  auto input_mtime = CompiledManifest::maxMtime(
+      file_system, step.generatorInputs());
+  auto output_mtime = CompiledManifest::minMtime(
+      file_system, step.generatorOutputs());
+
+  return input_mtime && output_mtime && *input_mtime < *output_mtime;
+}
+
+bool nonGeneratorStepIsClean(
     FileSystem &file_system,
     InvocationLog &invocation_log,
     FingerprintMatchesMemo &fingerprint_matches_memo,
@@ -269,6 +281,22 @@ bool isClean(
   }
 
   return clean;
+}
+
+}  // anonymous namespace
+
+bool isClean(
+    FileSystem &file_system,
+    InvocationLog &invocation_log,
+    FingerprintMatchesMemo &fingerprint_matches_memo,
+    const Invocations &invocations,
+    Step step) throw(IoError) {
+  if (step.generator()) {
+    return generatorStepIsClean(file_system, step);
+  } else {
+    return nonGeneratorStepIsClean(
+        file_system, invocation_log, fingerprint_matches_memo, invocations, step);
+  }
 }
 
 CleanSteps computeCleanSteps(
