@@ -36,7 +36,8 @@ class MockTraceServerHandle : public TraceServerHandle {
 
 CommandRunner::Result runCommand(
     CommandRunner &runner,
-    const std::string &command) {
+    const std::string &command,
+    bool generator = false) {
   CommandRunner::Result result;
 
   flatbuffers::FlatBufferBuilder builder;
@@ -44,7 +45,10 @@ CommandRunner::Result runCommand(
   bool did_finish = false;
   runner.invoke(
       command,
-      StepBuilder().setPoolName("a_pool").build(builder),
+      StepBuilder()
+          .setPoolName("a_pool")
+          .setGenerator(generator)
+          .build(builder),
       [&](CommandRunner::Result &&result_) {
         result = std::move(result_);
         did_finish = true;
@@ -316,6 +320,16 @@ TEST_CASE("TracingCommandRunner") {
 
     const auto cmd = mock_command_runner.popCommand();
     CHECK(cmd.command == "");
+  }
+
+  SECTION("GeneratorStep") {
+    const auto result = runCommand(*runner, "untouched", /*generator:*/true);
+    CHECK(result.exit_status == ExitStatus::SUCCESS);
+    CHECK(result.input_files.empty());
+    CHECK(result.output_files.empty());
+
+    const auto cmd = mock_command_runner.popCommand();
+    CHECK(cmd.command == "untouched");
   }
 
   SECTION("StartError") {

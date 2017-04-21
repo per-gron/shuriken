@@ -71,8 +71,11 @@ class TracingCommandRunner : public CommandRunner {
       nt_string_view command,
       Step step,
       const Callback &callback) override {
-    if (command.empty()) {
-      _inner->invoke("", step, callback);
+    if (command.empty() || step.generator()) {
+      // Empty commands need no tracing, and neither do generator rule steps
+      // because their cleanliness is determined only based on inputs and
+      // outputs declared in the manifest anyway.
+      _inner->invoke(command, step, callback);
       return;
     }
 
