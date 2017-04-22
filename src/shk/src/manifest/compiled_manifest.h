@@ -203,6 +203,25 @@ struct CompiledManifest {
    */
   static Optional<time_t> minMtime(FileSystem &file_system, StringsView files);
 
+  /**
+   * Parses and compiles a manifest file and returns a pair of CompiledManifest
+   * and the buffer that backs it.
+   *
+   * This function also writes the compiled manifest to disk. On subsequent runs
+   * it checks if the compiled manifest is still there and still valid. If so,
+   * it can just load the compiled manifest directly without parsing or
+   * compiling the manifest.
+   *
+   * If parsing or compiling fails, no CompiledManifest is returned and *err is
+   * set.
+   */
+  static std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
+      parseAndCompile(
+          FileSystem &file_system,
+          const std::string &manifest_path,
+          const std::string &compiled_manifest_path,
+          std::string *err);
+
  private:
   const ShkManifest::Manifest *_manifest;
 };

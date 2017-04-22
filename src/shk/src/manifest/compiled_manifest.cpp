@@ -513,4 +513,42 @@ Optional<time_t> CompiledManifest::minMtime(
   });
 }
 
+std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
+    CompiledManifest::parseAndCompile(
+        FileSystem &file_system,
+        const std::string &manifest_path,
+        const std::string &compiled_manifest_path,
+        std::string *err) {
+  Paths paths(file_system);
+  RawManifest raw_manifest;
+  try {
+    raw_manifest = parseManifest(paths, file_system, manifest_path);
+  } catch (const IoError &io_error) {
+    *err = std::string("failed to read manifest: ") + io_error.what();
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  } catch (const ParseError &parse_error) {
+    *err = std::string("failed to parse manifest: ") + parse_error.what();
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
+  flatbuffers::FlatBufferBuilder fb_builder(128 * 1024);
+  if (!CompiledManifest::compile(
+          fb_builder, paths.get(manifest_path), raw_manifest, err)) {
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
+  auto buffer = std::make_shared<std::vector<char>>(
+      reinterpret_cast<const char *>(fb_builder.GetBufferPointer()),
+      reinterpret_cast<const char *>(
+          fb_builder.GetBufferPointer() + fb_builder.GetSize()));
+
+  const auto maybe_manifest = CompiledManifest::load(
+      string_view(buffer->data(), buffer->size()), err);
+  if (!maybe_manifest) {
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
+  return std::make_pair(maybe_manifest, buffer);
+}
+
 }  // namespace shk

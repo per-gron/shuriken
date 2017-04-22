@@ -86,7 +86,7 @@ TEST_CASE("CompiledManifest") {
         builder, manifest_path, raw_manifest, &err);
     if (!allow_compile_error) {
       CHECK(success);
-      CHECK(err.empty());
+      CHECK(err == "");
     }
     err.clear();
     const auto maybe_manifest = CompiledManifest::load(
@@ -874,7 +874,7 @@ TEST_CASE("CompiledManifest") {
     std::string err;
     CHECK(CompiledManifest::compile(
         builder, paths.get("a"), manifest, &err));
-    CHECK(err.empty());
+    CHECK(err == "");
 
     auto *fb = ShkManifest::GetManifest(builder.GetBufferPointer());
 
@@ -1042,6 +1042,74 @@ TEST_CASE("CompiledManifest") {
 
       CHECK(!CompiledManifest::maxMtime(fs, manifest.manifestFiles()));
       CHECK(!CompiledManifest::minMtime(fs, manifest.manifestFiles()));
+    }
+  }
+
+  SECTION("parseAndCompile") {
+    SECTION("basic success") {
+      const auto manifest_str =
+          "rule cmd\n"
+          "  command = cmd\n"
+          "build out: cmd in\n";
+
+      fs.writeFile("manifest", manifest_str);
+
+      Optional<CompiledManifest> maybe_manifest;
+      std::shared_ptr<void> buffer;
+      std::string err;
+      std::tie(maybe_manifest, buffer) = CompiledManifest::parseAndCompile(
+          fs, "manifest", "manifest.compiled", &err);
+      CHECK(buffer);
+      CHECK(err == "");
+      REQUIRE(maybe_manifest);
+      REQUIRE(maybe_manifest->steps().size() == 1);
+      REQUIRE(maybe_manifest->steps()[0].command() == "cmd");
+    }
+
+    SECTION("parse error") {
+      fs.writeFile("manifest", "rule!\n");
+
+      Optional<CompiledManifest> maybe_manifest;
+      std::shared_ptr<void> buffer;
+      std::string err;
+      std::tie(maybe_manifest, buffer) = CompiledManifest::parseAndCompile(
+          fs, "manifest", "manifest.compiled", &err);
+      CHECK(!maybe_manifest);
+      CHECK(
+          err == "failed to parse manifest: manifest:1: expected rule name\n");
+    }
+
+    SECTION("io error") {
+      fs.mkdir("manifest");
+
+      Optional<CompiledManifest> maybe_manifest;
+      std::shared_ptr<void> buffer;
+      std::string err;
+      std::tie(maybe_manifest, buffer) = CompiledManifest::parseAndCompile(
+          fs, "manifest", "manifest.compiled", &err);
+      CHECK(!maybe_manifest);
+      CHECK(
+          err ==
+              "failed to parse manifest: loading 'manifest': "
+              "The named file is a directory");
+    }
+
+    SECTION("compile error") {
+      const auto manifest_str =
+          "rule cmd\n"
+          "  command = cmd\n"
+          "build out: cmd in\n"
+          "build in: cmd out\n";
+
+      fs.writeFile("manifest", manifest_str);
+
+      Optional<CompiledManifest> maybe_manifest;
+      std::shared_ptr<void> buffer;
+      std::string err;
+      std::tie(maybe_manifest, buffer) = CompiledManifest::parseAndCompile(
+          fs, "manifest", "manifest.compiled", &err);
+      CHECK(!maybe_manifest);
+      CHECK(err == "Dependency cycle: in -> out -> in");
     }
   }
 }

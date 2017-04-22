@@ -146,7 +146,7 @@ struct ShurikenMain {
         _paths(_file_system),
         _trace_server_handle(trace_server_handle) {}
 
-  void parseManifest(const std::string &input_file) throw(IoError, ParseError);
+  bool parseManifest(const std::string &input_file, std::string *err);
 
   std::string invocationLogPath() const;
 
@@ -211,7 +211,7 @@ struct ShurikenMain {
   InvocationLogParseResult::ParseData _invocation_parse_data;
   std::unique_ptr<FileLock> _invocation_log_lock;
   std::unique_ptr<InvocationLog> _invocation_log;
-  flatbuffers::FlatBufferBuilder _manifest_builder;
+  std::shared_ptr<void> _manifest_buffer;
   Optional<CompiledManifest> _compiled_manifest;
   std::shared_ptr<TraceServerHandle> &_trace_server_handle;
 };
@@ -324,27 +324,12 @@ const Tool *chooseTool(const std::string &tool_name) {
   return NULL;  // Not reached.
 }
 
-void ShurikenMain::parseManifest(
-    const std::string &input_file) throw(IoError, ParseError) {
-  std::string err;
-  if (!CompiledManifest::compile(
-          _manifest_builder,
-          _paths.get(input_file),
-          ::shk::parseManifest(_paths, _file_system, input_file),
-          &err)) {
-    throw ParseError(err);
-  }
-
-  const auto maybe_manifest = CompiledManifest::load(
-      string_view(
-          reinterpret_cast<const char *>(_manifest_builder.GetBufferPointer()),
-          _manifest_builder.GetSize()),
-      &err);
-  if (!maybe_manifest) {
-    throw ParseError(err);
-  }
-
-  _compiled_manifest = *maybe_manifest;
+bool ShurikenMain::parseManifest(
+    const std::string &input_file, std::string *err) {
+  std::tie(_compiled_manifest, _manifest_buffer) =
+      CompiledManifest::parseAndCompile(
+          _file_system, input_file, ".shk_manifest", err);
+  return !!_compiled_manifest;
 }
 
 std::string ShurikenMain::invocationLogPath() const {
@@ -672,13 +657,9 @@ int real_main(int argc, char **argv) {
   for (int cycle = 1; cycle <= kCycleLimit; ++cycle) {
     ShurikenMain shk(trace_server_handle, config);
 
-    try {
-      shk.parseManifest(options.input_file);
-    } catch (const IoError &io_error) {
-      error("%s", io_error.what());
-      return 1;
-    } catch (const ParseError &parse_error) {
-      error("%s", parse_error.what());
+    std::string err;
+    if (!shk.parseManifest(options.input_file, &err)) {
+      error("%s", err.c_str());
       return 1;
     }
 
@@ -710,7 +691,6 @@ int real_main(int argc, char **argv) {
     }
 
     // Attempt to rebuild the manifest before building anything else
-    std::string err;
     if (shk.rebuildManifest(&err)) {
       // In dry_run mode the regeneration will succeed without changing the
       // manifest forever. Better to return immediately.

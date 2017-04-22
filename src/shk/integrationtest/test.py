@@ -62,7 +62,8 @@ class IntegrationTest(unittest.TestCase):
   @with_testdir('no_manifest')
   def test_no_manifest(self):
     output = run_cmd_expect_fail(shk)
-    self.assertRegexpMatches(output, r'error: loading \'build\.ninja\'')
+    self.assertRegexpMatches(
+        output, r'failed to parse manifest: loading \'build\.ninja\'')
 
   @with_testdir('simple_build')
   def test_simple_build(self):
