@@ -603,7 +603,7 @@ TEST_CASE("Build") {
         Invocations invocations;
         // Put nothing in invocations; it should not be needed
 
-        CHECK(isClean(clock, fs, log, memo, invocations, step));
+        CHECK(isClean(fs, log, memo, invocations, step));
       }
 
       SECTION("no outputs") {
@@ -622,7 +622,7 @@ TEST_CASE("Build") {
         Invocations invocations;
         // Put nothing in invocations; it should not be needed
 
-        CHECK(isClean(clock, fs, log, memo, invocations, step));
+        CHECK(isClean(fs, log, memo, invocations, step));
       }
 
       SECTION("missing input file") {
@@ -639,7 +639,7 @@ TEST_CASE("Build") {
         // Pretend the step is clean via Invocations; it should not be used
         invocations.entries[step.hash()] = Invocations::Entry();
 
-        CHECK(!isClean(clock, fs, log, memo, invocations, step));
+        CHECK(!isClean(fs, log, memo, invocations, step));
       }
 
       SECTION("missing output file") {
@@ -656,7 +656,7 @@ TEST_CASE("Build") {
         // Pretend the step is clean via Invocations; it should not be used
         invocations.entries[step.hash()] = Invocations::Entry();
 
-        CHECK(!isClean(clock, fs, log, memo, invocations, step));
+        CHECK(!isClean(fs, log, memo, invocations, step));
       }
 
       SECTION("input file newer") {
@@ -675,7 +675,7 @@ TEST_CASE("Build") {
         // Pretend the step is clean via Invocations; it should not be used
         invocations.entries[step.hash()] = Invocations::Entry();
 
-        CHECK(!isClean(clock, fs, log, memo, invocations, step));
+        CHECK(!isClean(fs, log, memo, invocations, step));
       }
 
       SECTION("single input file newer") {
@@ -695,7 +695,7 @@ TEST_CASE("Build") {
         // Pretend the step is clean via Invocations; it should not be used
         invocations.entries[step.hash()] = Invocations::Entry();
 
-        CHECK(!isClean(clock, fs, log, memo, invocations, step));
+        CHECK(!isClean(fs, log, memo, invocations, step));
       }
 
       SECTION("single output file as old as input") {
@@ -713,7 +713,7 @@ TEST_CASE("Build") {
         Invocations invocations;
         // Put nothing in invocations; it should not be needed
 
-        CHECK(isClean(clock, fs, log, memo, invocations, step));
+        CHECK(isClean(fs, log, memo, invocations, step));
       }
 
       SECTION("single output file as older than input") {
@@ -734,7 +734,7 @@ TEST_CASE("Build") {
         // Pretend the step is clean via Invocations; it should not be used
         invocations.entries[step.hash()] = Invocations::Entry();
 
-        CHECK(!isClean(clock, fs, log, memo, invocations, step));
+        CHECK(!isClean(fs, log, memo, invocations, step));
       }
 
       SECTION("clean") {
@@ -751,7 +751,7 @@ TEST_CASE("Build") {
         Invocations invocations;
         // Put nothing in invocations; it should not be needed
 
-        CHECK(isClean(clock, fs, log, memo, invocations, step));
+        CHECK(isClean(fs, log, memo, invocations, step));
       }
     }
 
@@ -776,7 +776,6 @@ TEST_CASE("Build") {
 
       SECTION("no matching Invocation entry") {
         CHECK(!isClean(
-            clock,
             fs,
             log,
             memo,
@@ -789,7 +788,6 @@ TEST_CASE("Build") {
       SECTION("no input or output files") {
         invocations.entries[hash_a] = Invocations::Entry();
         CHECK(isClean(
-            clock,
             fs,
             log,
             memo,
@@ -805,7 +803,6 @@ TEST_CASE("Build") {
         invocations.entries[hash_a] = entry;
         memo.resize(invocations.fingerprints.size());
         CHECK(isClean(
-            clock,
             fs,
             log,
             memo,
@@ -822,7 +819,6 @@ TEST_CASE("Build") {
         fs.writeFile("one", "dirty");  // Make dirty
         memo.resize(invocations.fingerprints.size());
         CHECK(!isClean(
-            clock,
             fs,
             log,
             memo,
@@ -838,7 +834,6 @@ TEST_CASE("Build") {
         invocations.entries[hash_a] = entry;
         memo.resize(invocations.fingerprints.size());
         CHECK(isClean(
-            clock,
             fs,
             log,
             memo,
@@ -855,7 +850,6 @@ TEST_CASE("Build") {
         fs.writeFile("one", "dirty");  // Make dirty
         memo.resize(invocations.fingerprints.size());
         CHECK(!isClean(
-            clock,
             fs,
             log,
             memo,
@@ -874,7 +868,6 @@ TEST_CASE("Build") {
         fs.writeFile("two", "dirty!");
         memo.resize(invocations.fingerprints.size());
         CHECK(!isClean(
-            clock,
             fs,
             log,
             memo,
@@ -889,9 +882,7 @@ TEST_CASE("Build") {
         addInput(invocations, entry, "one", one_fp_racy);
         invocations.entries[hash_a] = entry;
         memo.resize(invocations.fingerprints.size());
-        time += 10;
         CHECK(isClean(
-            clock,
             fs,
             log,
             memo,
@@ -900,7 +891,6 @@ TEST_CASE("Build") {
         CHECK(log.createdDirectories().empty());
         REQUIRE(log.entries().count(hash_a) == 1);
         const auto &computed_entry = log.entries().find(hash_a)->second;
-        CHECK(computed_entry.timestamp == time);  // Should have retaken fp
         REQUIRE(computed_entry.input_files.size() == 1);
         REQUIRE(computed_entry.input_files[0].first == "one");
         CHECK(computed_entry.output_files.empty());
@@ -911,9 +901,7 @@ TEST_CASE("Build") {
         addOutput(invocations, entry, "one", one_fp_racy);
         invocations.entries[hash_a] = entry;
         memo.resize(invocations.fingerprints.size());
-        time += 10;
         CHECK(isClean(
-            clock,
             fs,
             log,
             memo,
@@ -922,7 +910,6 @@ TEST_CASE("Build") {
         CHECK(log.createdDirectories().empty());
         REQUIRE(log.entries().count(hash_a) == 1);
         const auto &computed_entry = log.entries().find(hash_a)->second;
-        CHECK(computed_entry.timestamp == time);  // Should have retaken fp
         CHECK(computed_entry.input_files.empty());
         REQUIRE(computed_entry.output_files.size() == 1);
         REQUIRE(computed_entry.output_files[0].first == "one");
@@ -1500,10 +1487,6 @@ TEST_CASE("Build") {
             "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
-
-        REQUIRE(log.entries().size() == 1);
-        const auto &computed_entry = log.entries().begin()->second;
-        CHECK(computed_entry.timestamp == time);
       }
 
       SECTION("two steps overwriting each other's outputs") {

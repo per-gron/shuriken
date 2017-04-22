@@ -56,7 +56,6 @@ namespace shk {
  *    no relation to directories).
  * 2. Invocation: An Invocation entry is an on-disk representation of an
  *    Invocations::Entry object. It starts with a Hash object, then contains a
- *    time_t with the Invocations::Entry::timestamp. After that, there is a
  *    single uint32_t with the number of output files, followed by a number of
  *    uint32_t fingerprint entry ids. The first fingerprint ids are outputs, the
  *    rest are inputs.

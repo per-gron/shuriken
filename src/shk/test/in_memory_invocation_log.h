@@ -17,16 +17,6 @@ namespace shk {
 class InMemoryInvocationLog : public InvocationLog {
  public:
   struct Entry {
-    Entry() = default;
-    Entry(
-        time_t timestamp,
-        std::vector<std::pair<std::string, Fingerprint>> &output_files,
-        std::vector<std::pair<std::string, Fingerprint>> &&input_files)
-        : timestamp(timestamp),
-          output_files(output_files),
-          input_files(input_files) {}
-
-    time_t timestamp = 0;
     std::vector<std::pair<std::string, Fingerprint>> output_files;
     std::vector<std::pair<std::string, Fingerprint>> input_files;
   };
@@ -38,7 +28,6 @@ class InMemoryInvocationLog : public InvocationLog {
   std::pair<Fingerprint, FileId> fingerprint(const std::string &path) override;
   void ranCommand(
       const Hash &build_step_hash,
-      time_t fingerprint_timestamp,
       std::vector<std::string> &&output_files,
       std::vector<Fingerprint> &&output_fingerprints,
       std::vector<std::string> &&input_files,

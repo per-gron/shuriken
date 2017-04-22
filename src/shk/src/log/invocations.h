@@ -33,20 +33,6 @@ struct Invocations {
    * Contains indices into the fingerprints vector.
    */
   struct Entry {
-    Entry() = default;
-    Entry(
-        size_t timestamp,
-        std::vector<size_t> &&output_files,
-        std::vector<size_t> &&input_files)
-        : timestamp(timestamp),
-          output_files(output_files),
-          input_files(input_files) {}
-
-    /**
-     * Timestamp of when the entry was written. This is primarily used as the
-     * timestamp of when the fingerprints that this entry refers to were taken.
-     */
-    time_t timestamp = 0;
     std::vector<size_t> output_files;
     std::vector<size_t> input_files;
   };

@@ -43,7 +43,6 @@ class DelayedInvocationLog : public InvocationLog {
 
   void ranCommand(
       const Hash &build_step_hash,
-      time_t fingerprint_timestamp,
       std::vector<std::string> &&output_files,
       std::vector<Fingerprint> &&output_fingerprints,
       std::vector<std::string> &&input_files,
@@ -103,7 +102,6 @@ class DelayedInvocationLog : public InvocationLog {
 
         _inner_log->ranCommand(
             delayed_entry.build_step_hash,
-            now,
             std::move(delayed_entry.output_files),
             std::move(delayed_entry.output_fingerprints),
             std::move(delayed_entry.input_files),

@@ -193,7 +193,6 @@ MatchesResult checkFingerprintMatches(
 }
 
 void relogCommand(
-    const Clock &clock,
     InvocationLog &invocation_log,
     const Invocations &invocations,
     const Invocations::Entry &entry,
@@ -212,7 +211,6 @@ void relogCommand(
 
   invocation_log.ranCommand(
       step_hash,
-      clock(),
       std::move(output_files),
       invocation_log.fingerprintFiles(output_files),
       std::move(input_files),
@@ -242,7 +240,6 @@ bool generatorStepIsClean(FileSystem &file_system, Step step) throw(IoError) {
 }
 
 bool nonGeneratorStepIsClean(
-    const Clock &clock,
     FileSystem &file_system,
     InvocationLog &invocation_log,
     FingerprintMatchesMemo &fingerprint_matches_memo,
@@ -288,7 +285,7 @@ bool nonGeneratorStepIsClean(
     // updated anyway as part of the build. Also, updating the invocation log
     // when dirty will fingerprint it and effectively mark it as clean, which
     // is not the intention here.
-    relogCommand(clock, invocation_log, invocations, entry, step_hash);
+    relogCommand(invocation_log, invocations, entry, step_hash);
   }
 
   return clean;
@@ -297,7 +294,6 @@ bool nonGeneratorStepIsClean(
 }  // anonymous namespace
 
 bool isClean(
-    const Clock &clock,
     FileSystem &file_system,
     InvocationLog &invocation_log,
     FingerprintMatchesMemo &fingerprint_matches_memo,
@@ -307,7 +303,7 @@ bool isClean(
     return generatorStepIsClean(file_system, step);
   } else {
     return nonGeneratorStepIsClean(
-        clock, file_system, invocation_log, fingerprint_matches_memo, invocations, step);
+        file_system, invocation_log, fingerprint_matches_memo, invocations, step);
   }
 }
 
@@ -331,7 +327,6 @@ CleanSteps computeCleanSteps(
       continue;
     }
     result[i] = isClean(
-        clock,
         file_system,
         invocation_log,
         fingerprint_memo,
@@ -525,7 +520,6 @@ void commandDone(
 
       params.invocation_log.ranCommand(
           params.manifest.steps()[step_idx].hash(),
-          params.clock(),
           std::move(result.output_files),
           params.invocation_log.fingerprintFiles(result.output_files),
           std::move(result.input_files),

@@ -59,7 +59,6 @@ std::pair<Fingerprint, FileId> InMemoryInvocationLog::fingerprint(
 
 void InMemoryInvocationLog::ranCommand(
     const Hash &build_step_hash,
-    time_t fingerprint_timestamp,
     std::vector<std::string> &&output_files,
     std::vector<Fingerprint> &&output_fingerprints,
     std::vector<std::string> &&input_files,
@@ -80,14 +79,13 @@ void InMemoryInvocationLog::ranCommand(
   }
   output_file_fingerprints.erase(files_end, output_file_fingerprints.end());
 
-  _entries[build_step_hash] = Entry(
-      fingerprint_timestamp,
+  _entries[build_step_hash] = {
       output_file_fingerprints,
       processInputPaths(
           _fs,
           _clock,
           std::move(input_files),
-          std::move(input_fingerprints)));
+          std::move(input_fingerprints)) };
 }
 
 void InMemoryInvocationLog::cleanedCommand(
@@ -126,10 +124,10 @@ Invocations InMemoryInvocationLog::invocations() const {
   };
 
   for (const auto &log_entry : _entries) {
-    result.entries[log_entry.first] = Invocations::Entry(
-        log_entry.second.timestamp,
-        files(log_entry.second.output_files),
-        files(log_entry.second.input_files));
+    Invocations::Entry entry;
+    entry.output_files = files(log_entry.second.output_files);
+    entry.input_files = files(log_entry.second.input_files);
+    result.entries[log_entry.first] = entry;
   }
 
   return result;

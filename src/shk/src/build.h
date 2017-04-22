@@ -217,7 +217,6 @@ Build computeBuild(
  * for the future, isClean provides that.
  */
 bool isClean(
-    const Clock &clock,
     FileSystem &file_system,
     InvocationLog &invocation_log,
     FingerprintMatchesMemo &fingerprint_matches_memo,

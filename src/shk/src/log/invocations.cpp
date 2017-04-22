@@ -22,7 +22,6 @@ int Invocations::countUsedFingerprints() const {
 bool operator==(
     const Invocations::Entry &a, const Invocations::Entry &b) {
   return
-      a.timestamp == b.timestamp &&
       a.output_files == b.output_files &&
       a.input_files == b.input_files;
 }
@@ -64,8 +63,7 @@ bool operator==(const Invocations &a, const Invocations &b) {
       return true;
     };
 
-    if (a_entry.second.timestamp != b_it->second.timestamp ||
-        !files_are_same(
+    if (!files_are_same(
             a.fingerprints,
             b.fingerprints,
             a_entry.second.output_files,
