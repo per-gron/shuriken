@@ -14,7 +14,7 @@ TEST_CASE("DelayedInvocationLog") {
   time_t now = 234;
   const auto clock = [&] { return now; };
 
-  InMemoryFileSystem fs;
+  InMemoryFileSystem fs(clock);
   fs.writeFile("test_file", "hello!");
 
   auto memory_log_ptr = std::unique_ptr<InMemoryInvocationLog>(
@@ -73,12 +73,13 @@ TEST_CASE("DelayedInvocationLog") {
       log->ranCommand(hash_b, {}, {}, {}, {});
       memory_log.cleanedCommand(hash_a);
       now++;
-      log->ranCommand(hash_b, {}, {}, {}, {});  // This should not write hash_a again
+      log->ranCommand(hash_b, {}, {}, {}, {});  // Should not write hash_a again
       CHECK(memory_log.entries().count(hash_a) == 0);
     }
 
     SECTION("WriteOutputs") {
       auto fingerprint = takeFingerprint(fs, now, "test_file").first;
+      CHECK(fingerprint.racily_clean);  // Make sure that it gets to unset this
       log->ranCommand(
           hash_a,
           { "test_file" },
@@ -92,7 +93,7 @@ TEST_CASE("DelayedInvocationLog") {
 
       CHECK(entry.input_files.empty());
 
-      fingerprint.timestamp = now;
+      fingerprint.racily_clean = false;
       CHECK(
           entry.output_files ==
           (std::vector<std::pair<std::string, Fingerprint>>({
@@ -101,6 +102,7 @@ TEST_CASE("DelayedInvocationLog") {
 
     SECTION("WriteInputs") {
       auto fingerprint = takeFingerprint(fs, now, "test_file").first;
+      CHECK(fingerprint.racily_clean);  // Make sure that it gets to unset this
       log->ranCommand(
           hash_a,
           {},
@@ -114,7 +116,7 @@ TEST_CASE("DelayedInvocationLog") {
 
       CHECK(entry.output_files.empty());
 
-      fingerprint.timestamp = now;
+      fingerprint.racily_clean = false;
       CHECK(
           entry.input_files ==
           (std::vector<std::pair<std::string, Fingerprint>>({

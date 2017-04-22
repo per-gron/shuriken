@@ -95,10 +95,9 @@ class DelayedInvocationLog : public InvocationLog {
         // steps that modify previous steps' inputs, it is safe to assume that
         // the fingerprint that was taken prior to invoking ranCommand (about
         // one second ago) has not been changed since. Because of that it is
-        // safe to update the fingerprint timestamp to now, which in turn will
-        // avoid racily clean fingerprints.
-        setFingerprintTimestamps(delayed_entry.output_fingerprints, now);
-        setFingerprintTimestamps(delayed_entry.input_fingerprints, now);
+        // safe to update the fingerprint and claim that it is not racily_clean.
+        setFingerprintNotRacilyClean(delayed_entry.output_fingerprints);
+        setFingerprintNotRacilyClean(delayed_entry.input_fingerprints);
 
         _inner_log->ranCommand(
             delayed_entry.build_step_hash,
@@ -111,11 +110,10 @@ class DelayedInvocationLog : public InvocationLog {
     _delayed_entries.erase(_delayed_entries.begin(), it);
   }
 
-  static void setFingerprintTimestamps(
-      std::vector<Fingerprint> &fingerprints,
-      time_t now) {
+  static void setFingerprintNotRacilyClean(
+      std::vector<Fingerprint> &fingerprints) {
     for (auto &fingerprint : fingerprints) {
-      fingerprint.timestamp = now;
+      fingerprint.racily_clean = false;
     }
   }
 

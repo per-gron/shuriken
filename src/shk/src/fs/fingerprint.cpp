@@ -46,9 +46,7 @@ MatchesResult fingerprintMatches(
     const Fingerprint::Stat &current,
     Hash *hash) throw(IoError) {
   MatchesResult result;
-  if (current == fp.stat &&
-      (fp.stat.mode == 0 || (
-        fp.stat.mtime < fp.timestamp && fp.stat.ctime < fp.timestamp))) {
+  if (current == fp.stat && (!fp.racily_clean || fp.stat.mode == 0)) {
     // The file's current stat information and the stat information of the
     // fingerprint exactly match. Furthermore, the fingerprint is strictly
     // newer than the files. This means that unless mtime/ctime has been
@@ -78,6 +76,14 @@ MatchesResult fingerprintMatches(
     }
   }
   return result;
+}
+
+/**
+ * Given a Fingerprint::Stat of a Fingerprint and the time when the fingerprint
+ * was taken, compute if the fingerprint is clean or not.
+ */
+bool isRacilyClean(const Fingerprint::Stat &stat, time_t timestamp) {
+  return stat.mtime >= timestamp || stat.ctime >= timestamp;
 }
 
 }  // anonymous namespace
@@ -137,7 +143,7 @@ bool Fingerprint::Stat::operator<(const Stat &other) const {
 bool Fingerprint::operator==(const Fingerprint &other) const {
   return (
       stat == other.stat &&
-      timestamp == other.timestamp &&
+      racily_clean == other.racily_clean &&
       hash == other.hash);
 }
 
@@ -147,8 +153,8 @@ bool Fingerprint::operator!=(const Fingerprint &other) const {
 
 bool Fingerprint::operator<(const Fingerprint &other) const {
   return
-      std::tie(stat, timestamp, hash) <
-      std::tie(other.stat, other.timestamp, other.hash);
+      std::tie(stat, racily_clean, hash) <
+      std::tie(other.stat, other.racily_clean, other.hash);
 }
 
 bool MatchesResult::operator==(const MatchesResult &other) const {
@@ -173,7 +179,7 @@ std::pair<Fingerprint, FileId> takeFingerprint(
   if (!fingerprintStat(file_system, path, &fp.stat, &file_id, &err)) {
     throw IoError(err, 0);
   }
-  fp.timestamp = timestamp;
+  fp.racily_clean = isRacilyClean(fp.stat, timestamp);
   computeFingerprintHash(file_system, fp.stat, path, &fp.hash);
 
   return ans;
@@ -189,7 +195,8 @@ std::pair<Fingerprint, FileId> retakeFingerprint(
   FileId &file_id = ans.second;
 
   std::string err;
-  if (!fingerprintStat(file_system, path, &new_fingerprint.stat, &file_id, &err)) {
+  if (!fingerprintStat(
+          file_system, path, &new_fingerprint.stat, &file_id, &err)) {
     throw IoError(err, 0);
   }
 
@@ -199,10 +206,9 @@ std::pair<Fingerprint, FileId> retakeFingerprint(
       old_fingerprint,
       new_fingerprint.stat,
       &new_fingerprint.hash);
-  if (result.clean && !result.should_update) {
-    return ans;
-  } else if (result.should_update) {
-    new_fingerprint.timestamp = timestamp;
+  if (result.clean) {
+    new_fingerprint.racily_clean =
+        isRacilyClean(new_fingerprint.stat, timestamp);
     return ans;
   } else {
     return takeFingerprint(file_system, timestamp, path);

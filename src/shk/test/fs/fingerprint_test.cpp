@@ -109,7 +109,7 @@ TEST_CASE("Fingerprint") {
   SECTION("Fingerprint") {
     Fingerprint a;
     a.stat.size = 1;
-    a.timestamp = 2;
+    a.racily_clean = true;
     std::fill(a.hash.data.begin(), a.hash.data.end(), 0);
 
     auto b = a;
@@ -127,8 +127,8 @@ TEST_CASE("Fingerprint") {
       CHECK((a < b || b < a));
     }
 
-    SECTION("timestamp") {
-      b.timestamp++;
+    SECTION("racily_clean") {
+      b.racily_clean = !b.racily_clean;
       CHECK(a != b);
       CHECK(!(a == b));
       CHECK((a < b || b < a));
@@ -146,7 +146,7 @@ TEST_CASE("Fingerprint") {
     SECTION("regular file") {
       Fingerprint fp;
       FileId file_id;
-      std::tie(fp, file_id) = takeFingerprint(fs, 12345, "a");
+      std::tie(fp, file_id) = takeFingerprint(fs, now + 1, "a");
 
       CHECK(file_id == FileId(fs.lstat("a")));
 
@@ -155,7 +155,7 @@ TEST_CASE("Fingerprint") {
       CHECK(S_ISREG(fp.stat.mode));
       CHECK(fp.stat.mtime == now);
       CHECK(fp.stat.ctime == now);
-      CHECK(fp.timestamp == 12345);
+      CHECK(fp.racily_clean == false);
       CHECK(fp.hash == fs.hashFile("a"));
       CHECK(fp.stat.couldAccess());
       CHECK(!fp.stat.isDir());
@@ -164,7 +164,7 @@ TEST_CASE("Fingerprint") {
     SECTION("missing file") {
       Fingerprint fp;
       FileId file_id;
-      std::tie(fp, file_id) = takeFingerprint(fs, 12345, "b");
+      std::tie(fp, file_id) = takeFingerprint(fs, now + 1, "b");
 
       CHECK(file_id == FileId(fs.lstat("b")));
 
@@ -173,7 +173,7 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.mode == 0);
       CHECK(fp.stat.mtime == 0);
       CHECK(fp.stat.ctime == 0);
-      CHECK(fp.timestamp == 12345);
+      CHECK(fp.racily_clean == false);
       Hash zero;
       std::fill(zero.data.begin(), zero.data.end(), 0);
       CHECK(fp.hash == zero);
@@ -184,7 +184,7 @@ TEST_CASE("Fingerprint") {
     SECTION("directory") {
       Fingerprint fp;
       FileId file_id;
-      std::tie(fp, file_id) = takeFingerprint(fs, 12345, "dir");
+      std::tie(fp, file_id) = takeFingerprint(fs, now + 1, "dir");
 
       CHECK(file_id == FileId(fs.lstat("dir")));
 
@@ -193,7 +193,7 @@ TEST_CASE("Fingerprint") {
       CHECK(S_ISDIR(fp.stat.mode));
       CHECK(fp.stat.mtime == now);
       CHECK(fp.stat.ctime == now);
-      CHECK(fp.timestamp == 12345);
+      CHECK(fp.racily_clean == false);
       CHECK(fp.hash == fs.hashDir("dir"));
       CHECK(fp.stat.couldAccess());
       CHECK(fp.stat.isDir());
@@ -202,7 +202,7 @@ TEST_CASE("Fingerprint") {
     SECTION("symlink") {
       Fingerprint fp;
       FileId file_id;
-      std::tie(fp, file_id) = takeFingerprint(fs, 12345, "link");
+      std::tie(fp, file_id) = takeFingerprint(fs, now + 1, "link");
 
       CHECK(file_id == FileId(fs.lstat("link")));
 
@@ -211,10 +211,28 @@ TEST_CASE("Fingerprint") {
       CHECK(S_ISLNK(fp.stat.mode));
       CHECK(fp.stat.mtime == now);
       CHECK(fp.stat.ctime == now);
-      CHECK(fp.timestamp == 12345);
+      CHECK(fp.racily_clean == false);
       CHECK(fp.hash == fs.hashSymlink("link"));
       CHECK(fp.stat.couldAccess());
       CHECK(!fp.stat.isDir());
+    }
+
+    SECTION("racily clean") {
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, now, "a");
+
+      CHECK(file_id == FileId(fs.lstat("a")));
+      CHECK(fp.racily_clean == true);
+    }
+
+    SECTION("racily clean in the future") {
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, now - 1, "a");
+
+      CHECK(file_id == FileId(fs.lstat("a")));
+      CHECK(fp.racily_clean == true);
     }
   }
 

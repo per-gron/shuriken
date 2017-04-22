@@ -73,9 +73,10 @@ struct Fingerprint {
 
   Stat stat;
   /**
-   * Timestamp of when the Fingerprint was taken.
+   * True if the fingeprint was taken at the same time as the file's mtime or
+   * ctime.
    */
-  time_t timestamp = 0;
+  bool racily_clean = false;
   Hash hash;
 
   bool operator==(const Fingerprint &other) const;
@@ -157,7 +158,7 @@ struct hash<shk::Fingerprint> {
   using result_type = std::size_t;
 
   result_type operator()(const argument_type &f) const {
-    return hash<shk::Hash>()(f.hash) ^ f.timestamp;
+    return hash<shk::Hash>()(f.hash) ^ f.racily_clean;
   }
 };
 
