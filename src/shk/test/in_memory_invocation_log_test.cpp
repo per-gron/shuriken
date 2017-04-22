@@ -41,16 +41,35 @@ TEST_CASE("InMemoryInvocationLog") {
 
   SECTION("Commands") {
     SECTION("Empty") {
-      log.ranCommand(hash, {}, {}, {}, {});
+      log.ranCommand(hash, 0, {}, {}, {}, {});
       CHECK(log.entries().count(hash) == 1);
       log.cleanedCommand(hash);
       CHECK(log.entries().empty());
     }
 
+    SECTION("Timestamp") {
+      log.ranCommand(
+          hash,
+          321,
+          {},
+          {},
+          {},
+          {});
+      CHECK(log.entries().size() == 1);
+      REQUIRE(log.entries().count(hash) == 1);
+      const auto &entry = log.entries().begin()->second;
+      CHECK(entry.timestamp == 321);
+    }
+
     SECTION("Input") {
       fs.writeFile("file", "");
       log.ranCommand(
-          hash, {}, {}, { "file" }, { takeFingerprint(fs, 0, "file").first });
+          hash,
+          0,
+          {},
+          {},
+          { "file" },
+          { takeFingerprint(fs, 0, "file").first });
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
@@ -65,9 +84,9 @@ TEST_CASE("InMemoryInvocationLog") {
 
       const auto fp = takeFingerprint(fs, 0, "file").first;
       log.ranCommand(
-          hash, { "file" }, { fp }, { "file" }, { fp });
+          hash, 0, { "file" }, { fp }, { "file" }, { fp });
       log.ranCommand(
-          hash_2, {}, {}, { "file" }, { fp });
+          hash_2, 0, {}, {}, { "file" }, { fp });
 
       const auto invocations = log.invocations();
       REQUIRE(invocations.fingerprints.size() == 1);
@@ -79,7 +98,7 @@ TEST_CASE("InMemoryInvocationLog") {
     SECTION("IgnoreDir") {
       fs.mkdir("dir");
       log.ranCommand(
-          hash, {}, {}, { "dir" }, { takeFingerprint(fs, 0, "dir").first });
+          hash, 0, {}, {}, { "dir" }, { takeFingerprint(fs, 0, "dir").first });
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
@@ -90,7 +109,7 @@ TEST_CASE("InMemoryInvocationLog") {
     SECTION("OutputDir") {
       fs.mkdir("dir");
       log.ranCommand(
-          hash, { "dir" }, { takeFingerprint(fs, 0, "dir").first }, {}, {});
+          hash, 0, { "dir" }, { takeFingerprint(fs, 0, "dir").first }, {}, {});
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
@@ -103,6 +122,7 @@ TEST_CASE("InMemoryInvocationLog") {
       fs.mkdir("dir");
       log.ranCommand(
           hash,
+          0,
           { "dir", "file" },
           {
               takeFingerprint(fs, 0, "dir").first,
@@ -135,9 +155,11 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("Commands") {
-      log.ranCommand(hash, {}, {}, {}, {});
-      CHECK(log.invocations().entries.size() == 1);
-      CHECK(log.invocations().entries.count(hash) == 1);
+      log.ranCommand(hash, 543, {}, {}, {}, {});
+      auto invocations = log.invocations();
+      CHECK(invocations.entries.size() == 1);
+      CHECK(invocations.entries.count(hash) == 1);
+      CHECK(invocations.entries[hash].timestamp == 543);
 
       log.cleanedCommand(hash);
       CHECK(log.invocations().entries.empty());

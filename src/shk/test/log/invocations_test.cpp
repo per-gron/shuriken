@@ -21,6 +21,15 @@ TEST_CASE("Invocations") {
       CHECK(!(a != b));
     }
 
+    SECTION("Timestamp") {
+      a.timestamp++;
+
+      CHECK(!(b == a));
+      CHECK(!(a == b));
+      CHECK(b != a);
+      CHECK(a != b);
+    }
+
     SECTION("InputFiles") {
       a.input_files.push_back(0);
 
@@ -143,6 +152,20 @@ TEST_CASE("Invocations") {
       CHECK(a == b);
       CHECK(!(b != a));
       CHECK(!(a != b));
+    }
+
+    SECTION("EntriesDifferentTimestamps") {
+      Invocations b;
+      Invocations::Entry b_entry;
+      b_entry.timestamp = 32;
+      b.entries.emplace(Hash(), b_entry);
+
+      a.entries.emplace(Hash(), Invocations::Entry());
+
+      CHECK(!(b == a));
+      CHECK(!(a == b));
+      CHECK(b != a);
+      CHECK(a != b);
     }
 
     SECTION("EntriesDifferentOutputCounts") {

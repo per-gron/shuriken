@@ -32,14 +32,25 @@ void sortInvocations(Invocations &invocations) {
 void ranCommand(
     InvocationLog &log,
     const Hash &build_step_hash,
+    time_t timestamp,
     std::vector<std::string> &&output_files,
     std::vector<std::string> &&input_files) {
   log.ranCommand(
       build_step_hash,
+      timestamp,
       std::move(output_files),
       log.fingerprintFiles(output_files),
       std::move(input_files),
       log.fingerprintFiles(input_files));
+}
+
+void ranCommand(
+    InvocationLog &log,
+    const Hash &build_step_hash,
+    std::vector<std::string> &&output_files,
+    std::vector<std::string> &&input_files) {
+  ranCommand(
+      log, build_step_hash, 0, std::move(output_files), std::move(input_files));
 }
 
 /**
@@ -48,11 +59,13 @@ void ranCommand(
  */
 template<typename Callback>
 void roundtrip(const Callback &callback) {
-  InMemoryFileSystem fs;
-  InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
+  time_t time = 1;
+  const auto clock = [&time] { return time; };
+  InMemoryFileSystem fs(clock);
+  InMemoryInvocationLog in_memory_log(fs, clock);
   const auto persistent_log = openPersistentInvocationLog(
       fs,
-      [] { return 0; },
+      clock,
       "file",
       InvocationLogParseResult::ParseData());
   callback(*persistent_log, fs);
@@ -69,14 +82,16 @@ void roundtrip(const Callback &callback) {
 
 template<typename Callback>
 void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
-  InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
+  time_t time = 1;
+  const auto clock = [&time] { return time; };
+  InMemoryInvocationLog in_memory_log(fs, clock);
   callback(in_memory_log, fs);
   for (size_t i = 0; i < 5; i++) {
     auto result = parsePersistentInvocationLog(fs, "file");
     CHECK(result.warning == "");
     const auto persistent_log = openPersistentInvocationLog(
         fs,
-        [] { return 0; },
+        clock,
         "file",
         std::move(result.parse_data));
     callback(*persistent_log, fs);
@@ -94,11 +109,13 @@ void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
 
 template<typename Callback>
 void shouldEventuallyRequestRecompaction(const Callback &callback) {
-  InMemoryFileSystem fs;
+  time_t time = 1;
+  const auto clock = [&time] { return time; };
+  InMemoryFileSystem fs(clock);
   for (size_t attempts = 0;; attempts++) {
     const auto persistent_log = openPersistentInvocationLog(
         fs,
-        [] { return 0; },
+        clock,
         "file",
         InvocationLogParseResult::ParseData());
     callback(*persistent_log, fs);
@@ -116,22 +133,24 @@ void shouldEventuallyRequestRecompaction(const Callback &callback) {
 
 template<typename Callback>
 void recompact(const Callback &callback, int run_times = 5) {
-  InMemoryFileSystem fs;
-  InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
+  time_t time = 1;
+  const auto clock = [&time] { return time; };
+  InMemoryFileSystem fs(clock);
+  InMemoryInvocationLog in_memory_log(fs, clock);
   callback(in_memory_log, fs);
   for (size_t i = 0; i < run_times; i++) {
     auto result = parsePersistentInvocationLog(fs, "file");
     CHECK(result.warning == "");
     const auto persistent_log = openPersistentInvocationLog(
         fs,
-        [] { return 0; },
+        clock,
         "file",
         std::move(result.parse_data));
     callback(*persistent_log, fs);
   }
   auto parse_data = recompactPersistentInvocationLog(
       fs,
-      [] { return 0; },
+      clock,
       parsePersistentInvocationLog(fs, "file").invocations,
       "file");
 
@@ -193,7 +212,9 @@ void recompact(const Callback &callback, int run_times = 5) {
 
 template<typename Callback>
 void warnOnTruncatedInput(const Callback &callback) {
-  InMemoryFileSystem fs;
+  time_t time = 1;
+  const auto clock = [&time] { return time; };
+  InMemoryFileSystem fs(clock);
 
   const size_t kFileSignatureSize = 16;
 
@@ -206,7 +227,7 @@ void warnOnTruncatedInput(const Callback &callback) {
 
     fs.unlink("file");
     const auto persistent_log = openPersistentInvocationLog(
-        fs, [] { return 0; }, "file", InvocationLogParseResult::ParseData());
+        fs, clock, "file", InvocationLogParseResult::ParseData());
     callback(*persistent_log, fs);
     const auto stat = fs.stat("file");
     const auto truncated_size = stat.metadata.size - i;
@@ -312,6 +333,23 @@ TEST_CASE("PersistentInvocationLog") {
       CHECK(result.invocations.entries.begin()->second.input_files.empty());
     }
 
+    SECTION("InvocationWriteTimestamp") {
+      const auto persistent_log = openPersistentInvocationLog(
+          fs,
+          [] { return 0; },
+          "file",
+          InvocationLogParseResult::ParseData());
+
+      ranCommand(
+          *persistent_log, hash_0, 123, {}, {});
+
+      const auto result = parsePersistentInvocationLog(fs, "file");
+      CHECK(result.warning == "");
+      REQUIRE(result.invocations.entries.size() == 1);
+      CHECK(result.invocations.entries.begin()->first == hash_0);
+      CHECK(result.invocations.entries.begin()->second.timestamp == 123);
+    }
+
     SECTION("Empty") {
       const auto callback = [](InvocationLog &log, FileSystem &fs) {};
       // Don't use the shouldEventuallyRequestRecompaction test
@@ -337,7 +375,7 @@ TEST_CASE("PersistentInvocationLog") {
         fs.writeFile("test_file", "hello!");
         CHECK(
             log.fingerprint("test_file") ==
-            takeFingerprint(fs, 0, "test_file"));
+            takeFingerprint(fs, 1, "test_file"));
         ranCommand(
             log,
             hash_0,
@@ -349,6 +387,13 @@ TEST_CASE("PersistentInvocationLog") {
     SECTION("InvocationNoFiles") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
         ranCommand(log, hash_0, {}, {});
+      });
+    }
+
+    SECTION("EntryTimestamp") {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
+        ranCommand(log, hash_0, 1, {}, {});
+        ranCommand(log, hash_1, 2, {}, {});
       });
     }
 
@@ -410,6 +455,7 @@ TEST_CASE("PersistentInvocationLog") {
     SECTION("InvocationDifferentFingerprintsSameStep") {
       // This test requires recompaction to work; PersistentInvocationLog
       // will not remove the overwritten fingerprints until a recompaction.
+
       recompact([&](InvocationLog &log, FileSystem &fs) {
         for (int i = 0; i < 2; i++) {
           std::vector<std::string> output_files = { "aah" };
@@ -421,6 +467,7 @@ TEST_CASE("PersistentInvocationLog") {
 
           log.ranCommand(
               hash_0,
+              1,
               std::move(output_files),
               std::move(output_fingerprints),
               {},
@@ -441,6 +488,7 @@ TEST_CASE("PersistentInvocationLog") {
           hash_0.data.data()[0] = i;
           log.ranCommand(
               hash_0,
+              0,
               std::move(output_files),
               std::move(output_fingerprints),
               {},
@@ -470,6 +518,7 @@ TEST_CASE("PersistentInvocationLog") {
           *reinterpret_cast<int *>(hash_0.data.data()) = i;
           log.ranCommand(
               hash_0,
+              1,
               std::move(output_files),
               std::move(output_fingerprints),
               {},

@@ -182,6 +182,7 @@ class PersistentInvocationLog : public InvocationLog {
 
   void ranCommand(
       const Hash &build_step_hash,
+      time_t fingerprint_timestamp,
       std::vector<std::string> &&output_files,
       std::vector<Fingerprint> &&output_fingerprints,
       std::vector<std::string> &&input_files_map,
@@ -198,12 +199,14 @@ class PersistentInvocationLog : public InvocationLog {
     const auto total_entries = output_files.size() + input_files.size();
     const uint32_t size =
         sizeof(Hash) +
+        sizeof(time_t) +
         sizeof(uint32_t) +
         sizeof(uint32_t) * total_entries;
 
     writeHeader(size, InvocationLogEntryType::INVOCATION);
 
     write(build_step_hash);
+    write(fingerprint_timestamp);
     write(static_cast<uint32_t>(output_files.size()));
 
     writeFiles(output_files);
@@ -230,6 +233,7 @@ class PersistentInvocationLog : public InvocationLog {
    */
   void relogCommand(
       const Hash &build_step_hash,
+      time_t fingerprint_timestamp,
       const std::vector<std::pair<std::string, Fingerprint>> &fingerprints,
       const std::vector<size_t> &output_files,
       const std::vector<size_t> &input_files) {
@@ -251,6 +255,7 @@ class PersistentInvocationLog : public InvocationLog {
 
     ranCommand(
         build_step_hash,
+        fingerprint_timestamp,
         std::move(output_paths),
         std::move(output_fingerprints),
         std::move(input_paths),
@@ -549,7 +554,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
           result.invocations.fingerprints.emplace_back(
               path, value.fingerprint);
         } else {
-          throw ParseError("invalid invocation log: truncated invocation");
+          throw ParseError("invalid invocation log: truncated fingerprint");
         }
         break;
       }
@@ -557,6 +562,8 @@ InvocationLogParseResult parsePersistentInvocationLog(
       case InvocationLogEntryType::INVOCATION: {
         const auto hash = read<Hash>(entry);
         entry = advance(entry, sizeof(hash));
+        const auto timestamp = read<time_t>(entry);
+        entry = advance(entry, sizeof(timestamp));
         const auto outputs = read<uint32_t>(entry);
         entry = advance(entry, sizeof(outputs));
         const auto output_size = sizeof(uint32_t) * outputs;
@@ -564,13 +571,14 @@ InvocationLogParseResult parsePersistentInvocationLog(
           throw ParseError("invalid invocation log: truncated invocation");
         }
 
-        result.invocations.entries[hash] = {
+        result.invocations.entries[hash] = Invocations::Entry(
+            timestamp,
             readFingerprints(
                 fingerprints_by_id,
                 string_view(entry.data(), output_size)),
             readFingerprints(
                 fingerprints_by_id,
-                advance(entry, output_size)) };
+                advance(entry, output_size)));
         break;
       }
 
@@ -657,6 +665,7 @@ InvocationLogParseResult::ParseData recompactPersistentInvocationLog(
   for (const auto &entry : invocations.entries) {
     log.relogCommand(
         entry.first,
+        entry.second.timestamp,
         invocations.fingerprints,
         entry.second.output_files,
         entry.second.input_files);

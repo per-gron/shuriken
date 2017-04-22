@@ -56,6 +56,8 @@ class InvocationLog {
    * the given hash has been successfully run with information about outputs and
    * dependencies.
    *
+   * fingerprint_timestamp is the timestamp of when the fingerprints were taken.
+   *
    * The InvocationLog will fingerprint the provided input paths, reusing
    * existing fingerprints if possible.
    *
@@ -70,6 +72,7 @@ class InvocationLog {
    */
   virtual void ranCommand(
       const Hash &build_step_hash,
+      time_t fingerprint_timestamp,
       std::vector<std::string> &&output_files,
       std::vector<Fingerprint> &&output_fingerprints,
       std::vector<std::string> &&input_files,
