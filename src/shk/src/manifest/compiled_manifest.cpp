@@ -541,9 +541,16 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
       reinterpret_cast<const char *>(fb_builder.GetBufferPointer()),
       reinterpret_cast<const char *>(
           fb_builder.GetBufferPointer() + fb_builder.GetSize()));
+  auto buffer_view = string_view(buffer->data(), buffer->size());
 
-  const auto maybe_manifest = CompiledManifest::load(
-      string_view(buffer->data(), buffer->size()), err);
+  try {
+    file_system.writeFile(compiled_manifest_path, buffer_view);
+  } catch (const IoError &io_error) {
+    *err = std::string("failed to write compiled manifest: ") + io_error.what();
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
+  const auto maybe_manifest = CompiledManifest::load(buffer_view, err);
   if (!maybe_manifest) {
     return std::make_pair(Optional<CompiledManifest>(), nullptr);
   }

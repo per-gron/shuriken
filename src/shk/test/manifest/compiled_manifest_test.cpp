@@ -1111,6 +1111,45 @@ TEST_CASE("CompiledManifest") {
       CHECK(!maybe_manifest);
       CHECK(err == "Dependency cycle: in -> out -> in");
     }
+
+    SECTION("write compiled manifest") {
+      const auto manifest_str =
+          "rule cmd\n"
+          "  command = cmd\n"
+          "build out: cmd in\n";
+
+      fs.writeFile("manifest", manifest_str);
+
+      std::string err;
+      CHECK(CompiledManifest::parseAndCompile(
+          fs, "manifest", "manifest.compiled", &err).first);
+      CHECK(err == "");
+
+      const auto mmap = fs.mmap("manifest.compiled");
+
+      const auto maybe_manifest = CompiledManifest::load(
+          mmap->memory(), &err);
+      CHECK(err == "");
+      REQUIRE(maybe_manifest);
+
+      REQUIRE(maybe_manifest->steps().size() == 1);
+      CHECK(maybe_manifest->steps()[0].command() == "cmd");
+    }
+
+    SECTION("fail to write compiled manifest") {
+      const auto manifest_str =
+          "rule cmd\n"
+          "  command = cmd\n"
+          "build out: cmd in\n";
+
+      fs.writeFile("manifest", manifest_str);
+      fs.mkdir("manifest.compiled");
+
+      std::string err;
+      CHECK(!CompiledManifest::parseAndCompile(
+          fs, "manifest", "manifest.compiled", &err).first);
+      CHECK(err != "");
+    }
   }
 }
 

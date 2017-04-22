@@ -328,7 +328,7 @@ bool ShurikenMain::parseManifest(
     const std::string &input_file, std::string *err) {
   std::tie(_compiled_manifest, _manifest_buffer) =
       CompiledManifest::parseAndCompile(
-          _file_system, input_file, ".shk_manifest", err);
+          *_real_file_system, input_file, ".shk_manifest", err);
   return !!_compiled_manifest;
 }
 
