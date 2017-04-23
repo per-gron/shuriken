@@ -39,6 +39,12 @@ TEST_CASE("InMemoryInvocationLog") {
         takeFingerprint(fs, 0, "test_file"));
   }
 
+  SECTION("LeakMemory") {
+    CHECK(!log.hasLeakedMemory());
+    log.leakMemory();
+    CHECK(log.hasLeakedMemory());
+  }
+
   SECTION("Commands") {
     SECTION("Empty") {
       log.ranCommand(hash, {}, {}, {}, {});

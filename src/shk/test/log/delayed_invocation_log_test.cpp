@@ -160,6 +160,12 @@ TEST_CASE("DelayedInvocationLog") {
     }
   }
 
+  SECTION("LeakMemory") {
+    CHECK(!memory_log.hasLeakedMemory());
+    log->leakMemory();
+    CHECK(memory_log.hasLeakedMemory());
+  }
+
   SECTION("WriteAll") {
     SECTION("FlushPendingWrites") {
       {

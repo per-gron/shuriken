@@ -68,6 +68,20 @@ void roundtrip(const Callback &callback) {
 }
 
 template<typename Callback>
+void leak(const Callback &callback) {
+  InMemoryFileSystem fs;
+  const auto persistent_log = openPersistentInvocationLog(
+      fs,
+      [] { return 0; },
+      "file",
+      InvocationLogParseResult::ParseData());
+  callback(*persistent_log, fs);
+  persistent_log->leakMemory();
+
+  // There isn't really anything to CHECK here. It should not crash.
+}
+
+template<typename Callback>
 void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
   callback(in_memory_log, fs);
@@ -230,6 +244,7 @@ void warnOnTruncatedInput(const Callback &callback) {
 template<typename Callback>
 void writeEntries(const Callback &callback) {
   roundtrip(callback);
+  leak(callback);
   shouldEventuallyRequestRecompaction(callback);
   multipleWriteCycles(callback, InMemoryFileSystem());
   recompact(callback);

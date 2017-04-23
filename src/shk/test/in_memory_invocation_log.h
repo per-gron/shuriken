@@ -35,6 +35,7 @@ class InMemoryInvocationLog : public InvocationLog {
           throw(IoError) override;
   void cleanedCommand(
       const Hash &build_step_hash) throw(IoError) override;
+  void leakMemory() override;
 
   /**
    * Expose the contents of the in memory invocation log as an Invocations
@@ -51,8 +52,13 @@ class InMemoryInvocationLog : public InvocationLog {
     return _entries;
   }
 
+  bool hasLeakedMemory() const {
+    return _has_leaked;
+  }
+
 
  private:
+  bool _has_leaked = false;
   FileSystem &_fs;
   const Clock _clock;
   std::unordered_map<Hash, Entry> _entries;

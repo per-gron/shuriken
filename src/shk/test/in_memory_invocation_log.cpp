@@ -93,6 +93,10 @@ void InMemoryInvocationLog::cleanedCommand(
   _entries.erase(build_step_hash);
 }
 
+void InMemoryInvocationLog::leakMemory() {
+  _has_leaked = true;
+}
+
 Invocations InMemoryInvocationLog::invocations() const {
   Invocations result;
 

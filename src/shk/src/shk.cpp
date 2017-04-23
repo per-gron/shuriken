@@ -147,7 +147,9 @@ struct ShurikenMain {
         _trace_server_handle(trace_server_handle) {}
 
   void leakMemory() {
-    // Intentionally leak _invocations, to save deallocation time.
+    // Intentionally leak _invocations and things in _invocation_log to avoid
+    // deallocation work.
+    _invocation_log->leakMemory();
     new Invocations(std::move(_invocations));
   }
 

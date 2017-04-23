@@ -87,6 +87,15 @@ class InvocationLog {
       const Hash &build_step_hash) throw(IoError) = 0;
 
   /**
+   * Leak memory resources associated with this object. After calling this
+   * method, the only legal thing to do with this object is to destroy it.
+   *
+   * This method is useful at the end of a build to save time. Deallocating then
+   * is not necessary and it can take a significant amount of work.
+   */
+  virtual void leakMemory();
+
+  /**
    * Helper function that calls the fingerprint method for each of the provided
    * paths and returns the results in a vector.
    */

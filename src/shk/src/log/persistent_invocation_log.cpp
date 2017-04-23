@@ -219,6 +219,11 @@ class PersistentInvocationLog : public InvocationLog {
     _entry_count++;
   }
 
+  void leakMemory() override {
+    new PathIds(std::move(_path_ids));
+    new FingerprintIds(std::move(_fingerprint_ids));
+  }
+
   /**
    * Helper function that is useful when recompacting. This method does not
    * re-take fingerprints so it is not suitable for re-logging a racily clean

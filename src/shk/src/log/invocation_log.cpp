@@ -2,6 +2,9 @@
 
 namespace shk {
 
+void InvocationLog::leakMemory() {
+}
+
 std::vector<Fingerprint> InvocationLog::fingerprintFiles(
     const std::vector<std::string> &files) {
   std::vector<Fingerprint> ans;

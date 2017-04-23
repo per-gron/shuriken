@@ -73,6 +73,10 @@ class DelayedInvocationLog : public InvocationLog {
     _delayed_entries.push_back(std::move(entry));
   }
 
+  void leakMemory() override {
+    _inner_log->leakMemory();
+  }
+
  private:
   /**
    * Writes all the delayed entries that are strictly older than the timestamp
