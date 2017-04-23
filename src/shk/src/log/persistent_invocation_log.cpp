@@ -113,10 +113,10 @@ T readEntryById(
   return *entries_by_id[entry_id];
 }
 
-std::vector<size_t> readFingerprints(
-    const std::vector<Optional<size_t>> &fingerprints_by_id,
+std::vector<uint32_t> readFingerprints(
+    const std::vector<Optional<uint32_t>> &fingerprints_by_id,
     string_view view) {
-  std::vector<size_t> result;
+  std::vector<uint32_t> result;
   result.reserve(view.size() / sizeof(uint32_t));
 
   for (; view.size(); view = advance(view, sizeof(uint32_t))) {
@@ -236,8 +236,8 @@ class PersistentInvocationLog : public InvocationLog {
   void relogCommand(
       const Hash &build_step_hash,
       const std::vector<std::pair<std::string, Fingerprint>> &fingerprints,
-      const std::vector<size_t> &output_files,
-      const std::vector<size_t> &input_files) {
+      const std::vector<uint32_t> &output_files,
+      const std::vector<uint32_t> &input_files) {
     std::vector<std::string> output_paths;
     std::vector<Fingerprint> output_fingerprints;
     for (const auto &file_idx : output_files) {
@@ -344,9 +344,9 @@ class PersistentInvocationLog : public InvocationLog {
     _stream->write(reinterpret_cast<const uint8_t *>(&val), sizeof(val), 1);
   }
 
-  void writeHeader(size_t size, InvocationLogEntryType type) {
+  void writeHeader(uint32_t size, InvocationLogEntryType type) {
     assert((size & kInvocationLogEntryTypeMask) == 0);
-    write(static_cast<uint32_t>(size) | static_cast<uint32_t>(type));
+    write(size | static_cast<uint32_t>(type));
   }
 
   void writePathEntry(const std::string &path) {
@@ -501,7 +501,7 @@ void parseFingerprint(
     string_view entry,
     InvocationLogParseResult &result,
     std::vector<Optional<std::string>> &paths_by_id,
-    std::vector<Optional<size_t>> &fingerprints_by_id) throw(ParseError) {
+    std::vector<Optional<uint32_t>> &fingerprints_by_id) throw(ParseError) {
   const auto path = readPath(paths_by_id, entry);
   entry = advance(entry, sizeof(uint32_t));
 
@@ -521,7 +521,7 @@ void parseFingerprint(
 void parseInvocation(
     string_view entry,
     InvocationLogParseResult &result,
-    std::vector<Optional<size_t>> &fingerprints_by_id) throw(ParseError) {
+    std::vector<Optional<uint32_t>> &fingerprints_by_id) throw(ParseError) {
   const auto hash = read<Hash>(entry);
   entry = advance(entry, sizeof(hash));
   const auto outputs = read<uint32_t>(entry);
@@ -595,9 +595,9 @@ InvocationLogParseResult parsePersistentInvocationLog(
   // empty.
   std::vector<Optional<std::string>> paths_by_id;
   // "Map" from fingerprint entry id to index in Invocations::fingerprints.
-  // Indices that refer to entries that have been read but arent fingerprint
+  // Indices that refer to entries that have been read but aren't fingerprint
   // entries are empty.
-  std::vector<Optional<size_t>> fingerprints_by_id;
+  std::vector<Optional<uint32_t>> fingerprints_by_id;
 
   auto &entry_count = result.parse_data.entry_count;
 

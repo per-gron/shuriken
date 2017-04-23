@@ -49,8 +49,8 @@ bool operator==(const Invocations &a, const Invocations &b) {
     const auto files_are_same = [&](
         const std::vector<std::pair<std::string, Fingerprint>> &a_fps,
         const std::vector<std::pair<std::string, Fingerprint>> &b_fps,
-        const std::vector<size_t> &a_files,
-        const std::vector<size_t> &b_files) {
+        const std::vector<uint32_t> &a_files,
+        const std::vector<uint32_t> &b_files) {
       if (a_files.size() != b_files.size()) {
         return false;
       }

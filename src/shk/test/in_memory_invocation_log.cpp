@@ -109,12 +109,12 @@ Invocations InMemoryInvocationLog::invocations() const {
   }
 
   // For deduplication
-  std::unordered_map<std::string, std::unordered_map<Fingerprint, size_t>>
+  std::unordered_map<std::string, std::unordered_map<Fingerprint, uint32_t>>
       fp_paths;
 
   const auto files = [&](
       const std::vector<std::pair<std::string, Fingerprint>> &files) {
-    std::vector<size_t> out;
+    std::vector<uint32_t> out;
     for (const auto &file : files) {
       auto &fps = fp_paths[file.first];
       const auto fps_it = fps.find(file.second);

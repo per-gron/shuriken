@@ -33,8 +33,8 @@ struct Invocations {
    * Contains indices into the fingerprints vector.
    */
   struct Entry {
-    std::vector<size_t> output_files;
-    std::vector<size_t> input_files;
+    std::vector<uint32_t> output_files;
+    std::vector<uint32_t> input_files;
   };
 
   /**
