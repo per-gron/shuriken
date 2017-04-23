@@ -7,6 +7,51 @@
 #include "util.h"
 
 namespace shk {
+namespace {
+
+/**
+ * Helper function.
+ *
+ * The return value has one entry per worker thread. Each vector<bool> is a
+ * "map" from fingerprint index (in the fingerprints vector) to a boolean
+ * indicating whether it is used by an actual entry.
+ */
+std::vector<std::vector<bool>> findUsedFingerprints(
+    const std::vector<std::pair<std::string, Fingerprint>> &fingerprints,
+    const std::vector<const Invocations::Entry *> &entry_vec) {
+  const int num_threads = guessParallelism();
+  std::vector<std::vector<bool>> used_fingerprints(num_threads);
+  std::atomic<int> next_entry(0);
+  std::vector<std::thread> threads;
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(
+        [i, &entry_vec, &next_entry, &used_fingerprints, &fingerprints] {
+          used_fingerprints[i].resize(fingerprints.size());
+          auto &fps = used_fingerprints[i];
+
+          for (;;) {
+            int entry_idx = next_entry++;
+            if (entry_idx >= entry_vec.size()) {
+              break;
+            }
+            const auto *entry = entry_vec[entry_idx];
+            for (const auto idx : entry->output_files) {
+              fps[idx] = true;
+            }
+            for (const auto idx : entry->input_files) {
+              fps[idx] = true;
+            }
+          }
+        });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  return used_fingerprints;
+}
+
+}  // anonymous namespace
 
 int Invocations::countUsedFingerprints() const {
   std::vector<const Entry *> entry_vec;
@@ -14,36 +59,7 @@ int Invocations::countUsedFingerprints() const {
     entry_vec.push_back(&entry.second);
   }
 
-  const int num_threads = guessParallelism();
-  // used_fingerprints has one entry per worker thread. Each of those is a "map"
-  // from fingerprint index (in the fingerprints vector) to a boolean indicating
-  // whether it is used by an actual entry.
-  std::vector<std::vector<bool>> used_fingerprints(num_threads);
-  std::atomic<int> next_entry(0);
-  std::vector<std::thread> threads;
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back([this, i, &entry_vec, &next_entry, &used_fingerprints] {
-      used_fingerprints[i].resize(fingerprints.size());
-      auto &fps = used_fingerprints[i];
-
-      for (;;) {
-        int entry_idx = next_entry++;
-        if (entry_idx >= entry_vec.size()) {
-          break;
-        }
-        const auto *entry = entry_vec[entry_idx];
-        for (const auto idx : entry->output_files) {
-          fps[idx] = true;
-        }
-        for (const auto idx : entry->input_files) {
-          fps[idx] = true;
-        }
-      }
-    });
-  }
-  for (auto &thread : threads) {
-    thread.join();
-  }
+  const auto used_fingerprints = findUsedFingerprints(fingerprints, entry_vec);
 
   int count = 0;
   for (int i = 0; i < fingerprints.size(); i++) {
@@ -54,6 +70,7 @@ int Invocations::countUsedFingerprints() const {
       }
     }
   }
+
   return count;
 }
 
