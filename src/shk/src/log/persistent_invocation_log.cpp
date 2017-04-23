@@ -464,7 +464,104 @@ class PersistentInvocationLog : public InvocationLog {
   size_t _entry_count;
 };
 
+void parsePath(
+    string_view entry,
+    InvocationLogParseResult &result,
+    std::vector<Optional<std::string>> &paths_by_id) throw(ParseError) {
+  paths_by_id.resize(result.parse_data.entry_count + 1);
+  if (strnlen(entry.data(), entry.size()) == entry.size()) {
+    throw ParseError(
+        "invalid invocation log: Encountered non null terminated path");
+  }
+  // Don't use std::string(entry) because it could make the string contain
+  // trailing \0s
+  auto path_string = std::string(entry.data());
+  result.parse_data.path_ids[path_string] = result.parse_data.entry_count;
+  paths_by_id[result.parse_data.entry_count] = std::move(path_string);
 }
+
+void parseCreatedDir(
+    string_view entry,
+    FileSystem &file_system,
+    InvocationLogParseResult &result,
+    std::vector<Optional<std::string>> &paths_by_id)
+        throw(IoError, ParseError) {
+  const auto path = readPath(paths_by_id, entry);
+  const auto stat = file_system.lstat(path);
+  if (stat.result == 0) {
+    // Only add the directory to the resulting Invocations object if the
+    // file exists. For more info see Invocations::created_directories
+    const auto file_id = FileId(stat);
+    result.invocations.created_directories.emplace(
+        file_id, path);
+  }
+}
+
+void parseFingerprint(
+    string_view entry,
+    InvocationLogParseResult &result,
+    std::vector<Optional<std::string>> &paths_by_id,
+    std::vector<Optional<size_t>> &fingerprints_by_id) throw(ParseError) {
+  const auto path = readPath(paths_by_id, entry);
+  entry = advance(entry, sizeof(uint32_t));
+
+  FingerprintIdsValue value;
+  value.record_id = result.parse_data.entry_count;
+  value.fingerprint =
+      *reinterpret_cast<const Fingerprint *>(entry.data());
+  result.parse_data.fingerprint_ids[path] = value;
+
+  fingerprints_by_id.resize(result.parse_data.entry_count + 1);
+  fingerprints_by_id[result.parse_data.entry_count] =
+      result.invocations.fingerprints.size();
+  result.invocations.fingerprints.emplace_back(
+      path, value.fingerprint);
+}
+
+void parseInvocation(
+    string_view entry,
+    InvocationLogParseResult &result,
+    std::vector<Optional<size_t>> &fingerprints_by_id) throw(ParseError) {
+  const auto hash = read<Hash>(entry);
+  entry = advance(entry, sizeof(hash));
+  const auto outputs = read<uint32_t>(entry);
+  entry = advance(entry, sizeof(outputs));
+  const auto output_size = sizeof(uint32_t) * outputs;
+  if (entry.size() < output_size) {
+    throw ParseError("invalid invocation log: truncated invocation");
+  }
+
+  result.invocations.entries[hash] = {
+      readFingerprints(
+          fingerprints_by_id,
+          string_view(entry.data(), output_size)),
+      readFingerprints(
+          fingerprints_by_id,
+          advance(entry, output_size)) };
+}
+
+void parseDeleted(
+    string_view entry,
+    FileSystem &file_system,
+    InvocationLogParseResult &result,
+    std::vector<Optional<std::string>> &paths_by_id) throw(ParseError) {
+  if (entry.size() == sizeof(uint32_t)) {
+    // Deleted directory
+    const auto path = readPath(paths_by_id, entry);
+    const auto stat = file_system.lstat(path);
+    if (stat.result == 0) {
+      const auto file_id = FileId(stat);
+      result.invocations.created_directories.erase(file_id);
+    }
+  } else if (entry.size() == sizeof(Hash)) {
+    // Deleted invocation
+    result.invocations.entries.erase(read<Hash>(entry));
+  } else {
+    throw ParseError("invalid invocation log: invalid deleted entry");
+  }
+}
+
+}  // anonymous namespace
 
 InvocationLogParseResult parsePersistentInvocationLog(
     FileSystem &file_system,
@@ -513,46 +610,16 @@ InvocationLogParseResult parsePersistentInvocationLog(
 
       switch (header.entryType()) {
       case InvocationLogEntryType::PATH: {
-        paths_by_id.resize(entry_count + 1);
-        if (strnlen(entry.data(), entry.size()) == entry.size()) {
-          throw ParseError(
-              "invalid invocation log: Encountered non null terminated path");
-        }
-        // Don't use entry.asString() because it could make the string contain
-        // trailing \0s
-        auto path_string = std::string(entry.data());
-        result.parse_data.path_ids[path_string] = entry_count;
-        paths_by_id[entry_count] = std::move(path_string);
+        parsePath(entry, result, paths_by_id);
         break;
       }
 
       case InvocationLogEntryType::CREATED_DIR_OR_FINGERPRINT: {
         const bool is_created_dir = entry_size == sizeof(uint32_t);
         if (is_created_dir) {
-          const auto path = readPath(paths_by_id, entry);
-          const auto stat = file_system.lstat(path);
-          if (stat.result == 0) {
-            // Only add the directory to the resulting Invocations object if the
-            // file exists. For more info see Invocations::created_directories
-            const auto file_id = FileId(stat);
-            result.invocations.created_directories.emplace(
-                file_id, path);
-          }
+          parseCreatedDir(entry, file_system, result, paths_by_id);
         } else if (entry_size == sizeof(uint32_t) + sizeof(Fingerprint)) {
-          const auto path = readPath(paths_by_id, entry);
-          entry = advance(entry, sizeof(uint32_t));
-
-          FingerprintIdsValue value;
-          value.record_id = entry_count;
-          value.fingerprint =
-              *reinterpret_cast<const Fingerprint *>(entry.data());
-          result.parse_data.fingerprint_ids[path] = value;
-
-          fingerprints_by_id.resize(entry_count + 1);
-          fingerprints_by_id[entry_count] =
-              result.invocations.fingerprints.size();
-          result.invocations.fingerprints.emplace_back(
-              path, value.fingerprint);
+          parseFingerprint(entry, result, paths_by_id, fingerprints_by_id);
         } else {
           throw ParseError("invalid invocation log: truncated invocation");
         }
@@ -560,40 +627,12 @@ InvocationLogParseResult parsePersistentInvocationLog(
       }
 
       case InvocationLogEntryType::INVOCATION: {
-        const auto hash = read<Hash>(entry);
-        entry = advance(entry, sizeof(hash));
-        const auto outputs = read<uint32_t>(entry);
-        entry = advance(entry, sizeof(outputs));
-        const auto output_size = sizeof(uint32_t) * outputs;
-        if (entry.size() < output_size) {
-          throw ParseError("invalid invocation log: truncated invocation");
-        }
-
-        result.invocations.entries[hash] = {
-            readFingerprints(
-                fingerprints_by_id,
-                string_view(entry.data(), output_size)),
-            readFingerprints(
-                fingerprints_by_id,
-                advance(entry, output_size)) };
+        parseInvocation(entry, result, fingerprints_by_id);
         break;
       }
 
       case InvocationLogEntryType::DELETED: {
-        if (entry.size() == sizeof(uint32_t)) {
-          // Deleted directory
-          const auto path = readPath(paths_by_id, entry);
-          const auto stat = file_system.lstat(path);
-          if (stat.result == 0) {
-            const auto file_id = FileId(stat);
-            result.invocations.created_directories.erase(file_id);
-          }
-        } else if (entry.size() == sizeof(Hash)) {
-          // Deleted invocation
-          result.invocations.entries.erase(read<Hash>(entry));
-        } else {
-          throw ParseError("invalid invocation log: invalid deleted entry");
-        }
+        parseDeleted(entry, file_system, result, paths_by_id);
         break;
       }
       }
