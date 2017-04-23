@@ -146,6 +146,11 @@ struct ShurikenMain {
         _paths(_file_system),
         _trace_server_handle(trace_server_handle) {}
 
+  void leakMemory() {
+    // Intentionally leak _invocations, to save deallocation time.
+    new Invocations(std::move(_invocations));
+  }
+
   bool parseManifest(const std::string &input_file, std::string *err);
 
   std::string invocationLogPath() const;
@@ -704,7 +709,15 @@ int real_main(int argc, char **argv) {
       return 1;
     }
 
-    return shk.runBuild(argc, argv);
+    const auto result = shk.runBuild(argc, argv);
+
+    // When Shuriken is done, it will have a bunch of memory allocated, and
+    // gracefully deallocating it takes a real amount of work, time that is just
+    // not necessary. When this is true, Shuriken will intentionally leak some
+    // of this memory to save time.
+    shk.leakMemory();
+
+    return result;
   }
 
   error("manifest '%s' still dirty after %d tries\n",
