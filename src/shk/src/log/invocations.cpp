@@ -1,22 +1,60 @@
 #include "log/invocations.h"
 
+#include <atomic>
+#include <numeric>
+#include <thread>
+
+#include "util.h"
+
 namespace shk {
 
 int Invocations::countUsedFingerprints() const {
-  // "Map" from fingerprint index (in the fingerprints vector) to a boolean
-  // indicating whether it is used by an actual entry.
-  std::vector<bool> used_fingerprints(fingerprints.size());
-
+  std::vector<const Entry *> entry_vec;
   for (const auto &entry : entries) {
-    for (const auto idx : entry.second.output_files) {
-      used_fingerprints[idx] = true;
-    }
-    for (const auto idx : entry.second.input_files) {
-      used_fingerprints[idx] = true;
-    }
+    entry_vec.push_back(&entry.second);
   }
 
-  return std::count(used_fingerprints.begin(), used_fingerprints.end(), true);
+  const int num_threads = guessParallelism();
+  // used_fingerprints has one entry per worker thread. Each of those is a "map"
+  // from fingerprint index (in the fingerprints vector) to a boolean indicating
+  // whether it is used by an actual entry.
+  std::vector<std::vector<bool>> used_fingerprints(num_threads);
+  std::atomic<int> next_entry(0);
+  std::vector<std::thread> threads;
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back([this, i, &entry_vec, &next_entry, &used_fingerprints] {
+      used_fingerprints[i].resize(fingerprints.size());
+      auto &fps = used_fingerprints[i];
+
+      for (;;) {
+        int entry_idx = next_entry++;
+        if (entry_idx >= entry_vec.size()) {
+          break;
+        }
+        const auto *entry = entry_vec[entry_idx];
+        for (const auto idx : entry->output_files) {
+          fps[idx] = true;
+        }
+        for (const auto idx : entry->input_files) {
+          fps[idx] = true;
+        }
+      }
+    });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  int count = 0;
+  for (int i = 0; i < fingerprints.size(); i++) {
+    for (int j = 0; j < used_fingerprints.size(); j++) {
+      if (used_fingerprints[j][i]) {
+        count++;
+        break;
+      }
+    }
+  }
+  return count;
 }
 
 bool operator==(
