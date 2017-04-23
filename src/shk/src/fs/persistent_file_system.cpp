@@ -225,7 +225,9 @@ class PersistentFileSystem : public FileSystem {
   }
 
   std::string readFile(nt_string_view path) throw(IoError) override {
+    const auto file_stat = stat(path);
     std::string contents;
+    contents.reserve(file_stat.metadata.size);
     processFile(path, [&contents](const char *buf, size_t len) {
       contents.append(buf, len);
     });
