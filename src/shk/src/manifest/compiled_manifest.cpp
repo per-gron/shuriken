@@ -513,12 +513,62 @@ Optional<time_t> CompiledManifest::minMtime(
   });
 }
 
+namespace {
+
+std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
+    loadPrecompiledManifest(
+        FileSystem &file_system,
+        const std::string &compiled_manifest_path,
+        std::string *err) {
+  const auto compiled_stat = file_system.stat(compiled_manifest_path);
+  if (compiled_stat.result == ENOENT) {
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
+  std::shared_ptr<std::string> buffer;
+  try {
+    buffer = std::make_shared<std::string>(
+        file_system.readFile(compiled_manifest_path));
+  } catch (const IoError &io_error) {
+    // A more severe error than just a missing file is treated as an error,
+    // for example if the path points to a directory.
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
+  std::string discard_err;
+  auto manifest = CompiledManifest::load(*buffer, &discard_err);
+  if (!manifest) {
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
+  auto input_mtime = CompiledManifest::maxMtime(
+      file_system, manifest->manifestFiles());
+
+  if (!input_mtime || *input_mtime >= compiled_stat.timestamps.mtime) {
+    // The compiled manifest is out of date or has equal timestamps, which means
+    // we don't know if it's out of date or not. Recompile just to be sure.
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
+  return std::make_pair(Optional<CompiledManifest>(manifest), buffer);
+}
+
+}  // anonymous namespace
+
 std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
     CompiledManifest::parseAndCompile(
         FileSystem &file_system,
         const std::string &manifest_path,
         const std::string &compiled_manifest_path,
         std::string *err) {
+  auto precompiled = loadPrecompiledManifest(
+      file_system, compiled_manifest_path, err);
+  if (precompiled.first) {
+    return precompiled;
+  } else if (!err->empty()) {
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
   Paths paths(file_system);
   RawManifest raw_manifest;
   try {

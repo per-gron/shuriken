@@ -1046,6 +1046,60 @@ TEST_CASE("CompiledManifest") {
   }
 
   SECTION("parseAndCompile") {
+    std::vector<std::string> compiled_bufs;
+    const auto parse_compiled_manifest = [&](const nt_string_view path) {
+      compiled_bufs.emplace_back(fs.readFile(path));
+
+      std::string err;
+      const auto maybe_manifest = CompiledManifest::load(
+          compiled_bufs.back(), &err);
+      CHECK(err == "");
+      REQUIRE(maybe_manifest);
+      return *maybe_manifest;
+    };
+
+    const auto check_first_step_cmd = [](
+        CompiledManifest manifest, nt_string_view cmd) {
+      REQUIRE(manifest.steps().size() >= 1);
+      CHECK(manifest.steps()[0].command() == cmd);
+    };
+
+    std::vector<std::shared_ptr<void>> memory_bufs;
+    const auto parse_and_compile = [&](
+        const std::string &path,
+        const std::string &compiled_path) {
+      std::string err;
+      Optional<CompiledManifest> maybe_manifest;
+      std::shared_ptr<void> buffer;
+      std::tie(maybe_manifest, buffer) = CompiledManifest::parseAndCompile(
+          fs, path, compiled_path, &err);
+      CHECK(buffer);
+      CHECK(err == "");
+      REQUIRE(maybe_manifest);
+      memory_bufs.push_back(buffer);
+      return *maybe_manifest;
+    };
+
+    const auto parse_and_compile_fail = [&](
+        const std::string &path,
+        const std::string &compiled_path) {
+      const bool compiled_manifest_existed_before =
+          fs.stat(compiled_path).result == 0;
+
+      std::string err;
+      Optional<CompiledManifest> maybe_manifest;
+      std::shared_ptr<void> buffer;
+      std::tie(maybe_manifest, buffer) = CompiledManifest::parseAndCompile(
+          fs, path, compiled_path, &err);
+
+      CHECK(err != "");
+      CHECK(!maybe_manifest);
+      if (!compiled_manifest_existed_before) {
+        CHECK(fs.stat(compiled_path).result == ENOENT);
+      }
+      return err;
+    };
+
     SECTION("basic success") {
       const auto manifest_str =
           "rule cmd\n"
@@ -1054,44 +1108,25 @@ TEST_CASE("CompiledManifest") {
 
       fs.writeFile("manifest", manifest_str);
 
-      Optional<CompiledManifest> maybe_manifest;
-      std::shared_ptr<void> buffer;
-      std::string err;
-      std::tie(maybe_manifest, buffer) = CompiledManifest::parseAndCompile(
-          fs, "manifest", "manifest.compiled", &err);
-      CHECK(buffer);
-      CHECK(err == "");
-      REQUIRE(maybe_manifest);
-      REQUIRE(maybe_manifest->steps().size() == 1);
-      REQUIRE(maybe_manifest->steps()[0].command() == "cmd");
+      const auto manifest = parse_and_compile("manifest", "manifest.compiled");
+      check_first_step_cmd(manifest, "cmd");
     }
 
     SECTION("parse error") {
       fs.writeFile("manifest", "rule!\n");
 
-      Optional<CompiledManifest> maybe_manifest;
-      std::shared_ptr<void> buffer;
-      std::string err;
-      std::tie(maybe_manifest, buffer) = CompiledManifest::parseAndCompile(
-          fs, "manifest", "manifest.compiled", &err);
-      CHECK(!maybe_manifest);
       CHECK(
-          err == "failed to parse manifest: manifest:1: expected rule name\n");
+          parse_and_compile_fail("manifest", "manifest.compiled") ==
+          "failed to parse manifest: manifest:1: expected rule name\n");
     }
 
     SECTION("io error") {
       fs.mkdir("manifest");
 
-      Optional<CompiledManifest> maybe_manifest;
-      std::shared_ptr<void> buffer;
-      std::string err;
-      std::tie(maybe_manifest, buffer) = CompiledManifest::parseAndCompile(
-          fs, "manifest", "manifest.compiled", &err);
-      CHECK(!maybe_manifest);
       CHECK(
-          err ==
-              "failed to parse manifest: loading 'manifest': "
-              "The named file is a directory");
+          parse_and_compile_fail("manifest", "manifest.compiled") ==
+          "failed to parse manifest: loading 'manifest': "
+          "The named file is a directory");
     }
 
     SECTION("compile error") {
@@ -1100,16 +1135,11 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n"
           "build in: cmd out\n";
-
       fs.writeFile("manifest", manifest_str);
 
-      Optional<CompiledManifest> maybe_manifest;
-      std::shared_ptr<void> buffer;
-      std::string err;
-      std::tie(maybe_manifest, buffer) = CompiledManifest::parseAndCompile(
-          fs, "manifest", "manifest.compiled", &err);
-      CHECK(!maybe_manifest);
-      CHECK(err == "Dependency cycle: in -> out -> in");
+      CHECK(
+          parse_and_compile_fail("manifest", "manifest.compiled") ==
+          "Dependency cycle: in -> out -> in");
     }
 
     SECTION("write compiled manifest") {
@@ -1117,23 +1147,13 @@ TEST_CASE("CompiledManifest") {
           "rule cmd\n"
           "  command = cmd\n"
           "build out: cmd in\n";
-
       fs.writeFile("manifest", manifest_str);
 
-      std::string err;
-      CHECK(CompiledManifest::parseAndCompile(
-          fs, "manifest", "manifest.compiled", &err).first);
-      CHECK(err == "");
+      parse_and_compile("manifest", "manifest.compiled");
 
-      const auto mmap = fs.mmap("manifest.compiled");
-
-      const auto maybe_manifest = CompiledManifest::load(
-          mmap->memory(), &err);
-      CHECK(err == "");
-      REQUIRE(maybe_manifest);
-
-      REQUIRE(maybe_manifest->steps().size() == 1);
-      CHECK(maybe_manifest->steps()[0].command() == "cmd");
+      const auto compiled_manifest =
+          parse_compiled_manifest("manifest.compiled");
+      check_first_step_cmd(compiled_manifest, "cmd");
     }
 
     SECTION("fail to write compiled manifest") {
@@ -1145,10 +1165,110 @@ TEST_CASE("CompiledManifest") {
       fs.writeFile("manifest", manifest_str);
       fs.mkdir("manifest.compiled");
 
-      std::string err;
-      CHECK(!CompiledManifest::parseAndCompile(
-          fs, "manifest", "manifest.compiled", &err).first);
-      CHECK(err != "");
+      CHECK(parse_and_compile_fail("manifest", "manifest.compiled") != "");
+    }
+
+    SECTION("fail to parse precompiled manifest") {
+      const auto manifest_str =
+          "rule cmd\n"
+          "  command = cmd\n"
+          "build out: cmd in\n";
+
+      fs.writeFile("manifest", manifest_str);
+      fs.writeFile("manifest.compiled", "invalid_haha");
+
+      // Should just recompile the manifest in this case
+      const auto manifest = parse_and_compile("manifest", "manifest.compiled");
+      check_first_step_cmd(manifest, "cmd");
+      check_first_step_cmd(
+          parse_compiled_manifest("manifest.compiled"),
+          "cmd");
+    }
+
+    SECTION("precompiled manifest is older than one of its inputs") {
+      const auto manifest_str =
+          "rule cmd\n"
+          "  command = cmd_$in\n"
+          "include manifest.other\n";
+      const auto other_manifest_str =
+          "build out: cmd before\n";
+
+      fs.writeFile("manifest", manifest_str);
+      fs.writeFile("manifest.other", other_manifest_str);
+      now++;
+
+      parse_and_compile("manifest", "manifest.compiled");
+      check_first_step_cmd(
+          parse_compiled_manifest("manifest.compiled"),
+          "cmd_before");
+
+      fs.writeFile("manifest.other", "build out: cmd after\n");
+
+      const auto manifest = parse_and_compile("manifest", "manifest.compiled");
+
+      check_first_step_cmd(manifest, "cmd_after");
+      check_first_step_cmd(
+          parse_compiled_manifest("manifest.compiled"),
+          "cmd_after");
+    }
+
+    SECTION("recompile with equal timestamps") {
+      const auto manifest_str =
+          "rule cmd\n"
+          "  command = cmd_$in\n"
+          "include manifest.other\n";
+      const auto other_manifest_str =
+          "build out: cmd before\n";
+
+      fs.writeFile("manifest", manifest_str);
+      fs.writeFile("manifest.other", other_manifest_str);
+
+      parse_and_compile("manifest", "manifest.compiled");
+      check_first_step_cmd(
+          parse_compiled_manifest("manifest.compiled"),
+          "cmd_before");
+
+      fs.writeFile("manifest.other", "build out: cmd after\n");
+
+      const auto manifest = parse_and_compile("manifest", "manifest.compiled");
+
+      check_first_step_cmd(manifest, "cmd_after");
+      check_first_step_cmd(
+          parse_compiled_manifest("manifest.compiled"),
+          "cmd_after");
+    }
+
+    SECTION("precompiled manifest input missing") {
+      const auto manifest_str =
+          "rule cmd\n"
+          "  command = cmd_$in\n"
+          "include manifest.other\n";
+      const auto other_manifest_str =
+          "build out: cmd before\n";
+
+      fs.writeFile("manifest", manifest_str);
+      fs.writeFile("manifest.other", other_manifest_str);
+
+      parse_and_compile("manifest", "manifest.compiled");
+      check_first_step_cmd(
+          parse_compiled_manifest("manifest.compiled"),
+          "cmd_before");
+
+      fs.unlink("manifest.other");
+
+      parse_and_compile_fail("manifest", "manifest.compiled");
+    }
+
+    SECTION("parse precompiled manifest") {
+      const auto manifest_str =
+          "rule cmd\n"
+          "  command = cmd\n"
+          "build out: cmd in\n";
+      fs.writeFile("manifest", manifest_str);
+
+      parse_and_compile("manifest", "manifest.compiled");
+      const auto manifest = parse_and_compile("manifest", "manifest.compiled");
+      check_first_step_cmd(manifest, "cmd");
     }
   }
 }
