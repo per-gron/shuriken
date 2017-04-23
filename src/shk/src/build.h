@@ -59,17 +59,10 @@ using CleanSteps = std::vector<bool>;
 
 /**
  * "Map" of index in Invocations::fingerprints => MatchesResult with information
- * about if each fingerprint matches or not. This information is computed lazily
- * and memoized in this data structure, to avoid having to compute if a
- * fingerprint matches for every build step that has that fingerprint, since on
- * average a fingerprint is typically used by quite a few steps.
+ * about if each fingerprint matches or not.
  *
- * A reason for why this is constructed lazily rather than precomputed all up
- * front is that it is common that the manifest contains fingerprints that are
- * no longer used. They will be removed eventually in a subsequent invocation
- * log compaction, but until they are, it is problematic to fingerprint those,
- * especially because it is likely that they are "should_update"/racily clean,
- * which requires hashing their file contents to calculate the MatchesResult.
+ * FingerprintMatchesMemo is precalculated for all fingerprints that are
+ * actually used by the build. The others will be empty optionals.
  */
 using FingerprintMatchesMemo = std::vector<Optional<MatchesResult>>;
 
@@ -211,6 +204,15 @@ Build computeBuild(
     std::vector<StepIndex> &&steps_to_build) throw(BuildError);
 
 /**
+ * Does all the fingerprintMatches calls necessary to compute a
+ * FingerprintMatchesMemo object for a given set of used fingerprints.
+ */
+FingerprintMatchesMemo computeFingerprintMatchesMemo(
+    FileSystem &file_system,
+    const Invocations &invocations,
+    const std::vector<uint32_t> used_fingerprints);
+
+/**
  * Checks if a build step has already been performed and does not need to be
  * run again. This is not purely a read-only action: It uses fingerprints, and
  * if the fingerprint logic wants a fresher fingerprint in the invocation log
@@ -219,7 +221,7 @@ Build computeBuild(
 bool isClean(
     FileSystem &file_system,
     InvocationLog &invocation_log,
-    FingerprintMatchesMemo &fingerprint_matches_memo,
+    const FingerprintMatchesMemo &fingerprint_matches_memo,
     const Invocations &invocations,
     Step step) throw(IoError);
 

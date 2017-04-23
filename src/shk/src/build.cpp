@@ -175,23 +175,6 @@ Build computeBuild(
 
 namespace {
 
-MatchesResult checkFingerprintMatches(
-    FileSystem &file_system,
-    const std::vector<std::pair<std::string, Fingerprint>> &fingerprints,
-    size_t fingerprint_idx,
-    FingerprintMatchesMemo &fingerprint_matches_memo) {
-  assert(fingerprint_idx < fingerprint_matches_memo.size());
-  if (!fingerprint_matches_memo[fingerprint_idx]) {
-    const auto &file = fingerprints[fingerprint_idx];
-    fingerprint_matches_memo[fingerprint_idx] =
-        fingerprintMatches(
-            file_system,
-            file.first,
-            file.second);
-  }
-  return *fingerprint_matches_memo[fingerprint_idx];
-}
-
 void relogCommand(
     InvocationLog &invocation_log,
     const Invocations &invocations,
@@ -240,9 +223,8 @@ bool generatorStepIsClean(FileSystem &file_system, Step step) throw(IoError) {
 }
 
 bool nonGeneratorStepIsClean(
-    FileSystem &file_system,
     InvocationLog &invocation_log,
-    FingerprintMatchesMemo &fingerprint_matches_memo,
+    const FingerprintMatchesMemo &fingerprint_matches_memo,
     const Invocations &invocations,
     Step step) throw(IoError) {
   const auto &step_hash = step.hash();
@@ -263,15 +245,12 @@ bool nonGeneratorStepIsClean(
         return;
       }
 
-      const auto match = checkFingerprintMatches(
-          file_system,
-          invocations.fingerprints,
-          fingerprint_idx,
-          fingerprint_matches_memo);
-      if (!match.clean) {
+      const auto match = fingerprint_matches_memo[fingerprint_idx];
+      assert(match);
+      if (!match->clean) {
         clean = false;
       }
-      if (match.should_update) {
+      if (match->should_update) {
         should_update = true;
       }
     }
@@ -291,19 +270,58 @@ bool nonGeneratorStepIsClean(
   return clean;
 }
 
+FingerprintMatchesMemo computeFingerprintMatchesMemo(
+    FileSystem &file_system,
+    const Invocations &invocations,
+    StepsView steps,
+    const Build &build) {
+  std::vector<const Invocations::Entry *> entries;
+  for (size_t i = 0; i < build.step_nodes.size(); i++) {
+    const auto &step_node = build.step_nodes[i];
+    if (!step_node.should_build) {
+      continue;
+    }
+    const auto entry_it = invocations.entries.find(steps[i].hash());
+    if (entry_it == invocations.entries.end()) {
+      continue;
+    }
+    entries.push_back(&entry_it->second);
+  }
+
+  return detail::computeFingerprintMatchesMemo(
+      file_system,
+      invocations,
+      invocations.fingerprintsFor(entries));
+}
+
 }  // anonymous namespace
+
+FingerprintMatchesMemo computeFingerprintMatchesMemo(
+    FileSystem &file_system,
+    const Invocations &invocations,
+    const std::vector<uint32_t> used_fingerprints) {
+  FingerprintMatchesMemo memo(invocations.fingerprints.size());
+
+  for (const auto fingerprint_idx : used_fingerprints) {
+    const auto &file = invocations.fingerprints[fingerprint_idx];
+    memo[fingerprint_idx] =
+        fingerprintMatches(file_system, file.first, file.second);
+  }
+
+  return memo;
+}
 
 bool isClean(
     FileSystem &file_system,
     InvocationLog &invocation_log,
-    FingerprintMatchesMemo &fingerprint_matches_memo,
+    const FingerprintMatchesMemo &fingerprint_matches_memo,
     const Invocations &invocations,
     Step step) throw(IoError) {
   if (step.generator()) {
     return generatorStepIsClean(file_system, step);
   } else {
     return nonGeneratorStepIsClean(
-        file_system, invocation_log, fingerprint_matches_memo, invocations, step);
+        invocation_log, fingerprint_matches_memo, invocations, step);
   }
 }
 
@@ -318,8 +336,8 @@ CleanSteps computeCleanSteps(
 
   CleanSteps result(build.step_nodes.size(), false);
 
-  FingerprintMatchesMemo fingerprint_memo;
-  fingerprint_memo.resize(invocations.fingerprints.size());
+  auto fingerprint_memo = computeFingerprintMatchesMemo(
+      file_system, invocations, steps, build);
 
   for (size_t i = 0; i < build.step_nodes.size(); i++) {
     const auto &step_node = build.step_nodes[i];

@@ -577,9 +577,9 @@ TEST_CASE("Build") {
   }
 
   SECTION("isClean") {
-    FingerprintMatchesMemo memo;
-
     SECTION("timestamp based (generator)") {
+      FingerprintMatchesMemo memo;
+
       const auto compile_manifest_step = [](const std::string &manifest_str) {
         InMemoryFileSystem fs;
         Paths paths(fs);
@@ -774,11 +774,20 @@ TEST_CASE("Build") {
           .setHash(hash_a)
           .build(step_with_hash_a_builder);
 
+      const auto compute_memo = [&]() {
+        std::vector<uint32_t> used_fingerprints;
+        for (int i = 0; i < invocations.fingerprints.size(); i++) {
+          used_fingerprints.push_back(i);
+        }
+        return computeFingerprintMatchesMemo(
+            fs, invocations, used_fingerprints);
+      };
+
       SECTION("no matching Invocation entry") {
         CHECK(!isClean(
             fs,
             log,
-            memo,
+            compute_memo(),
             invocations,
             step_with_hash_a));
         CHECK(log.createdDirectories().empty());
@@ -790,7 +799,7 @@ TEST_CASE("Build") {
         CHECK(isClean(
             fs,
             log,
-            memo,
+            compute_memo(),
             invocations,
             step_with_hash_a));
         CHECK(log.createdDirectories().empty());
@@ -801,11 +810,10 @@ TEST_CASE("Build") {
         Invocations::Entry entry;
         addInput(invocations, entry, "one", one_fp);
         invocations.entries[hash_a] = entry;
-        memo.resize(invocations.fingerprints.size());
         CHECK(isClean(
             fs,
             log,
-            memo,
+            compute_memo(),
             invocations,
             step_with_hash_a));
         CHECK(log.createdDirectories().empty());
@@ -817,11 +825,10 @@ TEST_CASE("Build") {
         addInput(invocations, entry, "one", one_fp);
         invocations.entries[hash_a] = entry;
         fs.writeFile("one", "dirty");  // Make dirty
-        memo.resize(invocations.fingerprints.size());
         CHECK(!isClean(
             fs,
             log,
-            memo,
+            compute_memo(),
             invocations,
             step_with_hash_a));
         CHECK(log.createdDirectories().empty());
@@ -832,11 +839,10 @@ TEST_CASE("Build") {
         Invocations::Entry entry;
         addOutput(invocations, entry, "one", one_fp);
         invocations.entries[hash_a] = entry;
-        memo.resize(invocations.fingerprints.size());
         CHECK(isClean(
             fs,
             log,
-            memo,
+            compute_memo(),
             invocations,
             step_with_hash_a));
         CHECK(log.createdDirectories().empty());
@@ -848,11 +854,10 @@ TEST_CASE("Build") {
         addOutput(invocations, entry, "one", one_fp);
         invocations.entries[hash_a] = entry;
         fs.writeFile("one", "dirty");  // Make dirty
-        memo.resize(invocations.fingerprints.size());
         CHECK(!isClean(
             fs,
             log,
-            memo,
+            compute_memo(),
             invocations,
             step_with_hash_a));
         CHECK(log.createdDirectories().empty());
@@ -866,11 +871,10 @@ TEST_CASE("Build") {
         invocations.entries[hash_a] = entry;
         fs.writeFile("one", "dirty");
         fs.writeFile("two", "dirty!");
-        memo.resize(invocations.fingerprints.size());
         CHECK(!isClean(
             fs,
             log,
-            memo,
+            compute_memo(),
             invocations,
             step_with_hash_a));
         CHECK(log.createdDirectories().empty());
@@ -881,11 +885,10 @@ TEST_CASE("Build") {
         Invocations::Entry entry;
         addInput(invocations, entry, "one", one_fp_racy);
         invocations.entries[hash_a] = entry;
-        memo.resize(invocations.fingerprints.size());
         CHECK(isClean(
             fs,
             log,
-            memo,
+            compute_memo(),
             invocations,
             step_with_hash_a));
         CHECK(log.createdDirectories().empty());
@@ -900,11 +903,10 @@ TEST_CASE("Build") {
         Invocations::Entry entry;
         addOutput(invocations, entry, "one", one_fp_racy);
         invocations.entries[hash_a] = entry;
-        memo.resize(invocations.fingerprints.size());
         CHECK(isClean(
             fs,
             log,
-            memo,
+            compute_memo(),
             invocations,
             step_with_hash_a));
         CHECK(log.createdDirectories().empty());
