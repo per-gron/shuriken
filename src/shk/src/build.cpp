@@ -1,9 +1,12 @@
 #include "build.h"
 
 #include <assert.h>
+#include <atomic>
 #include <errno.h>
+#include <thread>
 
 #include "fs/fingerprint.h"
+#include "util.h"
 
 namespace shk {
 
@@ -302,10 +305,25 @@ FingerprintMatchesMemo computeFingerprintMatchesMemo(
     const std::vector<uint32_t> used_fingerprints) {
   FingerprintMatchesMemo memo(invocations.fingerprints.size());
 
-  for (const auto fingerprint_idx : used_fingerprints) {
-    const auto &file = invocations.fingerprints[fingerprint_idx];
-    memo[fingerprint_idx] =
-        fingerprintMatches(file_system, file.first, file.second);
+  const int num_threads = 4;  // Does not scale very well with number of threads
+  std::atomic<int> next_used_fingerprints_idx(0);
+  std::vector<std::thread> threads;
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back([&] {
+      for (;;) {
+        int used_fingerprints_idx = next_used_fingerprints_idx++;
+        if (used_fingerprints_idx >= used_fingerprints.size()) {
+          break;
+        }
+        auto fingerprint_idx = used_fingerprints[used_fingerprints_idx];
+        const auto &file = invocations.fingerprints[fingerprint_idx];
+        memo[fingerprint_idx] =
+            fingerprintMatches(file_system, file.first, file.second);
+      }
+    });
+  }
+  for (auto &thread : threads) {
+    thread.join();
   }
 
   return memo;

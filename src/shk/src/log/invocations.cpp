@@ -1,7 +1,6 @@
 #include "log/invocations.h"
 
 #include <atomic>
-#include <numeric>
 #include <thread>
 
 #include "util.h"
