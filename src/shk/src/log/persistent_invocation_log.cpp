@@ -34,6 +34,15 @@ const std::string kFileSignature = "invocations:";
 const uint32_t kFileVersion = 1;
 const uint32_t kInvocationLogEntryTypeMask = 3;
 
+constexpr uint32_t kNoFingerprint = std::numeric_limits<uint32_t>::max();
+/**
+ * "Map" of entry id to (index in Invocations::fingerprints) + 1
+ *
+ * A value of kNoFingerprint means that that entry id does not refer to a
+ * fingerprint.
+ */
+using FingerprintsById = std::vector<uint32_t>;
+
 string_view advance(string_view view, size_t len) {
   assert(len <= view.size());
   return string_view(view.data() + len, view.size() - len);
@@ -101,26 +110,20 @@ const T &read(string_view view) {
   return *reinterpret_cast<const T *>(view.data());
 }
 
-template<typename T>
-T readEntryById(
-    const std::vector<Optional<T>> &entries_by_id,
-    string_view view) throw(ParseError) {
-  const auto entry_id = read<uint32_t>(view);
-  if (entry_id >= entries_by_id.size() || !entries_by_id[entry_id]) {
-    throw ParseError(
-        "invalid invocation log: encountered invalid fingerprint ref");
-  }
-  return *entries_by_id[entry_id];
-}
-
 std::vector<uint32_t> readFingerprints(
-    const std::vector<Optional<uint32_t>> &fingerprints_by_id,
+    FingerprintsById &fingerprints_by_id,
     string_view view) {
   std::vector<uint32_t> result;
   result.reserve(view.size() / sizeof(uint32_t));
 
   for (; view.size(); view = advance(view, sizeof(uint32_t))) {
-    result.push_back(readEntryById(fingerprints_by_id, view));
+    const auto entry_id = read<uint32_t>(view);
+    if (entry_id >= fingerprints_by_id.size() ||
+        fingerprints_by_id[entry_id] == kNoFingerprint) {
+      throw ParseError(
+          "invalid invocation log: encountered invalid fingerprint ref");
+    }
+    result.push_back(fingerprints_by_id[entry_id]);
   }
 
   return result;
@@ -501,7 +504,7 @@ void parseFingerprint(
     string_view entry,
     InvocationLogParseResult &result,
     std::vector<Optional<std::string>> &paths_by_id,
-    std::vector<Optional<uint32_t>> &fingerprints_by_id) throw(ParseError) {
+    FingerprintsById &fingerprints_by_id) throw(ParseError) {
   const auto path = readPath(paths_by_id, entry);
   entry = advance(entry, sizeof(uint32_t));
 
@@ -511,7 +514,7 @@ void parseFingerprint(
       *reinterpret_cast<const Fingerprint *>(entry.data());
   result.parse_data.fingerprint_ids[path] = value;
 
-  fingerprints_by_id.resize(result.parse_data.entry_count + 1);
+  fingerprints_by_id.resize(result.parse_data.entry_count + 1, kNoFingerprint);
   fingerprints_by_id[result.parse_data.entry_count] =
       result.invocations.fingerprints.size();
   result.invocations.fingerprints.emplace_back(
@@ -521,7 +524,7 @@ void parseFingerprint(
 void parseInvocation(
     string_view entry,
     InvocationLogParseResult &result,
-    std::vector<Optional<uint32_t>> &fingerprints_by_id) throw(ParseError) {
+    FingerprintsById &fingerprints_by_id) throw(ParseError) {
   const auto hash = read<Hash>(entry);
   entry = advance(entry, sizeof(hash));
   const auto outputs = read<uint32_t>(entry);
@@ -594,10 +597,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
   // "Map" from path entry id to path. Entries that aren't path entries are
   // empty.
   std::vector<Optional<std::string>> paths_by_id;
-  // "Map" from fingerprint entry id to index in Invocations::fingerprints.
-  // Indices that refer to entries that have been read but aren't fingerprint
-  // entries are empty.
-  std::vector<Optional<uint32_t>> fingerprints_by_id;
+  FingerprintsById fingerprints_by_id;
 
   auto &entry_count = result.parse_data.entry_count;
 
