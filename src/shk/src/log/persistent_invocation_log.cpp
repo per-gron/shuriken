@@ -571,6 +571,25 @@ InvocationLogParseResult parsePersistentInvocationLog(
     const std::string &log_path) throw(IoError, ParseError) {
   InvocationLogParseResult result;
 
+#if 0
+  // Use readFile instead of mmap for parsing the invocation log. This can
+  // provide interesting insight when profiling because then other functions
+  // don't look slow because of i/o bound page faults.
+  //
+  // According to my measurements, this is a little bit slower than mmap, so
+  // it's not used normally.
+  std::string log_contents;
+  try {
+    log_contents = file_system.readFile(log_path);
+  } catch (IoError &io_error) {
+    if (io_error.code == ENOENT) {
+      return result;
+    } else {
+      throw;
+    }
+  }
+  auto view = string_view(log_contents);
+#else
   std::unique_ptr<FileSystem::Mmap> mmap;
   try {
     mmap = file_system.mmap(log_path);
@@ -582,6 +601,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
     }
   }
   auto view = mmap->memory();
+#endif
   const auto file_size = view.size();
 
   std::string err;
