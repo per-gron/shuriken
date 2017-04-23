@@ -99,6 +99,63 @@ TEST_CASE("Invocations") {
     }
   }
 
+  SECTION("FingerprintsFor") {
+    Invocations i;
+    i.fingerprints.emplace_back();
+    i.fingerprints.emplace_back();
+    i.fingerprints.emplace_back();
+    i.fingerprints.emplace_back();
+
+    Invocations::Entry empty;
+
+    Invocations::Entry input_0;
+    input_0.input_files.push_back(0);
+
+    Invocations::Entry output_0;
+    output_0.input_files.push_back(0);
+
+    Invocations::Entry input_1;
+    input_1.input_files.push_back(1);
+
+    SECTION("EmptyInvocations") {
+      CHECK(Invocations().fingerprintsFor({}) == std::vector<uint32_t>{});
+    }
+
+    SECTION("EmptyEntriesList") {
+      CHECK(i.fingerprintsFor({}) == std::vector<uint32_t>{});
+    }
+
+    SECTION("EmptyEntry") {
+      CHECK(i.fingerprintsFor({ &empty }) == std::vector<uint32_t>{});
+    }
+
+    SECTION("OneInput") {
+      CHECK(i.fingerprintsFor({ &input_0 }) == std::vector<uint32_t>{ 0 });
+    }
+
+    SECTION("OneOutput") {
+      CHECK(i.fingerprintsFor({ &output_0 }) == std::vector<uint32_t>{ 0 });
+    }
+
+    SECTION("SeparateInputs") {
+      CHECK(
+          i.fingerprintsFor({ &input_0, &input_1 }) ==
+          std::vector<uint32_t>({ 0, 1 }));
+    }
+
+    SECTION("SharedFingerprints") {
+      CHECK(
+          i.fingerprintsFor({ &input_0, &output_0 }) ==
+          std::vector<uint32_t>({ 0 }));
+    }
+
+    SECTION("DuplicateInput") {
+      CHECK(
+          i.fingerprintsFor({ &input_0, &input_0 }) ==
+          std::vector<uint32_t>({ 0 }));
+    }
+  }
+
   SECTION("Equals") {
     Invocations a;
     Invocations b;

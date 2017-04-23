@@ -55,6 +55,13 @@ struct Invocations {
   int countUsedFingerprints() const;
 
   /**
+   * Given a list of entries, find the indices of all the fingerprints that are
+   * referred to by them.
+   */
+  std::vector<uint32_t> fingerprintsFor(
+      const std::vector<const Entry *> &entries) const;
+
+  /**
    * The directories that Shuriken has created to make room for outputs of build
    * steps. They are kept track of to be able to remove then when cleaning up.
    *

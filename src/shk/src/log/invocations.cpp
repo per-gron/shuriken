@@ -10,11 +10,9 @@ namespace shk {
 namespace {
 
 /**
- * Helper function.
- *
  * The return value has one entry per worker thread. Each vector<bool> is a
  * "map" from fingerprint index (in the fingerprints vector) to a boolean
- * indicating whether it is used by an actual entry.
+ * indicating whether it is used by one of the entries in entry_vec.
  */
 std::vector<std::vector<bool>> findUsedFingerprints(
     const std::vector<std::pair<std::string, Fingerprint>> &fingerprints,
@@ -72,6 +70,23 @@ int Invocations::countUsedFingerprints() const {
   }
 
   return count;
+}
+
+std::vector<uint32_t> Invocations::fingerprintsFor(
+    const std::vector<const Entry *> &entries) const {
+  const auto used_fingerprints = findUsedFingerprints(fingerprints, entries);
+
+  std::vector<uint32_t> ans;
+  for (int i = 0; i < fingerprints.size(); i++) {
+    for (int j = 0; j < used_fingerprints.size(); j++) {
+      if (used_fingerprints[j][i]) {
+        ans.push_back(i);
+        break;
+      }
+    }
+  }
+
+  return ans;
 }
 
 bool operator==(
