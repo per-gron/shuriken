@@ -59,9 +59,11 @@ detail::PathToStepMap computeInputPathMap(
   return result;
 }
 
+template <typename CreateString>
 std::vector<flatbuffers::Offset<
     ShkManifest::StepPathReference>> computePathList(
         flatbuffers::FlatBufferBuilder &builder,
+        const CreateString &create_string,
         const detail::PathToStepMap &path_map) {
   std::vector<std::pair<std::string, StepIndex>> vec;
   for (const auto &path_pair : path_map) {
@@ -82,17 +84,19 @@ std::vector<flatbuffers::Offset<
   for (const auto &path_pair : vec) {
     result.push_back(ShkManifest::CreateStepPathReference(
         builder,
-        builder.CreateString(path_pair.first),
+        create_string(path_pair.first),
         path_pair.second));
   }
 
   return result;
 }
 
+template <typename CreateString>
 flatbuffers::Offset<ShkManifest::Step> convertRawStep(
     const detail::PathToStepMap &output_path_map,
     std::vector<bool> &roots,
     flatbuffers::FlatBufferBuilder &builder,
+    const CreateString &create_string,
     const RawStep &raw,
     std::string *err) {
   if (raw.generator && !raw.depfile.empty()) {
@@ -132,17 +136,17 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
     if (output == ".") {
       continue;
     }
-    output_dirs.push_back(builder.CreateString(output));
+    output_dirs.push_back(create_string(output));
   }
   auto output_dirs_vector = builder.CreateVector(
       output_dirs.data(), output_dirs.size());
 
-  auto pool_name_string = builder.CreateString(raw.pool_name);
-  auto command_string = builder.CreateString(raw.command);
-  auto description_string = builder.CreateString(raw.description);
-  auto depfile_string = builder.CreateString(raw.depfile);
-  auto rspfile_string = builder.CreateString(raw.rspfile);
-  auto rspfile_content_string = builder.CreateString(raw.rspfile_content);
+  auto pool_name_string = create_string(raw.pool_name);
+  auto command_string = create_string(raw.command);
+  auto description_string = create_string(raw.description);
+  auto depfile_string = create_string(raw.depfile);
+  auto rspfile_string = create_string(raw.rspfile);
+  auto rspfile_content_string = create_string(raw.rspfile_content);
 
   using StringVectorOffset = flatbuffers::Offset<flatbuffers::Vector<
       flatbuffers::Offset<flatbuffers::String>>>;
@@ -158,7 +162,7 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
         std::vector<flatbuffers::Offset<flatbuffers::String>> &vec,
         const std::vector<Path> &paths) {
       for (const auto &path : paths) {
-        vec.push_back(builder.CreateString(path.original()));
+        vec.push_back(create_string(path.original()));
       }
     };
 
@@ -193,10 +197,12 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
   return step_builder.Finish();
 }
 
+template <typename CreateString>
 std::vector<flatbuffers::Offset<ShkManifest::Step>> convertStepVector(
     const detail::PathToStepMap &output_path_map,
     std::vector<bool> &roots,
     flatbuffers::FlatBufferBuilder &builder,
+    const CreateString &create_string,
     const std::vector<RawStep> &steps,
     std::string *err) {
   std::vector<flatbuffers::Offset<ShkManifest::Step>> ans;
@@ -204,7 +210,7 @@ std::vector<flatbuffers::Offset<ShkManifest::Step>> convertStepVector(
 
   for (const auto &step : steps) {
     ans.push_back(convertRawStep(
-        output_path_map, roots, builder, step, err));
+        output_path_map, roots, builder, create_string, step, err));
     if (!err->empty()) {
       break;
     }
@@ -406,11 +412,22 @@ bool CompiledManifest::compile(
       std::string *err) {
   auto output_path_map = detail::computeOutputPathMap(manifest.steps);
 
-  auto outputs = computePathList(builder, output_path_map);
+  std::unordered_map<std::string, flatbuffers::Offset<flatbuffers::String>>
+      string_memo;
+  const auto create_string = [&](const std::string &str) {
+    const auto it = string_memo.find(str);
+    if (it == string_memo.end()) {
+      return string_memo[str] = builder.CreateString(str.data(), str.size());
+    } else {
+      return it->second;
+    }
+  };
+
+  auto outputs = computePathList(builder, create_string, output_path_map);
   auto outputs_vector = builder.CreateVector(
       outputs.data(), outputs.size());
 
-  auto inputs = computePathList(builder, computeInputPathMap(manifest.steps));
+  auto inputs = computePathList(builder, create_string, computeInputPathMap(manifest.steps));
   auto inputs_vector = builder.CreateVector(
       inputs.data(), inputs.size());
 
@@ -421,7 +438,7 @@ bool CompiledManifest::compile(
   std::vector<bool> roots(manifest.steps.size(), true);
 
   auto steps = convertStepVector(
-      output_path_map, roots, builder, manifest.steps, err);
+      output_path_map, roots, builder, create_string, manifest.steps, err);
   if (!err->empty()) {
     return false;
   }
@@ -446,18 +463,18 @@ bool CompiledManifest::compile(
   for (const auto &pool : manifest.pools) {
     pools.push_back(ShkManifest::CreatePool(
         builder,
-        builder.CreateString(pool.first),
+        create_string(pool.first),
         pool.second));
   }
   auto pools_vector = builder.CreateVector(
       pools.data(), pools.size());
 
-  auto build_dir_string = builder.CreateString(manifest.build_dir);
+  auto build_dir_string = create_string(manifest.build_dir);
 
   std::vector<flatbuffers::Offset<flatbuffers::String>> manifest_files;
   manifest_files.reserve(manifest.manifest_files.size());
   for (const auto &manifest_file : manifest.manifest_files) {
-    manifest_files.push_back(builder.CreateString(manifest_file));
+    manifest_files.push_back(create_string(manifest_file));
   }
   auto manifest_files_vector = builder.CreateVector(
       manifest_files.data(), manifest_files.size());
