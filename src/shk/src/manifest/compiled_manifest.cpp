@@ -515,6 +515,8 @@ Optional<time_t> CompiledManifest::minMtime(
 
 namespace {
 
+constexpr uint64_t kCompiledManifestVersion = 1;
+
 std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
     loadPrecompiledManifest(
         FileSystem &file_system,
@@ -535,8 +537,23 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
     return std::make_pair(Optional<CompiledManifest>(), nullptr);
   }
 
+  if (buffer->size() < sizeof(kCompiledManifestVersion)) {
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+  const auto version =
+      flatbuffers::EndianScalar(
+          *reinterpret_cast<const decltype(kCompiledManifestVersion) *>(
+              buffer->data()));
+  if (version != kCompiledManifestVersion) {
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
   std::string discard_err;
-  auto manifest = CompiledManifest::load(*buffer, &discard_err);
+  auto manifest = CompiledManifest::load(
+      string_view(
+          buffer->data() + sizeof(version),
+          buffer->size() - sizeof(version)),
+      &discard_err);
   if (!manifest) {
     return std::make_pair(Optional<CompiledManifest>(), nullptr);
   }
@@ -594,7 +611,16 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
   auto buffer_view = string_view(buffer->data(), buffer->size());
 
   try {
-    file_system.writeFile(compiled_manifest_path, buffer_view);
+    const auto stream = file_system.open(compiled_manifest_path, "wb");
+    const auto version = flatbuffers::EndianScalar(kCompiledManifestVersion);
+    stream->write(
+        reinterpret_cast<const uint8_t *>(&version),
+        1,
+        sizeof(version));
+    stream->write(
+        reinterpret_cast<const uint8_t *>(buffer_view.data()),
+        1,
+        buffer_view.size());
   } catch (const IoError &io_error) {
     *err = std::string("failed to write compiled manifest: ") + io_error.what();
     return std::make_pair(Optional<CompiledManifest>(), nullptr);
