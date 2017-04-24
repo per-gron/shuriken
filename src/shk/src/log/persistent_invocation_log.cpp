@@ -34,15 +34,6 @@ const std::string kFileSignature = "invocations:";
 const uint32_t kFileVersion = 1;
 const uint32_t kInvocationLogEntryTypeMask = 3;
 
-constexpr uint32_t kNoFingerprint = std::numeric_limits<uint32_t>::max();
-/**
- * "Map" of entry id to (index in Invocations::fingerprints) + 1
- *
- * A value of kNoFingerprint means that that entry id does not refer to a
- * fingerprint.
- */
-using FingerprintsById = std::vector<uint32_t>;
-
 string_view advance(string_view view, size_t len) {
   assert(len <= view.size());
   return string_view(view.data() + len, view.size() - len);
@@ -111,33 +102,32 @@ const T &read(string_view view) {
 }
 
 std::vector<uint32_t> readFingerprints(
-    FingerprintsById &fingerprints_by_id,
+    uint32_t fingerprint_count,
     string_view view) {
   std::vector<uint32_t> result;
   result.reserve(view.size() / sizeof(uint32_t));
 
   for (; view.size(); view = advance(view, sizeof(uint32_t))) {
-    const auto entry_id = read<uint32_t>(view);
-    if (entry_id >= fingerprints_by_id.size() ||
-        fingerprints_by_id[entry_id] == kNoFingerprint) {
+    const auto fingerprint_id = read<uint32_t>(view);
+    if (fingerprint_id >= fingerprint_count) {
       throw ParseError(
           "invalid invocation log: encountered invalid fingerprint ref");
     }
-    result.push_back(fingerprints_by_id[entry_id]);
+    result.push_back(fingerprint_id);
   }
 
   return result;
 }
 
 const std::string &readPath(
-    const std::vector<Optional<std::string>> &paths_by_id,
+    const std::vector<std::string> &paths_by_id,
     string_view view) throw(ParseError) {
   const auto path_id = read<uint32_t>(view);
-  if (path_id >= paths_by_id.size() || !paths_by_id[path_id]) {
+  if (path_id >= paths_by_id.size()) {
     throw ParseError(
         "invalid invocation log: encountered invalid path ref");
   }
-  return *paths_by_id[path_id];
+  return paths_by_id[path_id];
 }
 
 class PersistentInvocationLog : public InvocationLog {
@@ -152,7 +142,8 @@ class PersistentInvocationLog : public InvocationLog {
         _stream(std::move(stream)),
         _path_ids(std::move(parse_data.path_ids)),
         _fingerprint_ids(std::move(parse_data.fingerprint_ids)),
-        _entry_count(parse_data.entry_count) {
+        _fingerprint_entry_count(parse_data.fingerprint_entry_count),
+        _path_entry_count(parse_data.path_entry_count) {
     writeHeader();
   }
 
@@ -168,7 +159,6 @@ class PersistentInvocationLog : public InvocationLog {
     }
     writeHeader(sizeof(uint32_t), InvocationLogEntryType::DELETED);
     write(it->second);
-    _entry_count++;
   }
 
   std::pair<Fingerprint, FileId> fingerprint(const std::string &path) override {
@@ -211,15 +201,12 @@ class PersistentInvocationLog : public InvocationLog {
 
     writeFiles(output_files);
     writeFiles(input_files);
-
-    _entry_count++;
   }
 
   void cleanedCommand(
       const Hash &build_step_hash) throw(IoError) override {
     writeHeader(sizeof(Hash), InvocationLogEntryType::DELETED);
     write(build_step_hash);
-    _entry_count++;
   }
 
   void leakMemory() override {
@@ -275,7 +262,8 @@ class PersistentInvocationLog : public InvocationLog {
     InvocationLogParseResult::ParseData ans;
     ans.path_ids = std::move(_path_ids);
     ans.fingerprint_ids = std::move(_fingerprint_ids);
-    ans.entry_count = _entry_count;
+    ans.fingerprint_entry_count = _fingerprint_entry_count;
+    ans.path_entry_count = _path_entry_count;
     return ans;
   }
 
@@ -368,14 +356,13 @@ class PersistentInvocationLog : public InvocationLog {
     _stream->write(
         reinterpret_cast<const uint8_t *>(kNullBuf), padding_bytes, 1);
 
-    _entry_count++;
+    _path_entry_count++;
   }
 
   void writeDirectoryEntry(const uint32_t path_id) {
     writeHeader(
         sizeof(uint32_t), InvocationLogEntryType::CREATED_DIR_OR_FINGERPRINT);
     write(path_id);
-    _entry_count++;
   }
 
   void writeFingerprintEntry(
@@ -390,7 +377,7 @@ class PersistentInvocationLog : public InvocationLog {
         sizeof(fingerprint),
         1);
 
-    _entry_count++;
+    _fingerprint_entry_count++;
   }
 
   /**
@@ -401,7 +388,7 @@ class PersistentInvocationLog : public InvocationLog {
   uint32_t ensurePathIsWritten(const std::string &path) {
     const auto it = _path_ids.find(path);
     if (it == _path_ids.end()) {
-      const auto id = _entry_count;
+      const auto id = _path_entry_count;
       writePathEntry(path);
       _path_ids[path] = id;
       return id;
@@ -442,7 +429,7 @@ class PersistentInvocationLog : public InvocationLog {
 
     FingerprintIdsValue value;
     value.fingerprint = fingerprint;
-    value.record_id = _entry_count;
+    value.record_id = _fingerprint_entry_count;
     const auto it = _fingerprint_ids.find(path);
     if (it == _fingerprint_ids.end()) {
       // No prior entry for that path.
@@ -464,14 +451,14 @@ class PersistentInvocationLog : public InvocationLog {
   const std::unique_ptr<FileSystem::Stream> _stream;
   PathIds _path_ids;
   FingerprintIds _fingerprint_ids;
-  size_t _entry_count;
+  uint32_t _fingerprint_entry_count;
+  uint32_t _path_entry_count;
 };
 
 void parsePath(
     string_view entry,
     InvocationLogParseResult &result,
-    std::vector<Optional<std::string>> &paths_by_id) throw(ParseError) {
-  paths_by_id.resize(result.parse_data.entry_count + 1);
+    std::vector<std::string> &paths_by_id) throw(ParseError) {
   if (strnlen(entry.data(), entry.size()) == entry.size()) {
     throw ParseError(
         "invalid invocation log: Encountered non null terminated path");
@@ -479,15 +466,15 @@ void parsePath(
   // Don't use std::string(entry) because it could make the string contain
   // trailing \0s
   auto path_string = std::string(entry.data());
-  result.parse_data.path_ids[path_string] = result.parse_data.entry_count;
-  paths_by_id[result.parse_data.entry_count] = std::move(path_string);
+  result.parse_data.path_ids[path_string] = paths_by_id.size();
+  paths_by_id.emplace_back(std::move(path_string));
 }
 
 void parseCreatedDir(
     string_view entry,
     FileSystem &file_system,
     InvocationLogParseResult &result,
-    std::vector<Optional<std::string>> &paths_by_id)
+    std::vector<std::string> &paths_by_id)
         throw(IoError, ParseError) {
   const auto path = readPath(paths_by_id, entry);
   const auto stat = file_system.lstat(path);
@@ -503,28 +490,22 @@ void parseCreatedDir(
 void parseFingerprint(
     string_view entry,
     InvocationLogParseResult &result,
-    std::vector<Optional<std::string>> &paths_by_id,
-    FingerprintsById &fingerprints_by_id) throw(ParseError) {
+    std::vector<std::string> &paths_by_id) throw(ParseError) {
   const auto path = readPath(paths_by_id, entry);
   entry = advance(entry, sizeof(uint32_t));
 
   FingerprintIdsValue value;
-  value.record_id = result.parse_data.entry_count;
+  value.record_id = result.invocations.fingerprints.size();
   value.fingerprint =
       *reinterpret_cast<const Fingerprint *>(entry.data());
   result.parse_data.fingerprint_ids[path] = value;
 
-  fingerprints_by_id.resize(result.parse_data.entry_count + 1, kNoFingerprint);
-  fingerprints_by_id[result.parse_data.entry_count] =
-      result.invocations.fingerprints.size();
-  result.invocations.fingerprints.emplace_back(
-      path, value.fingerprint);
+  result.invocations.fingerprints.emplace_back(path, value.fingerprint);
 }
 
 void parseInvocation(
     string_view entry,
-    InvocationLogParseResult &result,
-    FingerprintsById &fingerprints_by_id) throw(ParseError) {
+    InvocationLogParseResult &result) throw(ParseError) {
   const auto hash = read<Hash>(entry);
   entry = advance(entry, sizeof(hash));
   const auto outputs = read<uint32_t>(entry);
@@ -534,12 +515,13 @@ void parseInvocation(
     throw ParseError("invalid invocation log: truncated invocation");
   }
 
+  uint32_t fingerprint_count = result.invocations.fingerprints.size();
   result.invocations.entries[hash] = {
       readFingerprints(
-          fingerprints_by_id,
+          fingerprint_count,
           string_view(entry.data(), output_size)),
       readFingerprints(
-          fingerprints_by_id,
+          fingerprint_count,
           advance(entry, output_size)) };
 }
 
@@ -547,7 +529,7 @@ void parseDeleted(
     string_view entry,
     FileSystem &file_system,
     InvocationLogParseResult &result,
-    std::vector<Optional<std::string>> &paths_by_id) throw(ParseError) {
+    std::vector<std::string> &paths_by_id) throw(ParseError) {
   if (entry.size() == sizeof(uint32_t)) {
     // Deleted directory
     const auto path = readPath(paths_by_id, entry);
@@ -614,12 +596,10 @@ InvocationLogParseResult parsePersistentInvocationLog(
     return result;
   }
 
-  // "Map" from path entry id to path. Entries that aren't path entries are
-  // empty.
-  std::vector<Optional<std::string>> paths_by_id;
-  FingerprintsById fingerprints_by_id;
+  // "Map" from path path entry id to path.
+  std::vector<std::string> paths_by_id;
 
-  auto &entry_count = result.parse_data.entry_count;
+  size_t entry_count = 0;
 
   try {
     for (; view.size(); entry_count++) {
@@ -639,7 +619,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
         if (is_created_dir) {
           parseCreatedDir(entry, file_system, result, paths_by_id);
         } else if (entry_size == sizeof(uint32_t) + sizeof(Fingerprint)) {
-          parseFingerprint(entry, result, paths_by_id, fingerprints_by_id);
+          parseFingerprint(entry, result, paths_by_id);
         } else {
           throw ParseError("invalid invocation log: truncated invocation");
         }
@@ -647,7 +627,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
       }
 
       case InvocationLogEntryType::INVOCATION: {
-        parseInvocation(entry, result, fingerprints_by_id);
+        parseInvocation(entry, result);
         break;
       }
 
@@ -672,6 +652,10 @@ InvocationLogParseResult parsePersistentInvocationLog(
     // Parsing failed. Truncate the file to a known valid state
     file_system.truncate(log_path, file_size - view.size());
   }
+
+  result.parse_data.fingerprint_entry_count =
+      result.invocations.fingerprints.size();
+  result.parse_data.path_entry_count = paths_by_id.size();
 
   // Rebuild the log if there are too many dead records.
   static constexpr int kMinCompactionEntryCount = 1000;

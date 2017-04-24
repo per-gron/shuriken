@@ -15,7 +15,8 @@ void checkEmpty(const InvocationLogParseResult &empty) {
   CHECK(!empty.needs_recompaction);
   CHECK(empty.parse_data.path_ids.empty());
   CHECK(empty.parse_data.fingerprint_ids.empty());
-  CHECK(empty.parse_data.entry_count == 0);
+  CHECK(empty.parse_data.fingerprint_entry_count == 0);
+  CHECK(empty.parse_data.path_entry_count == 0);
 }
 
 void sortInvocations(Invocations &invocations) {
@@ -161,28 +162,34 @@ void recompact(const Callback &callback, int run_times = 5) {
   CHECK(in_memory_result == result.invocations);
 
   // Sanity check parse_data
+  CHECK(
+      parse_data.fingerprint_entry_count ==
+      result.invocations.fingerprints.size());
+  CHECK(parse_data.path_entry_count == parse_data.path_ids.size());
+
   for (const auto &fingerprint : in_memory_result.fingerprints) {
     const auto &path = fingerprint.first;
     CHECK(parse_data.path_ids.count(path));
     CHECK(parse_data.fingerprint_ids.count(path));
   }
 
-  std::unordered_set<size_t> entry_ids;
-  const auto add_entry_id = [&](size_t id) {
-    bool no_id_duplicate = entry_ids.emplace(id).second;
+  std::unordered_set<uint32_t> fingerprint_entry_ids;
+  std::unordered_set<uint32_t> path_entry_ids;
+  const auto add_entry_id = [&](std::unordered_set<uint32_t> &set, size_t id) {
+    bool no_id_duplicate = set.emplace(id).second;
     CHECK(no_id_duplicate);
   };
   for (const auto &fingerprint : in_memory_result.fingerprints) {
     const auto &path = fingerprint.first;
     const auto path_id_it = parse_data.path_ids.find(path);
     if (path_id_it != parse_data.path_ids.end()) {
-      add_entry_id(path_id_it->second);
+      add_entry_id(path_entry_ids, path_id_it->second);
     }
     parse_data.path_ids.erase(path);
 
     const auto fingerprint_id_it = parse_data.fingerprint_ids.find(path);
     if (fingerprint_id_it != parse_data.fingerprint_ids.end()) {
-      add_entry_id(fingerprint_id_it->second.record_id);
+      add_entry_id(fingerprint_entry_ids, fingerprint_id_it->second.record_id);
     }
     parse_data.fingerprint_ids.erase(path);
   }
@@ -190,11 +197,9 @@ void recompact(const Callback &callback, int run_times = 5) {
   CHECK(  // fingerprint_ids contains extraenous entries
       parse_data.fingerprint_ids.empty());
 
-  CHECK(parse_data.entry_count >= entry_ids.size());
   for (const auto &dir : in_memory_result.created_directories) {
     CHECK(parse_data.path_ids.count(dir.second));
   }
-
 
   // These checks are just here for getting more detailed information in case
   // the invocations check above fails.

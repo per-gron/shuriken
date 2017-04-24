@@ -42,8 +42,13 @@ namespace shk {
  * between machines. It contains a version header followed by a series of
  * entries. An entry consists of a uint32_t of the entry size (excluding the
  * header) where the two least significant bits signify the entry type followed
- * by entry type specific contents. Each entry is implicitly assigned an
- * identifier. The first entry has id 0, the second has id 1 and so on.
+ * by entry type specific contents.
+ *
+ * Each entry is implicitly assigned an identifier, depending on its type. The
+ * first Fingerprint entry has id 0, the first Path entry has id 1, the second
+ * Fingerprint entry has id 1 and so on. The types with separate identifier
+ * sequences are Path and Fingerprint. The other entry types are not referred to
+ * by id.
  *
  * There are four types of entries:
  *
@@ -60,7 +65,7 @@ namespace shk {
  *    uint32_t fingerprint entry ids. The first fingerprint ids are outputs, the
  *    rest are inputs.
  * 3. Deleted entry: If the size is 4 bytes, the contents is a single uint32_t
- *    entry id reference to a directory that has been deleted. If the size is
+ *    path id reference to a directory that has been deleted. If the size is
  *    sizeof(Hash), it contains a hash of an Invocations::Entry that has been
  *    deleted. When seeing a deleted entry, Shuriken acts as if the deleted
  *    entry does not exist in the log.
@@ -103,7 +108,8 @@ struct InvocationLogParseResult {
   struct ParseData {
     PathIds path_ids;
     FingerprintIds fingerprint_ids;
-    size_t entry_count = 0;
+    uint32_t fingerprint_entry_count = 0;
+    uint32_t path_entry_count = 0;
   };
 
   Invocations invocations;
