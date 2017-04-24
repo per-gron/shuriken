@@ -35,6 +35,12 @@ TEST_CASE("string_view") {
       CHECK(v.size() == 3);
       CHECK(v.null_terminated());
     }
+
+    SECTION("std::hash") {
+      CHECK(
+          std::hash<nt_string_view>()(nt_string_view("")) ==
+          std::hash<string_view>()(string_view("")));
+    }
   }
 }
 

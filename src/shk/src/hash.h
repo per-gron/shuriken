@@ -26,8 +26,7 @@ inline bool operator<(const Hash &a, const Hash &b) {
 
 }  // namespace shk
 
-namespace std
-{
+namespace std {
 
 template<>
 struct hash<shk::Hash> {

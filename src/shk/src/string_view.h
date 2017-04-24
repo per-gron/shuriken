@@ -37,3 +37,17 @@ class nt_string_view : public string_view {
 };
 
 }  // namespace shk
+
+namespace std {
+
+template<>
+struct hash<shk::nt_string_view> {
+  using argument_type = shk::nt_string_view;
+  using result_type = std::size_t;
+
+  result_type operator()(const argument_type &h) const {
+    return hash<std::experimental::string_view>()(h);
+  }
+};
+
+}  // namespace std
