@@ -3,7 +3,7 @@
 # declarations below.
 add_custom_command(
   OUTPUT sudo_dummy.h
-  COMMAND sudo echo > /dev/null
+  COMMAND sudo /bin/echo > /dev/null
   VERBATIM USES_TERMINAL)
 
 add_library(libshktrace
@@ -92,8 +92,8 @@ add_custom_command(
 add_custom_command(
   TARGET shk-trace
   POST_BUILD
-  COMMAND sudo chown root "${PROJECT_BINARY_DIR}/bin/shk-trace"
-  COMMAND sudo chmod u+s "${PROJECT_BINARY_DIR}/bin/shk-trace"
+  COMMAND sudo /usr/sbin/chown root "${PROJECT_BINARY_DIR}/bin/shk-trace"
+  COMMAND sudo /bin/chmod u+s "${PROJECT_BINARY_DIR}/bin/shk-trace"
   VERBATIM USES_TERMINAL)
 
 add_test(NAME trace_unit COMMAND shktrace_test)
