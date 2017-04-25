@@ -127,7 +127,7 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
 
   std::unordered_set<std::string> output_dirs_set;
   for (const auto &output : raw.outputs) {
-    output_dirs_set.insert(dirname(output.original()));
+    output_dirs_set.insert(std::string(dirname(output.original())));
   }
 
   std::vector<flatbuffers::Offset<flatbuffers::String>> output_dirs;

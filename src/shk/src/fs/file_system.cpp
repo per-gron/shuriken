@@ -77,8 +77,7 @@ void mkdirs(
 
   const auto stat = file_system.stat(path);
   if (stat.result == ENOENT || stat.result == ENOTDIR) {
-    const auto dirname = shk::dirname(path);
-    mkdirs(file_system, dirname, created_dirs);
+    mkdirs(file_system, std::string(dirname(path)), created_dirs);
     created_dirs.push_back(path);
     file_system.mkdir(std::move(path));
   } else if (S_ISDIR(stat.metadata.mode)) {

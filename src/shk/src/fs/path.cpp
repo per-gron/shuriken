@@ -19,27 +19,27 @@
 
 namespace shk {
 
-std::pair<string_view, string_view> basenameSplitPiece(string_view path) {
+std::pair<nt_string_view, nt_string_view> basenameSplitPiece(nt_string_view path) {
   const auto last_nonslash = path.find_last_not_of('/');
   const auto slash_pos = path.find_last_of('/', last_nonslash);
 
   if (slash_pos == string_view::npos) {
-    return std::make_pair(string_view(".", 1), path);
+    return std::make_pair(nt_string_view(".", 1), path);
   } else if (last_nonslash == string_view::npos) {
-    return std::make_pair(string_view("/", 1), string_view("/", 1));
+    return std::make_pair(nt_string_view("/", 1), nt_string_view("/", 1));
   } else {
     return std::make_pair(
         slash_pos == 0 ?
-            string_view("/", 1) :
-            string_view(path.data(), slash_pos),
-        string_view(
+            nt_string_view("/", 1) :
+            nt_string_view(path.data(), slash_pos),
+        nt_string_view(
             path.data() + slash_pos + 1,
             last_nonslash - slash_pos));
   }
 }
 
-std::string dirname(string_view path) {
-  return std::string(basenameSplitPiece(path).first);
+nt_string_view dirname(nt_string_view path) {
+  return basenameSplitPiece(path).first;
 }
 
 void canonicalizePath(std::string *path) throw(PathError) {

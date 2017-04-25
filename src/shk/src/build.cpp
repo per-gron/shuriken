@@ -430,7 +430,7 @@ void deleteBuildProduct(
 
   // Delete all ancestor directories that have been previously created by
   // builds and that have now become empty.
-  std::string dir(path);  // Initially point to the created file
+  auto dir = path;  // Initially point to the created file
   for (;;) {
     auto parent = dirname(dir);
     if (parent == dir) {
@@ -679,7 +679,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
     mkdirsAndLog(
         params.file_system,
         params.invocation_log,
-        shk::dirname(step.rspfile()));
+        dirname(step.rspfile()));
     params.file_system.writeFile(step.rspfile(), step.rspfileContent());
   }
 

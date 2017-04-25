@@ -403,7 +403,7 @@ bool ShurikenMain::openInvocationLog() {
         new DummyInvocationLog());
   } else {
     try {
-      mkdirs(_file_system, shk::dirname(path));
+      mkdirs(_file_system, std::string(dirname(path)));
     } catch (const IoError &io_error) {
       error(
           "creating directory for invocation log %s: %s",
