@@ -228,6 +228,19 @@ TEST_CASE("SubprocessSet") {
     CHECK(result.output != "");
   }
 
+  SECTION("CaptureOutput") {
+    const auto result = runCommand("echo hello");
+    CHECK(result.exit_status == ExitStatus::SUCCESS);
+    CHECK(result.output == "hello\n");
+  }
+
+  SECTION("IsolateEnvironment") {
+    putenv(const_cast<char *>("SHK_TEST_ENV_VAR=secret"));
+    const auto result = runCommand("echo $SHK_TEST_ENV_VAR");
+    CHECK(result.exit_status == ExitStatus::SUCCESS);
+    CHECK(result.output == "\n");
+  }
+
   SECTION("SetWithMulti") {
     const auto runner = makeRealCommandRunner();
 

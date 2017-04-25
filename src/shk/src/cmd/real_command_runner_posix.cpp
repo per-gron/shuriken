@@ -32,6 +32,8 @@
 #include "nullterminated_string.h"
 #include "util.h"
 
+extern "C" char **environ;
+
 namespace shk {
 
 enum class UseConsole {
@@ -195,6 +197,9 @@ void Subprocess::start(SubprocessSet *set, nt_string_view command) {
       }
       // In the console case, output_pipe is still inherited by the child and
       // closed when the subprocess finishes, which then notifies ninja.
+
+      // Clear all environment variables before invoking the command.
+      environ = nullptr;
 
       execl(
           "/bin/sh",
