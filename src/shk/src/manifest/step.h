@@ -24,10 +24,6 @@ inline nt_string_view fbStringToView(const flatbuffers::String *string) {
   return nt_string_view(string->c_str(), string->size());
 }
 
-inline StepIndex indexToView(const StepIndex &index) {
-  return index;
-}
-
 template <typename T>
 using FbIterator = flatbuffers::VectorIterator<
     flatbuffers::Offset<T>,
@@ -47,10 +43,7 @@ inline View toFlatbufferView(
 
 }  // namespace detail
 
-using StepIndicesView = WrapperView<
-    const StepIndex *,
-    StepIndex,
-    &detail::indexToView>;
+using StepIndicesView = WrapperView<const StepIndex *, StepIndex>;
 
 using StringsView = WrapperView<
     detail::FbIterator<flatbuffers::String>,

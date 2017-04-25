@@ -4,6 +4,14 @@
 #include <type_traits>
 
 namespace shk {
+namespace detail {
+
+template <typename T>
+T identity(const T &v) {
+  return v;
+}
+
+}  // namespace detail
 
 /**
  * WrapperView is a helper class for classes that wrap Flatbuffer objects in a
@@ -19,7 +27,7 @@ namespace shk {
 template <
     typename Iter,
     typename Wrapper,
-    Wrapper (Wrap(decltype(*std::declval<Iter>())))>
+    Wrapper (Wrap(decltype(*std::declval<Iter>()))) = detail::identity>
 class WrapperView {
  public:
   using value_type = Wrapper;
