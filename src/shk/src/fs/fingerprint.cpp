@@ -5,32 +5,15 @@
 namespace shk {
 namespace {
 
-void computeFingerprintHash(
-    FileSystem &file_system,
-    const Fingerprint::Stat &stat,
-    nt_string_view path,
-    Hash *hash) {
-  if (S_ISDIR(stat.mode)) {
-    *hash = file_system.hashDir(path);
-  } else if (S_ISLNK(stat.mode)) {
-    *hash = file_system.hashSymlink(path);
-  } else if (stat.couldAccess()) {
-    *hash = file_system.hashFile(path);
-  } else {
-    std::fill(hash->data.begin(), hash->data.end(), 0);
-  }
-}
-
-bool fingerprintStat(
+void fingerprintStat(
     FileSystem &file_system,
     nt_string_view path,
     Fingerprint::Stat *out,
-    FileId *file_id,
-    std::string *err) {
+    FileId *file_id) throw(IoError) {
   const auto stat = file_system.lstat(path);
   *file_id = FileId(stat);
 
-  return Fingerprint::Stat::fromStat(stat, out, err);
+  Fingerprint::Stat::fromStat(stat, out);
 }
 
 /**
@@ -67,7 +50,7 @@ MatchesResult fingerprintMatches(
       // already known for sure that the file is different, but now they are the
       // same. In order to know if it's dirty or not, we need to hash the file
       // again.
-      computeFingerprintHash(file_system, fp.stat, path, hash);
+      detail::computeFingerprintHash(file_system, fp.stat.mode, path, hash);
       result.clean = fingerprintMatches(fp, current, *hash);
 
       // At this point, the fingerprint in the invocation log should be
@@ -88,10 +71,29 @@ bool isRacilyClean(const Fingerprint::Stat &stat, time_t timestamp) {
 
 }  // anonymous namespace
 
+namespace detail {
+
+void computeFingerprintHash(
+    FileSystem &file_system,
+    mode_t mode,
+    nt_string_view path,
+    Hash *hash) {
+  if (S_ISDIR(mode)) {
+    *hash = file_system.hashDir(path);
+  } else if (S_ISLNK(mode)) {
+    *hash = file_system.hashSymlink(path);
+  } else if (S_ISREG(mode)) {
+    *hash = file_system.hashFile(path);
+  } else {
+    std::fill(hash->data.begin(), hash->data.end(), 0);
+  }
+}
+
+}  // namespace detail
+
 Fingerprint::Stat::Stat() {}
 
-bool Fingerprint::Stat::fromStat(
-    const ::shk::Stat &stat, Stat *out, std::string *err) {
+void Fingerprint::Stat::fromStat(const ::shk::Stat &stat, Stat *out) {
   if (stat.result == 0) {
     out->size = stat.metadata.size;
     out->ino = stat.metadata.ino;
@@ -100,17 +102,7 @@ bool Fingerprint::Stat::fromStat(
     out->mode = stat.metadata.mode & mode_mask;
     out->mtime = stat.timestamps.mtime;
     out->ctime = stat.timestamps.ctime;
-
-    if (!S_ISLNK(out->mode) &&
-        !S_ISREG(out->mode) &&
-        !S_ISDIR(out->mode)) {
-      *err =
-          "Can only fingerprint regular files, directories and links";
-      return false;
-    }
   }
-
-  return true;
 }
 
 bool Fingerprint::Stat::couldAccess() const {
@@ -175,12 +167,9 @@ std::pair<Fingerprint, FileId> takeFingerprint(
   Fingerprint &fp = ans.first;
   FileId &file_id = ans.second;
 
-  std::string err;
-  if (!fingerprintStat(file_system, path, &fp.stat, &file_id, &err)) {
-    throw IoError(err, 0);
-  }
+  fingerprintStat(file_system, path, &fp.stat, &file_id);
   fp.racily_clean = isRacilyClean(fp.stat, timestamp);
-  computeFingerprintHash(file_system, fp.stat, path, &fp.hash);
+  detail::computeFingerprintHash(file_system, fp.stat.mode, path, &fp.hash);
 
   return ans;
 }
@@ -194,11 +183,7 @@ std::pair<Fingerprint, FileId> retakeFingerprint(
   Fingerprint &new_fingerprint = ans.first;
   FileId &file_id = ans.second;
 
-  std::string err;
-  if (!fingerprintStat(
-          file_system, path, &new_fingerprint.stat, &file_id, &err)) {
-    throw IoError(err, 0);
-  }
+  fingerprintStat(file_system, path, &new_fingerprint.stat, &file_id);
 
   const auto result = fingerprintMatches(
       file_system,
@@ -222,11 +207,8 @@ MatchesResult fingerprintMatches(
   Hash discard1;
   FileId discard2;
 
-  std::string err;
   Fingerprint::Stat fingerprint_stat;
-  if (!fingerprintStat(file_system, path, &fingerprint_stat, &discard2, &err)) {
-    throw IoError(err, 0);
-  }
+  fingerprintStat(file_system, path, &fingerprint_stat, &discard2);
 
   return fingerprintMatches(
       file_system,
@@ -251,10 +233,8 @@ bool fingerprintMatches(
     const Stat &new_stat,
     const Hash &new_hash) {
   Fingerprint::Stat new_fingerprint_stat;
-  std::string err;
-  if (!Fingerprint::Stat::fromStat(new_stat, &new_fingerprint_stat, &err)) {
-    return false;
-  }
+  Fingerprint::Stat::fromStat(new_stat, &new_fingerprint_stat);
+
   return fingerprintMatches(
       original_fingerprint, new_fingerprint_stat, new_hash);
 }

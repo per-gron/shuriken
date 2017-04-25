@@ -16,6 +16,36 @@ TEST_CASE("Fingerprint") {
   fs.mkdir("dir");
   fs.symlink("target", "link");
 
+  SECTION("computeFingerprintHash") {
+    const Hash zero{};
+    Hash ans_hash;
+
+    SECTION("directory") {
+      detail::computeFingerprintHash(fs, S_IFDIR, "dir", &ans_hash);
+      CHECK(ans_hash == fs.hashDir("dir"));
+    }
+
+    SECTION("link") {
+      detail::computeFingerprintHash(fs, S_IFLNK, "link", &ans_hash);
+      CHECK(ans_hash == fs.hashSymlink("link"));
+    }
+
+    SECTION("regular file") {
+      detail::computeFingerprintHash(fs, S_IFREG, "a", &ans_hash);
+      CHECK(ans_hash == fs.hashFile("a"));
+    }
+
+    SECTION("missing file") {
+      detail::computeFingerprintHash(fs, 0, "a", &ans_hash);
+      CHECK(ans_hash == zero);
+    }
+
+    SECTION("other") {
+      detail::computeFingerprintHash(fs, S_IFBLK, "a", &ans_hash);
+      CHECK(ans_hash == zero);
+    }
+  }
+
   SECTION("Stat") {
     Fingerprint::Stat a;
     a.size = 1;
@@ -29,18 +59,14 @@ TEST_CASE("Fingerprint") {
       SECTION("missing file") {
         auto stat = fs.stat("missing");
         Fingerprint::Stat fp_stat;
-        std::string err;
-        CHECK(Fingerprint::Stat::fromStat(stat, &fp_stat, &err));
-        CHECK(err.empty());
+        Fingerprint::Stat::fromStat(stat, &fp_stat);
         CHECK(fp_stat == Fingerprint::Stat());
       }
 
       SECTION("directory") {
         auto stat = fs.stat("dir");
         Fingerprint::Stat fp_stat;
-        std::string err;
-        CHECK(Fingerprint::Stat::fromStat(stat, &fp_stat, &err));
-        CHECK(err.empty());
+        Fingerprint::Stat::fromStat(stat, &fp_stat);
 
         CHECK(fp_stat.size == 0);
         CHECK(fp_stat.ino == stat.metadata.ino);
@@ -52,9 +78,7 @@ TEST_CASE("Fingerprint") {
       SECTION("file") {
         auto stat = fs.stat("a");
         Fingerprint::Stat fp_stat;
-        std::string err;
-        CHECK(Fingerprint::Stat::fromStat(stat, &fp_stat, &err));
-        CHECK(err.empty());
+        Fingerprint::Stat::fromStat(stat, &fp_stat);
 
         CHECK(fp_stat.size == stat.metadata.size);
         CHECK(fp_stat.ino == stat.metadata.ino);

@@ -11,6 +11,15 @@
 #include "string_view.h"
 
 namespace shk {
+namespace detail {
+
+void computeFingerprintHash(
+    FileSystem &file_system,
+    mode_t mode,
+    nt_string_view path,
+    Hash *hash);
+
+}
 
 /**
  * A Fingerprint is information about a file that Shuriken stores in the
@@ -46,7 +55,7 @@ struct Fingerprint {
   struct Stat {
     Stat();
 
-    static bool fromStat(const ::shk::Stat &stat, Stat *out, std::string *err);
+    static void fromStat(const ::shk::Stat &stat, Stat *out);
 
     size_t size = 0;
     ino_t ino = 0;
