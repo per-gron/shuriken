@@ -20,17 +20,6 @@ void checkEmpty(const InvocationLogParseResult &empty) {
   CHECK(!empty.parse_data.buffer);
 }
 
-void sortInvocations(Invocations &invocations) {
-  for (auto &entry : invocations.entries) {
-    std::sort(
-        entry.second.output_files.begin(),
-        entry.second.output_files.end());
-    std::sort(
-        entry.second.input_files.begin(),
-        entry.second.input_files.end());
-  }
-}
-
 void ranCommand(
     InvocationLog &log,
     const Hash &build_step_hash,
@@ -60,10 +49,8 @@ void roundtrip(const Callback &callback) {
   callback(*persistent_log, fs);
   callback(in_memory_log, fs);
   auto result = parsePersistentInvocationLog(fs, "file");
-  sortInvocations(result.invocations);
 
   auto in_memory_result = in_memory_log.invocations();
-  sortInvocations(in_memory_result);
 
   CHECK(result.warning == "");
   CHECK(in_memory_result == result.invocations);
@@ -99,10 +86,8 @@ void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
   }
 
   auto result = parsePersistentInvocationLog(fs, "file");
-  sortInvocations(result.invocations);
 
   auto in_memory_result = in_memory_log.invocations();
-  sortInvocations(in_memory_result);
 
   CHECK(result.warning == "");
   CHECK(in_memory_result == result.invocations);
@@ -153,10 +138,8 @@ void recompact(const Callback &callback, int run_times = 5) {
 
   auto result = parsePersistentInvocationLog(fs, "file");
   CHECK(!result.needs_recompaction);
-  sortInvocations(result.invocations);
 
   auto in_memory_result = in_memory_log.invocations();
-  sortInvocations(in_memory_result);
 
   CHECK(result.warning == "");
 

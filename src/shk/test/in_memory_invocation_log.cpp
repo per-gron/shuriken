@@ -40,10 +40,19 @@ std::vector<std::pair<std::string, Fingerprint>> mergeOutputVectors(
 
 struct InvocationsBuffer {
   std::vector<std::unique_ptr<const std::string>> strings;
+  std::vector<std::vector<uint32_t>> fingerprint_id_views;
 
   nt_string_view bufferString(nt_string_view str) {
     strings.emplace_back(new std::string(str));
     return *strings.back();
+  }
+
+  FingerprintIndicesView bufferFingerprintIndicesView(
+      std::vector<uint32_t> &&view) {
+    fingerprint_id_views.push_back(std::move(view));
+    return FingerprintIndicesView(
+        &fingerprint_id_views.back()[0],
+        &fingerprint_id_views.back()[fingerprint_id_views.back().size()]);
   }
 };
 
@@ -139,7 +148,7 @@ Invocations InMemoryInvocationLog::invocations() const {
       }
       out.push_back(fps[file.second]);
     }
-    return out;
+    return buffer->bufferFingerprintIndicesView(std::move(out));
   };
 
   for (const auto &log_entry : _entries) {

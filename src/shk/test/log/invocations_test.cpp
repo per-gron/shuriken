@@ -5,6 +5,11 @@
 namespace shk {
 
 TEST_CASE("Invocations") {
+  const uint32_t a_zero_buf = 0;
+  const FingerprintIndicesView a_zero_view(&a_zero_buf, &a_zero_buf + 1);
+  const uint32_t a_one_buf = 1;
+  const FingerprintIndicesView a_one_view(&a_one_buf, &a_one_buf + 1);
+
   SECTION("Entry") {
     Invocations::Entry a;
     Invocations::Entry b;
@@ -22,7 +27,7 @@ TEST_CASE("Invocations") {
     }
 
     SECTION("InputFiles") {
-      a.input_files.push_back(0);
+      a.input_files = a_zero_view;
 
       CHECK(!(b == a));
       CHECK(!(a == b));
@@ -31,7 +36,7 @@ TEST_CASE("Invocations") {
     }
 
     SECTION("OutputFiles") {
-      a.output_files.push_back(0);
+      a.output_files = a_zero_view;
 
       CHECK(!(b == a));
       CHECK(!(a == b));
@@ -57,7 +62,7 @@ TEST_CASE("Invocations") {
       i.fingerprints.emplace_back();
 
       Invocations::Entry e;
-      e.output_files.push_back(0);
+      e.output_files = a_zero_view;
       i.entries[Hash()] = e;
 
       CHECK(i.countUsedFingerprints() == 1);
@@ -68,7 +73,7 @@ TEST_CASE("Invocations") {
       i.fingerprints.emplace_back();
 
       Invocations::Entry e;
-      e.input_files.push_back(0);
+      e.input_files = a_zero_view;
       i.entries[Hash()] = e;
 
       CHECK(i.countUsedFingerprints() == 1);
@@ -79,8 +84,8 @@ TEST_CASE("Invocations") {
       i.fingerprints.emplace_back();
 
       Invocations::Entry e;
-      e.input_files.push_back(0);
-      e.output_files.push_back(0);
+      e.input_files = a_zero_view;
+      e.output_files = a_zero_view;
       i.entries[Hash()] = e;
 
       CHECK(i.countUsedFingerprints() == 1);
@@ -92,7 +97,7 @@ TEST_CASE("Invocations") {
       i.fingerprints.emplace_back();
 
       Invocations::Entry e;
-      e.input_files.push_back(1);
+      e.input_files = a_one_view;
       i.entries[Hash()] = e;
 
       CHECK(i.countUsedFingerprints() == 1);
@@ -109,13 +114,13 @@ TEST_CASE("Invocations") {
     Invocations::Entry empty;
 
     Invocations::Entry input_0;
-    input_0.input_files.push_back(0);
+    input_0.input_files = a_zero_view;
 
     Invocations::Entry output_0;
-    output_0.input_files.push_back(0);
+    output_0.input_files = a_zero_view;
 
     Invocations::Entry input_1;
-    input_1.input_files.push_back(1);
+    input_1.input_files = a_one_view;
 
     SECTION("EmptyInvocations") {
       CHECK(Invocations().fingerprintsFor({}) == std::vector<uint32_t>{});
@@ -206,7 +211,7 @@ TEST_CASE("Invocations") {
       Invocations b;
       b.fingerprints.emplace_back("path", Fingerprint());
       Invocations::Entry b_entry;
-      b_entry.output_files.push_back(0);
+      b_entry.output_files = a_zero_view;
       b.entries.emplace(Hash(), b_entry);
 
       a.entries.emplace(Hash(), Invocations::Entry());
@@ -221,7 +226,7 @@ TEST_CASE("Invocations") {
       Invocations b;
       b.fingerprints.emplace_back("path", Fingerprint());
       Invocations::Entry b_entry;
-      b_entry.input_files.push_back(0);
+      b_entry.input_files = a_zero_view;
       b.entries.emplace(Hash(), b_entry);
 
       a.entries.emplace(Hash(), Invocations::Entry());
@@ -236,12 +241,12 @@ TEST_CASE("Invocations") {
       Invocations b;
       b.fingerprints.emplace_back("b_path", Fingerprint());
       Invocations::Entry b_entry;
-      b_entry.output_files.push_back(0);
+      b_entry.output_files = a_zero_view;
       b.entries.emplace(Hash(), b_entry);
 
       a.fingerprints.emplace_back("path", Fingerprint());
       Invocations::Entry a_entry;
-      a_entry.output_files.push_back(0);
+      a_entry.output_files = a_zero_view;
       a.entries.emplace(Hash(), a_entry);
 
       CHECK(!(b == a));
@@ -255,12 +260,12 @@ TEST_CASE("Invocations") {
       b.fingerprints.emplace_back("b_path", Fingerprint());
       b.fingerprints.emplace_back("path", Fingerprint());
       Invocations::Entry b_entry;
-      b_entry.output_files.push_back(1);
+      b_entry.output_files = a_one_view;
       b.entries.emplace(Hash(), b_entry);
 
       a.fingerprints.emplace_back("path", Fingerprint());
       Invocations::Entry a_entry;
-      a_entry.output_files.push_back(0);
+      a_entry.output_files = a_zero_view;
       a.entries.emplace(Hash(), a_entry);
 
       CHECK(b == a);

@@ -131,22 +131,21 @@ const T &read(string_view view) {
   return *reinterpret_cast<const T *>(view.data());
 }
 
-std::vector<uint32_t> readFingerprints(
+FingerprintIndicesView readFingerprints(
     uint32_t fingerprint_count,
     string_view view) {
-  std::vector<uint32_t> result;
-  result.reserve(view.size() / sizeof(uint32_t));
+  const uint32_t *begin = reinterpret_cast<const uint32_t *>(view.data());
+  const uint32_t *end = begin + view.size() / sizeof(uint32_t);
+  FingerprintIndicesView fingerprint_ids(begin, end);
 
-  for (; view.size(); view = advance(view, sizeof(uint32_t))) {
-    const auto fingerprint_id = read<uint32_t>(view);
+  for (const auto fingerprint_id : fingerprint_ids) {
     if (fingerprint_id >= fingerprint_count) {
       throw ParseError(
           "invalid invocation log: encountered invalid fingerprint ref");
     }
-    result.push_back(fingerprint_id);
   }
 
-  return result;
+  return fingerprint_ids;
 }
 
 nt_string_view readPath(
@@ -259,11 +258,11 @@ class PersistentInvocationLog : public InvocationLog {
   void relogCommand(
       const Hash &build_step_hash,
       const std::vector<std::pair<nt_string_view, Fingerprint>> &fingerprints,
-      const std::vector<uint32_t> &output_files,
-      const std::vector<uint32_t> &input_files) {
+      FingerprintIndicesView output_files,
+      FingerprintIndicesView input_files) {
     std::vector<std::string> output_paths;
     std::vector<Fingerprint> output_fingerprints;
-    for (const auto &file_idx : output_files) {
+    for (const auto file_idx : output_files) {
       const auto &file = fingerprints[file_idx];
       output_paths.emplace_back(file.first);
       output_fingerprints.push_back(file.second);
@@ -271,7 +270,7 @@ class PersistentInvocationLog : public InvocationLog {
 
     std::vector<std::string> input_paths;
     std::vector<Fingerprint> input_fingerprints;
-    for (const auto &file_idx : input_files) {
+    for (const auto file_idx : input_files) {
       const auto &file = fingerprints[file_idx];
       input_paths.emplace_back(file.first);
       input_fingerprints.push_back(file.second);

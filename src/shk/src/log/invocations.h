@@ -6,8 +6,11 @@
 #include "fs/file_id.h"
 #include "fs/fingerprint.h"
 #include "hash.h"
+#include "manifest/wrapper_view.h"
 
 namespace shk {
+
+using FingerprintIndicesView = WrapperView<const uint32_t *, uint32_t>;
 
 /**
  * An Invocations object contains information about what Shuriken has done in
@@ -33,8 +36,8 @@ struct Invocations {
    * Contains indices into the fingerprints vector.
    */
   struct Entry {
-    std::vector<uint32_t> output_files;
-    std::vector<uint32_t> input_files;
+    FingerprintIndicesView output_files;
+    FingerprintIndicesView input_files;
   };
 
   /**
