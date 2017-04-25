@@ -28,7 +28,7 @@ class InvocationLog {
    * It is recommended to only provide normalized paths to this method. For
    * an explanation why, see removedDirectory.
    */
-  virtual void createdDirectory(const std::string &path) throw(IoError) = 0;
+  virtual void createdDirectory(nt_string_view path) throw(IoError) = 0;
 
   /**
    * Writes an entry in the invocation log stating that Shuriken no longer is
@@ -40,7 +40,7 @@ class InvocationLog {
    * to createdDirectory. For this reason it is recommended to only give
    * normalized paths to this method and createdDirectory.
    */
-  virtual void removedDirectory(const std::string &path) throw(IoError) = 0;
+  virtual void removedDirectory(nt_string_view path) throw(IoError) = 0;
 
   /**
    * Take a fingerprint of the provided path. Implementations of this method

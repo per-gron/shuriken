@@ -27,7 +27,7 @@ struct Invocations {
    * corresponding uses in entries. Because of this it is usually not a good
    * idea to go though and process all the entries in this vector.
    */
-  std::vector<std::pair<std::string, Fingerprint>> fingerprints;
+  std::vector<std::pair<nt_string_view, Fingerprint>> fingerprints;
 
   /**
    * Contains indices into the fingerprints vector.
@@ -89,7 +89,13 @@ struct Invocations {
    * removed since it was last created by the build, it is ok (and actually
    * desired) for Shuriken to not track it anymore.
    */
-  std::unordered_map<FileId, std::string> created_directories;
+  std::unordered_map<FileId, nt_string_view> created_directories;
+
+  /**
+   * Opaque owning pointer that points to a buffer that contains the data that
+   * the string_views etc in this object point to.
+   */
+  std::shared_ptr<void> buffer;
 };
 
 bool operator==(const Invocations::Entry &a, const Invocations::Entry &b);

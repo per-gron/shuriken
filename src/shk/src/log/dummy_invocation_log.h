@@ -6,10 +6,10 @@ namespace shk {
 
 class DummyInvocationLog : public InvocationLog {
  public:
-  void createdDirectory(const std::string &path)
+  void createdDirectory(nt_string_view path)
       throw(IoError) override {}
 
-  void removedDirectory(const std::string &path)
+  void removedDirectory(nt_string_view path)
       throw(IoError) override {}
 
   std::pair<Fingerprint, FileId> fingerprint(const std::string &path) override {

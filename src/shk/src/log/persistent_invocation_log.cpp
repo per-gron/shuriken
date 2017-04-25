@@ -23,6 +23,35 @@
 namespace shk {
 namespace {
 
+/**
+ * The PersistentInvocationLog object has some maps with non-owning string_views
+ * in them (PathIds, FingerprintIds). After parsing the invocation log, all of
+ * those string_views point to memory inside the invocation log itself, to save
+ * copying.
+ *
+ * However, when the log is written to, for example with the ranCommand method,
+ * the PathIds and FingerprintIds objects have to be updated, but they can't own
+ * the data that they have. In order to ensure that the data survives, this
+ * struct owns the data that would otherwise not been owned by anyone.
+ *
+ * No, this is not particularly elegant :-( but on the other hand, parsing the
+ * invocation log is highly performance sensitive code and not copying things
+ * really helps.
+ */
+struct InvocationsBuffer {
+  InvocationsBuffer() = default;
+  explicit InvocationsBuffer(std::shared_ptr<void> inner_buffer)
+      : inner_buffer(inner_buffer) {}
+
+  std::shared_ptr<void> inner_buffer;
+  std::vector<std::unique_ptr<const std::string>> strings;
+
+  nt_string_view bufferString(nt_string_view str) {
+    strings.emplace_back(new std::string(str));
+    return *strings.back();
+  }
+};
+
 enum class InvocationLogEntryType : uint32_t {
   PATH = 0,
   CREATED_DIR_OR_FINGERPRINT = 1,
@@ -119,8 +148,8 @@ std::vector<uint32_t> readFingerprints(
   return result;
 }
 
-const std::string &readPath(
-    const std::vector<std::string> &paths_by_id,
+nt_string_view readPath(
+    const std::vector<nt_string_view> &paths_by_id,
     string_view view) throw(ParseError) {
   const auto path_id = read<uint32_t>(view);
   if (path_id >= paths_by_id.size()) {
@@ -143,15 +172,17 @@ class PersistentInvocationLog : public InvocationLog {
         _path_ids(std::move(parse_data.path_ids)),
         _fingerprint_ids(std::move(parse_data.fingerprint_ids)),
         _fingerprint_entry_count(parse_data.fingerprint_entry_count),
-        _path_entry_count(parse_data.path_entry_count) {
+        _path_entry_count(parse_data.path_entry_count),
+        _buffer(std::make_shared<InvocationsBuffer>(parse_data.buffer)) {
     writeHeader();
   }
 
-  void createdDirectory(const std::string &path) throw(IoError) override {
-    writeDirectoryEntry(ensurePathIsWritten(path));
+  void createdDirectory(nt_string_view path) throw(IoError) override {
+    const auto path_id = ensurePathIsWritten(path).first;
+    writeDirectoryEntry(path_id);
   }
 
-  void removedDirectory(const std::string &path) throw(IoError) override {
+  void removedDirectory(nt_string_view path) throw(IoError) override {
     const auto it = _path_ids.find(path);
     if (it == _path_ids.end()) {
       // The directory has not been created so it can't be removed.
@@ -212,6 +243,7 @@ class PersistentInvocationLog : public InvocationLog {
   void leakMemory() override {
     new PathIds(std::move(_path_ids));
     new FingerprintIds(std::move(_fingerprint_ids));
+    new InvocationsBuffer(std::move(*_buffer));
   }
 
   /**
@@ -225,14 +257,14 @@ class PersistentInvocationLog : public InvocationLog {
    */
   void relogCommand(
       const Hash &build_step_hash,
-      const std::vector<std::pair<std::string, Fingerprint>> &fingerprints,
+      const std::vector<std::pair<nt_string_view, Fingerprint>> &fingerprints,
       const std::vector<uint32_t> &output_files,
       const std::vector<uint32_t> &input_files) {
     std::vector<std::string> output_paths;
     std::vector<Fingerprint> output_fingerprints;
     for (const auto &file_idx : output_files) {
       const auto &file = fingerprints[file_idx];
-      output_paths.push_back(file.first);
+      output_paths.emplace_back(file.first);
       output_fingerprints.push_back(file.second);
     }
 
@@ -240,7 +272,7 @@ class PersistentInvocationLog : public InvocationLog {
     std::vector<Fingerprint> input_fingerprints;
     for (const auto &file_idx : input_files) {
       const auto &file = fingerprints[file_idx];
-      input_paths.push_back(file.first);
+      input_paths.emplace_back(file.first);
       input_fingerprints.push_back(file.second);
     }
 
@@ -264,6 +296,7 @@ class PersistentInvocationLog : public InvocationLog {
     ans.fingerprint_ids = std::move(_fingerprint_ids);
     ans.fingerprint_entry_count = _fingerprint_entry_count;
     ans.path_entry_count = _path_entry_count;
+    ans.buffer = _buffer;
     return ans;
   }
 
@@ -340,7 +373,13 @@ class PersistentInvocationLog : public InvocationLog {
     write(size | static_cast<uint32_t>(type));
   }
 
-  void writePathEntry(const std::string &path) {
+  /**
+   * Write a Path entry to the invocation log.
+   *
+   * Takes a string_view into non-owned memory and returns a string_view into
+   * memory that will survive as long as this object.
+   */
+  nt_string_view writePathEntry(nt_string_view path) {
     const auto path_size = path.size() + 1;
     const auto padding_bytes =
         (4 - (path_size & kInvocationLogEntryTypeMask)) % 4;
@@ -357,6 +396,8 @@ class PersistentInvocationLog : public InvocationLog {
         reinterpret_cast<const uint8_t *>(kNullBuf), padding_bytes, 1);
 
     _path_entry_count++;
+
+    return _buffer->bufferString(path);
   }
 
   void writeDirectoryEntry(const uint32_t path_id) {
@@ -384,16 +425,20 @@ class PersistentInvocationLog : public InvocationLog {
    * Get the id for a path. If the path is not already written, write an entry
    * with that path. This means that this method cannot be called in the middle
    * of writing another entry.
+   *
+   * Returns the id of the path, along with a string_view to the path that will
+   * survive as long as this object (the path parameter is only known to survive
+   * the scope).
    */
-  uint32_t ensurePathIsWritten(const std::string &path) {
+  std::pair<uint32_t, nt_string_view> ensurePathIsWritten(nt_string_view path) {
     const auto it = _path_ids.find(path);
     if (it == _path_ids.end()) {
       const auto id = _path_entry_count;
-      writePathEntry(path);
-      _path_ids[path] = id;
-      return id;
+      auto owned_path = writePathEntry(path);
+      _path_ids[owned_path] = id;
+      return std::make_pair(id, owned_path);
     } else {
-      return it->second;
+      return std::make_pair(it->second, it->first);
     }
   }
 
@@ -425,23 +470,25 @@ class PersistentInvocationLog : public InvocationLog {
         const std::string &path,
         const Fingerprint &fingerprint,
         WriteType type) {
-    const auto path_id = ensurePathIsWritten(path);
+    uint32_t path_id;
+    nt_string_view owned_path;
+    std::tie(path_id, owned_path) = ensurePathIsWritten(path);
 
     FingerprintIdsValue value;
     value.fingerprint = fingerprint;
     value.record_id = _fingerprint_entry_count;
-    const auto it = _fingerprint_ids.find(path);
+    const auto it = _fingerprint_ids.find(owned_path);
     if (it == _fingerprint_ids.end()) {
       // No prior entry for that path.
       writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
-      _fingerprint_ids[path] = value;
+      _fingerprint_ids[owned_path] = value;
     } else {
       // There is a fingerprint entry for the given path already. Find out if it
       // can be reused or if a new fingerprint is required.
       const auto &old_fingerprint = it->second.fingerprint;
       if (old_fingerprint != value.fingerprint) {
         writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
-        _fingerprint_ids[path] = value;
+        _fingerprint_ids[owned_path] = value;
       }
     }
   }
@@ -453,28 +500,29 @@ class PersistentInvocationLog : public InvocationLog {
   FingerprintIds _fingerprint_ids;
   uint32_t _fingerprint_entry_count;
   uint32_t _path_entry_count;
+  std::shared_ptr<InvocationsBuffer> _buffer;
 };
 
 void parsePath(
     string_view entry,
     InvocationLogParseResult &result,
-    std::vector<std::string> &paths_by_id) throw(ParseError) {
+    std::vector<nt_string_view> &paths_by_id) throw(ParseError) {
   if (strnlen(entry.data(), entry.size()) == entry.size()) {
     throw ParseError(
         "invalid invocation log: Encountered non null terminated path");
   }
-  // Don't use std::string(entry) because it could make the string contain
-  // trailing \0s
-  auto path_string = std::string(entry.data());
-  result.parse_data.path_ids[path_string] = paths_by_id.size();
-  paths_by_id.emplace_back(std::move(path_string));
+  // The string contains an unknown number of trailing \0s, so construct the
+  // string view in a way that ensures that those are not included.
+  auto path_string_view = nt_string_view(entry.data());
+  result.parse_data.path_ids[path_string_view] = paths_by_id.size();
+  paths_by_id.emplace_back(path_string_view);
 }
 
 void parseCreatedDir(
     string_view entry,
     FileSystem &file_system,
     InvocationLogParseResult &result,
-    std::vector<std::string> &paths_by_id)
+    std::vector<nt_string_view> &paths_by_id)
         throw(IoError, ParseError) {
   const auto path = readPath(paths_by_id, entry);
   const auto stat = file_system.lstat(path);
@@ -490,7 +538,7 @@ void parseCreatedDir(
 void parseFingerprint(
     string_view entry,
     InvocationLogParseResult &result,
-    std::vector<std::string> &paths_by_id) throw(ParseError) {
+    std::vector<nt_string_view> &paths_by_id) throw(ParseError) {
   const auto path = readPath(paths_by_id, entry);
   entry = advance(entry, sizeof(uint32_t));
 
@@ -529,7 +577,7 @@ void parseDeleted(
     string_view entry,
     FileSystem &file_system,
     InvocationLogParseResult &result,
-    std::vector<std::string> &paths_by_id) throw(ParseError) {
+    std::vector<nt_string_view> &paths_by_id) throw(ParseError) {
   if (entry.size() == sizeof(uint32_t)) {
     // Deleted directory
     const auto path = readPath(paths_by_id, entry);
@@ -560,9 +608,9 @@ InvocationLogParseResult parsePersistentInvocationLog(
   //
   // According to my measurements, this is a little bit slower than mmap, so
   // it's not used normally.
-  std::string log_contents;
+  auto log_contents = std::make_shared<std::string>();
   try {
-    log_contents = file_system.readFile(log_path);
+    *log_contents = file_system.readFile(log_path);
   } catch (IoError &io_error) {
     if (io_error.code == ENOENT) {
       return result;
@@ -570,9 +618,10 @@ InvocationLogParseResult parsePersistentInvocationLog(
       throw;
     }
   }
-  auto view = string_view(log_contents);
+  auto view = string_view(*log_contents);
+  result.invocations.buffer = log_contents;
 #else
-  std::unique_ptr<FileSystem::Mmap> mmap;
+  std::shared_ptr<FileSystem::Mmap> mmap;
   try {
     mmap = file_system.mmap(log_path);
   } catch (IoError &io_error) {
@@ -583,6 +632,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
     }
   }
   auto view = mmap->memory();
+  result.invocations.buffer = mmap;
 #endif
   const auto file_size = view.size();
 
@@ -597,7 +647,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
   }
 
   // "Map" from path path entry id to path.
-  std::vector<std::string> paths_by_id;
+  std::vector<nt_string_view> paths_by_id;
 
   size_t entry_count = 0;
 

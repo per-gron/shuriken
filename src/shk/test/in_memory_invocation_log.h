@@ -23,8 +23,8 @@ class InMemoryInvocationLog : public InvocationLog {
 
   InMemoryInvocationLog(FileSystem &file_system, const Clock &clock);
 
-  void createdDirectory(const std::string &path) throw(IoError) override;
-  void removedDirectory(const std::string &path) throw(IoError) override;
+  void createdDirectory(nt_string_view path) throw(IoError) override;
+  void removedDirectory(nt_string_view path) throw(IoError) override;
   std::pair<Fingerprint, FileId> fingerprint(const std::string &path) override;
   void ranCommand(
       const Hash &build_step_hash,

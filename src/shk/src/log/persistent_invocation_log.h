@@ -7,6 +7,7 @@
 #include "log/invocation_log.h"
 #include "log/invocations.h"
 #include "parse_error.h"
+#include "string_view.h"
 
 namespace shk {
 
@@ -83,7 +84,7 @@ namespace shk {
  * produced when parsing the invocation log and used when writing to the
  * invocation log, to avoid duplication of paths in the log.
  */
-using PathIds = std::unordered_map<std::string, uint32_t>;
+using PathIds = std::unordered_map<nt_string_view, uint32_t>;
 /**
  * A map of paths to the record id of the most recent fingerprint for that path
  * in the invocation log. In order to be able to decide if the most recent
@@ -97,7 +98,7 @@ struct FingerprintIdsValue {
   Fingerprint fingerprint;
 };
 using FingerprintIds = std::unordered_map<
-    std::string, FingerprintIdsValue>;
+    nt_string_view, FingerprintIdsValue>;
 
 struct InvocationLogParseResult {
   /**
@@ -110,6 +111,12 @@ struct InvocationLogParseResult {
     FingerprintIds fingerprint_ids;
     uint32_t fingerprint_entry_count = 0;
     uint32_t path_entry_count = 0;
+
+    /**
+     * FingerprintIds and PathIds have string_view objects. This is an owning
+     * reference to the buffer that they point to.
+     */
+    std::shared_ptr<void> buffer;
   };
 
   Invocations invocations;

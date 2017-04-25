@@ -137,7 +137,7 @@ Build computeBuild(
 void addOutput(
     Invocations &invocations,
     Invocations::Entry &entry,
-    const std::string &path,
+    nt_string_view path,  // Must outlive the test
     const Fingerprint &fingerprint) {
   entry.output_files.push_back(invocations.fingerprints.size());
   invocations.fingerprints.emplace_back(path, fingerprint);
@@ -146,7 +146,7 @@ void addOutput(
 void addInput(
     Invocations &invocations,
     Invocations::Entry &entry,
-    const std::string &path,
+    nt_string_view path,  // Must outlive the test
     const Fingerprint &fingerprint) {
   entry.input_files.push_back(invocations.fingerprints.size());
   invocations.fingerprints.emplace_back(path, fingerprint);

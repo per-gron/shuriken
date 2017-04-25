@@ -38,18 +38,29 @@ std::vector<std::pair<std::string, Fingerprint>> mergeOutputVectors(
   return files;
 }
 
+struct InvocationsBuffer {
+  std::vector<std::unique_ptr<const std::string>> strings;
+
+  nt_string_view bufferString(nt_string_view str) {
+    strings.emplace_back(new std::string(str));
+    return *strings.back();
+  }
+};
+
 }  // anonymous namespace
 
 InMemoryInvocationLog::InMemoryInvocationLog(
     FileSystem &file_system, const Clock &clock)
     : _fs(file_system), _clock(clock) {}
 
-void InMemoryInvocationLog::createdDirectory(const std::string &path) throw(IoError) {
-  _created_directories.insert(path);
+void InMemoryInvocationLog::createdDirectory(
+    nt_string_view path) throw(IoError) {
+  _created_directories.insert(std::string(path));
 }
 
-void InMemoryInvocationLog::removedDirectory(const std::string &path) throw(IoError) {
-  _created_directories.erase(path);
+void InMemoryInvocationLog::removedDirectory(
+    nt_string_view path) throw(IoError) {
+  _created_directories.erase(std::string(path));
 }
 
 std::pair<Fingerprint, FileId> InMemoryInvocationLog::fingerprint(
@@ -99,12 +110,14 @@ void InMemoryInvocationLog::leakMemory() {
 
 Invocations InMemoryInvocationLog::invocations() const {
   Invocations result;
+  auto buffer = std::make_shared<InvocationsBuffer>();
+  result.buffer = buffer;
 
   for (const auto &dir : _created_directories) {
     const auto stat = _fs.lstat(dir);
     if (stat.result == 0) {
       const auto file_id = FileId(stat);
-      result.created_directories.emplace(file_id, dir);
+      result.created_directories.emplace(file_id, buffer->bufferString(dir));
     }
   }
 
@@ -120,7 +133,9 @@ Invocations InMemoryInvocationLog::invocations() const {
       const auto fps_it = fps.find(file.second);
       if (fps_it == fps.end()) {
         fps[file.second] = result.fingerprints.size();
-        result.fingerprints.emplace_back(file.first, file.second);
+        result.fingerprints.emplace_back(
+            buffer->bufferString(file.first),
+            file.second);
       }
       out.push_back(fps[file.second]);
     }

@@ -187,7 +187,7 @@ void relogCommand(
     std::vector<std::string> files;
     files.reserve(file_indices.size());
     for (const uint32_t file_index : file_indices) {
-      files.push_back(invocations.fingerprints[file_index].first);
+      files.emplace_back(invocations.fingerprints[file_index].first);
     }
     return files;
   };
@@ -416,21 +416,21 @@ void deleteBuildProduct(
     FileSystem &file_system,
     const Invocations &invocations,
     InvocationLog &invocation_log,
-    const std::string &path) throw(IoError) {
+    nt_string_view path) throw(IoError) {
   try {
     file_system.unlink(path);
   } catch (const IoError &error) {
     if (error.code != ENOENT) {
       throw IoError(
           std::string("Failed to unlink build product ") +
-          path + ": " + error.what(),
+          std::string(path) + ": " + error.what(),
           error.code);
     }
   }
 
   // Delete all ancestor directories that have been previously created by
   // builds and that have now become empty.
-  auto dir = path;  // Initially point to the created file
+  std::string dir(path);  // Initially point to the created file
   for (;;) {
     auto parent = dirname(dir);
     if (parent == dir) {

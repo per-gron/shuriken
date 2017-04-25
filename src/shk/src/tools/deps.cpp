@@ -40,7 +40,7 @@ int toolDeps(int argc, char **argv, const ToolParams &params) {
       const auto &path = file.first;
       const auto &fp = file.second;
       const auto result = fingerprintMatches(params.file_system, path, fp);
-      return path +
+      return std::string(path) +
           (result.clean ? "" : " [dirty]") +
           (result.should_update ? " [should update]" : "");
     };

@@ -17,6 +17,7 @@ void checkEmpty(const InvocationLogParseResult &empty) {
   CHECK(empty.parse_data.fingerprint_ids.empty());
   CHECK(empty.parse_data.fingerprint_entry_count == 0);
   CHECK(empty.parse_data.path_entry_count == 0);
+  CHECK(!empty.parse_data.buffer);
 }
 
 void sortInvocations(Invocations &invocations) {
@@ -47,7 +48,7 @@ void ranCommand(
  * Test that committing a set of entries to the log and reading it back does
  * the same thing as just writing those entries to an Invocations object.
  */
-template<typename Callback>
+template <typename Callback>
 void roundtrip(const Callback &callback) {
   InMemoryFileSystem fs;
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
@@ -68,7 +69,7 @@ void roundtrip(const Callback &callback) {
   CHECK(in_memory_result == result.invocations);
 }
 
-template<typename Callback>
+template <typename Callback>
 void leak(const Callback &callback) {
   InMemoryFileSystem fs;
   const auto persistent_log = openPersistentInvocationLog(
@@ -82,7 +83,7 @@ void leak(const Callback &callback) {
   // There isn't really anything to CHECK here. It should not crash.
 }
 
-template<typename Callback>
+template <typename Callback>
 void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
   callback(in_memory_log, fs);
@@ -107,7 +108,7 @@ void multipleWriteCycles(const Callback &callback, InMemoryFileSystem fs) {
   CHECK(in_memory_result == result.invocations);
 }
 
-template<typename Callback>
+template <typename Callback>
 void shouldEventuallyRequestRecompaction(const Callback &callback) {
   InMemoryFileSystem fs;
   for (size_t attempts = 0;; attempts++) {
@@ -129,7 +130,7 @@ void shouldEventuallyRequestRecompaction(const Callback &callback) {
   }
 }
 
-template<typename Callback>
+template <typename Callback>
 void recompact(const Callback &callback, int run_times = 5) {
   InMemoryFileSystem fs;
   InMemoryInvocationLog in_memory_log(fs, [] { return 0; });
@@ -162,13 +163,14 @@ void recompact(const Callback &callback, int run_times = 5) {
   CHECK(in_memory_result == result.invocations);
 
   // Sanity check parse_data
+  CHECK(parse_data.buffer);
   CHECK(
       parse_data.fingerprint_entry_count ==
       result.invocations.fingerprints.size());
   CHECK(parse_data.path_entry_count == parse_data.path_ids.size());
 
   for (const auto &fingerprint : in_memory_result.fingerprints) {
-    const auto &path = fingerprint.first;
+    const auto path = std::string(fingerprint.first);
     CHECK(parse_data.path_ids.count(path));
     CHECK(parse_data.fingerprint_ids.count(path));
   }
@@ -180,7 +182,7 @@ void recompact(const Callback &callback, int run_times = 5) {
     CHECK(no_id_duplicate);
   };
   for (const auto &fingerprint : in_memory_result.fingerprints) {
-    const auto &path = fingerprint.first;
+    const auto path = std::string(fingerprint.first);
     const auto path_id_it = parse_data.path_ids.find(path);
     if (path_id_it != parse_data.path_ids.end()) {
       add_entry_id(path_entry_ids, path_id_it->second);
@@ -210,7 +212,7 @@ void recompact(const Callback &callback, int run_times = 5) {
       result.invocations.created_directories);
 }
 
-template<typename Callback>
+template <typename Callback>
 void warnOnTruncatedInput(const Callback &callback) {
   InMemoryFileSystem fs;
 
@@ -246,7 +248,7 @@ void warnOnTruncatedInput(const Callback &callback) {
   CHECK(warnings > 0);
 }
 
-template<typename Callback>
+template <typename Callback>
 void writeEntries(const Callback &callback) {
   roundtrip(callback);
   leak(callback);

@@ -79,7 +79,7 @@ TEST_CASE("InMemoryInvocationLog") {
       REQUIRE(invocations.fingerprints.size() == 1);
       CHECK(
           invocations.fingerprints[0] ==
-          (std::make_pair(std::string("file"), fp)));
+          (std::make_pair(nt_string_view("file"), fp)));
     }
 
     SECTION("IgnoreDir") {
@@ -135,7 +135,7 @@ TEST_CASE("InMemoryInvocationLog") {
       fs.mkdir("a");
       log.createdDirectory("a");
 
-      std::unordered_map<FileId, std::string> created_directories{
+      std::unordered_map<FileId, nt_string_view> created_directories{
         { FileId(fs.lstat("a")), "a" } };
       CHECK(log.invocations().created_directories == created_directories);
     }

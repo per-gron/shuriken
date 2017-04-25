@@ -25,13 +25,13 @@ class DelayedInvocationLog : public InvocationLog {
     assert(_delayed_entries.empty());
   }
 
-  void createdDirectory(const std::string &path) throw(IoError) override {
+  void createdDirectory(nt_string_view path) throw(IoError) override {
     // Directories are not fingerprinted and do not interact with the command
     // logging so this can be forwarded immediately.
     _inner_log->createdDirectory(path);
   }
 
-  void removedDirectory(const std::string &path) throw(IoError) override {
+  void removedDirectory(nt_string_view path) throw(IoError) override {
     // Directories are not fingerprinted and do not interact with the command
     // logging so this can be forwarded immediately.
     _inner_log->removedDirectory(path);
