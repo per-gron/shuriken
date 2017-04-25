@@ -15,6 +15,7 @@ std::unordered_set<std::string> makeIgnoredFilesSet() {
     "/AppleInternal",
     "/dev/null",
     "/dev/random",
+    "/dev/autofs_nowait",
     "/dev/urandom",
     "/dev/dtracehelper",
     "/dev/tty" };

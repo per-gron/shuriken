@@ -511,9 +511,9 @@ TEST_CASE("TracingCommandRunner") {
       detail::parseTrace(trace, &result);
 
       CHECK(result.exit_status == ExitStatus::SUCCESS);
-      CHECK(result.input_files.empty());
-      CHECK(result.output_files.empty());
-      CHECK(result.output.empty());
+      CHECK(result.input_files == std::vector<std::string>());
+      CHECK(result.output_files == std::vector<std::string>());
+      CHECK(result.output == "");
     }
   }
 }
