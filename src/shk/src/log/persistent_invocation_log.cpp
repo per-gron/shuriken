@@ -60,8 +60,9 @@ enum class InvocationLogEntryType : uint32_t {
 };
 
 const std::string kFileSignature = "invocations:";
-const uint32_t kFileVersion = 1;
-const uint32_t kInvocationLogEntryTypeMask = 3;
+constexpr uint32_t kFileVersion = 1;
+constexpr uint32_t kInvocationLogEntryTypeMask = 3;
+constexpr uint32_t kInvalidEntry = std::numeric_limits<uint32_t>::max();
 
 string_view advance(string_view view, size_t len) {
   assert(len <= view.size());
@@ -212,14 +213,14 @@ class PersistentInvocationLog : public InvocationLog {
       std::vector<Fingerprint> &&input_fingerprints)
           throw(IoError) override {
 
-    output_files = writeOutputPathsAndFingerprints(
+    const auto output_fp_ids = writeOutputPathsAndFingerprints(
         std::move(output_files),
         std::move(output_fingerprints));
-    const auto input_files = writeInputPathsAndFingerprints(
+    const auto input_fp_ids = writeInputPathsAndFingerprints(
         std::move(input_files_map),
         std::move(input_fingerprints));
 
-    const auto total_entries = output_files.size() + input_files.size();
+    const auto total_entries = output_fp_ids.size() + input_fp_ids.size();
     const uint32_t size =
         sizeof(Hash) +
         sizeof(uint32_t) +
@@ -228,10 +229,10 @@ class PersistentInvocationLog : public InvocationLog {
     writeHeader(size, InvocationLogEntryType::INVOCATION);
 
     write(build_step_hash);
-    write(static_cast<uint32_t>(output_files.size()));
+    write(static_cast<uint32_t>(output_fp_ids.size()));
 
-    writeFiles(output_files);
-    writeFiles(input_files);
+    writeFingerprintIds(output_fp_ids);
+    writeFingerprintIds(input_fp_ids);
   }
 
   void cleanedCommand(
@@ -301,52 +302,50 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
  private:
-  void writeFiles(const std::vector<std::string> &paths) {
-    for (const auto &path : paths) {
-      const auto fingerprint_it = _fingerprint_ids.find(path);
-      assert(fingerprint_it != _fingerprint_ids.end());
-      write(fingerprint_it->second.record_id);
+  void writeFingerprintIds(const std::vector<uint32_t> &ids) {
+    for (const auto &id : ids) {
+      write(id);
     }
   }
 
   /**
    * Used for output files.
    */
-  std::vector<std::string> writeOutputPathsAndFingerprints(
+  std::vector<uint32_t> writeOutputPathsAndFingerprints(
       std::vector<std::string> &&paths,
       std::vector<Fingerprint> &&output_fingerprints) {
     if (paths.size() != output_fingerprints.size()) {
       // Should never happen
       throw std::runtime_error("mismatching path and fingerprint vector sizes");
     }
-    std::vector<std::string> result;
+    std::vector<uint32_t> result;
     for (int i = 0; i < paths.size(); i++) {
       const auto &path = paths[i];
       const auto &fingerprint = output_fingerprints[i];
-      ensureRecentFingerprintIsWritten(
+      const auto entry_id = ensureRecentFingerprintIsWritten(
           path, fingerprint, WriteType::DIRECTORY_AS_DIRECTORY_ENTRY);
-      if (!fingerprint.stat.isDir()) {
-        result.push_back(std::move(path));
+      if (entry_id != kInvalidEntry) {
+        result.push_back(entry_id);
       }
     }
     return result;
   }
 
-  std::vector<std::string> writeInputPathsAndFingerprints(
+  std::vector<uint32_t> writeInputPathsAndFingerprints(
       std::vector<std::string> &&input_files,
       std::vector<Fingerprint> &&input_fingerprints) {
     if (input_files.size() != input_fingerprints.size()) {
       // Should never happen
       throw std::runtime_error("mismatching path and fingerprint vector sizes");
     }
-    std::vector<std::string> result;
+    std::vector<uint32_t> result;
     for (int i = 0; i < input_files.size(); i++) {
       auto &path = input_files[i];
       const auto &fingerprint = input_fingerprints[i];
-      ensureRecentFingerprintIsWritten(
-          path, fingerprint, WriteType::ALWAYS_FINGERPRINT);
-      if (!fingerprint.stat.isDir()) {
-        result.push_back(std::move(path));
+      const auto entry_id = ensureRecentFingerprintIsWritten(
+          path, fingerprint, WriteType::IGNORE_DIRECTORY);
+      if (entry_id != kInvalidEntry) {
+        result.push_back(entry_id);
       }
     }
     return result;
@@ -406,7 +405,12 @@ class PersistentInvocationLog : public InvocationLog {
     write(path_id);
   }
 
-  void writeFingerprintEntry(
+  /**
+   * Write a fingerprint entry to the log.
+   *
+   * Returns the id for the written fingerprint.
+   */
+  uint32_t writeFingerprintEntry(
         const uint32_t path_id, const Fingerprint &fingerprint) {
     writeHeader(
         sizeof(path_id) + sizeof(fingerprint),
@@ -418,7 +422,7 @@ class PersistentInvocationLog : public InvocationLog {
         sizeof(fingerprint),
         1);
 
-    _fingerprint_entry_count++;
+    return _fingerprint_entry_count++;
   }
 
   /**
@@ -443,19 +447,21 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
   enum class WriteType {
-    ALWAYS_FINGERPRINT,
+    IGNORE_DIRECTORY,
     DIRECTORY_AS_DIRECTORY_ENTRY
   };
 
-  void writeFingerprintOrDirectoryEntry(
+  uint32_t writeFingerprintOrDirectoryEntry(
         const uint32_t path_id,
         const Fingerprint &fingerprint,
         WriteType type) {
-    if (type == WriteType::DIRECTORY_AS_DIRECTORY_ENTRY &&
-        fingerprint.stat.isDir()) {
-      writeDirectoryEntry(path_id);
+    if (fingerprint.stat.isDir()) {
+      if (type == WriteType::DIRECTORY_AS_DIRECTORY_ENTRY) {
+        writeDirectoryEntry(path_id);
+      }
+      return kInvalidEntry;
     } else {
-      writeFingerprintEntry(path_id, fingerprint);
+      return writeFingerprintEntry(path_id, fingerprint);
     }
   }
 
@@ -465,8 +471,11 @@ class PersistentInvocationLog : public InvocationLog {
    *
    * Because this might write an entry to the log, this method cannot be called
    * in the middle of writing another entry.
+   *
+   * Returns the fingerprint id for that fingerprint, or kInvalidEntry if no
+   * fingerprint was written.
    */
-  void ensureRecentFingerprintIsWritten(
+  uint32_t ensureRecentFingerprintIsWritten(
         const std::string &path,
         const Fingerprint &fingerprint,
         WriteType type) {
@@ -480,15 +489,21 @@ class PersistentInvocationLog : public InvocationLog {
     const auto it = _fingerprint_ids.find(owned_path);
     if (it == _fingerprint_ids.end()) {
       // No prior entry for that path.
-      writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
+      const auto entry_id =
+          writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
       _fingerprint_ids[owned_path] = value;
+      return entry_id;
     } else {
       // There is a fingerprint entry for the given path already. Find out if it
       // can be reused or if a new fingerprint is required.
       const auto &old_fingerprint = it->second.fingerprint;
       if (old_fingerprint != value.fingerprint) {
-        writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
+        const auto entry_id =
+            writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
         _fingerprint_ids[owned_path] = value;
+        return entry_id;
+      } else {
+        return it->second.record_id;
       }
     }
   }
