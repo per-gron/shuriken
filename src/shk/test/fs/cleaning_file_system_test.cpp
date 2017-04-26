@@ -90,8 +90,11 @@ TEST_CASE("CleaningFileSystem") {
 
   SECTION("truncate") {
     fs.truncate("f", 1);
-    CHECK(inner_fs.readFile("f") == "c");
-    CHECK(fs.getRemovedCount() == 0);
+    std::string err;
+    CHECK(
+        inner_fs.readFile("f", &err) ==
+        std::make_pair(std::string("c"), true));
+    CHECK(err == "");
   }
 
   SECTION("readDir") {
@@ -109,8 +112,10 @@ TEST_CASE("CleaningFileSystem") {
   }
 
   SECTION("readFile") {
-    CHECK(fs.readFile("f") == "contents");
-    CHECK(fs.getRemovedCount() == 0);
+    std::string err;
+    CHECK(
+        fs.readFile("f", &err) ==
+        std::make_pair(std::string("contents"), true));
   }
 
   SECTION("hashFile") {

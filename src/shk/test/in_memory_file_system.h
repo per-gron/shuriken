@@ -42,7 +42,8 @@ class InMemoryFileSystem : public FileSystem {
       nt_string_view path) throw(IoError) override;
   std::pair<std::string, bool> readSymlink(
       nt_string_view path, std::string *err) override;
-  std::string readFile(nt_string_view path) throw(IoError) override;
+  std::pair<std::string, bool> readFile(
+      nt_string_view path, std::string *err) override;
   std::pair<Hash, bool> hashFile(
       nt_string_view path, std::string *err) override;
   std::pair<std::string, bool> mkstemp(

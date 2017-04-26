@@ -35,10 +35,18 @@ void splitPaths(
 std::string makeInputData(
     FileSystem &file_system,
     const std::vector<std::string> &inputs) {
+  std::string err;
   std::string input_data;
   for (const auto &input : inputs) {
+    std::string file_contents;
+    bool success;
+    std::tie(file_contents, success) = file_system.readFile(input, &err);
+    if (!success) {
+      throw IoError(err, 0);
+    }
+
     input_data += input + "\n";
-    input_data += file_system.readFile(input);
+    input_data += file_contents;
     input_data += "\n";
   }
   return input_data;
@@ -156,8 +164,14 @@ void DummyCommandRunner::checkCommand(
 
   const auto input_data = makeInputData(file_system, inputs);
 
+  std::string err;
   for (const auto &output : outputs) {
-    const auto data = file_system.readFile(output);
+    std::string data;
+    bool success;
+    std::tie(data, success) = file_system.readFile(output, &err);
+    if (!success) {
+      throw IoError(data, 0);
+    }
     if (data != output + "\n" + input_data) {
       throw std::runtime_error("Unexpected output file contents for file " + output);
     }

@@ -226,14 +226,20 @@ class PersistentFileSystem : public FileSystem {
     return std::make_pair(buf.data(), true);
   }
 
-  std::string readFile(nt_string_view path) throw(IoError) override {
-    const auto file_stat = stat(path);
-    std::string contents;
-    contents.reserve(file_stat.metadata.size);
-    processFile(path, [&contents](const char *buf, size_t len) {
-      contents.append(buf, len);
-    });
-    return contents;
+  std::pair<std::string, bool> readFile(
+      nt_string_view path, std::string *err) override {
+    try {
+      const auto file_stat = stat(path);
+      std::string contents;
+      contents.reserve(file_stat.metadata.size);
+      processFile(path, [&contents](const char *buf, size_t len) {
+        contents.append(buf, len);
+      });
+      return std::make_pair(std::move(contents), true);
+    } catch (const IoError &io_error) {
+      *err = io_error.what();
+      return std::make_pair(std::string(), false);
+    }
   }
 
   std::pair<Hash, bool> hashFile(

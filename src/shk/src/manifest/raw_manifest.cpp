@@ -59,16 +59,16 @@ struct ManifestParser {
    * Load and parse a file.
    */
   void load(const std::string &filename, Lexer *parent) throw(ParseError) {
+    std::string err;
     std::string contents;
-
-    try {
-      contents = _file_system.readFile(filename);
-    } catch (IoError &error) {
-      auto err = "loading '" + filename + "': " + error.what();
+    bool success;
+    std::tie(contents, success) = _file_system.readFile(filename, &err);
+    if (!success) {
+      auto error_string = "loading '" + filename + "': " + err;
       if (parent) {
-        err = parent->error(err);
+        error_string = parent->error(error_string);
       }
-      throw ParseError(err);
+      throw ParseError(error_string);
     }
 
     _manifest.manifest_files.push_back(filename);

@@ -105,13 +105,19 @@ TEST_CASE("FileSystem") {
 
   SECTION("writeFile, readFile") {
     writeFile(fs, "abc", "hello");
-    CHECK(fs.readFile("abc") == "hello");
+    std::string err;
+    CHECK(
+        fs.readFile("abc", &err) ==
+        std::make_pair(std::string("hello"), true));
   }
 
   SECTION("writeFile, writeFile, readFile") {
     writeFile(fs, "abc", "hello");
     writeFile(fs, "abc", "hello!");
-    CHECK(fs.readFile("abc") == "hello!");
+    std::string err;
+    CHECK(
+        fs.readFile("abc", &err) ==
+        std::make_pair(std::string("hello!"), true));
   }
 
   SECTION("mkdirs") {

@@ -194,9 +194,14 @@ void InMemoryFileSystem::rename(
       }
       [[clang::fallthrough]];
     case EntryType::FILE_DOES_NOT_EXIST:
-      const auto contents = readFile(old_path);
-      unlink(old_path);
       std::string err;
+      std::string contents;
+      bool success;
+      std::tie(contents, success) = readFile(old_path, &err);
+      if (!success) {
+        throw IoError(err, 0);
+      }
+      unlink(old_path);
       if (!writeFile(new_path, contents, &err)) {
         throw IoError(err, 0);
       }
@@ -267,17 +272,22 @@ std::pair<std::string, bool> InMemoryFileSystem::readSymlink(
   }
 }
 
-std::string InMemoryFileSystem::readFile(nt_string_view path) throw(IoError) {
+std::pair<std::string, bool> InMemoryFileSystem::readFile(
+      nt_string_view path, std::string *err) {
   std::string result;
 
-  const auto stream = open(path, "r");
-  uint8_t buf[1024];
-  while (!stream->eof()) {
-    size_t read_bytes = stream->read(buf, 1, sizeof(buf));
-    result.append(reinterpret_cast<char *>(buf), read_bytes);
+  try {
+    const auto stream = open(path, "r");
+    uint8_t buf[1024];
+    while (!stream->eof()) {
+      size_t read_bytes = stream->read(buf, 1, sizeof(buf));
+      result.append(reinterpret_cast<char *>(buf), read_bytes);
+    }
+    return std::make_pair(std::move(result), true);
+  } catch (const IoError &io_error) {
+    *err = io_error.what();
+    return std::make_pair("", false);
   }
-
-  return result;
 }
 
 std::pair<Hash, bool> InMemoryFileSystem::hashFile(
@@ -287,10 +297,9 @@ std::pair<Hash, bool> InMemoryFileSystem::hashFile(
   blake2b_state state;
   blake2b_init(&state, hash.data.size());
   std::string file_contents;
-  try {
-    file_contents = readFile(path);
-  } catch (const IoError &io_error) {
-    *err = io_error.what();
+  bool success;
+  std::tie(file_contents, success) = readFile(path, err);
+  if (!success) {
     return std::make_pair(Hash(), false);
   }
   blake2b_update(

@@ -25,6 +25,16 @@ void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
   CHECK(err == "");
 }
 
+std::string readFile(FileSystem &fs, nt_string_view path) {
+  std::string err;
+  std::string data;
+  bool success;
+  std::tie(data, success) = fs.readFile(path, &err);
+  CHECK(success);
+  CHECK(err == "");
+  return data;
+}
+
 }  // anonymous namespace
 
 TEST_CASE("InMemoryFileSystem") {
@@ -158,7 +168,7 @@ TEST_CASE("InMemoryFileSystem") {
       fs.rename("a", "b");
       CHECK(fs.stat("a").result == ENOENT);
       CHECK(fs.stat("b").result == 0);
-      CHECK(fs.readFile("b/file") == "");
+      CHECK(readFile(fs, "b/file") == "");
     }
 
     SECTION("directory with same name") {
@@ -171,7 +181,7 @@ TEST_CASE("InMemoryFileSystem") {
       fs.open("a", "w");
       fs.rename("a", "b");
       CHECK(fs.stat("a").result == ENOENT);
-      CHECK(fs.readFile("b") == "");
+      CHECK(readFile(fs, "b") == "");
     }
 
     SECTION("update directory mtime") {
@@ -190,7 +200,7 @@ TEST_CASE("InMemoryFileSystem") {
       fs.open("a", "w");
       fs.rename("a", "a");
       CHECK(fs.stat("a").result == 0);
-      CHECK(fs.readFile("a") == "");
+      CHECK(readFile(fs, "a") == "");
     }
 
     SECTION("overwrite file with file") {
@@ -198,7 +208,7 @@ TEST_CASE("InMemoryFileSystem") {
       writeFile(fs, "b", "b!");
       fs.rename("a", "b");
       CHECK(fs.stat("a").result == ENOENT);
-      CHECK(fs.readFile("b") == "a!");
+      CHECK(readFile(fs, "b") == "a!");
     }
 
     SECTION("overwrite directory with file") {
@@ -241,7 +251,7 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK_THROWS_AS(fs.truncate("missing/a", 0), IoError);
 
     fs.truncate("file", 5);
-    CHECK(fs.readFile("file") == "sweet");
+    CHECK(readFile(fs, "file") == "sweet");
   }
 
   SECTION("readDir") {
@@ -304,7 +314,7 @@ TEST_CASE("InMemoryFileSystem") {
       stream->write(reinterpret_cast<const uint8_t *>(et.data()), et.size(), 1);
     }
 
-    CHECK(fs.readFile(abc) == "sweet");
+    CHECK(readFile(fs, abc) == "sweet");
   }
 
   SECTION("open new file for appending") {
@@ -314,7 +324,7 @@ TEST_CASE("InMemoryFileSystem") {
       stream->write(reinterpret_cast<const uint8_t *>(et.data()), et.size(), 1);
     }
 
-    CHECK(fs.readFile(abc) == "et");
+    CHECK(readFile(fs, abc) == "et");
   }
 
   SECTION("open for writing in binary") {

@@ -37,6 +37,16 @@ void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
   CHECK(err == "");
 }
 
+std::string readFile(FileSystem &fs, nt_string_view path) {
+  std::string err;
+  std::string data;
+  bool success;
+  std::tie(data, success) = fs.readFile(path, &err);
+  CHECK(success);
+  CHECK(err == "");
+  return data;
+}
+
 }  // anonymous namespace
 
 TEST_CASE("CompiledManifest") {
@@ -1054,7 +1064,7 @@ TEST_CASE("CompiledManifest") {
   SECTION("parseAndCompile") {
     std::vector<std::string> compiled_bufs;
     const auto parse_compiled_manifest = [&](const nt_string_view path) {
-      const auto buffer = fs.readFile(path);
+      const auto buffer = readFile(fs, path);
 
       REQUIRE(buffer.size() >= sizeof(uint64_t));
       const uint64_t version =
@@ -1064,7 +1074,7 @@ TEST_CASE("CompiledManifest") {
       CHECK(version == 1);
 
       compiled_bufs.emplace_back(
-          fs.readFile(path));
+          readFile(fs, path));
 
       std::string err;
       const auto maybe_manifest = CompiledManifest::load(
@@ -1305,7 +1315,7 @@ TEST_CASE("CompiledManifest") {
 
       parse_and_compile("manifest", "manifest.compiled");
 
-      auto compiled_buf = fs.readFile("manifest.compiled");
+      auto compiled_buf = readFile(fs, "manifest.compiled");
       REQUIRE(compiled_buf.size() >= sizeof(uint64_t));
       compiled_buf[0]++;
       writeFile(fs, "manifest.compiled", compiled_buf);

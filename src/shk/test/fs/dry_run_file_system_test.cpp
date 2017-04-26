@@ -67,7 +67,11 @@ TEST_CASE("DryRunFileSystem") {
 
   SECTION("truncate") {
     fs->truncate("f", 1);
-    CHECK(inner_fs.readFile("f") == "contents");
+    std::string err;
+    CHECK(
+        inner_fs.readFile("f", &err) ==
+        std::make_pair(std::string("contents"), true));
+    CHECK(err == "");
   }
 
   SECTION("readDir") {
@@ -84,7 +88,10 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("readFile") {
-    CHECK(fs->readFile("f") == "contents");
+    std::string err;
+    CHECK(
+        fs->readFile("f", &err) ==
+        std::make_pair(std::string("contents"), true));
   }
 
   SECTION("hashFile") {

@@ -77,9 +77,9 @@ std::pair<std::string, bool> CleaningFileSystem::readSymlink(
   return _inner.readSymlink(path, err);
 }
 
-std::string CleaningFileSystem::readFile(nt_string_view path)
-    throw(IoError) {
-  return _inner.readFile(path);
+std::pair<std::string, bool> CleaningFileSystem::readFile(
+      nt_string_view path, std::string *err) {
+  return _inner.readFile(path, err);
 }
 
 std::pair<Hash, bool> CleaningFileSystem::hashFile(

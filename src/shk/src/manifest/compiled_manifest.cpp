@@ -544,11 +544,12 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
     return std::make_pair(Optional<CompiledManifest>(), nullptr);
   }
 
-  std::shared_ptr<std::string> buffer;
-  try {
-    buffer = std::make_shared<std::string>(
-        file_system.readFile(compiled_manifest_path));
-  } catch (const IoError &io_error) {
+  std::string ignored_error;
+  auto buffer = std::make_shared<std::string>();
+  bool success;
+  std::tie(*buffer, success) = file_system.readFile(
+      compiled_manifest_path, &ignored_error);
+  if (!success) {
     // A more severe error than just a missing file is treated as an error,
     // for example if the path points to a directory.
     return std::make_pair(Optional<CompiledManifest>(), nullptr);

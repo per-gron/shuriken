@@ -82,8 +82,9 @@ class FailingStatFileSystem : public FileSystem {
       nt_string_view path, std::string *err) override {
     return _fs.readSymlink(path, err);
   }
-  std::string readFile(nt_string_view path) throw(IoError) override {
-    return _fs.readFile(path);
+  std::pair<std::string, bool> readFile(
+      nt_string_view path, std::string *err) override {
+    return _fs.readFile(path, err);
   }
   std::pair<Hash, bool> hashFile(
       nt_string_view path, std::string *err) override {

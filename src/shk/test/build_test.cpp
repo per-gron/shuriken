@@ -178,6 +178,16 @@ void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
   CHECK(err == "");
 }
 
+std::string readFile(FileSystem &fs, nt_string_view path) {
+  std::string err;
+  std::string data;
+  bool success;
+  std::tie(data, success) = fs.readFile(path, &err);
+  CHECK(success);
+  CHECK(err == "");
+  return data;
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Build") {
@@ -1273,7 +1283,7 @@ TEST_CASE("Build") {
       invocations.entries[hash] = entry;
       deleteOldOutputs(fs, invocations, log, hash);
 
-      CHECK(fs.readFile("file") == "contents");
+      CHECK(readFile(fs, "file") == "contents");
     }
 
     SECTION("delete output") {
@@ -1282,7 +1292,7 @@ TEST_CASE("Build") {
       invocations.entries[hash] = entry;
       deleteOldOutputs(fs, invocations, log, hash);
 
-      CHECK(fs.readFile("file") == "contents");
+      CHECK(readFile(fs, "file") == "contents");
     }
 
     SECTION("delete output with mismatching fingerprint") {
@@ -1291,7 +1301,7 @@ TEST_CASE("Build") {
       invocations.entries[hash] = entry;
       deleteOldOutputs(fs, invocations, log, hash);
 
-      CHECK(fs.readFile("file") == "contents");
+      CHECK(readFile(fs, "file") == "contents");
     }
 
     SECTION("delete outputs") {
@@ -1862,7 +1872,7 @@ TEST_CASE("Build") {
             "  rspfile_content = abc\n"
             "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::FAILURE);
-        CHECK(fs.readFile("rsp") == "abc");
+        CHECK(readFile(fs, "rsp") == "abc");
       }
 
       SECTION("just phony rule counts as no-op") {

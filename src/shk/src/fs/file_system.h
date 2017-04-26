@@ -168,7 +168,8 @@ class FileSystem {
    * Utility function for reading files. It is on this interface because on
    * Windows reading the file as a whole is faster than reading it using Stream.
    */
-  virtual std::string readFile(nt_string_view path) throw(IoError) = 0;
+  virtual std::pair<std::string, bool> readFile(
+      nt_string_view path, std::string *err) = 0;
 
   /**
    * Utility function for hashing the contents of a file. This method uses
