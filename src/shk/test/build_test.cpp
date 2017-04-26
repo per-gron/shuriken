@@ -596,6 +596,99 @@ TEST_CASE("Build") {
     }
   }
 
+  SECTION("computeFingerprintMatchesMemo") {
+    SECTION("empty") {
+      CHECK(
+          computeFingerprintMatchesMemo(fs, {}, {}) ==
+          FingerprintMatchesMemo());
+    }
+
+    SECTION("unused fingerprint") {
+      const auto memo = computeFingerprintMatchesMemo(
+          fs,
+          { { "path", Fingerprint() } },
+          {});
+      CHECK(
+          memo ==
+          FingerprintMatchesMemo({
+              Optional<MatchesResult>() }));
+    }
+
+    SECTION("used dirty fingerprint") {
+      fs.writeFile("file", "file");
+
+      const auto memo = computeFingerprintMatchesMemo(
+          fs,
+          { { "file", Fingerprint() } },
+          { 0 });
+      CHECK(
+          memo ==
+          FingerprintMatchesMemo({
+              Optional<MatchesResult>(MatchesResult()) }));
+    }
+
+    SECTION("used clean fingerprint") {
+      fs.writeFile("file", "file");
+      const auto file_fp = takeFingerprint(fs, clock() + 1, "file").first;
+      const auto memo = computeFingerprintMatchesMemo(
+          fs,
+          { { "file", file_fp } },
+          { 0 });
+
+      MatchesResult expected_result;
+      expected_result.clean = true;
+      expected_result.should_update = false;
+
+      CHECK(
+          memo ==
+          FingerprintMatchesMemo({
+              Optional<MatchesResult>(expected_result) }));
+    }
+
+    SECTION("used racily clean fingerprint") {
+      fs.writeFile("file", "file");
+      const auto file_fp = takeFingerprint(fs, clock(), "file").first;
+      const auto memo = computeFingerprintMatchesMemo(
+          fs,
+          { { "file", file_fp } },
+          { 0 });
+
+      MatchesResult expected_result;
+      expected_result.clean = true;
+      expected_result.should_update = true;
+
+      CHECK(
+          memo ==
+          FingerprintMatchesMemo({
+              Optional<MatchesResult>(expected_result) }));
+    }
+
+    SECTION("one used of several fingerprints") {
+      fs.writeFile("file", "file");
+      const auto file_fp = takeFingerprint(fs, clock() + 1, "file").first;
+      const auto memo = computeFingerprintMatchesMemo(
+          fs,
+          {
+              { "unused1", Fingerprint() },
+              { "unused2", Fingerprint() },
+              { "file", file_fp },
+              { "unused3", Fingerprint() }, },
+          { 2 });
+
+      MatchesResult expected_result;
+      expected_result.clean = true;
+      expected_result.should_update = false;
+
+      CHECK(
+          memo ==
+          FingerprintMatchesMemo({
+              Optional<MatchesResult>(),
+              Optional<MatchesResult>(),
+              Optional<MatchesResult>(expected_result),
+              Optional<MatchesResult>() }));
+    }
+  }
+
   SECTION("isClean") {
     SECTION("timestamp based (generator)") {
       FingerprintMatchesMemo memo;
