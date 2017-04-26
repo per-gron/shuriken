@@ -234,15 +234,21 @@ class PersistentFileSystem : public FileSystem {
     return contents;
   }
 
-  Hash hashFile(nt_string_view path) throw(IoError) override {
+  std::pair<Hash, bool> hashFile(
+      nt_string_view path, std::string *err) override {
     Hash hash;
     blake2b_state state;
     blake2b_init(&state, hash.data.size());
-    processFile(path, [&state](const char *buf, size_t len) {
-      blake2b_update(&state, reinterpret_cast<const uint8_t *>(buf), len);
-    });
+    try {
+      processFile(path, [&state](const char *buf, size_t len) {
+        blake2b_update(&state, reinterpret_cast<const uint8_t *>(buf), len);
+      });
+    } catch (const IoError &io_error) {
+      *err = io_error.what();
+      return std::make_pair(Hash(), false);
+    }
     blake2b_final(&state, hash.data.data(), hash.data.size());
-    return hash;
+    return std::make_pair(hash, true);
   }
 
   std::string mkstemp(

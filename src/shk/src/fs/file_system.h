@@ -164,8 +164,12 @@ class FileSystem {
    * Utility function for hashing the contents of a file. This method uses
    * the blake2b hash function. Like readFile, it is directly on the FileSystem
    * interface because this is a highly performance sensitive operation.
+   *
+   * Returns the hash of the file and a bool indicating if the operation was
+   * successful or not.
    */
-  virtual Hash hashFile(nt_string_view path) throw(IoError) = 0;
+  virtual std::pair<Hash, bool> hashFile(
+      nt_string_view path, std::string *err) = 0;
 
   /**
    * Helper function for writing a string to a file.

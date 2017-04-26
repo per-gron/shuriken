@@ -108,7 +108,13 @@ TEST_CASE("CleaningFileSystem") {
   }
 
   SECTION("hashFile") {
-    CHECK(fs.hashFile("f") == inner_fs.hashFile("f"));
+    std::string err_1;
+    std::string err_2;
+    CHECK(
+        fs.hashFile("f", &err_1) ==
+        inner_fs.hashFile("f", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
     CHECK(fs.getRemovedCount() == 0);
   }
 

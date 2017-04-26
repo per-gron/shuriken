@@ -71,8 +71,9 @@ class DryRunFileSystem : public FileSystem {
     return _inner.readFile(path);
   }
 
-  Hash hashFile(nt_string_view path) throw(IoError) override {
-    return _inner.hashFile(path);
+  std::pair<Hash, bool> hashFile(
+      nt_string_view path, std::string *err) override {
+    return _inner.hashFile(path, err);
   }
 
   std::string mkstemp(

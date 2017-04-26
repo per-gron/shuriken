@@ -7,6 +7,19 @@
 #include "../in_memory_file_system.h"
 
 namespace shk {
+namespace {
+
+Hash hashFile(FileSystem &file_system, nt_string_view path) {
+  Hash hash;
+  bool success;
+  std::string err;
+  std::tie(hash, success) = file_system.hashFile(path, &err);
+  CHECK(success);
+  CHECK(err == "");
+  return hash;
+}
+
+}  // anonymous namespace
 
 TEST_CASE("Fingerprint") {
   time_t now = 321;
@@ -32,7 +45,7 @@ TEST_CASE("Fingerprint") {
 
     SECTION("regular file") {
       detail::computeFingerprintHash(fs, S_IFREG, "a", &ans_hash);
-      CHECK(ans_hash == fs.hashFile("a"));
+      CHECK(ans_hash == hashFile(fs, "a"));
     }
 
     SECTION("missing file") {
@@ -180,7 +193,7 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.mtime == now);
       CHECK(fp.stat.ctime == now);
       CHECK(fp.racily_clean == false);
-      CHECK(fp.hash == fs.hashFile("a"));
+      CHECK(fp.hash == hashFile(fs, "a"));
       CHECK(fp.stat.couldAccess());
       CHECK(!fp.stat.isDir());
     }
@@ -514,7 +527,7 @@ TEST_CASE("Fingerprint") {
         const auto new_hash =
             std::string(path) == "dir" ? fs.hashDir(path) :
             std::string(path) == "missing" ? Hash{} :
-            fs.hashFile(path);
+            hashFile(fs, path);
 
         CHECK(fingerprintMatches(fingerprint, new_stat, new_hash));
       }
@@ -529,7 +542,7 @@ TEST_CASE("Fingerprint") {
 
         const auto new_hash =
             std::string(path) == "dir" ? fs.hashDir(path) :
-            fs.hashFile(path);
+            hashFile(fs, path);
 
         CHECK(!fingerprintMatches(fingerprint, new_stat, new_hash));
       }
@@ -544,7 +557,7 @@ TEST_CASE("Fingerprint") {
 
         const auto new_hash =
             std::string(path) == "dir" ? fs.hashDir(path) :
-            fs.hashFile(path);
+            hashFile(fs, path);
 
         CHECK(!fingerprintMatches(fingerprint, new_stat, new_hash));
       }
@@ -559,7 +572,7 @@ TEST_CASE("Fingerprint") {
         auto new_hash =
             std::string(path) == "dir" ? fs.hashDir(path) :
             std::string(path) == "missing" ? Hash{} :
-            fs.hashFile(path);
+            hashFile(fs, path);
 
         new_hash.data[0]++;
 

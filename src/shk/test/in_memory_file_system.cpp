@@ -269,18 +269,25 @@ std::string InMemoryFileSystem::readFile(nt_string_view path) throw(IoError) {
   return result;
 }
 
-Hash InMemoryFileSystem::hashFile(nt_string_view path) throw(IoError) {
+std::pair<Hash, bool> InMemoryFileSystem::hashFile(
+      nt_string_view path, std::string *err) {
   // This is optimized for readability rather than speed
   Hash hash;
   blake2b_state state;
   blake2b_init(&state, hash.data.size());
-  const auto file_contents = readFile(path);
+  std::string file_contents;
+  try {
+    file_contents = readFile(path);
+  } catch (const IoError &io_error) {
+    *err = io_error.what();
+    return std::make_pair(Hash(), false);
+  }
   blake2b_update(
       &state,
       reinterpret_cast<const uint8_t *>(file_contents.data()),
       file_contents.size());
   blake2b_final(&state, hash.data.data(), hash.data.size());
-  return hash;
+  return std::make_pair(hash, true);
 }
 
 std::string InMemoryFileSystem::mkstemp(

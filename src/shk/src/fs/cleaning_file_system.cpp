@@ -82,9 +82,9 @@ std::string CleaningFileSystem::readFile(nt_string_view path)
   return _inner.readFile(path);
 }
 
-Hash CleaningFileSystem::hashFile(nt_string_view path)
-    throw(IoError) {
-  return _inner.hashFile(path);
+std::pair<Hash, bool> CleaningFileSystem::hashFile(
+      nt_string_view path, std::string *err) {
+  return _inner.hashFile(path, err);
 }
 
 std::string CleaningFileSystem::mkstemp(

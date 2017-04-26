@@ -316,9 +316,17 @@ TEST_CASE("InMemoryFileSystem") {
     fs.writeFile("two", "some_content");
     fs.writeFile("three", "some_other_content");
 
-    CHECK(fs.hashFile("one") == fs.hashFile("one"));
-    CHECK(fs.hashFile("one") == fs.hashFile("two"));
-    CHECK(fs.hashFile("one") != fs.hashFile("three"));
+    std::string err_1;
+    std::string err_2;
+    CHECK(fs.hashFile("one", &err_1) == fs.hashFile("one", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
+    CHECK(fs.hashFile("one", &err_1) == fs.hashFile("two", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
+    CHECK(fs.hashFile("one", &err_1) != fs.hashFile("three", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
   }
 
   SECTION("mkstemp creates file") {

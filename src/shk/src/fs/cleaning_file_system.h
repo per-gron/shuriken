@@ -53,7 +53,8 @@ class CleaningFileSystem : public FileSystem {
 
   std::string readFile(nt_string_view path) throw(IoError) override;
 
-  Hash hashFile(nt_string_view path) throw(IoError) override;
+  std::pair<Hash, bool> hashFile(
+      nt_string_view path, std::string *err) override;
 
   std::string mkstemp(
       std::string &&filename_template) throw(IoError) override;
