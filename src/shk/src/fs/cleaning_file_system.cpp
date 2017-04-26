@@ -56,10 +56,11 @@ void CleaningFileSystem::symlink(
   _inner.symlink(target, source);
 }
 
-void CleaningFileSystem::rename(
-    nt_string_view old_path,
-    nt_string_view new_path) throw(IoError) {
-  _inner.rename(old_path, new_path);
+bool CleaningFileSystem::rename(
+      nt_string_view old_path,
+      nt_string_view new_path,
+      std::string *err) {
+  return _inner.rename(old_path, new_path, err);
 }
 
 bool CleaningFileSystem::truncate(

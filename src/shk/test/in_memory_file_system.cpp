@@ -121,29 +121,38 @@ void InMemoryFileSystem::symlink(
   file->symlink = true;
 }
 
-void InMemoryFileSystem::rename(
-    nt_string_view old_path,
-    nt_string_view new_path) throw(IoError) {
+bool InMemoryFileSystem::rename(
+      nt_string_view old_path,
+      nt_string_view new_path,
+      std::string *err) {
   const auto old_l = lookup(old_path);
   const auto new_l = lookup(new_path);
 
   switch (old_l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
-    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+    *err = "A component of the path prefix is not a directory";
+    return false;
 
   case EntryType::FILE_DOES_NOT_EXIST:
-    throw IoError("The named file does not exist", ENOENT);
+    *err = "The named file does not exist";
+    return false;
 
   case EntryType::DIRECTORY:
     switch (new_l.entry_type) {
     case EntryType::DIRECTORY_DOES_NOT_EXIST:
-      throw IoError("A component of the path prefix is not a directory", ENOTDIR);
-      break;
+      *err = "A component of the path prefix is not a directory";
+      return false;
     case EntryType::FILE:
-      throw IoError("The new file exists but is not a directory", ENOTDIR);
+      *err = "The new file exists but is not a directory";
+      return false;
     case EntryType::DIRECTORY:
       if (new_path != old_path) {
-        rmdir(new_path);
+        try {
+          rmdir(new_path);
+        } catch (const IoError &io_error) {
+          *err = io_error.what();
+          return false;
+        }
       }
       [[clang::fallthrough]];
     case EntryType::FILE_DOES_NOT_EXIST:
@@ -184,31 +193,33 @@ void InMemoryFileSystem::rename(
   case EntryType::FILE:
     switch (new_l.entry_type) {
     case EntryType::DIRECTORY_DOES_NOT_EXIST:
-      throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+      *err = "A component of the path prefix is not a directory";
+      return false;
     case EntryType::DIRECTORY:
-      throw IoError("The new file is a directory", EISDIR);
-      break;
+      *err = "The new file is a directory";
+      return false;
     case EntryType::FILE:
       if (new_path != old_path) {
         unlink(new_path);
       }
       [[clang::fallthrough]];
     case EntryType::FILE_DOES_NOT_EXIST:
-      std::string err;
       std::string contents;
       bool success;
-      std::tie(contents, success) = readFile(old_path, &err);
+      std::tie(contents, success) = readFile(old_path, err);
       if (!success) {
-        throw IoError(err, 0);
+        return false;
       }
       unlink(old_path);
-      if (!writeFile(new_path, contents, &err)) {
-        throw IoError(err, 0);
+      if (!writeFile(new_path, contents, err)) {
+        return false;
       }
       break;
     }
     break;
   }
+
+  return true;
 }
 
 bool InMemoryFileSystem::truncate(

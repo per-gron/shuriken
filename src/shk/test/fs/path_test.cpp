@@ -65,10 +65,11 @@ class FailingStatFileSystem : public FileSystem {
       nt_string_view source) throw(IoError) override {
     _fs.symlink(target, source);
   }
-  void rename(
+  bool rename(
       nt_string_view old_path,
-      nt_string_view new_path) throw(IoError) override {
-    _fs.rename(old_path, new_path);
+      nt_string_view new_path,
+      std::string *err) override {
+    return _fs.rename(old_path, new_path, err);
   }
   bool truncate(nt_string_view path, size_t size, std::string *err) override {
     return _fs.truncate(path, size, err);

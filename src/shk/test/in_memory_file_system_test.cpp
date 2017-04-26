@@ -35,6 +35,12 @@ std::string readFile(FileSystem &fs, nt_string_view path) {
   return data;
 }
 
+void rename(FileSystem &fs, nt_string_view old_path, nt_string_view new_path) {
+  std::string err;
+  CHECK(fs.rename(old_path, new_path, &err));
+  CHECK(err == "");
+}
+
 }  // anonymous namespace
 
 TEST_CASE("InMemoryFileSystem") {
@@ -156,16 +162,24 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("rename") {
+    const auto check_rename_fails = [&fs](
+        nt_string_view old_path,
+        nt_string_view new_path) {
+      std::string err;
+      CHECK(!fs.rename(old_path, new_path, &err));
+      CHECK(err != "");
+    };
+
     SECTION("missing file") {
-      CHECK_THROWS_AS(fs.rename("a", "b"), IoError);
-      CHECK_THROWS_AS(fs.rename("a/b", "b"), IoError);
-      CHECK_THROWS_AS(fs.rename("a", "b/a"), IoError);
+      check_rename_fails("a", "b");
+      check_rename_fails("a/b", "b");
+      check_rename_fails("a", "b/a");
     }
 
     SECTION("directory") {
       fs.mkdir("a");
       fs.open("a/file", "w");
-      fs.rename("a", "b");
+      rename(fs, "a", "b");
       CHECK(fs.stat("a").result == ENOENT);
       CHECK(fs.stat("b").result == 0);
       CHECK(readFile(fs, "b/file") == "");
@@ -173,13 +187,13 @@ TEST_CASE("InMemoryFileSystem") {
 
     SECTION("directory with same name") {
       fs.mkdir("a");
-      fs.rename("a", "a");
+      rename(fs, "a", "a");
       CHECK(fs.stat("a").result == 0);
     }
 
     SECTION("file") {
       fs.open("a", "w");
-      fs.rename("a", "b");
+      rename(fs, "a", "b");
       CHECK(fs.stat("a").result == ENOENT);
       CHECK(readFile(fs, "b") == "");
     }
@@ -189,7 +203,7 @@ TEST_CASE("InMemoryFileSystem") {
       fs.mkdir("b");
       fs.open("a/a", "w");
       now = 123;
-      fs.rename("a/a", "b/b");
+      rename(fs, "a/a", "b/b");
       CHECK(fs.stat("a").timestamps.mtime == 123);
       CHECK(fs.stat("a").timestamps.ctime == 123);
       CHECK(fs.stat("b").timestamps.mtime == 123);
@@ -198,7 +212,7 @@ TEST_CASE("InMemoryFileSystem") {
 
     SECTION("file with same name") {
       fs.open("a", "w");
-      fs.rename("a", "a");
+      rename(fs, "a", "a");
       CHECK(fs.stat("a").result == 0);
       CHECK(readFile(fs, "a") == "");
     }
@@ -206,7 +220,7 @@ TEST_CASE("InMemoryFileSystem") {
     SECTION("overwrite file with file") {
       writeFile(fs, "a", "a!");
       writeFile(fs, "b", "b!");
-      fs.rename("a", "b");
+      rename(fs, "a", "b");
       CHECK(fs.stat("a").result == ENOENT);
       CHECK(readFile(fs, "b") == "a!");
     }
@@ -214,20 +228,20 @@ TEST_CASE("InMemoryFileSystem") {
     SECTION("overwrite directory with file") {
       fs.open("a", "w");
       fs.mkdir("b");
-      CHECK_THROWS_AS(fs.rename("a", "b"), IoError);
+      check_rename_fails("a", "b");
     }
 
     SECTION("overwrite file with directory") {
       fs.mkdir("a");
       fs.open("b", "w");
-      CHECK_THROWS_AS(fs.rename("a", "b"), IoError);
+      check_rename_fails("a", "b");
     }
 
     SECTION("overwrite directory with directory") {
       fs.mkdir("a");
       fs.open("a/b", "w");
       fs.mkdir("b");
-      fs.rename("a", "b");
+      rename(fs, "a", "b");
       CHECK(fs.stat("a/b").result == ENOTDIR);
       CHECK(fs.stat("a").result == ENOENT);
       CHECK(fs.stat("b").result == 0);
@@ -238,7 +252,7 @@ TEST_CASE("InMemoryFileSystem") {
       fs.mkdir("a");
       fs.mkdir("b");
       fs.open("b/b", "w");
-      CHECK_THROWS_AS(fs.rename("a", "b"), IoError);
+      check_rename_fails("a", "b");
     }
   }
 

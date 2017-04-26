@@ -82,7 +82,9 @@ TEST_CASE("CleaningFileSystem") {
   }
 
   SECTION("rename") {
-    fs.rename("f", "g");
+    std::string err;
+    CHECK(fs.rename("f", "g", &err));
+    CHECK(err == "");
     CHECK(inner_fs.stat("f").result == ENOENT);
     CHECK(inner_fs.stat("g").result != ENOENT);
     CHECK(fs.getRemovedCount() == 0);

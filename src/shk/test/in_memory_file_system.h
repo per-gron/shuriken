@@ -33,9 +33,10 @@ class InMemoryFileSystem : public FileSystem {
   void symlink(
       nt_string_view target,
       nt_string_view source) throw(IoError) override;
-  void rename(
+  bool rename(
       nt_string_view old_path,
-      nt_string_view new_path) throw(IoError) override;
+      nt_string_view new_path,
+      std::string *err) override;
   bool truncate(nt_string_view path, size_t size, std::string *err) override;
   std::pair<std::vector<DirEntry>, bool> readDir(
       nt_string_view path, std::string *err) override;

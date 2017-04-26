@@ -60,7 +60,9 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("unlink") {
-    fs->rename("f", "g");
+    std::string err;
+    CHECK(fs->rename("f", "g", &err));
+    CHECK(err == "");
     CHECK(inner_fs.stat("f").result != ENOENT);
     CHECK(inner_fs.stat("g").result == ENOENT);
   }

@@ -36,7 +36,7 @@ using FileHandle = RAIIHelper<FILE *, int, fclose>;
 
 class PersistentFileSystem : public FileSystem {
   template<typename T>
-  static T checkForMinusOne(T result) {
+  static T checkForMinusOne(T result) throw(IoError) {
     if (result == -1) {
       throw IoError(strerror(errno), errno);
     } else {
@@ -178,12 +178,14 @@ class PersistentFileSystem : public FileSystem {
         NullterminatedString(source).c_str()));
   }
 
-  void rename(
+  bool rename(
       nt_string_view old_path,
-      nt_string_view new_path) throw(IoError) override {
-    checkForMinusOne(::rename(
+      nt_string_view new_path,
+      std::string *err) override {
+    return checkForMinusOne(::rename(
         NullterminatedString(old_path).c_str(),
-        NullterminatedString(new_path).c_str()));
+        NullterminatedString(new_path).c_str()),
+        err);
   }
 
   bool truncate(nt_string_view path, size_t size, std::string *err) override {
