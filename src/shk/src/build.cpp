@@ -399,8 +399,11 @@ int discardCleanSteps(
     }
     visited[step_idx] = true;
 
-    if (clean_steps[step_idx] || steps[step_idx].phony()) {
-      discarded_steps++;
+    const bool phony = steps[step_idx].phony();
+    if (clean_steps[step_idx] || phony) {
+      if (!phony) {
+        discarded_steps++;
+      }
       markStepNodeAsDone(build, step_idx);
     } else {
       new_ready_steps.push_back(step_idx);

@@ -1175,7 +1175,7 @@ TEST_CASE("Build") {
       CHECK(discardCleanSteps(
           to_compiled_manifest(manifest).steps(),
           compute_clean_steps(build, invocations, manifest),
-          build) == 1);
+          build) == 0);
       CHECK(build.ready_steps.empty());
     }
 
@@ -1237,7 +1237,7 @@ TEST_CASE("Build") {
       CHECK(discardCleanSteps(
           to_compiled_manifest(manifest).steps(),
           compute_clean_steps(build, invocations, manifest),
-          build) == 2);
+          build) == 1);
       CHECK(build.ready_steps.empty());
     }
   }
