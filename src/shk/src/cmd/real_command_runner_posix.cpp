@@ -199,7 +199,11 @@ void Subprocess::start(SubprocessSet *set, nt_string_view command) {
       // closed when the subprocess finishes, which then notifies ninja.
 
       // Clear all environment variables before invoking the command.
-      environ = nullptr;
+      const char *new_environ[] = {
+          "__CF_USER_TEXT_ENCODING=0x1F5:0x0:0x0",
+          "LC_CTYPE=UTF-8",
+          nullptr };
+      environ = const_cast<char **>(new_environ);
 
       execl(
           "/bin/sh",
