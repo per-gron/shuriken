@@ -34,20 +34,29 @@ Hash FileSystem::hashDir(nt_string_view path) throw(IoError) {
   return hash;
 }
 
-Hash FileSystem::hashSymlink(nt_string_view path) throw(IoError) {
+std::pair<Hash, bool> FileSystem::hashSymlink(
+    nt_string_view path, std::string *err) {
   Hash hash;
 
   blake2b_state state;
   blake2b_init(&state, hash.data.size());
 
-  auto link_target = readSymlink(path);
+  std::string link_target;
+  try {
+    link_target = readSymlink(path);
+  } catch (const IoError &io_error) {
+    *err = io_error.what();
+    return std::make_pair(Hash(), false);
+  }
+
   blake2b_update(
       &state,
       reinterpret_cast<const uint8_t *>(link_target.c_str()),
       link_target.size());
 
   blake2b_final(&state, hash.data.data(), hash.data.size());
-  return hash;
+
+  return std::make_pair(hash, true);
 }
 
 void FileSystem::writeFile(

@@ -19,6 +19,16 @@ Hash hashFile(FileSystem &file_system, nt_string_view path) {
   return hash;
 }
 
+Hash hashSymlink(FileSystem &file_system, nt_string_view path) {
+  Hash hash;
+  bool success;
+  std::string err;
+  std::tie(hash, success) = file_system.hashSymlink(path, &err);
+  CHECK(success);
+  CHECK(err == "");
+  return hash;
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Fingerprint") {
@@ -40,7 +50,7 @@ TEST_CASE("Fingerprint") {
 
     SECTION("link") {
       detail::computeFingerprintHash(fs, S_IFLNK, "link", &ans_hash);
-      CHECK(ans_hash == fs.hashSymlink("link"));
+      CHECK(ans_hash == hashSymlink(fs, "link"));
     }
 
     SECTION("regular file") {
@@ -249,7 +259,7 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.mtime == now);
       CHECK(fp.stat.ctime == now);
       CHECK(fp.racily_clean == false);
-      CHECK(fp.hash == fs.hashSymlink("link"));
+      CHECK(fp.hash == hashSymlink(fs, "link"));
       CHECK(fp.stat.couldAccess());
       CHECK(!fp.stat.isDir());
     }
@@ -281,7 +291,8 @@ TEST_CASE("Fingerprint") {
       now++;
       Fingerprint new_fp;
       FileId new_file_id;
-      std::tie(new_fp, new_file_id) = retakeFingerprint(fs, now, "nonexisting", fp);
+      std::tie(new_fp, new_file_id) =
+          retakeFingerprint(fs, now, "nonexisting", fp);
       CHECK(fp == new_fp);
 
       CHECK(new_file_id == FileId(fs.lstat("nonexisting")));
@@ -503,7 +514,8 @@ TEST_CASE("Fingerprint") {
       CHECK(!result.should_update);
     }
 
-    SECTION("dir: no changes, fingerprint taken at the same time as file mtime") {
+    SECTION(
+        "dir: no changes, fingerprint taken at the same time as file mtime") {
       fs.mkdir("d");
       Fingerprint initial_fp;
       FileId file_id;

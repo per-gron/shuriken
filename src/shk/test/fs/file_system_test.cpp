@@ -60,8 +60,17 @@ TEST_CASE("FileSystem") {
     fs.symlink("target", "link_2");
     fs.symlink("target_other", "link_3");
 
-    CHECK(fs.hashSymlink("link_1") == fs.hashSymlink("link_2"));
-    CHECK(fs.hashSymlink("link_2") != fs.hashSymlink("link_3"));
+    std::string err_1;
+    std::string err_2;
+    CHECK(fs.hashSymlink("link_1", &err_1) == fs.hashSymlink("link_2", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
+    CHECK(fs.hashSymlink("link_2", &err_1) != fs.hashSymlink("link_3", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
+
+    CHECK(fs.hashSymlink("missing", &err_1).second == false);
+    CHECK(err_1 != "");
   }
 
   SECTION("writeFile") {

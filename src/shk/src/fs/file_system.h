@@ -151,8 +151,11 @@ class FileSystem {
    * Utility function for hashing a symlink. It is rather important that this
    * hash function works the same for all FileSystem implementations, so it is
    * defined directly here. It is implemented in terms of readlink.
+   *
+   * Returns the hash of the symlink and a bool indicating if the operation was
+   * successful or not.
    */
-  Hash hashSymlink(nt_string_view path) throw(IoError);
+  std::pair<Hash, bool> hashSymlink(nt_string_view path, std::string *err);
 
   /**
    * Utility function for reading files. It is on this interface because on
