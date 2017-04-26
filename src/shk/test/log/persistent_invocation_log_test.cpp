@@ -223,7 +223,9 @@ void warnOnTruncatedInput(const Callback &callback) {
     if (truncated_size <= kFileSignatureSize) {
       break;
     }
-    fs.truncate("file", truncated_size);
+    std::string err;
+    CHECK(fs.truncate("file", truncated_size, &err));
+    CHECK(err == "");
     const auto result = parsePersistentInvocationLog(fs, "file");
     if (result.warning != "") {
       warnings++;

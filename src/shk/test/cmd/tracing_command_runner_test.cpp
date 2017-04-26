@@ -99,9 +99,8 @@ class FailingMkstempFileSystem : public FileSystem {
       nt_string_view new_path) throw(IoError) override {
     _fs.rename(old_path, new_path);
   }
-  void truncate(
-      nt_string_view path, size_t size) throw(IoError) override {
-    _fs.truncate(path, size);
+  bool truncate(nt_string_view path, size_t size, std::string *err) override {
+    return _fs.truncate(path, size, err);
   }
   std::pair<std::vector<DirEntry>, bool> readDir(
       nt_string_view path, std::string *err) override {
@@ -163,9 +162,8 @@ class FailingUnlinkFileSystem : public FileSystem {
       nt_string_view new_path) throw(IoError) override {
     _fs.rename(old_path, new_path);
   }
-  void truncate(
-      nt_string_view path, size_t size) throw(IoError) override {
-    _fs.truncate(path, size);
+  bool truncate(nt_string_view path, size_t size, std::string *err) override {
+    return _fs.truncate(path, size, err);
   }
   std::pair<std::vector<DirEntry>, bool> readDir(
       nt_string_view path, std::string *err) override {

@@ -44,6 +44,16 @@ class PersistentFileSystem : public FileSystem {
     }
   }
 
+  template<typename T>
+  static bool checkForMinusOne(T result, std::string *err) {
+    if (result == -1) {
+      *err = strerror(errno);
+      return false;
+    } else {
+      return true;
+    }
+  }
+
   class FileStream : public FileSystem::Stream {
    public:
     FileStream(nt_string_view path, const char *mode) throw(IoError)
@@ -176,9 +186,10 @@ class PersistentFileSystem : public FileSystem {
         NullterminatedString(new_path).c_str()));
   }
 
-  void truncate(
-      nt_string_view path, size_t size) throw(IoError) override {
-    checkForMinusOne(::truncate(NullterminatedString(path).c_str(), size));
+  bool truncate(nt_string_view path, size_t size, std::string *err) override {
+    return checkForMinusOne(
+        ::truncate(NullterminatedString(path).c_str(), size),
+        err);
   }
 
   std::pair<std::vector<DirEntry>, bool> readDir(

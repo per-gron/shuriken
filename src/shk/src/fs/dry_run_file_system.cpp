@@ -55,8 +55,9 @@ class DryRunFileSystem : public FileSystem {
       nt_string_view old_path,
       nt_string_view new_path) throw(IoError) override {}
 
-  void truncate(
-      nt_string_view path, size_t size) throw(IoError) override {}
+  bool truncate(nt_string_view path, size_t size, std::string *err) override {
+    return true;
+  }
 
   std::pair<std::vector<DirEntry>, bool> readDir(
       nt_string_view path, std::string *err) override {

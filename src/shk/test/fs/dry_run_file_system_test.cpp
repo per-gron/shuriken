@@ -66,8 +66,9 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("truncate") {
-    fs->truncate("f", 1);
     std::string err;
+    CHECK(fs->truncate("f", 1, &err));
+    CHECK(err == "");
     CHECK(
         inner_fs.readFile("f", &err) ==
         std::make_pair(std::string("contents"), true));

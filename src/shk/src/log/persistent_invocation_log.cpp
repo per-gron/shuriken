@@ -714,7 +714,9 @@ InvocationLogParseResult parsePersistentInvocationLog(
 
   if (view.size() != 0) {
     // Parsing failed. Truncate the file to a known valid state
-    file_system.truncate(log_path, file_size - view.size());
+    if (!file_system.truncate(log_path, file_size - view.size(), &err)) {
+      throw IoError(err, 0);
+    }
   }
 
   result.parse_data.fingerprint_entry_count =

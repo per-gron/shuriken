@@ -245,12 +245,21 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("truncate") {
     fs.mkdir("dir");
     writeFile(fs, "file", "sweet bananas!");
-    CHECK_THROWS_AS(fs.truncate("dir", 0), IoError);
-    CHECK_THROWS_AS(fs.truncate("missing", 0), IoError);
-    CHECK_THROWS_AS(fs.truncate("dir/missing", 0), IoError);
-    CHECK_THROWS_AS(fs.truncate("missing/a", 0), IoError);
 
-    fs.truncate("file", 5);
+    const auto check_truncate_fails = [&fs](nt_string_view path, size_t size) {
+      std::string err;
+      CHECK(!fs.truncate(path, size, &err));
+      CHECK(err != "");
+    };
+
+    check_truncate_fails("dir", 0);
+    check_truncate_fails("missing", 0);
+    check_truncate_fails("dir/missing", 0);
+    check_truncate_fails("missing/a", 0);
+
+    std::string err;
+    CHECK(fs.truncate("file", 5, &err));
+    CHECK(err == "");
     CHECK(readFile(fs, "file") == "sweet");
   }
 
