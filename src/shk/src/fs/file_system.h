@@ -128,8 +128,8 @@ class FileSystem {
    * if the path does not point to a directory. The returned entries are not
    * necessarily sorted in any particular order.
    */
-  virtual std::vector<DirEntry> readDir(
-      nt_string_view path) throw(IoError) = 0;
+  virtual std::pair<std::vector<DirEntry>, bool> readDir(
+      nt_string_view path, std::string *err) = 0;
 
   /**
    * Utility function for hashing a directory. It is rather important that this

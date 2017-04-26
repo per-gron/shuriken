@@ -58,9 +58,9 @@ class DryRunFileSystem : public FileSystem {
   void truncate(
       nt_string_view path, size_t size) throw(IoError) override {}
 
-  std::vector<DirEntry> readDir(
-      nt_string_view path) throw(IoError) override {
-    return _inner.readDir(path);
+  std::pair<std::vector<DirEntry>, bool> readDir(
+      nt_string_view path, std::string *err) override {
+    return _inner.readDir(path, err);
   }
 
   std::pair<std::string, bool> readSymlink(

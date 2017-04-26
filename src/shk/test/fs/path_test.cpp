@@ -74,9 +74,9 @@ class FailingStatFileSystem : public FileSystem {
       nt_string_view path, size_t size) throw(IoError) override {
     _fs.truncate(path, size);
   }
-  std::vector<DirEntry> readDir(
-      nt_string_view path) throw(IoError) override {
-    return _fs.readDir(path);
+  std::pair<std::vector<DirEntry>, bool> readDir(
+      nt_string_view path, std::string *err) override {
+    return _fs.readDir(path, err);
   }
   std::pair<std::string, bool> readSymlink(
       nt_string_view path, std::string *err) override {

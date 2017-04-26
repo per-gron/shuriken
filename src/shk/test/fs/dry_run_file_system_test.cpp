@@ -75,7 +75,11 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("readDir") {
-    CHECK(inner_fs.readDir(".") == fs->readDir("."));
+    std::string err_1;
+    std::string err_2;
+    CHECK(inner_fs.readDir(".", &err_1) == fs->readDir(".", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
   }
 
   SECTION("readSymlink") {

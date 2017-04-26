@@ -259,7 +259,13 @@ TEST_CASE("InMemoryFileSystem") {
       fs.mkdir("d");
       fs.open("d/a", "w");
       fs.mkdir("d/b");
-      auto dir_entries = fs.readDir("d");
+
+      std::string err;
+      std::vector<DirEntry> dir_entries;
+      bool success;
+      std::tie(dir_entries, success) = fs.readDir("d", &err);
+      CHECK(success);
+      CHECK(err == "");
       std::sort(dir_entries.begin(), dir_entries.end());
       REQUIRE(dir_entries.size() == 2);
       CHECK(dir_entries[0].type == DirEntry::Type::REG);
@@ -271,10 +277,20 @@ TEST_CASE("InMemoryFileSystem") {
     SECTION("fail") {
       fs.open("f", "w");
       fs.mkdir("d");
-      CHECK_THROWS_AS(fs.readDir("f"), IoError);
-      CHECK_THROWS_AS(fs.readDir("f/x"), IoError);
-      CHECK_THROWS_AS(fs.readDir("nonexisting"), IoError);
-      CHECK_THROWS_AS(fs.readDir("d/nonexisting"), IoError);
+
+      const auto check_readdir_fails = [&fs](nt_string_view path) {
+        std::string err;
+        std::vector<DirEntry> dir_entries;
+        bool success;
+        std::tie(dir_entries, success) = fs.readDir(path, &err);
+        CHECK(!success);
+        CHECK(err != "");
+      };
+
+      check_readdir_fails("f");
+      check_readdir_fails("f/x");
+      check_readdir_fails("nonexisting");
+      check_readdir_fails("d/nonexisting");
     }
   }
 

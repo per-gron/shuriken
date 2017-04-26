@@ -181,13 +181,14 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::truncate(NullterminatedString(path).c_str(), size));
   }
 
-  std::vector<DirEntry> readDir(
-      nt_string_view path) throw(IoError) override {
+  std::pair<std::vector<DirEntry>, bool> readDir(
+      nt_string_view path, std::string *err) override {
     std::vector<DirEntry> result;
 
     DIR *dp = opendir(NullterminatedString(path).c_str());
     if (!dp) {
-      throw IoError(strerror(errno), errno);
+      *err = strerror(errno);
+      return std::make_pair(std::vector<DirEntry>(), false);
     }
 
     dirent *dptr;
@@ -196,7 +197,7 @@ class PersistentFileSystem : public FileSystem {
     }
     closedir(dp);
 
-    return result;
+    return std::make_pair(std::move(result), true);
   }
 
   std::pair<std::string, bool> readSymlink(

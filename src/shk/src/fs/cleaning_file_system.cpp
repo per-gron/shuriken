@@ -67,9 +67,9 @@ void CleaningFileSystem::truncate(
   _inner.truncate(path, size);
 }
 
-std::vector<DirEntry> CleaningFileSystem::readDir(
-    nt_string_view path) throw(IoError) {
-  return _inner.readDir(path);
+std::pair<std::vector<DirEntry>, bool> CleaningFileSystem::readDir(
+      nt_string_view path, std::string *err) {
+  return _inner.readDir(path, err);
 }
 
 std::pair<std::string, bool> CleaningFileSystem::readSymlink(

@@ -38,8 +38,8 @@ class InMemoryFileSystem : public FileSystem {
       nt_string_view new_path) throw(IoError) override;
   void truncate(
       nt_string_view path, size_t size) throw(IoError) override;
-  std::vector<DirEntry> readDir(
-      nt_string_view path) throw(IoError) override;
+  std::pair<std::vector<DirEntry>, bool> readDir(
+      nt_string_view path, std::string *err) override;
   std::pair<std::string, bool> readSymlink(
       nt_string_view path, std::string *err) override;
   std::pair<std::string, bool> readFile(

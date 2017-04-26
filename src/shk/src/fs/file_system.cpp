@@ -19,10 +19,9 @@ std::pair<Hash, bool> FileSystem::hashDir(
   blake2b_init(&state, hash.data.size());
 
   std::vector<DirEntry> dir_entries;
-  try {
-    dir_entries = readDir(path);
-  } catch (const IoError &io_error) {
-    *err = io_error.what();
+  bool success;
+  std::tie(dir_entries, success) = readDir(path, err);
+  if (!success) {
     return std::make_pair(Hash(), false);
   }
   std::sort(dir_entries.begin(), dir_entries.end());
