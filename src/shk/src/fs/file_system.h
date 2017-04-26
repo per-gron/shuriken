@@ -139,8 +139,11 @@ class FileSystem {
    * Please note that this only hashes the directory itself, with the list of
    * files that it contains. It does not hash the contents of those files or go
    * through subdirectories recursively.
+   *
+   * Returns the hash and a bool indicating if the operation was successful or
+   * not.
    */
-  Hash hashDir(nt_string_view path) throw(IoError);
+  std::pair<Hash, bool> hashDir(nt_string_view path, std::string *err);
 
   /**
    * Read the contents of a symlink.

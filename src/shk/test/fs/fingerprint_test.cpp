@@ -29,6 +29,16 @@ Hash hashSymlink(FileSystem &file_system, nt_string_view path) {
   return hash;
 }
 
+Hash hashDir(FileSystem &file_system, nt_string_view path) {
+  Hash hash;
+  bool success;
+  std::string err;
+  std::tie(hash, success) = file_system.hashDir(path, &err);
+  CHECK(success);
+  CHECK(err == "");
+  return hash;
+}
+
 std::string readSymlink(FileSystem &file_system, nt_string_view path) {
   std::string target;
   bool success;
@@ -55,7 +65,7 @@ TEST_CASE("Fingerprint") {
 
     SECTION("directory") {
       detail::computeFingerprintHash(fs, S_IFDIR, "dir", &ans_hash);
-      CHECK(ans_hash == fs.hashDir("dir"));
+      CHECK(ans_hash == hashDir(fs, "dir"));
     }
 
     SECTION("link") {
@@ -251,7 +261,7 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.mtime == now);
       CHECK(fp.stat.ctime == now);
       CHECK(fp.racily_clean == false);
-      CHECK(fp.hash == fs.hashDir("dir"));
+      CHECK(fp.hash == hashDir(fs, "dir"));
       CHECK(fp.stat.couldAccess());
       CHECK(fp.stat.isDir());
     }
@@ -547,7 +557,7 @@ TEST_CASE("Fingerprint") {
         const auto new_stat = fs.lstat(path);
 
         const auto new_hash =
-            std::string(path) == "dir" ? fs.hashDir(path) :
+            std::string(path) == "dir" ? hashDir(fs, path) :
             std::string(path) == "missing" ? Hash{} :
             hashFile(fs, path);
 
@@ -563,7 +573,7 @@ TEST_CASE("Fingerprint") {
         new_stat.metadata.size++;
 
         const auto new_hash =
-            std::string(path) == "dir" ? fs.hashDir(path) :
+            std::string(path) == "dir" ? hashDir(fs, path) :
             hashFile(fs, path);
 
         CHECK(!fingerprintMatches(fingerprint, new_stat, new_hash));
@@ -578,7 +588,7 @@ TEST_CASE("Fingerprint") {
         new_stat.metadata.mode++;
 
         const auto new_hash =
-            std::string(path) == "dir" ? fs.hashDir(path) :
+            std::string(path) == "dir" ? hashDir(fs, path) :
             hashFile(fs, path);
 
         CHECK(!fingerprintMatches(fingerprint, new_stat, new_hash));
@@ -592,7 +602,7 @@ TEST_CASE("Fingerprint") {
         const auto new_stat = fs.lstat(path);
 
         auto new_hash =
-            std::string(path) == "dir" ? fs.hashDir(path) :
+            std::string(path) == "dir" ? hashDir(fs, path) :
             std::string(path) == "missing" ? Hash{} :
             hashFile(fs, path);
 

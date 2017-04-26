@@ -81,7 +81,7 @@ void computeFingerprintHash(
   std::string err;
   bool success = true;
   if (S_ISDIR(mode)) {
-    *hash = file_system.hashDir(path);
+    std::tie(*hash, success) = file_system.hashDir(path, &err);
   } else if (S_ISLNK(mode)) {
     std::tie(*hash, success) = file_system.hashSymlink(path, &err);
   } else if (S_ISREG(mode)) {

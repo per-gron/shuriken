@@ -37,22 +37,37 @@ TEST_CASE("FileSystem") {
     fs.mkdir("d");
     fs.mkdir("e");
 
-    CHECK(fs.hashDir("d") == fs.hashDir("e"));
+    std::string err_1;
+    std::string err_2;
+
+    CHECK(fs.hashDir("d", &err_1) == fs.hashDir("e", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
 
     fs.mkdir("d/d");
-    const auto hash_with_one_dir = fs.hashDir("d");
-    CHECK(hash_with_one_dir != fs.hashDir("e"));
+    const auto hash_with_one_dir = fs.hashDir("d", &err_1);
+    CHECK(hash_with_one_dir != fs.hashDir("e", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
 
     fs.open("d/e", "w");
-    const auto hash_with_one_dir_and_one_file = fs.hashDir("d");
+    const auto hash_with_one_dir_and_one_file = fs.hashDir("d", &err_1);
     CHECK(hash_with_one_dir_and_one_file != hash_with_one_dir);
-    CHECK(hash_with_one_dir_and_one_file != fs.hashDir("e"));
+    CHECK(hash_with_one_dir_and_one_file != fs.hashDir("e", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
 
     fs.unlink("d/e");
-    CHECK(hash_with_one_dir == fs.hashDir("d"));
+    CHECK(hash_with_one_dir == fs.hashDir("d", &err_1));
+    CHECK(err_1 == "");
 
     fs.rmdir("d/d");
-    CHECK(fs.hashDir("d") == fs.hashDir("e"));
+    CHECK(fs.hashDir("d", &err_1) == fs.hashDir("e", &err_2));
+    CHECK(err_1 == "");
+    CHECK(err_2 == "");
+
+    CHECK(fs.hashDir("nonexisting", &err_1) == std::make_pair(Hash(), false));
+    CHECK(err_1 != "");
   }
 
   SECTION("hashSymlink") {
@@ -62,6 +77,7 @@ TEST_CASE("FileSystem") {
 
     std::string err_1;
     std::string err_2;
+
     CHECK(fs.hashSymlink("link_1", &err_1) == fs.hashSymlink("link_2", &err_2));
     CHECK(err_1 == "");
     CHECK(err_2 == "");

@@ -11,13 +11,20 @@
 
 namespace shk {
 
-Hash FileSystem::hashDir(nt_string_view path) throw(IoError) {
+std::pair<Hash, bool> FileSystem::hashDir(
+    nt_string_view path, std::string *err) {
   Hash hash;
 
   blake2b_state state;
   blake2b_init(&state, hash.data.size());
 
-  auto dir_entries = readDir(path);
+  std::vector<DirEntry> dir_entries;
+  try {
+    dir_entries = readDir(path);
+  } catch (const IoError &io_error) {
+    *err = io_error.what();
+    return std::make_pair(Hash(), false);
+  }
   std::sort(dir_entries.begin(), dir_entries.end());
   for (const auto &dir_entry : dir_entries) {
     blake2b_update(
@@ -31,7 +38,7 @@ Hash FileSystem::hashDir(nt_string_view path) throw(IoError) {
   }
 
   blake2b_final(&state, hash.data.data(), hash.data.size());
-  return hash;
+  return std::make_pair(hash, true);
 }
 
 std::pair<Hash, bool> FileSystem::hashSymlink(
