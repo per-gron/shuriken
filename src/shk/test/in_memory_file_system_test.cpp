@@ -19,6 +19,12 @@ std::string testMkstemp(
   return path;
 }
 
+void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
+  std::string err;
+  CHECK(fs.writeFile(path, contents, &err));
+  CHECK(err == "");
+}
+
 }  // anonymous namespace
 
 TEST_CASE("InMemoryFileSystem") {
@@ -37,7 +43,7 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("mmap") {
-    fs.writeFile("f", "contents");
+    writeFile(fs, "f", "contents");
     fs.mkdir("dir");
     CHECK_THROWS_AS(fs.mmap("nonexisting"), IoError);
     CHECK_THROWS_AS(fs.mmap("dir"), IoError);
@@ -188,8 +194,8 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("overwrite file with file") {
-      fs.writeFile("a", "a!");
-      fs.writeFile("b", "b!");
+      writeFile(fs, "a", "a!");
+      writeFile(fs, "b", "b!");
       fs.rename("a", "b");
       CHECK(fs.stat("a").result == ENOENT);
       CHECK(fs.readFile("b") == "a!");
@@ -228,7 +234,7 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("truncate") {
     fs.mkdir("dir");
-    fs.writeFile("file", "sweet bananas!");
+    writeFile(fs, "file", "sweet bananas!");
     CHECK_THROWS_AS(fs.truncate("dir", 0), IoError);
     CHECK_THROWS_AS(fs.truncate("missing", 0), IoError);
     CHECK_THROWS_AS(fs.truncate("dir/missing", 0), IoError);
@@ -291,7 +297,7 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("open for appending") {
-    fs.writeFile(abc, "swe");
+    writeFile(fs, abc, "swe");
     {
       const auto stream = fs.open(abc, "ab");
       const std::string et = "et";
@@ -338,9 +344,9 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("hashFile") {
-    fs.writeFile("one", "some_content");
-    fs.writeFile("two", "some_content");
-    fs.writeFile("three", "some_other_content");
+    writeFile(fs, "one", "some_content");
+    writeFile(fs, "two", "some_content");
+    writeFile(fs, "three", "some_other_content");
 
     std::string err_1;
     std::string err_2;

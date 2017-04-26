@@ -7,6 +7,15 @@
 #include "../in_memory_file_system.h"
 
 namespace shk {
+namespace {
+
+void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
+  std::string err;
+  CHECK(fs.writeFile(path, contents, &err));
+  CHECK(err == "");
+}
+
+}  // anonymous namespace
 
 TEST_CASE("FileSystem") {
   InMemoryFileSystem fs;
@@ -90,18 +99,18 @@ TEST_CASE("FileSystem") {
   }
 
   SECTION("writeFile") {
-    fs.writeFile("abc", "hello");
+    writeFile(fs, "abc", "hello");
     CHECK(fs.stat("abc").result == 0);  // Verify file exists
   }
 
   SECTION("writeFile, readFile") {
-    fs.writeFile("abc", "hello");
+    writeFile(fs, "abc", "hello");
     CHECK(fs.readFile("abc") == "hello");
   }
 
   SECTION("writeFile, writeFile, readFile") {
-    fs.writeFile("abc", "hello");
-    fs.writeFile("abc", "hello!");
+    writeFile(fs, "abc", "hello");
+    writeFile(fs, "abc", "hello!");
     CHECK(fs.readFile("abc") == "hello!");
   }
 
@@ -134,7 +143,7 @@ TEST_CASE("FileSystem") {
           "abc",
           "abc/def",
           "abc/def/ghi" }));
-      fs.writeFile(file_path, "hello");
+      writeFile(fs, file_path, "hello");
     }
   }
 }

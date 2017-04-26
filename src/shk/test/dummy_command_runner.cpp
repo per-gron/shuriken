@@ -91,12 +91,12 @@ CommandRunner::Result runCommand(
     return result;
   }
 
+  std::string err;
   for (const auto &output : result.output_files) {
-    try {
-      file_system.writeFile(
-          output,
-          output + "\n" + input_data);
-    } catch (IoError &) {
+    if (!file_system.writeFile(
+            output,
+            output + "\n" + input_data,
+            &err)) {
       result.exit_status = ExitStatus::FAILURE;
       return result;
     }

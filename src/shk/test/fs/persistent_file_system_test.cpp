@@ -39,12 +39,16 @@ TEST_CASE("PersistentFileSystem") {
     }
 
     SECTION("FileWithContents") {
-      fs->writeFile(kTestFilename1, "data");
+      std::string err;
+      CHECK(fs->writeFile(kTestFilename1, "data", &err));
+      CHECK(err == "");
       CHECK(fs->mmap(kTestFilename1)->memory() == "data");
     }
 
     SECTION("EmptyFile") {
-      fs->writeFile(kTestFilename1, "");
+      std::string err;
+      CHECK(fs->writeFile(kTestFilename1, "", &err));
+      CHECK(err == "");
       CHECK(fs->mmap(kTestFilename1)->memory() == "");
     }
   }

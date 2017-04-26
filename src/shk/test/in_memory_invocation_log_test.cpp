@@ -8,7 +8,9 @@ namespace shk {
 
 TEST_CASE("InMemoryInvocationLog") {
   InMemoryFileSystem fs;
-  fs.writeFile("test_file", "hello!");
+  std::string err;
+  CHECK(fs.writeFile("test_file", "hello!", &err));
+  CHECK(err == "");
 
   InMemoryInvocationLog log(fs, [] { return 0; });
 
@@ -54,7 +56,8 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("Input") {
-      fs.writeFile("file", "");
+      CHECK(fs.writeFile("file", "", &err));
+      CHECK(err == "");
       log.ranCommand(
           hash, {}, {}, { "file" }, { takeFingerprint(fs, 0, "file").first });
       CHECK(log.entries().size() == 1);

@@ -172,6 +172,12 @@ void addInput(
   addEntryFile(invocations, entry.input_files, path, fingerprint);
 }
 
+void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
+  std::string err;
+  CHECK(fs.writeFile(path, contents, &err));
+  CHECK(err == "");
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Build") {
@@ -211,7 +217,7 @@ TEST_CASE("Build") {
   single_dependency.dependencies = { paths.get("a") };
 
   const auto parse = [&](const std::string &input) {
-    fs.writeFile("build.ninja", input);
+    writeFile(fs, "build.ninja", input);
     return parseManifest(paths, fs, "build.ninja");
   };
 
@@ -224,7 +230,7 @@ TEST_CASE("Build") {
       size_t failures_allowed,
       CommandRunner &runner) {
     Paths paths(fs);
-    fs.writeFile("build.ninja", manifest);
+    writeFile(fs, "build.ninja", manifest);
 
     return build(
         clock,
@@ -615,7 +621,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("used dirty fingerprint") {
-      fs.writeFile("file", "file");
+      writeFile(fs, "file", "file");
 
       const auto memo = computeFingerprintMatchesMemo(
           fs,
@@ -628,7 +634,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("used clean fingerprint") {
-      fs.writeFile("file", "file");
+      writeFile(fs, "file", "file");
       const auto file_fp = takeFingerprint(fs, clock() + 1, "file").first;
       const auto memo = computeFingerprintMatchesMemo(
           fs,
@@ -646,7 +652,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("used racily clean fingerprint") {
-      fs.writeFile("file", "file");
+      writeFile(fs, "file", "file");
       const auto file_fp = takeFingerprint(fs, clock(), "file").first;
       const auto memo = computeFingerprintMatchesMemo(
           fs,
@@ -664,7 +670,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("one used of several fingerprints") {
-      fs.writeFile("file", "file");
+      writeFile(fs, "file", "file");
       const auto file_fp = takeFingerprint(fs, clock() + 1, "file").first;
       const auto memo = computeFingerprintMatchesMemo(
           fs,
@@ -696,7 +702,7 @@ TEST_CASE("Build") {
       const auto compile_manifest_step = [](const std::string &manifest_str) {
         InMemoryFileSystem fs;
         Paths paths(fs);
-        fs.writeFile("build.ninja", manifest_str);
+        writeFile(fs, "build.ninja", manifest_str);
 
         const auto manifest = compileManifest(
             paths.get("build.ninja"),
@@ -739,7 +745,7 @@ TEST_CASE("Build") {
       }
 
       SECTION("missing input file") {
-        fs.writeFile("out", "out");
+        writeFile(fs, "out", "out");
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -756,7 +762,7 @@ TEST_CASE("Build") {
       }
 
       SECTION("missing output file") {
-        fs.writeFile("in", "in");
+        writeFile(fs, "in", "in");
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -773,9 +779,9 @@ TEST_CASE("Build") {
       }
 
       SECTION("input file newer") {
-        fs.writeFile("out", "out");
+        writeFile(fs, "out", "out");
         time++;
-        fs.writeFile("in", "in");
+        writeFile(fs, "in", "in");
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -792,10 +798,10 @@ TEST_CASE("Build") {
       }
 
       SECTION("single input file newer") {
-        fs.writeFile("in1", "in1");
-        fs.writeFile("out", "out");
+        writeFile(fs, "in1", "in1");
+        writeFile(fs, "out", "out");
         time++;
-        fs.writeFile("in2", "in2");
+        writeFile(fs, "in2", "in2");
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -812,10 +818,10 @@ TEST_CASE("Build") {
       }
 
       SECTION("single output file as old as input") {
-        fs.writeFile("out1", "out1");
-        fs.writeFile("in", "in");
+        writeFile(fs, "out1", "out1");
+        writeFile(fs, "in", "in");
         time++;
-        fs.writeFile("out2", "out2");
+        writeFile(fs, "out2", "out2");
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -830,11 +836,11 @@ TEST_CASE("Build") {
       }
 
       SECTION("single output file as older than input") {
-        fs.writeFile("out1", "out1");
+        writeFile(fs, "out1", "out1");
         time++;
-        fs.writeFile("in", "in");
+        writeFile(fs, "in", "in");
         time++;
-        fs.writeFile("out2", "out2");
+        writeFile(fs, "out2", "out2");
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -851,9 +857,9 @@ TEST_CASE("Build") {
       }
 
       SECTION("clean") {
-        fs.writeFile("in", "in");
+        writeFile(fs, "in", "in");
         time++;
-        fs.writeFile("out", "out");
+        writeFile(fs, "out", "out");
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -876,10 +882,10 @@ TEST_CASE("Build") {
       Hash hash_c;
       std::fill(hash_a.data.begin(), hash_a.data.end(), 0);
 
-      fs.writeFile("one", "one_content");
+      writeFile(fs, "one", "one_content");
       const auto one_fp = takeFingerprint(fs, clock() + 1, "one").first;
       const auto one_fp_racy = takeFingerprint(fs, clock(), "one").first;
-      fs.writeFile("two", "two_content");
+      writeFile(fs, "two", "two_content");
       const auto two_fp = takeFingerprint(fs, clock() + 1, "two").first;
 
       flatbuffers::FlatBufferBuilder step_with_hash_a_builder;
@@ -937,7 +943,7 @@ TEST_CASE("Build") {
         Invocations::Entry entry;
         addInput(invocations, entry, "one", one_fp);
         invocations.entries[hash_a] = entry;
-        fs.writeFile("one", "dirty");  // Make dirty
+        writeFile(fs, "one", "dirty");  // Make dirty
         CHECK(!isClean(
             fs,
             log,
@@ -966,7 +972,7 @@ TEST_CASE("Build") {
         Invocations::Entry entry;
         addOutput(invocations, entry, "one", one_fp);
         invocations.entries[hash_a] = entry;
-        fs.writeFile("one", "dirty");  // Make dirty
+        writeFile(fs, "one", "dirty");  // Make dirty
         CHECK(!isClean(
             fs,
             log,
@@ -982,8 +988,8 @@ TEST_CASE("Build") {
         addOutput(invocations, entry, "one", one_fp);
         addInput(invocations, entry, "two", two_fp);
         invocations.entries[hash_a] = entry;
-        fs.writeFile("one", "dirty");
-        fs.writeFile("two", "dirty!");
+        writeFile(fs, "one", "dirty");
+        writeFile(fs, "two", "dirty!");
         CHECK(!isClean(
             fs,
             log,
@@ -1227,15 +1233,15 @@ TEST_CASE("Build") {
   }
 
   SECTION("deleteOldOutputs") {
-    fs.writeFile("file", "contents");
+    writeFile(fs, "file", "contents");
     const auto fingerprint = takeFingerprint(fs, clock(), "file").first;
     fs.mkdir("dir_single_file");
-    fs.writeFile("dir_single_file/file", "contents!");
+    writeFile(fs, "dir_single_file/file", "contents!");
     fs.mkdir("dir");
-    fs.writeFile("dir/file2", "contents2");
+    writeFile(fs, "dir/file2", "contents2");
     const auto fingerprint2 = takeFingerprint(fs, clock(), "dir/file2").first;
     fs.mkdir("dir/subdir");
-    fs.writeFile("dir/subdir/file3", "contents3");
+    writeFile(fs, "dir/subdir/file3", "contents3");
     const auto fingerprint3 =
         takeFingerprint(fs, clock(), "dir/subdir/file3").first;
 
@@ -1375,7 +1381,7 @@ TEST_CASE("Build") {
   }
 
   SECTION("canSkipBuildCommand") {
-    fs.writeFile("file", "contents");
+    writeFile(fs, "file", "contents");
     const auto file_fingerprint = takeFingerprint(
         fs, clock(), "file").first;
     const auto file_id = FileId(fs.lstat("file"));
@@ -2063,9 +2069,9 @@ TEST_CASE("Build") {
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out: cmd in\n";
-        fs.writeFile("in", "before");
+        writeFile(fs, "in", "before");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        fs.writeFile("in", "after");
+        writeFile(fs, "in", "after");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
@@ -2076,7 +2082,7 @@ TEST_CASE("Build") {
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out: cmd in\n";
-        fs.writeFile("in", "before");
+        writeFile(fs, "in", "before");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         fs.unlink("in");
         CHECK(build_manifest(manifest) == BuildResult::FAILURE);
@@ -2088,10 +2094,10 @@ TEST_CASE("Build") {
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out: cmd in1\n";
-        fs.writeFile("in1", "input");
-        fs.writeFile("in2", "before");
+        writeFile(fs, "in1", "input");
+        writeFile(fs, "in2", "before");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        fs.writeFile("in2", "after");
+        writeFile(fs, "in2", "after");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
@@ -2102,9 +2108,9 @@ TEST_CASE("Build") {
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out: cmd unused_in\n";
-        fs.writeFile("in", "input");
+        writeFile(fs, "in", "input");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        fs.writeFile("in", "after");
+        writeFile(fs, "in", "after");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
@@ -2116,7 +2122,7 @@ TEST_CASE("Build") {
             "  command = " + cmd + "\n"
             "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        fs.writeFile("out", "dirty!");
+        writeFile(fs, "out", "dirty!");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
@@ -2237,7 +2243,7 @@ TEST_CASE("Build") {
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd1);
         dummy_runner.checkCommand(fs, cmd2);
-        fs.writeFile("out1", "dirty");
+        writeFile(fs, "out1", "dirty");
 
         // Ok so here comes the test. The point of this test is that with this
         // set-up, both commands need to be re-run, but because of their

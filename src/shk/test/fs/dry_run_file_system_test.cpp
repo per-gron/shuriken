@@ -13,7 +13,9 @@ TEST_CASE("DryRunFileSystem") {
   const std::string abc = "abc";
 
   InMemoryFileSystem inner_fs;
-  inner_fs.writeFile("f", "contents");
+  std::string err;
+  CHECK(inner_fs.writeFile("f", "contents", &err));
+  CHECK(err == "");
   inner_fs.mkdir("dir");
 
   const auto fs = dryRunFileSystem(inner_fs);

@@ -49,13 +49,19 @@ std::string readSymlink(FileSystem &file_system, nt_string_view path) {
   return target;
 }
 
+void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
+  std::string err;
+  CHECK(fs.writeFile(path, contents, &err));
+  CHECK(err == "");
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Fingerprint") {
   time_t now = 321;
   InMemoryFileSystem fs([&now] { return now; });
   const std::string initial_contents = "initial_contents";
-  fs.writeFile("a", initial_contents);
+  writeFile(fs, "a", initial_contents);
   fs.mkdir("dir");
   fs.symlink("target", "link");
 
@@ -319,7 +325,7 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("matching old_fingerprint (file)") {
-      fs.writeFile("b", "data");
+      writeFile(fs, "b", "data");
       now++;
       Fingerprint fp;
       FileId file_id;
@@ -334,7 +340,7 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("matching old_fingerprint (file, should_update)") {
-      fs.writeFile("b", "data");
+      writeFile(fs, "b", "data");
       Fingerprint fp;
       FileId file_id;
       std::tie(fp, file_id) = takeFingerprint(fs, now, "b");
@@ -383,7 +389,7 @@ TEST_CASE("Fingerprint") {
       Fingerprint fp;
       FileId file_id;
       std::tie(fp, file_id) = takeFingerprint(fs, now, "a");
-      fs.writeFile("a", "data");
+      writeFile(fs, "a", "data");
       now++;
       Fingerprint new_fp;
       FileId new_file_id;
@@ -440,7 +446,7 @@ TEST_CASE("Fingerprint") {
       Fingerprint initial_fp;
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
-      fs.writeFile("a", "initial_content>");
+      writeFile(fs, "a", "initial_content>");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       CHECK(result.should_update);
@@ -450,7 +456,7 @@ TEST_CASE("Fingerprint") {
       Fingerprint initial_fp;
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
-      fs.writeFile("a", "changed");
+      writeFile(fs, "a", "changed");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       // It can see that the file size is different so no need to re-hash and
@@ -463,7 +469,7 @@ TEST_CASE("Fingerprint") {
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       now++;
-      fs.writeFile("a", "initial_content>");
+      writeFile(fs, "a", "initial_content>");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       // It can see that the file's timestamp is newer than the fingerprint,
@@ -477,7 +483,7 @@ TEST_CASE("Fingerprint") {
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       now++;
-      fs.writeFile("a", "changed");
+      writeFile(fs, "a", "changed");
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       // It can see that the file size is different so no need to re-hash and
@@ -490,7 +496,7 @@ TEST_CASE("Fingerprint") {
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       now++;
-      fs.writeFile("a", initial_contents);
+      writeFile(fs, "a", initial_contents);
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(result.clean);
       CHECK(result.should_update);
@@ -518,7 +524,7 @@ TEST_CASE("Fingerprint") {
       Fingerprint initial_fp;
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "b");
-      fs.writeFile("b", initial_contents);
+      writeFile(fs, "b", initial_contents);
       const auto result = fingerprintMatches(fs, "b", initial_fp);
       CHECK(!result.clean);
       CHECK(!result.should_update);

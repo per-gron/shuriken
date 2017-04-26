@@ -31,8 +31,14 @@ void verifyManifest(const RawManifest &manifest) {
   }
 }
 
+void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
+  std::string err;
+  CHECK(fs.writeFile(path, contents, &err));
+  CHECK(err == "");
+}
+
 RawManifest parse(Paths &paths, FileSystem &file_system, const char *input) {
-  file_system.writeFile("build.ninja", input);
+  writeFile(file_system, "build.ninja", input);
   const auto manifest = parseManifest(paths, file_system, "build.ninja");
   verifyManifest(manifest);
   return manifest;
@@ -560,7 +566,7 @@ TEST_CASE("RawManifest") {
   }
 
   SECTION("SubNinja") {
-    fs.writeFile("test.ninja",
+    writeFile(fs, "test.ninja",
         "var = inner\n"
         "build $builddir/inner: varref\n");
     const auto manifest = parse(paths, fs,
@@ -596,7 +602,7 @@ TEST_CASE("RawManifest") {
 
   SECTION("DuplicateRuleInDifferentSubninjas") {
     // Test that rules are scoped to subninjas.
-    fs.writeFile("test.ninja",
+    writeFile(fs, "test.ninja",
         "rule cat\n"
         "  command = cat\n");
     parse(paths, fs,
@@ -607,10 +613,10 @@ TEST_CASE("RawManifest") {
 
   SECTION("DuplicateRuleInDifferentSubninjasWithInclude") {
     // Test that rules are scoped to subninjas even with includes.
-    fs.writeFile("rules.ninja",
+    writeFile(fs, "rules.ninja",
         "rule cat\n"
         "  command = cat\n");
-    fs.writeFile("test.ninja",
+    writeFile(fs, "test.ninja",
         "include rules.ninja\n"
         "build x : cat\n");
     parse(paths, fs,
@@ -620,7 +626,7 @@ TEST_CASE("RawManifest") {
   }
 
   SECTION("Include") {
-    fs.writeFile("include.ninja",
+    writeFile(fs, "include.ninja",
         "var = inner\n");
     const auto manifest = parse(paths, fs,
         "var = outer\n"
@@ -638,7 +644,7 @@ TEST_CASE("RawManifest") {
   }
 
   SECTION("BrokenInclude") {
-    fs.writeFile("include.ninja",
+    writeFile(fs, "include.ninja",
         "build\n");
     CHECK(parseError(paths, fs, "include include.ninja\n") ==
         "include.ninja:1: expected path\n"

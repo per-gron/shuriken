@@ -680,7 +680,11 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
         params.file_system,
         params.invocation_log,
         dirname(step.rspfile()));
-    params.file_system.writeFile(step.rspfile(), step.rspfileContent());
+    std::string err;
+    if (!params.file_system.writeFile(
+            step.rspfile(), step.rspfileContent(), &err)) {
+      throw IoError(err, 0);
+    }
   }
 
   for (const auto &output_dir : step.outputDirs()) {

@@ -65,12 +65,17 @@ std::pair<Hash, bool> FileSystem::hashSymlink(
   return std::make_pair(hash, true);
 }
 
-void FileSystem::writeFile(
-    nt_string_view path,
-    string_view contents) throw(IoError) {
-  const auto stream = open(path, "wb");
-  const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
-  stream->write(data, 1, contents.size());
+bool FileSystem::writeFile(
+    nt_string_view path, string_view contents, std::string *err) {
+  try {
+    const auto stream = open(path, "wb");
+    const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
+    stream->write(data, 1, contents.size());
+  } catch (const IoError &io_error) {
+    *err = io_error.what();
+    return false;
+  }
+  return true;
 }
 
 namespace {

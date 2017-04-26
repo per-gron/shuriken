@@ -9,7 +9,9 @@ namespace shk {
 
 TEST_CASE("InvocationLog") {
   InMemoryFileSystem fs;
-  fs.writeFile("a", "hello!");
+  std::string err;
+  CHECK(fs.writeFile("a", "hello!", &err));
+  CHECK(err == "");
 
   time_t now = 234;
   const auto clock = [&]{ return now; };

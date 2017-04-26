@@ -20,6 +20,12 @@ void checkEmpty(const InvocationLogParseResult &empty) {
   CHECK(!empty.parse_data.buffer);
 }
 
+void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
+  std::string err;
+  CHECK(fs.writeFile(path, contents, &err));
+  CHECK(err == "");
+}
+
 void ranCommand(
     InvocationLog &log,
     const Hash &build_step_hash,
@@ -273,7 +279,7 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("Empty") {
-      fs.writeFile("empty", "");
+      writeFile(fs, "empty", "");
       auto result = parsePersistentInvocationLog(fs, "empty");
       CHECK(
           result.warning ==
@@ -339,7 +345,7 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("Fingerprint") {
       writeEntries([hash_0](InvocationLog &log, FileSystem &fs) {
-        fs.writeFile("test_file", "hello!");
+        writeFile(fs, "test_file", "hello!");
         CHECK(
             log.fingerprint("test_file") ==
             takeFingerprint(fs, 0, "test_file"));
@@ -436,8 +442,8 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("InvocationDifferentStepsSameFingerprints") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        fs.writeFile("ooh", "");
-        fs.writeFile("iih", "");
+        writeFile(fs, "ooh", "");
+        writeFile(fs, "iih", "");
 
         for (int i = 0; i < 2; i++) {
           std::vector<std::string> output_files = { "aah", "ooh" };
@@ -460,8 +466,8 @@ TEST_CASE("PersistentInvocationLog") {
       // recompaction. This test tries to trigger that.
 
       recompact([&](InvocationLog &log, FileSystem &fs) {
-        fs.writeFile("ooh", "ooh");
-        fs.writeFile("iih", "iih");
+        writeFile(fs, "ooh", "ooh");
+        writeFile(fs, "iih", "iih");
 
         for (int i = 0; i < 3000; i++) {
           std::vector<std::string> output_files = { "aah" , "ooh", "iih" };

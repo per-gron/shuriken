@@ -32,10 +32,12 @@ void checkRunCommand(
   DummyCommandRunner runner(file_system);
 
   // Create input files
+  std::string err;
   for (const auto &input : inputs) {
-    file_system.writeFile(
+    CHECK(file_system.writeFile(
         input,
-        "file:" + input);
+        "file:" + input,
+        &err));
   }
 
   const auto command = DummyCommandRunner::constructCommand(

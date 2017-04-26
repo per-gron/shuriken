@@ -304,6 +304,11 @@ std::string makeTrace(
       builder.GetSize());
 }
 
+void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
+  std::string err;
+  CHECK(fs.writeFile(path, contents, &err));
+  CHECK(err == "");
+}
 
 }  // anonymous namespace
 
@@ -405,7 +410,7 @@ TEST_CASE("TracingCommandRunner") {
 
   SECTION("InvalidTrace") {
     fs.enqueueMkstempResult("trace");
-    fs.writeFile("trace", "hej");
+    writeFile(fs, "trace", "hej");
 
     const auto result = runCommand(*runner, "hey there");
     mock_command_runner.popCommand();
@@ -421,7 +426,7 @@ TEST_CASE("TracingCommandRunner") {
         { "out" },
         {});
     fs.enqueueMkstempResult("trace");
-    fs.writeFile("trace", trace);
+    writeFile(fs, "trace", trace);
 
     const auto result = runCommand(*runner, "hey there");
     mock_command_runner.popCommand();
@@ -447,7 +452,7 @@ TEST_CASE("TracingCommandRunner") {
         std::move(mock_command_runner_ptr));
 
     fs.enqueueMkstempResult("trace");
-    fs.writeFile("trace", makeTrace({}, {}, {}));
+    writeFile(fs, "trace", makeTrace({}, {}, {}));
 
     const auto result = runCommand(*runner, "lolol");
     mock_command_runner.popCommand();

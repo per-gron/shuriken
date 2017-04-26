@@ -31,6 +31,12 @@ void setAtOffset(const TableType *table, int offset, int value) {
                   flatbuffers::EndianScalar(value);
 }
 
+void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
+  std::string err;
+  CHECK(fs.writeFile(path, contents, &err));
+  CHECK(err == "");
+}
+
 }  // anonymous namespace
 
 TEST_CASE("CompiledManifest") {
@@ -1008,7 +1014,7 @@ TEST_CASE("CompiledManifest") {
 
     SECTION("one file") {
       now = 1;
-      fs.writeFile("file", "");
+      writeFile(fs, "file", "");
 
       RawManifest raw_manifest;
       raw_manifest.manifest_files = { "file" };
@@ -1020,9 +1026,9 @@ TEST_CASE("CompiledManifest") {
 
     SECTION("two files") {
       now = 1;
-      fs.writeFile("file1", "");
+      writeFile(fs, "file1", "");
       now = 2;
-      fs.writeFile("file2", "");
+      writeFile(fs, "file2", "");
 
       RawManifest raw_manifest;
       raw_manifest.manifest_files = { "file1", "file2" };
@@ -1034,7 +1040,7 @@ TEST_CASE("CompiledManifest") {
 
     SECTION("one missing one present") {
       now = 1;
-      fs.writeFile("file", "");
+      writeFile(fs, "file", "");
 
       RawManifest raw_manifest;
       raw_manifest.manifest_files = { "file", "missing" };
@@ -1119,14 +1125,14 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n";
 
-      fs.writeFile("manifest", manifest_str);
+      writeFile(fs, "manifest", manifest_str);
 
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
       check_first_step_cmd(manifest, "cmd");
     }
 
     SECTION("parse error") {
-      fs.writeFile("manifest", "rule!\n");
+      writeFile(fs, "manifest", "rule!\n");
 
       CHECK(
           parse_and_compile_fail("manifest", "manifest.compiled") ==
@@ -1148,7 +1154,7 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n"
           "build in: cmd out\n";
-      fs.writeFile("manifest", manifest_str);
+      writeFile(fs, "manifest", manifest_str);
 
       CHECK(
           parse_and_compile_fail("manifest", "manifest.compiled") ==
@@ -1160,7 +1166,7 @@ TEST_CASE("CompiledManifest") {
           "rule cmd\n"
           "  command = cmd\n"
           "build out: cmd in\n";
-      fs.writeFile("manifest", manifest_str);
+      writeFile(fs, "manifest", manifest_str);
 
       parse_and_compile("manifest", "manifest.compiled");
 
@@ -1175,7 +1181,7 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n";
 
-      fs.writeFile("manifest", manifest_str);
+      writeFile(fs, "manifest", manifest_str);
       fs.mkdir("manifest.compiled");
 
       CHECK(parse_and_compile_fail("manifest", "manifest.compiled") != "");
@@ -1187,8 +1193,8 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n";
 
-      fs.writeFile("manifest", manifest_str);
-      fs.writeFile("manifest.compiled", "invalid_haha");
+      writeFile(fs, "manifest", manifest_str);
+      writeFile(fs, "manifest.compiled", "invalid_haha");
 
       // Should just recompile the manifest in this case
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
@@ -1204,8 +1210,8 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n";
 
-      fs.writeFile("manifest", manifest_str);
-      fs.writeFile("manifest.compiled", "");
+      writeFile(fs, "manifest", manifest_str);
+      writeFile(fs, "manifest.compiled", "");
 
       // Should just recompile the manifest in this case
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
@@ -1223,8 +1229,8 @@ TEST_CASE("CompiledManifest") {
       const auto other_manifest_str =
           "build out: cmd before\n";
 
-      fs.writeFile("manifest", manifest_str);
-      fs.writeFile("manifest.other", other_manifest_str);
+      writeFile(fs, "manifest", manifest_str);
+      writeFile(fs, "manifest.other", other_manifest_str);
       now++;
 
       parse_and_compile("manifest", "manifest.compiled");
@@ -1232,7 +1238,7 @@ TEST_CASE("CompiledManifest") {
           parse_compiled_manifest("manifest.compiled"),
           "cmd_before");
 
-      fs.writeFile("manifest.other", "build out: cmd after\n");
+      writeFile(fs, "manifest.other", "build out: cmd after\n");
 
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
 
@@ -1250,15 +1256,15 @@ TEST_CASE("CompiledManifest") {
       const auto other_manifest_str =
           "build out: cmd before\n";
 
-      fs.writeFile("manifest", manifest_str);
-      fs.writeFile("manifest.other", other_manifest_str);
+      writeFile(fs, "manifest", manifest_str);
+      writeFile(fs, "manifest.other", other_manifest_str);
 
       parse_and_compile("manifest", "manifest.compiled");
       check_first_step_cmd(
           parse_compiled_manifest("manifest.compiled"),
           "cmd_before");
 
-      fs.writeFile("manifest.other", "build out: cmd after\n");
+      writeFile(fs, "manifest.other", "build out: cmd after\n");
 
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
 
@@ -1276,8 +1282,8 @@ TEST_CASE("CompiledManifest") {
       const auto other_manifest_str =
           "build out: cmd before\n";
 
-      fs.writeFile("manifest", manifest_str);
-      fs.writeFile("manifest.other", other_manifest_str);
+      writeFile(fs, "manifest", manifest_str);
+      writeFile(fs, "manifest.other", other_manifest_str);
 
       parse_and_compile("manifest", "manifest.compiled");
       check_first_step_cmd(
@@ -1294,7 +1300,7 @@ TEST_CASE("CompiledManifest") {
           "rule cmd\n"
           "  command = cmd\n"
           "build out: cmd in\n";
-      fs.writeFile("manifest", manifest_str);
+      writeFile(fs, "manifest", manifest_str);
       now++;
 
       parse_and_compile("manifest", "manifest.compiled");
@@ -1302,14 +1308,14 @@ TEST_CASE("CompiledManifest") {
       auto compiled_buf = fs.readFile("manifest.compiled");
       REQUIRE(compiled_buf.size() >= sizeof(uint64_t));
       compiled_buf[0]++;
-      fs.writeFile("manifest.compiled", compiled_buf);
+      writeFile(fs, "manifest.compiled", compiled_buf);
 
       now--;  // Go to the "past" to not trigger the mtime invalidation check
       const auto new_manifest_str =
           "rule cmd\n"
           "  command = other_cmd\n"
           "build out: cmd in\n";
-      fs.writeFile("manifest", new_manifest_str);
+      writeFile(fs, "manifest", new_manifest_str);
       now++;
 
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
@@ -1325,7 +1331,7 @@ TEST_CASE("CompiledManifest") {
           "rule cmd\n"
           "  command = cmd\n"
           "build out: cmd in\n";
-      fs.writeFile("manifest", manifest_str);
+      writeFile(fs, "manifest", manifest_str);
 
       parse_and_compile("manifest", "manifest.compiled");
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");

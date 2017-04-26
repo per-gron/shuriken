@@ -183,10 +183,10 @@ class FileSystem {
 
   /**
    * Helper function for writing a string to a file.
+   *
+   * Returns true if the operation was successful
    */
-  void writeFile(
-      nt_string_view path,
-      string_view contents) throw(IoError);
+  bool writeFile(nt_string_view path, string_view contents, std::string *err);
 
   /**
    * Create a temporary file that follows a template. See the man page for

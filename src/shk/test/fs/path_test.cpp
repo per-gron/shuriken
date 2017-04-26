@@ -255,8 +255,11 @@ TEST_CASE("Path") {
   SECTION("operator==, operator!=") {
     InMemoryFileSystem fs;
     fs.mkdir("dir");
-    fs.writeFile("f", "");
-    fs.writeFile("dir/f", "");
+    std::string err;
+    CHECK(fs.writeFile("f", "", &err));
+    CHECK(err == "");
+    CHECK(fs.writeFile("dir/f", "", &err));
+    CHECK(err == "");
 
     static const char *kPaths[] = {
         "/",
