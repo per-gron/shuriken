@@ -318,5 +318,10 @@ class IntegrationTest(unittest.TestCase):
     run_cmd(shk)
     self.assertEqual(read_file('out'), 'hello_again\n')
 
+  @with_testdir('tty')
+  def test_tty(self):
+    os.system(shk)
+    self.assertEqual(read_file('out'), run_cmd('tty'))
+
 if __name__ == '__main__':
     unittest.main()

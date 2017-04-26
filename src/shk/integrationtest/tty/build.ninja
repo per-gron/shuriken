@@ -1,0 +1,5 @@
+rule WRITE_TTY
+  command = tty > $out
+  pool = console
+
+build out: WRITE_TTY
