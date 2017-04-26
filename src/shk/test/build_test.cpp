@@ -800,7 +800,7 @@ TEST_CASE("Build") {
           used_fingerprints.push_back(i);
         }
         return computeFingerprintMatchesMemo(
-            fs, invocations, used_fingerprints);
+            fs, invocations.fingerprints, used_fingerprints);
       };
 
       SECTION("no matching Invocation entry") {

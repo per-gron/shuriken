@@ -293,7 +293,7 @@ FingerprintMatchesMemo computeFingerprintMatchesMemo(
 
   return detail::computeFingerprintMatchesMemo(
       file_system,
-      invocations,
+      invocations.fingerprints,
       invocations.fingerprintsFor(entries));
 }
 
@@ -301,9 +301,9 @@ FingerprintMatchesMemo computeFingerprintMatchesMemo(
 
 FingerprintMatchesMemo computeFingerprintMatchesMemo(
     FileSystem &file_system,
-    const Invocations &invocations,
+    const std::vector<std::pair<nt_string_view, Fingerprint>> &fingerprints,
     const std::vector<uint32_t> used_fingerprints) {
-  FingerprintMatchesMemo memo(invocations.fingerprints.size());
+  FingerprintMatchesMemo memo(fingerprints.size());
 
   const int num_threads = 4;  // Does not scale very well with number of threads
   std::atomic<int> next_used_fingerprints_idx(0);
@@ -316,7 +316,7 @@ FingerprintMatchesMemo computeFingerprintMatchesMemo(
           break;
         }
         auto fingerprint_idx = used_fingerprints[used_fingerprints_idx];
-        const auto &file = invocations.fingerprints[fingerprint_idx];
+        const auto &file = fingerprints[fingerprint_idx];
         memo[fingerprint_idx] =
             fingerprintMatches(file_system, file.first, file.second);
       }
