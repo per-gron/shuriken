@@ -1,10 +1,6 @@
 # This is a hack workaround for the fact that CMake+Ninja doesn't respect
 # the USES_TERMINAL keyword when it's applied to the add_custom_command
 # declarations below.
-add_custom_command(
-  OUTPUT sudo_dummy.h
-  COMMAND sudo /bin/echo > /dev/null
-  VERBATIM USES_TERMINAL)
 
 add_library(libshktrace
   src/cmdline_options.cpp
@@ -49,11 +45,11 @@ set_target_properties(libshktrace PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS}
 set_property(TARGET libshktrace PROPERTY CXX_STANDARD 11)
 
 add_executable(shk-trace
-  src/main.cpp
-  sudo_dummy.h)
+  src/main.cpp)
 target_link_libraries(shk-trace libshktrace)
 set_target_properties(shk-trace PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+  RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin"
+  OUTPUT_NAME shk-trace-nosuid)
 set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test
@@ -84,16 +80,8 @@ set_target_properties(shktrace_integrationtest_helper PROPERTIES COMPILE_FLAGS $
 set_target_properties(shktrace_integrationtest_helper PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations -O0")
 set_property(TARGET shktrace_integrationtest_helper PROPERTY CXX_STANDARD 11)
 
-add_custom_command(
-  TARGET shk-trace
-  PRE_LINK
-  COMMAND rm -f "${PROJECT_BINARY_DIR}/bin/shk-trace"
-  VERBATIM USES_TERMINAL)
-add_custom_command(
-  TARGET shk-trace
-  POST_BUILD
-  COMMAND sudo /usr/sbin/chown root "${PROJECT_BINARY_DIR}/bin/shk-trace"
-  COMMAND sudo /bin/chmod u+s "${PROJECT_BINARY_DIR}/bin/shk-trace"
+add_custom_target(setuid
+  COMMAND "${PROJECT_SOURCE_DIR}/scripts/make_suid.sh" "$<TARGET_FILE:shk-trace>"
   VERBATIM USES_TERMINAL)
 
 add_test(NAME trace_unit COMMAND shktrace_test)
