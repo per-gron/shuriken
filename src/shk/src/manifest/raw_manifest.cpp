@@ -437,6 +437,7 @@ RawManifest parseManifest(
     FileSystem &file_system,
     const std::string &path) throw(IoError, ParseError) {
   RawManifest manifest;
+  manifest.pools["console"] = 1;
 
   BindingEnv env;
   Rule phony;

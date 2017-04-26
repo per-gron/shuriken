@@ -84,17 +84,6 @@ TEST_CASE("PooledCommandRunner") {
     CHECK(limited_runner->canRunMore());
   }
 
-  SECTION("ConsolePoolIsSize1") {
-    // The built-in console pool is size 1 so it will never reach the
-    // parallellism limit of 2 in the limited_runner.
-    limited_runner->invoke(cmd, step_console, [&](CommandRunner::Result &&) {});
-    CHECK(limited_runner->canRunMore());
-    limited_runner->invoke(cmd, step_console, [&](CommandRunner::Result &&) {});
-    CHECK(limited_runner->canRunMore());
-    limited_runner->invoke(cmd, step_console, [&](CommandRunner::Result &&) {});
-    CHECK(limited_runner->canRunMore());
-  }
-
   SECTION("DelayedCommandsAreEventuallyInvoked") {
     static constexpr int callbacks_count = 5;
     int callbacks_called = 0;

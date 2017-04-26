@@ -11,9 +11,7 @@ class PooledCommandRunner : public CommandRunner {
       const std::unordered_map<std::string, int> &pools,
       std::unique_ptr<CommandRunner> &&inner)
       : _pools(pools),
-        _inner(std::move(inner)) {
-    _pools["console"] = 1;
-  }
+        _inner(std::move(inner)) {}
 
   virtual void invoke(
       nt_string_view command,

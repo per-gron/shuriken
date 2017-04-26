@@ -799,6 +799,16 @@ TEST_CASE("RawManifest") {
       CHECK(step.pool_name == "old");
     }
 
+    SECTION("ConsolePoolInRule") {
+      const auto step = parseStep(paths, fs,
+          "rule cat\n"
+          "  command = echo\n"
+          "  pool = console\n"
+          "build result: cat\n");
+
+      CHECK(step.pool_name == "console");
+    }
+
     SECTION("LazilyEvaluateRuleBindings") {
       const auto step = parseStep(paths, fs,
           "variable = old\n"
