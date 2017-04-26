@@ -35,9 +35,8 @@ class CleaningFileSystem : public FileSystem {
 
   void unlink(nt_string_view path) throw(IoError) override;
 
-  void symlink(
-      nt_string_view target,
-      nt_string_view source) throw(IoError) override;
+  bool symlink(
+      nt_string_view target, nt_string_view source, std::string *err) override;
 
   bool rename(
       nt_string_view old_path,

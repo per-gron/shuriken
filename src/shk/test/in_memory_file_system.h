@@ -30,9 +30,8 @@ class InMemoryFileSystem : public FileSystem {
   void mkdir(nt_string_view path) throw(IoError) override;
   void rmdir(nt_string_view path) throw(IoError) override;
   void unlink(nt_string_view path) throw(IoError) override;
-  void symlink(
-      nt_string_view target,
-      nt_string_view source) throw(IoError) override;
+  bool symlink(
+      nt_string_view target, nt_string_view source, std::string *err) override;
   bool rename(
       nt_string_view old_path,
       nt_string_view new_path,

@@ -107,18 +107,18 @@ void InMemoryFileSystem::unlink(nt_string_view path) throw(IoError) {
   }
 }
 
-void InMemoryFileSystem::symlink(
-    nt_string_view target,
-    nt_string_view source) throw(IoError) {
-  std::string err;
-  if (!writeFile(source, target, &err)) {
-    throw IoError(err, 0);
+bool InMemoryFileSystem::symlink(
+      nt_string_view target, nt_string_view source, std::string *err) {
+  if (!writeFile(source, target, err)) {
+    return false;
   }
   const auto l = lookup(source);
   assert(l.entry_type == EntryType::FILE);
 
   const auto file = l.directory->files.find(l.basename)->second;
   file->symlink = true;
+
+  return true;
 }
 
 bool InMemoryFileSystem::rename(

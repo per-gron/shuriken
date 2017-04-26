@@ -77,16 +77,30 @@ TEST_CASE("PersistentFileSystem") {
   }
 
   SECTION("symlink") {
-    fs->symlink("target", kTestFilename1);
-    const auto stat = fs->lstat(kTestFilename1);
-    CHECK(stat.result != ENOENT);
-    CHECK(S_ISLNK(stat.metadata.mode));
+    std::string err;
+
+    SECTION("success") {
+      CHECK(fs->symlink("target", kTestFilename1, &err));
+      CHECK(err == "");
+      const auto stat = fs->lstat(kTestFilename1);
+      CHECK(stat.result != ENOENT);
+      CHECK(S_ISLNK(stat.metadata.mode));
+    }
+
+    SECTION("fail") {
+      CHECK(fs->writeFile(kTestFilename1, "", &err));
+      CHECK(err == "");
+
+      CHECK(!fs->symlink("target", kTestFilename1, &err));
+      CHECK(err != "");
+    }
   }
 
   SECTION("readSymlink") {
     std::string err;
     SECTION("success") {
-      fs->symlink("target", kTestFilename1);
+      CHECK(fs->symlink("target", kTestFilename1, &err));
+      CHECK(err == "");
       CHECK(
           fs->readSymlink(kTestFilename1, &err) ==
           std::make_pair(std::string("target"), true));

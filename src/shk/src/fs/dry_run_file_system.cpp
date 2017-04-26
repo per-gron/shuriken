@@ -47,9 +47,12 @@ class DryRunFileSystem : public FileSystem {
 
   void unlink(nt_string_view path) throw(IoError) override {}
 
-  void symlink(
+  bool symlink(
       nt_string_view target,
-      nt_string_view source) throw(IoError) override {}
+      nt_string_view source,
+      std::string *err) override {
+    return true;
+  }
 
   bool rename(
       nt_string_view old_path,

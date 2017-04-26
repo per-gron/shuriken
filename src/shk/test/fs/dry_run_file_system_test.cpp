@@ -55,7 +55,9 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("symlink") {
-    fs->symlink("target", "link");
+    std::string err;
+    CHECK(fs->symlink("target", "link", &err));
+    CHECK(err == "");
     CHECK(inner_fs.stat("link").result == ENOENT);
   }
 
@@ -86,8 +88,9 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("readSymlink") {
-    inner_fs.symlink("target", "link");
     std::string err;
+    CHECK(inner_fs.symlink("target", "link", &err));
+    CHECK(err == "");
     CHECK(
         fs->readSymlink("link", &err) ==
         std::make_pair(std::string("target"), true));
