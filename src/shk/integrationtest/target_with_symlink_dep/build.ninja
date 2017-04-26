@@ -1,0 +1,4 @@
+rule READLINK
+  command = readlink $in > $out
+
+build out: READLINK in

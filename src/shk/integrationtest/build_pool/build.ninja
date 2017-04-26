@@ -1,0 +1,11 @@
+pool a_pool
+  depth = 2
+
+rule LIMIT_PARALLELISM
+  command = python max_two_parallel.py $out
+  pool = a_pool
+
+build 1: LIMIT_PARALLELISM
+build 2: LIMIT_PARALLELISM
+build 3: LIMIT_PARALLELISM
+build 4: LIMIT_PARALLELISM
