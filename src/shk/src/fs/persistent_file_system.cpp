@@ -253,17 +253,17 @@ class PersistentFileSystem : public FileSystem {
     return std::make_pair(hash, true);
   }
 
-  std::string mkstemp(
-      std::string &&filename_template) throw(IoError) override {
+  std::pair<std::string, bool> mkstemp(
+      std::string &&filename_template, std::string *err) override {
     const auto fd = ::mkstemp(&filename_template[0]);
     if (fd == -1) {
-      throw IoError(
+      *err =
           std::string("Failed to create path for temporary file: ") +
-          strerror(errno),
-          errno);
+          strerror(errno);
+      return std::make_pair(std::string(""), false);
     }
     close(fd);
-    return filename_template;
+    return std::make_pair(filename_template, true);
   }
 
  private:

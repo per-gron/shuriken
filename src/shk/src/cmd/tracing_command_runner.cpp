@@ -31,9 +31,22 @@ const std::unordered_set<std::string> kIgnoredFiles = makeIgnoredFilesSet();
 
 class TemporaryFile {
  public:
-  TemporaryFile(FileSystem &file_system) throw(IoError)
-      : path(file_system.mkstemp("shk.tmp.sb.XXXXXXXX")),
-        _file_system(file_system) {}
+  TemporaryFile(const TemporaryFile &) = delete;
+  TemporaryFile &operator=(const TemporaryFile &) = delete;
+
+  static std::pair<std::shared_ptr<TemporaryFile>, bool> make(
+      FileSystem &file_system, std::string *err) {
+    std::string path;
+    bool success;
+    std::tie(path, success) = file_system.mkstemp("shk.tmp.sb.XXXXXXXX", err);
+    if (!success) {
+      return std::pair<std::shared_ptr<TemporaryFile>, bool>(nullptr, false);
+    }
+    return std::make_pair(
+        std::shared_ptr<TemporaryFile>(
+            new TemporaryFile(file_system, std::move(path))),
+        true);
+  }
 
   ~TemporaryFile() {
     try {
@@ -44,9 +57,13 @@ class TemporaryFile {
     }
   }
 
-  const std::string path;
+  std::string path;
 
  private:
+  TemporaryFile(FileSystem &file_system, std::string &&path) throw(IoError)
+      : path(std::move(path)),
+        _file_system(file_system) {}
+
   FileSystem &_file_system;
 };
 
@@ -89,7 +106,12 @@ class TracingCommandRunner : public CommandRunner {
     }
 
     try {
-      const auto tmp = std::make_shared<TemporaryFile>(_file_system);
+      bool success;
+      std::shared_ptr<TemporaryFile> tmp;
+      std::tie(tmp, success) = TemporaryFile::make(_file_system, &err);
+      if (!success) {
+        throw IoError(err, 0);
+      }
 
       std::string escaped_command;
       getShellEscapedString(command, &escaped_command);

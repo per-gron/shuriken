@@ -196,9 +196,12 @@ class FileSystem {
    * create a file at that path between mktemp returns and when the file is
    * first created. mkstemp chooses a path and creates a file atomically,
    * avoiding this problem.
+   *
+   * Returns the path to the temporary file and a bool indicating whether the
+   * operation was successful or not.
    */
-  virtual std::string mkstemp(
-      std::string &&filename_template) throw(IoError) = 0;
+  virtual std::pair<std::string, bool> mkstemp(
+      std::string &&filename_template, std::string *err) = 0;
 };
 
 /**

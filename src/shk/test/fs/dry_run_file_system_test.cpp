@@ -94,7 +94,11 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("mkstemp") {
-    CHECK(fs->mkstemp("test.XXXXXXXX") == "");
+    std::string err;
+    CHECK(
+        fs->mkstemp("test.XXXXXXXX", &err) ==
+        std::make_pair(std::string(""), true));
+    CHECK(err == "");
   }
 }
 

@@ -45,7 +45,8 @@ class InMemoryFileSystem : public FileSystem {
   std::string readFile(nt_string_view path) throw(IoError) override;
   std::pair<Hash, bool> hashFile(
       nt_string_view path, std::string *err) override;
-  std::string mkstemp(std::string &&filename_template) throw(IoError) override;
+  std::pair<std::string, bool> mkstemp(
+      std::string &&filename_template, std::string *err) override;
 
   bool operator==(const InMemoryFileSystem &other) const;
 

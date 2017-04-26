@@ -5,6 +5,21 @@
 #include "in_memory_file_system.h"
 
 namespace shk {
+namespace {
+
+std::string testMkstemp(
+    FileSystem &file_system, std::string &&filename_template) {
+  std::string err;
+  std::string path;
+  bool success;
+  std::tie(path, success) =
+      file_system.mkstemp(std::move(filename_template), &err);
+  CHECK(success);
+  CHECK(err == "");
+  return path;
+}
+
+}  // anonymous namespace
 
 TEST_CASE("InMemoryFileSystem") {
   time_t now = 0;
@@ -341,13 +356,13 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("mkstemp creates file") {
-    const auto path = fs.mkstemp("hi.XXX");
+    const auto path = testMkstemp(fs, "hi.XXX");
     CHECK(fs.stat(path).result == 0);
   }
 
   SECTION("mkstemp creates unique paths") {
-    const auto path1 = fs.mkstemp("hi.XXX");
-    const auto path2 = fs.mkstemp("hi.XXX");
+    const auto path1 = testMkstemp(fs, "hi.XXX");
+    const auto path2 = testMkstemp(fs, "hi.XXX");
     CHECK(path1 != path2);
     CHECK(fs.stat(path1).result == 0);
     CHECK(fs.stat(path2).result == 0);
@@ -356,16 +371,16 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("enqueueMkstempResult") {
     SECTION("one path") {
       fs.enqueueMkstempResult("one");
-      CHECK(fs.mkstemp("hi.XXX") == "one");
+      CHECK(testMkstemp(fs, "hi.XXX") == "one");
       CHECK(fs.stat("one").result == ENOENT);
     }
 
     SECTION("two paths") {
       fs.enqueueMkstempResult("one");
       fs.enqueueMkstempResult("two");
-      CHECK(fs.mkstemp("hi.XXX") == "one");
+      CHECK(testMkstemp(fs, "hi.XXX") == "one");
       CHECK(fs.stat("one").result == ENOENT);
-      CHECK(fs.mkstemp("hi.XXX") == "two");
+      CHECK(testMkstemp(fs, "hi.XXX") == "two");
       CHECK(fs.stat("two").result == ENOENT);
     }
   }
