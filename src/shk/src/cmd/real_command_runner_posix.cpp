@@ -24,6 +24,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <signal.h>
+#include <spawn.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -31,8 +32,6 @@
 #include "manifest/step.h"
 #include "nullterminated_string.h"
 #include "util.h"
-
-extern "C" char **environ;
 
 namespace shk {
 
@@ -143,84 +142,87 @@ void Subprocess::start(SubprocessSet *set, nt_string_view command) {
 #endif  // !defined(USE_PPOLL)
   setCloseOnExec(_fd);
 
-  _pid = fork();
-  if (_pid < 0) {
-    fatal("fork: %s", strerror(errno));
+  posix_spawn_file_actions_t action;
+  if (posix_spawn_file_actions_init(&action) != 0) {
+    fatal("posix_spawn_file_actions_init: %s", strerror(errno));
   }
 
-  if (_pid == 0) {
-    close(output_pipe[0]);
+  if (posix_spawn_file_actions_addclose(&action, output_pipe[0]) != 0) {
+    fatal("posix_spawn_file_actions_addclose: %s", strerror(errno));
+  }
 
-    // Track which fd we use to report errors on.
-    int error_pipe = output_pipe[1];
-    do {
-      if (sigaction(SIGINT, &set->_old_int_act, 0) < 0) {
-        break;
-      }
-      if (sigaction(SIGTERM, &set->_old_term_act, 0) < 0) {
-        break;
-      }
-      if (sigaction(SIGHUP, &set->_old_hup_act, 0) < 0) {
-        break;
-      }
-      if (sigprocmask(SIG_SETMASK, &set->_old_mask, 0) < 0) {
-        break;
-      }
+  posix_spawnattr_t attr;
+  if (posix_spawnattr_init(&attr) != 0) {
+    fatal("posix_spawnattr_init: %s", strerror(errno));
+  }
 
-      if (_use_console == UseConsole::NO) {
-        // Put the child in its own session and process group. It will be
-        // detached from the current terminal and ctrl-c won't reach it.
-        // Since this process was just forked, it is not a process group leader
-        // and setsid() will succeed.
-        if (setsid() < 0) {
-          break;
-        }
+  short flags = 0;
 
-        // Open /dev/null over stdin.
-        int devnull = open("/dev/null", O_RDONLY);
-        if (devnull < 0) {
-          break;
-        }
-        if (dup2(devnull, 0) < 0) {
-          break;
-        }
-        close(devnull);
+  flags |= POSIX_SPAWN_SETSIGMASK;
+  if (posix_spawnattr_setsigmask(&attr, &set->_old_mask) != 0) {
+    fatal("posix_spawnattr_setsigmask: %s", strerror(errno));
+  }
+  // Signals which are set to be caught in the calling process image are set to
+  // default action in the new process image, so no explicit
+  // POSIX_SPAWN_SETSIGDEF parameter is needed.
 
-        if (dup2(output_pipe[1], 1) < 0 ||
-            dup2(output_pipe[1], 2) < 0) {
-          break;
-        }
+  if (_use_console == UseConsole::NO) {
+    // Put the child in its own process group, so ctrl-c won't reach it.
+    flags |= POSIX_SPAWN_SETPGROUP;
+    // No need to posix_spawnattr_setpgroup(&attr, 0), it's the default.
 
-        // Now can use stderr for errors.
-        error_pipe = 2;
-        close(output_pipe[1]);
-      }
-      // In the console case, output_pipe is still inherited by the child and
-      // closed when the subprocess finishes, which then notifies ninja.
-
-      // Clear all environment variables before invoking the command.
-      const char *new_environ[] = {
-          "__CF_USER_TEXT_ENCODING=0x1F5:0x0:0x0",
-          "LC_CTYPE=UTF-8",
-          nullptr };
-      environ = const_cast<char **>(new_environ);
-
-      execl(
-          "/bin/sh",
-          "/bin/sh",
-          "-c",
-          NullterminatedString(command).c_str(),
-          static_cast<char *>(nullptr));
-    } while (false);
-
-    // If we get here, something went wrong; the execl should have
-    // replaced us.
-    char *err = strerror(errno);
-    if (write(error_pipe, err, strlen(err)) < 0) {
-      // If the write fails, there's nothing we can do.
-      // But this block seems necessary to silence the warning.
+    // Open /dev/null over stdin.
+    if (posix_spawn_file_actions_addopen(&action, 0, "/dev/null", O_RDONLY,
+                                         0) != 0) {
+      fatal("posix_spawn_file_actions_addopen: %s", strerror(errno));
     }
-    _exit(1);
+
+    if (posix_spawn_file_actions_adddup2(&action, output_pipe[1], 1) != 0) {
+      fatal("posix_spawn_file_actions_adddup2: %s", strerror(errno));
+    }
+    if (posix_spawn_file_actions_adddup2(&action, output_pipe[1], 2) != 0) {
+      fatal("posix_spawn_file_actions_adddup2: %s", strerror(errno));
+    }
+    if (posix_spawn_file_actions_addclose(&action, output_pipe[1]) != 0) {
+      fatal("posix_spawn_file_actions_addclose: %s", strerror(errno));
+    }
+    // In the console case, output_pipe is still inherited by the child and
+    // closed when the subprocess finishes, which then notifies ninja.
+  }
+#ifdef POSIX_SPAWN_USEVFORK
+  flags |= POSIX_SPAWN_USEVFORK;
+#endif
+
+  if (posix_spawnattr_setflags(&attr, flags) != 0) {
+    fatal("posix_spawnattr_setflags: %s", strerror(errno));
+  }
+
+  const char* spawned_args[] = {
+      "/bin/sh",
+      "-c",
+      NullterminatedString(command).c_str(),
+      nullptr };
+
+  const char *const_child_environ[] = {
+      "__CF_USER_TEXT_ENCODING=0x1F5:0x0:0x0",
+      "LC_CTYPE=UTF-8",
+      nullptr };
+
+  if (posix_spawn(
+          &_pid,
+          "/bin/sh",
+          &action,
+          &attr,
+          const_cast<char**>(spawned_args),
+          const_cast<char **>(const_child_environ)) != 0) {
+    fatal("posix_spawn: %s", strerror(errno));
+  }
+
+  if (posix_spawnattr_destroy(&attr) != 0) {
+    fatal("posix_spawnattr_destroy: %s", strerror(errno));
+  }
+  if (posix_spawn_file_actions_destroy(&action) != 0) {
+    fatal("posix_spawn_file_actions_destroy: %s", strerror(errno));
   }
 
   close(output_pipe[1]);
@@ -390,7 +392,7 @@ bool SubprocessSet::runCommands() {
   }
 
   _interrupted = 0;
-  int ret = ppoll(&fds.front(), nfds, NULL, &old_mask_);
+  int ret = ppoll(&fds.front(), nfds, NULL, &_old_mask);
   if (ret == -1) {
     if (errno != EINTR) {
       perror("shk: ppoll");

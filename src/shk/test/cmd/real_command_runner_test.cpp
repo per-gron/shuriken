@@ -196,28 +196,14 @@ TEST_CASE("SubprocessSet") {
     verifyInterrupted("kill -HUP $PPID ; sleep 1");
   }
 
-  // A shell command to check if the current process is connected to a terminal.
-  // This is different from having stdin/stdout/stderr be a terminal. (For
-  // instance consider the command "yes < /dev/null > /dev/null 2>&1".
-  // As "ps" will confirm, "yes" could still be connected to a terminal, despite
-  // not having any of the standard file descriptors be a terminal.
-  const std::string kIsConnectedToTerminal = "tty < /dev/tty > /dev/null";
-
   SECTION("Console") {
     // Skip test if we don't have the console ourselves.
     if (isatty(0) && isatty(1) && isatty(2)) {
-      // Test that stdin, stdout and stderr are a terminal.
-      // Also check that the current process is connected to a terminal.
       const auto result = runCommand(
-          "test -t 0 -a -t 1 -a -t 2 && " + kIsConnectedToTerminal,
+          "test -t 0 -a -t 1 -a -t 2",
           "console");
       CHECK(result.exit_status == ExitStatus::SUCCESS);
     }
-  }
-
-  SECTION("NoConsole") {
-    const auto result = runCommand(kIsConnectedToTerminal);
-    CHECK(result.exit_status != ExitStatus::SUCCESS);
   }
 
 #endif
