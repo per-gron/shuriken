@@ -72,10 +72,13 @@ class TracingCommandRunner : public CommandRunner {
       nt_string_view command,
       Step step,
       const Callback &callback) override {
-    if (command.empty() || step.generator()) {
+    if (command.empty() || step.generator() || isConsolePool(step.poolName())) {
       // Empty commands need no tracing, and neither do generator rule steps
       // because their cleanliness is determined only based on inputs and
       // outputs declared in the manifest anyway.
+      //
+      // Commands run in the console pool are never counted as clean so they
+      // don't need tracing either.
       _inner->invoke(command, step, callback);
       return;
     }
