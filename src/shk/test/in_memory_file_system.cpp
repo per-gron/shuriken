@@ -243,17 +243,22 @@ std::vector<DirEntry> InMemoryFileSystem::readDir(
   return result;
 }
 
-std::string InMemoryFileSystem::readSymlink(nt_string_view path) throw(IoError) {
+std::pair<std::string, bool> InMemoryFileSystem::readSymlink(
+      nt_string_view path, std::string *err) {
   std::string result;
 
-  const auto stream = open(/*expect_symlink:*/true, path, "r");
-  uint8_t buf[1024];
-  while (!stream->eof()) {
-    size_t read_bytes = stream->read(buf, 1, sizeof(buf));
-    result.append(reinterpret_cast<char *>(buf), read_bytes);
+  try {
+    const auto stream = open(/*expect_symlink:*/true, path, "r");
+    uint8_t buf[1024];
+    while (!stream->eof()) {
+      size_t read_bytes = stream->read(buf, 1, sizeof(buf));
+      result.append(reinterpret_cast<char *>(buf), read_bytes);
+    }
+    return std::make_pair(std::move(result), true);
+  } catch (const IoError &io_error) {
+    *err = io_error.what();
+    return std::make_pair("", false);
   }
-
-  return result;
 }
 
 std::string InMemoryFileSystem::readFile(nt_string_view path) throw(IoError) {

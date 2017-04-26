@@ -42,10 +42,9 @@ std::pair<Hash, bool> FileSystem::hashSymlink(
   blake2b_init(&state, hash.data.size());
 
   std::string link_target;
-  try {
-    link_target = readSymlink(path);
-  } catch (const IoError &io_error) {
-    *err = io_error.what();
+  bool success;
+  std::tie(link_target, success) = readSymlink(path, err);
+  if (!success) {
     return std::make_pair(Hash(), false);
   }
 

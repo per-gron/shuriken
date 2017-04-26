@@ -248,8 +248,19 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("readSymlink") {
-    fs.symlink("target", "link");
-    CHECK(fs.readSymlink("link") == "target");
+    std::string err;
+    SECTION("success") {
+      fs.symlink("target", "link");
+      CHECK(
+          fs.readSymlink("link", &err) ==
+          std::make_pair(std::string("target"), true));
+      CHECK(err == "");
+    }
+
+    SECTION("fail") {
+      CHECK(fs.readSymlink("nonexisting_file", &err).second == false);
+      CHECK(err != "");
+    }
   }
 
   SECTION("open with bad mode") {

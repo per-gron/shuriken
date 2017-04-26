@@ -72,9 +72,9 @@ std::vector<DirEntry> CleaningFileSystem::readDir(
   return _inner.readDir(path);
 }
 
-std::string CleaningFileSystem::readSymlink(nt_string_view path)
-    throw(IoError) {
-  return _inner.readSymlink(path);
+std::pair<std::string, bool> CleaningFileSystem::readSymlink(
+      nt_string_view path, std::string *err) {
+  return _inner.readSymlink(path, err);
 }
 
 std::string CleaningFileSystem::readFile(nt_string_view path)

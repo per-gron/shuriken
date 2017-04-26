@@ -199,7 +199,8 @@ class PersistentFileSystem : public FileSystem {
     return result;
   }
 
-  std::string readSymlink(nt_string_view path) throw(IoError) override {
+  std::pair<std::string, bool> readSymlink(
+      nt_string_view path, std::string *err) override {
     std::vector<char> buf;
     int to_reserve = 128;
 
@@ -218,10 +219,11 @@ class PersistentFileSystem : public FileSystem {
     }
 
     if (res == -1) {
-      throw IoError("Failed to read symlink", errno);
+      *err = "Failed to read symlink";
+      return std::make_pair("", false);
     }
 
-    return buf.data();
+    return std::make_pair(buf.data(), true);
   }
 
   std::string readFile(nt_string_view path) throw(IoError) override {

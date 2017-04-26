@@ -107,8 +107,9 @@ class FailingMkstempFileSystem : public FileSystem {
       nt_string_view path) throw(IoError) override {
     return _fs.readDir(path);
   }
-  std::string readSymlink(nt_string_view path) throw(IoError) override {
-    return _fs.readSymlink(path);
+  std::pair<std::string, bool> readSymlink(
+      nt_string_view path, std::string *err) override {
+    return _fs.readSymlink(path, err);
   }
   std::string readFile(nt_string_view path) throw(IoError) override {
     return _fs.readFile(path);
@@ -167,8 +168,9 @@ class FailingUnlinkFileSystem : public FileSystem {
       nt_string_view path) throw(IoError) override {
     return _fs.readDir(path);
   }
-  std::string readSymlink(nt_string_view path) throw(IoError) override {
-    return _fs.readSymlink(path);
+  std::pair<std::string, bool> readSymlink(
+      nt_string_view path, std::string *err) override {
+    return _fs.readSymlink(path, err);
   }
   std::string readFile(nt_string_view path) throw(IoError) override {
     return _fs.readFile(path);

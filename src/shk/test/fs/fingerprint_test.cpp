@@ -29,6 +29,16 @@ Hash hashSymlink(FileSystem &file_system, nt_string_view path) {
   return hash;
 }
 
+std::string readSymlink(FileSystem &file_system, nt_string_view path) {
+  std::string target;
+  bool success;
+  std::string err;
+  std::tie(target, success) = file_system.readSymlink(path, &err);
+  CHECK(success);
+  CHECK(err == "");
+  return target;
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Fingerprint") {
@@ -253,7 +263,7 @@ TEST_CASE("Fingerprint") {
 
       CHECK(file_id == FileId(fs.lstat("link")));
 
-      CHECK(fp.stat.size == fs.readSymlink("link").size());
+      CHECK(fp.stat.size == readSymlink(fs, "link").size());
       CHECK(fp.stat.ino == fs.lstat("link").metadata.ino);
       CHECK(S_ISLNK(fp.stat.mode));
       CHECK(fp.stat.mtime == now);
