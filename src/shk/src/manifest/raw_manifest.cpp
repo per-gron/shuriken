@@ -296,7 +296,8 @@ private:
   }
 
   std::string getPoolName(const Rule &rule, const BindingEnv &env) {
-    const auto pool_name = StepEnvWithoutInAndOut(rule, env).lookupVariable("pool");
+    const auto pool_name =
+        StepEnvWithoutInAndOut(rule, env).lookupVariable("pool");
 
     if (!pool_name.empty()) {
       if (_manifest.pools.count(pool_name) == 0) {
@@ -370,14 +371,14 @@ private:
     // these paths can only see variables that are set higher up in the Ninja
     // file. This is different from how variables on rules work, which can see
     // variables that are set both after the rule declaration and after the
-    // build declaration. This behavior seems to be  incidental more than
+    // build declaration. This behavior seems to be incidental more than
     // intentional but Shuriken intentionally copies Ninja's behavior.
     step.inputs = evalStringsToPaths(ins, *env);
     step.implicit_inputs = evalStringsToPaths(implicit, *env);
     step.dependencies = evalStringsToPaths(order_only, *env);
     step.outputs = evalStringsToPaths(outs, *env);
 
-    step.pool_name = getPoolName(*rule, _env);
+    step.pool_name = getPoolName(*rule, *env);
 
     _postprocessing_data.emplace_back(env, rule);
     _manifest.steps.push_back(std::move(step));
