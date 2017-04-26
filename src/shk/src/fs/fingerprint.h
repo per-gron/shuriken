@@ -17,7 +17,7 @@ void computeFingerprintHash(
     FileSystem &file_system,
     mode_t mode,
     nt_string_view path,
-    Hash *hash);
+    Hash *hash) throw(IoError);
 
 }
 

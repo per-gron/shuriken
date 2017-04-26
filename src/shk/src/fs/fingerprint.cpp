@@ -77,7 +77,7 @@ void computeFingerprintHash(
     FileSystem &file_system,
     mode_t mode,
     nt_string_view path,
-    Hash *hash) {
+    Hash *hash) throw(IoError) {
   std::string err;
   bool success = true;
   if (S_ISDIR(mode)) {
@@ -91,7 +91,7 @@ void computeFingerprintHash(
   }
 
   if (!success) {
-    throw IoError(err, 0);
+    throw IoError("Could not fingerprint " + std::string(path) + ": " + err, 0);
   }
 }
 
