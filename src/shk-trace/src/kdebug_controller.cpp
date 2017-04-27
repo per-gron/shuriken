@@ -44,6 +44,7 @@ class RealKdebugController : public KdebugController {
     setNumbufs(nbufs);
     setup();
     setFilter();
+    enable(true);
   }
 
   virtual kbufinfo_t getBufinfo() override {
@@ -56,14 +57,7 @@ class RealKdebugController : public KdebugController {
     return ret;
   }
 
-  virtual void enable(bool enabled) override {
-    static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDENABLE, enabled, 0, 0 };
-    if (sysctl(name, 4, nullptr, nullptr, nullptr, 0)) {
-      throw std::runtime_error("Failed KERN_KDENABLE sysctl");
-    }
-  }
-
-  virtual void teardown() override {
+  void teardown() {
     static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDREMOVE, 0, 0, 0 };
     if (sysctl(name, 3, nullptr, nullptr, nullptr, 0) < 0) {
       if (errno == EBUSY) {
@@ -132,6 +126,13 @@ class RealKdebugController : public KdebugController {
     static int name_2[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETUP, 0, 0, 0 };
     if (sysctl(name_2, 3, nullptr, nullptr, nullptr, 0)) {
       throw std::runtime_error("Failed KERN_KDSETUP sysctl");
+    }
+  }
+
+  void enable(bool enabled) {
+    static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDENABLE, enabled, 0, 0 };
+    if (sysctl(name, 4, nullptr, nullptr, nullptr, 0)) {
+      throw std::runtime_error("Failed KERN_KDENABLE sysctl");
     }
   }
 };

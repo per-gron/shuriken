@@ -89,9 +89,7 @@ Tracer::~Tracer() {
 }
 
 void Tracer::start(dispatch_queue_t queue) {
-  setRemove();
   _kdebug_ctrl.start(_event_buffer.size());
-  setEnable(true);
 
   dispatch_async(queue, ^{ loop(queue); });
 }
@@ -113,23 +111,6 @@ void Tracer::loop(dispatch_queue_t queue) {
   dispatch_time_t time = dispatch_time(
       DISPATCH_TIME_NOW, sleep_ms * 1000 * 1000);
   dispatch_after(time, queue, ^{ loop(queue); });
-}
-
-void Tracer::setEnable(bool enabled) {
-  _kdebug_ctrl.enable(enabled);
-  _trace_enabled = enabled;
-}
-
-void Tracer::setRemove()  {
-  try {
-    _kdebug_ctrl.teardown();
-  } catch (std::runtime_error &error) {
-    if (_trace_enabled) {
-      setEnable(false);
-    }
-
-    exit(1);
-  }
 }
 
 uint64_t Tracer::fetchAndParseBuffer(std::vector<kd_buf> &event_buffer) {

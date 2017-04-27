@@ -159,7 +159,6 @@ class Tracer {
   void loop(dispatch_queue_t queue);
 
   void setEnable(bool enabled);
-  void setRemove();
   uint64_t fetchAndParseBuffer(std::vector<kd_buf> &event_buffer);
   void enterEvent(uintptr_t thread, int type, kd_buf *kd);
   void exitEvent(
@@ -191,8 +190,6 @@ class Tracer {
 
   std::unordered_map<uint64_t, std::string> _vn_name_map;
   event_info_map _ei_map;
-
-  int _trace_enabled = 0;
 };
 
 }
