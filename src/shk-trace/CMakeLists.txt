@@ -82,6 +82,7 @@ set_property(TARGET shktrace_integrationtest_helper PROPERTY CXX_STANDARD 11)
 
 add_custom_target(setuid
   COMMAND "${PROJECT_SOURCE_DIR}/scripts/make_suid.sh" "$<TARGET_FILE:shk-trace>"
+  DEPENDS shk-trace
   VERBATIM USES_TERMINAL)
 
 add_test(NAME trace_unit COMMAND shktrace_test)
