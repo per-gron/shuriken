@@ -661,6 +661,11 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
   const auto &step = params.manifest.steps()[step_idx];
   params.build.ready_steps.pop_back();
 
+  if (!step.phony()) {
+    params.build_status.stepStarted(step);
+    params.invoked_commands++;
+  }
+
   if (canSkipBuildCommand(
           params.file_system,
           params.clean_steps,
@@ -694,10 +699,6 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
     mkdirsAndLog(params.file_system, params.invocation_log, output_dir);
   }
 
-  if (!step.phony()) {
-    params.build_status.stepStarted(step);
-    params.invoked_commands++;
-  }
   params.command_runner.invoke(
       step.command(),
       step,

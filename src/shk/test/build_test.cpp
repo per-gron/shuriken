@@ -17,12 +17,18 @@ namespace {
 
 class OutputCapturerBuildStatus : public BuildStatus {
  public:
-  OutputCapturerBuildStatus(std::vector<std::string> &latest_build_output)
-      : _latest_build_output(latest_build_output) {
-    latest_build_output.clear();
+  OutputCapturerBuildStatus(
+      std::vector<std::string> *latest_build_output,
+      int *started_steps)
+      : _latest_build_output(*latest_build_output),
+        _started_steps(*started_steps) {
+    _latest_build_output.clear();
+    _started_steps = 0;
   }
 
-  void stepStarted(const Step &step) override {}
+  void stepStarted(const Step &step) override {
+    _started_steps++;
+  }
 
   void stepFinished(
       const Step &step,
@@ -33,6 +39,7 @@ class OutputCapturerBuildStatus : public BuildStatus {
 
  private:
   std::vector<std::string> &_latest_build_output;
+  int &_started_steps;
 };
 
 class FailingCommandRunner : public CommandRunner {
@@ -234,6 +241,7 @@ TEST_CASE("Build") {
   DummyCommandRunner dummy_runner(fs);
 
   std::vector<std::string> latest_build_output;
+  int build_status_started_steps = 0;
 
   const auto build_or_rebuild_manifest = [&](
       const std::string &manifest,
@@ -246,9 +254,11 @@ TEST_CASE("Build") {
         clock,
         fs,
         runner,
-        [&latest_build_output](int total_steps) {
+        [&latest_build_output, &build_status_started_steps](int total_steps) {
           return std::unique_ptr<BuildStatus>(
-              new OutputCapturerBuildStatus(latest_build_output));
+              new OutputCapturerBuildStatus(
+                  &latest_build_output,
+                  &build_status_started_steps));
         },
         log,
         failures_allowed,
@@ -2170,6 +2180,7 @@ TEST_CASE("Build") {
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         CHECK(dummy_runner.getCommandsRun() == 3);
         CHECK(latest_build_output.size() == 3);
+        CHECK(build_status_started_steps == 3);
         fs.unlink("out1");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd1);
@@ -2183,6 +2194,7 @@ TEST_CASE("Build") {
         // Should have reported 3 finished build steps to the BuildStatus during
         // the build.
         CHECK(latest_build_output.size() == 3);
+        CHECK(build_status_started_steps == 3);
       }
 
       SECTION("bypass commands (restat) in longer chain") {
@@ -2209,6 +2221,7 @@ TEST_CASE("Build") {
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         CHECK(dummy_runner.getCommandsRun() == 4);
         CHECK(latest_build_output.size() == 4);
+        CHECK(build_status_started_steps == 4);
         fs.unlink("out1");
         fs.unlink("out4");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
@@ -2224,6 +2237,7 @@ TEST_CASE("Build") {
         // Should have reported 4 finished build steps to the BuildStatus during
         // the build.
         CHECK(latest_build_output.size() == 4);
+        CHECK(build_status_started_steps == 4);
       }
 
       SECTION("rebuild when output file removed with phony root") {
