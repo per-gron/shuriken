@@ -90,10 +90,7 @@ Tracer::~Tracer() {
 
 void Tracer::start(dispatch_queue_t queue) {
   setRemove();
-  _kdebug_ctrl.setNumbufs(_event_buffer.size());
-  _kdebug_ctrl.setup();
-
-  _kdebug_ctrl.setFilter();
+  _kdebug_ctrl.start(_event_buffer.size());
   setEnable(true);
 
   dispatch_async(queue, ^{ loop(queue); });

@@ -40,36 +40,10 @@ int kdebugFilterIndex(int klass, int subclass) {
 
 class RealKdebugController : public KdebugController {
  public:
-  virtual void setNumbufs(int nbufs) override {
-    static size_t len = 0;
-    static int name_1[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETBUF, nbufs, 0, 0 };
-    if (sysctl(name_1, 4, nullptr, &len, nullptr, 0)) {
-      throw std::runtime_error("Failed KERN_KDSETBUF sysctl");
-    }
-
-    static int name_2[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETUP, 0, 0, 0 };
-    if (sysctl(name_2, 3, nullptr, &len, nullptr, 0)) {
-      throw std::runtime_error("Failed KERN_KDSETUP sysctl");
-    }
-  }
-
-  virtual void setFilter() override {
-    std::bitset<KDBG_TYPEFILTER_BITMAP_SIZE * 8> filter{};
-
-    filter.set(kdebugFilterIndex(DBG_TRACE, DBG_TRACE_DATA));
-    filter.set(kdebugFilterIndex(DBG_TRACE, DBG_TRACE_STRING));
-    filter.set(kdebugFilterIndex(DBG_MACH, DBG_MACH_EXCP_SC));
-    filter.set(kdebugFilterIndex(DBG_FSYSTEM, DBG_FSRW));
-    filter.set(kdebugFilterIndex(DBG_BSD, DBG_BSD_EXCP_SC));
-    filter.set(kdebugFilterIndex(DBG_BSD, DBG_BSD_PROC));
-    filter.set(kdebugFilterIndex(FILEMGR_CLASS, 0)); // Carbon File Manager
-    filter.set(kdebugFilterIndex(FILEMGR_CLASS, 1)); // Carbon File Manager
-
-    static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSET_TYPEFILTER };
-    size_t len = filter.size() / 8;
-    if (sysctl(name, 3, &filter, &len, nullptr, 0)) {
-      throw std::runtime_error("Failed KERN_KDSET_TYPEFILTER sysctl");
-    }
+  void start(int nbufs) override {
+    setNumbufs(nbufs);
+    setup();
+    setFilter();
   }
 
   virtual kbufinfo_t getBufinfo() override {
@@ -86,25 +60,6 @@ class RealKdebugController : public KdebugController {
     static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDENABLE, enabled, 0, 0 };
     if (sysctl(name, 4, nullptr, nullptr, nullptr, 0)) {
       throw std::runtime_error("Failed KERN_KDENABLE sysctl");
-    }
-  }
-
-  virtual void setup() override {
-    kd_regtype kr;
-
-    kr.type = KDBG_RANGETYPE;
-    kr.value1 = 0;
-    kr.value2 = -1;
-    size_t len = sizeof(kd_regtype);
-
-    static int name_1[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETREG, 0, 0, 0 };
-    if (sysctl(name_1, 3, &kr, &len, nullptr, 0)) {
-      throw std::runtime_error("Failed KERN_KDSETREG sysctl");
-    }
-
-    static int name_2[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETUP, 0, 0, 0 };
-    if (sysctl(name_2, 3, nullptr, nullptr, nullptr, 0)) {
-      throw std::runtime_error("Failed KERN_KDSETUP sysctl");
     }
   }
 
@@ -128,6 +83,57 @@ class RealKdebugController : public KdebugController {
     return count;
   }
 
+ private:
+  void setNumbufs(int nbufs) {
+    static size_t len = 0;
+    static int name_1[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETBUF, nbufs, 0, 0 };
+    if (sysctl(name_1, 4, nullptr, &len, nullptr, 0)) {
+      throw std::runtime_error("Failed KERN_KDSETBUF sysctl");
+    }
+
+    static int name_2[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETUP, 0, 0, 0 };
+    if (sysctl(name_2, 3, nullptr, &len, nullptr, 0)) {
+      throw std::runtime_error("Failed KERN_KDSETUP sysctl");
+    }
+  }
+
+  void setFilter() {
+    std::bitset<KDBG_TYPEFILTER_BITMAP_SIZE * 8> filter{};
+
+    filter.set(kdebugFilterIndex(DBG_TRACE, DBG_TRACE_DATA));
+    filter.set(kdebugFilterIndex(DBG_TRACE, DBG_TRACE_STRING));
+    filter.set(kdebugFilterIndex(DBG_MACH, DBG_MACH_EXCP_SC));
+    filter.set(kdebugFilterIndex(DBG_FSYSTEM, DBG_FSRW));
+    filter.set(kdebugFilterIndex(DBG_BSD, DBG_BSD_EXCP_SC));
+    filter.set(kdebugFilterIndex(DBG_BSD, DBG_BSD_PROC));
+    filter.set(kdebugFilterIndex(FILEMGR_CLASS, 0)); // Carbon File Manager
+    filter.set(kdebugFilterIndex(FILEMGR_CLASS, 1)); // Carbon File Manager
+
+    static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSET_TYPEFILTER };
+    size_t len = filter.size() / 8;
+    if (sysctl(name, 3, &filter, &len, nullptr, 0)) {
+      throw std::runtime_error("Failed KERN_KDSET_TYPEFILTER sysctl");
+    }
+  }
+
+  void setup() {
+    kd_regtype kr;
+
+    kr.type = KDBG_RANGETYPE;
+    kr.value1 = 0;
+    kr.value2 = -1;
+    size_t len = sizeof(kd_regtype);
+
+    static int name_1[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETREG, 0, 0, 0 };
+    if (sysctl(name_1, 3, &kr, &len, nullptr, 0)) {
+      throw std::runtime_error("Failed KERN_KDSETREG sysctl");
+    }
+
+    static int name_2[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETUP, 0, 0, 0 };
+    if (sysctl(name_2, 3, nullptr, nullptr, nullptr, 0)) {
+      throw std::runtime_error("Failed KERN_KDSETUP sysctl");
+    }
+  }
 };
 
 }  // anonymous namespace
