@@ -12,17 +12,18 @@
 #include "dispatch.h"
 #include "event_info.h"
 #include "event_type.h"
-#include "kdebug.h"
-#include "kdebug_controller.h"
 #include "syscall_constants.h"
 
 namespace shk {
 
 /**
- * Tracer uses a low-level KdebugController object and (via the delegate)
- * exposes a higher-level stream of events (such as thread creation/termination
- * and file manipulation events). It does not format its output and it does not
- * follow process children.
+ * Tracer receives data from Kdebug, parses it into a higher-level stream of
+ * events (such as thread creation/termination and file manipulation events) and
+ * emits parsed events to its Delegate. It does not format its output and it
+ * does not follow process children.
+ *
+ * Tracer is intended to be used together with a KdebugPump object; it's
+ * parseBuffer method matches the KdebugPump::Callback signature.
  */
 class Tracer {
  public:
@@ -135,32 +136,14 @@ class Tracer {
     virtual void exec(uintptr_t thread_id) = 0;
   };
 
-  Tracer(
-      int num_cpus,
-      KdebugController &kdebug_ctrl,
-      Delegate &delegate);
-  Tracer(const Tracer &) = delete;
-  Tracer &operator=(const Tracer &) = delete;
-  ~Tracer();
-
-  void start(dispatch_queue_t queue);
+  Tracer(Delegate &delegate);
 
   /**
-   * Block until the tracing server has stopped listening (this happens when the
-   * delegate instructs it to quit). This method can be called from any thread.
-   *
-   * Returns true on success, or false on timeout.
-   *
-   * This method should be called at most once.
+   * Return true if tracing should stop.
    */
-  bool wait(dispatch_time_t timeout);
-
+  bool parseBuffer(const kd_buf *begin, const kd_buf *end);
  private:
-  void loop(dispatch_queue_t queue);
-
-  void setEnable(bool enabled);
-  uint64_t fetchAndParseBuffer(std::vector<kd_buf> &event_buffer);
-  void enterEvent(uintptr_t thread, int type, kd_buf *kd);
+  void enterEvent(uintptr_t thread, int type, const kd_buf &kd);
   void exitEvent(
       uintptr_t thread,
       int type,
@@ -181,11 +164,6 @@ class Tracer {
       const char *pathname1 /* nullable */,
       const char *pathname2 /* nullable */);
 
-  std::atomic<bool> _shutting_down;
-  DispatchSemaphore _shutdown_semaphore;
-  std::vector<kd_buf> _event_buffer;
-
-  KdebugController &_kdebug_ctrl;
   Delegate &_delegate;
 
   std::unordered_map<uint64_t, std::string> _vn_name_map;

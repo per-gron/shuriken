@@ -20,6 +20,8 @@ add_library(libshktrace
   src/kdebug.h
   src/kdebug_controller.cpp
   src/kdebug_controller.h
+  src/kdebug_pump.cpp
+  src/kdebug_pump.h
   src/mach_port.cpp
   src/mach_port.h
   src/named_mach_port.cpp

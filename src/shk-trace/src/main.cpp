@@ -7,6 +7,7 @@
 #include "cmdline_options.h"
 #include "event_consolidator.h"
 #include "kdebug_controller.h"
+#include "kdebug_pump.h"
 #include "named_mach_port.h"
 #include "path_resolver.h"
 #include "process_tracer.h"
@@ -67,11 +68,16 @@ bool runTracingServer(std::string *err) {
 
   ProcessTracer process_tracer;
 
-  Tracer tracer(
+  Tracer tracer(process_tracer);
+
+  KdebugPump kdebug_pump(
       num_cpus,
-      *kdebug_ctrl,
-      process_tracer);
-  tracer.start(queue.get());
+      kdebug_ctrl.get(),
+      [&tracer](const kd_buf *begin, const kd_buf *end) {
+        return tracer.parseBuffer(begin, end);
+      });
+
+  kdebug_pump.start(queue.get());
 
   auto tracing_server = makeTracingServer(
       queue.get(),
@@ -98,7 +104,7 @@ bool runTracingServer(std::string *err) {
   fflush(stdout);
   close(1);
 
-  tracer.wait(DISPATCH_TIME_FOREVER);
+  kdebug_pump.wait(DISPATCH_TIME_FOREVER);
 
   return true;
 }

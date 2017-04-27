@@ -63,84 +63,24 @@ SyscallAtMember syscallAtMember(int syscall) {
 
 }  // anonymous namespace
 
-static constexpr uint64_t SLEEP_MIN = 1;
-static constexpr uint64_t SLEEP_BEHIND = 2;
-static constexpr uint64_t SLEEP_MAX = 32;
-
-static constexpr int EVENT_BASE = 60000;
 static constexpr int DBG_FUNC_MASK = 0xfffffffc;
 
-Tracer::Tracer(
-    int num_cpus,
-    KdebugController &kdebug_ctrl,
-    Delegate &delegate)
-    : _shutting_down(false),
-      _shutdown_semaphore(dispatch_semaphore_create(0)),
-      _event_buffer(EVENT_BASE * num_cpus),
-      _kdebug_ctrl(kdebug_ctrl),
-      _delegate(delegate) {}
+Tracer::Tracer(Delegate &delegate)
+    : _delegate(delegate) {}
 
-Tracer::~Tracer() {
-  _shutting_down = true;
-  if (!wait(DISPATCH_TIME_FOREVER)) {
-    fprintf(stderr, "Failed to wait for tracing to finish\n");
-    abort();
-  }
-}
+bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
+  for (auto it = begin; it != end; ++it) {
+    const auto &kd = *it;
 
-void Tracer::start(dispatch_queue_t queue) {
-  _kdebug_ctrl.start(_event_buffer.size());
-
-  dispatch_async(queue, ^{ loop(queue); });
-}
-
-bool Tracer::wait(dispatch_time_t timeout) {
-  return dispatch_semaphore_wait(_shutdown_semaphore.get(), timeout) == 0;
-}
-
-void Tracer::loop(dispatch_queue_t queue) {
-  if (_shutting_down) {
-    // Signal the semaphore twice, because both the destructor and wait may be
-    // waiting for it.
-    dispatch_semaphore_signal(_shutdown_semaphore.get());
-    dispatch_semaphore_signal(_shutdown_semaphore.get());
-    return;
-  }
-
-  auto sleep_ms = fetchAndParseBuffer(_event_buffer);
-  dispatch_time_t time = dispatch_time(
-      DISPATCH_TIME_NOW, sleep_ms * 1000 * 1000);
-  dispatch_after(time, queue, ^{ loop(queue); });
-}
-
-uint64_t Tracer::fetchAndParseBuffer(std::vector<kd_buf> &event_buffer) {
-  size_t count = _kdebug_ctrl.readBuf(event_buffer.data());
-
-  uint64_t sleep_ms = SLEEP_MIN;
-  if (count > (event_buffer.size() / 8)) {
-    if (sleep_ms > SLEEP_BEHIND) {
-      sleep_ms = SLEEP_BEHIND;
-    } else if (sleep_ms > SLEEP_MIN) {
-      sleep_ms /= 2;
-    }
-  } else if (count < (event_buffer.size() / 16)) {
-    if (sleep_ms < SLEEP_MAX) {
-      sleep_ms *= 2;
-    }
-  }
-
-  kd_buf *kd = event_buffer.data();
-
-  for (int i = 0; i < count; i++) {
-    uintptr_t thread = kd[i].arg5;
-    uint32_t debugid = kd[i].debugid;
-    int type = kd[i].debugid & DBG_FUNC_MASK;
+    uintptr_t thread = kd.arg5;
+    uint32_t debugid = kd.debugid;
+    int type = kd.debugid & DBG_FUNC_MASK;
 
     switch (type) {
     case TRACE_DATA_NEWTHREAD:
       {
-        auto child_thread = kd[i].arg1;
-        auto pid = kd[i].arg2;
+        auto child_thread = kd.arg1;
+        auto pid = kd.arg2;
         if (child_thread) {
           _delegate.newThread(pid, thread, child_thread);
         }
@@ -167,8 +107,7 @@ uint64_t Tracer::fetchAndParseBuffer(std::vector<kd_buf> &event_buffer) {
     case BSC_thread_terminate:
       if (_delegate.terminateThread(thread) ==
           Delegate::Response::QUIT_TRACING) {
-        _shutting_down = true;
-        return 0;
+        return true;
       }
       continue;
 
@@ -192,11 +131,11 @@ uint64_t Tracer::fetchAndParseBuffer(std::vector<kd_buf> &event_buffer) {
           }
           sargptr = &ei->lookups[ei->pn_work_index].pathname[0];
 
-          ei->vnodeid = kd[i].arg1;
+          ei->vnodeid = kd.arg1;
 
-          *sargptr++ = kd[i].arg2;
-          *sargptr++ = kd[i].arg3;
-          *sargptr++ = kd[i].arg4;
+          *sargptr++ = kd.arg2;
+          *sargptr++ = kd.arg3;
+          *sargptr++ = kd.arg4;
           *sargptr = 0;
 
           ei->pathptr = sargptr;
@@ -213,10 +152,10 @@ uint64_t Tracer::fetchAndParseBuffer(std::vector<kd_buf> &event_buffer) {
 
           if ((uintptr_t)sargptr <
               (uintptr_t)&ei->lookups[ei->pn_work_index].pathname[NUMPARMS]) {
-            *sargptr++ = kd[i].arg1;
-            *sargptr++ = kd[i].arg2;
-            *sargptr++ = kd[i].arg3;
-            *sargptr++ = kd[i].arg4;
+            *sargptr++ = kd.arg1;
+            *sargptr++ = kd.arg2;
+            *sargptr++ = kd.arg3;
+            *sargptr++ = kd.arg4;
             *sargptr = 0;
           }
         }
@@ -250,7 +189,7 @@ uint64_t Tracer::fetchAndParseBuffer(std::vector<kd_buf> &event_buffer) {
             0,
             "Legacy Carbon FileManager event");
       } else {
-        enterEvent(thread, type, &kd[i]);
+        enterEvent(thread, type, kd);
       }
       continue;
     }
@@ -269,22 +208,22 @@ uint64_t Tracer::fetchAndParseBuffer(std::vector<kd_buf> &event_buffer) {
 
     if (should_process_syscall(type)) {
       exitEvent(
-          thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, type);
+          thread, type, kd.arg1, kd.arg2, kd.arg3, kd.arg4, type);
     }
   }
 
-  return sleep_ms;
+  return false;
 }
 
-void Tracer::enterEvent(uintptr_t thread, int type, kd_buf *kd) {
+void Tracer::enterEvent(uintptr_t thread, int type, const kd_buf &kd) {
   if (should_process_syscall(type)) {
     auto ei_it = _ei_map.add_event(thread, type);
     auto *ei = &ei_it->second;
 
-    ei->arg1 = kd->arg1;
-    ei->arg2 = kd->arg2;
-    ei->arg3 = kd->arg3;
-    ei->arg4 = kd->arg4;
+    ei->arg1 = kd.arg1;
+    ei->arg2 = kd.arg2;
+    ei->arg3 = kd.arg3;
+    ei->arg4 = kd.arg4;
   }
 }
 
