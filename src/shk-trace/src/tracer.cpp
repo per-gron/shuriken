@@ -56,9 +56,6 @@ SyscallAtMember syscallAtMember(int syscall) {
   case BSC_symlinkat:
     return &event_info::arg2;
     break;
-  case BSC_renameat:
-    abort();  // Not supported by this function (the answer is two members)
-    break;
   default:
     return nullptr;
   }
