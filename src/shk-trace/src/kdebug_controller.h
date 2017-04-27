@@ -18,9 +18,7 @@ class KdebugController {
   virtual ~KdebugController() = default;
 
   virtual void start(int nbufs) = 0;
-
-  virtual kbufinfo_t getBufinfo() = 0;
-  virtual size_t readBuf(kd_buf *bufs, size_t num_bufs) = 0;
+  virtual size_t readBuf(kd_buf *bufs) = 0;
 };
 
 std::unique_ptr<KdebugController> makeKdebugController();

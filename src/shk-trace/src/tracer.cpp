@@ -114,9 +114,7 @@ void Tracer::loop(dispatch_queue_t queue) {
 }
 
 uint64_t Tracer::fetchAndParseBuffer(std::vector<kd_buf> &event_buffer) {
-  kbufinfo_t bufinfo = _kdebug_ctrl.getBufinfo();
-
-  size_t count = _kdebug_ctrl.readBuf(event_buffer.data(), bufinfo.nkdbufs);
+  size_t count = _kdebug_ctrl.readBuf(event_buffer.data());
 
   uint64_t sleep_ms = SLEEP_MIN;
   if (count > (event_buffer.size() / 8)) {
@@ -131,9 +129,6 @@ uint64_t Tracer::fetchAndParseBuffer(std::vector<kd_buf> &event_buffer) {
     }
   }
 
-  if (bufinfo.flags & KDBG_WRAPPED) {
-    throw std::runtime_error("Buffer overrun! Event data has been lost");
-  }
   kd_buf *kd = event_buffer.data();
 
   for (int i = 0; i < count; i++) {

@@ -47,16 +47,6 @@ class RealKdebugController : public KdebugController {
     enable(true);
   }
 
-  virtual kbufinfo_t getBufinfo() override {
-    kbufinfo_t ret;
-    size_t len = sizeof(ret);
-    static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDGETBUF, 0, 0, 0 };
-    if (sysctl(name, 3, &ret, &len, 0, 0)) {
-      throw std::runtime_error("Failed KERN_KDGETBUF sysctl");
-    }
-    return ret;
-  }
-
   void teardown() {
     static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDREMOVE, 0, 0, 0 };
     if (sysctl(name, 3, nullptr, nullptr, nullptr, 0) < 0) {
@@ -68,7 +58,17 @@ class RealKdebugController : public KdebugController {
     }
   }
 
-  virtual size_t readBuf(kd_buf *bufs, size_t num_bufs) override {
+  virtual size_t readBuf(kd_buf *bufs) override {
+    kbufinfo_t bufinfo = getBufinfo();
+    if (bufinfo.flags & KDBG_WRAPPED) {
+      throw std::runtime_error("Buffer overrun! Event data has been lost");
+    }
+
+    return readBuf(bufs, bufinfo.nkdbufs);
+  }
+
+ private:
+  size_t readBuf(kd_buf *bufs, size_t num_bufs) {
     size_t count = num_bufs * sizeof(kd_buf);
     static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDREADTR, 0, 0, 0 };
     if (sysctl(name, 3, bufs, &count, nullptr, 0)) {
@@ -77,7 +77,16 @@ class RealKdebugController : public KdebugController {
     return count;
   }
 
- private:
+  kbufinfo_t getBufinfo() {
+    kbufinfo_t ret;
+    size_t len = sizeof(ret);
+    static int name[] = { CTL_KERN, KERN_KDEBUG, KERN_KDGETBUF, 0, 0, 0 };
+    if (sysctl(name, 3, &ret, &len, 0, 0)) {
+      throw std::runtime_error("Failed KERN_KDGETBUF sysctl");
+    }
+    return ret;
+  }
+
   void setNumbufs(int nbufs) {
     static size_t len = 0;
     static int name_1[] = { CTL_KERN, KERN_KDEBUG, KERN_KDSETBUF, nbufs, 0, 0 };
