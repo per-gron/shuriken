@@ -158,13 +158,11 @@ class Tracer {
  private:
   void loop(dispatch_queue_t queue);
 
-  void set_enable(bool enabled);
-  void set_remove();
-  uint64_t sample_sc(std::vector<kd_buf> &event_buffer);
-  void enter_event_now(uintptr_t thread, int type, kd_buf *kd);
-  void enter_event(uintptr_t thread, int type, kd_buf *kd);
-  void enter_illegal_event(uintptr_t thread, int type);
-  void exit_event(
+  void setEnable(bool enabled);
+  void setRemove();
+  uint64_t fetchAndParseBuffer(std::vector<kd_buf> &event_buffer);
+  void enterEvent(uintptr_t thread, int type, kd_buf *kd);
+  void exitEvent(
       uintptr_t thread,
       int type,
       uintptr_t arg1,

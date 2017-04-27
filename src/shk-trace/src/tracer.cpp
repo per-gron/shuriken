@@ -92,12 +92,12 @@ Tracer::~Tracer() {
 }
 
 void Tracer::start(dispatch_queue_t queue) {
-  set_remove();
+  setRemove();
   _kdebug_ctrl.setNumbufs(_event_buffer.size());
   _kdebug_ctrl.setup();
 
   _kdebug_ctrl.setFilter();
-  set_enable(true);
+  setEnable(true);
 
   dispatch_async(queue, ^{ loop(queue); });
 }
@@ -115,30 +115,30 @@ void Tracer::loop(dispatch_queue_t queue) {
     return;
   }
 
-  auto sleep_ms = sample_sc(_event_buffer);
+  auto sleep_ms = fetchAndParseBuffer(_event_buffer);
   dispatch_time_t time = dispatch_time(
       DISPATCH_TIME_NOW, sleep_ms * 1000 * 1000);
   dispatch_after(time, queue, ^{ loop(queue); });
 }
 
-void Tracer::set_enable(bool enabled) {
+void Tracer::setEnable(bool enabled) {
   _kdebug_ctrl.enable(enabled);
   _trace_enabled = enabled;
 }
 
-void Tracer::set_remove()  {
+void Tracer::setRemove()  {
   try {
     _kdebug_ctrl.teardown();
   } catch (std::runtime_error &error) {
     if (_trace_enabled) {
-      set_enable(false);
+      setEnable(false);
     }
 
     exit(1);
   }
 }
 
-uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
+uint64_t Tracer::fetchAndParseBuffer(std::vector<kd_buf> &event_buffer) {
   kbufinfo_t bufinfo = _kdebug_ctrl.getBufinfo();
 
   size_t count = _kdebug_ctrl.readBuf(event_buffer.data(), bufinfo.nkdbufs);
@@ -182,11 +182,12 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         auto ei_it = _ei_map.find(thread, BSC_execve);
         if (ei_it != _ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
-            exit_event(thread, BSC_execve, 0, 0, 0, 0, BSC_execve);
+            exitEvent(thread, BSC_execve, 0, 0, 0, 0, BSC_execve);
           }
-        } else if ((ei_it = _ei_map.find(thread, BSC_posix_spawn)) != _ei_map.end()) {
+        } else if (
+            (ei_it = _ei_map.find(thread, BSC_posix_spawn)) != _ei_map.end()) {
           if (ei_it->second.lookups[0].pathname[0]) {
-            exit_event(thread, BSC_posix_spawn, 0, 0, 0, 0, BSC_execve);
+            exitEvent(thread, BSC_posix_spawn, 0, 0, 0, 0, BSC_execve);
           }
         }
 
@@ -194,7 +195,8 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
       }
 
     case BSC_thread_terminate:
-      if (_delegate.terminateThread(thread) == Delegate::Response::QUIT_TRACING) {
+      if (_delegate.terminateThread(thread) ==
+          Delegate::Response::QUIT_TRACING) {
         _shutting_down = true;
         return 0;
       }
@@ -239,7 +241,8 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
             continue;
           }
 
-          if ((uintptr_t)sargptr < (uintptr_t)&ei->lookups[ei->pn_work_index].pathname[NUMPARMS]) {
+          if ((uintptr_t)sargptr <
+              (uintptr_t)&ei->lookups[ei->pn_work_index].pathname[NUMPARMS]) {
             *sargptr++ = kd[i].arg1;
             *sargptr++ = kd[i].arg2;
             *sargptr++ = kd[i].arg3;
@@ -249,7 +252,8 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
         }
         if (debugid & DBG_FUNC_END) {
           _vn_name_map[ei->vnodeid] =
-              reinterpret_cast<const char *>(&ei->lookups[ei->pn_work_index].pathname[0]);
+              reinterpret_cast<const char *>(
+                  &ei->lookups[ei->pn_work_index].pathname[0]);
 
           if (ei->pn_work_index == ei->pn_scall_index) {
             ei->pn_scall_index++;
@@ -276,7 +280,7 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
             0,
             "Legacy Carbon FileManager event");
       } else {
-        enter_event(thread, type, &kd[i]);
+        enterEvent(thread, type, &kd[i]);
       }
       continue;
     }
@@ -294,32 +298,27 @@ uint64_t Tracer::sample_sc(std::vector<kd_buf> &event_buffer) {
     }
 
     if (should_process_syscall(type)) {
-      exit_event(thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, type);
+      exitEvent(
+          thread, type, kd[i].arg1, kd[i].arg2, kd[i].arg3, kd[i].arg4, type);
     }
   }
 
   return sleep_ms;
 }
 
-
-void Tracer::enter_event_now(uintptr_t thread, int type, kd_buf *kd) {
-  auto ei_it = _ei_map.add_event(thread, type);
-  auto *ei = &ei_it->second;
-
-  ei->arg1 = kd->arg1;
-  ei->arg2 = kd->arg2;
-  ei->arg3 = kd->arg3;
-  ei->arg4 = kd->arg4;
-}
-
-
-void Tracer::enter_event(uintptr_t thread, int type, kd_buf *kd) {
+void Tracer::enterEvent(uintptr_t thread, int type, kd_buf *kd) {
   if (should_process_syscall(type)) {
-    enter_event_now(thread, type, kd);
+    auto ei_it = _ei_map.add_event(thread, type);
+    auto *ei = &ei_it->second;
+
+    ei->arg1 = kd->arg1;
+    ei->arg2 = kd->arg2;
+    ei->arg3 = kd->arg3;
+    ei->arg4 = kd->arg4;
   }
 }
 
-void Tracer::exit_event(
+void Tracer::exitEvent(
     uintptr_t thread,
     int type,
     uintptr_t arg1,
@@ -344,7 +343,6 @@ void Tracer::exit_event(
     _ei_map.erase(ei_it);
   }
 }
-
 
 void Tracer::notifyDelegate(
     event_info *ei,
