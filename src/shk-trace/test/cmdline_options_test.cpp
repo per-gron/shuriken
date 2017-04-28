@@ -128,6 +128,30 @@ TEST_CASE("CmdlineOptions") {
       CHECK(options.server == true);
     }
 
+    SECTION("TrailingArg") {
+      CHECK(parse({ "-s", "xyz" }).result == CmdlineOptions::Result::HELP);
+    }
+
+    SECTION("Capture") {
+      SECTION("Short") {
+        auto options = parse({ "-s", "-C", "f" });
+        CHECK(options.result == CmdlineOptions::Result::SUCCESS);
+        CHECK(options.server);
+        CHECK(options.capture == "f");
+      }
+
+      SECTION("Long") {
+        auto options = parse({ "-s", "--capture", "f" });
+        CHECK(options.result == CmdlineOptions::Result::SUCCESS);
+        CHECK(options.server);
+        CHECK(options.capture == "f");
+      }
+
+      SECTION("WithoutFile") {
+        CHECK(parse({ "-s", "-c" }).result == CmdlineOptions::Result::HELP);
+      }
+    }
+
     SECTION("SuicideWhenOrphaned") {
       SECTION("Short") {
         auto options = parse({ "-s", "-O" });
@@ -146,6 +170,13 @@ TEST_CASE("CmdlineOptions") {
       CHECK(parse({ "-s", "-f", "f" }).result == CmdlineOptions::Result::HELP);
     }
 
+    SECTION("WithReplay") {
+      CHECK(parse({ "-s", "-r", "f" }).result == CmdlineOptions::Result::HELP);
+      CHECK(
+          parse({ "-s", "--replay", "f" }).result ==
+          CmdlineOptions::Result::HELP);
+    }
+
     SECTION("WithCommand") {
       CHECK(parse({ "-s", "-c", "c" }).result == CmdlineOptions::Result::HELP);
     }
@@ -153,6 +184,66 @@ TEST_CASE("CmdlineOptions") {
     SECTION("Json") {
       CHECK(parse({ "-s", "-j" }).result == CmdlineOptions::Result::HELP);
       CHECK(parse({ "-s", "--json" }).result == CmdlineOptions::Result::HELP);
+    }
+  }
+
+  SECTION("Replay") {
+    SECTION("Short") {
+      auto options = parse({ "-r", "f" });
+      CHECK(options.result == CmdlineOptions::Result::SUCCESS);
+      CHECK(options.replay == "f");
+    }
+
+    SECTION("Long") {
+      auto options = parse({ "--replay", "f" });
+      CHECK(options.result == CmdlineOptions::Result::SUCCESS);
+      CHECK(options.replay == "f");
+    }
+
+    SECTION("MissingFile") {
+      CHECK(parse({ "-r" }).result == CmdlineOptions::Result::HELP);
+    }
+
+    SECTION("TrailingArg") {
+      CHECK(parse({ "-r", "f", "xyz" }).result == CmdlineOptions::Result::HELP);
+    }
+
+    SECTION("Capture") {
+      CHECK(parse({ "-r", "f", "-C" }).result == CmdlineOptions::Result::HELP);
+    }
+
+    SECTION("SuicideWhenOrphaned") {
+      CHECK(parse({ "-r", "f", "-O" }).result == CmdlineOptions::Result::HELP);
+    }
+
+    SECTION("WithTraceFile") {
+      CHECK(
+          parse({ "-r", "f", "-f", "f" }).result ==
+          CmdlineOptions::Result::HELP);
+    }
+
+    SECTION("WithCapture") {
+      CHECK(
+          parse({ "-r", "f", "-C", "f" }).result ==
+          CmdlineOptions::Result::HELP);
+      CHECK(
+          parse({ "-r", "f", "--capture", "f" }).result ==
+          CmdlineOptions::Result::HELP);
+    }
+
+    SECTION("WithCommand") {
+      CHECK(
+          parse({ "-r", "f", "-c", "c" }).result ==
+          CmdlineOptions::Result::HELP);
+    }
+
+    SECTION("Json") {
+      CHECK(
+          parse({ "-r", "f", "-j" }).result ==
+          CmdlineOptions::Result::HELP);
+      CHECK(
+          parse({ "-r", "f", "--json" }).result ==
+          CmdlineOptions::Result::HELP);
     }
   }
 }

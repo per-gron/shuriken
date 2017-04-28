@@ -162,7 +162,10 @@ void printUsage() {
       "-c command\n"
       "Server mode: shk-trace "
       "-s/--server"
+      "[-C/--capture capture-file] "
       "[-O/--suicide-when-orphaned]\n"
+      "Replay mode: shk-trace "
+      "-r/--replay capture-file\n"
       "\n"
       "There can be only one server process at any given time. The client cannot run without a server.\n");
 }

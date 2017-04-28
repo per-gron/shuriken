@@ -21,6 +21,8 @@ CmdlineOptions CmdlineOptions::parse(int argc, char *argv[]) {
     { "suicide-when-orphaned", no_argument, nullptr, 'O' },
     { "server", no_argument, nullptr, 's' },
     { "json", no_argument, nullptr, 'j' },
+    { "capture", required_argument, nullptr, 'C' },
+    { "replay", required_argument, nullptr, 'r' },
     { nullptr, 0, nullptr, 0 }
   };
 
@@ -33,7 +35,7 @@ CmdlineOptions CmdlineOptions::parse(int argc, char *argv[]) {
   optopt = 0;
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "+sjOf:c:", kLongOpts, nullptr)) != -1) {
+  while ((opt = getopt_long(argc, argv, "+sjOf:c:C:r:", kLongOpts, nullptr)) != -1) {
     if (opt == 'f' || opt == 'c') {
       auto &target = opt == 'f' ? options.tracefile : options.command;
       if (*optarg == '\0' || !target.empty()) {
@@ -42,6 +44,16 @@ CmdlineOptions CmdlineOptions::parse(int argc, char *argv[]) {
       target = optarg;
     } else if (opt == OPT_VERSION) {
       return withResult(Result::VERSION);
+    } else if (opt == 'C') {
+      if (*optarg == '\0' || !options.capture.empty()) {
+        return withResult(Result::HELP);
+      }
+      options.capture = optarg;
+    } else if (opt == 'r') {
+      if (*optarg == '\0' || !options.replay.empty()) {
+        return withResult(Result::HELP);
+      }
+      options.replay = optarg;
     } else if (opt == 'O') {
       options.suicide_when_orphaned = true;
     } else if (opt == 's') {
@@ -53,8 +65,23 @@ CmdlineOptions CmdlineOptions::parse(int argc, char *argv[]) {
     }
   }
 
+  if (optind != argc) {
+    return withResult(Result::HELP);
+  }
+
   if (options.server) {
-    if (options.json || !options.command.empty() || !options.tracefile.empty()) {
+    if (options.json ||
+        !options.command.empty() ||
+        !options.tracefile.empty() ||
+        !options.replay.empty()) {
+      return withResult(Result::HELP);
+    }
+  } else if (!options.replay.empty()) {
+    if (options.suicide_when_orphaned ||
+        options.json ||
+        !options.command.empty() ||
+        !options.tracefile.empty() ||
+        !options.capture.empty()) {
       return withResult(Result::HELP);
     }
   } else {
@@ -64,7 +91,7 @@ CmdlineOptions CmdlineOptions::parse(int argc, char *argv[]) {
 
     if (options.suicide_when_orphaned ||
         options.command.empty() ||
-        optind != argc) {
+        !options.capture.empty()) {
       return withResult(Result::HELP);
     }
   }
