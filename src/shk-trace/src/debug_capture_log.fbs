@@ -1,0 +1,19 @@
+namespace ShkTraceDebugCaptureLog;
+
+table TraceRequest {
+  pid_to_trace:uint;
+  root_thread_id:ulong;
+  cwd:string (required);
+}
+
+table KdBufs {
+  bufs:[ubyte] (required);
+}
+
+table Entry {
+  // One of these should be present
+  trace_request:TraceRequest;
+  kd_bufs:KdBufs;
+}
+
+root_type Entry;

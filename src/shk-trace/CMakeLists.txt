@@ -1,6 +1,7 @@
-# This is a hack workaround for the fact that CMake+Ninja doesn't respect
-# the USES_TERMINAL keyword when it's applied to the add_custom_command
-# declarations below.
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/shk-trace/debug_capture_log_generated.h
+  COMMAND flatc --binary --cpp --scoped-enums -o include/shk-trace ${CMAKE_CURRENT_LIST_DIR}/src/debug_capture_log.fbs
+  DEPENDS src/debug_capture_log.fbs flatc)
 
 add_library(libshktrace
   src/cmdline_options.cpp
@@ -9,6 +10,8 @@ add_library(libshktrace
   src/cwd_memo.h
   src/daemon.cpp
   src/daemon.h
+  src/debug_capture_log.cpp
+  src/debug_capture_log.h
   src/dispatch.h
   src/event_consolidator.cpp
   src/event_consolidator.h
@@ -39,9 +42,12 @@ add_library(libshktrace
   src/tracer.cpp
   src/tracer.h
   src/tracing_server.cpp
-  src/tracing_server.h)
+  src/tracing_server.h
+  ${CMAKE_CURRENT_BINARY_DIR}/include/shk-trace/debug_capture_log_generated.h)
 target_compile_definitions(libshktrace PUBLIC KERNEL_PRIVATE PRIVATE=)
-target_include_directories(libshktrace PUBLIC src)
+target_include_directories(libshktrace PUBLIC
+    src
+    ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_link_libraries(libshktrace util bsm shkutil)
 set_target_properties(libshktrace PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_property(TARGET libshktrace PROPERTY CXX_STANDARD 11)
@@ -57,6 +63,7 @@ set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
 add_executable(shktrace_test
   test/cmdline_options_test.cpp
   test/cwd_memo_test.cpp
+  test/debug_capture_log_test.cpp
   test/event_consolidator_test.cpp
   test/file_descriptor_memo_test.cpp
   test/mach_port_test.cpp
