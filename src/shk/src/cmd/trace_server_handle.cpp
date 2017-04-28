@@ -16,7 +16,8 @@ extern char **environ;
 namespace shk {
 namespace {
 
-using PosixSpawnFileActions = RAIIHelper<posix_spawn_file_actions_t *, int, posix_spawn_file_actions_destroy>;
+using PosixSpawnFileActions = RAIIHelper<
+    posix_spawn_file_actions_t *, int, posix_spawn_file_actions_destroy>;
 
 class RealTraceServerHandle : public TraceServerHandle {
  public:
@@ -30,7 +31,8 @@ class RealTraceServerHandle : public TraceServerHandle {
       // Call waitpid on _pid, to avoid zombie processes
       int status;
       if (waitpid(_pid, &status, WNOHANG) == -1) {
-        fprintf(stderr, "Failed to wait for child process: %s\n", strerror(errno));
+        fprintf(
+            stderr, "Failed to wait for child process: %s\n", strerror(errno));
         abort();
       }
     }
