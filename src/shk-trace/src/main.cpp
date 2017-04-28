@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "cmdline_options.h"
+#include "debug_capture_log.h"
 #include "event_consolidator.h"
 #include "kdebug_controller.h"
 #include "kdebug_pump.h"
@@ -44,11 +45,45 @@ std::pair<MachSendRight, bool> tryConnectToServer() {
   }
 }
 
-bool runTracingServer(std::string *err) {
+std::pair<FileDescriptor, bool> openTraceFile(const std::string &path) {
+  int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666);
+  return std::make_pair(FileDescriptor(fd), fd != -1);
+}
+
+void processTraceRequest(
+    std::unique_ptr<TracingServer::TraceRequest> &&request,
+    ProcessTracer *process_tracer) {
+  pid_t pid = request->pid_to_trace;
+  uintptr_t root_thread_id = request->root_thread_id;
+  auto cwd = request->cwd;
+  auto trace_writer = std::unique_ptr<PathResolver::Delegate>(
+      new TraceWriter(std::move(request)));
+  process_tracer->traceProcess(
+      pid,
+      root_thread_id,
+      std::unique_ptr<Tracer::Delegate>(
+          new PathResolver(
+              std::move(trace_writer),
+              pid,
+              std::move(cwd))));
+}
+
+bool runTracingServer(const std::string &capture_file, std::string *err) {
   int num_cpus = 0;
   if (!getNumCpus(&num_cpus)) {
     *err = "Failed to get number of CPUs";
     return false;
+  }
+
+  std::unique_ptr<DebugCaptureLog> capture_log;
+  if (!capture_file.empty()) {
+    auto capture_log_fd = openTraceFile(capture_file);
+    if (!capture_log_fd.second) {
+      *err = "Failed to open capture log file: " + std::string(strerror(errno));
+      return false;
+    }
+
+    capture_log.reset(new DebugCaptureLog(std::move(capture_log_fd.first)));
   }
 
   auto server_port = registerNamedPort(PORT_NAME);
@@ -73,7 +108,11 @@ bool runTracingServer(std::string *err) {
   KdebugPump kdebug_pump(
       num_cpus,
       kdebug_ctrl.get(),
-      [&tracer](const kd_buf *begin, const kd_buf *end) {
+      [&tracer, &capture_log](const kd_buf *begin, const kd_buf *end) {
+        if (capture_log) {
+          capture_log->writeKdBufs(begin, end);
+        }
+
         return tracer.parseBuffer(begin, end);
       });
 
@@ -83,19 +122,11 @@ bool runTracingServer(std::string *err) {
       queue.get(),
       std::move(server_port.first),
       [&](std::unique_ptr<TracingServer::TraceRequest> &&request) {
-        pid_t pid = request->pid_to_trace;
-        uintptr_t root_thread_id = request->root_thread_id;
-        auto cwd = request->cwd;
-        auto trace_writer = std::unique_ptr<PathResolver::Delegate>(
-            new TraceWriter(std::move(request)));
-        process_tracer.traceProcess(
-            pid,
-            root_thread_id,
-            std::unique_ptr<Tracer::Delegate>(
-                new PathResolver(
-                    std::move(trace_writer),
-                    pid,
-                    std::move(cwd))));
+        if (capture_log) {
+          capture_log->writeTraceRequest(*request);
+        }
+
+        processTraceRequest(std::move(request), &process_tracer);
       });
 
   // This is a message to the calling process that indicates that it can expect
@@ -107,6 +138,28 @@ bool runTracingServer(std::string *err) {
   kdebug_pump.wait(DISPATCH_TIME_FOREVER);
 
   return true;
+}
+
+bool processReplayFile(const std::string &capture_log_file, std::string *err) {
+  auto capture_log_fd = FileDescriptor(
+      open(capture_log_file.c_str(), O_RDONLY));
+  if (capture_log_fd.get() == -1) {
+    *err = "Failed to open capture log file: " + std::string(strerror(errno));
+    return false;
+  }
+
+  ProcessTracer process_tracer;
+  Tracer tracer(process_tracer);
+
+  return DebugCaptureLog::parse(
+      capture_log_fd,
+      [&](std::unique_ptr<TracingServer::TraceRequest> &&trace_request) {
+        processTraceRequest(std::move(trace_request), &process_tracer);
+      },
+      [&](const kd_buf *begin, const kd_buf *end) {
+        tracer.parseBuffer(begin, end);
+      },
+      err);
 }
 
 void dropPrivileges() {
@@ -146,11 +199,6 @@ int executeCommand(const std::string &cmd) {
   return WEXITSTATUS(status);
 }
 
-std::pair<FileDescriptor, bool> openTraceFile(const std::string &path) {
-  int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666);
-  return std::make_pair(FileDescriptor(fd), fd != -1);
-}
-
 void printUsage() {
   fprintf(
       stderr,
@@ -161,7 +209,7 @@ void printUsage() {
       "[-f tracefile] "
       "-c command\n"
       "Server mode: shk-trace "
-      "-s/--server"
+      "-s/--server "
       "[-C/--capture capture-file] "
       "[-O/--suicide-when-orphaned]\n"
       "Replay mode: shk-trace "
@@ -245,6 +293,15 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (!cmdline_options.replay.empty()) {
+    std::string err;
+    if (!processReplayFile(cmdline_options.replay, &err)) {
+      fprintf(stderr, "Failed to replay: %s\n", err.c_str());
+      return 1;
+    }
+    return 0;
+  }
+
   if (0 != reexec_to_match_kernel()) {
     fprintf(stderr, "Could not re-execute: %s\n", strerror(errno));
     return 1;
@@ -270,7 +327,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::string err;
-    if (!runTracingServer(&err)) {
+    if (!runTracingServer(cmdline_options.capture, &err)) {
       fprintf(stderr, "%s\n", err.c_str());
       return 1;
     }
