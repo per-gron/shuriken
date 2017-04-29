@@ -194,18 +194,6 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
       continue;
     }
 
-    switch (type) {
-    case MACH_pageout:
-    case MACH_vmfault:
-      {
-        auto ei_it = _ei_map.find(thread, type);
-        if (ei_it != _ei_map.end()) {
-          _ei_map.erase(ei_it);
-        }
-        continue;
-      }
-    }
-
     if (should_process_syscall(type)) {
       exitEvent(
           thread, type, kd.arg1, kd.arg2, kd.arg3, kd.arg4, type);

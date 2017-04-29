@@ -78,11 +78,6 @@ class event_info_map {
  public:
   using iterator = map::iterator;
 
-  void clear() {
-    _map.clear();
-    _last_event_map.clear();
-  }
-
   void erase(iterator iter) {
     auto thread = iter->first.first;
     auto type = iter->first.second;
