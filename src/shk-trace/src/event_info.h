@@ -62,57 +62,68 @@ struct EventInfo {
 };
 
 class EventInfoMap {
-  struct ei_hash {
-    using argument_type = std::pair<uintptr_t, int>;
-    using result_type = std::size_t;
-
-    result_type operator()(const argument_type &f) const {
-      return
-          std::hash<uintptr_t>()(f.first) ^
-          std::hash<int>()(f.second);
-    }
-  };
-
-  using map = std::unordered_map<std::pair<uintptr_t, int>, EventInfo, ei_hash>;
+  using PerThreadMap = std::unordered_map<int, EventInfo>;
+  using Map = std::unordered_map<uintptr_t, PerThreadMap>;
 
  public:
-  using iterator = map::iterator;
+  using iterator = std::pair<Map::iterator, PerThreadMap::iterator>;
 
-  void erase(iterator iter) {
-    auto thread = iter->first.first;
-    auto type = iter->first.second;
-
+  void erase(uintptr_t thread, int type) {
     auto last_event_it = _last_event_map.find(thread);
     if (last_event_it != _last_event_map.end() && last_event_it->second == type) {
       _last_event_map.erase(last_event_it);
     }
 
-    _map.erase(iter);
+    auto map_iter = _map.find(thread);
+    if (map_iter == _map.end()) {
+      return;
+    }
+
+    auto &per_thread_map = map_iter->second;
+    per_thread_map.erase(type);
+    if (per_thread_map.empty()) {
+      _map.erase(thread);
+    }
   }
 
-  iterator addEvent(uintptr_t thread, int type) {
-    _map[std::make_pair(thread, type)] = EventInfo();
+  EventInfo &addEvent(uintptr_t thread, int type) {
     _last_event_map[thread] = type;
-    return _map.find(std::make_pair(thread, type));
+
+    auto map_iter = _map.find(thread);
+    if (map_iter == _map.end()) {
+      map_iter = _map.emplace(thread, PerThreadMap()).first;
+    }
+
+    auto &per_thread_map = map_iter->second;
+
+    return per_thread_map[type] = EventInfo();
   }
 
-  iterator find(uintptr_t thread, int type) {
-    return _map.find(std::make_pair(thread, type));
+  /**
+   * Returns nullptr when not found.
+   */
+  EventInfo *find(uintptr_t thread, int type) {
+    auto map_iter = _map.find(thread);
+    if (map_iter == _map.end()) {
+      return nullptr;
+    } else {
+      auto &per_thread_map = map_iter->second;
+      auto it = per_thread_map.find(type);
+      return it == per_thread_map.end() ?
+          nullptr :
+          &it->second;
+    }
   }
 
-  iterator findLast(uintptr_t thread) {
+  EventInfo *findLast(uintptr_t thread) {
     auto it = _last_event_map.find(thread);
     return it == _last_event_map.end() ?
-        end() :
-        _map.find(std::make_pair(thread, it->second));
-  }
-
-  iterator end() {
-    return _map.end();
+        nullptr :
+        find(thread, it->second);
   }
 
  private:
-  map _map;
+  Map _map;
   // Map from thread id to last event type for that thread
   std::unordered_map<uintptr_t, int> _last_event_map;
 };
