@@ -143,6 +143,7 @@ class Tracer {
    */
   bool parseBuffer(const kd_buf *begin, const kd_buf *end);
  private:
+  void processVfsLookup(const kd_buf &kd);
   void enterEvent(uintptr_t thread, int type, const kd_buf &kd);
   void exitEvent(
       uintptr_t thread,

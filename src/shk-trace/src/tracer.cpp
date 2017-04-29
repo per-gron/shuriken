@@ -112,70 +112,8 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
       break;
 
     case VFS_LOOKUP:
-      {
-        auto ei_it = _ei_map.findLast(thread);
-        if (ei_it == _ei_map.end()) {
-          break;
-        }
-        EventInfo *ei = &ei_it->second;
-
-        uintptr_t *sargptr;
-        if (kd.debugid & DBG_FUNC_START) {
-          if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
-            ei->pn_work_index = ei->pn_scall_index;
-          } else {
-            break;
-          }
-          sargptr = &ei->lookups[ei->pn_work_index].pathname[0];
-
-          ei->vnodeid = kd.arg1;
-
-          *sargptr++ = kd.arg2;
-          *sargptr++ = kd.arg3;
-          *sargptr++ = kd.arg4;
-          *sargptr = 0;
-
-          ei->pathptr = sargptr;
-        } else {
-          sargptr = ei->pathptr;
-
-          // We don't want to overrun our pathname buffer if the
-          // kernel sends us more VFS_LOOKUP entries than we can
-          // handle and we only handle 2 pathname lookups for
-          // a given system call.
-          if (sargptr == 0) {
-            break;
-          }
-
-          if ((uintptr_t)sargptr <
-              (uintptr_t)&ei->lookups[ei->pn_work_index].pathname[NUMPARMS]) {
-            *sargptr++ = kd.arg1;
-            *sargptr++ = kd.arg2;
-            *sargptr++ = kd.arg3;
-            *sargptr++ = kd.arg4;
-            *sargptr = 0;
-          }
-        }
-        if (kd.debugid & DBG_FUNC_END) {
-          _vn_name_map[ei->vnodeid] =
-              reinterpret_cast<const char *>(
-                  &ei->lookups[ei->pn_work_index].pathname[0]);
-
-          if (ei->pn_work_index == ei->pn_scall_index) {
-            ei->pn_scall_index++;
-
-            if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
-              ei->pathptr = &ei->lookups[ei->pn_scall_index].pathname[0];
-            } else {
-              ei->pathptr = 0;
-            }
-          }
-        } else {
-          ei->pathptr = sargptr;
-        }
-
-        break;
-      }
+      processVfsLookup(kd);
+      break;
 
     default:
       if (kd.debugid & DBG_FUNC_START) {
@@ -196,6 +134,70 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
   }
 
   return false;
+}
+
+void Tracer::processVfsLookup(const kd_buf &kd) {
+  uintptr_t thread = kd.arg5;
+
+  auto ei_it = _ei_map.findLast(thread);
+  if (ei_it == _ei_map.end()) {
+    return;
+  }
+  EventInfo *ei = &ei_it->second;
+
+  uintptr_t *sargptr;
+  if (kd.debugid & DBG_FUNC_START) {
+    if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
+      ei->pn_work_index = ei->pn_scall_index;
+    } else {
+      return;
+    }
+    sargptr = &ei->lookups[ei->pn_work_index].pathname[0];
+
+    ei->vnodeid = kd.arg1;
+
+    *sargptr++ = kd.arg2;
+    *sargptr++ = kd.arg3;
+    *sargptr++ = kd.arg4;
+    *sargptr = 0;
+
+    ei->pathptr = sargptr;
+  } else {
+    sargptr = ei->pathptr;
+
+    // We don't want to overrun our pathname buffer if the kernel sends us more
+    // VFS_LOOKUP entries than we can handle and we only handle 2 pathname
+    // lookups for a given system call.
+    if (sargptr == 0) {
+      return;
+    }
+
+    if ((uintptr_t)sargptr <
+        (uintptr_t)&ei->lookups[ei->pn_work_index].pathname[NUMPARMS]) {
+      *sargptr++ = kd.arg1;
+      *sargptr++ = kd.arg2;
+      *sargptr++ = kd.arg3;
+      *sargptr++ = kd.arg4;
+      *sargptr = 0;
+    }
+  }
+  if (kd.debugid & DBG_FUNC_END) {
+    _vn_name_map[ei->vnodeid] =
+        reinterpret_cast<const char *>(
+            &ei->lookups[ei->pn_work_index].pathname[0]);
+
+    if (ei->pn_work_index == ei->pn_scall_index) {
+      ei->pn_scall_index++;
+
+      if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
+        ei->pathptr = &ei->lookups[ei->pn_scall_index].pathname[0];
+      } else {
+        ei->pathptr = 0;
+      }
+    }
+  } else {
+    ei->pathptr = sargptr;
+  }
 }
 
 void Tracer::enterEvent(uintptr_t thread, int type, const kd_buf &kd) {
