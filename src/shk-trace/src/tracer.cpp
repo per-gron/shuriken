@@ -35,7 +35,7 @@
 namespace shk {
 namespace {
 
-using SyscallAtMember = int event_info::*;
+using SyscallAtMember = int EventInfo::*;
 
 SyscallAtMember syscallAtMember(int syscall) {
   switch (syscall) {
@@ -51,10 +51,10 @@ SyscallAtMember syscallAtMember(int syscall) {
   case BSC_openat_nocancel:
   case BSC_readlinkat:
   case BSC_unlinkat:
-    return &event_info::arg1;
+    return &EventInfo::arg1;
     break;
   case BSC_symlinkat:
-    return &event_info::arg2;
+    return &EventInfo::arg2;
     break;
   default:
     return nullptr;
@@ -120,7 +120,7 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
         if (ei_it == _ei_map.end()) {
           continue;
         }
-        event_info *ei = &ei_it->second;
+        EventInfo *ei = &ei_it->second;
 
         uintptr_t *sargptr;
         if (debugid & DBG_FUNC_START) {
@@ -242,7 +242,7 @@ void Tracer::exitEvent(
 }
 
 void Tracer::notifyDelegate(
-    event_info *ei,
+    EventInfo *ei,
     uintptr_t thread,
     int type,
     uintptr_t arg1,
@@ -414,8 +414,8 @@ void Tracer::notifyDelegate(
 
   case BSC_linkat:
   {
-    add_event(EventType::READ, pathname1, &event_info::arg1);
-    add_event(EventType::CREATE, pathname2, &event_info::arg3);
+    add_event(EventType::READ, pathname1, &EventInfo::arg1);
+    add_event(EventType::CREATE, pathname2, &EventInfo::arg3);
     break;
   }
 
@@ -436,8 +436,8 @@ void Tracer::notifyDelegate(
   case BSC_renameat:
   case BSC_renameatx_np:
   {
-    add_event(EventType::DELETE, pathname1, &event_info::arg1);
-    add_event(EventType::CREATE, pathname2, &event_info::arg3);
+    add_event(EventType::DELETE, pathname1, &EventInfo::arg1);
+    add_event(EventType::CREATE, pathname2, &EventInfo::arg3);
     break;
   }
 
@@ -446,7 +446,7 @@ void Tracer::notifyDelegate(
   case BSC_getdirentries64:
   case BSC_getdirentriesattr:
   {
-    add_event(EventType::READ_DIRECTORY, "", &event_info::arg1);
+    add_event(EventType::READ_DIRECTORY, "", &EventInfo::arg1);
     break;
   }
 
@@ -489,7 +489,7 @@ void Tracer::notifyDelegate(
   case BSC_fsetxattr:
   case BSC_futimes:
   {
-    add_event(EventType::WRITE, "", &event_info::arg1);
+    add_event(EventType::WRITE, "", &EventInfo::arg1);
     break;
   }
 

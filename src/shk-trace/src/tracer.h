@@ -153,7 +153,7 @@ class Tracer {
       uintptr_t arg4,
       int syscall);
   void notifyDelegate(
-      event_info *ei,
+      EventInfo *ei,
       uintptr_t thread,
       int type,
       uintptr_t arg1,
@@ -167,7 +167,7 @@ class Tracer {
   Delegate &_delegate;
 
   std::unordered_map<uint64_t, std::string> _vn_name_map;
-  event_info_map _ei_map;
+  EventInfoMap _ei_map;
 };
 
 }

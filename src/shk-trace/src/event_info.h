@@ -35,8 +35,8 @@ struct lookup {
   uintptr_t pathname[NUMPARMS + 1]; /* add room for null terminator */
 };
 
-struct event_info {
-  event_info()
+struct EventInfo {
+  EventInfo()
       : pathptr(&lookups[0].pathname[0]) {
     for (int i = 0; i < MAX_PATHNAMES; i++) {
       lookups[i].pathname[0] = 0;
@@ -61,7 +61,7 @@ struct event_info {
   struct lookup lookups[MAX_PATHNAMES];
 };
 
-class event_info_map {
+class EventInfoMap {
   struct ei_hash {
     using argument_type = std::pair<uintptr_t, int>;
     using result_type = std::size_t;
@@ -73,7 +73,7 @@ class event_info_map {
     }
   };
 
-  using map = std::unordered_map<std::pair<uintptr_t, int>, event_info, ei_hash>;
+  using map = std::unordered_map<std::pair<uintptr_t, int>, EventInfo, ei_hash>;
 
  public:
   using iterator = map::iterator;
@@ -91,7 +91,7 @@ class event_info_map {
   }
 
   iterator addEvent(uintptr_t thread, int type) {
-    _map[std::make_pair(thread, type)] = event_info();
+    _map[std::make_pair(thread, type)] = EventInfo();
     _last_event_map[thread] = type;
     return _map.find(std::make_pair(thread, type));
   }
