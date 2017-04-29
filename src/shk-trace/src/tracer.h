@@ -139,10 +139,16 @@ class Tracer {
   Tracer(Delegate &delegate);
 
   /**
-   * Return true if tracing should stop.
+   * Returns true if tracing should stop.
    */
   bool parseBuffer(const kd_buf *begin, const kd_buf *end);
  private:
+  void processNewThread(const kd_buf &kd);
+  /**
+   * Returns true if tracing should stop.
+   */
+  bool processThreadTerminate(const kd_buf &kd);
+  void processExec(const kd_buf &kd);
   void processVfsLookup(const kd_buf &kd);
   void enterEvent(uintptr_t thread, int type, const kd_buf &kd);
   void exitEvent(

@@ -75,65 +75,65 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
     uintptr_t thread = kd.arg5;
     int type = kd.debugid & DBG_FUNC_MASK;
 
-    switch (type) {
-    case TRACE_DATA_NEWTHREAD:
-      {
-        auto child_thread = kd.arg1;
-        auto pid = kd.arg2;
-        if (child_thread) {
-          _delegate.newThread(pid, thread, child_thread);
-        }
-
-        break;
-      }
-
-    case TRACE_STRING_EXEC:
-      {
-        auto ei_it = _ei_map.find(thread, BSC_execve);
-        if (ei_it != _ei_map.end()) {
-          if (ei_it->second.lookups[0].pathname[0]) {
-            exitEvent(thread, BSC_execve, 0, 0, 0, 0, BSC_execve);
-          }
-        } else if (
-            (ei_it = _ei_map.find(thread, BSC_posix_spawn)) != _ei_map.end()) {
-          if (ei_it->second.lookups[0].pathname[0]) {
-            exitEvent(thread, BSC_posix_spawn, 0, 0, 0, 0, BSC_execve);
-          }
-        }
-
-        break;
-      }
-
-    case BSC_thread_terminate:
-      if (_delegate.terminateThread(thread) ==
-          Delegate::Response::QUIT_TRACING) {
+    if (type == TRACE_DATA_NEWTHREAD) {
+      processNewThread(kd);
+    } else if (type == BSC_thread_terminate) {
+      if (processThreadTerminate(kd)) {
         return true;
       }
-      break;
-
-    case VFS_LOOKUP:
+    } else if (type == TRACE_STRING_EXEC) {
+      processExec(kd);
+    } else if (type == VFS_LOOKUP) {
       processVfsLookup(kd);
-      break;
-
-    default:
-      if (kd.debugid & DBG_FUNC_START) {
-        if ((type & CLASS_MASK) == FILEMGR_BASE) {
-          _delegate.fileEvent(
-              thread,
-              EventType::FATAL_ERROR,
-              0,
-              "Legacy Carbon FileManager event");
-        } else {
-          enterEvent(thread, type, kd);
-        }
-      } else if (should_process_syscall(type)) {
-        exitEvent(
-            thread, type, kd.arg1, kd.arg2, kd.arg3, kd.arg4, type);
+    } else if (kd.debugid & DBG_FUNC_START) {
+      if ((type & CLASS_MASK) == FILEMGR_BASE) {
+        _delegate.fileEvent(
+            thread,
+            EventType::FATAL_ERROR,
+            0,
+            "Legacy Carbon FileManager event");
+      } else {
+        enterEvent(thread, type, kd);
       }
+    } else if (should_process_syscall(type)) {
+      exitEvent(
+          thread, type, kd.arg1, kd.arg2, kd.arg3, kd.arg4, type);
     }
   }
 
   return false;
+}
+
+void Tracer::processNewThread(const kd_buf &kd) {
+  uintptr_t thread = kd.arg5;
+
+  auto child_thread = kd.arg1;
+  auto pid = kd.arg2;
+  if (child_thread) {
+    _delegate.newThread(pid, thread, child_thread);
+  }
+}
+
+bool Tracer::processThreadTerminate(const kd_buf &kd) {
+  uintptr_t thread = kd.arg5;
+
+  return _delegate.terminateThread(thread) == Delegate::Response::QUIT_TRACING;
+}
+
+void Tracer::processExec(const kd_buf &kd) {
+  uintptr_t thread = kd.arg5;
+
+  auto ei_it = _ei_map.find(thread, BSC_execve);
+  if (ei_it != _ei_map.end()) {
+    if (ei_it->second.lookups[0].pathname[0]) {
+      exitEvent(thread, BSC_execve, 0, 0, 0, 0, BSC_execve);
+    }
+  } else if (
+      (ei_it = _ei_map.find(thread, BSC_posix_spawn)) != _ei_map.end()) {
+    if (ei_it->second.lookups[0].pathname[0]) {
+      exitEvent(thread, BSC_posix_spawn, 0, 0, 0, 0, BSC_execve);
+    }
+  }
 }
 
 void Tracer::processVfsLookup(const kd_buf &kd) {
