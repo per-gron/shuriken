@@ -116,7 +116,7 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
 
     case VFS_LOOKUP:
       {
-        auto ei_it = _ei_map.find_last(thread);
+        auto ei_it = _ei_map.findLast(thread);
         if (ei_it == _ei_map.end()) {
           continue;
         }
@@ -205,7 +205,7 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
 
 void Tracer::enterEvent(uintptr_t thread, int type, const kd_buf &kd) {
   if (should_process_syscall(type)) {
-    auto ei_it = _ei_map.add_event(thread, type);
+    auto ei_it = _ei_map.addEvent(thread, type);
     auto *ei = &ei_it->second;
 
     ei->arg1 = kd.arg1;

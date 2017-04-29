@@ -90,7 +90,7 @@ class event_info_map {
     _map.erase(iter);
   }
 
-  iterator add_event(uintptr_t thread, int type) {
+  iterator addEvent(uintptr_t thread, int type) {
     _map[std::make_pair(thread, type)] = event_info();
     _last_event_map[thread] = type;
     return _map.find(std::make_pair(thread, type));
@@ -100,7 +100,7 @@ class event_info_map {
     return _map.find(std::make_pair(thread, type));
   }
 
-  iterator find_last(uintptr_t thread) {
+  iterator findLast(uintptr_t thread) {
     auto it = _last_event_map.find(thread);
     return it == _last_event_map.end() ?
         end() :
