@@ -86,6 +86,15 @@ class EventInfoMap {
     }
   }
 
+  void verifyNoEventsForThread(uintptr_t thread) {
+    if (_map.count(thread) != 0) {
+      throw std::runtime_error("internal error: did not clean up");
+    }
+    if (_last_event_map.count(thread)) {
+      throw std::runtime_error("internal error: did not clean up last event");
+    }
+  }
+
   EventInfo &addEvent(uintptr_t thread, int type) {
     _last_event_map[thread] = type;
 
