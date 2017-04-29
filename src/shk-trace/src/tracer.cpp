@@ -111,9 +111,6 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
       }
       continue;
 
-    case BSC_exit:
-      continue;
-
     case VFS_LOOKUP:
       {
         auto ei_it = _ei_map.findLast(thread);
