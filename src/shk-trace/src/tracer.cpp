@@ -73,7 +73,6 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
     const auto &kd = *it;
 
     uintptr_t thread = kd.arg5;
-    uint32_t debugid = kd.debugid;
     int type = kd.debugid & DBG_FUNC_MASK;
 
     switch (type) {
@@ -84,7 +83,8 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
         if (child_thread) {
           _delegate.newThread(pid, thread, child_thread);
         }
-        continue;
+
+        break;
       }
 
     case TRACE_STRING_EXEC:
@@ -101,7 +101,7 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
           }
         }
 
-        continue;
+        break;
       }
 
     case BSC_thread_terminate:
@@ -109,22 +109,22 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
           Delegate::Response::QUIT_TRACING) {
         return true;
       }
-      continue;
+      break;
 
     case VFS_LOOKUP:
       {
         auto ei_it = _ei_map.findLast(thread);
         if (ei_it == _ei_map.end()) {
-          continue;
+          break;
         }
         EventInfo *ei = &ei_it->second;
 
         uintptr_t *sargptr;
-        if (debugid & DBG_FUNC_START) {
+        if (kd.debugid & DBG_FUNC_START) {
           if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
             ei->pn_work_index = ei->pn_scall_index;
           } else {
-            continue;
+            break;
           }
           sargptr = &ei->lookups[ei->pn_work_index].pathname[0];
 
@@ -144,7 +144,7 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
           // handle and we only handle 2 pathname lookups for
           // a given system call.
           if (sargptr == 0) {
-            continue;
+            break;
           }
 
           if ((uintptr_t)sargptr <
@@ -156,7 +156,7 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
             *sargptr = 0;
           }
         }
-        if (debugid & DBG_FUNC_END) {
+        if (kd.debugid & DBG_FUNC_END) {
           _vn_name_map[ei->vnodeid] =
               reinterpret_cast<const char *>(
                   &ei->lookups[ei->pn_work_index].pathname[0]);
@@ -174,26 +174,24 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
           ei->pathptr = sargptr;
         }
 
-        continue;
+        break;
       }
-    }
 
-    if (debugid & DBG_FUNC_START) {
-      if ((type & CLASS_MASK) == FILEMGR_BASE) {
-        _delegate.fileEvent(
-            thread,
-            EventType::FATAL_ERROR,
-            0,
-            "Legacy Carbon FileManager event");
-      } else {
-        enterEvent(thread, type, kd);
+    default:
+      if (kd.debugid & DBG_FUNC_START) {
+        if ((type & CLASS_MASK) == FILEMGR_BASE) {
+          _delegate.fileEvent(
+              thread,
+              EventType::FATAL_ERROR,
+              0,
+              "Legacy Carbon FileManager event");
+        } else {
+          enterEvent(thread, type, kd);
+        }
+      } else if (should_process_syscall(type)) {
+        exitEvent(
+            thread, type, kd.arg1, kd.arg2, kd.arg3, kd.arg4, type);
       }
-      continue;
-    }
-
-    if (should_process_syscall(type)) {
-      exitEvent(
-          thread, type, kd.arg1, kd.arg2, kd.arg3, kd.arg4, type);
     }
   }
 
