@@ -110,7 +110,7 @@ class CompileManyThread (threading.Thread):
         "#include <stdio.h>\nint main(){printf(\"hello\\n\");return 0;}")
     cmd = "clang " + file + " -o " + file + ".exe"
     original = trace_cmd(cmd, self.num)
-    for i in range(1000):
+    for i in range(50000):
       print i
       trace = trace_cmd(cmd, self.num)
       if original != trace:
