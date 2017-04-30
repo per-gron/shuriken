@@ -76,6 +76,7 @@ add_executable(shktrace_test
   test/process_tracer_test.cpp
   test/to_json_test.cpp
   test/trace_writer_test.cpp
+  test/tracer_test.cpp
   test/tracing_server_test.cpp)
 target_link_libraries(shktrace_test pthread catch libshktrace)
 set_target_properties(shktrace_test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})

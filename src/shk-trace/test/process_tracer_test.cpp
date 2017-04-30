@@ -1,6 +1,5 @@
 #include <catch.hpp>
 
-#include <deque>
 #include <fcntl.h>
 #include <utility>
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <deque>
+
 namespace shk {
 
 struct FileEvent {
