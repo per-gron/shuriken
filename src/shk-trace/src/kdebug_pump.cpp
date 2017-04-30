@@ -1,36 +1,10 @@
-/*
- * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
- *
- * @APPLE_LICENSE_HEADER_START@
- *
- * "Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
- * Reserved.  This file contains Original Code and/or Modifications of
- * Original Code as defined in and that are subject to the Apple Public
- * Source License Version 1.0 (the 'License').  You may not use this file
- * except in compliance with the License.  Please obtain a copy of the
- * License at http://www.apple.com/publicsource and read it before using
- * this file.
- *
- * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
- * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
- * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License."
- *
- * @APPLE_LICENSE_HEADER_END@
- */
-
 #include "kdebug_pump.h"
 
 #include <cstdlib>
 
-namespace shk {
+#include "apsl_code.h"
 
-static constexpr uint64_t SLEEP_MIN = 1;
-static constexpr uint64_t SLEEP_BEHIND = 2;
-static constexpr uint64_t SLEEP_MAX = 32;
+namespace shk {
 
 static constexpr int EVENT_BASE = 60000;
 
@@ -80,18 +54,7 @@ void KdebugPump::loop(dispatch_queue_t queue) {
 uint64_t KdebugPump::fetchBuffer(std::vector<kd_buf> &event_buffer) {
   size_t count = _kdebug_ctrl.readBuf(event_buffer.data());
 
-  uint64_t sleep_ms = SLEEP_MIN;
-  if (count > (event_buffer.size() / 8)) {
-    if (sleep_ms > SLEEP_BEHIND) {
-      sleep_ms = SLEEP_BEHIND;
-    } else if (sleep_ms > SLEEP_MIN) {
-      sleep_ms /= 2;
-    }
-  } else if (count < (event_buffer.size() / 16)) {
-    if (sleep_ms < SLEEP_MAX) {
-      sleep_ms *= 2;
-    }
-  }
+  uint64_t sleep_ms = calculateKdebugLoopSleepTime(count, event_buffer.size());
 
   kd_buf *kd = event_buffer.data();
   if (_callback(kd, kd + count)) {

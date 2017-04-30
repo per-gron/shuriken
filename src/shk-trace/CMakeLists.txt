@@ -4,6 +4,8 @@ add_custom_command(
   DEPENDS src/debug_capture_log.fbs flatc)
 
 add_library(libshktrace
+  src/apsl_code.cpp
+  src/apsl_code.h
   src/cmdline_options.cpp
   src/cmdline_options.h
   src/cwd_memo.cpp

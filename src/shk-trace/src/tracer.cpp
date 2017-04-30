@@ -30,6 +30,7 @@
 #include <dispatch/dispatch.h>
 #include <sys/mman.h>
 
+#include "apsl_code.h"
 #include "syscall_tables.h"
 
 namespace shk {
@@ -93,10 +94,10 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
             0,
             "Legacy Carbon FileManager event");
       } else {
-        enterEvent(thread, type, kd);
+        processEventStart(thread, type, kd);
       }
     } else {
-      exitEvent(
+      processEventEnd(
           thread, type, kd.arg1, kd.arg2, kd.arg3, kd.arg4, type);
     }
   }
@@ -127,84 +128,21 @@ void Tracer::processExec(const kd_buf &kd) {
 
   if (auto *ei = _ei_map.find(thread, BSC_execve)) {
     if (ei->lookups[0].pathname[0]) {
-      exitEvent(thread, BSC_execve, 0, 0, 0, 0, BSC_execve);
+      processEventEnd(thread, BSC_execve, 0, 0, 0, 0, BSC_execve);
     }
   } else if (auto *ei = _ei_map.find(thread, BSC_posix_spawn)) {
     if (ei->lookups[0].pathname[0]) {
-      exitEvent(thread, BSC_posix_spawn, 0, 0, 0, 0, BSC_execve);
+      processEventEnd(thread, BSC_posix_spawn, 0, 0, 0, 0, BSC_execve);
     }
   }
 }
 
 void Tracer::processVfsLookup(const kd_buf &kd) {
-  uintptr_t thread = kd.arg5;
-
-  auto *ei = _ei_map.findLast(thread);
-  if (!ei || ei->in_hfs_update) {
-    // If no event was found there is nothing to do. If we are in an HFS_update,
-    // ignore the path. HFS_update events can happen in the middle of other
-    // syscalls, and HFS_update events can emit paths that are unrelated to the
-    // syscall that is in progress of being processed, which messes things up
-    // unless they are explicitly ignored.
-    return;
-  }
-
-  uintptr_t *sargptr;
-  if (kd.debugid & DBG_FUNC_START) {
-    if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
-      ei->pn_work_index = ei->pn_scall_index;
-    } else {
-      return;
-    }
-    sargptr = &ei->lookups[ei->pn_work_index].pathname[0];
-
-    ei->vnodeid = kd.arg1;
-
-    *sargptr++ = kd.arg2;
-    *sargptr++ = kd.arg3;
-    *sargptr++ = kd.arg4;
-    *sargptr = 0;
-
-    ei->pathptr = sargptr;
-  } else {
-    sargptr = ei->pathptr;
-
-    // We don't want to overrun our pathname buffer if the kernel sends us more
-    // VFS_LOOKUP entries than we can handle and we only handle 2 pathname
-    // lookups for a given system call.
-    if (sargptr == 0) {
-      return;
-    }
-
-    if ((uintptr_t)sargptr <
-        (uintptr_t)&ei->lookups[ei->pn_work_index].pathname[NUMPARMS]) {
-      *sargptr++ = kd.arg1;
-      *sargptr++ = kd.arg2;
-      *sargptr++ = kd.arg3;
-      *sargptr++ = kd.arg4;
-      *sargptr = 0;
-    }
-  }
-  if (kd.debugid & DBG_FUNC_END) {
-    _vn_name_map[ei->vnodeid] =
-        reinterpret_cast<const char *>(
-            &ei->lookups[ei->pn_work_index].pathname[0]);
-
-    if (ei->pn_work_index == ei->pn_scall_index) {
-      ei->pn_scall_index++;
-
-      if (ei->pn_scall_index < MAX_SCALL_PATHNAMES) {
-        ei->pathptr = &ei->lookups[ei->pn_scall_index].pathname[0];
-      } else {
-        ei->pathptr = 0;
-      }
-    }
-  } else {
-    ei->pathptr = sargptr;
-  }
+  const auto thread = kd.arg5;
+  ::shk::processVfsLookup(kd, _ei_map.findLast(thread), &_vn_name_map);
 }
 
-void Tracer::enterEvent(uintptr_t thread, int type, const kd_buf &kd) {
+void Tracer::processEventStart(uintptr_t thread, int type, const kd_buf &kd) {
   if (type == HFS_update) {
     if (auto *ei = _ei_map.findLast(thread)) {
       ei->in_hfs_update = true;
@@ -219,7 +157,7 @@ void Tracer::enterEvent(uintptr_t thread, int type, const kd_buf &kd) {
   }
 }
 
-void Tracer::exitEvent(
+void Tracer::processEventEnd(
     uintptr_t thread,
     int type,
     uintptr_t arg1,

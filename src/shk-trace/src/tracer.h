@@ -150,8 +150,8 @@ class Tracer {
   bool processThreadTerminate(const kd_buf &kd);
   void processExec(const kd_buf &kd);
   void processVfsLookup(const kd_buf &kd);
-  void enterEvent(uintptr_t thread, int type, const kd_buf &kd);
-  void exitEvent(
+  void processEventStart(uintptr_t thread, int type, const kd_buf &kd);
+  void processEventEnd(
       uintptr_t thread,
       int type,
       uintptr_t arg1,
