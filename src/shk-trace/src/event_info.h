@@ -54,9 +54,6 @@ struct EventInfo {
   int arg3 = 0;
   int arg4 = 0;
   int arg5 = 0;
-  int arg6 = 0;
-  int arg7 = 0;
-  int arg8 = 0;
   uint64_t vnodeid = 0;
   uintptr_t *pathptr = nullptr;
   int pn_scall_index = 0;
