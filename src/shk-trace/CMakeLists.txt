@@ -17,8 +17,8 @@ add_library(libshktrace
   src/dispatch.h
   src/event_consolidator.cpp
   src/event_consolidator.h
-  src/event_info.cpp
-  src/event_info.h
+  src/event_info_map.cpp
+  src/event_info_map.h
   src/event_type.h
   src/file_descriptor_memo.cpp
   src/file_descriptor_memo.h
@@ -68,7 +68,7 @@ add_executable(shktrace_test
   test/cwd_memo_test.cpp
   test/debug_capture_log_test.cpp
   test/event_consolidator_test.cpp
-  test/event_info_test.cpp
+  test/event_info_map_test.cpp
   test/file_descriptor_memo_test.cpp
   test/mach_port_test.cpp
   test/main.cpp

@@ -10,7 +10,7 @@
 #include <util/shktrace.h>
 
 #include "dispatch.h"
-#include "event_info.h"
+#include "event_info_map.h"
 #include "event_type.h"
 #include "syscall_constants.h"
 
