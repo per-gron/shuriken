@@ -211,6 +211,72 @@ TEST_CASE("Tracer") {
       CHECK(evt.at_fd == AT_FDCWD);
       CHECK(evt.path == "/a_little_path./yoyoyoyo.txt");
     }
+
+    SECTION("with interspersed HFS_update") {
+      parse({
+          {
+            .debugid = TRACE_DATA_NEWTHREAD,
+            .arg1 = child_thread_id,
+            .arg2 = pid,
+            .arg5 = parent_thread_id,
+          },
+          {
+            .debugid = DBG_FUNC_START | BSC_access,
+            .arg5 = child_thread_id,
+          },
+          {
+            .debugid = DBG_FUNC_START | HFS_update,
+            .arg5 = child_thread_id,
+          },
+          {
+            .debugid = DBG_FUNC_START | VFS_LOOKUP,
+            .arg1 = vnode_id,
+            .arg2 = str_to_ptr("/hfs_upd"),
+            .arg3 = str_to_ptr("ate_path"),
+            .arg4 = str_to_ptr("_that_sh"),
+            .arg5 = child_thread_id,
+          },
+          {
+            .debugid = DBG_FUNC_END | VFS_LOOKUP,
+            .arg1 = str_to_ptr("ould_be_"),
+            .arg2 = str_to_ptr("ignored."),
+            .arg3 = str_to_ptr("txt"),
+            .arg4 = 0,
+            .arg5 = child_thread_id,
+          },
+          {
+            .debugid = DBG_FUNC_END | HFS_update,
+            .arg5 = child_thread_id,
+          },
+          {
+            .debugid = DBG_FUNC_START | VFS_LOOKUP,
+            .arg1 = vnode_id,
+            .arg2 = str_to_ptr("/a_littl"),
+            .arg3 = str_to_ptr("e_path./"),
+            .arg4 = str_to_ptr("yoyoyoyo"),
+            .arg5 = child_thread_id,
+          },
+          {
+            .debugid = DBG_FUNC_END | VFS_LOOKUP,
+            .arg1 = str_to_ptr(".txt"),
+            .arg2 = 0,
+            .arg3 = 0,
+            .arg4 = 0,
+            .arg5 = child_thread_id,
+          },
+          {
+            .debugid = DBG_FUNC_END | BSC_access,
+            .arg1 = 0,  // Indicates success
+            .arg5 = child_thread_id,
+          } });
+
+      delegate.popNewThreadEvent();
+      auto evt = delegate.popFileEvent();
+      CHECK(evt.thread_id == child_thread_id);
+      CHECK(evt.type == EventType::READ);
+      CHECK(evt.at_fd == AT_FDCWD);
+      CHECK(evt.path == "/a_little_path./yoyoyoyo.txt");
+    }
   }
 }
 

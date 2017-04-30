@@ -95,7 +95,7 @@ bool Tracer::parseBuffer(const kd_buf *begin, const kd_buf *end) {
       } else {
         enterEvent(thread, type, kd);
       }
-    } else if (should_process_syscall(type)) {
+    } else {
       exitEvent(
           thread, type, kd.arg1, kd.arg2, kd.arg3, kd.arg4, type);
     }
@@ -140,7 +140,12 @@ void Tracer::processVfsLookup(const kd_buf &kd) {
   uintptr_t thread = kd.arg5;
 
   auto *ei = _ei_map.findLast(thread);
-  if (!ei) {
+  if (!ei || ei->in_hfs_update) {
+    // If no event was found there is nothing to do. If we are in an HFS_update,
+    // ignore the path. HFS_update events can happen in the middle of other
+    // syscalls, and HFS_update events can emit paths that are unrelated to the
+    // syscall that is in progress of being processed, which messes things up
+    // unless they are explicitly ignored.
     return;
   }
 
@@ -200,7 +205,11 @@ void Tracer::processVfsLookup(const kd_buf &kd) {
 }
 
 void Tracer::enterEvent(uintptr_t thread, int type, const kd_buf &kd) {
-  if (should_process_syscall(type)) {
+  if (type == HFS_update) {
+    if (auto *ei = _ei_map.findLast(thread)) {
+      ei->in_hfs_update = true;
+    }
+  } else if (should_process_syscall(type)) {
     auto &ei = _ei_map.addEvent(thread, type);
 
     ei.arg1 = kd.arg1;
@@ -218,19 +227,29 @@ void Tracer::exitEvent(
     uintptr_t arg3,
     uintptr_t arg4,
     int syscall) {
-  if (auto *ei = _ei_map.find(thread, type)) {
-    notifyDelegate(
-        ei,
-        thread,
-        type,
-        arg1,
-        arg2,
-        arg3,
-        arg4,
-        syscall,
-        (char *)&ei->lookups[0].pathname[0],
-        (char *)&ei->lookups[1].pathname[0]);
-    _ei_map.erase(thread, type);
+  if (type == HFS_update) {
+    if (auto *ei = _ei_map.findLast(thread)) {
+      ei->in_hfs_update = false;
+    }
+  } else if (should_process_syscall(type)) {
+    if (auto *ei = _ei_map.find(thread, type)) {
+      if (type == HFS_update) {
+        ei->in_hfs_update = false;
+      } else {
+        notifyDelegate(
+            ei,
+            thread,
+            type,
+            arg1,
+            arg2,
+            arg3,
+            arg4,
+            syscall,
+            (char *)&ei->lookups[0].pathname[0],
+            (char *)&ei->lookups[1].pathname[0]);
+        _ei_map.erase(thread, type);
+      }
+    }
   }
 }
 

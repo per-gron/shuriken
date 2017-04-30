@@ -46,6 +46,7 @@ struct EventInfo {
   }
 
   uintptr_t child_thread = 0;
+  bool in_hfs_update = false;
   int pid = 0;
   int type = 0;
   int arg1 = 0;
