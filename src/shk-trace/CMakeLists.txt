@@ -66,6 +66,7 @@ add_executable(shktrace_test
   test/cwd_memo_test.cpp
   test/debug_capture_log_test.cpp
   test/event_consolidator_test.cpp
+  test/event_info_test.cpp
   test/file_descriptor_memo_test.cpp
   test/mach_port_test.cpp
   test/main.cpp
