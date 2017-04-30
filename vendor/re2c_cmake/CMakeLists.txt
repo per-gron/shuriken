@@ -3,60 +3,131 @@ set(RE2C_SRC ${RE2C_DIR}/src)
 
 add_executable(re2c
   ${RE2C_SRC}/codegen/bitmap.cc
+  ${RE2C_SRC}/codegen/bitmap.h
+  ${RE2C_SRC}/codegen/emit.h
   ${RE2C_SRC}/codegen/emit_action.cc
   ${RE2C_SRC}/codegen/emit_dfa.cc
-  ${RE2C_SRC}/codegen/label.cc
-  ${RE2C_SRC}/codegen/prepare_dfa.cc
+  ${RE2C_SRC}/codegen/go.h
   ${RE2C_SRC}/codegen/go_construct.cc
   ${RE2C_SRC}/codegen/go_destruct.cc
   ${RE2C_SRC}/codegen/go_emit.cc
   ${RE2C_SRC}/codegen/go_used_labels.cc
+  ${RE2C_SRC}/codegen/indent.h
   ${RE2C_SRC}/codegen/input_api.cc
+  ${RE2C_SRC}/codegen/input_api.h
+  ${RE2C_SRC}/codegen/label.cc
+  ${RE2C_SRC}/codegen/label.h
   ${RE2C_SRC}/codegen/output.cc
+  ${RE2C_SRC}/codegen/output.h
   ${RE2C_SRC}/codegen/print.cc
-  ${RE2C_SRC}/codegen/scc.cc
-  ${RE2C_SRC}/codegen/skeleton/control_flow.cc
-  ${RE2C_SRC}/codegen/skeleton/generate_code.cc
-  ${RE2C_SRC}/codegen/skeleton/generate_data.cc
-  ${RE2C_SRC}/codegen/skeleton/match_empty.cc
-  ${RE2C_SRC}/codegen/skeleton/maxlen.cc
-  ${RE2C_SRC}/codegen/skeleton/skeleton.cc
-  ${RE2C_SRC}/codegen/skeleton/unreachable.cc
-  ${RE2C_SRC}/codegen/skeleton/way.cc
+  ${RE2C_SRC}/codegen/print.h
   ${RE2C_SRC}/conf/msg.cc
+  ${RE2C_SRC}/conf/msg.h
   ${RE2C_SRC}/conf/opt.cc
+  ${RE2C_SRC}/conf/opt.h
+  ${RE2C_SRC}/conf/parse_opts.re
   ${RE2C_SRC}/conf/warn.cc
-  ${RE2C_SRC}/ir/bytecode/bytecode.cc
-  ${RE2C_SRC}/ir/bytecode/ins.cc
-  ${RE2C_SRC}/ir/bytecode/charset.cc
-  ${RE2C_SRC}/ir/bytecode/split.cc
-  ${RE2C_SRC}/ir/bytecode/compile.cc
-  ${RE2C_SRC}/ir/bytecode/calc_size.cc
-  ${RE2C_SRC}/ir/dfa/dfa.cc
+  ${RE2C_SRC}/conf/warn.h
+  ${RE2C_SRC}/globals.h
+  ${RE2C_SRC}/ir/adfa
+  ${RE2C_SRC}/ir/adfa/action.h
+  ${RE2C_SRC}/ir/adfa/adfa.cc
+  ${RE2C_SRC}/ir/adfa/adfa.h
+  ${RE2C_SRC}/ir/adfa/prepare.cc
+  ${RE2C_SRC}/ir/compile.cc
+  ${RE2C_SRC}/ir/compile.h
+  ${RE2C_SRC}/ir/dfa/determinization.cc
+  ${RE2C_SRC}/ir/dfa/dfa.h
+  ${RE2C_SRC}/ir/dfa/fillpoints.cc
+  ${RE2C_SRC}/ir/dfa/minimization.cc
+  ${RE2C_SRC}/ir/nfa/calc_size.cc
+  ${RE2C_SRC}/ir/nfa/nfa.cc
+  ${RE2C_SRC}/ir/nfa/nfa.h
+  ${RE2C_SRC}/ir/nfa/split.cc
   ${RE2C_SRC}/ir/regexp/display.cc
+  ${RE2C_SRC}/ir/regexp/empty_class_policy.h
+  ${RE2C_SRC}/ir/regexp/encoding
+  ${RE2C_SRC}/ir/regexp/encoding/case.h
   ${RE2C_SRC}/ir/regexp/encoding/enc.cc
+  ${RE2C_SRC}/ir/regexp/encoding/enc.h
   ${RE2C_SRC}/ir/regexp/encoding/range_suffix.cc
-  ${RE2C_SRC}/ir/regexp/encoding/utf8/utf8_regexp.cc
-  ${RE2C_SRC}/ir/regexp/encoding/utf8/utf8_range.cc
-  ${RE2C_SRC}/ir/regexp/encoding/utf8/utf8.cc
-  ${RE2C_SRC}/ir/regexp/encoding/utf16/utf16_regexp.cc
+  ${RE2C_SRC}/ir/regexp/encoding/range_suffix.h
+  ${RE2C_SRC}/ir/regexp/encoding/utf16
   ${RE2C_SRC}/ir/regexp/encoding/utf16/utf16.cc
+  ${RE2C_SRC}/ir/regexp/encoding/utf16/utf16.h
   ${RE2C_SRC}/ir/regexp/encoding/utf16/utf16_range.cc
+  ${RE2C_SRC}/ir/regexp/encoding/utf16/utf16_range.h
+  ${RE2C_SRC}/ir/regexp/encoding/utf16/utf16_regexp.cc
+  ${RE2C_SRC}/ir/regexp/encoding/utf16/utf16_regexp.h
+  ${RE2C_SRC}/ir/regexp/encoding/utf8
+  ${RE2C_SRC}/ir/regexp/encoding/utf8/utf8.cc
+  ${RE2C_SRC}/ir/regexp/encoding/utf8/utf8.h
+  ${RE2C_SRC}/ir/regexp/encoding/utf8/utf8_range.cc
+  ${RE2C_SRC}/ir/regexp/encoding/utf8/utf8_range.h
+  ${RE2C_SRC}/ir/regexp/encoding/utf8/utf8_regexp.cc
+  ${RE2C_SRC}/ir/regexp/encoding/utf8/utf8_regexp.h
   ${RE2C_SRC}/ir/regexp/fixed_length.cc
   ${RE2C_SRC}/ir/regexp/regexp.cc
+  ${RE2C_SRC}/ir/regexp/regexp.h
+  ${RE2C_SRC}/ir/regexp/regexp_alt.h
+  ${RE2C_SRC}/ir/regexp/regexp_cat.h
+  ${RE2C_SRC}/ir/regexp/regexp_close.h
+  ${RE2C_SRC}/ir/regexp/regexp_match.h
+  ${RE2C_SRC}/ir/regexp/regexp_null.h
+  ${RE2C_SRC}/ir/regexp/regexp_rule.h
   ${RE2C_SRC}/ir/rule_rank.cc
+  ${RE2C_SRC}/ir/rule_rank.h
+  ${RE2C_SRC}/ir/skeleton/control_flow.cc
+  ${RE2C_SRC}/ir/skeleton/generate_code.cc
+  ${RE2C_SRC}/ir/skeleton/generate_data.cc
+  ${RE2C_SRC}/ir/skeleton/match_empty.cc
+  ${RE2C_SRC}/ir/skeleton/maxlen.cc
+  ${RE2C_SRC}/ir/skeleton/path.h
+  ${RE2C_SRC}/ir/skeleton/skeleton.cc
+  ${RE2C_SRC}/ir/skeleton/skeleton.h
+  ${RE2C_SRC}/ir/skeleton/unreachable.cc
+  ${RE2C_SRC}/ir/skeleton/way.cc
+  ${RE2C_SRC}/ir/skeleton/way.h
   ${RE2C_SRC}/main.cc
   ${RE2C_SRC}/parse/code.cc
+  ${RE2C_SRC}/parse/code.h
+  ${RE2C_SRC}/parse/extop.h
   ${RE2C_SRC}/parse/input.cc
+  ${RE2C_SRC}/parse/input.h
+  ${RE2C_SRC}/parse/lex.re
+  ${RE2C_SRC}/parse/lex_conf.re
+  ${RE2C_SRC}/parse/loc.h
+  ${RE2C_SRC}/parse/parser.h
+  ${RE2C_SRC}/parse/parser.ypp
+  ${RE2C_SRC}/parse/rules.h
   ${RE2C_SRC}/parse/scanner.cc
+  ${RE2C_SRC}/parse/scanner.h
+  ${RE2C_SRC}/parse/spec.h
   ${RE2C_SRC}/parse/unescape.cc
-  ${RE2C_SRC}/util/s_to_n32_unsafe.cc
+  ${RE2C_SRC}/parse/unescape.h
+  ${RE2C_SRC}/util/allocate.h
+  ${RE2C_SRC}/util/attribute.h
+  ${RE2C_SRC}/util/c99_stdint.h
+  ${RE2C_SRC}/util/counter.h
+  ${RE2C_SRC}/util/forbid_copy.h
+  ${RE2C_SRC}/util/free_list.h
+  ${RE2C_SRC}/util/local_increment.h
+  ${RE2C_SRC}/util/ord_hash_set.h
   ${RE2C_SRC}/util/range.cc
+  ${RE2C_SRC}/util/range.h
+  ${RE2C_SRC}/util/s_to_n32_unsafe.cc
+  ${RE2C_SRC}/util/s_to_n32_unsafe.h
+  ${RE2C_SRC}/util/smart_ptr.h
+  ${RE2C_SRC}/util/static_assert.h
+  ${RE2C_SRC}/util/u32lim.h
+  ${RE2C_SRC}/util/uniq_vector.h
 
+  ${RE2C_DIR}/bootstrap/src/conf/help.cc
+  ${RE2C_DIR}/bootstrap/src/conf/parse_opts.cc
   ${RE2C_DIR}/bootstrap/src/parse/lex.cc
   ${RE2C_DIR}/bootstrap/src/parse/lex_conf.cc
-  ${RE2C_DIR}/bootstrap/src/conf/parse_opts.cc
-  ${RE2C_DIR}/bootstrap/src/parse/parser.cc)
+  ${RE2C_DIR}/bootstrap/src/parse/parser.cc
+  ${RE2C_DIR}/bootstrap/src/parse/y.tab.h)
 
 
 target_include_directories(re2c PRIVATE ${RE2C_DIR})

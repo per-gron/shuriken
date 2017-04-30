@@ -43,5 +43,5 @@ the Apache License version 2.0.
                              ------------------
 
 
-This product bundles the re2c parser generator. It is released under the public
+This product bundles the re2c lexer generator. It is released under the public
 domain.
