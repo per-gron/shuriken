@@ -1,0 +1,47 @@
+Shuriken
+Copyright 2015-2017 Per Grön
+
+This product includes software developed by Per Grön. That code is released
+under the Apache License version 2.0.
+
+
+                             ------------------
+
+
+This software contains code derived from the Ninja build tool from Google.
+That code is released under the Apache License version 2.0.
+
+                             ------------------
+
+
+For Mac OS X builds, this software contains code derived from the fs_usage.c
+command line utility from Apple Inc. That code is released under the Apple
+Public Source License.
+
+
+                             ------------------
+
+
+This product bundles the blake2 hash algorithm. It is released under Creative
+Commons CC0 1.0 Universal.
+
+
+                             ------------------
+
+
+This product bundles the Catch unit testing framework. It is released under the
+Boost Software License version 1.0.
+
+
+                             ------------------
+
+
+This product bundles the Flatbuffer format and compiler. It is released under
+the Apache License version 2.0.
+
+
+                             ------------------
+
+
+This product bundles the re2c parser generator. It is released under the public
+domain.
