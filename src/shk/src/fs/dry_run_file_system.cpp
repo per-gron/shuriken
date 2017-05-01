@@ -53,11 +53,10 @@ class DryRunFileSystem : public FileSystem {
     return true;
   }
 
-  bool rename(
+  USE_RESULT IoError rename(
       nt_string_view old_path,
-      nt_string_view new_path,
-      std::string *err) throw(IoError) override {
-    return true;
+      nt_string_view new_path) override {
+    return IoError::success();
   }
 
   USE_RESULT IoError truncate(nt_string_view path, size_t size) override {

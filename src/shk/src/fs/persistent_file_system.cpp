@@ -189,14 +189,12 @@ class PersistentFileSystem : public FileSystem {
         err);
   }
 
-  bool rename(
+  USE_RESULT IoError rename(
       nt_string_view old_path,
-      nt_string_view new_path,
-      std::string *err) override {
-    return checkForMinusOne(::rename(
+      nt_string_view new_path) override {
+    return checkForMinusOneIoError(::rename(
         NullterminatedString(old_path).c_str(),
-        NullterminatedString(new_path).c_str()),
-        err);
+        NullterminatedString(new_path).c_str()));
   }
 
   USE_RESULT IoError truncate(nt_string_view path, size_t size) override {

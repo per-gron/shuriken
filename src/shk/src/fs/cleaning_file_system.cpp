@@ -70,11 +70,10 @@ bool CleaningFileSystem::symlink(
   return _inner.symlink(target, source, err);
 }
 
-bool CleaningFileSystem::rename(
+USE_RESULT IoError CleaningFileSystem::rename(
       nt_string_view old_path,
-      nt_string_view new_path,
-      std::string *err) {
-  return _inner.rename(old_path, new_path, err);
+      nt_string_view new_path) {
+  return _inner.rename(old_path, new_path);
 }
 
 USE_RESULT IoError CleaningFileSystem::truncate(

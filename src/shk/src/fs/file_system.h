@@ -133,10 +133,9 @@ class FileSystem {
   virtual void unlink(nt_string_view path) throw(IoError) = 0;
   virtual bool symlink(
       nt_string_view target, nt_string_view source, std::string *err) = 0;
-  virtual bool rename(
+  virtual USE_RESULT IoError rename(
       nt_string_view old_path,
-      nt_string_view new_path,
-      std::string *err) = 0;
+      nt_string_view new_path) = 0;
   virtual USE_RESULT IoError truncate(nt_string_view path, size_t size) = 0;
   /**
    * Return the files, directories and other entries in a given directory. Fails

@@ -78,11 +78,10 @@ class FailingStatFileSystem : public FileSystem {
       nt_string_view target, nt_string_view source, std::string *err) override {
     return _fs.symlink(target, source, err);
   }
-  bool rename(
+  USE_RESULT IoError rename(
       nt_string_view old_path,
-      nt_string_view new_path,
-      std::string *err) override {
-    return _fs.rename(old_path, new_path, err);
+      nt_string_view new_path) override {
+    return _fs.rename(old_path, new_path);
   }
   USE_RESULT IoError truncate(nt_string_view path, size_t size) override {
     return _fs.truncate(path, size);

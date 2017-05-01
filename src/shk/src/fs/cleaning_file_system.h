@@ -52,10 +52,9 @@ class CleaningFileSystem : public FileSystem {
   bool symlink(
       nt_string_view target, nt_string_view source, std::string *err) override;
 
-  bool rename(
+  USE_RESULT IoError rename(
       nt_string_view old_path,
-      nt_string_view new_path,
-      std::string *err) override;
+      nt_string_view new_path) override;
 
   USE_RESULT IoError truncate(nt_string_view path, size_t size) override;
 

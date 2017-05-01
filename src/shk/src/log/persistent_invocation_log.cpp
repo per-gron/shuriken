@@ -785,8 +785,8 @@ InvocationLogParseResult::ParseData recompactPersistentInvocationLog(
         entry.second.input_files);
   }
 
-  if (!file_system.rename(tmp_path, log_path, &err)) {
-    throw IoError(err, 0);
+  if (auto err = file_system.rename(tmp_path, log_path)) {
+    throw err;
   }
 
   return log.extractParseData();
