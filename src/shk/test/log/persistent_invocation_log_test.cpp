@@ -228,7 +228,7 @@ void warnOnTruncatedInput(const Callback &callback) {
     // Truncate byte by byte until only the signature is left. This should
     // never crash or fail, only warn.
 
-    fs.unlink("file");
+    CHECK(fs.unlink("file") == IoError::success());
     const auto persistent_log = openPersistentInvocationLog(
         fs, [] { return 0; }, "file", InvocationLogParseResult::ParseData());
     callback(*persistent_log, fs);

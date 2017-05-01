@@ -63,12 +63,9 @@ class TemporaryFile {
   }
 
   ~TemporaryFile() {
-    try {
-      _file_system.unlink(path);
-    } catch (const IoError &) {
-      // Maybe the file is already gone, or was never created. We don't care
-      // enough to make sure to clean up this temporary file.
-    }
+    auto ignored_result = _file_system.unlink(path);
+    // Maybe the file is already gone, or was never created. We don't care
+    // enough to make sure to clean up this temporary file.
   }
 
   std::string path;

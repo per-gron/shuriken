@@ -59,10 +59,10 @@ void CleaningFileSystem::rmdir(nt_string_view path)
   _removed_count++;
 }
 
-void CleaningFileSystem::unlink(nt_string_view path)
-    throw(IoError) {
-  _inner.unlink(path);
+USE_RESULT IoError CleaningFileSystem::unlink(nt_string_view path) {
+  auto result = _inner.unlink(path);
   _removed_count++;
+  return result;
 }
 
 USE_RESULT IoError CleaningFileSystem::symlink(

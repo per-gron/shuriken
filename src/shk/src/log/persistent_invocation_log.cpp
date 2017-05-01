@@ -655,7 +655,9 @@ InvocationLogParseResult parsePersistentInvocationLog(
   if (!parseInvocationLogSignature(&view, &err)) {
     // Parsing of log signature failed. Remove the file so that the error goes
     // away.
-    file_system.unlink(log_path);
+    if (auto error = file_system.unlink(log_path)) {
+      throw error;
+    }
 
     result.warning = err;
     return result;

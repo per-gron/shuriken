@@ -80,7 +80,7 @@ TEST_CASE("FileSystem") {
     CHECK(err_1 == "");
     CHECK(err_2 == "");
 
-    fs.unlink("d/e");
+    CHECK(fs.unlink("d/e") == IoError::success());
     CHECK(hash_with_one_dir == fs.hashDir("d", &err_1));
     CHECK(err_1 == "");
 

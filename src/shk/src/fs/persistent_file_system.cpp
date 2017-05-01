@@ -46,16 +46,6 @@ class PersistentFileSystem : public FileSystem {
   }
 
   template<typename T>
-  static bool checkForMinusOne(T result, std::string *err) {
-    if (result == -1) {
-      *err = strerror(errno);
-      return false;
-    } else {
-      return true;
-    }
-  }
-
-  template<typename T>
   static IoError checkForMinusOneIoError(T result) {
     if (result == -1) {
       return IoError(strerror(errno), errno);
@@ -176,8 +166,9 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::rmdir(NullterminatedString(path).c_str()));
   }
 
-  void unlink(nt_string_view path) throw(IoError) override {
-    checkForMinusOne(::unlink(NullterminatedString(path).c_str()));
+  USE_RESULT IoError unlink(nt_string_view path) override {
+    return checkForMinusOneIoError(
+        ::unlink(NullterminatedString(path).c_str()));
   }
 
   USE_RESULT IoError symlink(

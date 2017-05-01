@@ -77,7 +77,7 @@ TEST_CASE("PersistentFileSystem") {
       CHECK(success);
       CHECK(path != "");
       CHECK(err == "");
-      fs->unlink(path);
+      CHECK(fs->unlink(path) == IoError::success());
       const auto after = numOpenFds();
       CHECK(before == after);
     }

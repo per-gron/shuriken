@@ -434,9 +434,7 @@ void deleteBuildProduct(
     const Invocations &invocations,
     InvocationLog &invocation_log,
     nt_string_view path) throw(IoError) {
-  try {
-    file_system.unlink(path);
-  } catch (const IoError &error) {
+  if (auto error = file_system.unlink(path)) {
     if (error.code != ENOENT) {
       throw IoError(
           std::string("Failed to unlink build product ") +

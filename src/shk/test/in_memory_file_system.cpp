@@ -105,19 +105,19 @@ void InMemoryFileSystem::rmdir(nt_string_view path) throw(IoError) {
   }
 }
 
-void InMemoryFileSystem::unlink(nt_string_view path) throw(IoError) {
+USE_RESULT IoError InMemoryFileSystem::unlink(nt_string_view path) {
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
-    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+    return IoError("A component of the path prefix is not a directory", ENOTDIR);
   case EntryType::FILE_DOES_NOT_EXIST:
-    throw IoError("The named file does not exist", ENOENT);
+    return IoError("The named file does not exist", ENOENT);
   case EntryType::DIRECTORY:
-    throw IoError("The named file is a directory", EPERM);
+    return IoError("The named file is a directory", EPERM);
   case EntryType::FILE:
     l.directory->files.erase(l.basename);
     l.directory->mtime = _clock();
-    break;
+    return IoError::success();
   }
 }
 
@@ -211,7 +211,9 @@ USE_RESULT IoError InMemoryFileSystem::rename(
       return IoError("The new file is a directory", EISDIR);
     case EntryType::FILE:
       if (new_path != old_path) {
-        unlink(new_path);
+        if (auto error = unlink(new_path)) {
+          return error;
+        }
       }
       [[clang::fallthrough]];
     case EntryType::FILE_DOES_NOT_EXIST:
@@ -222,7 +224,9 @@ USE_RESULT IoError InMemoryFileSystem::rename(
       if (!success) {
         return IoError(err, 0);
       }
-      unlink(old_path);
+      if (auto error = unlink(old_path)) {
+        return error;
+      }
       if (!writeFile(new_path, contents, &err)) {
         return IoError(err, 0);
       }

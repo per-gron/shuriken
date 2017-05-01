@@ -548,7 +548,7 @@ TEST_CASE("Fingerprint") {
       Fingerprint initial_fp;
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
-      fs.unlink("a");
+      CHECK(fs.unlink("a") == IoError::success());
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       CHECK(!result.should_update);

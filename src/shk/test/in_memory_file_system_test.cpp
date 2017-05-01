@@ -107,7 +107,7 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.stat("d").timestamps.ctime == 124);
 
     now++;
-    fs.unlink("d/f.txt");
+    CHECK(fs.unlink("d/f.txt") == IoError::success());
     CHECK(fs.stat("d").timestamps.mtime == 125);
     CHECK(fs.stat("d").timestamps.ctime == 125);
 
@@ -152,13 +152,13 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("unlink directory") {
     fs.mkdir(abc);
-    CHECK_THROWS_AS(fs.unlink(abc), IoError);
+    CHECK(fs.unlink(abc) != IoError::success());
   }
 
   SECTION("unlink") {
     fs.open(abc, "w");
 
-    fs.unlink(abc);
+    CHECK(fs.unlink(abc) == IoError::success());
     CHECK(fs.stat(abc).result == ENOENT);
   }
 

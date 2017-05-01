@@ -1314,7 +1314,7 @@ TEST_CASE("CompiledManifest") {
           parse_compiled_manifest("manifest.compiled"),
           "cmd_before");
 
-      fs.unlink("manifest.other");
+      CHECK(fs.unlink("manifest.other") == IoError::success());
 
       parse_and_compile_fail("manifest", "manifest.compiled");
     }

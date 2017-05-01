@@ -100,8 +100,8 @@ class FailingMkstempFileSystem : public FileSystem {
   void rmdir(nt_string_view path) throw(IoError) override {
     _fs.rmdir(path);
   }
-  void unlink(nt_string_view path) throw(IoError) override {
-    _fs.unlink(path);
+  USE_RESULT IoError unlink(nt_string_view path) override {
+    return _fs.unlink(path);
   }
   USE_RESULT IoError symlink(
       nt_string_view target,
@@ -163,8 +163,8 @@ class FailingUnlinkFileSystem : public FileSystem {
   void rmdir(nt_string_view path) throw(IoError) override {
     _fs.rmdir(path);
   }
-  void unlink(nt_string_view path) throw(IoError) override {
-    throw IoError("Test-induced unlink error", 0);
+  USE_RESULT IoError unlink(nt_string_view path) override {
+    return IoError("Test-induced unlink error", 0);
   }
   USE_RESULT IoError symlink(
       nt_string_view target,

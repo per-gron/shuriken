@@ -64,7 +64,7 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("unlink") {
-    fs->unlink("f");
+    CHECK(fs->unlink("f") == IoError::success());
     CHECK(inner_fs.stat("f").result != ENOENT);
   }
 

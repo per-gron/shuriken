@@ -130,7 +130,7 @@ class FileSystem {
   virtual Stat lstat(nt_string_view path) = 0;
   virtual void mkdir(nt_string_view path) throw(IoError) = 0;
   virtual void rmdir(nt_string_view path) throw(IoError) = 0;
-  virtual void unlink(nt_string_view path) throw(IoError) = 0;
+  virtual USE_RESULT IoError unlink(nt_string_view path) = 0;
   virtual USE_RESULT IoError symlink(
       nt_string_view target, nt_string_view source) = 0;
   virtual USE_RESULT IoError rename(

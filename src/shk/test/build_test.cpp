@@ -1293,7 +1293,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("step with missing file") {
-      fs.unlink("file");
+      CHECK(fs.unlink("file") == IoError::success());
 
       addOutput(invocations, entry, "file", fingerprint);
 
@@ -2118,7 +2118,7 @@ TEST_CASE("Build") {
             "build out: cmd in\n";
         writeFile(fs, "in", "before");
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        fs.unlink("in");
+        CHECK(fs.unlink("in") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::FAILURE);
       }
 
@@ -2168,7 +2168,7 @@ TEST_CASE("Build") {
             "  command = " + cmd + "\n"
             "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        fs.unlink("out");
+        CHECK(fs.unlink("out") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
@@ -2195,7 +2195,7 @@ TEST_CASE("Build") {
         CHECK(dummy_runner.getCommandsRun() == 3);
         CHECK(latest_build_output.size() == 3);
         CHECK(build_status_started_steps == 3);
-        fs.unlink("out1");
+        CHECK(fs.unlink("out1") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd1);
         dummy_runner.checkCommand(fs, cmd2);
@@ -2236,8 +2236,8 @@ TEST_CASE("Build") {
         CHECK(dummy_runner.getCommandsRun() == 4);
         CHECK(latest_build_output.size() == 4);
         CHECK(build_status_started_steps == 4);
-        fs.unlink("out1");
-        fs.unlink("out4");
+        CHECK(fs.unlink("out1") == IoError::success());
+        CHECK(fs.unlink("out4") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd1);
         dummy_runner.checkCommand(fs, cmd2);
@@ -2262,7 +2262,7 @@ TEST_CASE("Build") {
             "build out: cmd\n"
             "build root: phony out\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        fs.unlink("out");
+        CHECK(fs.unlink("out") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }

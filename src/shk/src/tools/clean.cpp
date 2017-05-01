@@ -93,14 +93,13 @@ int toolClean(int argc, char *argv[], const ToolParams &params) {
 
   if (specified_steps.empty()) {
     // Clean up the invocation log only if we're cleaning everything
-    try {
-      // Use cleaning_file_system to make sure the file is counted
-      cleaning_file_system.unlink(params.invocation_log_path);
-    } catch (const IoError &io_error) {
-      if (io_error.code == ENOENT) {
+
+    // Use cleaning_file_system to make sure the file is counted
+    if (auto error = cleaning_file_system.unlink(params.invocation_log_path)) {
+      if (error.code == ENOENT) {
         // We don't care
       } else {
-        printf("shk: failed to clean invocation log: %s\n", io_error.what());
+        printf("shk: failed to clean invocation log: %s\n", error.what());
         return 1;
       }
     }
