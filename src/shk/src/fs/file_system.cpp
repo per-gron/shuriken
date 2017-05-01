@@ -83,7 +83,9 @@ USE_RESULT IoError FileSystem::writeFile(
   try {
     const auto stream = open(path, "wb");
     const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
-    stream->write(data, 1, contents.size());
+    if (auto error = stream->write(data, 1, contents.size())) {
+      return error;
+    }
   } catch (const IoError &io_error) {
     return io_error;
   }

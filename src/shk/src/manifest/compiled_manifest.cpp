@@ -645,16 +645,22 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
   try {
     const auto stream = file_system.open(compiled_manifest_path, "wb");
     const auto version = flatbuffers::EndianScalar(kCompiledManifestVersion);
-    stream->write(
-        reinterpret_cast<const uint8_t *>(&version),
-        1,
-        sizeof(version));
-    stream->write(
-        reinterpret_cast<const uint8_t *>(buffer_view.data()),
-        1,
-        buffer_view.size());
-  } catch (const IoError &io_error) {
-    *err = std::string("failed to write compiled manifest: ") + io_error.what();
+    if (auto error = stream->write(
+            reinterpret_cast<const uint8_t *>(&version),
+            1,
+            sizeof(version))) {
+      *err = std::string("failed to write compiled manifest: ") + error.what();
+      return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    }
+    if (auto error = stream->write(
+            reinterpret_cast<const uint8_t *>(buffer_view.data()),
+            1,
+            buffer_view.size())) {
+      *err = std::string("failed to write compiled manifest: ") + error.what();
+      return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    }
+  } catch (const IoError &error) {
+    *err = std::string("failed to write compiled manifest: ") + error.what();
     return std::make_pair(Optional<CompiledManifest>(), nullptr);
   }
 

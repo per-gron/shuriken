@@ -261,14 +261,18 @@ void writeFileWithHeader(
     uint32_t version) {
   const auto stream = fs.open(file, "w");
   const std::string kFileSignature = "invocations:";
-  stream->write(
-        reinterpret_cast<const uint8_t *>(kFileSignature.data()),
-        kFileSignature.size(),
-        1);
-  stream->write(
-        reinterpret_cast<const uint8_t *>(&version),
-        sizeof(version),
-        1);
+  CHECK(
+      stream->write(
+          reinterpret_cast<const uint8_t *>(kFileSignature.data()),
+          kFileSignature.size(),
+          1) ==
+      IoError::success());
+  CHECK(
+      stream->write(
+          reinterpret_cast<const uint8_t *>(&version),
+          sizeof(version),
+          1) ==
+      IoError::success());
 }
 
 }  // anonymous namespace

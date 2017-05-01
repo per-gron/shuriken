@@ -64,7 +64,8 @@ class PersistentFileSystem : public FileSystem {
       fcntl(fileno(_f.get()), F_SETFD, FD_CLOEXEC);
     }
 
-    size_t read(uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override {
+    size_t read(
+        uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override {
       auto result = fread(ptr, size, nitems, _f.get());
       if (eof()) {
         return result;
@@ -76,11 +77,13 @@ class PersistentFileSystem : public FileSystem {
       }
     }
 
-    void write(const uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override {
+    USE_RESULT IoError write(
+        const uint8_t *ptr, size_t size, size_t nitems) override {
       fwrite(ptr, size, nitems, _f.get());
       if (ferror(_f.get()) != 0) {
-        throw IoError("Failed to write to stream", 0);
+        return IoError("Failed to write to stream", 0);
       }
+      return IoError::success();
     }
 
     long tell() const throw(IoError) override {

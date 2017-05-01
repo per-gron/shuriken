@@ -353,10 +353,12 @@ class PersistentInvocationLog : public InvocationLog {
 
   void writeHeader() {
     if (_stream->tell() == 0) {
-      _stream->write(
-          reinterpret_cast<const uint8_t *>(kFileSignature.data()),
-          kFileSignature.size(),
-          1);
+      if (auto error = _stream->write(
+              reinterpret_cast<const uint8_t *>(kFileSignature.data()),
+              kFileSignature.size(),
+              1)) {
+        throw error;
+      }
       // The file version implicitly serves as a byte order mark
       write(kFileVersion);
     }
@@ -364,7 +366,10 @@ class PersistentInvocationLog : public InvocationLog {
 
   template<typename T>
   void write(const T &val) {
-    _stream->write(reinterpret_cast<const uint8_t *>(&val), sizeof(val), 1);
+    if (auto error = _stream->write(
+            reinterpret_cast<const uint8_t *>(&val), sizeof(val), 1)) {
+      throw error;
+    }
   }
 
   void writeHeader(uint32_t size, InvocationLogEntryType type) {
@@ -386,13 +391,17 @@ class PersistentInvocationLog : public InvocationLog {
         path_size + padding_bytes,
         InvocationLogEntryType::PATH);
 
-    _stream->write(
-        reinterpret_cast<const uint8_t *>(path.data()), path_size, 1);
+    if (auto error = _stream->write(
+            reinterpret_cast<const uint8_t *>(path.data()), path_size, 1)) {
+      throw error;
+    }
 
     // Ensure that the output is 4-byte aligned.
     static const char *kNullBuf = "\0\0\0";
-    _stream->write(
-        reinterpret_cast<const uint8_t *>(kNullBuf), padding_bytes, 1);
+    if (auto error = _stream->write(
+            reinterpret_cast<const uint8_t *>(kNullBuf), padding_bytes, 1)) {
+      throw error;
+    }
 
     _path_entry_count++;
 
@@ -417,10 +426,12 @@ class PersistentInvocationLog : public InvocationLog {
         InvocationLogEntryType::CREATED_DIR_OR_FINGERPRINT);
 
     write(path_id);
-    _stream->write(
-        reinterpret_cast<const uint8_t *>(&fingerprint),
-        sizeof(fingerprint),
-        1);
+    if (auto error = _stream->write(
+            reinterpret_cast<const uint8_t *>(&fingerprint),
+            sizeof(fingerprint),
+            1)) {
+      throw error;
+    }
 
     return _fingerprint_entry_count++;
   }

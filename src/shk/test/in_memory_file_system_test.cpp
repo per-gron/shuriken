@@ -83,7 +83,7 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.stat("f").timestamps.ctime == 1234);
 
     now++;
-    stream->write(nullptr, 1, 0);
+    CHECK(stream->write(nullptr, 1, 0) == IoError::success());
     CHECK(fs.stat("f").timestamps.mtime == 1235);
     CHECK(fs.stat("f").timestamps.ctime == 1235);
   }
@@ -349,7 +349,10 @@ TEST_CASE("InMemoryFileSystem") {
     {
       const auto stream = fs.open(abc, "ab");
       const std::string et = "et";
-      stream->write(reinterpret_cast<const uint8_t *>(et.data()), et.size(), 1);
+      CHECK(
+          stream->write(
+              reinterpret_cast<const uint8_t *>(et.data()), et.size(), 1) ==
+          IoError::success());
     }
 
     CHECK(readFile(fs, abc) == "sweet");
@@ -359,7 +362,10 @@ TEST_CASE("InMemoryFileSystem") {
     {
       const auto stream = fs.open(abc, "ab");
       const std::string et = "et";
-      stream->write(reinterpret_cast<const uint8_t *>(et.data()), et.size(), 1);
+      CHECK(
+          stream->write(
+              reinterpret_cast<const uint8_t *>(et.data()), et.size(), 1) ==
+          IoError::success());
     }
 
     CHECK(readFile(fs, abc) == "et");

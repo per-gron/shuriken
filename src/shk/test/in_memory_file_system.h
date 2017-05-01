@@ -131,13 +131,13 @@ class InMemoryFileSystem : public FileSystem {
 
     size_t read(
         uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override;
-    void write(
-        const uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override;
+    USE_RESULT IoError write(
+        const uint8_t *ptr, size_t size, size_t nitems) override;
     long tell() const throw(IoError) override;
     bool eof() const override;
 
    private:
-    void checkNotEof() const throw(IoError);
+    USE_RESULT IoError checkNotEof() const;
 
     const std::function<time_t ()> _clock;
     const bool _read;

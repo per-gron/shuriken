@@ -106,8 +106,8 @@ class FileSystem {
      * Write ntitems objects, each size bytes long, obtaining them from the
      * location given to by ptr.
      */
-    virtual void write(
-        const uint8_t *ptr, size_t size, size_t nitems) throw(IoError) = 0;
+    virtual USE_RESULT IoError write(
+        const uint8_t *ptr, size_t size, size_t nitems) = 0;
     virtual long tell() const throw(IoError) = 0;
     virtual bool eof() const = 0;
   };

@@ -399,7 +399,9 @@ size_t InMemoryFileSystem::InMemoryFileStream::read(
   if (!_read) {
     throw IoError("Attempted read from a write only stream", 0);
   }
-  checkNotEof();
+  if (auto error = checkNotEof()) {
+    throw error;
+  }
 
   const auto bytes = size * nitems;
   const auto bytes_remaining = _file->contents.size() - _position;
@@ -420,12 +422,14 @@ size_t InMemoryFileSystem::InMemoryFileStream::read(
   return items_to_read;
 }
 
-void InMemoryFileSystem::InMemoryFileStream::write(
-  const uint8_t *ptr, size_t size, size_t nitems) throw(IoError) {
+USE_RESULT IoError InMemoryFileSystem::InMemoryFileStream::write(
+  const uint8_t *ptr, size_t size, size_t nitems) {
   if (!_write) {
-    throw IoError("Attempted write to a read only stream", 0);
+    return IoError("Attempted write to a read only stream", 0);
   }
-  checkNotEof();
+  if (auto error = checkNotEof()) {
+    return error;
+  }
 
   const auto bytes = size * nitems;
   const auto new_size = _position + bytes;
@@ -439,6 +443,8 @@ void InMemoryFileSystem::InMemoryFileStream::write(
   _position += bytes;
 
   _file->mtime = _clock();
+
+  return IoError::success();
 }
 
 long InMemoryFileSystem::InMemoryFileStream::tell() const throw(IoError) {
@@ -449,11 +455,10 @@ bool InMemoryFileSystem::InMemoryFileStream::eof() const {
   return _eof;
 }
 
-void InMemoryFileSystem::InMemoryFileStream::checkNotEof()
-    const throw(IoError) {
-  if (_eof) {
-    throw IoError("Attempted to write to file that is past eof", 0);
-  }
+USE_RESULT IoError InMemoryFileSystem::InMemoryFileStream::checkNotEof() const {
+  return _eof ?
+      IoError("Attempted to write to file that is past eof", 0) :
+      IoError::success();
 }
 
 InMemoryFileSystem::InMemoryMmap::InMemoryMmap(const std::shared_ptr<File> &file)
