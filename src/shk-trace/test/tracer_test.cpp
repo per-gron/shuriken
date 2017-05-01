@@ -81,21 +81,6 @@ TEST_CASE("Tracer") {
       CHECK(delegate.popTerminateThreadEvent() == parent_thread_id);
     }
 
-    SECTION("fail when creating thread with outstanding events") {
-      CHECK_THROWS(parse({
-          {
-            .debugid = DBG_FUNC_START | BSC_access,
-            .arg5 = child_thread_id,
-          },
-          {
-            .debugid = TRACE_DATA_NEWTHREAD,
-            .arg1 = child_thread_id,
-            .arg2 = pid,
-            .arg5 = parent_thread_id,
-          } }));
-      delegate.popNewThreadEvent();
-    }
-
     SECTION("fail when terminating thread with outstanding events") {
       CHECK_THROWS(parse({
           {
@@ -113,6 +98,31 @@ TEST_CASE("Tracer") {
             .arg5 = child_thread_id,
           } }));
       delegate.popNewThreadEvent();
+    }
+
+    SECTION("don't trace threads that were not requested to be traced") {
+      delegate.setNewThreadResponse(
+          Tracer::Delegate::NewThreadResponse::IGNORE);
+      parse({
+          {
+            .debugid = TRACE_DATA_NEWTHREAD,
+            .arg1 = child_thread_id,
+            .arg2 = pid,
+            .arg5 = parent_thread_id,
+          },
+          {
+            .debugid = DBG_FUNC_START | BSC_access,
+            .arg5 = child_thread_id,
+          },
+          {
+            // Terminating now would normally be invalid and cause an exception
+            // but because this should be an ignored thread, Tracer should not
+            // notice.
+            .debugid = BSC_thread_terminate,
+            .arg5 = child_thread_id,
+          } });
+      delegate.popNewThreadEvent();
+      delegate.popTerminateThreadEvent();
     }
   }
 

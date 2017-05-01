@@ -55,7 +55,10 @@ class EventInfoMap {
    */
   void terminateThread(uintptr_t thread);
 
-  EventInfo &addEvent(uintptr_t thread, int type);
+  /**
+   * Returns nullptr if the given thread is not being traced.
+   */
+  EventInfo *addEvent(uintptr_t thread, int type);
 
   /**
    * Returns nullptr when not found.

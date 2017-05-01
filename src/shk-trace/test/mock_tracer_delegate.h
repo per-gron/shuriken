@@ -111,7 +111,11 @@ class MockTracerDelegate : public Tracer::Delegate {
       uintptr_t child_thread_id) override {
     _new_thread_events.push_back(NewThreadEvent{
         pid, parent_thread_id, child_thread_id });
-    return NewThreadResponse::TRACE;
+    return _new_thread_response;
+  }
+
+  void setNewThreadResponse(NewThreadResponse response) {
+    _new_thread_response = response;
   }
 
   virtual TerminateThreadResponse terminateThread(
@@ -223,6 +227,7 @@ class MockTracerDelegate : public Tracer::Delegate {
 
   int _expect_termination = 0;
   int &_death_counter;
+  NewThreadResponse _new_thread_response = NewThreadResponse::TRACE;
   std::deque<FileEvent> _file_events;
   std::deque<NewThreadEvent> _new_thread_events;
   std::deque<uint64_t> _terminate_thread_events;

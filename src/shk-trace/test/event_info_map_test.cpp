@@ -22,10 +22,10 @@ TEST_CASE("EventInfoMap") {
   EventInfoMap map;
 
   map.newThread(1);
-  map.addEvent(1, 2).pid = 1337;
-  map.addEvent(1, 3).pid = 9001;
+  map.addEvent(1, 2)->pid = 1337;
+  map.addEvent(1, 3)->pid = 9001;
   map.newThread(2);
-  map.addEvent(2, 2).pid = 321;
+  map.addEvent(2, 2)->pid = 321;
 
   SECTION("find") {
     SECTION("old event") {
@@ -49,12 +49,18 @@ TEST_CASE("EventInfoMap") {
     }
   }
 
-  SECTION("overwrite") {
-    map.addEvent(1, 2);
+  SECTION("addEvent") {
+    SECTION("overwrite") {
+      CHECK(map.addEvent(1, 2) != nullptr);
 
-    const auto *evt = map.find(1, 2);
-    REQUIRE(evt);
-    CHECK(evt->pid == 0);
+      const auto *evt = map.find(1, 2);
+      REQUIRE(evt);
+      CHECK(evt->pid == 0);
+    }
+
+    SECTION("thread that is not traced") {
+      CHECK(map.addEvent(1000, 2) == nullptr);
+    }
   }
 
   SECTION("findLast") {

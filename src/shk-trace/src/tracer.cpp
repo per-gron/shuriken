@@ -169,12 +169,12 @@ void Tracer::processEventStart(uintptr_t thread, int type, const kd_buf &kd) {
       ei->in_hfs_update = true;
     }
   } else if (should_process_syscall(type)) {
-    auto &ei = _ei_map.addEvent(thread, type);
-
-    ei.arg1 = kd.arg1;
-    ei.arg2 = kd.arg2;
-    ei.arg3 = kd.arg3;
-    ei.arg4 = kd.arg4;
+    if (auto *ei = _ei_map.addEvent(thread, type)) {
+      ei->arg1 = kd.arg1;
+      ei->arg2 = kd.arg2;
+      ei->arg3 = kd.arg3;
+      ei->arg4 = kd.arg4;
+    }
   }
 }
 

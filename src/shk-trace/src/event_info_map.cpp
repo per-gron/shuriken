@@ -52,16 +52,15 @@ void EventInfoMap::terminateThread(uintptr_t thread) {
   _map.erase(map_iter);
 }
 
-EventInfo &EventInfoMap::addEvent(uintptr_t thread, int type) {
+EventInfo *EventInfoMap::addEvent(uintptr_t thread, int type) {
   auto map_iter = _map.find(thread);
   if (map_iter == _map.end()) {
-    map_iter = _map.emplace(thread, TracedThread()).first;
+    return nullptr;
   }
+
   auto &traced_thread = map_iter->second;
-
   traced_thread.last_event = type;
-
-  return traced_thread.events[type] = EventInfo();
+  return &(traced_thread.events[type] = EventInfo());
 }
 
 /**
