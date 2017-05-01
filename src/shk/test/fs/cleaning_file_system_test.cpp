@@ -84,6 +84,10 @@ TEST_CASE("CleaningFileSystem") {
       CHECK(fs.unlink("f") == IoError::success());
       CHECK(fs.getRemovedCount() == 1);
     }
+    SECTION("unlink fail") {
+      CHECK(fs.unlink("dir") != IoError::success());
+      CHECK(fs.getRemovedCount() == 0);
+    }
     SECTION("both") {
       CHECK(fs.rmdir("dir") == IoError::success());
       CHECK(fs.unlink("f") == IoError::success());

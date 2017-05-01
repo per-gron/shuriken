@@ -334,7 +334,7 @@ class IntegrationTest(unittest.TestCase):
 
   @with_testdir('tty')
   def test_tty(self):
-    os.system(shk)
+    run_cmd(shk)
     self.assertEqual(read_file('out'), run_cmd('tty'))
 
 if __name__ == '__main__':
