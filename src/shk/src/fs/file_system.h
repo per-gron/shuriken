@@ -100,8 +100,8 @@ class FileSystem {
      * Returns the number of objects that were read. May be less if the end of
      * file was reached.
      */
-    virtual size_t read(
-        uint8_t *ptr, size_t size, size_t nitems) throw(IoError) = 0;
+    virtual USE_RESULT std::pair<size_t, IoError> read(
+        uint8_t *ptr, size_t size, size_t nitems) = 0;
     /**
      * Write ntitems objects, each size bytes long, obtaining them from the
      * location given to by ptr.

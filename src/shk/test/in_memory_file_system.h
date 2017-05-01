@@ -129,8 +129,8 @@ class InMemoryFileSystem : public FileSystem {
         bool write,
         bool append);
 
-    size_t read(
-        uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override;
+    USE_RESULT std::pair<size_t, IoError> read(
+        uint8_t *ptr, size_t size, size_t nitems) override;
     USE_RESULT IoError write(
         const uint8_t *ptr, size_t size, size_t nitems) override;
     long tell() const throw(IoError) override;

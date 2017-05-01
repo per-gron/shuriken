@@ -64,16 +64,16 @@ class PersistentFileSystem : public FileSystem {
       fcntl(fileno(_f.get()), F_SETFD, FD_CLOEXEC);
     }
 
-    size_t read(
-        uint8_t *ptr, size_t size, size_t nitems) throw(IoError) override {
+    USE_RESULT std::pair<size_t, IoError> read(
+        uint8_t *ptr, size_t size, size_t nitems) override {
       auto result = fread(ptr, size, nitems, _f.get());
       if (eof()) {
-        return result;
+        return std::make_pair(result, IoError::success());
       } else if (ferror(_f.get()) != 0) {
-        throw IoError("Failed to read from stream", 0);
+        return std::make_pair(0, IoError("Failed to read from stream", 0));
       } else {
         assert(result == nitems);
-        return result;
+        return std::make_pair(result, IoError::success());
       }
     }
 

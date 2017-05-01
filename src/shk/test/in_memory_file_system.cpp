@@ -291,7 +291,12 @@ USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::readSymlink(
     const auto stream = open(/*expect_symlink:*/true, path, "r");
     uint8_t buf[1024];
     while (!stream->eof()) {
-      size_t read_bytes = stream->read(buf, 1, sizeof(buf));
+      size_t read_bytes;
+      IoError error;
+      std::tie(read_bytes, error) = stream->read(buf, 1, sizeof(buf));
+      if (error) {
+        return std::make_pair("", error);
+      }
       result.append(reinterpret_cast<char *>(buf), read_bytes);
     }
     return std::make_pair(std::move(result), IoError::success());
@@ -308,7 +313,12 @@ USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::readFile(
     const auto stream = open(path, "r");
     uint8_t buf[1024];
     while (!stream->eof()) {
-      size_t read_bytes = stream->read(buf, 1, sizeof(buf));
+      size_t read_bytes;
+      IoError error;
+      std::tie(read_bytes, error) = stream->read(buf, 1, sizeof(buf));
+      if (error) {
+        return std::make_pair("", error);
+      }
       result.append(reinterpret_cast<char *>(buf), read_bytes);
     }
     return std::make_pair(std::move(result), IoError::success());
@@ -393,13 +403,14 @@ InMemoryFileSystem::InMemoryFileStream::InMemoryFileStream(
       _position(append ? file->contents.size() : 0),
       _file(file) {}
 
-size_t InMemoryFileSystem::InMemoryFileStream::read(
-    uint8_t *ptr, size_t size, size_t nitems) throw(IoError) {
+USE_RESULT std::pair<size_t, IoError>
+InMemoryFileSystem::InMemoryFileStream::read(
+    uint8_t *ptr, size_t size, size_t nitems) {
   if (!_read) {
-    throw IoError("Attempted read from a write only stream", 0);
+    return { 0, IoError("Attempted read from a write only stream", 0) };
   }
   if (auto error = checkNotEof()) {
-    throw error;
+    return { 0, error };
   }
 
   const auto bytes = size * nitems;
@@ -418,7 +429,7 @@ size_t InMemoryFileSystem::InMemoryFileStream::read(
       reinterpret_cast<char *>(ptr));
   _position += bytes_to_read;
 
-  return items_to_read;
+  return { items_to_read, IoError::success() };
 }
 
 USE_RESULT IoError InMemoryFileSystem::InMemoryFileStream::write(
