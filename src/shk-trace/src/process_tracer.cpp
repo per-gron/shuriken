@@ -23,19 +23,22 @@ void ProcessTracer::traceProcess(
   _to_be_traced.emplace(pid, ToBeTraced{ root_thread_id, std::move(delegate) });
 }
 
-void ProcessTracer::newThread(
+Tracer::Delegate::NewThreadResponse ProcessTracer::newThread(
     pid_t pid,
     uintptr_t parent_thread_id,
     uintptr_t child_thread_id) {
   if (Ancestor ancestor = findAncestor(parent_thread_id)) {
     // This is a child thread of an already traced thread.
-    bool success = _ancestor_threads.emplace(child_thread_id, ancestor).second;
+    const bool success = _ancestor_threads.emplace(child_thread_id, ancestor).second;
     if (!success) {
       throw std::runtime_error(
           "Created already existing thread. This should not happen.");
     }
+    // Ignore the return value. We are deciding right here that this thread
+    // should be traced.
     ancestor.delegate->newThread(pid, parent_thread_id, child_thread_id);
-    return;
+
+    return NewThreadResponse::TRACE;
   }
 
   auto to_be_traced_it = _to_be_traced.find(pid);
@@ -46,6 +49,7 @@ void ProcessTracer::newThread(
       // This is the thread creation event for the root thread of the process
       // to be traced. This is the thread that will wait for tracing to finish.
       // If we start tracing this one, tracing will deadlock.
+      return NewThreadResponse::IGNORE;
     } else if (parent_thread_id != to_be_traced.root_thread_id) {
       // The parent thread of the spawned thread is not the root thread. This
       // means that it is for sure not the thread that this trace request
@@ -54,6 +58,7 @@ void ProcessTracer::newThread(
       // This case can be reached when pids get reused quickly and a process
       // makes a trace request while the tracing server (this process) is still
       // processing events from the old process. I think.
+      return NewThreadResponse::IGNORE;
     } else {
       auto &delegate = *to_be_traced.delegate;
       _traced_threads.emplace(
@@ -61,9 +66,15 @@ void ProcessTracer::newThread(
       _ancestor_threads.emplace(
           child_thread_id, Ancestor(child_thread_id, &delegate));
       _to_be_traced.erase(to_be_traced_it);
+
+      // Ignore the return value. We are deciding right here that this thread
+      // should be traced.
       delegate.newThread(pid, parent_thread_id, child_thread_id);
+      return NewThreadResponse::TRACE;
     }
   }
+
+  return NewThreadResponse::IGNORE;
 }
 
 Tracer::Delegate::TerminateThreadResponse ProcessTracer::terminateThread(

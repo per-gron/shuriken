@@ -44,7 +44,7 @@ class ProcessTracer : public Tracer::Delegate {
       uintptr_t root_thread_id,
       std::unique_ptr<Tracer::Delegate> &&delegate);
 
-  virtual void newThread(
+  virtual NewThreadResponse newThread(
       pid_t pid,
       uintptr_t parent_thread_id,
       uintptr_t child_thread_id) override;

@@ -25,6 +25,8 @@ namespace shk {
 
 TEST_CASE("ProcessTracer") {
   using TerminateThreadResponse = Tracer::Delegate::TerminateThreadResponse;
+  static constexpr auto TRACE = Tracer::Delegate::NewThreadResponse::TRACE;
+  static constexpr auto IGNORE = Tracer::Delegate::NewThreadResponse::IGNORE;
 
   ProcessTracer tracer;
 
@@ -34,7 +36,7 @@ TEST_CASE("ProcessTracer") {
       new MockTracerDelegate(dead_tracers));
   auto &delegate = *delegate_ptr;
   tracer.traceProcess(1, 2, std::move(delegate_ptr));
-  tracer.newThread(/*pid:*/1, 2, 3);
+  CHECK(tracer.newThread(/*pid:*/1, 2, 3) == TRACE);
   delegate.popNewThreadEvent();
 
   SECTION("EventForwarding") {
@@ -55,6 +57,10 @@ TEST_CASE("ProcessTracer") {
     SECTION("TerminateThreadEventForAncestor") {
       delegate.expectTermination();
       CHECK(tracer.terminateThread(3) == TerminateThreadResponse::OK);
+    }
+
+    SECTION("NewUnknownThread") {
+      CHECK(tracer.newThread(/*pid:*/1, 1000, 2000) == IGNORE);
     }
 
     SECTION("TerminateThreadEventForChildThread") {
@@ -91,14 +97,14 @@ TEST_CASE("ProcessTracer") {
       }
 
       SECTION("RootThreadTerminationShouldNotCountAsFinish") {
-        tracer.newThread(/*pid:*/2, 123, 4);
+        CHECK(tracer.newThread(/*pid:*/2, 123, 4) == IGNORE);
         CHECK(tracer.terminateThread(4) == TerminateThreadResponse::OK);
 
         // no call to delegate.expectTermination();
       }
 
       SECTION("NewThreadWithNonRootParentShouldNotStartTrace") {
-        tracer.newThread(/*pid:*/2, 100, 5);
+        CHECK(tracer.newThread(/*pid:*/2, 100, 5) == IGNORE);
       }
 
       SECTION("SecondProcessFinished") {
@@ -132,7 +138,7 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("NewThreadForCurrentTrace") {
-      tracer.newThread(/*pid:*/1, 3, 4);
+      CHECK(tracer.newThread(/*pid:*/1, 3, 4) == TRACE);
       auto event = delegate.popNewThreadEvent();
       CHECK(event.pid == 1);
       CHECK(event.parent_thread_id == 3);
@@ -237,14 +243,14 @@ TEST_CASE("ProcessTracer") {
 
   SECTION("DescendantFollowing") {
     SECTION("OneChild") {
-      tracer.newThread(/*pid:*/543, 3, 4);
+      CHECK(tracer.newThread(/*pid:*/543, 3, 4) == TRACE);
       delegate.popNewThreadEvent();
       tracer.fileEvent(4, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
     }
 
     SECTION("TwoGenerations") {
-      tracer.newThread(/*pid:*/543, 3, 4);
+      CHECK(tracer.newThread(/*pid:*/543, 3, 4) == TRACE);
       delegate.popNewThreadEvent();
       tracer.newThread(/*pid:*/543, 4, 5);
       delegate.popNewThreadEvent();
@@ -253,7 +259,7 @@ TEST_CASE("ProcessTracer") {
     }
 
     SECTION("TwoGenerationsIntermediaryDead") {
-      tracer.newThread(/*pid:*/543, 3, 4);
+      CHECK(tracer.newThread(/*pid:*/543, 3, 4) == TRACE);
       delegate.popNewThreadEvent();
       tracer.newThread(/*pid:*/543, 4, 5);
       delegate.popNewThreadEvent();
@@ -266,7 +272,7 @@ TEST_CASE("ProcessTracer") {
 
   SECTION("Termination") {
     SECTION("DontTraceThreadAfterItsTerminated") {
-      tracer.newThread(/*pid:*/543, 3, 4);
+      CHECK(tracer.newThread(/*pid:*/543, 3, 4) == TRACE);
       delegate.popNewThreadEvent();
       CHECK(tracer.terminateThread(4) == TerminateThreadResponse::OK);
       delegate.popTerminateThreadEvent();

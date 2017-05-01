@@ -105,12 +105,13 @@ class MockTracerDelegate : public Tracer::Delegate {
         FileEvent{ thread_id, type, at_fd, std::move(path) });
   }
 
-  virtual void newThread(
+  virtual NewThreadResponse newThread(
       pid_t pid,
       uintptr_t parent_thread_id,
       uintptr_t child_thread_id) override {
     _new_thread_events.push_back(NewThreadEvent{
         pid, parent_thread_id, child_thread_id });
+    return NewThreadResponse::TRACE;
   }
 
   virtual TerminateThreadResponse terminateThread(

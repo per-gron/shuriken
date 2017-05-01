@@ -67,7 +67,9 @@ TEST_CASE("PathResolver") {
   static const std::string kInitialPath = "/initial_path";
   PathResolver pr(
       std::move(delegate_ptr), kInitialPid, std::string(kInitialPath));
-  pr.newThread(kInitialPid, 2, kThreadId);
+  CHECK(
+      pr.newThread(kInitialPid, 2, kThreadId) ==
+      Tracer::Delegate::NewThreadResponse::TRACE);
 
   SECTION("NewThread") {
     // Not much to test here.. It's tested above in the test set-up.

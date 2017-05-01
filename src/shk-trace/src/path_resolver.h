@@ -46,7 +46,7 @@ class PathResolver : public Tracer::Delegate {
       pid_t initial_pid,
       std::string &&initial_cwd);
 
-  virtual void newThread(
+  virtual NewThreadResponse newThread(
       pid_t pid,
       uintptr_t parent_thread_id,
       uintptr_t child_thread_id) override;

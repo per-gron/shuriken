@@ -48,9 +48,14 @@ class Tracer {
       QUIT_TRACING
     };
 
+    enum class NewThreadResponse {
+      TRACE,  // The thread should be traced.
+      IGNORE  // The thread should not be traced.
+    };
+
     virtual ~Delegate() = default;
 
-    virtual void newThread(
+    virtual NewThreadResponse newThread(
         pid_t pid,
         uintptr_t parent_thread_id,
         uintptr_t child_thread_id) = 0;

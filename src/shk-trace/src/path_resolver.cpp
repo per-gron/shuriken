@@ -25,7 +25,7 @@ PathResolver::PathResolver(
     : _delegate(std::move(delegate)),
       _cwd_memo(initial_pid, std::move(initial_cwd)) {}
 
-void PathResolver::newThread(
+Tracer::Delegate::NewThreadResponse PathResolver::newThread(
     pid_t pid,
     uintptr_t parent_thread_id,
     uintptr_t child_thread_id) {
@@ -38,6 +38,8 @@ void PathResolver::newThread(
       _cwd_memo.fork(*ppid, parent_thread_id, pid);
     }
   }
+
+  return NewThreadResponse::TRACE;
 }
 
 Tracer::Delegate::TerminateThreadResponse PathResolver::terminateThread(
