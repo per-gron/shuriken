@@ -32,14 +32,8 @@ void verifyManifest(const RawManifest &manifest) {
   }
 }
 
-void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
-  std::string err;
-  CHECK(fs.writeFile(path, contents, &err));
-  CHECK(err == "");
-}
-
 RawManifest parse(Paths &paths, FileSystem &file_system, const char *input) {
-  writeFile(file_system, "build.ninja", input);
+  CHECK(file_system.writeFile("build.ninja", input) == IoError::success());
   const auto manifest = parseManifest(paths, file_system, "build.ninja");
   verifyManifest(manifest);
   return manifest;
@@ -567,9 +561,9 @@ TEST_CASE("RawManifest") {
   }
 
   SECTION("SubNinja") {
-    writeFile(fs, "test.ninja",
+    CHECK(fs.writeFile("test.ninja",
         "var = inner\n"
-        "build $builddir/inner: varref\n");
+        "build $builddir/inner: varref\n") == IoError::success());
     const auto manifest = parse(paths, fs,
         "builddir = some_dir\n"
         "rule varref\n"
@@ -603,9 +597,9 @@ TEST_CASE("RawManifest") {
 
   SECTION("DuplicateRuleInDifferentSubninjas") {
     // Test that rules are scoped to subninjas.
-    writeFile(fs, "test.ninja",
+    CHECK(fs.writeFile("test.ninja",
         "rule cat\n"
-        "  command = cat\n");
+        "  command = cat\n") == IoError::success());
     parse(paths, fs,
         "rule cat\n"
         "  command = cat\n"
@@ -614,12 +608,12 @@ TEST_CASE("RawManifest") {
 
   SECTION("DuplicateRuleInDifferentSubninjasWithInclude") {
     // Test that rules are scoped to subninjas even with includes.
-    writeFile(fs, "rules.ninja",
+    CHECK(fs.writeFile("rules.ninja",
         "rule cat\n"
-        "  command = cat\n");
-    writeFile(fs, "test.ninja",
+        "  command = cat\n") == IoError::success());
+    CHECK(fs.writeFile("test.ninja",
         "include rules.ninja\n"
-        "build x : cat\n");
+        "build x : cat\n") == IoError::success());
     parse(paths, fs,
         "include rules.ninja\n"
         "subninja test.ninja\n"
@@ -627,8 +621,8 @@ TEST_CASE("RawManifest") {
   }
 
   SECTION("Include") {
-    writeFile(fs, "include.ninja",
-        "var = inner\n");
+    CHECK(fs.writeFile("include.ninja",
+        "var = inner\n") == IoError::success());
     const auto manifest = parse(paths, fs,
         "var = outer\n"
         "include include.ninja\n"
@@ -645,8 +639,8 @@ TEST_CASE("RawManifest") {
   }
 
   SECTION("BrokenInclude") {
-    writeFile(fs, "include.ninja",
-        "build\n");
+    CHECK(fs.writeFile("include.ninja",
+        "build\n") == IoError::success());
     CHECK(parseError(paths, fs, "include include.ninja\n") ==
         "include.ninja:1: expected path\n"
         "build\n"

@@ -33,12 +33,6 @@ std::string testMkstemp(
   return path;
 }
 
-void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
-  std::string err;
-  CHECK(fs.writeFile(path, contents, &err));
-  CHECK(err == "");
-}
-
 std::string readFile(FileSystem &fs, nt_string_view path) {
   std::string err;
   std::string data;
@@ -67,7 +61,7 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("mmap") {
-    writeFile(fs, "f", "contents");
+    CHECK(fs.writeFile("f", "contents") == IoError::success());
     CHECK(fs.mkdir("dir") == IoError::success());
     CHECK_THROWS_AS(fs.mmap("nonexisting"), IoError);
     CHECK_THROWS_AS(fs.mmap("dir"), IoError);
@@ -225,8 +219,8 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("overwrite file with file") {
-      writeFile(fs, "a", "a!");
-      writeFile(fs, "b", "b!");
+      CHECK(fs.writeFile("a", "a!") == IoError::success());
+      CHECK(fs.writeFile("b", "b!") == IoError::success());
       CHECK(fs.rename("a", "b") == IoError::success());
       CHECK(fs.stat("a").result == ENOENT);
       CHECK(readFile(fs, "b") == "a!");
@@ -265,7 +259,7 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("truncate") {
     CHECK(fs.mkdir("dir") == IoError::success());
-    writeFile(fs, "file", "sweet bananas!");
+    CHECK(fs.writeFile("file", "sweet bananas!") == IoError::success());
 
     const auto check_truncate_fails = [&fs](nt_string_view path, size_t size) {
       CHECK(fs.truncate(path, size) != IoError::success());
@@ -351,7 +345,7 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("open for appending") {
-    writeFile(fs, abc, "swe");
+    CHECK(fs.writeFile(abc, "swe") == IoError::success());
     {
       const auto stream = fs.open(abc, "ab");
       const std::string et = "et";
@@ -398,9 +392,9 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("hashFile") {
-    writeFile(fs, "one", "some_content");
-    writeFile(fs, "two", "some_content");
-    writeFile(fs, "three", "some_other_content");
+    CHECK(fs.writeFile("one", "some_content") == IoError::success());
+    CHECK(fs.writeFile("two", "some_content") == IoError::success());
+    CHECK(fs.writeFile("three", "some_other_content") == IoError::success());
 
     std::string err_1;
     std::string err_2;

@@ -21,15 +21,6 @@
 #include "../in_memory_file_system.h"
 
 namespace shk {
-namespace {
-
-void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
-  std::string err;
-  CHECK(fs.writeFile(path, contents, &err));
-  CHECK(err == "");
-}
-
-}  // anonymous namespace
 
 TEST_CASE("FileSystem") {
   InMemoryFileSystem fs;
@@ -113,12 +104,12 @@ TEST_CASE("FileSystem") {
   }
 
   SECTION("writeFile") {
-    writeFile(fs, "abc", "hello");
+    CHECK(fs.writeFile("abc", "hello") == IoError::success());
     CHECK(fs.stat("abc").result == 0);  // Verify file exists
   }
 
   SECTION("writeFile, readFile") {
-    writeFile(fs, "abc", "hello");
+    CHECK(fs.writeFile("abc", "hello") == IoError::success());
     std::string err;
     CHECK(
         fs.readFile("abc", &err) ==
@@ -126,8 +117,8 @@ TEST_CASE("FileSystem") {
   }
 
   SECTION("writeFile, writeFile, readFile") {
-    writeFile(fs, "abc", "hello");
-    writeFile(fs, "abc", "hello!");
+    CHECK(fs.writeFile("abc", "hello") == IoError::success());
+    CHECK(fs.writeFile("abc", "hello!") == IoError::success());
     std::string err;
     CHECK(
         fs.readFile("abc", &err) ==
@@ -163,7 +154,7 @@ TEST_CASE("FileSystem") {
           "abc",
           "abc/def",
           "abc/def/ghi" }));
-      writeFile(fs, file_path, "hello");
+      CHECK(fs.writeFile(file_path, "hello") == IoError::success());
     }
   }
 }

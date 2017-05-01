@@ -29,9 +29,7 @@ TEST_CASE("DelayedInvocationLog") {
   const auto clock = [&] { return now; };
 
   InMemoryFileSystem fs(clock);
-  std::string err;
-  CHECK(fs.writeFile("test_file", "hello!", &err));
-  CHECK(err == "");
+  CHECK(fs.writeFile("test_file", "hello!") == IoError::success());
 
   auto memory_log_ptr = std::unique_ptr<InMemoryInvocationLog>(
       new InMemoryInvocationLog(fs, clock));

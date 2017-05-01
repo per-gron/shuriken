@@ -22,9 +22,7 @@ namespace shk {
 
 TEST_CASE("InMemoryInvocationLog") {
   InMemoryFileSystem fs;
-  std::string err;
-  CHECK(fs.writeFile("test_file", "hello!", &err));
-  CHECK(err == "");
+  CHECK(fs.writeFile("test_file", "hello!") == IoError::success());
 
   InMemoryInvocationLog log(fs, [] { return 0; });
 
@@ -70,8 +68,7 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("Input") {
-      CHECK(fs.writeFile("file", "", &err));
-      CHECK(err == "");
+      CHECK(fs.writeFile("file", "") == IoError::success());
       log.ranCommand(
           hash, {}, {}, { "file" }, { takeFingerprint(fs, 0, "file").first });
       CHECK(log.entries().size() == 1);

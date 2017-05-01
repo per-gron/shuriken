@@ -50,8 +50,7 @@ void checkRunCommand(
   for (const auto &input : inputs) {
     CHECK(file_system.writeFile(
         input,
-        "file:" + input,
-        &err));
+        "file:" + input) == IoError::success());
   }
 
   const auto command = DummyCommandRunner::constructCommand(

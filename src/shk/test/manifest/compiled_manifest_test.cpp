@@ -45,12 +45,6 @@ void setAtOffset(const TableType *table, int offset, int value) {
                   flatbuffers::EndianScalar(value);
 }
 
-void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
-  std::string err;
-  CHECK(fs.writeFile(path, contents, &err));
-  CHECK(err == "");
-}
-
 std::string readFile(FileSystem &fs, nt_string_view path) {
   std::string err;
   std::string data;
@@ -1039,7 +1033,7 @@ TEST_CASE("CompiledManifest") {
 
     SECTION("one file") {
       now = 1;
-      writeFile(fs, "file", "");
+      CHECK(fs.writeFile("file", "") == IoError::success());
 
       RawManifest raw_manifest;
       raw_manifest.manifest_files = { "file" };
@@ -1051,9 +1045,9 @@ TEST_CASE("CompiledManifest") {
 
     SECTION("two files") {
       now = 1;
-      writeFile(fs, "file1", "");
+      CHECK(fs.writeFile("file1", "") == IoError::success());
       now = 2;
-      writeFile(fs, "file2", "");
+      CHECK(fs.writeFile("file2", "") == IoError::success());
 
       RawManifest raw_manifest;
       raw_manifest.manifest_files = { "file1", "file2" };
@@ -1065,7 +1059,7 @@ TEST_CASE("CompiledManifest") {
 
     SECTION("one missing one present") {
       now = 1;
-      writeFile(fs, "file", "");
+      CHECK(fs.writeFile("file", "") == IoError::success());
 
       RawManifest raw_manifest;
       raw_manifest.manifest_files = { "file", "missing" };
@@ -1150,14 +1144,14 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n";
 
-      writeFile(fs, "manifest", manifest_str);
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
 
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
       check_first_step_cmd(manifest, "cmd");
     }
 
     SECTION("parse error") {
-      writeFile(fs, "manifest", "rule!\n");
+      CHECK(fs.writeFile("manifest", "rule!\n") == IoError::success());
 
       CHECK(
           parse_and_compile_fail("manifest", "manifest.compiled") ==
@@ -1179,7 +1173,7 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n"
           "build in: cmd out\n";
-      writeFile(fs, "manifest", manifest_str);
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
 
       CHECK(
           parse_and_compile_fail("manifest", "manifest.compiled") ==
@@ -1191,7 +1185,7 @@ TEST_CASE("CompiledManifest") {
           "rule cmd\n"
           "  command = cmd\n"
           "build out: cmd in\n";
-      writeFile(fs, "manifest", manifest_str);
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
 
       parse_and_compile("manifest", "manifest.compiled");
 
@@ -1206,7 +1200,7 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n";
 
-      writeFile(fs, "manifest", manifest_str);
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
       CHECK(fs.mkdir("manifest.compiled") == IoError::success());
 
       CHECK(parse_and_compile_fail("manifest", "manifest.compiled") != "");
@@ -1218,8 +1212,10 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n";
 
-      writeFile(fs, "manifest", manifest_str);
-      writeFile(fs, "manifest.compiled", "invalid_haha");
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
+      CHECK(
+          fs.writeFile("manifest.compiled", "invalid_haha") ==
+          IoError::success());
 
       // Should just recompile the manifest in this case
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
@@ -1235,8 +1231,8 @@ TEST_CASE("CompiledManifest") {
           "  command = cmd\n"
           "build out: cmd in\n";
 
-      writeFile(fs, "manifest", manifest_str);
-      writeFile(fs, "manifest.compiled", "");
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
+      CHECK(fs.writeFile("manifest.compiled", "") == IoError::success());
 
       // Should just recompile the manifest in this case
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
@@ -1254,8 +1250,10 @@ TEST_CASE("CompiledManifest") {
       const auto other_manifest_str =
           "build out: cmd before\n";
 
-      writeFile(fs, "manifest", manifest_str);
-      writeFile(fs, "manifest.other", other_manifest_str);
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
+      CHECK(
+          fs.writeFile("manifest.other", other_manifest_str) ==
+          IoError::success());
       now++;
 
       parse_and_compile("manifest", "manifest.compiled");
@@ -1263,7 +1261,9 @@ TEST_CASE("CompiledManifest") {
           parse_compiled_manifest("manifest.compiled"),
           "cmd_before");
 
-      writeFile(fs, "manifest.other", "build out: cmd after\n");
+      CHECK(
+          fs.writeFile("manifest.other", "build out: cmd after\n") ==
+          IoError::success());
 
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
 
@@ -1281,15 +1281,19 @@ TEST_CASE("CompiledManifest") {
       const auto other_manifest_str =
           "build out: cmd before\n";
 
-      writeFile(fs, "manifest", manifest_str);
-      writeFile(fs, "manifest.other", other_manifest_str);
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
+      CHECK(
+          fs.writeFile("manifest.other", other_manifest_str) ==
+          IoError::success());
 
       parse_and_compile("manifest", "manifest.compiled");
       check_first_step_cmd(
           parse_compiled_manifest("manifest.compiled"),
           "cmd_before");
 
-      writeFile(fs, "manifest.other", "build out: cmd after\n");
+      CHECK(
+          fs.writeFile("manifest.other", "build out: cmd after\n") ==
+          IoError::success());
 
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
 
@@ -1307,8 +1311,10 @@ TEST_CASE("CompiledManifest") {
       const auto other_manifest_str =
           "build out: cmd before\n";
 
-      writeFile(fs, "manifest", manifest_str);
-      writeFile(fs, "manifest.other", other_manifest_str);
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
+      CHECK(
+          fs.writeFile("manifest.other", other_manifest_str) ==
+          IoError::success());
 
       parse_and_compile("manifest", "manifest.compiled");
       check_first_step_cmd(
@@ -1325,7 +1331,7 @@ TEST_CASE("CompiledManifest") {
           "rule cmd\n"
           "  command = cmd\n"
           "build out: cmd in\n";
-      writeFile(fs, "manifest", manifest_str);
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
       now++;
 
       parse_and_compile("manifest", "manifest.compiled");
@@ -1333,14 +1339,16 @@ TEST_CASE("CompiledManifest") {
       auto compiled_buf = readFile(fs, "manifest.compiled");
       REQUIRE(compiled_buf.size() >= sizeof(uint64_t));
       compiled_buf[0]++;
-      writeFile(fs, "manifest.compiled", compiled_buf);
+      CHECK(
+          fs.writeFile("manifest.compiled", compiled_buf) ==
+          IoError::success());
 
       now--;  // Go to the "past" to not trigger the mtime invalidation check
       const auto new_manifest_str =
           "rule cmd\n"
           "  command = other_cmd\n"
           "build out: cmd in\n";
-      writeFile(fs, "manifest", new_manifest_str);
+      CHECK(fs.writeFile("manifest", new_manifest_str) == IoError::success());
       now++;
 
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");
@@ -1356,7 +1364,7 @@ TEST_CASE("CompiledManifest") {
           "rule cmd\n"
           "  command = cmd\n"
           "build out: cmd in\n";
-      writeFile(fs, "manifest", manifest_str);
+      CHECK(fs.writeFile("manifest", manifest_str) == IoError::success());
 
       parse_and_compile("manifest", "manifest.compiled");
       const auto manifest = parse_and_compile("manifest", "manifest.compiled");

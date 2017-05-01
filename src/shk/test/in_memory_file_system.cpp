@@ -125,8 +125,8 @@ USE_RESULT IoError InMemoryFileSystem::symlink(
       nt_string_view target,
       nt_string_view source) {
   std::string err;
-  if (!writeFile(source, target, &err)) {
-    return IoError(err, 0);
+  if (auto error = writeFile(source, target)) {
+    return error;
   }
   const auto l = lookup(source);
   assert(l.entry_type == EntryType::FILE);
@@ -225,8 +225,8 @@ USE_RESULT IoError InMemoryFileSystem::rename(
       if (auto error = unlink(old_path)) {
         return error;
       }
-      if (!writeFile(new_path, contents, &err)) {
-        return IoError(err, 0);
+      if (auto error = writeFile(new_path, contents)) {
+        return error;
       }
       break;
     }
@@ -359,7 +359,8 @@ std::pair<std::string, bool> InMemoryFileSystem::mkstemp(
     // don't care to do anything about that.
     if (stat(filename).result == ENOENT) {
       filename_template = std::move(filename);
-      if (!writeFile(filename_template, "", err)) {
+      if (auto error = writeFile(filename_template, "")) {
+        *err = error.what();
         return std::make_pair(std::string(), false);
       }
       return std::make_pair(std::move(filename_template), true);

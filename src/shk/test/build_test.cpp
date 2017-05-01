@@ -193,12 +193,6 @@ void addInput(
   addEntryFile(invocations, entry.input_files, path, fingerprint);
 }
 
-void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
-  std::string err;
-  CHECK(fs.writeFile(path, contents, &err));
-  CHECK(err == "");
-}
-
 std::string readFile(FileSystem &fs, nt_string_view path) {
   std::string err;
   std::string data;
@@ -248,7 +242,7 @@ TEST_CASE("Build") {
   single_dependency.dependencies = { paths.get("a") };
 
   const auto parse = [&](const std::string &input) {
-    writeFile(fs, "build.ninja", input);
+    CHECK(fs.writeFile("build.ninja", input) == IoError::success());
     return parseManifest(paths, fs, "build.ninja");
   };
 
@@ -262,7 +256,7 @@ TEST_CASE("Build") {
       size_t failures_allowed,
       CommandRunner &runner) {
     Paths paths(fs);
-    writeFile(fs, "build.ninja", manifest);
+    CHECK(fs.writeFile("build.ninja", manifest) == IoError::success());
 
     return build(
         clock,
@@ -655,7 +649,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("used dirty fingerprint") {
-      writeFile(fs, "file", "file");
+      CHECK(fs.writeFile("file", "file") == IoError::success());
 
       const auto memo = computeFingerprintMatchesMemo(
           fs,
@@ -668,7 +662,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("used clean fingerprint") {
-      writeFile(fs, "file", "file");
+      CHECK(fs.writeFile("file", "file") == IoError::success());
       const auto file_fp = takeFingerprint(fs, clock() + 1, "file").first;
       const auto memo = computeFingerprintMatchesMemo(
           fs,
@@ -686,7 +680,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("used racily clean fingerprint") {
-      writeFile(fs, "file", "file");
+      CHECK(fs.writeFile("file", "file") == IoError::success());
       const auto file_fp = takeFingerprint(fs, clock(), "file").first;
       const auto memo = computeFingerprintMatchesMemo(
           fs,
@@ -704,7 +698,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("one used of several fingerprints") {
-      writeFile(fs, "file", "file");
+      CHECK(fs.writeFile("file", "file") == IoError::success());
       const auto file_fp = takeFingerprint(fs, clock() + 1, "file").first;
       const auto memo = computeFingerprintMatchesMemo(
           fs,
@@ -736,7 +730,7 @@ TEST_CASE("Build") {
       const auto compile_manifest_step = [](const std::string &manifest_str) {
         InMemoryFileSystem fs;
         Paths paths(fs);
-        writeFile(fs, "build.ninja", manifest_str);
+        CHECK(fs.writeFile("build.ninja", manifest_str) == IoError::success());
 
         const auto manifest = compileManifest(
             paths.get("build.ninja"),
@@ -779,7 +773,7 @@ TEST_CASE("Build") {
       }
 
       SECTION("missing input file") {
-        writeFile(fs, "out", "out");
+        CHECK(fs.writeFile("out", "out") == IoError::success());
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -796,7 +790,7 @@ TEST_CASE("Build") {
       }
 
       SECTION("missing output file") {
-        writeFile(fs, "in", "in");
+        CHECK(fs.writeFile("in", "in") == IoError::success());
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -813,9 +807,9 @@ TEST_CASE("Build") {
       }
 
       SECTION("input file newer") {
-        writeFile(fs, "out", "out");
+        CHECK(fs.writeFile("out", "out") == IoError::success());
         time++;
-        writeFile(fs, "in", "in");
+        CHECK(fs.writeFile("in", "in") == IoError::success());
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -832,10 +826,10 @@ TEST_CASE("Build") {
       }
 
       SECTION("single input file newer") {
-        writeFile(fs, "in1", "in1");
-        writeFile(fs, "out", "out");
+        CHECK(fs.writeFile("in1", "in1") == IoError::success());
+        CHECK(fs.writeFile("out", "out") == IoError::success());
         time++;
-        writeFile(fs, "in2", "in2");
+        CHECK(fs.writeFile("in2", "in2") == IoError::success());
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -852,10 +846,10 @@ TEST_CASE("Build") {
       }
 
       SECTION("single output file as old as input") {
-        writeFile(fs, "out1", "out1");
-        writeFile(fs, "in", "in");
+        CHECK(fs.writeFile("out1", "out1") == IoError::success());
+        CHECK(fs.writeFile("in", "in") == IoError::success());
         time++;
-        writeFile(fs, "out2", "out2");
+        CHECK(fs.writeFile("out2", "out2") == IoError::success());
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -870,11 +864,11 @@ TEST_CASE("Build") {
       }
 
       SECTION("single output file as older than input") {
-        writeFile(fs, "out1", "out1");
+        CHECK(fs.writeFile("out1", "out1") == IoError::success());
         time++;
-        writeFile(fs, "in", "in");
+        CHECK(fs.writeFile("in", "in") == IoError::success());
         time++;
-        writeFile(fs, "out2", "out2");
+        CHECK(fs.writeFile("out2", "out2") == IoError::success());
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -891,9 +885,9 @@ TEST_CASE("Build") {
       }
 
       SECTION("clean") {
-        writeFile(fs, "in", "in");
+        CHECK(fs.writeFile("in", "in") == IoError::success());
         time++;
-        writeFile(fs, "out", "out");
+        CHECK(fs.writeFile("out", "out") == IoError::success());
 
         auto step = compile_manifest_step(
             "rule my_rule\n"
@@ -916,10 +910,10 @@ TEST_CASE("Build") {
       Hash hash_c;
       std::fill(hash_a.data.begin(), hash_a.data.end(), 0);
 
-      writeFile(fs, "one", "one_content");
+      CHECK(fs.writeFile("one", "one_content") == IoError::success());
       const auto one_fp = takeFingerprint(fs, clock() + 1, "one").first;
       const auto one_fp_racy = takeFingerprint(fs, clock(), "one").first;
-      writeFile(fs, "two", "two_content");
+      CHECK(fs.writeFile("two", "two_content") == IoError::success());
       const auto two_fp = takeFingerprint(fs, clock() + 1, "two").first;
 
       flatbuffers::FlatBufferBuilder step_with_hash_a_builder;
@@ -977,7 +971,8 @@ TEST_CASE("Build") {
         Invocations::Entry entry;
         addInput(invocations, entry, "one", one_fp);
         invocations.entries[hash_a] = entry;
-        writeFile(fs, "one", "dirty");  // Make dirty
+        CHECK(
+            fs.writeFile("one", "dirty") == IoError::success());  // Make dirty
         CHECK(!isClean(
             fs,
             log,
@@ -1006,7 +1001,8 @@ TEST_CASE("Build") {
         Invocations::Entry entry;
         addOutput(invocations, entry, "one", one_fp);
         invocations.entries[hash_a] = entry;
-        writeFile(fs, "one", "dirty");  // Make dirty
+        CHECK(
+            fs.writeFile("one", "dirty") == IoError::success());  // Make dirty
         CHECK(!isClean(
             fs,
             log,
@@ -1022,8 +1018,8 @@ TEST_CASE("Build") {
         addOutput(invocations, entry, "one", one_fp);
         addInput(invocations, entry, "two", two_fp);
         invocations.entries[hash_a] = entry;
-        writeFile(fs, "one", "dirty");
-        writeFile(fs, "two", "dirty!");
+        CHECK(fs.writeFile("one", "dirty") == IoError::success());
+        CHECK(fs.writeFile("two", "dirty!") == IoError::success());
         CHECK(!isClean(
             fs,
             log,
@@ -1267,15 +1263,15 @@ TEST_CASE("Build") {
   }
 
   SECTION("deleteOldOutputs") {
-    writeFile(fs, "file", "contents");
+    CHECK(fs.writeFile("file", "contents") == IoError::success());
     const auto fingerprint = takeFingerprint(fs, clock(), "file").first;
     CHECK(fs.mkdir("dir_single_file") == IoError::success());
-    writeFile(fs, "dir_single_file/file", "contents!");
+    CHECK(fs.writeFile("dir_single_file/file", "contents!") == IoError::success());
     CHECK(fs.mkdir("dir") == IoError::success());
-    writeFile(fs, "dir/file2", "contents2");
+    CHECK(fs.writeFile("dir/file2", "contents2") == IoError::success());
     const auto fingerprint2 = takeFingerprint(fs, clock(), "dir/file2").first;
     CHECK(fs.mkdir("dir/subdir") == IoError::success());
-    writeFile(fs, "dir/subdir/file3", "contents3");
+    CHECK(fs.writeFile("dir/subdir/file3", "contents3") == IoError::success());
     const auto fingerprint3 =
         takeFingerprint(fs, clock(), "dir/subdir/file3").first;
 
@@ -1415,7 +1411,7 @@ TEST_CASE("Build") {
   }
 
   SECTION("canSkipBuildCommand") {
-    writeFile(fs, "file", "contents");
+    CHECK(fs.writeFile("file", "contents") == IoError::success());
     const auto file_fingerprint = takeFingerprint(
         fs, clock(), "file").first;
     const auto file_id = FileId(fs.lstat("file"));
@@ -2103,9 +2099,9 @@ TEST_CASE("Build") {
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out: cmd in\n";
-        writeFile(fs, "in", "before");
+        CHECK(fs.writeFile("in", "before") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        writeFile(fs, "in", "after");
+        CHECK(fs.writeFile("in", "after") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
@@ -2116,7 +2112,7 @@ TEST_CASE("Build") {
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out: cmd in\n";
-        writeFile(fs, "in", "before");
+        CHECK(fs.writeFile("in", "before") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         CHECK(fs.unlink("in") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::FAILURE);
@@ -2128,10 +2124,10 @@ TEST_CASE("Build") {
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out: cmd in1\n";
-        writeFile(fs, "in1", "input");
-        writeFile(fs, "in2", "before");
+        CHECK(fs.writeFile("in1", "input") == IoError::success());
+        CHECK(fs.writeFile("in2", "before") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        writeFile(fs, "in2", "after");
+        CHECK(fs.writeFile("in2", "after") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
@@ -2142,9 +2138,9 @@ TEST_CASE("Build") {
             "rule cmd\n"
             "  command = " + cmd + "\n"
             "build out: cmd unused_in\n";
-        writeFile(fs, "in", "input");
+        CHECK(fs.writeFile("in", "input") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        writeFile(fs, "in", "after");
+        CHECK(fs.writeFile("in", "after") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
@@ -2156,7 +2152,7 @@ TEST_CASE("Build") {
             "  command = " + cmd + "\n"
             "build out: cmd\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        writeFile(fs, "out", "dirty!");
+        CHECK(fs.writeFile("out", "dirty!") == IoError::success());
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd);
       }
@@ -2281,7 +2277,7 @@ TEST_CASE("Build") {
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, cmd1);
         dummy_runner.checkCommand(fs, cmd2);
-        writeFile(fs, "out1", "dirty");
+        CHECK(fs.writeFile("out1", "dirty") == IoError::success());
 
         // Ok so here comes the test. The point of this test is that with this
         // set-up, both commands need to be re-run, but because of their

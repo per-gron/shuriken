@@ -53,16 +53,12 @@ TEST_CASE("PersistentFileSystem") {
     }
 
     SECTION("FileWithContents") {
-      std::string err;
-      CHECK(fs->writeFile(kTestFilename1, "data", &err));
-      CHECK(err == "");
+      CHECK(fs->writeFile(kTestFilename1, "data") == IoError::success());
       CHECK(fs->mmap(kTestFilename1)->memory() == "data");
     }
 
     SECTION("EmptyFile") {
-      std::string err;
-      CHECK(fs->writeFile(kTestFilename1, "", &err));
-      CHECK(err == "");
+      CHECK(fs->writeFile(kTestFilename1, "") == IoError::success());
       CHECK(fs->mmap(kTestFilename1)->memory() == "");
     }
   }
@@ -101,7 +97,7 @@ TEST_CASE("PersistentFileSystem") {
     }
 
     SECTION("fail") {
-      CHECK(fs->writeFile(kTestFilename1, "", &err));
+      CHECK(fs->writeFile(kTestFilename1, "") == IoError::success());
       CHECK(err == "");
 
       CHECK(fs->symlink("target", kTestFilename1) != IoError::success());

@@ -27,9 +27,7 @@ TEST_CASE("CleaningFileSystem") {
   const std::string abc = "abc";
 
   InMemoryFileSystem inner_fs;
-  std::string err;
-  CHECK(inner_fs.writeFile("f", "contents", &err));
-  CHECK(err == "");
+  CHECK(inner_fs.writeFile("f", "contents") == IoError::success());
   CHECK(inner_fs.mkdir("dir") == IoError::success());
 
   CleaningFileSystem fs(inner_fs);

@@ -63,19 +63,13 @@ std::string readSymlink(FileSystem &file_system, nt_string_view path) {
   return target;
 }
 
-void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
-  std::string err;
-  CHECK(fs.writeFile(path, contents, &err));
-  CHECK(err == "");
-}
-
 }  // anonymous namespace
 
 TEST_CASE("Fingerprint") {
   time_t now = 321;
   InMemoryFileSystem fs([&now] { return now; });
   const std::string initial_contents = "initial_contents";
-  writeFile(fs, "a", initial_contents);
+  CHECK(fs.writeFile("a", initial_contents) == IoError::success());
   CHECK(fs.mkdir("dir") == IoError::success());
   CHECK(fs.symlink("target", "link") == IoError::success());
 
@@ -339,7 +333,7 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("matching old_fingerprint (file)") {
-      writeFile(fs, "b", "data");
+      CHECK(fs.writeFile("b", "data") == IoError::success());
       now++;
       Fingerprint fp;
       FileId file_id;
@@ -354,7 +348,7 @@ TEST_CASE("Fingerprint") {
     }
 
     SECTION("matching old_fingerprint (file, should_update)") {
-      writeFile(fs, "b", "data");
+      CHECK(fs.writeFile("b", "data") == IoError::success());
       Fingerprint fp;
       FileId file_id;
       std::tie(fp, file_id) = takeFingerprint(fs, now, "b");
@@ -403,7 +397,7 @@ TEST_CASE("Fingerprint") {
       Fingerprint fp;
       FileId file_id;
       std::tie(fp, file_id) = takeFingerprint(fs, now, "a");
-      writeFile(fs, "a", "data");
+      CHECK(fs.writeFile("a", "data") == IoError::success());
       now++;
       Fingerprint new_fp;
       FileId new_file_id;
@@ -460,7 +454,7 @@ TEST_CASE("Fingerprint") {
       Fingerprint initial_fp;
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
-      writeFile(fs, "a", "initial_content>");
+      CHECK(fs.writeFile("a", "initial_content>") == IoError::success());
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       CHECK(result.should_update);
@@ -470,7 +464,7 @@ TEST_CASE("Fingerprint") {
       Fingerprint initial_fp;
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
-      writeFile(fs, "a", "changed");
+      CHECK(fs.writeFile("a", "changed") == IoError::success());
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       // It can see that the file size is different so no need to re-hash and
@@ -483,7 +477,7 @@ TEST_CASE("Fingerprint") {
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       now++;
-      writeFile(fs, "a", "initial_content>");
+      CHECK(fs.writeFile("a", "initial_content>") == IoError::success());
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       // It can see that the file's timestamp is newer than the fingerprint,
@@ -497,7 +491,7 @@ TEST_CASE("Fingerprint") {
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       now++;
-      writeFile(fs, "a", "changed");
+      CHECK(fs.writeFile("a", "changed") == IoError::success());
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       // It can see that the file size is different so no need to re-hash and
@@ -510,7 +504,7 @@ TEST_CASE("Fingerprint") {
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "a");
       now++;
-      writeFile(fs, "a", initial_contents);
+      CHECK(fs.writeFile("a", initial_contents) == IoError::success());
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(result.clean);
       CHECK(result.should_update);
@@ -538,7 +532,7 @@ TEST_CASE("Fingerprint") {
       Fingerprint initial_fp;
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "b");
-      writeFile(fs, "b", initial_contents);
+      CHECK(fs.writeFile("b", initial_contents) == IoError::success());
       const auto result = fingerprintMatches(fs, "b", initial_fp);
       CHECK(!result.clean);
       CHECK(!result.should_update);

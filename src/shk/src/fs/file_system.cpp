@@ -78,17 +78,16 @@ std::pair<Hash, bool> FileSystem::hashSymlink(
   return std::make_pair(hash, true);
 }
 
-bool FileSystem::writeFile(
-    nt_string_view path, string_view contents, std::string *err) {
+USE_RESULT IoError FileSystem::writeFile(
+    nt_string_view path, string_view contents) {
   try {
     const auto stream = open(path, "wb");
     const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
     stream->write(data, 1, contents.size());
   } catch (const IoError &io_error) {
-    *err = io_error.what();
-    return false;
+    return io_error;
   }
-  return true;
+  return IoError::success();
 }
 
 namespace {

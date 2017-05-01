@@ -113,12 +113,10 @@ CommandRunner::Result runCommand(
     return result;
   }
 
-  std::string err;
   for (const auto &output : result.output_files) {
-    if (!file_system.writeFile(
+    if (auto error = file_system.writeFile(
             output,
-            output + "\n" + input_data,
-            &err)) {
+            output + "\n" + input_data)) {
       result.exit_status = ExitStatus::FAILURE;
       return result;
     }

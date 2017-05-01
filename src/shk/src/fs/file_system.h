@@ -200,7 +200,7 @@ class FileSystem {
    *
    * Returns true if the operation was successful
    */
-  bool writeFile(nt_string_view path, string_view contents, std::string *err);
+  USE_RESULT IoError writeFile(nt_string_view path, string_view contents);
 
   /**
    * Create a temporary file that follows a template. See the man page for
