@@ -654,13 +654,13 @@ InvocationLogParseResult parsePersistentInvocationLog(
   result.invocations.buffer = log_contents;
 #else
   std::shared_ptr<FileSystem::Mmap> mmap;
-  try {
-    mmap = file_system.mmap(log_path);
-  } catch (IoError &io_error) {
+  IoError io_error;
+  std::tie(mmap, io_error) = file_system.mmap(log_path);
+  if (io_error) {
     if (io_error.code == ENOENT) {
       return result;
     } else {
-      throw;
+      throw io_error;
     }
   }
   auto view = mmap->memory();

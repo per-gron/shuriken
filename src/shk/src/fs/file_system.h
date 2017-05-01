@@ -124,8 +124,8 @@ class FileSystem {
   /**
    * Memory map a file in read only mode.
    */
-  virtual std::unique_ptr<Mmap> mmap(
-      nt_string_view path) throw(IoError) = 0;
+  virtual USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> mmap(
+      nt_string_view path) = 0;
   virtual Stat stat(nt_string_view path) = 0;
   virtual Stat lstat(nt_string_view path) = 0;
   virtual USE_RESULT IoError mkdir(nt_string_view path) = 0;

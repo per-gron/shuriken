@@ -36,8 +36,8 @@ class CleaningFileSystem : public FileSystem {
   std::unique_ptr<Stream> open(
       nt_string_view path, const char *mode) throw(IoError) override;
 
-  std::unique_ptr<Mmap> mmap(
-      nt_string_view path) throw(IoError) override;
+  USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> mmap(
+      nt_string_view path) override;
 
   Stat stat(nt_string_view path) override;
 

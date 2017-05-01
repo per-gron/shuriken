@@ -148,9 +148,9 @@ class PersistentFileSystem : public FileSystem {
     return std::unique_ptr<Stream>(new FileStream(path, mode));
   }
 
-  std::unique_ptr<Mmap> mmap(
-      nt_string_view path) throw(IoError) override {
-    return std::unique_ptr<Mmap>(new FileMmap(path));
+  USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> mmap(
+      nt_string_view path) override {
+    return { std::unique_ptr<Mmap>(new FileMmap(path)), IoError::success() };
   }
 
   Stat stat(nt_string_view path) override {

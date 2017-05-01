@@ -85,7 +85,8 @@ class FailingMkstempFileSystem : public FileSystem {
       nt_string_view path, const char *mode) throw(IoError) override {
     return _fs.open(path, mode);
   }
-  std::unique_ptr<Mmap> mmap(nt_string_view path) throw(IoError) override {
+  USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> mmap(
+      nt_string_view path) override {
     return _fs.mmap(path);
   }
   Stat stat(nt_string_view path) override {
@@ -149,7 +150,8 @@ class FailingUnlinkFileSystem : public FileSystem {
       nt_string_view path, const char *mode) throw(IoError) override {
     return _fs.open(path, mode);
   }
-  std::unique_ptr<Mmap> mmap(nt_string_view path) throw(IoError) override {
+  USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> mmap(
+      nt_string_view path) override {
     return _fs.mmap(path);
   }
   Stat stat(nt_string_view path) override {

@@ -54,12 +54,22 @@ TEST_CASE("PersistentFileSystem") {
 
     SECTION("FileWithContents") {
       CHECK(fs->writeFile(kTestFilename1, "data") == IoError::success());
-      CHECK(fs->mmap(kTestFilename1)->memory() == "data");
+
+      std::unique_ptr<FileSystem::Mmap> mmap;
+      IoError error;
+      std::tie(mmap, error) = fs->mmap(kTestFilename1);
+      CHECK(!error);
+      CHECK(mmap->memory() == "data");
     }
 
     SECTION("EmptyFile") {
       CHECK(fs->writeFile(kTestFilename1, "") == IoError::success());
-      CHECK(fs->mmap(kTestFilename1)->memory() == "");
+
+      std::unique_ptr<FileSystem::Mmap> mmap;
+      IoError error;
+      std::tie(mmap, error) = fs->mmap(kTestFilename1);
+      CHECK(!error);
+      CHECK(mmap->memory() == "");
     }
   }
 

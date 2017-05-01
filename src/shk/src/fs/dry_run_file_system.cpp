@@ -27,8 +27,8 @@ class DryRunFileSystem : public FileSystem {
     throw IoError("open not implemented for DryRunFileSystem", 0);
   }
 
-  std::unique_ptr<Mmap> mmap(
-      nt_string_view path) throw(IoError) override {
+  USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> mmap(
+      nt_string_view path) override {
     return _inner.mmap(path);
   }
 

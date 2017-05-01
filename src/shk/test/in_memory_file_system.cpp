@@ -39,20 +39,27 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
   return open(/*expect_symlink:*/false, path, mode);
 }
 
-std::unique_ptr<FileSystem::Mmap> InMemoryFileSystem::mmap(
-    nt_string_view path) throw(IoError) {
+USE_RESULT std::pair<std::unique_ptr<FileSystem::Mmap>, IoError>
+InMemoryFileSystem::mmap(nt_string_view path) {
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
-    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+    return {
+        nullptr,
+        IoError("A component of the path prefix is not a directory", ENOTDIR) };
   case EntryType::DIRECTORY:
-    throw IoError("The named file is a directory", EISDIR);
+    return {
+        nullptr,
+        IoError("The named file is a directory", EISDIR) };
   case EntryType::FILE_DOES_NOT_EXIST:
-    throw IoError("No such file or directory", ENOENT);
+    return {
+        nullptr,
+        IoError("No such file or directory", ENOENT) };
   case EntryType::FILE: {
     const auto &file = l.directory->files[l.basename];
-    return std::unique_ptr<Mmap>(
-        new InMemoryMmap(file));
+    return {
+        std::unique_ptr<Mmap>(new InMemoryMmap(file)),
+        IoError::success() };
   }
   }
 }

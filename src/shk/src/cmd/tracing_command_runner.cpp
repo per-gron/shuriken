@@ -169,7 +169,12 @@ class TracingCommandRunner : public CommandRunner {
       return;
     }
     try {
-      auto mmap = _file_system.mmap(path);
+      std::unique_ptr<FileSystem::Mmap> mmap;
+      IoError error;
+      std::tie(mmap, error) = _file_system.mmap(path);
+      if (error) {
+        throw error;
+      }
       detail::parseTrace(mmap->memory(), &result);
     } catch (const IoError &error) {
       result.output +=

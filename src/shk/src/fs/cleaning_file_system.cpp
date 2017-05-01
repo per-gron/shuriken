@@ -30,8 +30,9 @@ std::unique_ptr<FileSystem::Stream> CleaningFileSystem::open(
   return _inner.open(path, mode);
 }
 
-std::unique_ptr<FileSystem::Mmap> CleaningFileSystem::mmap(
-    nt_string_view path) throw(IoError) {
+USE_RESULT std::pair<std::unique_ptr<FileSystem::Mmap>, IoError>
+CleaningFileSystem::mmap(
+    nt_string_view path) {
   return _inner.mmap(path);
 }
 

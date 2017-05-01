@@ -34,12 +34,16 @@ TEST_CASE("CleaningFileSystem") {
 
   SECTION("mmap") {
     CHECK(fs.mkdir("dir") == IoError::success());
-    CHECK_THROWS_AS(fs.mmap("nonexisting"), IoError);
-    CHECK_THROWS_AS(fs.mmap("dir"), IoError);
-    CHECK_THROWS_AS(fs.mmap("dir/nonexisting"), IoError);
-    CHECK_THROWS_AS(fs.mmap("nonexisting/nonexisting"), IoError);
-    CHECK(fs.mmap("f")->memory() == "contents");
-    CHECK(fs.getRemovedCount() == 0);
+    CHECK(fs.mmap("nonexisting").second != IoError::success());
+    CHECK(fs.mmap("dir").second != IoError::success());
+    CHECK(fs.mmap("dir/nonexisting").second != IoError::success());
+    CHECK(fs.mmap("nonexisting/nonexisting").second != IoError::success());
+
+    std::unique_ptr<FileSystem::Mmap> mmap;
+    IoError error;
+    std::tie(mmap, error) = fs.mmap("f");
+    REQUIRE(!error);
+    CHECK(mmap->memory() == "contents");
   }
 
   SECTION("open") {
