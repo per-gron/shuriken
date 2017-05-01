@@ -113,9 +113,10 @@ class MockTracerDelegate : public Tracer::Delegate {
         pid, parent_thread_id, child_thread_id });
   }
 
-  virtual Response terminateThread(uintptr_t thread_id) override {
+  virtual TerminateThreadResponse terminateThread(
+      uintptr_t thread_id) override {
     _terminate_thread_events.push_back(thread_id);
-    return Response::OK;
+    return TerminateThreadResponse::OK;
   }
 
   virtual void open(

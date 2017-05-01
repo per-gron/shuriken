@@ -65,7 +65,8 @@ TEST_CASE("PathResolver") {
   static constexpr uintptr_t kThreadId = 3;
   static const uintptr_t kThreadId2 = 102;
   static const std::string kInitialPath = "/initial_path";
-  PathResolver pr(std::move(delegate_ptr), kInitialPid, std::string(kInitialPath));
+  PathResolver pr(
+      std::move(delegate_ptr), kInitialPid, std::string(kInitialPath));
   pr.newThread(kInitialPid, 2, kThreadId);
 
   SECTION("NewThread") {
@@ -78,7 +79,9 @@ TEST_CASE("PathResolver") {
 
   SECTION("TerminateThread") {
     SECTION("Basic") {
-      CHECK(pr.terminateThread(kThreadId) == Tracer::Delegate::Response::OK);
+      CHECK(
+          pr.terminateThread(kThreadId) ==
+          Tracer::Delegate::TerminateThreadResponse::OK);
     }
 
     SECTION("ForgetThreadCwd") {

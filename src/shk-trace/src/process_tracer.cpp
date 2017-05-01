@@ -66,11 +66,12 @@ void ProcessTracer::newThread(
   }
 }
 
-Tracer::Delegate::Response ProcessTracer::terminateThread(uintptr_t thread_id) {
+Tracer::Delegate::TerminateThreadResponse ProcessTracer::terminateThread(
+    uintptr_t thread_id) {
   auto ancestor_it = _ancestor_threads.find(thread_id);
   if (ancestor_it == _ancestor_threads.end()) {
     // The thread is not being traced.
-    return Response::OK;
+    return TerminateThreadResponse::OK;
   }
 
   // Call terminateThread before the object is potentially deleted below
@@ -84,7 +85,7 @@ Tracer::Delegate::Response ProcessTracer::terminateThread(uintptr_t thread_id) {
     _traced_threads.erase(delegate_it);
   }
 
-  return Response::OK;
+  return TerminateThreadResponse::OK;
 }
 
 void ProcessTracer::fileEvent(

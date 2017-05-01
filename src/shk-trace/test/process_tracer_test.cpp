@@ -24,7 +24,7 @@
 namespace shk {
 
 TEST_CASE("ProcessTracer") {
-  using Response = Tracer::Delegate::Response;
+  using TerminateThreadResponse = Tracer::Delegate::TerminateThreadResponse;
 
   ProcessTracer tracer;
 
@@ -54,13 +54,13 @@ TEST_CASE("ProcessTracer") {
 
     SECTION("TerminateThreadEventForAncestor") {
       delegate.expectTermination();
-      CHECK(tracer.terminateThread(3) == Response::OK);
+      CHECK(tracer.terminateThread(3) == TerminateThreadResponse::OK);
     }
 
     SECTION("TerminateThreadEventForChildThread") {
       tracer.newThread(/*pid:*/1, 3, 4);
       auto event = delegate.popNewThreadEvent();
-      CHECK(tracer.terminateThread(4) == Response::OK);
+      CHECK(tracer.terminateThread(4) == TerminateThreadResponse::OK);
       CHECK(delegate.popTerminateThreadEvent() == 4);
     }
 
@@ -87,12 +87,12 @@ TEST_CASE("ProcessTracer") {
 
       SECTION("FirstProcessFinished") {
         delegate.expectTermination();
-        CHECK(tracer.terminateThread(3) == Response::OK);
+        CHECK(tracer.terminateThread(3) == TerminateThreadResponse::OK);
       }
 
       SECTION("RootThreadTerminationShouldNotCountAsFinish") {
         tracer.newThread(/*pid:*/2, 123, 4);
-        CHECK(tracer.terminateThread(4) == Response::OK);
+        CHECK(tracer.terminateThread(4) == TerminateThreadResponse::OK);
 
         // no call to delegate.expectTermination();
       }
@@ -105,7 +105,7 @@ TEST_CASE("ProcessTracer") {
         tracer.newThread(/*pid:*/2, 4, 5);
         delegate2.popNewThreadEvent();
         delegate2.expectTermination();
-        CHECK(tracer.terminateThread(5) == Response::OK);
+        CHECK(tracer.terminateThread(5) == TerminateThreadResponse::OK);
       }
 
       SECTION("BothProcessesFinishedFirstFirst") {
@@ -113,10 +113,10 @@ TEST_CASE("ProcessTracer") {
         delegate2.popNewThreadEvent();
 
         delegate.expectTermination();
-        CHECK(tracer.terminateThread(3) == Response::OK);
+        CHECK(tracer.terminateThread(3) == TerminateThreadResponse::OK);
 
         delegate2.expectTermination();
-        CHECK(tracer.terminateThread(5) == Response::OK);
+        CHECK(tracer.terminateThread(5) == TerminateThreadResponse::OK);
       }
 
       SECTION("BothProcessesFinishedFirstLast") {
@@ -124,10 +124,10 @@ TEST_CASE("ProcessTracer") {
         delegate2.popNewThreadEvent();
 
         delegate2.expectTermination();
-        CHECK(tracer.terminateThread(5) == Response::OK);
+        CHECK(tracer.terminateThread(5) == TerminateThreadResponse::OK);
 
         delegate.expectTermination();
-        CHECK(tracer.terminateThread(3) == Response::OK);
+        CHECK(tracer.terminateThread(3) == TerminateThreadResponse::OK);
       }
     }
 
@@ -257,7 +257,7 @@ TEST_CASE("ProcessTracer") {
       delegate.popNewThreadEvent();
       tracer.newThread(/*pid:*/543, 4, 5);
       delegate.popNewThreadEvent();
-      CHECK(tracer.terminateThread(4) == Response::OK);
+      CHECK(tracer.terminateThread(4) == TerminateThreadResponse::OK);
       delegate.popTerminateThreadEvent();
       tracer.fileEvent(5, EventType::FATAL_ERROR, AT_FDCWD, "");
       delegate.popFileEvent();
@@ -268,7 +268,7 @@ TEST_CASE("ProcessTracer") {
     SECTION("DontTraceThreadAfterItsTerminated") {
       tracer.newThread(/*pid:*/543, 3, 4);
       delegate.popNewThreadEvent();
-      CHECK(tracer.terminateThread(4) == Response::OK);
+      CHECK(tracer.terminateThread(4) == TerminateThreadResponse::OK);
       delegate.popTerminateThreadEvent();
       tracer.fileEvent(4, EventType::FATAL_ERROR, AT_FDCWD, "");
     }
@@ -276,7 +276,7 @@ TEST_CASE("ProcessTracer") {
     SECTION("MainThreadTermination") {
       CHECK(dead_tracers == 0);
       delegate.expectTermination();
-      CHECK(tracer.terminateThread(3) == Response::OK);
+      CHECK(tracer.terminateThread(3) == TerminateThreadResponse::OK);
       CHECK(dead_tracers == 1);
     }
   }

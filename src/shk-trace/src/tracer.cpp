@@ -137,7 +137,9 @@ bool Tracer::processThreadTerminate(const kd_buf &kd) {
   uintptr_t thread = kd.arg5;
 
   _ei_map.verifyNoEventsForThread(thread);
-  return _delegate.terminateThread(thread) == Delegate::Response::QUIT_TRACING;
+  return
+      _delegate.terminateThread(thread) ==
+      Delegate::TerminateThreadResponse::QUIT_TRACING;
 }
 
 void Tracer::processExec(const kd_buf &kd) {

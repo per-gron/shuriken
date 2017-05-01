@@ -43,7 +43,7 @@ class Tracer {
  public:
   class Delegate {
    public:
-    enum class Response {
+    enum class TerminateThreadResponse {
       OK,
       QUIT_TRACING
     };
@@ -59,7 +59,7 @@ class Tracer {
      * Invoked when a thread has terminated. The return value of this callback
      * gives an opportunity for the Delegate to instruct the tracer to stop.
      */
-    virtual Response terminateThread(uintptr_t thread_id) = 0;
+    virtual TerminateThreadResponse terminateThread(uintptr_t thread_id) = 0;
 
     /**
      * A path that is "" means that the path refers to the file or directory ´

@@ -49,7 +49,7 @@ class ProcessTracer : public Tracer::Delegate {
       uintptr_t parent_thread_id,
       uintptr_t child_thread_id) override;
 
-  virtual Response terminateThread(uintptr_t thread_id) override;
+  virtual TerminateThreadResponse terminateThread(uintptr_t thread_id) override;
 
   virtual void fileEvent(
       uintptr_t thread_id,
