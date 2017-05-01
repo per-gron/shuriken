@@ -94,44 +94,50 @@ USE_RESULT IoError FileSystem::writeFile(
 
 namespace {
 
-void mkdirs(
+USE_RESULT IoError mkdirs(
     FileSystem &file_system,
     std::string noncanonical_path,
-    std::vector<std::string> &created_dirs) throw(IoError) {
+    std::vector<std::string> &created_dirs) {
   auto path = noncanonical_path;
   try {
     canonicalizePath(&path);
   } catch (const PathError &path_error) {
-    throw IoError(path_error.what(), 0);
+    return IoError(path_error.what(), 0);
   }
   if (path == "." || path == "/") {
     // Nothing left to do
-    return;
+    return IoError::success();
   }
 
   const auto stat = file_system.stat(path);
   if (stat.result == ENOENT || stat.result == ENOTDIR) {
-    mkdirs(file_system, std::string(dirname(path)), created_dirs);
+    if (auto error =
+            mkdirs(file_system, std::string(dirname(path)), created_dirs)) {
+      return error;
+    }
     created_dirs.push_back(path);
     if (auto error = file_system.mkdir(std::move(path))) {
-      throw error;
+      return error;
     }
   } else if (S_ISDIR(stat.metadata.mode)) {
     // No need to do anything
   } else {
     // It exists and is not a directory
-    throw IoError("Not a directory: " + path, ENOTDIR);
+    return IoError("Not a directory: " + path, ENOTDIR);
   }
+
+  return IoError::success();
 }
 
 }  // anonymous namespace
 
-std::vector<std::string> mkdirs(
+USE_RESULT std::pair<std::vector<std::string>, IoError> mkdirs(
     FileSystem &file_system,
-    nt_string_view noncanonical_path) throw(IoError) {
+    nt_string_view noncanonical_path) {
   std::vector<std::string> created_dirs;
-  mkdirs(file_system, std::string(noncanonical_path), created_dirs);
-  return created_dirs;
+  auto error = mkdirs(
+      file_system, std::string(noncanonical_path), created_dirs);
+  return { std::move(created_dirs), error };
 }
 
 }  // namespace shk

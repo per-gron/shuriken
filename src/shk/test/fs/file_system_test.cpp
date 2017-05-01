@@ -125,27 +125,36 @@ TEST_CASE("FileSystem") {
     const std::string abc = "abc";
 
     SECTION("single directory") {
-      const auto dirs = mkdirs(fs, abc);
+      std::vector<std::string> dirs;
+      IoError error;
+      std::tie(dirs, error) = mkdirs(fs, abc);
+      CHECK(!error);
       CHECK(S_ISDIR(fs.stat(abc).metadata.mode));
       CHECK(dirs == std::vector<std::string>({ abc }));
     }
 
     SECTION("already existing directory") {
-      mkdirs(fs, abc);
-      const auto dirs = mkdirs(fs, abc);  // Should be ok
+      CHECK(mkdirs(fs, abc).second == IoError::success());
+      std::vector<std::string> dirs;
+      IoError error;
+      std::tie(dirs, error) = mkdirs(fs, abc);  // Should be ok
+      CHECK(!error);
       CHECK(S_ISDIR(fs.stat(abc).metadata.mode));
       CHECK(dirs.empty());
     }
 
     SECTION("over file") {
       fs.open(abc, "w");
-      CHECK_THROWS_AS(mkdirs(fs, abc), IoError);
+      CHECK(mkdirs(fs, abc).second != IoError::success());
     }
 
     SECTION("several directories") {
       const std::string dir_path = "abc/def/ghi";
       const std::string file_path = "abc/def/ghi/jkl";
-      const auto dirs = mkdirs(fs, dir_path);
+      std::vector<std::string> dirs;
+      IoError error;
+      std::tie(dirs, error) = mkdirs(fs, dir_path);
+      CHECK(!error);
       CHECK(dirs == std::vector<std::string>({
           "abc",
           "abc/def",

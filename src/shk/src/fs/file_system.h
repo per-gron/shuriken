@@ -220,7 +220,7 @@ class FileSystem {
  *
  * Returns vector of paths to directories that were created.
  */
-std::vector<std::string> mkdirs(
-    FileSystem &file_system, nt_string_view path) throw(IoError);
+USE_RESULT std::pair<std::vector<std::string>, IoError> mkdirs(
+    FileSystem &file_system, nt_string_view path);
 
 }  // namespace shk
