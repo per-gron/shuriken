@@ -97,11 +97,9 @@ TEST_CASE("DryRunFileSystem") {
 
   SECTION("readSymlink") {
     CHECK(inner_fs.symlink("target", "link") == IoError::success());
-    std::string err;
     CHECK(
-        fs->readSymlink("link", &err) ==
-        std::make_pair(std::string("target"), true));
-    CHECK(err == "");
+        fs->readSymlink("link") ==
+        std::make_pair(std::string("target"), IoError::success()));
   }
 
   SECTION("readFile") {

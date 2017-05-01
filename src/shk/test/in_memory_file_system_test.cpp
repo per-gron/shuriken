@@ -313,18 +313,15 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("readSymlink") {
-    std::string err;
     SECTION("success") {
       CHECK(fs.symlink("target", "link") == IoError::success());
       CHECK(
-          fs.readSymlink("link", &err) ==
-          std::make_pair(std::string("target"), true));
-      CHECK(err == "");
+          fs.readSymlink("link") ==
+          std::make_pair(std::string("target"), IoError::success()));
     }
 
     SECTION("fail") {
-      CHECK(fs.readSymlink("nonexisting_file", &err).second == false);
-      CHECK(err != "");
+      CHECK(fs.readSymlink("nonexisting_file").second != IoError::success());
     }
   }
 

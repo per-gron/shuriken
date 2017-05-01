@@ -160,12 +160,9 @@ class FileSystem {
 
   /**
    * Read the contents of a symlink.
-   *
-   * Returns the target of the symlink and a bool indicating if the operation
-   * was successful or not.
    */
-  virtual std::pair<std::string, bool> readSymlink(
-      nt_string_view path, std::string *err) = 0;
+  virtual USE_RESULT std::pair<std::string, IoError> readSymlink(
+      nt_string_view path) = 0;
 
   /**
    * Utility function for hashing a symlink. It is rather important that this

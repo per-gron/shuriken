@@ -105,18 +105,15 @@ TEST_CASE("PersistentFileSystem") {
   }
 
   SECTION("readSymlink") {
-    std::string err;
     SECTION("success") {
       CHECK(fs->symlink("target", kTestFilename1) == IoError::success());
       CHECK(
-          fs->readSymlink(kTestFilename1, &err) ==
-          std::make_pair(std::string("target"), true));
-      CHECK(err == "");
+          fs->readSymlink(kTestFilename1) ==
+          std::make_pair(std::string("target"), IoError::success()));
     }
 
     SECTION("fail") {
-      CHECK(fs->readSymlink("nonexisting_file", &err).second == false);
-      CHECK(err != "");
+      CHECK(fs->readSymlink("nonexisting_file").second != IoError::success());
     }
   }
 

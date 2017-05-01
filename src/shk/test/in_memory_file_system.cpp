@@ -284,8 +284,8 @@ InMemoryFileSystem::readDir(nt_string_view path) {
   }
 }
 
-std::pair<std::string, bool> InMemoryFileSystem::readSymlink(
-      nt_string_view path, std::string *err) {
+USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::readSymlink(
+      nt_string_view path) {
   std::string result;
 
   try {
@@ -295,10 +295,9 @@ std::pair<std::string, bool> InMemoryFileSystem::readSymlink(
       size_t read_bytes = stream->read(buf, 1, sizeof(buf));
       result.append(reinterpret_cast<char *>(buf), read_bytes);
     }
-    return std::make_pair(std::move(result), true);
+    return std::make_pair(std::move(result), IoError::success());
   } catch (const IoError &io_error) {
-    *err = io_error.what();
-    return std::make_pair("", false);
+    return std::make_pair("", io_error);
   }
 }
 

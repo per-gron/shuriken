@@ -55,11 +55,9 @@ Hash hashDir(FileSystem &file_system, nt_string_view path) {
 
 std::string readSymlink(FileSystem &file_system, nt_string_view path) {
   std::string target;
-  bool success;
-  std::string err;
-  std::tie(target, success) = file_system.readSymlink(path, &err);
-  CHECK(success);
-  CHECK(err == "");
+  IoError error;
+  std::tie(target, error) = file_system.readSymlink(path);
+  CHECK(!error);
   return target;
 }
 

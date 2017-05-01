@@ -87,9 +87,9 @@ CleaningFileSystem::readDir(nt_string_view path) {
   return _inner.readDir(path);
 }
 
-std::pair<std::string, bool> CleaningFileSystem::readSymlink(
-      nt_string_view path, std::string *err) {
-  return _inner.readSymlink(path, err);
+USE_RESULT std::pair<std::string, IoError> CleaningFileSystem::readSymlink(
+      nt_string_view path) {
+  return _inner.readSymlink(path);
 }
 
 std::pair<std::string, bool> CleaningFileSystem::readFile(
