@@ -25,7 +25,7 @@ namespace shk {
  * IoError object represent either the success of an operation or a failure,
  * along with an error message and errno-style error code.
  */
-class IoError : public std::runtime_error {
+class IoError {
  public:
   /**
    * Construct an IoError object that indicates that there is no error. The bool
@@ -37,8 +37,7 @@ class IoError : public std::runtime_error {
 
   template <typename string_type>
   explicit IoError(const string_type &what, int code)
-      : runtime_error(what),
-        code(code),
+      : code(code),
         _what(what) {
     if (_what.empty()) {
       fatal("can't create IoError without error message");
@@ -69,7 +68,7 @@ class IoError : public std::runtime_error {
   const int code = 0;
 
  private:
-  IoError() : runtime_error("") {}
+  IoError() = default;
 
   // Empty string indicates no error
   const std::string _what;
