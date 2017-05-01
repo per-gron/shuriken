@@ -103,9 +103,9 @@ class FailingStatFileSystem : public FileSystem {
       nt_string_view path, std::string *err) override {
     return _fs.hashFile(path, err);
   }
-  std::pair<std::string, bool> mkstemp(
-      std::string &&filename_template, std::string *err) override {
-    throw _fs.mkstemp(std::move(filename_template), err);
+  USE_RESULT std::pair<std::string, IoError> mkstemp(
+      std::string &&filename_template) override {
+    throw _fs.mkstemp(std::move(filename_template));
   }
 
  private:

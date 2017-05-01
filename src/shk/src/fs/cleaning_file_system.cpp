@@ -102,9 +102,9 @@ std::pair<Hash, bool> CleaningFileSystem::hashFile(
   return _inner.hashFile(path, err);
 }
 
-std::pair<std::string, bool> CleaningFileSystem::mkstemp(
-      std::string &&filename_template, std::string *err) {
-  return _inner.mkstemp(std::move(filename_template), err);
+USE_RESULT std::pair<std::string, IoError> CleaningFileSystem::mkstemp(
+      std::string &&filename_template) {
+  return _inner.mkstemp(std::move(filename_template));
 }
 
 }  // namespace shk

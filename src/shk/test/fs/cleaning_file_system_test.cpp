@@ -142,11 +142,9 @@ TEST_CASE("CleaningFileSystem") {
 
   SECTION("mkstemp") {
     std::string tmp_file;
-    bool success;
-    std::string err;
-    std::tie(tmp_file, success) = fs.mkstemp("test.XXXXXXXX", &err);
-    CHECK(success);
-    CHECK(err == "");
+    IoError error;
+    std::tie(tmp_file, error) = fs.mkstemp("test.XXXXXXXX");
+    CHECK(!error);
     CHECK(tmp_file != "");
     CHECK(inner_fs.stat(tmp_file).result != ENOENT);
     CHECK(fs.getRemovedCount() == 0);

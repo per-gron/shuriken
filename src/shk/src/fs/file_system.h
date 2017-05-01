@@ -211,8 +211,8 @@ class FileSystem {
    * Returns the path to the temporary file and a bool indicating whether the
    * operation was successful or not.
    */
-  virtual std::pair<std::string, bool> mkstemp(
-      std::string &&filename_template, std::string *err) = 0;
+  virtual USE_RESULT std::pair<std::string, IoError> mkstemp(
+      std::string &&filename_template) = 0;
 };
 
 /**

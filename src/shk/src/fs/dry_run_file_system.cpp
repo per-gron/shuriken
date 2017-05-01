@@ -87,9 +87,9 @@ class DryRunFileSystem : public FileSystem {
     return _inner.hashFile(path, err);
   }
 
-  std::pair<std::string, bool> mkstemp(
-      std::string &&filename_template, std::string *err) override {
-    return std::make_pair(std::string(""), true);
+  USE_RESULT std::pair<std::string, IoError> mkstemp(
+      std::string &&filename_template) override {
+    return std::make_pair(std::string(""), IoError::success());
   }
 
  private:

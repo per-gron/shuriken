@@ -51,9 +51,9 @@ class TemporaryFile {
   static std::pair<std::shared_ptr<TemporaryFile>, bool> make(
       FileSystem &file_system, std::string *err) {
     std::string path;
-    bool success;
-    std::tie(path, success) = file_system.mkstemp("shk.tmp.sb.XXXXXXXX", err);
-    if (!success) {
+    IoError error;
+    std::tie(path, error) = file_system.mkstemp("shk.tmp.sb.XXXXXXXX");
+    if (error) {
       return std::pair<std::shared_ptr<TemporaryFile>, bool>(nullptr, false);
     }
     return std::make_pair(

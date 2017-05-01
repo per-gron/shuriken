@@ -772,12 +772,10 @@ InvocationLogParseResult::ParseData recompactPersistentInvocationLog(
     const Invocations &invocations,
     const std::string &log_path) throw(IoError) {
   std::string tmp_path;
-  bool success;
-  std::string err;
-  std::tie(tmp_path, success) =
-      file_system.mkstemp("shk.tmp.log.XXXXXXXX", &err);
-  if (!success) {
-    throw IoError(err, 0);
+  IoError error;
+  std::tie(tmp_path, error) = file_system.mkstemp("shk.tmp.log.XXXXXXXX");
+  if (error) {
+    throw error;
   }
 
   PersistentInvocationLog log(

@@ -66,13 +66,11 @@ TEST_CASE("PersistentFileSystem") {
   SECTION("mkstemp") {
     SECTION("don't leak file descriptor") {
       const auto before = numOpenFds();
-      std::string err;
       std::string path;
-      bool success;
-      std::tie(path, success) = fs->mkstemp("test.XXXXXXXX", &err);
-      CHECK(success);
+      IoError error;
+      std::tie(path, error) = fs->mkstemp("test.XXXXXXXX");
+      CHECK(!error);
       CHECK(path != "");
-      CHECK(err == "");
       CHECK(fs->unlink(path) == IoError::success());
       const auto after = numOpenFds();
       CHECK(before == after);

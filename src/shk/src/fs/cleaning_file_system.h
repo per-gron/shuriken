@@ -71,8 +71,8 @@ class CleaningFileSystem : public FileSystem {
   std::pair<Hash, bool> hashFile(
       nt_string_view path, std::string *err) override;
 
-  std::pair<std::string, bool> mkstemp(
-      std::string &&filename_template, std::string *err) override;
+  USE_RESULT std::pair<std::string, IoError> mkstemp(
+      std::string &&filename_template) override;
 
  private:
   FileSystem &_inner;

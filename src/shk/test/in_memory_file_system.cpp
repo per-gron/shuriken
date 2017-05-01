@@ -338,31 +338,32 @@ std::pair<Hash, bool> InMemoryFileSystem::hashFile(
   return std::make_pair(hash, true);
 }
 
-std::pair<std::string, bool> InMemoryFileSystem::mkstemp(
-      std::string &&filename_template, std::string *err) {
+USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::mkstemp(
+      std::string &&filename_template) {
   if (!_mkstemp_paths.empty()) {
     auto result = std::move(_mkstemp_paths.front());
     _mkstemp_paths.pop_front();
-    return std::make_pair(std::move(result), true);
+    return std::make_pair(std::move(result), IoError::success());
   }
 
   for (;;) {
     std::string filename = filename_template;
     if (mktemp(&filename[0]) == NULL) {
-      *err =
-          std::string("Failed to create path for temporary file: ") +
-          strerror(errno);
-      return std::make_pair(std::string(), false);
+      return std::make_pair(
+          std::string(),
+          IoError(
+              std::string("Failed to create path for temporary file: ") +
+                  strerror(errno),
+              0));
     }
     // This is potentially an infinite loop… but since this is for testing I
     // don't care to do anything about that.
     if (stat(filename).result == ENOENT) {
       filename_template = std::move(filename);
       if (auto error = writeFile(filename_template, "")) {
-        *err = error.what();
-        return std::make_pair(std::string(), false);
+        return std::make_pair(std::string(), error);
       }
-      return std::make_pair(std::move(filename_template), true);
+      return std::make_pair(std::move(filename_template), IoError::success());
     }
   }
 }

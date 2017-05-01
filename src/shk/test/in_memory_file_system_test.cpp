@@ -23,13 +23,10 @@ namespace {
 
 std::string testMkstemp(
     FileSystem &file_system, std::string &&filename_template) {
-  std::string err;
   std::string path;
-  bool success;
-  std::tie(path, success) =
-      file_system.mkstemp(std::move(filename_template), &err);
-  CHECK(success);
-  CHECK(err == "");
+  IoError error;
+  std::tie(path, error) = file_system.mkstemp(std::move(filename_template));
+  CHECK(!error);
   return path;
 }
 
