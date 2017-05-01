@@ -17,8 +17,6 @@
 #include <stdexcept>
 #include <string>
 
-#include "util.h"
-
 namespace shk {
 
 /**
@@ -31,15 +29,21 @@ class IoError {
    * Construct an IoError object that indicates that there is no error. The bool
    * conversion operator returns false for these objects.
    */
-  IoError() = default;
+  IoError() : _what(nullptr) {}
+
+  IoError(const IoError &other)
+      : code(other.code),
+        _what(other._what ? new std::string(*other._what) : nullptr) {}
 
   template <typename string_type>
   explicit IoError(const string_type &what, int code)
       : code(code),
-        _what(what) {
-    if (_what.empty()) {
-      fatal("can't create IoError without error message");
-    }
+        _what(new std::string(what)) {}
+
+  IoError &operator=(const IoError &other) {
+    code = other.code;
+    _what.reset(other._what ? new std::string(*other._what) : nullptr);
+    return *this;
   }
 
   /**
@@ -50,20 +54,27 @@ class IoError {
   }
 
   virtual const char *what() const throw() {
-    return _what.c_str();
+    return _what ? _what->c_str() : "";
   }
 
   /**
    * Returns true if the object represents a failure.
    */
   explicit operator bool() const {
-    return !_what.empty();
+    return !!_what;
   }
 
   bool operator==(const IoError &other) const {
-    return
-        code == other.code &&
-        _what == other._what;
+    if (code != other.code) {
+      return false;
+    }
+    if (!_what && !other._what) {
+      return true;
+    }
+    if (!_what || !other._what) {
+      return false;
+    }
+    return *_what == *other._what;
   }
 
   bool operator!=(const IoError &other) const {
@@ -74,7 +85,7 @@ class IoError {
 
  private:
   // Empty string indicates no error
-  std::string _what;
+  std::unique_ptr<const std::string> _what;
 };
 
 }  // namespace shk
