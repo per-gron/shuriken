@@ -67,9 +67,9 @@ class DryRunFileSystem : public FileSystem {
     return IoError::success();
   }
 
-  std::pair<std::vector<DirEntry>, bool> readDir(
-      nt_string_view path, std::string *err) override {
-    return _inner.readDir(path, err);
+  USE_RESULT std::pair<std::vector<DirEntry>, IoError> readDir(
+      nt_string_view path) override {
+    return _inner.readDir(path);
   }
 
   std::pair<std::string, bool> readSymlink(

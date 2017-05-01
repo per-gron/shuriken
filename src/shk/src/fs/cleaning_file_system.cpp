@@ -82,9 +82,9 @@ USE_RESULT IoError CleaningFileSystem::truncate(
   return _inner.truncate(path, size);
 }
 
-std::pair<std::vector<DirEntry>, bool> CleaningFileSystem::readDir(
-      nt_string_view path, std::string *err) {
-  return _inner.readDir(path, err);
+USE_RESULT std::pair<std::vector<DirEntry>, IoError>
+CleaningFileSystem::readDir(nt_string_view path) {
+  return _inner.readDir(path);
 }
 
 std::pair<std::string, bool> CleaningFileSystem::readSymlink(

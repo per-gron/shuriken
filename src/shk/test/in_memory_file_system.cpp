@@ -255,20 +255,23 @@ USE_RESULT IoError InMemoryFileSystem::truncate(
   }
 }
 
-std::pair<std::vector<DirEntry>, bool> InMemoryFileSystem::readDir(
-      nt_string_view path, std::string *err) {
+USE_RESULT std::pair<std::vector<DirEntry>, IoError>
+InMemoryFileSystem::readDir(nt_string_view path) {
   std::vector<DirEntry> result;
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
-    *err = "A component of the path prefix is not a directory";
-    return std::make_pair(std::vector<DirEntry>(), false);
+    return std::make_pair(
+        std::vector<DirEntry>(),
+        IoError("A component of the path prefix is not a directory", ENOTDIR));
   case EntryType::FILE_DOES_NOT_EXIST:
-    *err = "The named directory does not exist";
-    return std::make_pair(std::vector<DirEntry>(), false);
+    return std::make_pair(
+        std::vector<DirEntry>(),
+        IoError("The named directory does not exist", ENOENT));
   case EntryType::FILE:
-    *err = "The named directory is a file";
-    return std::make_pair(std::vector<DirEntry>(), false);
+    return std::make_pair(
+        std::vector<DirEntry>(),
+        IoError("The named directory is a file", EPERM));
   case EntryType::DIRECTORY:
     const auto &dir = _directories.find(l.canonicalized)->second;
     for (const auto &dir_path : dir.directories) {
@@ -277,10 +280,8 @@ std::pair<std::vector<DirEntry>, bool> InMemoryFileSystem::readDir(
     for (const auto &file : dir.files) {
       result.emplace_back(DirEntry::Type::REG, file.first);
     }
-    break;
+    return std::make_pair(std::move(result), IoError::success());
   }
-
-  return std::make_pair(std::move(result), true);
 }
 
 std::pair<std::string, bool> InMemoryFileSystem::readSymlink(

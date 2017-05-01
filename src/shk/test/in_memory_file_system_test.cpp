@@ -282,12 +282,10 @@ TEST_CASE("InMemoryFileSystem") {
       fs.open("d/a", "w");
       CHECK(fs.mkdir("d/b") == IoError::success());
 
-      std::string err;
       std::vector<DirEntry> dir_entries;
-      bool success;
-      std::tie(dir_entries, success) = fs.readDir("d", &err);
-      CHECK(success);
-      CHECK(err == "");
+      IoError error;
+      std::tie(dir_entries, error) = fs.readDir("d");
+      CHECK(!error);
       std::sort(dir_entries.begin(), dir_entries.end());
       REQUIRE(dir_entries.size() == 2);
       CHECK(dir_entries[0].type == DirEntry::Type::REG);
@@ -301,12 +299,10 @@ TEST_CASE("InMemoryFileSystem") {
       CHECK(fs.mkdir("d") == IoError::success());
 
       const auto check_readdir_fails = [&fs](nt_string_view path) {
-        std::string err;
         std::vector<DirEntry> dir_entries;
-        bool success;
-        std::tie(dir_entries, success) = fs.readDir(path, &err);
-        CHECK(!success);
-        CHECK(err != "");
+        IoError error;
+        std::tie(dir_entries, error) = fs.readDir(path);
+        CHECK(error);
       };
 
       check_readdir_fails("f");

@@ -31,9 +31,7 @@ class IoError {
    * Construct an IoError object that indicates that there is no error. The bool
    * conversion operator returns false for these objects.
    */
-  static IoError success() {
-    return IoError();
-  }
+  IoError() = default;
 
   template <typename string_type>
   explicit IoError(const string_type &what, int code)
@@ -42,6 +40,13 @@ class IoError {
     if (_what.empty()) {
       fatal("can't create IoError without error message");
     }
+  }
+
+  /**
+   * Alias for IoError(), can be used for code clarity.
+   */
+  static IoError success() {
+    return IoError();
   }
 
   virtual const char *what() const throw() {
@@ -65,13 +70,11 @@ class IoError {
     return !(*this == other);
   }
 
-  const int code = 0;
+  int code = 0;
 
  private:
-  IoError() = default;
-
   // Empty string indicates no error
-  const std::string _what;
+  std::string _what;
 };
 
 }  // namespace shk

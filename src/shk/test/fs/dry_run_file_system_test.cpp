@@ -88,11 +88,11 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("readDir") {
-    std::string err_1;
-    std::string err_2;
-    CHECK(inner_fs.readDir(".", &err_1) == fs->readDir(".", &err_2));
-    CHECK(err_1 == "");
-    CHECK(err_2 == "");
+    auto inner = inner_fs.readDir(".");
+    auto outer = fs->readDir(".");
+    CHECK(inner == outer);
+    CHECK(inner.second == IoError::success());
+    CHECK(outer.second == IoError::success());
   }
 
   SECTION("readSymlink") {
