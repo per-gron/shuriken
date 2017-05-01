@@ -112,7 +112,7 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.stat("d").timestamps.ctime == 125);
 
     now++;
-    fs.rmdir("d/subdir");
+    CHECK(fs.rmdir("d/subdir") == IoError::success());
     CHECK(fs.stat("d").timestamps.mtime == 126);
     CHECK(fs.stat("d").timestamps.ctime == 126);
   }
@@ -131,12 +131,12 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("rmdir missing file") {
-    CHECK_THROWS_AS(fs.rmdir(abc), IoError);
+    CHECK(fs.rmdir(abc) != IoError::success());
   }
 
   SECTION("rmdir") {
     fs.mkdir(abc);
-    fs.rmdir(abc);
+    CHECK(fs.rmdir(abc) == IoError::success());
 
     CHECK(fs.stat(abc).result == ENOENT);
   }
@@ -146,7 +146,7 @@ TEST_CASE("InMemoryFileSystem") {
     const std::string file_path = "abc/def";
     fs.mkdir(path);
     fs.open(file_path, "w");
-    CHECK_THROWS_AS(fs.rmdir(path), IoError);
+    CHECK(fs.rmdir(path) != IoError::success());
     CHECK(fs.stat(path).result == 0);
   }
 

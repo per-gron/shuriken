@@ -42,7 +42,7 @@ class InMemoryFileSystem : public FileSystem {
   Stat stat(nt_string_view path) override;
   Stat lstat(nt_string_view path) override;
   void mkdir(nt_string_view path) throw(IoError) override;
-  void rmdir(nt_string_view path) throw(IoError) override;
+  USE_RESULT IoError rmdir(nt_string_view path) override;
   USE_RESULT IoError unlink(nt_string_view path) override;
   USE_RESULT IoError symlink(
       nt_string_view target,

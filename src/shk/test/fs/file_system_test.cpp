@@ -84,7 +84,7 @@ TEST_CASE("FileSystem") {
     CHECK(hash_with_one_dir == fs.hashDir("d", &err_1));
     CHECK(err_1 == "");
 
-    fs.rmdir("d/d");
+    CHECK(fs.rmdir("d/d") == IoError::success());
     CHECK(fs.hashDir("d", &err_1) == fs.hashDir("e", &err_2));
     CHECK(err_1 == "");
     CHECK(err_2 == "");

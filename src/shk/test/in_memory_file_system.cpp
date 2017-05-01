@@ -81,19 +81,19 @@ void InMemoryFileSystem::mkdir(nt_string_view path) throw(IoError) {
   }
 }
 
-void InMemoryFileSystem::rmdir(nt_string_view path) throw(IoError) {
+USE_RESULT IoError InMemoryFileSystem::rmdir(nt_string_view path) {
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
-    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+    return IoError("A component of the path prefix is not a directory", ENOTDIR);
   case EntryType::FILE_DOES_NOT_EXIST:
-    throw IoError("The named directory does not exist", ENOENT);
+    return IoError("The named directory does not exist", ENOENT);
   case EntryType::FILE:
-    throw IoError("The named directory is a file", EPERM);
+    return IoError("The named directory is a file", EPERM);
   case EntryType::DIRECTORY:
     const auto &dir = _directories.find(l.canonicalized)->second;
     if (!dir.empty()) {
-      throw IoError(
+      return IoError(
           "The named directory contains files other than `.' and `..' in it",
           ENOTEMPTY);
     } else {
@@ -101,7 +101,7 @@ void InMemoryFileSystem::rmdir(nt_string_view path) throw(IoError) {
       l.directory->mtime = _clock();
       _directories.erase(l.canonicalized);
     }
-    break;
+    return IoError::success();
   }
 }
 
@@ -160,9 +160,7 @@ USE_RESULT IoError InMemoryFileSystem::rename(
       return IoError("The new file exists but is not a directory", ENOTDIR);
     case EntryType::DIRECTORY:
       if (new_path != old_path) {
-        try {
-          rmdir(new_path);
-        } catch (const IoError &io_error) {
+        if (auto io_error = rmdir(new_path)) {
           return io_error;
         }
       }

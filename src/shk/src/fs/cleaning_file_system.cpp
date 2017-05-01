@@ -53,10 +53,10 @@ void CleaningFileSystem::mkdir(nt_string_view path)
   // for things that are about to be built.
 }
 
-void CleaningFileSystem::rmdir(nt_string_view path)
-    throw(IoError) {
-  _inner.rmdir(path);
+USE_RESULT IoError CleaningFileSystem::rmdir(nt_string_view path) {
+  auto result = _inner.rmdir(path);
   _removed_count++;
+  return result;
 }
 
 USE_RESULT IoError CleaningFileSystem::unlink(nt_string_view path) {

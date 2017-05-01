@@ -97,8 +97,8 @@ class FailingMkstempFileSystem : public FileSystem {
   void mkdir(nt_string_view path) throw(IoError) override {
     _fs.mkdir(path);
   }
-  void rmdir(nt_string_view path) throw(IoError) override {
-    _fs.rmdir(path);
+  USE_RESULT IoError rmdir(nt_string_view path) override {
+    return _fs.rmdir(path);
   }
   USE_RESULT IoError unlink(nt_string_view path) override {
     return _fs.unlink(path);
@@ -160,8 +160,8 @@ class FailingUnlinkFileSystem : public FileSystem {
   void mkdir(nt_string_view path) throw(IoError) override {
     _fs.mkdir(path);
   }
-  void rmdir(nt_string_view path) throw(IoError) override {
-    _fs.rmdir(path);
+  USE_RESULT IoError rmdir(nt_string_view path) override {
+    return _fs.rmdir(path);
   }
   USE_RESULT IoError unlink(nt_string_view path) override {
     return IoError("Test-induced unlink error", 0);

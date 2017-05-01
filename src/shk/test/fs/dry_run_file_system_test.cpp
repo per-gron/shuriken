@@ -59,7 +59,7 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("rmdir") {
-    fs->rmdir("dir");
+    CHECK(fs->rmdir("dir") == IoError::success());
     CHECK(inner_fs.stat("dir").result != ENOENT);
   }
 

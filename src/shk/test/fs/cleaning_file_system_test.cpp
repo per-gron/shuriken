@@ -64,14 +64,14 @@ TEST_CASE("CleaningFileSystem") {
   }
 
   SECTION("rmdir") {
-    fs.rmdir("dir");
+    CHECK(fs.rmdir("dir") == IoError::success());
     CHECK(inner_fs.stat("dir").result == ENOENT);
   }
 
   SECTION("getRemovedCount") {
     CHECK(fs.getRemovedCount() == 0);
     SECTION("rmdir") {
-      fs.rmdir("dir");
+      CHECK(fs.rmdir("dir") == IoError::success());
       CHECK(fs.getRemovedCount() == 1);
     }
     SECTION("unlink") {
@@ -79,7 +79,7 @@ TEST_CASE("CleaningFileSystem") {
       CHECK(fs.getRemovedCount() == 1);
     }
     SECTION("both") {
-      fs.rmdir("dir");
+      CHECK(fs.rmdir("dir") == IoError::success());
       CHECK(fs.unlink("f") == IoError::success());
       CHECK(fs.getRemovedCount() == 2);
     }

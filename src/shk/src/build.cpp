@@ -464,7 +464,9 @@ void deleteBuildProduct(
       break;
     }
     try {
-      file_system.rmdir(dir);
+      if (auto error = file_system.rmdir(dir)) {
+        throw error;
+      }
       invocation_log.removedDirectory(dir);
     } catch (const IoError &error) {
       if (error.code == ENOTEMPTY) {

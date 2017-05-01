@@ -162,8 +162,9 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::mkdir(NullterminatedString(path).c_str(), 0777));
   }
 
-  void rmdir(nt_string_view path) throw(IoError) override {
-    checkForMinusOne(::rmdir(NullterminatedString(path).c_str()));
+  USE_RESULT IoError rmdir(nt_string_view path) override {
+    return checkForMinusOneIoError(
+        ::rmdir(NullterminatedString(path).c_str()));
   }
 
   USE_RESULT IoError unlink(nt_string_view path) override {
