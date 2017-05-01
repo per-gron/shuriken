@@ -215,12 +215,11 @@ USE_RESULT IoError InMemoryFileSystem::rename(
       }
       [[clang::fallthrough]];
     case EntryType::FILE_DOES_NOT_EXIST:
-      std::string err;
       std::string contents;
-      bool success;
-      std::tie(contents, success) = readFile(old_path, &err);
-      if (!success) {
-        return IoError(err, 0);
+      IoError error;
+      std::tie(contents, error) = readFile(old_path);
+      if (error) {
+        return error;
       }
       if (auto error = unlink(old_path)) {
         return error;
@@ -301,8 +300,8 @@ USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::readSymlink(
   }
 }
 
-std::pair<std::string, bool> InMemoryFileSystem::readFile(
-      nt_string_view path, std::string *err) {
+USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::readFile(
+      nt_string_view path) {
   std::string result;
 
   try {
@@ -312,10 +311,9 @@ std::pair<std::string, bool> InMemoryFileSystem::readFile(
       size_t read_bytes = stream->read(buf, 1, sizeof(buf));
       result.append(reinterpret_cast<char *>(buf), read_bytes);
     }
-    return std::make_pair(std::move(result), true);
+    return std::make_pair(std::move(result), IoError::success());
   } catch (const IoError &io_error) {
-    *err = io_error.what();
-    return std::make_pair("", false);
+    return std::make_pair("", io_error);
   }
 }
 
@@ -326,9 +324,10 @@ std::pair<Hash, bool> InMemoryFileSystem::hashFile(
   blake2b_state state;
   blake2b_init(&state, hash.data.size());
   std::string file_contents;
-  bool success;
-  std::tie(file_contents, success) = readFile(path, err);
-  if (!success) {
+  IoError error;
+  std::tie(file_contents, error) = readFile(path);
+  if (error) {
+    *err = error.what();
     return std::make_pair(Hash(), false);
   }
   blake2b_update(

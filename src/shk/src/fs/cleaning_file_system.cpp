@@ -92,9 +92,9 @@ USE_RESULT std::pair<std::string, IoError> CleaningFileSystem::readSymlink(
   return _inner.readSymlink(path);
 }
 
-std::pair<std::string, bool> CleaningFileSystem::readFile(
-      nt_string_view path, std::string *err) {
-  return _inner.readFile(path, err);
+USE_RESULT std::pair<std::string, IoError> CleaningFileSystem::readFile(
+      nt_string_view path) {
+  return _inner.readFile(path);
 }
 
 std::pair<Hash, bool> CleaningFileSystem::hashFile(

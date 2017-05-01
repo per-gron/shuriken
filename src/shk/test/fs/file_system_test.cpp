@@ -110,19 +110,17 @@ TEST_CASE("FileSystem") {
 
   SECTION("writeFile, readFile") {
     CHECK(fs.writeFile("abc", "hello") == IoError::success());
-    std::string err;
     CHECK(
-        fs.readFile("abc", &err) ==
-        std::make_pair(std::string("hello"), true));
+        fs.readFile("abc") ==
+        std::make_pair(std::string("hello"), IoError::success()));
   }
 
   SECTION("writeFile, writeFile, readFile") {
     CHECK(fs.writeFile("abc", "hello") == IoError::success());
     CHECK(fs.writeFile("abc", "hello!") == IoError::success());
-    std::string err;
     CHECK(
-        fs.readFile("abc", &err) ==
-        std::make_pair(std::string("hello!"), true));
+        fs.readFile("abc") ==
+        std::make_pair(std::string("hello!"), IoError::success()));
   }
 
   SECTION("mkdirs") {

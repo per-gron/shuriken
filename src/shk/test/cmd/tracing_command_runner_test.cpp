@@ -124,9 +124,9 @@ class FailingMkstempFileSystem : public FileSystem {
       nt_string_view path) override {
     return _fs.readSymlink(path);
   }
-  std::pair<std::string, bool> readFile(
-      nt_string_view path, std::string *err) override {
-    return _fs.readFile(path, err);
+  USE_RESULT std::pair<std::string, IoError> readFile(
+      nt_string_view path) override {
+    return _fs.readFile(path);
   }
   std::pair<Hash, bool> hashFile(
       nt_string_view path, std::string *err) override {
@@ -187,9 +187,9 @@ class FailingUnlinkFileSystem : public FileSystem {
       nt_string_view path) override {
     return _fs.readSymlink(path);
   }
-  std::pair<std::string, bool> readFile(
-      nt_string_view path, std::string *err) override {
-    return _fs.readFile(path, err);
+  USE_RESULT std::pair<std::string, IoError> readFile(
+      nt_string_view path) override {
+    return _fs.readFile(path);
   }
   std::pair<Hash, bool> hashFile(
       nt_string_view path, std::string *err) override {

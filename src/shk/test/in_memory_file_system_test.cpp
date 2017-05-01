@@ -34,12 +34,10 @@ std::string testMkstemp(
 }
 
 std::string readFile(FileSystem &fs, nt_string_view path) {
-  std::string err;
   std::string data;
-  bool success;
-  std::tie(data, success) = fs.readFile(path, &err);
-  CHECK(success);
-  CHECK(err == "");
+  IoError error;
+  std::tie(data, error) = fs.readFile(path);
+  CHECK(!error);
   return data;
 }
 

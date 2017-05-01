@@ -244,8 +244,8 @@ class PersistentFileSystem : public FileSystem {
     return std::make_pair(buf.data(), IoError::success());
   }
 
-  std::pair<std::string, bool> readFile(
-      nt_string_view path, std::string *err) override {
+  USE_RESULT std::pair<std::string, IoError> readFile(
+      nt_string_view path) override {
     try {
       const auto file_stat = stat(path);
       std::string contents;
@@ -253,10 +253,9 @@ class PersistentFileSystem : public FileSystem {
       processFile(path, [&contents](const char *buf, size_t len) {
         contents.append(buf, len);
       });
-      return std::make_pair(std::move(contents), true);
+      return std::make_pair(std::move(contents), IoError::success());
     } catch (const IoError &io_error) {
-      *err = io_error.what();
-      return std::make_pair(std::string(), false);
+      return std::make_pair(std::string(), io_error);
     }
   }
 
