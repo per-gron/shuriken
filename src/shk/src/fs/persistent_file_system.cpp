@@ -253,17 +253,16 @@ class PersistentFileSystem : public FileSystem {
 
   USE_RESULT std::pair<std::string, IoError> readFile(
       nt_string_view path) override {
-    try {
-      const auto file_stat = stat(path);
-      std::string contents;
-      contents.reserve(file_stat.metadata.size);
-      processFile(path, [&contents](const char *buf, size_t len) {
-        contents.append(buf, len);
-      });
-      return std::make_pair(std::move(contents), IoError::success());
-    } catch (const IoError &io_error) {
-      return std::make_pair(std::string(), io_error);
+    const auto file_stat = stat(path);
+    std::string contents;
+    contents.reserve(file_stat.metadata.size);
+    auto error = processFile(path, [&contents](const char *buf, size_t len) {
+      contents.append(buf, len);
+    });
+    if (error) {
+      return { "", error };
     }
+    return std::make_pair(std::move(contents), IoError::success());
   }
 
   USE_RESULT std::pair<Hash, IoError> hashFile(
@@ -271,12 +270,11 @@ class PersistentFileSystem : public FileSystem {
     Hash hash;
     blake2b_state state;
     blake2b_init(&state, hash.data.size());
-    try {
-      processFile(path, [&state](const char *buf, size_t len) {
-        blake2b_update(&state, reinterpret_cast<const uint8_t *>(buf), len);
-      });
-    } catch (const IoError &io_error) {
-      return std::make_pair(Hash(), io_error);
+    auto error = processFile(path, [&state](const char *buf, size_t len) {
+      blake2b_update(&state, reinterpret_cast<const uint8_t *>(buf), len);
+    });
+    if (error) {
+      return { Hash(), error };
     }
     blake2b_final(&state, hash.data.data(), hash.data.size());
     return std::make_pair(hash, IoError::success());
@@ -323,9 +321,9 @@ class PersistentFileSystem : public FileSystem {
   }
 
   template<typename Append>
-  void processFile(
+  IoError processFile(
       nt_string_view path,
-      Append &&append) throw(IoError) {
+      Append &&append) {
 #ifdef _WIN32
     // This makes a ninja run on a set of 1500 manifest files about 4% faster
     // than using the generic fopen code below.
@@ -339,14 +337,14 @@ class PersistentFileSystem : public FileSystem {
         FILE_FLAG_SEQUENTIAL_SCAN,
         NULL);
     if (f == INVALID_HANDLE_VALUE) {
-      throw IoError(GetLastErrorString(), ENOENT);
+      return IoError(GetLastErrorString(), ENOENT);
     }
 
     for (;;) {
       DWORD len;
       char buf[64 << 10];
       if (!::ReadFile(f, buf, sizeof(buf), &len, NULL)) {
-        throw IoError(GetLastErrorString(), 0);
+        return IoError(GetLastErrorString(), 0);
       }
       if (len == 0) {
         break;
@@ -357,7 +355,7 @@ class PersistentFileSystem : public FileSystem {
 #else
     FileHandle f(fopen(NullterminatedString(path).c_str(), "rb"));
     if (!f.get()) {
-      throw IoError(strerror(errno), errno);
+      return IoError(strerror(errno), errno);
     }
     fcntl(fileno(f.get()), F_SETFD, FD_CLOEXEC);
 
@@ -368,9 +366,10 @@ class PersistentFileSystem : public FileSystem {
     }
     if (ferror(f.get())) {
       const auto err = errno;
-      throw IoError(strerror(err), err);
+      return IoError(strerror(err), err);
     }
 #endif
+    return IoError::success();
   }
 
   template<typename StatFunction>
