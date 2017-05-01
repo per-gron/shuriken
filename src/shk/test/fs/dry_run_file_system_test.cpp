@@ -48,7 +48,7 @@ TEST_CASE("DryRunFileSystem") {
 
   SECTION("open") {
     // Not implemented
-    CHECK_THROWS_AS(fs->open("f", "r"), IoError);
+    CHECK(fs->open("f", "r").second != IoError::success());
   }
 
   SECTION("stat") {

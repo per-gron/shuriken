@@ -36,8 +36,8 @@ class InMemoryFileSystem : public FileSystem {
    */
   void enqueueMkstempResult(std::string &&path);
 
-  std::unique_ptr<Stream> open(
-      nt_string_view path, const char *mode) throw(IoError) override;
+  USE_RESULT std::pair<std::unique_ptr<Stream>, IoError> open(
+      nt_string_view path, const char *mode) override;
   USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> mmap(
       nt_string_view path) override;
   Stat stat(nt_string_view path) override;
@@ -66,10 +66,10 @@ class InMemoryFileSystem : public FileSystem {
   bool operator==(const InMemoryFileSystem &other) const;
 
  private:
-  std::unique_ptr<Stream> open(
+  USE_RESULT std::pair<std::unique_ptr<Stream>, IoError> open(
       bool expect_symlink,
       nt_string_view path,
-      const char *mode) throw(IoError);
+      const char *mode);
 
   Stat stat(bool follow_symlink, nt_string_view path);
 

@@ -47,7 +47,11 @@ TEST_CASE("CleaningFileSystem") {
   }
 
   SECTION("open") {
-    CHECK(fs.open("f", "r"));
+    std::unique_ptr<FileSystem::Stream> stream;
+    IoError error;
+    std::tie(stream, error) = fs.open("f", "r");
+    CHECK(!error);
+    CHECK(stream);
     CHECK(fs.getRemovedCount() == 0);
   }
 

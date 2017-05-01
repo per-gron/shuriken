@@ -215,7 +215,9 @@ void warnOnTruncatedInput(const Callback &callback) {
 
   const size_t kFileSignatureSize = 16;
 
-  fs.open("file", "w");  // Just to make the initial unlink work
+  // Just to make the initial unlink work
+  CHECK(fs.open("file", "w").second == IoError::success());
+
   size_t warnings = 0;
 
   for (size_t i = 1;; i++) {
@@ -259,7 +261,11 @@ void writeFileWithHeader(
     FileSystem &fs,
     const std::string &file,
     uint32_t version) {
-  const auto stream = fs.open(file, "w");
+  std::unique_ptr<FileSystem::Stream> stream;
+  IoError error;
+  std::tie(stream, error) = fs.open(file, "w");
+  REQUIRE(!error);
+
   const std::string kFileSignature = "invocations:";
   CHECK(
       stream->write(

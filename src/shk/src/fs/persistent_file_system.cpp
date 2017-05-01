@@ -56,12 +56,19 @@ class PersistentFileSystem : public FileSystem {
 
   class FileStream : public FileSystem::Stream {
    public:
-    FileStream(nt_string_view path, const char *mode) throw(IoError)
-        : _f(fopen(NullterminatedString(path).c_str(), mode)) {
-      if (!_f.get()) {
-        throw IoError(strerror(errno), errno);
+    FileStream(FileHandle &&handle)
+        : _f(std::move(handle)) {}
+
+    static USE_RESULT std::pair<std::unique_ptr<Stream>, IoError>
+    open(nt_string_view path, const char *mode) {
+      FileHandle handle(fopen(NullterminatedString(path).c_str(), mode));
+      if (!handle.get()) {
+        return { nullptr, IoError(strerror(errno), errno) };
       }
-      fcntl(fileno(_f.get()), F_SETFD, FD_CLOEXEC);
+      fcntl(fileno(handle.get()), F_SETFD, FD_CLOEXEC);
+      return {
+          std::unique_ptr<Stream>(new FileStream(std::move(handle))),
+          IoError::success() };
     }
 
     USE_RESULT std::pair<size_t, IoError> read(
@@ -143,9 +150,9 @@ class PersistentFileSystem : public FileSystem {
   };
 
  public:
-  std::unique_ptr<Stream> open(
-      nt_string_view path, const char *mode) throw(IoError) override {
-    return std::unique_ptr<Stream>(new FileStream(path, mode));
+  USE_RESULT std::pair<std::unique_ptr<Stream>, IoError> open(
+      nt_string_view path, const char *mode) override {
+    return FileStream::open(path, mode);
   }
 
   USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> mmap(

@@ -50,8 +50,8 @@ void checkBasenameSplit(
 
 class FailingStatFileSystem : public FileSystem {
  public:
-  std::unique_ptr<Stream> open(
-      nt_string_view path, const char *mode) throw(IoError) override {
+  USE_RESULT std::pair<std::unique_ptr<Stream>, IoError> open(
+      nt_string_view path, const char *mode) override {
     return _fs.open(path, mode);
   }
   USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError>
@@ -296,8 +296,8 @@ TEST_CASE("Path") {
 
   SECTION("original") {
     InMemoryFileSystem fs;
-    fs.open("file", "w");
-    fs.open("other_file", "w");
+    CHECK(fs.open("file", "w").second == IoError::success());
+    CHECK(fs.open("other_file", "w").second == IoError::success());
     CHECK(fs.mkdir("dir") == IoError::success());
     Paths paths(fs);
 
@@ -308,8 +308,8 @@ TEST_CASE("Path") {
 
   SECTION("exists") {
     InMemoryFileSystem fs;
-    fs.open("file", "w");
-    fs.open("other_file", "w");
+    CHECK(fs.open("file", "w").second == IoError::success());
+    CHECK(fs.open("other_file", "w").second == IoError::success());
     CHECK(fs.mkdir("dir") == IoError::success());
     Paths paths(fs);
 
@@ -321,8 +321,8 @@ TEST_CASE("Path") {
 
   SECTION("fileId") {
     InMemoryFileSystem fs;
-    fs.open("file", "w");
-    fs.open("other_file", "w");
+    CHECK(fs.open("file", "w").second == IoError::success());
+    CHECK(fs.open("other_file", "w").second == IoError::success());
     CHECK(fs.mkdir("dir") == IoError::success());
     Paths paths(fs);
 
@@ -337,8 +337,8 @@ TEST_CASE("Path") {
 
   SECTION("Paths.get") {
     InMemoryFileSystem fs;
-    fs.open("file", "w");
-    fs.open("other_file", "w");
+    CHECK(fs.open("file", "w").second == IoError::success());
+    CHECK(fs.open("other_file", "w").second == IoError::success());
     CHECK(fs.mkdir("dir") == IoError::success());
     Paths paths(fs);
 

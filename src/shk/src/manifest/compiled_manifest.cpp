@@ -640,24 +640,27 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
           fb_builder.GetBufferPointer() + fb_builder.GetSize()));
   auto buffer_view = string_view(buffer->data(), buffer->size());
 
-  try {
-    const auto stream = file_system.open(compiled_manifest_path, "wb");
-    const auto version = flatbuffers::EndianScalar(kCompiledManifestVersion);
-    if (auto error = stream->write(
-            reinterpret_cast<const uint8_t *>(&version),
-            1,
-            sizeof(version))) {
-      *err = std::string("failed to write compiled manifest: ") + error.what();
-      return std::make_pair(Optional<CompiledManifest>(), nullptr);
-    }
-    if (auto error = stream->write(
-            reinterpret_cast<const uint8_t *>(buffer_view.data()),
-            1,
-            buffer_view.size())) {
-      *err = std::string("failed to write compiled manifest: ") + error.what();
-      return std::make_pair(Optional<CompiledManifest>(), nullptr);
-    }
-  } catch (const IoError &error) {
+  std::unique_ptr<FileSystem::Stream> stream;
+  IoError error;
+  std::tie(stream, error) = file_system.open(compiled_manifest_path, "wb");
+  if (error) {
+    *err = std::string("failed to write compiled manifest: ") + error.what();
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
+  const auto version = flatbuffers::EndianScalar(kCompiledManifestVersion);
+  if (auto error = stream->write(
+          reinterpret_cast<const uint8_t *>(&version),
+          1,
+          sizeof(version))) {
+    *err = std::string("failed to write compiled manifest: ") + error.what();
+    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+  }
+
+  if (auto error = stream->write(
+          reinterpret_cast<const uint8_t *>(buffer_view.data()),
+          1,
+          buffer_view.size())) {
     *err = std::string("failed to write compiled manifest: ") + error.what();
     return std::make_pair(Optional<CompiledManifest>(), nullptr);
   }

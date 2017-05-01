@@ -80,14 +80,15 @@ USE_RESULT std::pair<Hash, IoError> FileSystem::hashSymlink(
 
 USE_RESULT IoError FileSystem::writeFile(
     nt_string_view path, string_view contents) {
-  try {
-    const auto stream = open(path, "wb");
-    const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
-    if (auto error = stream->write(data, 1, contents.size())) {
-      return error;
-    }
-  } catch (const IoError &io_error) {
-    return io_error;
+  std::unique_ptr<FileSystem::Stream> stream;
+  IoError error;
+  std::tie(stream, error) = open(path, "wb");
+  if (error) {
+    return error;
+  }
+  const auto * const data = reinterpret_cast<const uint8_t *>(contents.data());
+  if (auto error = stream->write(data, 1, contents.size())) {
+    return error;
   }
   return IoError::success();
 }

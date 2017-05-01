@@ -155,7 +155,8 @@ TEST_CASE("DummyCommandRunner") {
       const auto result = detail::runCommand(file_system, command);
       CHECK(result.exit_status != ExitStatus::SUCCESS);
 
-      file_system.open(path, "w");  // Create the file
+      // Create the file
+      CHECK(file_system.open(path, "w").second == IoError::success());
       // Should now not fail anymore
       const auto second_result = detail::runCommand(file_system, command);
       CHECK(second_result.exit_status == ExitStatus::SUCCESS);

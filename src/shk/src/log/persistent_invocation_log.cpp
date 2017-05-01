@@ -764,12 +764,15 @@ std::unique_ptr<InvocationLog> openPersistentInvocationLog(
     const Clock &clock,
     const std::string &log_path,
     InvocationLogParseResult::ParseData &&parse_data) throw(IoError) {
+  std::unique_ptr<FileSystem::Stream> stream;
+  IoError error;
+  std::tie(stream, error) = file_system.open(log_path, "ab");
+  if (error) {
+    throw error;
+  }
   return std::unique_ptr<InvocationLog>(
       new PersistentInvocationLog(
-          file_system,
-          clock,
-          file_system.open(log_path, "ab"),
-          std::move(parse_data)));
+          file_system, clock, std::move(stream), std::move(parse_data)));
 }
 
 InvocationLogParseResult::ParseData recompactPersistentInvocationLog(
@@ -784,10 +787,15 @@ InvocationLogParseResult::ParseData recompactPersistentInvocationLog(
     throw error;
   }
 
+  std::unique_ptr<FileSystem::Stream> stream;
+  std::tie(stream, error) = file_system.open(tmp_path, "ab");
+  if (error) {
+    throw error;
+  }
   PersistentInvocationLog log(
       file_system,
       clock,
-      file_system.open(tmp_path, "ab"),
+      std::move(stream),
       InvocationLogParseResult::ParseData());
 
   for (const auto &dir : invocations.created_directories) {

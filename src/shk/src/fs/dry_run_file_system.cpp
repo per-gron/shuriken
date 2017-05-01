@@ -22,9 +22,9 @@ class DryRunFileSystem : public FileSystem {
   DryRunFileSystem(FileSystem &inner_file_system)
       : _inner(inner_file_system) {}
 
-  std::unique_ptr<Stream> open(
-      nt_string_view path, const char *mode) throw(IoError) override {
-    throw IoError("open not implemented for DryRunFileSystem", 0);
+  USE_RESULT std::pair<std::unique_ptr<Stream>, IoError> open(
+      nt_string_view path, const char *mode) override {
+    return { nullptr, IoError("open not implemented for DryRunFileSystem", 0) };
   }
 
   USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> mmap(

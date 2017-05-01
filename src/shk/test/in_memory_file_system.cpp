@@ -33,9 +33,10 @@ void InMemoryFileSystem::enqueueMkstempResult(std::string &&path) {
   _mkstemp_paths.push_back(std::move(path));
 }
 
-std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
+USE_RESULT std::pair<std::unique_ptr<FileSystem::Stream>, IoError>
+InMemoryFileSystem::open(
     nt_string_view path,
-    const char *mode) throw(IoError) {
+    const char *mode) {
   return open(/*expect_symlink:*/false, path, mode);
 }
 
@@ -294,44 +295,48 @@ USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::readSymlink(
       nt_string_view path) {
   std::string result;
 
-  try {
-    const auto stream = open(/*expect_symlink:*/true, path, "r");
-    uint8_t buf[1024];
-    while (!stream->eof()) {
-      size_t read_bytes;
-      IoError error;
-      std::tie(read_bytes, error) = stream->read(buf, 1, sizeof(buf));
-      if (error) {
-        return std::make_pair("", error);
-      }
-      result.append(reinterpret_cast<char *>(buf), read_bytes);
-    }
-    return std::make_pair(std::move(result), IoError::success());
-  } catch (const IoError &io_error) {
-    return std::make_pair("", io_error);
+  std::unique_ptr<FileSystem::Stream> stream;
+  IoError error;
+  std::tie(stream, error) = open(/*expect_symlink:*/true, path, "r");
+  if (error) {
+    return { "", error };
   }
+
+  uint8_t buf[1024];
+  while (!stream->eof()) {
+    size_t read_bytes;
+    IoError error;
+    std::tie(read_bytes, error) = stream->read(buf, 1, sizeof(buf));
+    if (error) {
+      return { "", error };
+    }
+    result.append(reinterpret_cast<char *>(buf), read_bytes);
+  }
+  return std::make_pair(std::move(result), IoError::success());
 }
 
 USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::readFile(
       nt_string_view path) {
   std::string result;
 
-  try {
-    const auto stream = open(path, "r");
-    uint8_t buf[1024];
-    while (!stream->eof()) {
-      size_t read_bytes;
-      IoError error;
-      std::tie(read_bytes, error) = stream->read(buf, 1, sizeof(buf));
-      if (error) {
-        return std::make_pair("", error);
-      }
-      result.append(reinterpret_cast<char *>(buf), read_bytes);
-    }
-    return std::make_pair(std::move(result), IoError::success());
-  } catch (const IoError &io_error) {
-    return std::make_pair("", io_error);
+  std::unique_ptr<FileSystem::Stream> stream;
+  IoError error;
+  std::tie(stream, error) = open(path, "r");
+  if (error) {
+    return { "", error };
   }
+
+  uint8_t buf[1024];
+  while (!stream->eof()) {
+    size_t read_bytes;
+    IoError error;
+    std::tie(read_bytes, error) = stream->read(buf, 1, sizeof(buf));
+    if (error) {
+      return { "", error };
+    }
+    result.append(reinterpret_cast<char *>(buf), read_bytes);
+  }
+  return std::make_pair(std::move(result), IoError::success());
 }
 
 USE_RESULT std::pair<Hash, IoError> InMemoryFileSystem::hashFile(
@@ -486,10 +491,11 @@ string_view InMemoryFileSystem::InMemoryMmap::memory() {
   return string_view(_file->contents.c_str(), _file->contents.size());
 }
 
-std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
+USE_RESULT std::pair<std::unique_ptr<FileSystem::Stream>, IoError>
+InMemoryFileSystem::open(
     bool expect_symlink,
     nt_string_view path,
-    const char *mode) throw(IoError) {
+    const char *mode) {
   const auto mode_string = std::string(mode);
   bool read = false;
   bool write = false;
@@ -518,26 +524,32 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
     append = true;
     create = true;
   } else {
-    throw IoError("Unsupported mode " + mode_string, 0);
+    return { nullptr, IoError("Unsupported mode " + mode_string, 0) };
   }
 
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
-    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+    return {
+        nullptr,
+        IoError("A component of the path prefix is not a directory", ENOTDIR) };
   case EntryType::DIRECTORY:
-    throw IoError("The named file is a directory", EISDIR);
+    return {
+        nullptr,
+        IoError("The named file is a directory", EISDIR) };
   case EntryType::FILE_DOES_NOT_EXIST:
     if (!create) {
-      throw IoError("No such file or directory", ENOENT);
+      return { nullptr, IoError("No such file or directory", ENOENT) };
     }
     {
       const auto &file = std::make_shared<File>(_ino++);
       file->mtime = _clock();
       l.directory->files[l.basename] = file;
       l.directory->mtime = _clock();
-      return std::unique_ptr<Stream>(
-          new InMemoryFileStream(_clock, file, read, write, append));
+      return {
+          std::unique_ptr<Stream>(
+              new InMemoryFileStream(_clock, file, read, write, append)),
+          IoError::success() };
     }
   case EntryType::FILE:
     {
@@ -548,8 +560,10 @@ std::unique_ptr<FileSystem::Stream> InMemoryFileSystem::open(
       if (truncate) {
         file->contents.clear();
       }
-      return std::unique_ptr<Stream>(
-          new InMemoryFileStream(_clock, file, read, write, append));
+      return {
+          std::unique_ptr<Stream>(
+              new InMemoryFileStream(_clock, file, read, write, append)),
+          IoError::success() };
     }
   }
 }

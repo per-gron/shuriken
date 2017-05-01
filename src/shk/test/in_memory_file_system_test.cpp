@@ -78,7 +78,10 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("file mtime/ctime") {
     now = 1234;
-    const auto stream = fs.open("f", "w");
+    std::unique_ptr<FileSystem::Stream> stream;
+    IoError error;
+    std::tie(stream, error) = fs.open("f", "w");
+    REQUIRE(!error);
     CHECK(fs.stat("f").timestamps.mtime == 1234);
     CHECK(fs.stat("f").timestamps.ctime == 1234);
 
@@ -96,7 +99,7 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.stat("d").timestamps.ctime == 123);
 
     now++;
-    fs.open("d/f.txt", "w");
+    CHECK(fs.open("d/f.txt", "w").second == IoError::success());
     CHECK(fs.stat("d").timestamps.mtime == 124);
     CHECK(fs.stat("d").timestamps.ctime == 124);
 
@@ -139,7 +142,7 @@ TEST_CASE("InMemoryFileSystem") {
     const std::string path = "abc";
     const std::string file_path = "abc/def";
     CHECK(fs.mkdir(path) == IoError::success());
-    fs.open(file_path, "w");
+    CHECK(fs.open(file_path, "w").second == IoError::success());
     CHECK(fs.rmdir(path) != IoError::success());
     CHECK(fs.stat(path).result == 0);
   }
@@ -150,7 +153,7 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("unlink") {
-    fs.open(abc, "w");
+    CHECK(fs.open(abc, "w").second == IoError::success());
 
     CHECK(fs.unlink(abc) == IoError::success());
     CHECK(fs.stat(abc).result == ENOENT);
@@ -179,7 +182,7 @@ TEST_CASE("InMemoryFileSystem") {
 
     SECTION("directory") {
       CHECK(fs.mkdir("a") == IoError::success());
-      fs.open("a/file", "w");
+      CHECK(fs.open("a/file", "w").second == IoError::success());
       CHECK(fs.rename("a", "b") == IoError::success());
       CHECK(fs.stat("a").result == ENOENT);
       CHECK(fs.stat("b").result == 0);
@@ -193,7 +196,7 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("file") {
-      fs.open("a", "w");
+      CHECK(fs.open("a", "w").second == IoError::success());
       CHECK(fs.rename("a", "b") == IoError::success());
       CHECK(fs.stat("a").result == ENOENT);
       CHECK(readFile(fs, "b") == "");
@@ -202,7 +205,7 @@ TEST_CASE("InMemoryFileSystem") {
     SECTION("update directory mtime") {
       CHECK(fs.mkdir("a") == IoError::success());
       CHECK(fs.mkdir("b") == IoError::success());
-      fs.open("a/a", "w");
+      CHECK(fs.open("a/a", "w").second == IoError::success());
       now = 123;
       CHECK(fs.rename("a/a", "b/b") == IoError::success());
       CHECK(fs.stat("a").timestamps.mtime == 123);
@@ -212,7 +215,7 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("file with same name") {
-      fs.open("a", "w");
+      CHECK(fs.open("a", "w").second == IoError::success());
       CHECK(fs.rename("a", "a") == IoError::success());
       CHECK(fs.stat("a").result == 0);
       CHECK(readFile(fs, "a") == "");
@@ -227,20 +230,20 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("overwrite directory with file") {
-      fs.open("a", "w");
+      CHECK(fs.open("a", "w").second == IoError::success());
       CHECK(fs.mkdir("b") == IoError::success());
       CHECK(fs.rename("a", "b") != IoError::success());
     }
 
     SECTION("overwrite file with directory") {
       CHECK(fs.mkdir("a") == IoError::success());
-      fs.open("b", "w");
+      CHECK(fs.open("b", "w").second == IoError::success());
       CHECK(fs.rename("a", "b") != IoError::success());
     }
 
     SECTION("overwrite directory with directory") {
       CHECK(fs.mkdir("a") == IoError::success());
-      fs.open("a/b", "w");
+      CHECK(fs.open("a/b", "w").second == IoError::success());
       CHECK(fs.mkdir("b") == IoError::success());
       CHECK(fs.rename("a", "b") == IoError::success());
       CHECK(fs.stat("a/b").result == ENOTDIR);
@@ -252,7 +255,7 @@ TEST_CASE("InMemoryFileSystem") {
     SECTION("overwrite directory with nonempty directory") {
       CHECK(fs.mkdir("a") == IoError::success());
       CHECK(fs.mkdir("b") == IoError::success());
-      fs.open("b/b", "w");
+      CHECK(fs.open("b/b", "w").second == IoError::success());
       CHECK(fs.rename("a", "b") != IoError::success());
     }
   }
@@ -279,7 +282,7 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("readDir") {
     SECTION("success") {
       CHECK(fs.mkdir("d") == IoError::success());
-      fs.open("d/a", "w");
+      CHECK(fs.open("d/a", "w").second == IoError::success());
       CHECK(fs.mkdir("d/b") == IoError::success());
 
       std::vector<DirEntry> dir_entries;
@@ -295,7 +298,7 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("fail") {
-      fs.open("f", "w");
+      CHECK(fs.open("f", "w").second == IoError::success());
       CHECK(fs.mkdir("d") == IoError::success());
 
       const auto check_readdir_fails = [&fs](nt_string_view path) {
@@ -326,11 +329,11 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("open with bad mode") {
-    CHECK_THROWS_AS(fs.open(abc, ""), IoError);
+    CHECK(fs.open(abc, "").second != IoError::success());
   }
 
   SECTION("open for writing") {
-    fs.open(abc, "w");
+    CHECK(fs.open(abc, "w").second == IoError::success());
 
     const auto stat = fs.stat(abc);
     CHECK(stat.result == 0);
@@ -340,7 +343,11 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("open for appending") {
     CHECK(fs.writeFile(abc, "swe") == IoError::success());
     {
-      const auto stream = fs.open(abc, "ab");
+      std::unique_ptr<FileSystem::Stream> stream;
+      IoError error;
+      std::tie(stream, error) = fs.open(abc, "ab");
+      REQUIRE(!error);
+
       const std::string et = "et";
       CHECK(
           stream->write(
@@ -353,7 +360,11 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("open new file for appending") {
     {
-      const auto stream = fs.open(abc, "ab");
+      std::unique_ptr<FileSystem::Stream> stream;
+      IoError error;
+      std::tie(stream, error) = fs.open(abc, "ab");
+      REQUIRE(!error);
+
       const std::string et = "et";
       CHECK(
           stream->write(
@@ -365,7 +376,7 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("open for writing in binary") {
-    fs.open(abc, "wb");
+    CHECK(fs.open(abc, "wb").second == IoError::success());
 
     const auto stat = fs.stat(abc);
     CHECK(stat.result == 0);
@@ -373,12 +384,12 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("open missing file for reading") {
-    CHECK_THROWS_AS(fs.open("abc", "r"), IoError);
+    CHECK(fs.open("abc", "r").second != IoError::success());
   }
 
   SECTION("inos are unique") {
-    fs.open("1", "w");
-    fs.open("2", "w");
+    CHECK(fs.open("1", "w").second == IoError::success());
+    CHECK(fs.open("2", "w").second == IoError::success());
     CHECK(fs.mkdir("3") == IoError::success());
     CHECK(fs.mkdir("4") == IoError::success());
 

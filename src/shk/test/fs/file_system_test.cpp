@@ -65,7 +65,7 @@ TEST_CASE("FileSystem") {
     CHECK(hash_with_one_dir.second == IoError::success());
     CHECK(hash_with_one_dir.first != e.first);
 
-    fs.open("d/e", "w");
+    REQUIRE(fs.open("d/e", "w").second == IoError::success());
     {
       const auto hash_with_one_dir_and_one_file = fs.hashDir("d");
       CHECK(hash_with_one_dir_and_one_file.second == IoError::success());
@@ -144,7 +144,7 @@ TEST_CASE("FileSystem") {
     }
 
     SECTION("over file") {
-      fs.open(abc, "w");
+      CHECK(fs.open(abc, "w").second == IoError::success());
       CHECK(mkdirs(fs, abc).second != IoError::success());
     }
 

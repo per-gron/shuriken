@@ -119,8 +119,8 @@ class FileSystem {
     virtual string_view memory() = 0;
   };
 
-  virtual std::unique_ptr<Stream> open(
-      nt_string_view path, const char *mode) throw(IoError) = 0;
+  virtual USE_RESULT std::pair<std::unique_ptr<Stream>, IoError> open(
+      nt_string_view path, const char *mode) = 0;
   /**
    * Memory map a file in read only mode.
    */
