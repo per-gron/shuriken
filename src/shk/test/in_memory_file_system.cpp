@@ -236,7 +236,8 @@ bool InMemoryFileSystem::rename(
   return true;
 }
 
-IoError InMemoryFileSystem::truncate(nt_string_view path, size_t size) {
+USE_RESULT IoError InMemoryFileSystem::truncate(
+    nt_string_view path, size_t size) {
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:

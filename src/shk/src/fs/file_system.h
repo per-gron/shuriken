@@ -21,6 +21,7 @@
 #include "hash.h"
 #include "io_error.h"
 #include "string_view.h"
+#include "util.h"
 
 namespace shk {
 
@@ -136,7 +137,7 @@ class FileSystem {
       nt_string_view old_path,
       nt_string_view new_path,
       std::string *err) = 0;
-  virtual IoError truncate(nt_string_view path, size_t size) = 0;
+  virtual USE_RESULT IoError truncate(nt_string_view path, size_t size) = 0;
   /**
    * Return the files, directories and other entries in a given directory. Fails
    * if the path does not point to a directory. The returned entries are not

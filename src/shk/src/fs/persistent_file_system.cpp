@@ -199,7 +199,7 @@ class PersistentFileSystem : public FileSystem {
         err);
   }
 
-  IoError truncate(nt_string_view path, size_t size) override {
+  USE_RESULT IoError truncate(nt_string_view path, size_t size) override {
     return checkForMinusOneIoError(
         ::truncate(NullterminatedString(path).c_str(), size));
   }

@@ -60,7 +60,7 @@ class DryRunFileSystem : public FileSystem {
     return true;
   }
 
-  IoError truncate(nt_string_view path, size_t size) override {
+  USE_RESULT IoError truncate(nt_string_view path, size_t size) override {
     return IoError::success();
   }
 

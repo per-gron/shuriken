@@ -77,7 +77,8 @@ bool CleaningFileSystem::rename(
   return _inner.rename(old_path, new_path, err);
 }
 
-IoError CleaningFileSystem::truncate(nt_string_view path, size_t size) {
+USE_RESULT IoError CleaningFileSystem::truncate(
+    nt_string_view path, size_t size) {
   return _inner.truncate(path, size);
 }
 

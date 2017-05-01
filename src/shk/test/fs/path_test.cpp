@@ -84,7 +84,7 @@ class FailingStatFileSystem : public FileSystem {
       std::string *err) override {
     return _fs.rename(old_path, new_path, err);
   }
-  IoError truncate(nt_string_view path, size_t size) override {
+  USE_RESULT IoError truncate(nt_string_view path, size_t size) override {
     return _fs.truncate(path, size);
   }
   std::pair<std::vector<DirEntry>, bool> readDir(
