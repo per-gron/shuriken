@@ -171,6 +171,11 @@ TEST_CASE("InMemoryFileSystem") {
       CHECK(fs.mkdir("link") == IoError::success());
       CHECK(fs.symlink("target", "link") != IoError::success());
     }
+
+    SECTION("open symlink") {
+      CHECK(fs.symlink("target", "link") == IoError::success());
+      CHECK(fs.open("link", "r").second != IoError::success());
+    }
   }
 
   SECTION("rename") {

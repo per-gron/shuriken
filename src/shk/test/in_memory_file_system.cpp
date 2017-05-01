@@ -555,7 +555,7 @@ InMemoryFileSystem::open(
     {
       const auto &file = l.directory->files[l.basename];
       if (!expect_symlink && file->symlink) {
-        throw IoError("Can't open symlink file", EINVAL);
+        return { nullptr, IoError("Can't open symlink file", EINVAL) };
       }
       if (truncate) {
         file->contents.clear();
@@ -586,7 +586,7 @@ Stat InMemoryFileSystem::stat(
     if (l.entry_type == EntryType::FILE) {
       const auto &file = l.directory->files[l.basename];
       if (follow_symlink && file->symlink) {
-        throw IoError("Symlink following is not supported", EINVAL);
+        throw std::runtime_error("Symlink following is not supported");
       }
       stat.metadata.size = file->contents.size();
       stat.metadata.ino = file->ino;
