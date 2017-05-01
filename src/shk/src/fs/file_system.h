@@ -156,7 +156,7 @@ class FileSystem {
    * Returns the hash and a bool indicating if the operation was successful or
    * not.
    */
-  std::pair<Hash, bool> hashDir(nt_string_view path, std::string *err);
+  USE_RESULT std::pair<Hash, IoError> hashDir(nt_string_view path);
 
   /**
    * Read the contents of a symlink.
@@ -172,7 +172,7 @@ class FileSystem {
    * Returns the hash of the symlink and a bool indicating if the operation was
    * successful or not.
    */
-  std::pair<Hash, bool> hashSymlink(nt_string_view path, std::string *err);
+  USE_RESULT std::pair<Hash, IoError> hashSymlink(nt_string_view path);
 
   /**
    * Utility function for reading files. It is on this interface because on
@@ -189,8 +189,8 @@ class FileSystem {
    * Returns the hash of the file and a bool indicating if the operation was
    * successful or not.
    */
-  virtual std::pair<Hash, bool> hashFile(
-      nt_string_view path, std::string *err) = 0;
+  virtual USE_RESULT std::pair<Hash, IoError> hashFile(
+      nt_string_view path) = 0;
 
   /**
    * Helper function for writing a string to a file.

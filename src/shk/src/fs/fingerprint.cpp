@@ -93,19 +93,21 @@ void computeFingerprintHash(
     nt_string_view path,
     Hash *hash) throw(IoError) {
   std::string err;
-  bool success = true;
+  IoError error;
   if (S_ISDIR(mode)) {
-    std::tie(*hash, success) = file_system.hashDir(path, &err);
+    std::tie(*hash, error) = file_system.hashDir(path);
   } else if (S_ISLNK(mode)) {
-    std::tie(*hash, success) = file_system.hashSymlink(path, &err);
+    std::tie(*hash, error) = file_system.hashSymlink(path);
   } else if (S_ISREG(mode)) {
-    std::tie(*hash, success) = file_system.hashFile(path, &err);
+    std::tie(*hash, error) = file_system.hashFile(path);
   } else {
     std::fill(hash->data.begin(), hash->data.end(), 0);
   }
 
-  if (!success) {
-    throw IoError("Could not fingerprint " + std::string(path) + ": " + err, 0);
+  if (error) {
+    throw IoError(
+        "Could not fingerprint " + std::string(path) + ": " + error.what(),
+        error.code);
   }
 }
 

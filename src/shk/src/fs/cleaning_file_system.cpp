@@ -97,9 +97,9 @@ USE_RESULT std::pair<std::string, IoError> CleaningFileSystem::readFile(
   return _inner.readFile(path);
 }
 
-std::pair<Hash, bool> CleaningFileSystem::hashFile(
-      nt_string_view path, std::string *err) {
-  return _inner.hashFile(path, err);
+USE_RESULT std::pair<Hash, IoError> CleaningFileSystem::hashFile(
+      nt_string_view path) {
+  return _inner.hashFile(path);
 }
 
 USE_RESULT std::pair<std::string, IoError> CleaningFileSystem::mkstemp(

@@ -25,8 +25,8 @@
 
 namespace shk {
 
-std::pair<Hash, bool> FileSystem::hashDir(
-    nt_string_view path, std::string *err) {
+USE_RESULT std::pair<Hash, IoError> FileSystem::hashDir(
+    nt_string_view path) {
   Hash hash;
 
   blake2b_state state;
@@ -36,8 +36,7 @@ std::pair<Hash, bool> FileSystem::hashDir(
   IoError error;
   std::tie(dir_entries, error) = readDir(path);
   if (error) {
-    *err = error.what();
-    return std::make_pair(Hash(), false);
+    return std::make_pair(Hash(), error);
   }
   std::sort(dir_entries.begin(), dir_entries.end());
   for (const auto &dir_entry : dir_entries) {
@@ -52,11 +51,11 @@ std::pair<Hash, bool> FileSystem::hashDir(
   }
 
   blake2b_final(&state, hash.data.data(), hash.data.size());
-  return std::make_pair(hash, true);
+  return std::make_pair(hash, IoError::success());
 }
 
-std::pair<Hash, bool> FileSystem::hashSymlink(
-    nt_string_view path, std::string *err) {
+USE_RESULT std::pair<Hash, IoError> FileSystem::hashSymlink(
+    nt_string_view path) {
   Hash hash;
 
   blake2b_state state;
@@ -66,8 +65,7 @@ std::pair<Hash, bool> FileSystem::hashSymlink(
   IoError error;
   std::tie(link_target, error) = readSymlink(path);
   if (error) {
-    *err = error.what();
-    return std::make_pair(Hash(), false);
+    return std::make_pair(Hash(), error);
   }
 
   blake2b_update(
@@ -77,7 +75,7 @@ std::pair<Hash, bool> FileSystem::hashSymlink(
 
   blake2b_final(&state, hash.data.data(), hash.data.size());
 
-  return std::make_pair(hash, true);
+  return std::make_pair(hash, IoError::success());
 }
 
 USE_RESULT IoError FileSystem::writeFile(

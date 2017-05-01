@@ -25,31 +25,25 @@ namespace {
 
 Hash hashFile(FileSystem &file_system, nt_string_view path) {
   Hash hash;
-  bool success;
-  std::string err;
-  std::tie(hash, success) = file_system.hashFile(path, &err);
-  CHECK(success);
-  CHECK(err == "");
+  IoError error;
+  std::tie(hash, error) = file_system.hashFile(path);
+  CHECK(!error);
   return hash;
 }
 
 Hash hashSymlink(FileSystem &file_system, nt_string_view path) {
   Hash hash;
-  bool success;
-  std::string err;
-  std::tie(hash, success) = file_system.hashSymlink(path, &err);
-  CHECK(success);
-  CHECK(err == "");
+  IoError error;
+  std::tie(hash, error) = file_system.hashSymlink(path);
+  CHECK(!error);
   return hash;
 }
 
 Hash hashDir(FileSystem &file_system, nt_string_view path) {
   Hash hash;
-  bool success;
-  std::string err;
-  std::tie(hash, success) = file_system.hashDir(path, &err);
-  CHECK(success);
-  CHECK(err == "");
+  IoError error;
+  std::tie(hash, error) = file_system.hashDir(path);
+  CHECK(!error);
   return hash;
 }
 

@@ -51,37 +51,35 @@ TEST_CASE("FileSystem") {
     CHECK(fs.mkdir("d") == IoError::success());
     CHECK(fs.mkdir("e") == IoError::success());
 
-    std::string err_1;
-    std::string err_2;
+    const auto e = fs.hashDir("e");
+    CHECK(e.second == IoError::success());
 
-    CHECK(fs.hashDir("d", &err_1) == fs.hashDir("e", &err_2));
-    CHECK(err_1 == "");
-    CHECK(err_2 == "");
+    {
+      const auto d = fs.hashDir("d");
+      CHECK(d == e);
+      CHECK(d.second == IoError::success());
+    }
 
     CHECK(fs.mkdir("d/d") == IoError::success());
-    const auto hash_with_one_dir = fs.hashDir("d", &err_1);
-    CHECK(hash_with_one_dir != fs.hashDir("e", &err_2));
-    CHECK(err_1 == "");
-    CHECK(err_2 == "");
+    const auto hash_with_one_dir = fs.hashDir("d");
+    CHECK(hash_with_one_dir.second == IoError::success());
+    CHECK(hash_with_one_dir.first != e.first);
 
     fs.open("d/e", "w");
-    const auto hash_with_one_dir_and_one_file = fs.hashDir("d", &err_1);
-    CHECK(hash_with_one_dir_and_one_file != hash_with_one_dir);
-    CHECK(hash_with_one_dir_and_one_file != fs.hashDir("e", &err_2));
-    CHECK(err_1 == "");
-    CHECK(err_2 == "");
+    {
+      const auto hash_with_one_dir_and_one_file = fs.hashDir("d");
+      CHECK(hash_with_one_dir_and_one_file.second == IoError::success());
+      CHECK(hash_with_one_dir_and_one_file.first != hash_with_one_dir.first);
+      CHECK(hash_with_one_dir_and_one_file.first != e.first);
+    }
 
     CHECK(fs.unlink("d/e") == IoError::success());
-    CHECK(hash_with_one_dir == fs.hashDir("d", &err_1));
-    CHECK(err_1 == "");
+    CHECK(hash_with_one_dir == fs.hashDir("d"));
 
     CHECK(fs.rmdir("d/d") == IoError::success());
-    CHECK(fs.hashDir("d", &err_1) == fs.hashDir("e", &err_2));
-    CHECK(err_1 == "");
-    CHECK(err_2 == "");
+    CHECK(fs.hashDir("d") == e);
 
-    CHECK(fs.hashDir("nonexisting", &err_1) == std::make_pair(Hash(), false));
-    CHECK(err_1 != "");
+    CHECK(fs.hashDir("nonexisting").second != IoError::success());
   }
 
   SECTION("hashSymlink") {
@@ -89,18 +87,18 @@ TEST_CASE("FileSystem") {
     CHECK(fs.symlink("target", "link_2") == IoError::success());
     CHECK(fs.symlink("target_other", "link_3") == IoError::success());
 
-    std::string err_1;
-    std::string err_2;
+    const auto link_1 = fs.hashSymlink("link_1");
+    const auto link_2 = fs.hashSymlink("link_2");
+    const auto link_3 = fs.hashSymlink("link_3");
 
-    CHECK(fs.hashSymlink("link_1", &err_1) == fs.hashSymlink("link_2", &err_2));
-    CHECK(err_1 == "");
-    CHECK(err_2 == "");
-    CHECK(fs.hashSymlink("link_2", &err_1) != fs.hashSymlink("link_3", &err_2));
-    CHECK(err_1 == "");
-    CHECK(err_2 == "");
+    CHECK(link_1.second == IoError::success());
+    CHECK(link_2.second == IoError::success());
+    CHECK(link_3.second == IoError::success());
 
-    CHECK(fs.hashSymlink("missing", &err_1).second == false);
-    CHECK(err_1 != "");
+    CHECK(link_1 == link_2);
+    CHECK(link_2 != link_3);
+
+    CHECK(fs.hashSymlink("missing").second != IoError::success());
   }
 
   SECTION("writeFile") {

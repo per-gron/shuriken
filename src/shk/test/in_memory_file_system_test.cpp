@@ -390,17 +390,16 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.writeFile("two", "some_content") == IoError::success());
     CHECK(fs.writeFile("three", "some_other_content") == IoError::success());
 
-    std::string err_1;
-    std::string err_2;
-    CHECK(fs.hashFile("one", &err_1) == fs.hashFile("one", &err_2));
-    CHECK(err_1 == "");
-    CHECK(err_2 == "");
-    CHECK(fs.hashFile("one", &err_1) == fs.hashFile("two", &err_2));
-    CHECK(err_1 == "");
-    CHECK(err_2 == "");
-    CHECK(fs.hashFile("one", &err_1) != fs.hashFile("three", &err_2));
-    CHECK(err_1 == "");
-    CHECK(err_2 == "");
+    const auto one = fs.hashFile("one");
+    CHECK(one.second == IoError::success());
+    const auto two = fs.hashFile("two");
+    CHECK(two.second == IoError::success());
+    const auto three = fs.hashFile("three");
+    CHECK(three.second == IoError::success());
+
+    CHECK(one == one);
+    CHECK(one == two);
+    CHECK(one != three);
   }
 
   SECTION("mkstemp creates file") {

@@ -317,8 +317,8 @@ USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::readFile(
   }
 }
 
-std::pair<Hash, bool> InMemoryFileSystem::hashFile(
-      nt_string_view path, std::string *err) {
+USE_RESULT std::pair<Hash, IoError> InMemoryFileSystem::hashFile(
+      nt_string_view path) {
   // This is optimized for readability rather than speed
   Hash hash;
   blake2b_state state;
@@ -327,15 +327,14 @@ std::pair<Hash, bool> InMemoryFileSystem::hashFile(
   IoError error;
   std::tie(file_contents, error) = readFile(path);
   if (error) {
-    *err = error.what();
-    return std::make_pair(Hash(), false);
+    return std::make_pair(Hash(), error);
   }
   blake2b_update(
       &state,
       reinterpret_cast<const uint8_t *>(file_contents.data()),
       file_contents.size());
   blake2b_final(&state, hash.data.data(), hash.data.size());
-  return std::make_pair(hash, true);
+  return std::make_pair(hash, IoError::success());
 }
 
 USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::mkstemp(

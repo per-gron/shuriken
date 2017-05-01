@@ -57,8 +57,8 @@ class InMemoryFileSystem : public FileSystem {
       nt_string_view path) override;
   USE_RESULT std::pair<std::string, IoError> readFile(
       nt_string_view path) override;
-  std::pair<Hash, bool> hashFile(
-      nt_string_view path, std::string *err) override;
+  USE_RESULT std::pair<Hash, IoError> hashFile(
+      nt_string_view path) override;
   USE_RESULT std::pair<std::string, IoError> mkstemp(
       std::string &&filename_template) override;
 

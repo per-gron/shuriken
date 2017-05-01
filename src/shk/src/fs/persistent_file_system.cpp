@@ -259,8 +259,8 @@ class PersistentFileSystem : public FileSystem {
     }
   }
 
-  std::pair<Hash, bool> hashFile(
-      nt_string_view path, std::string *err) override {
+  USE_RESULT std::pair<Hash, IoError> hashFile(
+      nt_string_view path) override {
     Hash hash;
     blake2b_state state;
     blake2b_init(&state, hash.data.size());
@@ -269,11 +269,10 @@ class PersistentFileSystem : public FileSystem {
         blake2b_update(&state, reinterpret_cast<const uint8_t *>(buf), len);
       });
     } catch (const IoError &io_error) {
-      *err = io_error.what();
-      return std::make_pair(Hash(), false);
+      return std::make_pair(Hash(), io_error);
     }
     blake2b_final(&state, hash.data.data(), hash.data.size());
-    return std::make_pair(hash, true);
+    return std::make_pair(hash, IoError::success());
   }
 
   USE_RESULT std::pair<std::string, IoError> mkstemp(
