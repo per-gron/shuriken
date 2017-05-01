@@ -65,9 +65,10 @@ void CleaningFileSystem::unlink(nt_string_view path)
   _removed_count++;
 }
 
-bool CleaningFileSystem::symlink(
-      nt_string_view target, nt_string_view source, std::string *err) {
-  return _inner.symlink(target, source, err);
+USE_RESULT IoError CleaningFileSystem::symlink(
+      nt_string_view target,
+      nt_string_view source) {
+  return _inner.symlink(target, source);
 }
 
 USE_RESULT IoError CleaningFileSystem::rename(

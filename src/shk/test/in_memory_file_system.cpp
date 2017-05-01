@@ -121,10 +121,12 @@ void InMemoryFileSystem::unlink(nt_string_view path) throw(IoError) {
   }
 }
 
-bool InMemoryFileSystem::symlink(
-      nt_string_view target, nt_string_view source, std::string *err) {
-  if (!writeFile(source, target, err)) {
-    return false;
+USE_RESULT IoError InMemoryFileSystem::symlink(
+      nt_string_view target,
+      nt_string_view source) {
+  std::string err;
+  if (!writeFile(source, target, &err)) {
+    return IoError(err, 0);
   }
   const auto l = lookup(source);
   assert(l.entry_type == EntryType::FILE);
@@ -132,7 +134,7 @@ bool InMemoryFileSystem::symlink(
   const auto file = l.directory->files.find(l.basename)->second;
   file->symlink = true;
 
-  return true;
+  return IoError::success();
 }
 
 USE_RESULT IoError InMemoryFileSystem::rename(

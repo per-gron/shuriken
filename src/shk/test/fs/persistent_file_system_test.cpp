@@ -94,8 +94,7 @@ TEST_CASE("PersistentFileSystem") {
     std::string err;
 
     SECTION("success") {
-      CHECK(fs->symlink("target", kTestFilename1, &err));
-      CHECK(err == "");
+      CHECK(fs->symlink("target", kTestFilename1) == IoError::success());
       const auto stat = fs->lstat(kTestFilename1);
       CHECK(stat.result != ENOENT);
       CHECK(S_ISLNK(stat.metadata.mode));
@@ -105,16 +104,14 @@ TEST_CASE("PersistentFileSystem") {
       CHECK(fs->writeFile(kTestFilename1, "", &err));
       CHECK(err == "");
 
-      CHECK(!fs->symlink("target", kTestFilename1, &err));
-      CHECK(err != "");
+      CHECK(fs->symlink("target", kTestFilename1) != IoError::success());
     }
   }
 
   SECTION("readSymlink") {
     std::string err;
     SECTION("success") {
-      CHECK(fs->symlink("target", kTestFilename1, &err));
-      CHECK(err == "");
+      CHECK(fs->symlink("target", kTestFilename1) == IoError::success());
       CHECK(
           fs->readSymlink(kTestFilename1, &err) ==
           std::make_pair(std::string("target"), true));

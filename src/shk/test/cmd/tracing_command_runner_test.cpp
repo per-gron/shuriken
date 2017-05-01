@@ -103,9 +103,10 @@ class FailingMkstempFileSystem : public FileSystem {
   void unlink(nt_string_view path) throw(IoError) override {
     _fs.unlink(path);
   }
-  bool symlink(
-      nt_string_view target, nt_string_view source, std::string *err) override {
-    return _fs.symlink(target, source, err);
+  USE_RESULT IoError symlink(
+      nt_string_view target,
+      nt_string_view source) override {
+    return _fs.symlink(target, source);
   }
   USE_RESULT IoError rename(
       nt_string_view old_path,
@@ -165,9 +166,10 @@ class FailingUnlinkFileSystem : public FileSystem {
   void unlink(nt_string_view path) throw(IoError) override {
     throw IoError("Test-induced unlink error", 0);
   }
-  bool symlink(
-      nt_string_view target, nt_string_view source, std::string *err) override {
-    return _fs.symlink(target, source, err);
+  USE_RESULT IoError symlink(
+      nt_string_view target,
+      nt_string_view source) override {
+    return _fs.symlink(target, source);
   }
   USE_RESULT IoError rename(
       nt_string_view old_path,

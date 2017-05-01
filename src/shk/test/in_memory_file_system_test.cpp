@@ -163,11 +163,8 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("symlink") {
-    std::string err;
-
     SECTION("success") {
-      CHECK(fs.symlink("target", "link", &err));
-      CHECK(err == "");
+      CHECK(fs.symlink("target", "link") == IoError::success());
       const auto stat = fs.lstat("link");
       CHECK(stat.result != ENOENT);
       CHECK(S_ISLNK(stat.metadata.mode));
@@ -175,8 +172,7 @@ TEST_CASE("InMemoryFileSystem") {
 
     SECTION("fail") {
       fs.mkdir("link");
-      CHECK(!fs.symlink("target", "link", &err));
-      CHECK(err != "");
+      CHECK(fs.symlink("target", "link") != IoError::success());
     }
   }
 
@@ -329,8 +325,7 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("readSymlink") {
     std::string err;
     SECTION("success") {
-      CHECK(fs.symlink("target", "link", &err));
-      CHECK(err == "");
+      CHECK(fs.symlink("target", "link") == IoError::success());
       CHECK(
           fs.readSymlink("link", &err) ==
           std::make_pair(std::string("target"), true));

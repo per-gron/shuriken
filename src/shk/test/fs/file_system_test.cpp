@@ -29,12 +29,6 @@ void writeFile(FileSystem &fs, nt_string_view path, string_view contents) {
   CHECK(err == "");
 }
 
-void symlink(FileSystem &fs, nt_string_view target, nt_string_view source) {
-  std::string err;
-  CHECK(fs.symlink(target, source, &err));
-  CHECK(err == "");
-}
-
 }  // anonymous namespace
 
 TEST_CASE("FileSystem") {
@@ -100,9 +94,9 @@ TEST_CASE("FileSystem") {
   }
 
   SECTION("hashSymlink") {
-    symlink(fs, "target", "link_1");
-    symlink(fs, "target", "link_2");
-    symlink(fs, "target_other", "link_3");
+    CHECK(fs.symlink("target", "link_1") == IoError::success());
+    CHECK(fs.symlink("target", "link_2") == IoError::success());
+    CHECK(fs.symlink("target_other", "link_3") == IoError::success());
 
     std::string err_1;
     std::string err_2;

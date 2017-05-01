@@ -180,13 +180,13 @@ class PersistentFileSystem : public FileSystem {
     checkForMinusOne(::unlink(NullterminatedString(path).c_str()));
   }
 
-  bool symlink(
-      nt_string_view target, nt_string_view source, std::string *err) override {
-    return checkForMinusOne(
+  USE_RESULT IoError symlink(
+      nt_string_view target,
+      nt_string_view source) override {
+    return checkForMinusOneIoError(
         ::symlink(
             NullterminatedString(target).c_str(),
-            NullterminatedString(source).c_str()),
-        err);
+            NullterminatedString(source).c_str()));
   }
 
   USE_RESULT IoError rename(

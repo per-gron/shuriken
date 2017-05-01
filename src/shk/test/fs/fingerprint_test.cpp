@@ -77,9 +77,7 @@ TEST_CASE("Fingerprint") {
   const std::string initial_contents = "initial_contents";
   writeFile(fs, "a", initial_contents);
   fs.mkdir("dir");
-  std::string err;
-  CHECK(fs.symlink("target", "link", &err));
-  CHECK(err == "");
+  CHECK(fs.symlink("target", "link") == IoError::success());
 
   SECTION("computeFingerprintHash") {
     const Hash zero{};
