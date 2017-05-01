@@ -48,8 +48,12 @@ TEST_CASE("PersistentFileSystem") {
   const auto fs = persistentFileSystem();
 
   SECTION("Mmap") {
+    SECTION("InvalidPath") {
+      CHECK(fs->mmap("/etc/hosts/lalala").second != IoError::success());
+    }
+
     SECTION("MissingFile") {
-      CHECK_THROWS_AS(fs->mmap("nonexisting.file"), IoError);
+      CHECK(fs->mmap("nonexisting.file").second != IoError::success());
     }
 
     SECTION("FileWithContents") {

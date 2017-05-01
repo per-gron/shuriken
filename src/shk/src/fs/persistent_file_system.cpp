@@ -107,25 +107,39 @@ class PersistentFileSystem : public FileSystem {
 
   class FileMmap : public Mmap {
    public:
-    FileMmap(nt_string_view path) {
+    FileMmap(size_t size, void *memory, int fd)
+        : _size(size),
+          _memory(memory),
+          _f(fd) {}
+
+    static USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> open(
+        nt_string_view path) {
       struct stat input;
       NullterminatedString nt_path(path);
       auto ret = ::stat(nt_path.c_str(), &input);
       if (ret == -1) {
-        throw IoError(strerror(errno), errno);
+        return { nullptr, IoError(strerror(errno), errno) };
       }
-      _size = input.st_size;
 
-      if (_size) {
-        _f = ::open(nt_path.c_str(), O_RDONLY);
-        if (_f == -1) {
-          throw IoError(strerror(errno), errno);
+      if (input.st_size) {
+        int fd = ::open(nt_path.c_str(), O_RDONLY);
+        if (fd == -1) {
+          return { nullptr, IoError(strerror(errno), errno) };
         }
 
-        _memory = ::mmap(nullptr, _size, PROT_READ, MAP_PRIVATE, _f, 0);
-        if (_memory == MAP_FAILED) {
-          throw IoError(strerror(errno), errno);
+        void *memory =
+            ::mmap(nullptr, input.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        if (memory == MAP_FAILED) {
+          return { nullptr, IoError(strerror(errno), errno) };
         }
+
+        return {
+            std::unique_ptr<Mmap>(new FileMmap(input.st_size, memory, fd)),
+            IoError::success() };
+      } else {
+        return {
+            std::unique_ptr<Mmap>(new FileMmap(0, nullptr, -1)),
+            IoError::success() };
       }
     }
 
@@ -144,9 +158,9 @@ class PersistentFileSystem : public FileSystem {
     }
 
    private:
-    size_t _size = 0;
-    void *_memory = MAP_FAILED;
-    int _f = -1;
+    size_t _size;
+    void *_memory;
+    int _f;
   };
 
  public:
@@ -157,7 +171,7 @@ class PersistentFileSystem : public FileSystem {
 
   USE_RESULT std::pair<std::unique_ptr<Mmap>, IoError> mmap(
       nt_string_view path) override {
-    return { std::unique_ptr<Mmap>(new FileMmap(path)), IoError::success() };
+    return FileMmap::open(path);
   }
 
   Stat stat(nt_string_view path) override {
