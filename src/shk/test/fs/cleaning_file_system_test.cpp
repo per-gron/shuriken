@@ -108,7 +108,7 @@ TEST_CASE("CleaningFileSystem") {
 
   SECTION("truncate") {
     std::string err;
-    CHECK(fs.truncate("f", 1, &err));
+    CHECK(fs.truncate("f", 1) == IoError::success());
     CHECK(err == "");
     CHECK(
         inner_fs.readFile("f", &err) ==

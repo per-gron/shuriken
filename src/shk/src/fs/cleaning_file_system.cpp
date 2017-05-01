@@ -77,9 +77,8 @@ bool CleaningFileSystem::rename(
   return _inner.rename(old_path, new_path, err);
 }
 
-bool CleaningFileSystem::truncate(
-    nt_string_view path, size_t size, std::string *err) {
-  return _inner.truncate(path, size, err);
+IoError CleaningFileSystem::truncate(nt_string_view path, size_t size) {
+  return _inner.truncate(path, size);
 }
 
 std::pair<std::vector<DirEntry>, bool> CleaningFileSystem::readDir(

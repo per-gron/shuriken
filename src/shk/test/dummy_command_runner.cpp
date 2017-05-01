@@ -184,7 +184,7 @@ void DummyCommandRunner::checkCommand(
     bool success;
     std::tie(data, success) = file_system.readFile(output, &err);
     if (!success) {
-      throw IoError(data, 0);
+      throw IoError("fail: " + data, 0);
     }
     if (data != output + "\n" + input_data) {
       throw std::runtime_error("Unexpected output file contents for file " + output);

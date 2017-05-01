@@ -17,23 +17,61 @@
 #include <stdexcept>
 #include <string>
 
+#include "util.h"
+
 namespace shk {
 
+/**
+ * IoError object represent either the success of an operation or a failure,
+ * along with an error message and errno-style error code.
+ */
 class IoError : public std::runtime_error {
  public:
+  /**
+   * Construct an IoError object that indicates that there is no error. The bool
+   * conversion operator returns false for these objects.
+   */
+  static IoError success() {
+    return IoError();
+  }
+
   template <typename string_type>
   explicit IoError(const string_type &what, int code)
       : runtime_error(what),
         code(code),
-        _what(what) {}
+        _what(what) {
+    if (_what.empty()) {
+      fatal("can't create IoError without error message");
+    }
+  }
 
   virtual const char *what() const throw() {
     return _what.c_str();
   }
 
-  const int code;
+  /**
+   * Returns true if the object represents a failure.
+   */
+  explicit operator bool() const {
+    return !_what.empty();
+  }
+
+  bool operator==(const IoError &other) const {
+    return
+        code == other.code &&
+        _what == other._what;
+  }
+
+  bool operator!=(const IoError &other) const {
+    return !(*this == other);
+  }
+
+  const int code = 0;
 
  private:
+  IoError() : runtime_error("") {}
+
+  // Empty string indicates no error
   const std::string _what;
 };
 

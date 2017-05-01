@@ -286,9 +286,7 @@ TEST_CASE("InMemoryFileSystem") {
     writeFile(fs, "file", "sweet bananas!");
 
     const auto check_truncate_fails = [&fs](nt_string_view path, size_t size) {
-      std::string err;
-      CHECK(!fs.truncate(path, size, &err));
-      CHECK(err != "");
+      CHECK(fs.truncate(path, size) != IoError::success());
     };
 
     check_truncate_fails("dir", 0);
@@ -297,7 +295,7 @@ TEST_CASE("InMemoryFileSystem") {
     check_truncate_fails("missing/a", 0);
 
     std::string err;
-    CHECK(fs.truncate("file", 5, &err));
+    CHECK(fs.truncate("file", 5) == IoError::success());
     CHECK(err == "");
     CHECK(readFile(fs, "file") == "sweet");
   }

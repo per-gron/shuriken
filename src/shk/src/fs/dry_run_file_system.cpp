@@ -60,8 +60,8 @@ class DryRunFileSystem : public FileSystem {
     return true;
   }
 
-  bool truncate(nt_string_view path, size_t size, std::string *err) override {
-    return true;
+  IoError truncate(nt_string_view path, size_t size) override {
+    return IoError::success();
   }
 
   std::pair<std::vector<DirEntry>, bool> readDir(
