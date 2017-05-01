@@ -108,7 +108,7 @@ class FileSystem {
      */
     virtual USE_RESULT IoError write(
         const uint8_t *ptr, size_t size, size_t nitems) = 0;
-    virtual long tell() const throw(IoError) = 0;
+    virtual USE_RESULT std::pair<long, IoError> tell() const = 0;
     virtual bool eof() const = 0;
   };
 

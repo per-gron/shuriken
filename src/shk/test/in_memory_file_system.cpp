@@ -457,8 +457,9 @@ USE_RESULT IoError InMemoryFileSystem::InMemoryFileStream::write(
   return IoError::success();
 }
 
-long InMemoryFileSystem::InMemoryFileStream::tell() const throw(IoError) {
-  return _position;
+USE_RESULT std::pair<long, IoError>
+InMemoryFileSystem::InMemoryFileStream::tell() const {
+  return { _position, IoError::success() };
 }
 
 bool InMemoryFileSystem::InMemoryFileStream::eof() const {

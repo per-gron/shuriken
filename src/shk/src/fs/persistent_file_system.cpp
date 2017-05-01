@@ -37,11 +37,11 @@ using FileHandle = RAIIHelper<FILE *, int, fclose>;
 
 class PersistentFileSystem : public FileSystem {
   template<typename T>
-  static T checkForMinusOne(T result) throw(IoError) {
+  static std::pair<T, IoError> checkForMinusOne(T result) {
     if (result == -1) {
-      throw IoError(strerror(errno), errno);
+      return { T(), IoError(strerror(errno), errno) };
     } else {
-      return result;
+      return { result, IoError::success() };
     }
   }
 
@@ -86,7 +86,7 @@ class PersistentFileSystem : public FileSystem {
       return IoError::success();
     }
 
-    long tell() const throw(IoError) override {
+    USE_RESULT std::pair<long, IoError> tell() const override {
       return checkForMinusOne(ftell(_f.get()));
     }
 

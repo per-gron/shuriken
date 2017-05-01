@@ -352,7 +352,13 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
   void writeHeader() {
-    if (_stream->tell() == 0) {
+    IoError error;
+    long tell;
+    std::tie(tell, error) = _stream->tell();
+    if (error) {
+      throw error;
+    }
+    if (tell == 0) {
       if (auto error = _stream->write(
               reinterpret_cast<const uint8_t *>(kFileSignature.data()),
               kFileSignature.size(),

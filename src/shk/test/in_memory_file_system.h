@@ -133,7 +133,7 @@ class InMemoryFileSystem : public FileSystem {
         uint8_t *ptr, size_t size, size_t nitems) override;
     USE_RESULT IoError write(
         const uint8_t *ptr, size_t size, size_t nitems) override;
-    long tell() const throw(IoError) override;
+    USE_RESULT std::pair<long, IoError> tell() const override;
     bool eof() const override;
 
    private:
