@@ -40,7 +40,9 @@ class DryRunFileSystem : public FileSystem {
     return _inner.lstat(path);
   }
 
-  void mkdir(nt_string_view path) throw(IoError) override {}
+  USE_RESULT IoError mkdir(nt_string_view path) override {
+    return IoError::success();
+  }
 
   USE_RESULT IoError rmdir(nt_string_view path) override {
     return IoError::success();

@@ -94,8 +94,8 @@ class FailingMkstempFileSystem : public FileSystem {
   Stat lstat(nt_string_view path) override {
     return _fs.lstat(path);
   }
-  void mkdir(nt_string_view path) throw(IoError) override {
-    _fs.mkdir(path);
+  USE_RESULT IoError mkdir(nt_string_view path) override {
+    return _fs.mkdir(path);
   }
   USE_RESULT IoError rmdir(nt_string_view path) override {
     return _fs.rmdir(path);
@@ -157,8 +157,8 @@ class FailingUnlinkFileSystem : public FileSystem {
   Stat lstat(nt_string_view path) override {
     return _fs.lstat(path);
   }
-  void mkdir(nt_string_view path) throw(IoError) override {
-    _fs.mkdir(path);
+  USE_RESULT IoError mkdir(nt_string_view path) override {
+    return _fs.mkdir(path);
   }
   USE_RESULT IoError rmdir(nt_string_view path) override {
     return _fs.rmdir(path);

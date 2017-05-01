@@ -76,7 +76,7 @@ TEST_CASE("Fingerprint") {
   InMemoryFileSystem fs([&now] { return now; });
   const std::string initial_contents = "initial_contents";
   writeFile(fs, "a", initial_contents);
-  fs.mkdir("dir");
+  CHECK(fs.mkdir("dir") == IoError::success());
   CHECK(fs.symlink("target", "link") == IoError::success());
 
   SECTION("computeFingerprintHash") {
@@ -556,7 +556,7 @@ TEST_CASE("Fingerprint") {
 
     SECTION(
         "dir: no changes, fingerprint taken at the same time as file mtime") {
-      fs.mkdir("d");
+      CHECK(fs.mkdir("d") == IoError::success());
       Fingerprint initial_fp;
       FileId file_id;
       std::tie(initial_fp, file_id) = takeFingerprint(fs, now, "d");

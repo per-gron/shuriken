@@ -112,7 +112,9 @@ void mkdirs(
   if (stat.result == ENOENT || stat.result == ENOTDIR) {
     mkdirs(file_system, std::string(dirname(path)), created_dirs);
     created_dirs.push_back(path);
-    file_system.mkdir(std::move(path));
+    if (auto error = file_system.mkdir(std::move(path))) {
+      throw error;
+    }
   } else if (S_ISDIR(stat.metadata.mode)) {
     // No need to do anything
   } else {

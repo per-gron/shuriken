@@ -57,8 +57,8 @@ TEST_CASE("FileSystem") {
   }
 
   SECTION("hashDir") {
-    fs.mkdir("d");
-    fs.mkdir("e");
+    CHECK(fs.mkdir("d") == IoError::success());
+    CHECK(fs.mkdir("e") == IoError::success());
 
     std::string err_1;
     std::string err_2;
@@ -67,7 +67,7 @@ TEST_CASE("FileSystem") {
     CHECK(err_1 == "");
     CHECK(err_2 == "");
 
-    fs.mkdir("d/d");
+    CHECK(fs.mkdir("d/d") == IoError::success());
     const auto hash_with_one_dir = fs.hashDir("d", &err_1);
     CHECK(hash_with_one_dir != fs.hashDir("e", &err_2));
     CHECK(err_1 == "");

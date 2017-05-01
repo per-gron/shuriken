@@ -100,7 +100,7 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("IgnoreDir") {
-      fs.mkdir("dir");
+      CHECK(fs.mkdir("dir") == IoError::success());
       log.ranCommand(
           hash, {}, {}, { "dir" }, { takeFingerprint(fs, 0, "dir").first });
       CHECK(log.entries().size() == 1);
@@ -111,7 +111,7 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("OutputDir") {
-      fs.mkdir("dir");
+      CHECK(fs.mkdir("dir") == IoError::success());
       log.ranCommand(
           hash, { "dir" }, { takeFingerprint(fs, 0, "dir").first }, {}, {});
       CHECK(log.entries().size() == 1);
@@ -123,7 +123,7 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("OutputDirAndFile") {
-      fs.mkdir("dir");
+      CHECK(fs.mkdir("dir") == IoError::success());
       log.ranCommand(
           hash,
           { "dir", "file" },
@@ -149,7 +149,7 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("Directories") {
-      fs.mkdir("a");
+      CHECK(fs.mkdir("a") == IoError::success());
       log.createdDirectory("a");
 
       std::unordered_map<FileId, nt_string_view> created_directories{

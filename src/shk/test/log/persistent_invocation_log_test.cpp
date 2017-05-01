@@ -318,7 +318,7 @@ TEST_CASE("PersistentInvocationLog") {
 
   SECTION("Writing") {
     SECTION("InvocationIgnoreInputDirectory") {
-      fs.mkdir("dir");
+      CHECK(fs.mkdir("dir") == IoError::success());
 
       const auto persistent_log = openPersistentInvocationLog(
           fs,
@@ -400,21 +400,21 @@ TEST_CASE("PersistentInvocationLog") {
     }
 
     SECTION("InvocationSingleInputDir") {
-      fs.mkdir("dir");
+      CHECK(fs.mkdir("dir") == IoError::success());
       multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
         ranCommand(log, hash_0, {}, { "dir" });
       }, fs);
     }
 
     SECTION("InvocationSingleOutputDir") {
-      fs.mkdir("dir");
+      CHECK(fs.mkdir("dir") == IoError::success());
       multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
         ranCommand(log, hash_0, { "dir" }, {});
       }, fs);
     }
 
     SECTION("InvocationSingleOutputFileAndDir") {
-      fs.mkdir("dir");
+      CHECK(fs.mkdir("dir") == IoError::success());
       multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
         ranCommand(log, hash_0, { "dir", "hi" }, {});
       }, fs);

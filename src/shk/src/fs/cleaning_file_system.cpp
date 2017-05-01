@@ -47,10 +47,10 @@ Stat CleaningFileSystem::lstat(nt_string_view path) {
   return stat;
 }
 
-void CleaningFileSystem::mkdir(nt_string_view path)
-    throw(IoError) {
+USE_RESULT IoError CleaningFileSystem::mkdir(nt_string_view path) {
   // Don't make directories; the build process creates directories
   // for things that are about to be built.
+  return IoError::success();
 }
 
 USE_RESULT IoError CleaningFileSystem::rmdir(nt_string_view path) {

@@ -65,8 +65,8 @@ class FailingStatFileSystem : public FileSystem {
   Stat lstat(nt_string_view path) override {
     return stat(path);
   }
-  void mkdir(nt_string_view path) throw(IoError) override {
-    _fs.mkdir(path);
+  USE_RESULT IoError mkdir(nt_string_view path) override {
+    return _fs.mkdir(path);
   }
   USE_RESULT IoError rmdir(nt_string_view path) override {
     return _fs.rmdir(path);
@@ -268,7 +268,7 @@ TEST_CASE("Path") {
 
   SECTION("operator==, operator!=") {
     InMemoryFileSystem fs;
-    fs.mkdir("dir");
+    CHECK(fs.mkdir("dir") == IoError::success());
     std::string err;
     CHECK(fs.writeFile("f", "", &err));
     CHECK(err == "");
@@ -300,7 +300,7 @@ TEST_CASE("Path") {
     InMemoryFileSystem fs;
     fs.open("file", "w");
     fs.open("other_file", "w");
-    fs.mkdir("dir");
+    CHECK(fs.mkdir("dir") == IoError::success());
     Paths paths(fs);
 
     CHECK(paths.get("file").original() == "file");
@@ -312,7 +312,7 @@ TEST_CASE("Path") {
     InMemoryFileSystem fs;
     fs.open("file", "w");
     fs.open("other_file", "w");
-    fs.mkdir("dir");
+    CHECK(fs.mkdir("dir") == IoError::success());
     Paths paths(fs);
 
     CHECK(paths.get("file").exists());
@@ -325,7 +325,7 @@ TEST_CASE("Path") {
     InMemoryFileSystem fs;
     fs.open("file", "w");
     fs.open("other_file", "w");
-    fs.mkdir("dir");
+    CHECK(fs.mkdir("dir") == IoError::success());
     Paths paths(fs);
 
     const auto file = fs.stat("file").metadata;
@@ -341,7 +341,7 @@ TEST_CASE("Path") {
     InMemoryFileSystem fs;
     fs.open("file", "w");
     fs.open("other_file", "w");
-    fs.mkdir("dir");
+    CHECK(fs.mkdir("dir") == IoError::success());
     Paths paths(fs);
 
     CHECK(paths.get("/a").isSame(paths.get("a")));

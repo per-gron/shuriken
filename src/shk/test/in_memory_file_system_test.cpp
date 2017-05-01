@@ -68,7 +68,7 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("mmap") {
     writeFile(fs, "f", "contents");
-    fs.mkdir("dir");
+    CHECK(fs.mkdir("dir") == IoError::success());
     CHECK_THROWS_AS(fs.mmap("nonexisting"), IoError);
     CHECK_THROWS_AS(fs.mmap("dir"), IoError);
     CHECK_THROWS_AS(fs.mmap("dir/nonexisting"), IoError);
@@ -96,8 +96,8 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("directory mtime/ctime") {
     now = 123;
-    fs.mkdir("d");
-    fs.mkdir("d/subdir");
+    CHECK(fs.mkdir("d") == IoError::success());
+    CHECK(fs.mkdir("d/subdir") == IoError::success());
     CHECK(fs.stat("d").timestamps.mtime == 123);
     CHECK(fs.stat("d").timestamps.ctime == 123);
 
@@ -118,7 +118,7 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("mkdir") {
-    fs.mkdir(abc);
+    CHECK(fs.mkdir(abc) == IoError::success());
 
     const auto stat = fs.stat(abc);
     CHECK(stat.result == 0);
@@ -126,8 +126,8 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("mkdir over existing directory") {
-    fs.mkdir(abc);
-    CHECK_THROWS_AS(fs.mkdir(abc), IoError);
+    CHECK(fs.mkdir(abc) == IoError::success());
+    CHECK(fs.mkdir(abc) != IoError::success());
   }
 
   SECTION("rmdir missing file") {
@@ -135,7 +135,7 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("rmdir") {
-    fs.mkdir(abc);
+    CHECK(fs.mkdir(abc) == IoError::success());
     CHECK(fs.rmdir(abc) == IoError::success());
 
     CHECK(fs.stat(abc).result == ENOENT);
@@ -144,14 +144,14 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("rmdir nonempty directory") {
     const std::string path = "abc";
     const std::string file_path = "abc/def";
-    fs.mkdir(path);
+    CHECK(fs.mkdir(path) == IoError::success());
     fs.open(file_path, "w");
     CHECK(fs.rmdir(path) != IoError::success());
     CHECK(fs.stat(path).result == 0);
   }
 
   SECTION("unlink directory") {
-    fs.mkdir(abc);
+    CHECK(fs.mkdir(abc) == IoError::success());
     CHECK(fs.unlink(abc) != IoError::success());
   }
 
@@ -171,7 +171,7 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("fail") {
-      fs.mkdir("link");
+      CHECK(fs.mkdir("link") == IoError::success());
       CHECK(fs.symlink("target", "link") != IoError::success());
     }
   }
@@ -184,7 +184,7 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("directory") {
-      fs.mkdir("a");
+      CHECK(fs.mkdir("a") == IoError::success());
       fs.open("a/file", "w");
       CHECK(fs.rename("a", "b") == IoError::success());
       CHECK(fs.stat("a").result == ENOENT);
@@ -193,7 +193,7 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("directory with same name") {
-      fs.mkdir("a");
+      CHECK(fs.mkdir("a") == IoError::success());
       CHECK(fs.rename("a", "a") == IoError::success());
       CHECK(fs.stat("a").result == 0);
     }
@@ -206,8 +206,8 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("update directory mtime") {
-      fs.mkdir("a");
-      fs.mkdir("b");
+      CHECK(fs.mkdir("a") == IoError::success());
+      CHECK(fs.mkdir("b") == IoError::success());
       fs.open("a/a", "w");
       now = 123;
       CHECK(fs.rename("a/a", "b/b") == IoError::success());
@@ -234,20 +234,20 @@ TEST_CASE("InMemoryFileSystem") {
 
     SECTION("overwrite directory with file") {
       fs.open("a", "w");
-      fs.mkdir("b");
+      CHECK(fs.mkdir("b") == IoError::success());
       CHECK(fs.rename("a", "b") != IoError::success());
     }
 
     SECTION("overwrite file with directory") {
-      fs.mkdir("a");
+      CHECK(fs.mkdir("a") == IoError::success());
       fs.open("b", "w");
       CHECK(fs.rename("a", "b") != IoError::success());
     }
 
     SECTION("overwrite directory with directory") {
-      fs.mkdir("a");
+      CHECK(fs.mkdir("a") == IoError::success());
       fs.open("a/b", "w");
-      fs.mkdir("b");
+      CHECK(fs.mkdir("b") == IoError::success());
       CHECK(fs.rename("a", "b") == IoError::success());
       CHECK(fs.stat("a/b").result == ENOTDIR);
       CHECK(fs.stat("a").result == ENOENT);
@@ -256,15 +256,15 @@ TEST_CASE("InMemoryFileSystem") {
     }
 
     SECTION("overwrite directory with nonempty directory") {
-      fs.mkdir("a");
-      fs.mkdir("b");
+      CHECK(fs.mkdir("a") == IoError::success());
+      CHECK(fs.mkdir("b") == IoError::success());
       fs.open("b/b", "w");
       CHECK(fs.rename("a", "b") != IoError::success());
     }
   }
 
   SECTION("truncate") {
-    fs.mkdir("dir");
+    CHECK(fs.mkdir("dir") == IoError::success());
     writeFile(fs, "file", "sweet bananas!");
 
     const auto check_truncate_fails = [&fs](nt_string_view path, size_t size) {
@@ -284,9 +284,9 @@ TEST_CASE("InMemoryFileSystem") {
 
   SECTION("readDir") {
     SECTION("success") {
-      fs.mkdir("d");
+      CHECK(fs.mkdir("d") == IoError::success());
       fs.open("d/a", "w");
-      fs.mkdir("d/b");
+      CHECK(fs.mkdir("d/b") == IoError::success());
 
       std::string err;
       std::vector<DirEntry> dir_entries;
@@ -304,7 +304,7 @@ TEST_CASE("InMemoryFileSystem") {
 
     SECTION("fail") {
       fs.open("f", "w");
-      fs.mkdir("d");
+      CHECK(fs.mkdir("d") == IoError::success());
 
       const auto check_readdir_fails = [&fs](nt_string_view path) {
         std::string err;
@@ -386,8 +386,8 @@ TEST_CASE("InMemoryFileSystem") {
   SECTION("inos are unique") {
     fs.open("1", "w");
     fs.open("2", "w");
-    fs.mkdir("3");
-    fs.mkdir("4");
+    CHECK(fs.mkdir("3") == IoError::success());
+    CHECK(fs.mkdir("4") == IoError::success());
 
     std::unordered_set<ino_t> inos;
     inos.insert(fs.stat("1").metadata.ino);

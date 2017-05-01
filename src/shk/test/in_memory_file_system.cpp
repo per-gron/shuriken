@@ -66,18 +66,18 @@ Stat InMemoryFileSystem::lstat(nt_string_view path) {
   return stat(/*follow_symlink:*/false, path);
 }
 
-void InMemoryFileSystem::mkdir(nt_string_view path) throw(IoError) {
+USE_RESULT IoError InMemoryFileSystem::mkdir(nt_string_view path) {
   const auto l = lookup(path);
   switch (l.entry_type) {
   case EntryType::DIRECTORY_DOES_NOT_EXIST:
-    throw IoError("A component of the path prefix is not a directory", ENOTDIR);
+    return IoError("A component of the path prefix is not a directory", ENOTDIR);
   case EntryType::FILE:
   case EntryType::DIRECTORY:
-    throw IoError("The named file exists", EEXIST);
+    return IoError("The named file exists", EEXIST);
   case EntryType::FILE_DOES_NOT_EXIST:
     l.directory->directories.emplace(l.basename);
     _directories.emplace(l.canonicalized, Directory(_clock(), _ino++));
-    break;
+    return IoError::success();
   }
 }
 

@@ -74,7 +74,8 @@ TEST_CASE("CompiledManifest") {
   const auto get_manifest_compile_error = [&](const RawManifest &raw_manifest) {
     flatbuffers::FlatBufferBuilder builder;
     std::string err;
-    bool success = CompiledManifest::compile(builder, manifest_path, raw_manifest, &err);
+    bool success = CompiledManifest::compile(
+        builder, manifest_path, raw_manifest, &err);
     if (success) {
       CHECK(err == "");
     } else {
@@ -1164,7 +1165,7 @@ TEST_CASE("CompiledManifest") {
     }
 
     SECTION("io error") {
-      fs.mkdir("manifest");
+      CHECK(fs.mkdir("manifest") == IoError::success());
 
       CHECK(
           parse_and_compile_fail("manifest", "manifest.compiled") ==
@@ -1206,7 +1207,7 @@ TEST_CASE("CompiledManifest") {
           "build out: cmd in\n";
 
       writeFile(fs, "manifest", manifest_str);
-      fs.mkdir("manifest.compiled");
+      CHECK(fs.mkdir("manifest.compiled") == IoError::success());
 
       CHECK(parse_and_compile_fail("manifest", "manifest.compiled") != "");
     }

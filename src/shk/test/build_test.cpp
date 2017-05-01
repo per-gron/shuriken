@@ -1269,12 +1269,12 @@ TEST_CASE("Build") {
   SECTION("deleteOldOutputs") {
     writeFile(fs, "file", "contents");
     const auto fingerprint = takeFingerprint(fs, clock(), "file").first;
-    fs.mkdir("dir_single_file");
+    CHECK(fs.mkdir("dir_single_file") == IoError::success());
     writeFile(fs, "dir_single_file/file", "contents!");
-    fs.mkdir("dir");
+    CHECK(fs.mkdir("dir") == IoError::success());
     writeFile(fs, "dir/file2", "contents2");
     const auto fingerprint2 = takeFingerprint(fs, clock(), "dir/file2").first;
-    fs.mkdir("dir/subdir");
+    CHECK(fs.mkdir("dir/subdir") == IoError::success());
     writeFile(fs, "dir/subdir/file3", "contents3");
     const auto fingerprint3 =
         takeFingerprint(fs, clock(), "dir/subdir/file3").first;

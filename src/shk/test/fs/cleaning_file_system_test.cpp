@@ -30,12 +30,12 @@ TEST_CASE("CleaningFileSystem") {
   std::string err;
   CHECK(inner_fs.writeFile("f", "contents", &err));
   CHECK(err == "");
-  inner_fs.mkdir("dir");
+  CHECK(inner_fs.mkdir("dir") == IoError::success());
 
   CleaningFileSystem fs(inner_fs);
 
   SECTION("mmap") {
-    fs.mkdir("dir");
+    CHECK(fs.mkdir("dir") == IoError::success());
     CHECK_THROWS_AS(fs.mmap("nonexisting"), IoError);
     CHECK_THROWS_AS(fs.mmap("dir"), IoError);
     CHECK_THROWS_AS(fs.mmap("dir/nonexisting"), IoError);
@@ -58,7 +58,7 @@ TEST_CASE("CleaningFileSystem") {
   }
 
   SECTION("mkdir") {
-    fs.mkdir(abc);
+    CHECK(fs.mkdir(abc) == IoError::success());
     CHECK(inner_fs.stat(abc).result == ENOENT);
     CHECK(fs.getRemovedCount() == 0);
   }

@@ -43,7 +43,7 @@ class CleaningFileSystem : public FileSystem {
 
   Stat lstat(nt_string_view path) override;
 
-  void mkdir(nt_string_view path) throw(IoError) override;
+  USE_RESULT IoError mkdir(nt_string_view path) override;
 
   USE_RESULT IoError rmdir(nt_string_view path) override;
 
