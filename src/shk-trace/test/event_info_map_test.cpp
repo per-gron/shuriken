@@ -18,11 +18,13 @@
 
 namespace shk {
 
-TEST_CASE("EventInfo") {
+TEST_CASE("EventInfoMap") {
   EventInfoMap map;
 
+  map.newThread(1);
   map.addEvent(1, 2).pid = 1337;
   map.addEvent(1, 3).pid = 9001;
+  map.newThread(2);
   map.addEvent(2, 2).pid = 321;
 
   SECTION("find") {
@@ -118,18 +120,28 @@ TEST_CASE("EventInfo") {
   }
 
   SECTION("verifyNoEventsForThread") {
-    SECTION("failure") {
-      CHECK_THROWS(map.verifyNoEventsForThread(1));
-      CHECK_THROWS(map.verifyNoEventsForThread(2));
+    SECTION("spawn already existing thread") {
+      CHECK_THROWS(map.newThread(1));
+      CHECK_THROWS(map.newThread(2));
     }
 
-    SECTION("never known thread") {
-      map.verifyNoEventsForThread(3);
+    SECTION("terminate thread with outstanding events") {
+      CHECK_THROWS(map.terminateThread(1));
+      CHECK_THROWS(map.terminateThread(2));
     }
 
-    SECTION("thread that is no longer present") {
+    SECTION("terminate unknown thread") {
+      map.terminateThread(100);
+    }
+
+    SECTION("create and terminate thread") {
+      map.newThread(3);
+      map.terminateThread(3);
+    }
+
+    SECTION("terminate thread that has had events") {
       map.erase(2, 2);
-      map.verifyNoEventsForThread(2);
+      map.terminateThread(2);
     }
   }
 }

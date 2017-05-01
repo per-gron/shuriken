@@ -93,6 +93,7 @@ TEST_CASE("Tracer") {
             .arg2 = pid,
             .arg5 = parent_thread_id,
           } }));
+      delegate.popNewThreadEvent();
     }
 
     SECTION("fail when terminating thread with outstanding events") {

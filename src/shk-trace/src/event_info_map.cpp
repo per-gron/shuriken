@@ -28,15 +28,28 @@ void EventInfoMap::erase(uintptr_t thread, int type) {
   }
 
   traced_thread.events.erase(type);
-  if (traced_thread.events.empty()) {
-    _map.erase(thread);
+}
+
+void EventInfoMap::newThread(uintptr_t thread) {
+  const bool inserted = _map.emplace(thread, TracedThread()).second;
+  if (!inserted) {
+    throw std::runtime_error(
+        "internal error: spawning already existing thread");
   }
 }
 
-void EventInfoMap::verifyNoEventsForThread(uintptr_t thread) const {
-  if (_map.count(thread) != 0) {
+void EventInfoMap::terminateThread(uintptr_t thread) {
+  auto map_iter = _map.find(thread);
+  if (map_iter == _map.end()) {
+    return;
+  }
+  auto &traced_thread = map_iter->second;
+
+  if (!traced_thread.events.empty() || traced_thread.last_event) {
     throw std::runtime_error("internal error: did not clean up");
   }
+
+  _map.erase(map_iter);
 }
 
 EventInfo &EventInfoMap::addEvent(uintptr_t thread, int type) {

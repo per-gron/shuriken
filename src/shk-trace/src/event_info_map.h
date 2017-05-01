@@ -34,7 +34,26 @@ class EventInfoMap {
  public:
   void erase(uintptr_t thread, int type);
 
-  void verifyNoEventsForThread(uintptr_t thread) const;
+  /**
+   * A new thread that should be traced has been created. This instructs
+   * EventInfoMap to actually trace this thread. Threads that are not registered
+   * with this call are not traced.
+   *
+   * This must be called only once per thread. (It is allowed to call this for
+   * a given thread id again after it has been reclaimed with terminateThread.)
+   */
+  void newThread(uintptr_t thread);
+
+  /**
+   * Instruct EventInfoMap to cease tracing a thread. All events traced for this
+   * thread must have been erased before making this call. (This requirement is
+   * mostly there as a sanity check to verify that Kdebug is not playing games
+   * with us.)
+   *
+   * It is legal to call this with a thread id that is not being traced. Such
+   * calls are ignored.
+   */
+  void terminateThread(uintptr_t thread);
 
   EventInfo &addEvent(uintptr_t thread, int type);
 

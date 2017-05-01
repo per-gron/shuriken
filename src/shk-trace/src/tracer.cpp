@@ -128,15 +128,17 @@ void Tracer::processNewThread(const kd_buf &kd) {
   auto child_thread = kd.arg1;
   auto pid = kd.arg2;
   if (child_thread) {
-    _ei_map.verifyNoEventsForThread(child_thread);
-    _delegate.newThread(pid, thread, child_thread);
+    if (_delegate.newThread(pid, thread, child_thread) ==
+        Delegate::NewThreadResponse::TRACE) {
+      _ei_map.newThread(child_thread);
+    }
   }
 }
 
 bool Tracer::processThreadTerminate(const kd_buf &kd) {
   uintptr_t thread = kd.arg5;
 
-  _ei_map.verifyNoEventsForThread(thread);
+  _ei_map.terminateThread(thread);
   return
       _delegate.terminateThread(thread) ==
       Delegate::TerminateThreadResponse::QUIT_TRACING;
