@@ -55,13 +55,12 @@ target_link_libraries(libshktrace util bsm shkutil)
 set_target_properties(libshktrace PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_property(TARGET libshktrace PROPERTY CXX_STANDARD 11)
 
-add_executable(shk-trace
+add_executable(shk-trace-nosuid
   src/main.cpp)
-target_link_libraries(shk-trace libshktrace)
-set_target_properties(shk-trace PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin"
-  OUTPUT_NAME shk-trace-nosuid)
-set_property(TARGET shk-trace PROPERTY CXX_STANDARD 11)
+target_link_libraries(shk-trace-nosuid libshktrace)
+set_target_properties(shk-trace-nosuid PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+set_property(TARGET shk-trace-nosuid PROPERTY CXX_STANDARD 11)
 
 add_executable(shktrace_test
   test/cmdline_options_test.cpp
@@ -94,9 +93,9 @@ set_target_properties(shktrace_integrationtest_helper PROPERTIES COMPILE_FLAGS $
 set_target_properties(shktrace_integrationtest_helper PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations -O0")
 set_property(TARGET shktrace_integrationtest_helper PROPERTY CXX_STANDARD 11)
 
-add_custom_target(setuid
-  COMMAND "${PROJECT_SOURCE_DIR}/scripts/make_suid.sh" "$<TARGET_FILE:shk-trace>"
-  DEPENDS shk-trace
+add_custom_target(shk-trace
+  COMMAND "${PROJECT_SOURCE_DIR}/scripts/make_suid.sh" "$<TARGET_FILE:shk-trace-nosuid>"
+  DEPENDS shk-trace-nosuid
   VERBATIM USES_TERMINAL)
 
 add_test(NAME trace_unit COMMAND shktrace_test)
