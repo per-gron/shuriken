@@ -147,6 +147,7 @@ add_executable(shk_test
   test/in_memory_invocation_log.cpp
   test/in_memory_invocation_log.h
   test/in_memory_invocation_log_test.cpp
+  test/io_error_test.cpp
   test/log/delayed_invocation_log_test.cpp
   test/log/invocation_log_test.cpp
   test/log/invocations_test.cpp
