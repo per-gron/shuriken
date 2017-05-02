@@ -29,22 +29,16 @@ class IoError {
    * Construct an IoError object that indicates that there is no error. The bool
    * conversion operator returns false for these objects.
    */
-  IoError() : _what(nullptr) {}
+  IoError();
 
-  IoError(const IoError &other)
-      : code(other.code),
-        _what(other._what ? new std::string(*other._what) : nullptr) {}
+  IoError(const IoError &other);
 
   template <typename string_type>
   explicit IoError(const string_type &what, int code)
       : code(code),
         _what(new std::string(what)) {}
 
-  IoError &operator=(const IoError &other) {
-    code = other.code;
-    _what.reset(other._what ? new std::string(*other._what) : nullptr);
-    return *this;
-  }
+  IoError &operator=(const IoError &other);
 
   /**
    * Alias for IoError(), can be used for code clarity.
@@ -64,22 +58,9 @@ class IoError {
     return !!_what;
   }
 
-  bool operator==(const IoError &other) const {
-    if (code != other.code) {
-      return false;
-    }
-    if (!_what && !other._what) {
-      return true;
-    }
-    if (!_what || !other._what) {
-      return false;
-    }
-    return *_what == *other._what;
-  }
+  bool operator==(const IoError &other) const;
 
-  bool operator!=(const IoError &other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const IoError &other) const;
 
   int code = 0;
 

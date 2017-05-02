@@ -62,6 +62,7 @@ add_library(shklib
   src/manifest/rule.h
   src/manifest/step.h
   src/manifest/wrapper_view.h
+  src/io_error.cpp
   src/io_error.h
   src/log/delayed_invocation_log.cpp
   src/log/delayed_invocation_log.h
