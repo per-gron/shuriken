@@ -35,7 +35,7 @@ class IoError {
 
   template <typename string_type>
   explicit IoError(const string_type &what, int code)
-      : code(code),
+      : _code(code),
         _what(new std::string(what)) {}
 
   IoError &operator=(const IoError &other);
@@ -62,9 +62,12 @@ class IoError {
 
   bool operator!=(const IoError &other) const;
 
-  int code = 0;
+  int code() const {
+    return _code;
+  }
 
  private:
+  int _code = 0;
   // Empty string indicates no error
   std::unique_ptr<const std::string> _what;
 };

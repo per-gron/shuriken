@@ -96,7 +96,7 @@ int toolClean(int argc, char *argv[], const ToolParams &params) {
 
     // Use cleaning_file_system to make sure the file is counted
     if (auto error = cleaning_file_system.unlink(params.invocation_log_path)) {
-      if (error.code == ENOENT) {
+      if (error.code() == ENOENT) {
         // We don't care
       } else {
         printf("shk: failed to clean invocation log: %s\n", error.what());

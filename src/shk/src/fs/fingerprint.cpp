@@ -107,7 +107,7 @@ void computeFingerprintHash(
   if (error) {
     throw IoError(
         "Could not fingerprint " + std::string(path) + ": " + error.what(),
-        error.code);
+        error.code());
   }
 }
 

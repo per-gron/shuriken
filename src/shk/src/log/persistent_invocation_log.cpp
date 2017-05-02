@@ -644,7 +644,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
   try {
     *log_contents = file_system.readFile(log_path);
   } catch (IoError &io_error) {
-    if (io_error.code == ENOENT) {
+    if (io_error.code() == ENOENT) {
       return result;
     } else {
       throw;
@@ -657,7 +657,7 @@ InvocationLogParseResult parsePersistentInvocationLog(
   IoError io_error;
   std::tie(mmap, io_error) = file_system.mmap(log_path);
   if (io_error) {
-    if (io_error.code == ENOENT) {
+    if (io_error.code() == ENOENT) {
       return result;
     } else {
       throw io_error;

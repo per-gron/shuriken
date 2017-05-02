@@ -435,11 +435,11 @@ void deleteBuildProduct(
     InvocationLog &invocation_log,
     nt_string_view path) throw(IoError) {
   if (auto error = file_system.unlink(path)) {
-    if (error.code != ENOENT) {
+    if (error.code() != ENOENT) {
       throw IoError(
           std::string("Failed to unlink build product ") +
           std::string(path) + ": " + error.what(),
-          error.code);
+          error.code());
     }
   }
 
@@ -469,7 +469,7 @@ void deleteBuildProduct(
       }
       invocation_log.removedDirectory(dir);
     } catch (const IoError &error) {
-      if (error.code == ENOTEMPTY) {
+      if (error.code() == ENOTEMPTY) {
         // The directory is not empty. Do not remove.
         break;
       } else {

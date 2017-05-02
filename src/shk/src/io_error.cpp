@@ -19,17 +19,17 @@ namespace shk {
 IoError::IoError() {}
 
 IoError::IoError(const IoError &other)
-    : code(other.code),
+    : _code(other._code),
       _what(other._what ? new std::string(*other._what) : nullptr) {}
 
 IoError &IoError::operator=(const IoError &other) {
-  code = other.code;
+  _code = other._code;
   _what.reset(other._what ? new std::string(*other._what) : nullptr);
   return *this;
 }
 
 bool IoError::operator==(const IoError &other) const {
-  if (code != other.code) {
+  if (_code != other._code) {
     return false;
   }
   if (!_what && !other._what) {
