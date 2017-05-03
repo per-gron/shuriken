@@ -24,6 +24,8 @@ TEST_CASE("Invocations") {
   const uint32_t a_one_buf = 1;
   const FingerprintIndicesView a_one_view(&a_one_buf, &a_one_buf + 1);
 
+  const Fingerprint empty_fingerprint{};
+
   SECTION("Entry") {
     Invocations::Entry a;
     Invocations::Entry b;
@@ -66,14 +68,14 @@ TEST_CASE("Invocations") {
 
     SECTION("OneUnused") {
       Invocations i;
-      i.fingerprints.emplace_back();
+      i.fingerprints.emplace_back("", empty_fingerprint);
 
       CHECK(i.countUsedFingerprints() == 0);
     }
 
     SECTION("OneUsedAsOutput") {
       Invocations i;
-      i.fingerprints.emplace_back();
+      i.fingerprints.emplace_back("", empty_fingerprint);
 
       Invocations::Entry e;
       e.output_files = a_zero_view;
@@ -84,7 +86,7 @@ TEST_CASE("Invocations") {
 
     SECTION("OneUsedAsInput") {
       Invocations i;
-      i.fingerprints.emplace_back();
+      i.fingerprints.emplace_back("", empty_fingerprint);
 
       Invocations::Entry e;
       e.input_files = a_zero_view;
@@ -95,7 +97,7 @@ TEST_CASE("Invocations") {
 
     SECTION("OneUsedAsInputAndOutput") {
       Invocations i;
-      i.fingerprints.emplace_back();
+      i.fingerprints.emplace_back("", empty_fingerprint);
 
       Invocations::Entry e;
       e.input_files = a_zero_view;
@@ -107,8 +109,8 @@ TEST_CASE("Invocations") {
 
     SECTION("OneUsedAndOneUnused") {
       Invocations i;
-      i.fingerprints.emplace_back();
-      i.fingerprints.emplace_back();
+      i.fingerprints.emplace_back("", empty_fingerprint);
+      i.fingerprints.emplace_back("", empty_fingerprint);
 
       Invocations::Entry e;
       e.input_files = a_one_view;
@@ -120,10 +122,10 @@ TEST_CASE("Invocations") {
 
   SECTION("FingerprintsFor") {
     Invocations i;
-    i.fingerprints.emplace_back();
-    i.fingerprints.emplace_back();
-    i.fingerprints.emplace_back();
-    i.fingerprints.emplace_back();
+    i.fingerprints.emplace_back("", empty_fingerprint);
+    i.fingerprints.emplace_back("", empty_fingerprint);
+    i.fingerprints.emplace_back("", empty_fingerprint);
+    i.fingerprints.emplace_back("", empty_fingerprint);
 
     Invocations::Entry empty;
 
@@ -179,6 +181,8 @@ TEST_CASE("Invocations") {
     Invocations a;
     Invocations b;
 
+    const Fingerprint empty_fingerprint{};
+
     SECTION("Same") {
       CHECK(a == a);
       CHECK(!(a != a));
@@ -213,7 +217,7 @@ TEST_CASE("Invocations") {
 
     SECTION("Fingerprints") {
       Invocations b;
-      b.fingerprints.emplace_back("path", Fingerprint());
+      b.fingerprints.emplace_back("path", empty_fingerprint);
 
       CHECK(b == a);
       CHECK(a == b);
@@ -223,7 +227,7 @@ TEST_CASE("Invocations") {
 
     SECTION("EntriesDifferentOutputCounts") {
       Invocations b;
-      b.fingerprints.emplace_back("path", Fingerprint());
+      b.fingerprints.emplace_back("path", empty_fingerprint);
       Invocations::Entry b_entry;
       b_entry.output_files = a_zero_view;
       b.entries.emplace(Hash(), b_entry);
@@ -238,7 +242,7 @@ TEST_CASE("Invocations") {
 
     SECTION("EntriesDifferentInputCounts") {
       Invocations b;
-      b.fingerprints.emplace_back("path", Fingerprint());
+      b.fingerprints.emplace_back("path", empty_fingerprint);
       Invocations::Entry b_entry;
       b_entry.input_files = a_zero_view;
       b.entries.emplace(Hash(), b_entry);
@@ -253,12 +257,12 @@ TEST_CASE("Invocations") {
 
     SECTION("EntriesDifferentPaths") {
       Invocations b;
-      b.fingerprints.emplace_back("b_path", Fingerprint());
+      b.fingerprints.emplace_back("b_path", empty_fingerprint);
       Invocations::Entry b_entry;
       b_entry.output_files = a_zero_view;
       b.entries.emplace(Hash(), b_entry);
 
-      a.fingerprints.emplace_back("path", Fingerprint());
+      a.fingerprints.emplace_back("path", empty_fingerprint);
       Invocations::Entry a_entry;
       a_entry.output_files = a_zero_view;
       a.entries.emplace(Hash(), a_entry);
@@ -271,13 +275,13 @@ TEST_CASE("Invocations") {
 
     SECTION("SematicallyEqualEntries") {
       Invocations b;
-      b.fingerprints.emplace_back("b_path", Fingerprint());
-      b.fingerprints.emplace_back("path", Fingerprint());
+      b.fingerprints.emplace_back("b_path", empty_fingerprint);
+      b.fingerprints.emplace_back("path", empty_fingerprint);
       Invocations::Entry b_entry;
       b_entry.output_files = a_one_view;
       b.entries.emplace(Hash(), b_entry);
 
-      a.fingerprints.emplace_back("path", Fingerprint());
+      a.fingerprints.emplace_back("path", empty_fingerprint);
       Invocations::Entry a_entry;
       a_entry.output_files = a_zero_view;
       a.entries.emplace(Hash(), a_entry);

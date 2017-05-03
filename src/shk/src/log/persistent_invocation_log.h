@@ -109,7 +109,7 @@ using PathIds = std::unordered_map<nt_string_view, uint32_t>;
  */
 struct FingerprintIdsValue {
   uint32_t record_id = 0;
-  Fingerprint fingerprint;
+  const Fingerprint *fingerprint = nullptr;
 };
 using FingerprintIds = std::unordered_map<
     nt_string_view, FingerprintIdsValue>;

@@ -28,7 +28,8 @@ namespace {
  * indicating whether it is used by one of the entries in entry_vec.
  */
 std::vector<std::vector<bool>> findUsedFingerprints(
-    const std::vector<std::pair<nt_string_view, Fingerprint>> &fingerprints,
+    const std::vector<std::pair<nt_string_view, const Fingerprint &>> &
+        fingerprints,
     const std::vector<const Invocations::Entry *> &entry_vec) {
   const int num_threads = guessParallelism();
   std::vector<std::vector<bool>> used_fingerprints(num_threads);
@@ -130,8 +131,10 @@ bool operator==(const Invocations &a, const Invocations &b) {
     }
 
     const auto files_are_same = [&](
-        const std::vector<std::pair<nt_string_view, Fingerprint>> &a_fps,
-        const std::vector<std::pair<nt_string_view, Fingerprint>> &b_fps,
+        const std::vector<std::pair<nt_string_view, const Fingerprint &>> &
+            a_fps,
+        const std::vector<std::pair<nt_string_view, const Fingerprint &>> &
+            b_fps,
         FingerprintIndicesView a_files,
         FingerprintIndicesView b_files) {
       if (a_files.size() != b_files.size()) {

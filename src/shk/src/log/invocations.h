@@ -44,7 +44,7 @@ struct Invocations {
    * corresponding uses in entries. Because of this it is usually not a good
    * idea to go though and process all the entries in this vector.
    */
-  std::vector<std::pair<nt_string_view, Fingerprint>> fingerprints;
+  std::vector<std::pair<nt_string_view, const Fingerprint &>> fingerprints;
 
   /**
    * Contains indices into the fingerprints vector.

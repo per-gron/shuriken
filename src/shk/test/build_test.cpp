@@ -215,6 +215,8 @@ TEST_CASE("Build") {
   flatbuffers::FlatBufferBuilder empty_step_builder;
   auto empty = StepBuilder().build(empty_step_builder);
 
+  const Fingerprint empty_fingerprint{};
+
   RawStep single_output;
   single_output.command = "cmd";
   single_output.outputs = { paths.get("a") };
@@ -638,7 +640,7 @@ TEST_CASE("Build") {
     SECTION("unused fingerprint") {
       const auto memo = computeFingerprintMatchesMemo(
           fs,
-          { { "path", Fingerprint() } },
+          { { "path", empty_fingerprint } },
           {});
       CHECK(
           memo ==
@@ -651,7 +653,7 @@ TEST_CASE("Build") {
 
       const auto memo = computeFingerprintMatchesMemo(
           fs,
-          { { "file", Fingerprint() } },
+          { { "file", empty_fingerprint } },
           { 0 });
       CHECK(
           memo ==
@@ -701,10 +703,10 @@ TEST_CASE("Build") {
       const auto memo = computeFingerprintMatchesMemo(
           fs,
           {
-              { "unused1", Fingerprint() },
-              { "unused2", Fingerprint() },
+              { "unused1", empty_fingerprint },
+              { "unused2", empty_fingerprint },
               { "file", file_fp },
-              { "unused3", Fingerprint() }, },
+              { "unused3", empty_fingerprint }, },
           { 2 });
 
       MatchesResult expected_result;
@@ -1205,7 +1207,7 @@ TEST_CASE("Build") {
           invocations,
           invocations.entries[root.hash()],
           single_output.outputs[0].original(),
-          Fingerprint());
+          empty_fingerprint);
       auto build = computeBuild(paths, manifest);
       CHECK(build.ready_steps.size() == 1);
       CHECK(discardCleanSteps(

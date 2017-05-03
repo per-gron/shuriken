@@ -315,7 +315,8 @@ FingerprintMatchesMemo computeFingerprintMatchesMemo(
 
 FingerprintMatchesMemo computeFingerprintMatchesMemo(
     FileSystem &file_system,
-    const std::vector<std::pair<nt_string_view, Fingerprint>> &fingerprints,
+    const std::vector<std::pair<nt_string_view, const Fingerprint &>> &
+        fingerprints,
     const std::vector<uint32_t> used_fingerprints) {
   FingerprintMatchesMemo memo(fingerprints.size());
 
@@ -651,7 +652,7 @@ bool canSkipBuildCommand(
   for (const auto fingerprint_idx : invocation_entry.input_files) {
     const auto &path =
         invocations.fingerprints[fingerprint_idx].first;
-    const auto original_fingerprint =
+    const auto &original_fingerprint =
         invocations.fingerprints[fingerprint_idx].second;
 
     const auto new_stat = file_system.lstat(path);

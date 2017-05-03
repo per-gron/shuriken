@@ -93,7 +93,8 @@ TEST_CASE("InMemoryInvocationLog") {
       REQUIRE(invocations.fingerprints.size() == 1);
       CHECK(
           invocations.fingerprints[0] ==
-          (std::make_pair(nt_string_view("file"), fp)));
+          (std::pair<nt_string_view, const Fingerprint &>(
+              nt_string_view("file"), fp)));
     }
 
     SECTION("IgnoreDir") {

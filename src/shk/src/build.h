@@ -223,7 +223,8 @@ Build computeBuild(
  */
 FingerprintMatchesMemo computeFingerprintMatchesMemo(
     FileSystem &file_system,
-    const std::vector<std::pair<nt_string_view, Fingerprint>> &fingerprints,
+    const std::vector<std::pair<nt_string_view, const Fingerprint &>> &
+        fingerprints,
     const std::vector<uint32_t> used_fingerprints);
 
 /**

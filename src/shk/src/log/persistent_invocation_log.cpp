@@ -46,10 +46,16 @@ struct InvocationsBuffer {
 
   std::shared_ptr<void> inner_buffer;
   std::vector<std::unique_ptr<const std::string>> strings;
+  std::vector<std::unique_ptr<Fingerprint>> fingerprints;
 
   nt_string_view bufferString(nt_string_view str) {
     strings.emplace_back(new std::string(str));
     return *strings.back();
+  }
+
+  const Fingerprint &bufferFingerprint(const Fingerprint &fp) {
+    fingerprints.emplace_back(new Fingerprint(fp));
+    return *fingerprints.back();
   }
 };
 
@@ -200,7 +206,7 @@ class PersistentInvocationLog : public InvocationLog {
       return takeFingerprint(_fs, _clock(), path);
     } else {
       // There is a fingerprint entry for the given path already.
-      const auto &old_fingerprint = it->second.fingerprint;
+      const auto &old_fingerprint = *it->second.fingerprint;
       return retakeFingerprint(_fs, _clock(), path, old_fingerprint);
     }
   }
@@ -258,7 +264,8 @@ class PersistentInvocationLog : public InvocationLog {
    */
   void relogCommand(
       const Hash &build_step_hash,
-      const std::vector<std::pair<nt_string_view, Fingerprint>> &fingerprints,
+      const std::vector<std::pair<nt_string_view, const Fingerprint &>> &
+          fingerprints,
       FingerprintIndicesView output_files,
       FingerprintIndicesView input_files) {
     std::vector<std::string> output_paths;
@@ -469,7 +476,8 @@ class PersistentInvocationLog : public InvocationLog {
   };
 
   uint32_t writeFingerprintOrDirectoryEntry(
-        const uint32_t path_id,
+        uint32_t path_id,
+        nt_string_view owned_path,
         const Fingerprint &fingerprint,
         WriteType type) {
     if (fingerprint.stat.isDir()) {
@@ -478,7 +486,14 @@ class PersistentInvocationLog : public InvocationLog {
       }
       return kInvalidEntry;
     } else {
-      return writeFingerprintEntry(path_id, fingerprint);
+      FingerprintIdsValue value;
+      value.record_id = _fingerprint_entry_count;
+      value.fingerprint = &_buffer->bufferFingerprint(fingerprint);
+
+      const auto entry_id = writeFingerprintEntry(path_id, fingerprint);
+      _fingerprint_ids[owned_path] = value;
+
+      return entry_id;
     }
   }
 
@@ -500,25 +515,18 @@ class PersistentInvocationLog : public InvocationLog {
     nt_string_view owned_path;
     std::tie(path_id, owned_path) = ensurePathIsWritten(path);
 
-    FingerprintIdsValue value;
-    value.fingerprint = fingerprint;
-    value.record_id = _fingerprint_entry_count;
     const auto it = _fingerprint_ids.find(owned_path);
     if (it == _fingerprint_ids.end()) {
       // No prior entry for that path.
-      const auto entry_id =
-          writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
-      _fingerprint_ids[owned_path] = value;
-      return entry_id;
+      return writeFingerprintOrDirectoryEntry(
+          path_id, owned_path, fingerprint, type);
     } else {
       // There is a fingerprint entry for the given path already. Find out if it
       // can be reused or if a new fingerprint is required.
-      const auto &old_fingerprint = it->second.fingerprint;
-      if (old_fingerprint != value.fingerprint) {
-        const auto entry_id =
-            writeFingerprintOrDirectoryEntry(path_id, value.fingerprint, type);
-        _fingerprint_ids[owned_path] = value;
-        return entry_id;
+      const auto &old_fingerprint = *it->second.fingerprint;
+      if (old_fingerprint != fingerprint) {
+        return writeFingerprintOrDirectoryEntry(
+            path_id, owned_path, fingerprint, type);
       } else {
         return it->second.record_id;
       }
@@ -577,10 +585,10 @@ void parseFingerprint(
   FingerprintIdsValue value;
   value.record_id = result.invocations.fingerprints.size();
   value.fingerprint =
-      *reinterpret_cast<const Fingerprint *>(entry.data());
+      reinterpret_cast<const Fingerprint *>(entry.data());
   result.parse_data.fingerprint_ids[path] = value;
 
-  result.invocations.fingerprints.emplace_back(path, value.fingerprint);
+  result.invocations.fingerprints.emplace_back(path, *value.fingerprint);
 }
 
 void parseInvocation(
