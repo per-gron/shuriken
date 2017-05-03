@@ -136,6 +136,11 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
   process_inputs(raw.implicit_inputs);
   process_inputs(raw.dependencies);
 
+  std::sort(dependencies.begin(), dependencies.end());
+  dependencies.erase(
+      std::unique(dependencies.begin(), dependencies.end()),
+      dependencies.end());
+
   auto deps_vector = builder.CreateVector(
       dependencies.data(), dependencies.size());
 

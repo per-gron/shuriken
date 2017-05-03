@@ -382,6 +382,57 @@ TEST_CASE("CompiledManifest") {
           std::vector<StepIndex>{ 0 });
     }
 
+    SECTION("sort dependencies") {
+      RawStep two_dependencies;
+      two_dependencies.inputs = { paths.get("a"), paths.get("b") };
+      RawStep two_dependencies_reversed;
+      two_dependencies_reversed.inputs = { paths.get("b"), paths.get("a") };
+
+      RawManifest manifest;
+      manifest.steps = {
+          single_output,
+          single_output_b,
+          two_dependencies,
+          two_dependencies_reversed };
+
+      auto compiled_manifest = compile_manifest(manifest);
+      REQUIRE(compiled_manifest.steps().size() == 4);
+      CHECK(
+          toVector(compiled_manifest.steps()[0].dependencies()) ==
+          std::vector<StepIndex>{});
+      CHECK(
+          toVector(compiled_manifest.steps()[1].dependencies()) ==
+          std::vector<StepIndex>{});
+      CHECK(
+          toVector(compiled_manifest.steps()[2].dependencies()) ==
+          std::vector<StepIndex>({ 0, 1 }));
+      CHECK(
+          toVector(compiled_manifest.steps()[3].dependencies()) ==
+          std::vector<StepIndex>({ 0, 1 }));
+    }
+
+    SECTION("deduplicate dependencies") {
+      RawStep duplicate_dependencies;
+      duplicate_dependencies.inputs =
+          { paths.get("a"), paths.get("a") };
+      duplicate_dependencies.implicit_inputs =
+          { paths.get("a"), paths.get("a") };
+      duplicate_dependencies.dependencies =
+          { paths.get("a"), paths.get("a") };
+
+      RawManifest manifest;
+      manifest.steps = { single_output, duplicate_dependencies };
+
+      auto compiled_manifest = compile_manifest(manifest);
+      REQUIRE(compiled_manifest.steps().size() == 2);
+      CHECK(
+          toVector(compiled_manifest.steps()[0].dependencies()) ==
+          std::vector<StepIndex>{});
+      CHECK(
+          toVector(compiled_manifest.steps()[1].dependencies()) ==
+          std::vector<StepIndex>{ 0 });
+    }
+
     SECTION("defaults") {
       SECTION("empty") {
         RawManifest manifest;

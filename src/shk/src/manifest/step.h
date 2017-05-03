@@ -106,6 +106,9 @@ struct Step {
    * A list of indices for steps that must be done and clean before this step
    * can be run. These correspond to "order only", "implicit inputs" and
    * "inputs" in a build.ninja manifest.
+   *
+   * The dependencies are sorted in ascending order by step index and contains
+   * no duplicates.
    */
   const StepIndicesView dependencies() const {
     return detail::toStepIndicesView(_step->dependencies());

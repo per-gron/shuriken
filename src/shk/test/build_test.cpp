@@ -596,7 +596,7 @@ TEST_CASE("Build") {
 
         // one
         CHECK(build.step_nodes[3].dependencies == 0);
-        CHECK(build.step_nodes[3].dependents == vec({2, 1}));
+        CHECK(build.step_nodes[3].dependents == vec({1, 2}));
       }
     }
 
