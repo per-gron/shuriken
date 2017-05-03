@@ -138,12 +138,12 @@ const T &read(string_view view) {
   return *reinterpret_cast<const T *>(view.data());
 }
 
-FingerprintIndicesView readFingerprints(
+IndicesView readFingerprints(
     uint32_t fingerprint_count,
     string_view view) {
   const uint32_t *begin = reinterpret_cast<const uint32_t *>(view.data());
   const uint32_t *end = begin + view.size() / sizeof(uint32_t);
-  FingerprintIndicesView fingerprint_ids(begin, end);
+  IndicesView fingerprint_ids(begin, end);
 
   for (const auto fingerprint_id : fingerprint_ids) {
     if (fingerprint_id >= fingerprint_count) {
@@ -266,8 +266,8 @@ class PersistentInvocationLog : public InvocationLog {
       const Hash &build_step_hash,
       const std::vector<std::pair<nt_string_view, const Fingerprint &>> &
           fingerprints,
-      FingerprintIndicesView output_files,
-      FingerprintIndicesView input_files) {
+      IndicesView output_files,
+      IndicesView input_files) {
     std::vector<std::string> output_paths;
     std::vector<Fingerprint> output_fingerprints;
     for (const auto file_idx : output_files) {

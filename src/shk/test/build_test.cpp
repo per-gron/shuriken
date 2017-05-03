@@ -155,25 +155,24 @@ Build computeBuild(
       ::shk::detail::computeStepsToBuild(compiled_manifest, {}));
 }
 
-FingerprintIndicesView makeFingerprintIndicesView(
-    const std::vector<uint32_t> &new_view) {
+IndicesView makeIndicesView(const std::vector<uint32_t> &new_view) {
   // Store the memory somewhere. This leaks, but that's ok in this unit test I
   // think.
   static std::vector<std::vector<uint32_t>> data;
   data.push_back(new_view);
-  return FingerprintIndicesView(
+  return IndicesView(
       &data.back()[0],
       &data.back()[new_view.size()]);
 }
 
 void addEntryFile(
     Invocations &invocations,
-    FingerprintIndicesView &view,
+    IndicesView &view,
     nt_string_view path,  // Must outlive the test
     const Fingerprint &fingerprint) {
   auto new_view = std::vector<uint32_t>(view.begin(), view.end());
   new_view.push_back(invocations.fingerprints.size());
-  view = makeFingerprintIndicesView(new_view);
+  view = makeIndicesView(new_view);
   invocations.fingerprints.emplace_back(path, fingerprint);
 }
 
@@ -1456,7 +1455,7 @@ TEST_CASE("Build") {
       const auto step = StepBuilder().build(fb_builder);
 
       Invocations::Entry entry;
-      entry.input_files = makeFingerprintIndicesView({ 0 });
+      entry.input_files = makeIndicesView({ 0 });
 
       Invocations invocations;
       invocations.fingerprints.emplace_back(
@@ -1476,7 +1475,7 @@ TEST_CASE("Build") {
       const auto step = StepBuilder().build(fb_builder);
 
       Invocations::Entry entry;
-      entry.input_files = makeFingerprintIndicesView({ 0 });
+      entry.input_files = makeIndicesView({ 0 });
 
       Invocations invocations;
       invocations.fingerprints.emplace_back(
@@ -1496,7 +1495,7 @@ TEST_CASE("Build") {
       const auto step = StepBuilder().build(fb_builder);
 
       Invocations::Entry entry;
-      entry.input_files = makeFingerprintIndicesView({ 0 });
+      entry.input_files = makeIndicesView({ 0 });
 
       Invocations invocations;
       invocations.fingerprints.emplace_back(
@@ -1519,7 +1518,7 @@ TEST_CASE("Build") {
       const auto step = StepBuilder().build(fb_builder);
 
       Invocations::Entry entry;
-      entry.output_files = makeFingerprintIndicesView({ 0 });
+      entry.output_files = makeIndicesView({ 0 });
 
       Invocations invocations;
       invocations.fingerprints.emplace_back(

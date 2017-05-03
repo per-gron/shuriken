@@ -197,7 +197,7 @@ void relogCommand(
     const Invocations &invocations,
     const Invocations::Entry &entry,
     const Hash &step_hash) {
-  auto make_files_vector = [&](FingerprintIndicesView file_indices) {
+  auto make_files_vector = [&](IndicesView file_indices) {
     std::vector<std::string> files;
     files.reserve(file_indices.size());
     for (const uint32_t file_index : file_indices) {
@@ -252,7 +252,7 @@ bool nonGeneratorStepIsClean(
 
   bool should_update = false;
   bool clean = true;
-  const auto process_files = [&](FingerprintIndicesView fingerprints) {
+  const auto process_files = [&](IndicesView fingerprints) {
     for (const auto fingerprint_idx : fingerprints) {
       if (!clean) {
         // There is no need to do any further processing at this point. Because

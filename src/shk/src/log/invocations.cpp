@@ -135,8 +135,8 @@ bool operator==(const Invocations &a, const Invocations &b) {
             a_fps,
         const std::vector<std::pair<nt_string_view, const Fingerprint &>> &
             b_fps,
-        FingerprintIndicesView a_files,
-        FingerprintIndicesView b_files) {
+        IndicesView a_files,
+        IndicesView b_files) {
       if (a_files.size() != b_files.size()) {
         return false;
       }

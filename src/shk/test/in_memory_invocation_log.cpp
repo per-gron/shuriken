@@ -67,10 +67,10 @@ struct InvocationsBuffer {
     return *fingerprints.back();
   }
 
-  FingerprintIndicesView bufferFingerprintIndicesView(
+  IndicesView bufferIndicesView(
       std::vector<uint32_t> &&view) {
     fingerprint_id_views.push_back(std::move(view));
-    return FingerprintIndicesView(
+    return IndicesView(
         &fingerprint_id_views.back()[0],
         &fingerprint_id_views.back()[fingerprint_id_views.back().size()]);
   }
@@ -168,7 +168,7 @@ Invocations InMemoryInvocationLog::invocations() const {
       }
       out.push_back(fps[file.second]);
     }
-    return buffer->bufferFingerprintIndicesView(std::move(out));
+    return buffer->bufferIndicesView(std::move(out));
   };
 
   for (const auto &log_entry : _entries) {

@@ -24,7 +24,7 @@
 
 namespace shk {
 
-using FingerprintIndicesView = WrapperView<const uint32_t *, uint32_t>;
+using IndicesView = WrapperView<const uint32_t *, uint32_t>;
 
 /**
  * An Invocations object contains information about what Shuriken has done in
@@ -50,8 +50,8 @@ struct Invocations {
    * Contains indices into the fingerprints vector.
    */
   struct Entry {
-    FingerprintIndicesView output_files;
-    FingerprintIndicesView input_files;
+    IndicesView output_files;
+    IndicesView input_files;
   };
 
   /**

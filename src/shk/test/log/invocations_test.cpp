@@ -20,9 +20,9 @@ namespace shk {
 
 TEST_CASE("Invocations") {
   const uint32_t a_zero_buf = 0;
-  const FingerprintIndicesView a_zero_view(&a_zero_buf, &a_zero_buf + 1);
+  const IndicesView a_zero_view(&a_zero_buf, &a_zero_buf + 1);
   const uint32_t a_one_buf = 1;
-  const FingerprintIndicesView a_one_view(&a_one_buf, &a_one_buf + 1);
+  const IndicesView a_one_view(&a_one_buf, &a_one_buf + 1);
 
   const Fingerprint empty_fingerprint{};
 
