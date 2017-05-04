@@ -9,7 +9,7 @@ Shuriken currently only works on Mac OS X.
 
 ```
 mkdir build && cd build
-cmake -GNinja ..
+cmake -DCMAKE_BUILD_TYPE=Release -GNinja ..
 ninja shk shk-trace
 # shk and shk-trace binaries are now in bin/
 ```
