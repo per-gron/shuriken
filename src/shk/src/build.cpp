@@ -99,30 +99,8 @@ void Build::markStepNodeAsDone(StepIndex step_idx) {
   }
 }
 
-std::vector<StepIndex> computeStepsToBuild(
-    const CompiledManifest &manifest,
-    std::vector<StepIndex> &&specified_steps) throw(BuildError) {
-  if (!specified_steps.empty()) {
-    return specified_steps;
-  } else if (!manifest.defaults().empty()) {
-    auto defaults = manifest.defaults();
-    std::vector<StepIndex> ans(defaults.size());
-    std::copy(defaults.begin(), defaults.end(), ans.begin());
-    return ans;
-  } else {
-    if (manifest.roots().empty() && !manifest.steps().empty()) {
-      throw BuildError(
-          "Could not determine root nodes of build graph. Cyclic dependency?");
-    }
-    auto roots = manifest.roots();
-    std::vector<StepIndex> ans(roots.size());
-    std::copy(roots.begin(), roots.end(), ans.begin());
-    return ans;
-  }
-}
-
 /**
- * Helper for computeBuild.
+ * Helper for Build::construct.
  *
  * Takes a list of ready-computed StepNodes and finds the inital list of steps
  * that can be built.
@@ -140,7 +118,7 @@ std::vector<StepIndex> computeReadySteps(
 }
 
 /**
- * Recursive helper for computeBuild. Implements the DFS traversal.
+ * Recursive helper for Build::construct. Implements the DFS traversal.
  */
 void visitStep(
     const CompiledManifest &manifest,
@@ -171,7 +149,7 @@ void visitStep(
   step_node.currently_visited = false;
 }
 
-Build computeBuild(
+Build Build::construct(
     const CompiledManifest &manifest,
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError) {
@@ -188,6 +166,28 @@ Build computeBuild(
   build.ready_steps = computeReadySteps(build.step_nodes);
   build.remaining_failures = failures_allowed;
   return build;
+}
+
+std::vector<StepIndex> computeStepsToBuild(
+    const CompiledManifest &manifest,
+    std::vector<StepIndex> &&specified_steps) throw(BuildError) {
+  if (!specified_steps.empty()) {
+    return specified_steps;
+  } else if (!manifest.defaults().empty()) {
+    auto defaults = manifest.defaults();
+    std::vector<StepIndex> ans(defaults.size());
+    std::copy(defaults.begin(), defaults.end(), ans.begin());
+    return ans;
+  } else {
+    if (manifest.roots().empty() && !manifest.steps().empty()) {
+      throw BuildError(
+          "Could not determine root nodes of build graph. Cyclic dependency?");
+    }
+    auto roots = manifest.roots();
+    std::vector<StepIndex> ans(roots.size());
+    std::copy(roots.begin(), roots.end(), ans.begin());
+    return ans;
+  }
 }
 
 namespace {
@@ -803,7 +803,7 @@ BuildResult build(
   auto steps_to_build = detail::computeStepsToBuild(
       manifest, std::move(specified_steps));
 
-  auto build = detail::computeBuild(
+  auto build = detail::Build::construct(
       manifest,
       failures_allowed,
       std::move(steps_to_build));

@@ -149,7 +149,7 @@ Build computeBuild(
     const RawManifest &manifest,
     size_t allowed_failures = 1) throw(BuildError) {
   auto compiled_manifest = compileManifest(paths.get("build.ninja"), manifest);
-  return ::shk::detail::computeBuild(
+  return ::shk::detail::Build::construct(
       compiled_manifest,
       allowed_failures,
       ::shk::detail::computeStepsToBuild(compiled_manifest, {}));

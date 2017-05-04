@@ -133,6 +133,14 @@ struct Build {
   void markStepNodeAsDone(StepIndex step_idx);
 
   /**
+   * Create a Build object suitable for use as a starting point for the build.
+   */
+  static Build construct(
+      const CompiledManifest &manifest,
+      size_t failures_allowed,
+      std::vector<StepIndex> &&steps_to_build) throw(BuildError);
+
+  /**
    * step_nodes.size() == manifest.steps.size()
    *
    * step_nodes contains step dependency information in an easily accessible
@@ -219,14 +227,6 @@ struct BuildCommandParameters {
 std::vector<StepIndex> computeStepsToBuild(
     const CompiledManifest &manifest,
     std::vector<StepIndex> &&specified_steps) throw(BuildError);
-
-/**
- * Create a Build object suitable for use as a starting point for the build.
- */
-Build computeBuild(
-    const CompiledManifest &manifest,
-    size_t failures_allowed,
-    std::vector<StepIndex> &&steps_to_build) throw(BuildError);
 
 /**
  * Does all the fingerprintMatches calls necessary to compute a
