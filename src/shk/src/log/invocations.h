@@ -23,8 +23,17 @@
 #include "manifest/wrapper_view.h"
 
 namespace shk {
+namespace detail {
+
+inline const Hash *toHashPointer(
+    const Hash &hash) {
+  return &hash;
+}
+
+}  // namespace detail
 
 using IndicesView = WrapperView<const uint32_t *, uint32_t>;
+using HashView = WrapperView<const Hash *, const Hash *, detail::toHashPointer>;
 
 /**
  * An Invocations object contains information about what Shuriken has done in
@@ -52,6 +61,33 @@ struct Invocations {
   struct Entry {
     IndicesView output_files;
     IndicesView input_files;
+
+    /**
+     * Sorted list of step indices that are in the Step's dependencies list that
+     * were not actually used during the step invocation.
+     */
+    IndicesView ignored_dependencies;
+
+    /**
+     * List of Step hashes for steps that are not directly in the step's
+     * dependencies list but that were used anyway when the step was invoked.
+     *
+     * This list allows Shuriken to add items to the ignored_dependencies list
+     * that would not otherwise be possible to add there. For example, a build
+     * step for a .cpp file could have an order-only dependency to a whole
+     * static library target, but the only thing that is used is a generated
+     * header that is a transitive dependency of that static library target.
+     *
+     * Without additional_dependencies, Shuriken would not be able to ignore the
+     * static library target, because it does indirectly depend on it. With
+     * additional_dependencies, Shuriken can mark only the build step that
+     * generates the header as an additional dependency and then ignore the big
+     * static library step.
+     *
+     * Besides, it is not super easy to compute ignored_dependencies if it can't
+     * include depenencies that are indirectly used.
+     */
+    HashView additional_dependencies;
   };
 
   /**

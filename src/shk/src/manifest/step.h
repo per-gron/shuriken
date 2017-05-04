@@ -34,8 +34,10 @@ using StepIndex = int;
 
 namespace detail {
 
-inline nt_string_view fbStringToView(const flatbuffers::String *string) {
-  return nt_string_view(string->c_str(), string->size());
+inline nt_string_view fbStringToView(const flatbuffers::String *str) {
+  return str ?
+      nt_string_view(str->data(), str->size()) :
+      nt_string_view();
 }
 
 template <typename T>
@@ -71,12 +73,6 @@ inline const StepIndicesView toStepIndicesView(
   return ints ?
       StepIndicesView(ints->data(), ints->data() + ints->size()) :
       StepIndicesView();
-}
-
-inline nt_string_view toStringView(const flatbuffers::String *str) {
-  return str ?
-      nt_string_view(str->data(), str->size()) :
-      nt_string_view();
 }
 
 }  // namespace detail
@@ -123,7 +119,7 @@ struct Step {
   }
 
   nt_string_view poolName() const {
-    return detail::toStringView(_step->pool_name());
+    return detail::fbStringToView(_step->pool_name());
   }
 
   /**
@@ -132,7 +128,7 @@ struct Step {
    * The command string is empty for phony rules.
    */
   nt_string_view command() const {
-    return detail::toStringView(_step->command());
+    return detail::fbStringToView(_step->command());
   }
 
   /**
@@ -140,7 +136,7 @@ struct Step {
    * running builds.
    */
   nt_string_view description() const {
-    return detail::toStringView(_step->description());
+    return detail::fbStringToView(_step->description());
   }
 
   bool phony() const {
@@ -154,7 +150,7 @@ struct Step {
    * completed.
    */
   nt_string_view depfile() const {
-    return detail::toStringView(_step->depfile());
+    return detail::fbStringToView(_step->depfile());
   }
 
   /**
@@ -164,11 +160,11 @@ struct Step {
    * commands have a rather short maximum length.
    */
   nt_string_view rspfile() const {
-    return detail::toStringView(_step->rspfile());
+    return detail::fbStringToView(_step->rspfile());
   }
 
   nt_string_view rspfileContent() const {
-    return detail::toStringView(_step->rspfile_content());
+    return detail::fbStringToView(_step->rspfile_content());
   }
 
   /**

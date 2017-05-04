@@ -177,7 +177,7 @@ struct CompiledManifest {
    * The build directory, used for storing the invocation log.
    */
   nt_string_view buildDir() const {
-    return detail::toStringView(_manifest->build_dir());
+    return detail::fbStringToView(_manifest->build_dir());
   }
 
   /**
