@@ -23,17 +23,9 @@
 #include "manifest/wrapper_view.h"
 
 namespace shk {
-namespace detail {
 
-inline const Hash *toHashPointer(
-    const Hash &hash) {
-  return &hash;
-}
-
-}  // namespace detail
-
-using IndicesView = WrapperView<const uint32_t *, uint32_t>;
-using HashView = WrapperView<const Hash *, const Hash *, detail::toHashPointer>;
+using IndicesView = WrapperView<const uint32_t *, const uint32_t &>;
+using HashesView = WrapperView<const Hash *, const Hash &>;
 
 /**
  * An Invocations object contains information about what Shuriken has done in
@@ -56,21 +48,36 @@ struct Invocations {
   std::vector<std::pair<nt_string_view, const Fingerprint &>> fingerprints;
 
   /**
-   * Contains indices into the fingerprints vector.
+   * An Invocations::Entry has information about one build step that has been
+   * successfully run at some point. It may or may not still be clean.
    */
   struct Entry {
+    /**
+     * Contains indices into the fingerprints vector.
+     */
     IndicesView output_files;
+    /**
+     * Contains indices into the fingerprints vector.
+     */
     IndicesView input_files;
 
     /**
      * Sorted list of step indices that are in the Step's dependencies list that
      * were not actually used during the step invocation.
+     *
+     * Must not contain duplicates.
+     *
+     * Warning: The invocation log parsing does not validate that the indices
+     * in this list are all smaller than the number of dependencies for a given
+     * step. Code that uses this must tolerate out of bounds indices.
      */
     IndicesView ignored_dependencies;
 
     /**
      * List of Step hashes for steps that are not directly in the step's
      * dependencies list but that were used anyway when the step was invoked.
+     * This list should only include references to Step hashes that this build
+     * step indirectly depends on in the Manifest dependency graph.
      *
      * This list allows Shuriken to add items to the ignored_dependencies list
      * that would not otherwise be possible to add there. For example, a build
@@ -86,8 +93,10 @@ struct Invocations {
      *
      * Besides, it is not super easy to compute ignored_dependencies if it can't
      * include depenencies that are indirectly used.
+     *
+     * Must be sorted and must not contain duplicates.
      */
-    HashView additional_dependencies;
+    HashesView additional_dependencies;
   };
 
   /**
@@ -103,7 +112,7 @@ struct Invocations {
   /**
    * The Invocation::fingerprints vector can contain entries that are not
    * actually referred to by any entry in Invocations::entries. This method
-   * counts how of the fingerprints are actually used.
+   * counts how many of the fingerprints are actually used.
    */
   int countUsedFingerprints() const;
 

@@ -21,7 +21,7 @@ namespace shk {
 namespace detail {
 
 template <typename T>
-T identity(const T &v) {
+T identity(T v) {
   return v;
 }
 
@@ -43,8 +43,11 @@ template <
     typename Wrapper,
     Wrapper (Wrap(decltype(*std::declval<Iter>()))) = detail::identity>
 class WrapperView {
+  using wrapped_type = Wrapper;
  public:
-  using value_type = Wrapper;
+  using value_type =
+      typename std::remove_const<
+          typename std::remove_reference<Wrapper>::type>::type;
   using size_type = size_t;
   using diff_type = ptrdiff_t;
   using reference = value_type &;
@@ -67,7 +70,7 @@ class WrapperView {
       std::swap(a._i, b._i);
     }
 
-    value_type operator*() const {
+    wrapped_type operator*() const {
       return Wrap(*_i);
     }
 
@@ -140,22 +143,22 @@ class WrapperView {
   WrapperView &operator=(const WrapperView &) = default;
   WrapperView &operator=(WrapperView &&) = default;
 
-  value_type at(size_type pos) const {
+  wrapped_type at(size_type pos) const {
     if (!(pos < size())) {
       throw std::out_of_range("WrapperView");
     }
     return Wrap(*(_begin + pos));
   }
 
-  value_type operator[](size_type pos) const {
+  wrapped_type operator[](size_type pos) const {
     return Wrap(*(_begin + pos));
   }
 
-  value_type front() const {
+  wrapped_type front() const {
     return Wrap(*_begin);
   }
 
-  value_type back() const {
+  wrapped_type back() const {
     return Wrap(*(_end - 1));
   }
 

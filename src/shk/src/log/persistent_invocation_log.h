@@ -75,10 +75,15 @@ namespace shk {
  *    a fingerprinted file followed by a Fingerprint object for that path (with
  *    no relation to directories).
  * 2. Invocation: An Invocation entry is an on-disk representation of an
- *    Invocations::Entry object. It starts with a Hash object, then contains a
- *    single uint32_t with the number of output files, followed by a number of
- *    uint32_t fingerprint entry ids. The first fingerprint ids are outputs, the
- *    rest are inputs.
+ *    Invocations::Entry object.
+ *     * It starts with a Hash object,
+ *     * then contains a uint32_t with the number of ignored dependencies,
+ *       followed by that many uint32_t, one for each ignored dependency,
+ *     * then contains a uint32_t with the number of additional dependencies,
+ *       followed by that many Hash objects, one for each additional dependency,
+ *     * then contains a single uint32_t with the number of output files,
+ *     * followed by a number of uint32_t fingerprint entry ids. The first
+ *       fingerprint ids are outputs, the rest are inputs.
  * 3. Deleted entry: If the size is 4 bytes, the contents is a single uint32_t
  *    path id reference to a directory that has been deleted. If the size is
  *    sizeof(Hash), it contains a hash of an Invocations::Entry that has been

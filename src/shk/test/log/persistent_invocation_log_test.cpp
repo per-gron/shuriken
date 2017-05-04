@@ -38,13 +38,17 @@ void ranCommand(
     InvocationLog &log,
     const Hash &build_step_hash,
     std::vector<std::string> &&output_files,
-    std::vector<std::string> &&input_files) {
+    std::vector<std::string> &&input_files,
+    std::vector<uint32_t> &&ignored_dependencies,
+    std::vector<Hash> &&additional_dependencies) {
   log.ranCommand(
       build_step_hash,
       std::move(output_files),
       log.fingerprintFiles(output_files),
       std::move(input_files),
-      log.fingerprintFiles(input_files));
+      log.fingerprintFiles(input_files),
+      std::move(ignored_dependencies),
+      std::move(additional_dependencies));
 }
 
 /**
@@ -331,7 +335,7 @@ TEST_CASE("PersistentInvocationLog") {
           InvocationLogParseResult::ParseData());
 
       ranCommand(
-          *persistent_log, hash_0, {}, { "dir" });
+          *persistent_log, hash_0, {}, { "dir" }, {}, {});
 
       const auto result = parsePersistentInvocationLog(fs, "file");
       CHECK(result.warning == "");
@@ -371,19 +375,21 @@ TEST_CASE("PersistentInvocationLog") {
             log,
             hash_0,
             { "test_file" },
+            {},
+            {},
             {});
       });
     }
 
     SECTION("InvocationNoFiles") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        ranCommand(log, hash_0, {}, {});
+        ranCommand(log, hash_0, {}, {}, {}, {});
       });
     }
 
     SECTION("InvocationSingleInputFile") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        ranCommand(log, hash_0, {}, { "hi" });
+        ranCommand(log, hash_0, {}, { "hi" }, {}, {});
       });
     }
 
@@ -393,46 +399,48 @@ TEST_CASE("PersistentInvocationLog") {
             log,
             hash_0,
             {},
-            { "hi", "duh" });
+            { "hi", "duh" },
+            {},
+            {});
       });
     }
 
     SECTION("InvocationSingleOutputFile") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        ranCommand(log, hash_0, { "hi" }, {});
+        ranCommand(log, hash_0, { "hi" }, {}, {}, {});
       });
     }
 
     SECTION("InvocationSingleInputDir") {
       CHECK(fs.mkdir("dir") == IoError::success());
       multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
-        ranCommand(log, hash_0, {}, { "dir" });
+        ranCommand(log, hash_0, {}, { "dir" }, {}, {});
       }, fs);
     }
 
     SECTION("InvocationSingleOutputDir") {
       CHECK(fs.mkdir("dir") == IoError::success());
       multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
-        ranCommand(log, hash_0, { "dir" }, {});
+        ranCommand(log, hash_0, { "dir" }, {}, {}, {});
       }, fs);
     }
 
     SECTION("InvocationSingleOutputFileAndDir") {
       CHECK(fs.mkdir("dir") == IoError::success());
       multipleWriteCycles([&](InvocationLog &log, FileSystem &fs) {
-        ranCommand(log, hash_0, { "dir", "hi" }, {});
+        ranCommand(log, hash_0, { "dir", "hi" }, {}, {}, {});
       }, fs);
     }
 
     SECTION("InvocationTwoOutputFiles") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        ranCommand(log, hash_0, { "aah", "hi" }, {});
+        ranCommand(log, hash_0, { "aah", "hi" }, {}, {}, {});
       });
     }
 
     SECTION("InvocationInputAndOutputFiles") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        ranCommand(log, hash_0, { "aah" }, { "hi" });
+        ranCommand(log, hash_0, { "aah" }, { "hi" }, {}, {});
       });
     }
 
@@ -453,6 +461,8 @@ TEST_CASE("PersistentInvocationLog") {
               std::move(output_files),
               std::move(output_fingerprints),
               {},
+              {},
+              {},
               {});
         }
       });
@@ -472,6 +482,8 @@ TEST_CASE("PersistentInvocationLog") {
               hash_0,
               std::move(output_files),
               std::move(output_fingerprints),
+              {},
+              {},
               {},
               {});
         }
@@ -502,15 +514,29 @@ TEST_CASE("PersistentInvocationLog") {
               std::move(output_files),
               std::move(output_fingerprints),
               {},
+              {},
+              {},
               {});
         }
       }, /*run_times:*/1);
     }
 
+    SECTION("InvocationIgnoredDependency") {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
+        ranCommand(log, hash_0, {}, {}, { 1337 }, {});
+      });
+    }
+
+    SECTION("InvocationAdditionalDependency") {
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
+        ranCommand(log, hash_0, {}, {}, {}, { hash_1 });
+      });
+    }
+
     SECTION("OverwrittenInvocation") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        ranCommand(log, hash_0, {}, {});
-        ranCommand(log, hash_0, { "hi" }, {});
+        ranCommand(log, hash_0, {}, {}, {}, {});
+        ranCommand(log, hash_0, { "hi" }, {}, {}, {});
       });
     }
 
@@ -522,7 +548,7 @@ TEST_CASE("PersistentInvocationLog") {
 
     SECTION("DeletedInvocation") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
-        ranCommand(log, hash_0, {}, {});
+        ranCommand(log, hash_0, {}, {}, {}, {});
         log.cleanedCommand(hash_0);
       });
     }
@@ -533,9 +559,9 @@ TEST_CASE("PersistentInvocationLog") {
         log.createdDirectory("dir_2");
         log.removedDirectory("dir");
 
-        ranCommand(log, hash_0, { "hi" }, { "aah" });
+        ranCommand(log, hash_0, { "hi" }, { "aah" }, { 321 }, { hash_1 });
         log.cleanedCommand(hash_1);
-        ranCommand(log, hash_1, {}, {});
+        ranCommand(log, hash_1, {}, {}, {}, {});
         log.cleanedCommand(hash_0);
       });
     }

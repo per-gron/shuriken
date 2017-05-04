@@ -29,6 +29,9 @@ TEST_CASE("InMemoryInvocationLog") {
   Hash hash;
   std::fill(hash.data.begin(), hash.data.end(), 123);
 
+  Hash other_hash;
+  std::fill(other_hash.data.begin(), other_hash.data.end(), 42);
+
   SECTION("InitialState") {
     CHECK(log.createdDirectories().empty());
     CHECK(log.entries().empty());
@@ -61,7 +64,7 @@ TEST_CASE("InMemoryInvocationLog") {
 
   SECTION("Commands") {
     SECTION("Empty") {
-      log.ranCommand(hash, {}, {}, {}, {});
+      log.ranCommand(hash, {}, {}, {}, {}, {}, {});
       CHECK(log.entries().count(hash) == 1);
       log.cleanedCommand(hash);
       CHECK(log.entries().empty());
@@ -70,7 +73,13 @@ TEST_CASE("InMemoryInvocationLog") {
     SECTION("Input") {
       CHECK(fs.writeFile("file", "") == IoError::success());
       log.ranCommand(
-          hash, {}, {}, { "file" }, { takeFingerprint(fs, 0, "file").first });
+          hash,
+          {},
+          {},
+          { "file" },
+          { takeFingerprint(fs, 0, "file").first },
+          {},
+          {});
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
@@ -85,9 +94,9 @@ TEST_CASE("InMemoryInvocationLog") {
 
       const auto fp = takeFingerprint(fs, 0, "file").first;
       log.ranCommand(
-          hash, { "file" }, { fp }, { "file" }, { fp });
+          hash, { "file" }, { fp }, { "file" }, { fp }, {}, {});
       log.ranCommand(
-          hash_2, {}, {}, { "file" }, { fp });
+          hash_2, {}, {}, { "file" }, { fp }, {}, {});
 
       const auto invocations = log.invocations();
       REQUIRE(invocations.fingerprints.size() == 1);
@@ -100,7 +109,13 @@ TEST_CASE("InMemoryInvocationLog") {
     SECTION("IgnoreDir") {
       CHECK(fs.mkdir("dir") == IoError::success());
       log.ranCommand(
-          hash, {}, {}, { "dir" }, { takeFingerprint(fs, 0, "dir").first });
+          hash,
+          {},
+          {},
+          { "dir" },
+          { takeFingerprint(fs, 0, "dir").first },
+          {},
+          {});
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
@@ -111,7 +126,13 @@ TEST_CASE("InMemoryInvocationLog") {
     SECTION("OutputDir") {
       CHECK(fs.mkdir("dir") == IoError::success());
       log.ranCommand(
-          hash, { "dir" }, { takeFingerprint(fs, 0, "dir").first }, {}, {});
+          hash,
+          { "dir" },
+          { takeFingerprint(fs, 0, "dir").first },
+          {},
+          {},
+          {},
+          {});
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
       const auto &entry = log.entries().begin()->second;
@@ -129,6 +150,8 @@ TEST_CASE("InMemoryInvocationLog") {
               takeFingerprint(fs, 0, "dir").first,
               takeFingerprint(fs, 0, "file").first },
           {},
+          {},
+          {},
           {});
       CHECK(log.entries().size() == 1);
       REQUIRE(log.entries().count(hash) == 1);
@@ -137,6 +160,22 @@ TEST_CASE("InMemoryInvocationLog") {
       REQUIRE(entry.output_files[0].first == "file");
       CHECK(entry.input_files.empty());
       CHECK(log.createdDirectories().count("dir"));
+    }
+
+    SECTION("IgnoredDependency") {
+      log.ranCommand(hash, {}, {}, {}, {}, { 1337 }, {});
+      CHECK(log.entries().size() == 1);
+      REQUIRE(log.entries().count(hash) == 1);
+      const auto &entry = log.entries().begin()->second;
+      CHECK(entry.ignored_dependencies == std::vector<uint32_t>{ 1337 });
+    }
+
+    SECTION("AdditionalDependency") {
+      log.ranCommand(hash, {}, {}, {}, {}, {}, { other_hash });
+      CHECK(log.entries().size() == 1);
+      REQUIRE(log.entries().count(hash) == 1);
+      const auto &entry = log.entries().begin()->second;
+      CHECK(entry.additional_dependencies == std::vector<Hash>{ other_hash });
     }
   }
 
@@ -156,12 +195,34 @@ TEST_CASE("InMemoryInvocationLog") {
     }
 
     SECTION("Commands") {
-      log.ranCommand(hash, {}, {}, {}, {});
+      log.ranCommand(hash, {}, {}, {}, {}, {}, {});
       CHECK(log.invocations().entries.size() == 1);
       CHECK(log.invocations().entries.count(hash) == 1);
 
       log.cleanedCommand(hash);
       CHECK(log.invocations().entries.empty());
+    }
+
+    SECTION("IgnoredDependency") {
+      log.ranCommand(hash, {}, {}, {}, {}, { 1337 }, {});
+      const auto invocations = log.invocations();
+      CHECK(invocations.entries.size() == 1);
+      REQUIRE(invocations.entries.count(hash) == 1);
+
+      const auto &entry = invocations.entries.begin()->second;
+      REQUIRE(entry.ignored_dependencies.size() == 1);
+      CHECK(entry.ignored_dependencies.at(0) == 1337);
+    }
+
+    SECTION("AdditionalDependency") {
+      log.ranCommand(hash, {}, {}, {}, {}, {}, { other_hash });
+      const auto invocations = log.invocations();
+      CHECK(invocations.entries.size() == 1);
+      REQUIRE(invocations.entries.count(hash) == 1);
+
+      const auto &entry = invocations.entries.begin()->second;
+      REQUIRE(entry.additional_dependencies.size() == 1);
+      CHECK(entry.additional_dependencies.at(0) == other_hash);
     }
   }
 }

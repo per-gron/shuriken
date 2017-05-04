@@ -1029,40 +1029,68 @@ TEST_CASE("Build") {
         CHECK(log.entries().empty());
       }
 
-      SECTION("racily clean input") {
-        Invocations::Entry entry;
-        addInput(invocations, entry, "one", one_fp_racy);
-        invocations.entries[hash_a] = entry;
-        CHECK(isClean(
-            fs,
-            log,
-            compute_memo(),
-            invocations,
-            step_with_hash_a));
-        CHECK(log.createdDirectories().empty());
-        REQUIRE(log.entries().count(hash_a) == 1);
-        const auto &computed_entry = log.entries().find(hash_a)->second;
-        REQUIRE(computed_entry.input_files.size() == 1);
-        REQUIRE(computed_entry.input_files[0].first == "one");
-        CHECK(computed_entry.output_files.empty());
-      }
+      SECTION("racily clean") {
+        SECTION("racily clean input") {
+          Invocations::Entry entry;
+          addInput(invocations, entry, "one", one_fp_racy);
+          invocations.entries[hash_a] = entry;
+          CHECK(isClean(
+              fs,
+              log,
+              compute_memo(),
+              invocations,
+              step_with_hash_a));
+          CHECK(log.createdDirectories().empty());
+          REQUIRE(log.entries().count(hash_a) == 1);
+          const auto &computed_entry = log.entries().find(hash_a)->second;
+          REQUIRE(computed_entry.input_files.size() == 1);
+          REQUIRE(computed_entry.input_files[0].first == "one");
+          CHECK(computed_entry.output_files.empty());
+        }
 
-      SECTION("racily clean output") {
-        Invocations::Entry entry;
-        addOutput(invocations, entry, "one", one_fp_racy);
-        invocations.entries[hash_a] = entry;
-        CHECK(isClean(
-            fs,
-            log,
-            compute_memo(),
-            invocations,
-            step_with_hash_a));
-        CHECK(log.createdDirectories().empty());
-        REQUIRE(log.entries().count(hash_a) == 1);
-        const auto &computed_entry = log.entries().find(hash_a)->second;
-        CHECK(computed_entry.input_files.empty());
-        REQUIRE(computed_entry.output_files.size() == 1);
-        REQUIRE(computed_entry.output_files[0].first == "one");
+        SECTION("racily clean output") {
+          Invocations::Entry entry;
+          addOutput(invocations, entry, "one", one_fp_racy);
+          invocations.entries[hash_a] = entry;
+          CHECK(isClean(
+              fs,
+              log,
+              compute_memo(),
+              invocations,
+              step_with_hash_a));
+          CHECK(log.createdDirectories().empty());
+          REQUIRE(log.entries().count(hash_a) == 1);
+          const auto &computed_entry = log.entries().find(hash_a)->second;
+          CHECK(computed_entry.input_files.empty());
+          REQUIRE(computed_entry.output_files.size() == 1);
+          REQUIRE(computed_entry.output_files[0].first == "one");
+        }
+
+        SECTION("relog ignored_dependencies and additional_dependencies") {
+          uint32_t dep = 1337;
+
+          Invocations::Entry entry;
+          addInput(invocations, entry, "one", one_fp_racy);
+          entry.ignored_dependencies = IndicesView(&dep, (&dep) + 1);
+          entry.additional_dependencies = HashesView(&hash_b, (&hash_b) + 1);
+          invocations.entries[hash_a] = entry;
+          CHECK(isClean(
+              fs,
+              log,
+              compute_memo(),
+              invocations,
+              step_with_hash_a));
+          CHECK(log.createdDirectories().empty());
+          REQUIRE(log.entries().count(hash_a) == 1);
+          const auto &computed_entry = log.entries().find(hash_a)->second;
+
+          CHECK(
+              computed_entry.ignored_dependencies ==
+              std::vector<uint32_t>{dep});
+          CHECK(
+              computed_entry.additional_dependencies ==
+              std::vector<Hash>{hash_b});
+        }
       }
     }
   }

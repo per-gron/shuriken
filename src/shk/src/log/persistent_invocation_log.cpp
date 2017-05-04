@@ -15,11 +15,11 @@
 
 #include "log/persistent_invocation_log.h"
 
-#include <assert.h>
 #include <errno.h>
 
 #include "optional.h"
 #include "string_view.h"
+#include "util.h"
 
 namespace shk {
 namespace {
@@ -72,7 +72,9 @@ constexpr uint32_t kInvocationLogEntryTypeMask = 3;
 constexpr uint32_t kInvalidEntry = std::numeric_limits<uint32_t>::max();
 
 string_view advance(string_view view, size_t len) {
-  assert(len <= view.size());
+  if (len > view.size()) {
+    fatal("internal error while parsing invocation log");
+  }
   return string_view(view.data() + len, view.size() - len);
 }
 
@@ -138,21 +140,35 @@ const T &read(string_view view) {
   return *reinterpret_cast<const T *>(view.data());
 }
 
-IndicesView readFingerprints(
-    uint32_t fingerprint_count,
+IndicesView readIndices(
+    uint32_t end_index,
     string_view view) {
   const uint32_t *begin = reinterpret_cast<const uint32_t *>(view.data());
   const uint32_t *end = begin + view.size() / sizeof(uint32_t);
   IndicesView fingerprint_ids(begin, end);
 
-  for (const auto fingerprint_id : fingerprint_ids) {
-    if (fingerprint_id >= fingerprint_count) {
-      throw ParseError(
-          "invalid invocation log: encountered invalid fingerprint ref");
+  if (end_index < std::numeric_limits<uint32_t>::max()) {
+    for (const auto fingerprint_id : fingerprint_ids) {
+      if (fingerprint_id >= end_index) {
+        throw ParseError(
+            "invalid invocation log: encountered invalid fingerprint ref");
+      }
     }
   }
 
   return fingerprint_ids;
+}
+
+HashesView readHashes(
+    string_view view,
+    size_t num_additional_dependencies) {
+  if (view.size() < num_additional_dependencies * sizeof(Hash)) {
+    throw ParseError(
+        "invalid invocation log: encountered invalid additional deps list");
+  }
+  const Hash *begin = reinterpret_cast<const Hash *>(view.data());
+  const Hash *end = begin + num_additional_dependencies;
+  return HashesView(begin, end);
 }
 
 nt_string_view readPath(
@@ -216,7 +232,9 @@ class PersistentInvocationLog : public InvocationLog {
       std::vector<std::string> &&output_files,
       std::vector<Fingerprint> &&output_fingerprints,
       std::vector<std::string> &&input_files_map,
-      std::vector<Fingerprint> &&input_fingerprints)
+      std::vector<Fingerprint> &&input_fingerprints,
+      std::vector<uint32_t> &&ignored_dependencies,
+      std::vector<Hash> &&additional_dependencies)
           throw(IoError) override {
 
     const auto output_fp_ids = writeOutputPathsAndFingerprints(
@@ -229,12 +247,33 @@ class PersistentInvocationLog : public InvocationLog {
     const auto total_entries = output_fp_ids.size() + input_fp_ids.size();
     const uint32_t size =
         sizeof(Hash) +
-        sizeof(uint32_t) +
+        sizeof(uint32_t) +  // ignored dependencies count
+        sizeof(uint32_t) * ignored_dependencies.size() +
+        sizeof(uint32_t) +  // additional dependencies count
+        sizeof(uint32_t) +  // output files count
+        sizeof(Hash) * additional_dependencies.size() +
         sizeof(uint32_t) * total_entries;
 
     writeHeader(size, InvocationLogEntryType::INVOCATION);
 
     write(build_step_hash);
+
+    write(static_cast<uint32_t>(ignored_dependencies.size()));
+    if (auto error = _stream->write(
+            reinterpret_cast<const uint8_t *>(ignored_dependencies.data()),
+            ignored_dependencies.size(),
+            sizeof(uint32_t))) {
+      throw error;
+    }
+
+    write(static_cast<uint32_t>(additional_dependencies.size()));
+    if (auto error = _stream->write(
+            reinterpret_cast<const uint8_t *>(additional_dependencies.data()),
+            additional_dependencies.size(),
+            sizeof(Hash))) {
+      throw error;
+    }
+
     write(static_cast<uint32_t>(output_fp_ids.size()));
 
     writeFingerprintIds(output_fp_ids);
@@ -267,7 +306,9 @@ class PersistentInvocationLog : public InvocationLog {
       const std::vector<std::pair<nt_string_view, const Fingerprint &>> &
           fingerprints,
       IndicesView output_files,
-      IndicesView input_files) {
+      IndicesView input_files,
+      IndicesView ignored_dependencies,
+      HashesView additional_dependencies) {
     std::vector<std::string> output_paths;
     std::vector<Fingerprint> output_fingerprints;
     for (const auto file_idx : output_files) {
@@ -284,12 +325,23 @@ class PersistentInvocationLog : public InvocationLog {
       input_fingerprints.push_back(file.second);
     }
 
+
+    std::vector<uint32_t> ignored_dependencies_vector(
+        ignored_dependencies.begin(),
+        ignored_dependencies.end());
+
+    std::vector<Hash> additional_dependencies_vector(
+        additional_dependencies.begin(),
+        additional_dependencies.end());
+
     ranCommand(
         build_step_hash,
         std::move(output_paths),
         std::move(output_fingerprints),
         std::move(input_paths),
-        std::move(input_fingerprints));
+        std::move(input_fingerprints),
+        std::move(ignored_dependencies_vector),
+        std::move(additional_dependencies_vector));
   }
 
   /**
@@ -386,7 +438,11 @@ class PersistentInvocationLog : public InvocationLog {
   }
 
   void writeHeader(uint32_t size, InvocationLogEntryType type) {
-    assert((size & kInvocationLogEntryTypeMask) == 0);
+    if ((size & kInvocationLogEntryTypeMask) != 0) {
+      // The size number must have all zeros on the invocation entry type bits,
+      // otherwise bad things will happen.
+      fatal("internal error while writing invocation log");
+    }
     write(size | static_cast<uint32_t>(type));
   }
 
@@ -596,6 +652,28 @@ void parseInvocation(
     InvocationLogParseResult &result) throw(ParseError) {
   const auto hash = read<Hash>(entry);
   entry = advance(entry, sizeof(hash));
+
+  const auto num_ignored_dependencies = read<uint32_t>(entry);
+  entry = advance(entry, sizeof(num_ignored_dependencies));
+  const auto ignored_dependencies_size =
+      sizeof(uint32_t) * num_ignored_dependencies;
+  if (entry.size() < ignored_dependencies_size) {
+    throw ParseError("invalid invocation log: truncated invocation");
+  }
+  const auto ignored_dependencies = readIndices(
+      std::numeric_limits<uint32_t>::max(),  // No validation
+      string_view(entry.data(), ignored_dependencies_size));
+  entry = advance(
+      entry, ignored_dependencies.size() * sizeof(uint32_t));
+
+  const auto num_additional_dependencies = read<uint32_t>(entry);
+  entry = advance(entry, sizeof(num_additional_dependencies));
+  const auto additional_dependencies = readHashes(
+      entry, num_additional_dependencies);
+  entry = advance(
+      entry,
+      additional_dependencies.size() * sizeof(Hash));
+
   const auto outputs = read<uint32_t>(entry);
   entry = advance(entry, sizeof(outputs));
   const auto output_size = sizeof(uint32_t) * outputs;
@@ -605,12 +683,14 @@ void parseInvocation(
 
   uint32_t fingerprint_count = result.invocations.fingerprints.size();
   result.invocations.entries[hash] = {
-      readFingerprints(
+      readIndices(
           fingerprint_count,
           string_view(entry.data(), output_size)),
-      readFingerprints(
+      readIndices(
           fingerprint_count,
-          advance(entry, output_size)) };
+          advance(entry, output_size)),
+      ignored_dependencies,
+      additional_dependencies };
 }
 
 void parseDeleted(
@@ -815,7 +895,9 @@ InvocationLogParseResult::ParseData recompactPersistentInvocationLog(
         entry.first,
         invocations.fingerprints,
         entry.second.output_files,
-        entry.second.input_files);
+        entry.second.input_files,
+        entry.second.ignored_dependencies,
+        entry.second.additional_dependencies);
   }
 
   if (auto err = file_system.rename(tmp_path, log_path)) {

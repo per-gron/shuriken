@@ -59,6 +59,38 @@ TEST_CASE("Invocations") {
       CHECK(b != a);
       CHECK(a != b);      
     }
+
+    SECTION("IgnoredDependencies") {
+      a.ignored_dependencies = a_zero_view;
+
+      CHECK(!(b == a));
+      CHECK(!(a == b));
+      CHECK(b != a);
+      CHECK(a != b);
+    }
+
+    SECTION("AdditionalDependencies") {
+      const Hash a_hash{};
+      a.additional_dependencies = HashesView(&a_hash, (&a_hash) + 1);
+
+      CHECK(!(b == a));
+      CHECK(!(a == b));
+      CHECK(b != a);
+      CHECK(a != b);
+    }
+
+    SECTION("AdditionalDependenciesSame") {
+      // Ensure hashes are not compared with pointer equality
+      Hash hash_1{};
+      Hash hash_2{};
+      a.additional_dependencies = HashesView(&hash_1, (&hash_1) + 1);
+      b.additional_dependencies = HashesView(&hash_2, (&hash_2) + 1);
+
+      CHECK(b == a);
+      CHECK(a == b);
+      CHECK(!(b != a));
+      CHECK(!(a != b));
+    }
   }
 
   SECTION("CountUsedFingerprints") {

@@ -107,7 +107,9 @@ bool operator==(
     const Invocations::Entry &a, const Invocations::Entry &b) {
   return
       a.output_files == b.output_files &&
-      a.input_files == b.input_files;
+      a.input_files == b.input_files &&
+      a.ignored_dependencies == b.ignored_dependencies &&
+      a.additional_dependencies == b.additional_dependencies;
 }
 
 bool operator!=(

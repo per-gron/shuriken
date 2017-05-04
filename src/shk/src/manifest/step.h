@@ -59,7 +59,7 @@ inline View toFlatbufferView(
 
 }  // namespace detail
 
-using StepIndicesView = WrapperView<const StepIndex *, StepIndex>;
+using StepIndicesView = WrapperView<const StepIndex *, const StepIndex &>;
 
 using StringsView = WrapperView<
     detail::FbIterator<flatbuffers::String>,

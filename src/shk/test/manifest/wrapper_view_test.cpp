@@ -38,8 +38,9 @@ TEST_CASE("WrapperView") {
   auto two = std::vector<std::string>{ "one", "two" };
 
   SECTION("default wrap function") {
-    WrapperView<std::vector<std::string>::const_iterator, std::string> view(
-        two.begin(), two.end());
+    WrapperView<
+        std::vector<std::string>::const_iterator,
+        const std::string &> view(two.begin(), two.end());
     CHECK(view[0] == "one");
     CHECK(view[1] == "two");
   }

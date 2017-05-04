@@ -60,34 +60,35 @@ TEST_CASE("DelayedInvocationLog") {
 
   SECTION("RanCommand") {
     SECTION("DelayWrite") {
-      log->ranCommand(hash_a, {}, {}, {}, {});
+      log->ranCommand(hash_a, {}, {}, {}, {}, {}, {});
       CHECK(memory_log.entries().count(hash_a) == 0);
     }
 
     SECTION("WriteLater") {
-      log->ranCommand(hash_a, {}, {}, {}, {});
+      log->ranCommand(hash_a, {}, {}, {}, {}, {}, {});
       now++;
-      log->ranCommand(hash_b, {}, {}, {}, {});
+      log->ranCommand(hash_b, {}, {}, {}, {}, {}, {});
       CHECK(memory_log.entries().count(hash_a) == 1);
       CHECK(memory_log.entries().count(hash_b) == 0);
     }
 
     SECTION("WriteSeveralLater") {
-      log->ranCommand(hash_a, {}, {}, {}, {});
-      log->ranCommand(hash_b, {}, {}, {}, {});
+      log->ranCommand(hash_a, {}, {}, {}, {}, {}, {});
+      log->ranCommand(hash_b, {}, {}, {}, {}, {}, {});
       now++;
-      log->ranCommand(hash_a, {}, {}, {}, {});
+      log->ranCommand(hash_a, {}, {}, {}, {}, {}, {});
       CHECK(memory_log.entries().count(hash_a) == 1);
       CHECK(memory_log.entries().count(hash_b) == 1);
     }
 
     SECTION("WriteOnlyOnce") {
-      log->ranCommand(hash_a, {}, {}, {}, {});
+      log->ranCommand(hash_a, {}, {}, {}, {}, {}, {});
       now++;
-      log->ranCommand(hash_b, {}, {}, {}, {});
+      log->ranCommand(hash_b, {}, {}, {}, {}, {}, {});
       memory_log.cleanedCommand(hash_a);
       now++;
-      log->ranCommand(hash_b, {}, {}, {}, {});  // Should not write hash_a again
+      // Should not write hash_a again
+      log->ranCommand(hash_b, {}, {}, {}, {}, {}, {});
       CHECK(memory_log.entries().count(hash_a) == 0);
     }
 
@@ -99,9 +100,11 @@ TEST_CASE("DelayedInvocationLog") {
           { "test_file" },
           { fingerprint },
           {},
+          {},
+          {},
           {});
       now++;
-      log->ranCommand(hash_b, {}, {}, {}, {});
+      log->ranCommand(hash_b, {}, {}, {}, {}, {}, {});
       REQUIRE(memory_log.entries().count(hash_a) == 1);
       const auto &entry = memory_log.entries().find(hash_a)->second;
 
@@ -122,9 +125,11 @@ TEST_CASE("DelayedInvocationLog") {
           {},
           {},
           { "test_file" },
-          { fingerprint });
+          { fingerprint },
+          {},
+          {});
       now++;
-      log->ranCommand(hash_b, {}, {}, {}, {});
+      log->ranCommand(hash_b, {}, {}, {}, {}, {}, {});
       REQUIRE(memory_log.entries().count(hash_a) == 1);
       const auto &entry = memory_log.entries().find(hash_a)->second;
 
@@ -136,11 +141,51 @@ TEST_CASE("DelayedInvocationLog") {
           (std::vector<std::pair<std::string, Fingerprint>>({
               { "test_file", fingerprint } })));
     }
+
+    SECTION("WriteIgnoredDependencies") {
+      log->ranCommand(
+          hash_a,
+          {},
+          {},
+          {},
+          {},
+          { 0 },
+          {});
+
+      // Trigger logging hash_a
+      now++;
+      log->ranCommand(hash_b, {}, {}, {}, {}, {}, {});
+
+      REQUIRE(memory_log.entries().count(hash_a) == 1);
+      const auto &entry = memory_log.entries().find(hash_a)->second;
+
+      CHECK(entry.ignored_dependencies == std::vector<uint32_t>{ 0 });
+    }
+
+    SECTION("WriteAdditionalDependencies") {
+      log->ranCommand(
+          hash_a,
+          {},
+          {},
+          {},
+          {},
+          {},
+          { hash_b });
+
+      // Trigger logging hash_a
+      now++;
+      log->ranCommand(hash_b, {}, {}, {}, {}, {}, {});
+
+      REQUIRE(memory_log.entries().count(hash_a) == 1);
+      const auto &entry = memory_log.entries().find(hash_a)->second;
+
+      CHECK(entry.additional_dependencies == std::vector<Hash>{ hash_b });
+    }
   }
 
   SECTION("CleanedCommand") {
-    memory_log.ranCommand(hash_a, {}, {}, {}, {});
-    memory_log.ranCommand(hash_b, {}, {}, {}, {});
+    memory_log.ranCommand(hash_a, {}, {}, {}, {}, {}, {});
+    memory_log.ranCommand(hash_b, {}, {}, {}, {}, {}, {});
 
     SECTION("DelayWrite") {
       log->cleanedCommand(hash_a);
@@ -167,7 +212,7 @@ TEST_CASE("DelayedInvocationLog") {
       log->cleanedCommand(hash_a);
       now++;
       log->cleanedCommand(hash_b);
-      memory_log.ranCommand(hash_a, {}, {}, {}, {});
+      memory_log.ranCommand(hash_a, {}, {}, {}, {}, {}, {});
       now++;
       log->cleanedCommand(hash_b);  // This should not write hash_a again
       CHECK(memory_log.entries().count(hash_a) == 1);
@@ -190,8 +235,8 @@ TEST_CASE("DelayedInvocationLog") {
                 clock,
                 "shk.log",
                 InvocationLogParseResult::ParseData()));
-        log->ranCommand(hash_a, {}, {}, {}, {});
-        log->ranCommand(hash_b, {}, {}, {}, {});
+        log->ranCommand(hash_a, {}, {}, {}, {}, {}, {});
+        log->ranCommand(hash_b, {}, {}, {}, {}, {}, {});
 
         // At this point, log is destroyed and it should write the remaining
         // pending writes.

@@ -209,12 +209,22 @@ void relogCommand(
   auto output_files = make_files_vector(entry.output_files);
   auto input_files = make_files_vector(entry.input_files);
 
+  std::vector<uint32_t> ignored_dependencies(
+      entry.ignored_dependencies.begin(),
+      entry.ignored_dependencies.end());
+
+  std::vector<Hash> additional_dependencies(
+      entry.additional_dependencies.begin(),
+      entry.additional_dependencies.end());
+
   invocation_log.ranCommand(
       step_hash,
       std::move(output_files),
       invocation_log.fingerprintFiles(output_files),
       std::move(input_files),
-      invocation_log.fingerprintFiles(input_files));
+      invocation_log.fingerprintFiles(input_files),
+      std::move(ignored_dependencies),
+      std::move(additional_dependencies));
 }
 
 bool generatorStepIsClean(FileSystem &file_system, Step step) throw(IoError) {
@@ -582,7 +592,9 @@ void commandDone(
           std::move(result.output_files),
           params.invocation_log.fingerprintFiles(result.output_files),
           std::move(result.input_files),
-          params.invocation_log.fingerprintFiles(result.input_files));
+          params.invocation_log.fingerprintFiles(result.input_files),
+          std::vector<uint32_t>(),  // TODO(peck): Set this to something
+          std::vector<Hash>());  // TODO(peck): Set this to something
     }
 
     markStepNodeAsDone(params.build, step_idx);

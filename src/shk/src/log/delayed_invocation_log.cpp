@@ -60,7 +60,9 @@ class DelayedInvocationLog : public InvocationLog {
       std::vector<std::string> &&output_files,
       std::vector<Fingerprint> &&output_fingerprints,
       std::vector<std::string> &&input_files,
-      std::vector<Fingerprint> &&input_fingerprints)
+      std::vector<Fingerprint> &&input_fingerprints,
+      std::vector<uint32_t> &&ignored_dependencies,
+      std::vector<Hash> &&additional_dependencies)
           throw(IoError) override {
     const auto now = _clock();
     writeDelayedEntries(now);
@@ -72,6 +74,8 @@ class DelayedInvocationLog : public InvocationLog {
     entry.output_fingerprints = std::move(output_fingerprints);
     entry.input_files = std::move(input_files);
     entry.input_fingerprints = std::move(input_fingerprints);
+    entry.ignored_dependencies = std::move(ignored_dependencies);
+    entry.additional_dependencies = std::move(additional_dependencies);
     _delayed_entries.push_back(std::move(entry));
   }
 
@@ -122,7 +126,9 @@ class DelayedInvocationLog : public InvocationLog {
             std::move(delayed_entry.output_files),
             std::move(delayed_entry.output_fingerprints),
             std::move(delayed_entry.input_files),
-            std::move(delayed_entry.input_fingerprints));
+            std::move(delayed_entry.input_fingerprints),
+            std::move(delayed_entry.ignored_dependencies),
+            std::move(delayed_entry.additional_dependencies));
       }
     }
     _delayed_entries.erase(_delayed_entries.begin(), it);
@@ -144,6 +150,8 @@ class DelayedInvocationLog : public InvocationLog {
     std::vector<Fingerprint> output_fingerprints;
     std::vector<std::string> input_files;
     std::vector<Fingerprint> input_fingerprints;
+    std::vector<uint32_t> ignored_dependencies;
+    std::vector<Hash> additional_dependencies;
   };
 
   const Clock _clock;

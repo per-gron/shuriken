@@ -55,7 +55,8 @@ std::vector<std::pair<std::string, Fingerprint>> mergeOutputVectors(
 struct InvocationsBuffer {
   std::vector<std::unique_ptr<const std::string>> strings;
   std::vector<std::unique_ptr<Fingerprint>> fingerprints;
-  std::vector<std::vector<uint32_t>> fingerprint_id_views;
+  std::vector<std::vector<uint32_t>> id_views;
+  std::vector<std::vector<Hash>> hash_views;
 
   nt_string_view bufferString(nt_string_view str) {
     strings.emplace_back(new std::string(str));
@@ -69,10 +70,18 @@ struct InvocationsBuffer {
 
   IndicesView bufferIndicesView(
       std::vector<uint32_t> &&view) {
-    fingerprint_id_views.push_back(std::move(view));
+    id_views.push_back(std::move(view));
     return IndicesView(
-        &fingerprint_id_views.back()[0],
-        &fingerprint_id_views.back()[fingerprint_id_views.back().size()]);
+        &id_views.back()[0],
+        &id_views.back()[id_views.back().size()]);
+  }
+
+  HashesView bufferHashesView(
+      std::vector<Hash> &&view) {
+    hash_views.push_back(std::move(view));
+    return HashesView(
+        &hash_views.back()[0],
+        &hash_views.back()[hash_views.back().size()]);
   }
 };
 
@@ -102,7 +111,9 @@ void InMemoryInvocationLog::ranCommand(
     std::vector<std::string> &&output_files,
     std::vector<Fingerprint> &&output_fingerprints,
     std::vector<std::string> &&input_files,
-    std::vector<Fingerprint> &&input_fingerprints) throw(IoError) {
+    std::vector<Fingerprint> &&input_fingerprints,
+    std::vector<uint32_t> &&ignored_dependencies,
+    std::vector<Hash> &&additional_dependencies) throw(IoError) {
   auto output_file_fingerprints = mergeOutputVectors(
       std::move(output_files),
       std::move(output_fingerprints));
@@ -125,7 +136,9 @@ void InMemoryInvocationLog::ranCommand(
           _fs,
           _clock,
           std::move(input_files),
-          std::move(input_fingerprints)) };
+          std::move(input_fingerprints)),
+      std::move(ignored_dependencies),
+      std::move(additional_dependencies) };
 }
 
 void InMemoryInvocationLog::cleanedCommand(
@@ -175,6 +188,10 @@ Invocations InMemoryInvocationLog::invocations() const {
     Invocations::Entry entry;
     entry.output_files = files(log_entry.second.output_files);
     entry.input_files = files(log_entry.second.input_files);
+    entry.ignored_dependencies = buffer->bufferIndicesView(
+        std::vector<uint32_t>(log_entry.second.ignored_dependencies));
+    entry.additional_dependencies = buffer->bufferHashesView(
+        std::vector<Hash>(log_entry.second.additional_dependencies));
     result.entries[log_entry.first] = entry;
   }
 

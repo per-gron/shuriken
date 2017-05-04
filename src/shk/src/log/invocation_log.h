@@ -87,7 +87,9 @@ class InvocationLog {
       std::vector<std::string> &&output_files,
       std::vector<Fingerprint> &&output_fingerprints,
       std::vector<std::string> &&input_files,
-      std::vector<Fingerprint> &&input_fingerprints)
+      std::vector<Fingerprint> &&input_fingerprints,
+      std::vector<uint32_t> &&ignored_dependencies,
+      std::vector<Hash> &&additional_dependencies)
           throw(IoError) = 0;
 
   /**
