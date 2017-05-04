@@ -87,14 +87,14 @@ std::vector<StepIndex> computeStepsToBuild(
 
 namespace detail {
 
-void markStepNodeAsDone(Build &build, StepIndex step_idx) {
-  const auto &dependents = build.step_nodes[step_idx].dependents;
+void Build::markStepNodeAsDone(StepIndex step_idx) {
+  const auto &dependents = step_nodes[step_idx].dependents;
   for (const auto dependent_idx : dependents) {
-    auto &dependent = build.step_nodes[dependent_idx];
+    auto &dependent = step_nodes[dependent_idx];
     assert(dependent.dependencies);
     dependent.dependencies--;
     if (dependent.dependencies == 0) {
-      build.ready_steps.push_back(dependent_idx);
+      ready_steps.push_back(dependent_idx);
     }
   }
 }
@@ -429,7 +429,7 @@ int discardCleanSteps(
       if (!phony) {
         discarded_steps++;
       }
-      markStepNodeAsDone(build, step_idx);
+      build.markStepNodeAsDone(step_idx);
     } else {
       new_ready_steps.push_back(step_idx);
     }
@@ -521,7 +521,7 @@ void commandBypassed(
         /* command output: */"");
   }
 
-  markStepNodeAsDone(params.build, step_idx);
+  params.build.markStepNodeAsDone(step_idx);
 }
 
 void commandDone(
@@ -598,7 +598,7 @@ void commandDone(
           std::vector<Hash>());  // TODO(peck): Set this to something
     }
 
-    markStepNodeAsDone(params.build, step_idx);
+    params.build.markStepNodeAsDone(step_idx);
     break;
 
   case ExitStatus::INTERRUPTED:

@@ -126,6 +126,13 @@ struct StepNode {
  */
 struct Build {
   /**
+   * Take a step by index (which must be in the ready_steps list) and mark it
+   * as done; remove it from the ready_steps list and add any new steps that
+   * might have become ready to that list.
+   */
+  void markStepNodeAsDone(StepIndex step_idx);
+
+  /**
    * step_nodes.size() == manifest.steps.size()
    *
    * step_nodes contains step dependency information in an easily accessible
