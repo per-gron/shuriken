@@ -119,9 +119,10 @@ struct StepNode {
 };
 
 /**
- * Build is the data structure that keeps track of the build steps that are
- * left to do in the build and helps to efficiently provide information about
- * what to do next when a build step has completed.
+ * Build is the data structure that keeps track of intermediary internal
+ * information necessary to perform the build, for example the build steps that
+ * are left to do in the build, and helps to efficiently provide information
+ * about what to do next when a build step has completed.
  */
 struct Build {
   /**
@@ -143,6 +144,19 @@ struct Build {
    * stop.
    */
   int remaining_failures = 0;
+
+  /**
+   * The number of commands that have been run as part of the build, excluding
+   * phony build steps.
+   */
+  size_t invoked_commands = 0;
+
+  /**
+   * Files that have been written to during the build. This is used when
+   * invoking subsequent build steps when computing if they are already clean
+   * and don't need to be invoked (similar to Ninja's "restat" behavior).
+   */
+  std::unordered_map<FileId, Hash> written_files;
 };
 
 /**
@@ -150,6 +164,9 @@ struct Build {
  * parameters, and quite many at that. The point of this struct is to avoid
  * having to pass all of them explicitly, which just gets overly verbose, hard
  * to read and painful to change.
+ *
+ * BuildCommandParameters is supposed to stay the same for the duration of a
+ * build (although it may have pointers to things that change during the build).
  */
 struct BuildCommandParameters {
   BuildCommandParameters(
@@ -181,19 +198,6 @@ struct BuildCommandParameters {
   const CleanSteps &clean_steps;
   const CompiledManifest &manifest;
   Build &build;
-
-  /**
-   * The number of commands that have been run as part of the build, excluding
-   * phony build steps.
-   */
-  size_t invoked_commands = 0;
-
-  /**
-   * Files that have been written to during the build. This is used when
-   * invoking subsequent build steps when computing if they are already clean
-   * and don't need to be invoked (similar to Ninja's "restat" behavior).
-   */
-  std::unordered_map<FileId, Hash> written_files;
 };
 
 /**

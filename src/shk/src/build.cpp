@@ -557,7 +557,8 @@ void commandDone(
     // fingerprint.stat.couldAccess() can be false for example for a depfile,
     // which will have already been deleted above.
     if (fingerprint.stat.couldAccess()) {
-      if (!params.written_files.emplace(file_id, fingerprint.hash).second) {
+      auto &written_files = params.build.written_files;
+      if (!written_files.emplace(file_id, fingerprint.hash).second) {
         // This is a sanity check, but it is not complete, since it is
         // possible to overwrite a file in a way so that the FileId changes.
         result.exit_status = ExitStatus::FAILURE;
@@ -695,13 +696,13 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
 
   if (!step.phony()) {
     params.build_status.stepStarted(step);
-    params.invoked_commands++;
+    params.build.invoked_commands++;
   }
 
   if (canSkipBuildCommand(
           params.file_system,
           params.clean_steps,
-          params.written_files,
+          params.build.written_files,
           params.invocations,
           step,
           step_idx)) {
@@ -840,7 +841,7 @@ BuildResult build(
   }
 
   if (build.remaining_failures == failures_allowed) {
-    return params.invoked_commands == 0 ?
+    return params.build.invoked_commands == 0 ?
         BuildResult::NO_WORK_TO_DO :
         BuildResult::SUCCESS;
   } else {
