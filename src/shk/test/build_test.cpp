@@ -1524,7 +1524,9 @@ TEST_CASE("Build") {
     CHECK(fs.writeFile("file", "contents") == IoError::success());
     const auto fingerprint = takeFingerprint(fs, clock(), "file").first;
     CHECK(fs.mkdir("dir_single_file") == IoError::success());
-    CHECK(fs.writeFile("dir_single_file/file", "contents!") == IoError::success());
+    CHECK(
+        fs.writeFile("dir_single_file/file", "contents!") ==
+        IoError::success());
     CHECK(fs.mkdir("dir") == IoError::success());
     CHECK(fs.writeFile("dir/file2", "contents2") == IoError::success());
     const auto fingerprint2 = takeFingerprint(fs, clock(), "dir/file2").first;
@@ -2037,7 +2039,8 @@ TEST_CASE("Build") {
         const auto one = dummy_runner.constructCommand({}, {"one"});
         const auto two = dummy_runner.constructCommand({"one"}, {"two"});
         const auto three = dummy_runner.constructCommand({"one"}, {"three"});
-        const auto four = dummy_runner.constructCommand({"two", "three"}, {"four"});
+        const auto four =
+            dummy_runner.constructCommand({"two", "three"}, {"four"});
         const auto manifest =
             "rule one\n"
             "  command = " + one + "\n"
@@ -2059,7 +2062,8 @@ TEST_CASE("Build") {
       }
 
       SECTION("first step failing in a chain") {
-        const auto one = dummy_runner.constructCommand({"nonexisting"}, {"one"});
+        const auto one =
+            dummy_runner.constructCommand({"nonexisting"}, {"one"});
         const auto two = dummy_runner.constructCommand({}, {"two"});
         const auto manifest =
             "rule one\n"
@@ -2075,7 +2079,8 @@ TEST_CASE("Build") {
 
       SECTION("second step failing in a chain") {
         const auto one = dummy_runner.constructCommand({}, {"one"});
-        const auto two = dummy_runner.constructCommand({"nonexisting"}, {"two"});
+        const auto two =
+            dummy_runner.constructCommand({"nonexisting"}, {"two"});
         const auto manifest =
             "rule one\n"
             "  command = " + one + "\n"
