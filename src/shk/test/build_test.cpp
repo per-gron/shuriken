@@ -144,7 +144,7 @@ std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
   return vec;
 }
 
-Build computeBuild(
+Build constructBuild(
     Paths &paths,
     const RawManifest &manifest,
     size_t allowed_failures = 1) throw(BuildError) {
@@ -455,36 +455,156 @@ TEST_CASE("Build") {
     }
   }
 
-  SECTION("computeBuild") {
+  SECTION("outputFileIdsForBuildStep") {
+    const Hash step_hash{};
+
+    flatbuffers::FlatBufferBuilder phony_step_builder;
+    auto phony_step = StepBuilder()
+        .setHash(step_hash)
+        .setCommand("")  // Empty command => phony step
+        .build(phony_step_builder);
+
+    flatbuffers::FlatBufferBuilder step_builder;
+    auto step = StepBuilder()
+        .setHash(step_hash)
+        .setCommand("a_command")
+        .build(step_builder);
+
+    SECTION("phony step") {
+      const auto output = detail::outputFileIdsForBuildStep(
+          Invocations(),
+          FingerprintMatchesMemo(),
+          phony_step);
+      CHECK(output == std::vector<FileId>{});
+    }
+
+    SECTION("missing invocation") {
+      CHECK_THROWS_AS(
+          detail::outputFileIdsForBuildStep(
+              Invocations(),
+              FingerprintMatchesMemo(),
+              step),
+          std::runtime_error);
+    }
+
+    SECTION("happy case: no outputs") {
+      uint32_t index = 0;
+
+      Invocations::Entry entry;
+
+      Invocations invocations;
+      invocations.entries[step_hash] = entry;
+      FingerprintMatchesMemo memo(1);
+
+      const auto output = detail::outputFileIdsForBuildStep(
+          invocations,
+          memo,
+          step);
+      CHECK(output == std::vector<FileId>{});
+    }
+
+    SECTION("missing MatchesResult") {
+      Invocations::Entry entry;
+      entry.output_files = makeIndicesView({ 0 });
+
+      Invocations invocations;
+      invocations.entries[step_hash] = entry;
+      FingerprintMatchesMemo memo(1);
+
+      CHECK_THROWS_AS(
+          detail::outputFileIdsForBuildStep(
+              invocations,
+              memo,
+              step),
+          std::runtime_error);
+    }
+
+    SECTION("happy case: some outputs") {
+      Invocations::Entry entry;
+      entry.output_files = makeIndicesView({ 0, 2, 4 });
+
+      Invocations invocations;
+      invocations.entries[step_hash] = entry;
+
+      FingerprintMatchesMemo memo;
+      for (int i = 0; i < 5; i++) {
+        MatchesResult result;
+        result.file_id = FileId(1337, i);
+        memo.emplace_back(result);
+      }
+
+      const auto output = detail::outputFileIdsForBuildStep(
+          invocations,
+          memo,
+          step);
+      CHECK(output == std::vector<FileId>({
+          FileId(1337, 0), FileId(1337, 2), FileId(1337, 4) }));
+    }
+  }
+
+  SECTION("Build::markStepNodeAsDone") {
+    SECTION("set output_files") {
+      manifest.steps = { single_output, single_output_b };
+      auto build = constructBuild(paths, manifest);
+
+      SECTION("empty output_file_ids") {
+        build.markStepNodeAsDone(1, {});
+        CHECK(build.output_files.empty());
+      }
+
+      SECTION("some output_file_ids") {
+        build.markStepNodeAsDone(1, { FileId(1, 2), FileId(3, 4) });
+        CHECK(build.output_files[FileId(1, 2)] == 1);
+        CHECK(build.output_files[FileId(3, 4)] == 1);
+      }
+
+      SECTION("missing output_file_ids") {
+        build.markStepNodeAsDone(0, { FileId() });
+        build.markStepNodeAsDone(1, { FileId() });
+        CHECK(build.output_files.empty());
+      }
+    }
+
+    SECTION("add dependent steps to ready_steps") {
+      manifest.steps = { single_input, single_output };
+      auto build = constructBuild(paths, manifest);
+
+      REQUIRE(build.ready_steps == std::vector<StepIndex>{ 1 });
+      build.markStepNodeAsDone(1, {});
+      REQUIRE(build.ready_steps == std::vector<StepIndex>({ 1, 0 }));
+    }
+  }
+
+  SECTION("Build::construct") {
     SECTION("empty") {
-      const auto build = computeBuild(paths, RawManifest());
+      const auto build = constructBuild(paths, RawManifest());
       CHECK(build.step_nodes.empty());
       CHECK(build.ready_steps.empty());
       CHECK(build.remaining_failures == 1);
     }
 
     SECTION("remaining_failures") {
-      const auto build = computeBuild(paths, RawManifest(), 543);
+      const auto build = constructBuild(paths, RawManifest(), 543);
       CHECK(build.remaining_failures == 543);
     }
 
     SECTION("ready_steps") {
       SECTION("basic") {
         manifest.steps = { single_output };
-        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 0 }));
+        CHECK(constructBuild(paths, manifest).ready_steps == vec({ 0 }));
       }
 
       SECTION("two steps") {
         manifest.steps = { single_output, single_output_b };
-        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 0, 1 }));
+        CHECK(constructBuild(paths, manifest).ready_steps == vec({ 0, 1 }));
       }
 
       SECTION("single dep") {
         manifest.steps = { single_output, single_input };
-        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 0 }));
+        CHECK(constructBuild(paths, manifest).ready_steps == vec({ 0 }));
 
         manifest.steps = { single_input, single_output };
-        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 1 }));
+        CHECK(constructBuild(paths, manifest).ready_steps == vec({ 1 }));
       }
 
       SECTION("dep chain") {
@@ -497,10 +617,10 @@ TEST_CASE("Build") {
         three.inputs = { paths.get("b") };
 
         manifest.steps = { three, one, two };
-        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 1 }));
+        CHECK(constructBuild(paths, manifest).ready_steps == vec({ 1 }));
 
         manifest.steps = { one, two, three };
-        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 0 }));
+        CHECK(constructBuild(paths, manifest).ready_steps == vec({ 0 }));
       }
 
       SECTION("diamond dep") {
@@ -516,10 +636,10 @@ TEST_CASE("Build") {
         three.inputs = { paths.get("b"), paths.get("c") };
 
         manifest.steps = { three, one, two_1, two_2 };
-        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 1 }));
+        CHECK(constructBuild(paths, manifest).ready_steps == vec({ 1 }));
 
         manifest.steps = { three, two_2, two_1, one };
-        CHECK(computeBuild(paths, manifest).ready_steps == vec({ 3 }));
+        CHECK(constructBuild(paths, manifest).ready_steps == vec({ 3 }));
       }
     }
 
@@ -534,7 +654,7 @@ TEST_CASE("Build") {
 
       SECTION("everything") {
         manifest.steps = { one, two, three };
-        const auto build = computeBuild(paths, manifest);
+        const auto build = constructBuild(paths, manifest);
         REQUIRE(build.step_nodes.size() == 3);
         CHECK(build.step_nodes[0].should_build);
         CHECK(build.step_nodes[1].should_build);
@@ -544,7 +664,7 @@ TEST_CASE("Build") {
       SECTION("just some") {
         manifest.steps = { one, two, three };
         manifest.defaults = { paths.get("b") };
-        const auto build = computeBuild(paths, manifest);
+        const auto build = constructBuild(paths, manifest);
         REQUIRE(build.step_nodes.size() == 3);
         CHECK(build.step_nodes[0].should_build);
         CHECK(build.step_nodes[1].should_build);
@@ -555,7 +675,7 @@ TEST_CASE("Build") {
     SECTION("dependencies") {
       SECTION("independent") {
         manifest.steps = { single_output, single_output_b };
-        const auto build = computeBuild(paths, manifest);
+        const auto build = constructBuild(paths, manifest);
         REQUIRE(build.step_nodes.size() == 2);
 
         CHECK(build.step_nodes[0].dependencies == 0);
@@ -578,7 +698,7 @@ TEST_CASE("Build") {
         three.inputs = { paths.get("b"), paths.get("c") };
 
         manifest.steps = { three, two_2, two_1, one };
-        const auto build = computeBuild(paths, manifest);
+        const auto build = constructBuild(paths, manifest);
         REQUIRE(build.step_nodes.size() == 4);
 
         // three
@@ -609,7 +729,7 @@ TEST_CASE("Build") {
 
       RawManifest manifest;
       manifest.steps = { one, two };
-      CHECK_THROWS_AS(computeBuild(paths, manifest), BuildError);
+      CHECK_THROWS_AS(constructBuild(paths, manifest), BuildError);
     }
 
     SECTION("Dependency cycle with specified target") {
@@ -625,7 +745,7 @@ TEST_CASE("Build") {
       // nothing is "built".
       manifest.defaults = { paths.get("a") };
       manifest.steps = { one, two };
-      CHECK_THROWS_AS(computeBuild(paths, manifest), BuildError);
+      CHECK_THROWS_AS(constructBuild(paths, manifest), BuildError);
     }
   }
 
@@ -1103,7 +1223,8 @@ TEST_CASE("Build") {
           log,
           invocations,
           to_compiled_manifest(manifest).steps(),
-          Build()).empty());
+          Build(),
+          FingerprintMatchesMemo()).empty());
     }
 
     SECTION("should compute clean steps") {
@@ -1111,14 +1232,15 @@ TEST_CASE("Build") {
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
 
-      const auto build = computeBuild(paths, manifest);
+      const auto build = constructBuild(paths, manifest);
       const auto clean_steps = computeCleanSteps(
           clock,
           fs,
           log,
           invocations,
           to_compiled_manifest(manifest).steps(),
-          build);
+          build,
+          FingerprintMatchesMemo(build.step_nodes.size()));
 
       REQUIRE(clean_steps.size() == 2);
       CHECK(clean_steps[0]);
@@ -1131,14 +1253,15 @@ TEST_CASE("Build") {
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
 
-      const auto build = computeBuild(paths, manifest);
+      const auto build = constructBuild(paths, manifest);
       const auto clean_steps = computeCleanSteps(
           clock,
           fs,
           log,
           invocations,
           to_compiled_manifest(manifest).steps(),
-          build);
+          build,
+          FingerprintMatchesMemo(build.step_nodes.size()));
 
       REQUIRE(clean_steps.size() == 2);
       CHECK(clean_steps[0]);
@@ -1149,6 +1272,7 @@ TEST_CASE("Build") {
   SECTION("discardCleanSteps") {
     const auto compute_clean_steps = [&](
         const Build &build,
+        const FingerprintMatchesMemo &memo,
         Invocations &invocations,
         const RawManifest &manifest) {
       return computeCleanSteps(
@@ -1157,12 +1281,15 @@ TEST_CASE("Build") {
           log,
           invocations,
           to_compiled_manifest(manifest).steps(),
-          build);
+          build,
+          memo);
     };
 
     SECTION("empty input") {
       Build build;
       CHECK(discardCleanSteps(
+          invocations,
+          FingerprintMatchesMemo(),
           to_compiled_manifest(manifest).steps(),
           CleanSteps(),
           build) == 0);
@@ -1173,22 +1300,104 @@ TEST_CASE("Build") {
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
       invocations.entries[multiple_outputs.hash()];
-      auto build = computeBuild(paths, manifest);
+      auto build = constructBuild(paths, manifest);
+      auto memo = FingerprintMatchesMemo(manifest.steps.size());
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
+          invocations,
+          FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, invocations, manifest),
+          compute_clean_steps(build, memo, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
     }
 
+    SECTION("outputs are added to output_files if clean") {
+      for (int i = 0; i < 2; i++) {
+        bool clean = i == 0;
+
+        manifest.steps = { single_output, single_output_b, multiple_outputs };
+
+        invocations
+            .entries[single_output_b.hash()]
+            .output_files = makeIndicesView({ 1 });
+        invocations
+            .entries[multiple_outputs.hash()]
+            .output_files = makeIndicesView({ 2 });
+
+        FingerprintMatchesMemo memo;
+        memo.emplace_back();
+        MatchesResult result_1;
+        result_1.clean = clean;
+        result_1.file_id = FileId(1, 1);
+        memo.emplace_back(result_1);
+        MatchesResult result_2;
+        result_2.clean = clean;
+        result_2.file_id = FileId(1, 2);
+        memo.emplace_back(result_2);
+
+        auto build = constructBuild(paths, manifest);
+        CHECK(build.ready_steps.size() == 3);
+        discardCleanSteps(
+            invocations,
+            memo,
+            to_compiled_manifest(manifest).steps(),
+            compute_clean_steps(build, memo, invocations, manifest),
+            build);
+
+        if (clean) {
+          CHECK(build.output_files[FileId(1, 1)] == 1);
+          CHECK(build.output_files[FileId(1, 2)] == 2);
+        } else {
+          CHECK(build.output_files.empty());
+        }
+      }
+    }
+
+    SECTION("missing files are not added to output_files") {
+        manifest.steps = { single_output, single_output_b, multiple_outputs };
+
+        invocations
+            .entries[single_output_b.hash()]
+            .output_files = makeIndicesView({ 1 });
+        invocations
+            .entries[multiple_outputs.hash()]
+            .output_files = makeIndicesView({ 2 });
+
+        FingerprintMatchesMemo memo;
+        memo.emplace_back();
+        MatchesResult result_1;
+        result_1.clean = true;
+        result_1.file_id = FileId();
+        memo.emplace_back(result_1);
+        MatchesResult result_2;
+        result_2.clean = true;
+        result_2.file_id = FileId(1, 2);
+        memo.emplace_back(result_2);
+
+        auto build = constructBuild(paths, manifest);
+        CHECK(build.ready_steps.size() == 3);
+        discardCleanSteps(
+            invocations,
+            memo,
+            to_compiled_manifest(manifest).steps(),
+            compute_clean_steps(build, memo, invocations, manifest),
+            build);
+
+        CHECK(build.output_files.count(FileId(0, 0)) == 0);
+        CHECK(build.output_files[FileId(1, 2)] == 2);
+    }
+
     SECTION("all dirty") {
       manifest.steps = { single_output_b, multiple_outputs };
-      auto build = computeBuild(paths, manifest);
+      auto build = constructBuild(paths, manifest);
+      auto memo = FingerprintMatchesMemo(manifest.steps.size());
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
+          invocations,
+          FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, invocations, manifest),
+          compute_clean_steps(build, memo, invocations, manifest),
           build) == 0);
       CHECK(build.ready_steps.size() == 2);
     }
@@ -1197,11 +1406,14 @@ TEST_CASE("Build") {
       manifest.steps = { single_output_b, multiple_outputs };
       // Add empty entry to mark clean
       invocations.entries[single_output_b.hash()];
-      auto build = computeBuild(paths, manifest);
+      auto build = constructBuild(paths, manifest);
+      auto memo = FingerprintMatchesMemo(manifest.steps.size());
       CHECK(build.ready_steps.size() == 2);
       CHECK(discardCleanSteps(
+          invocations,
+          FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, invocations, manifest),
+          compute_clean_steps(build, memo, invocations, manifest),
           build) == 1);
       CHECK(build.ready_steps.size() == 1);
     }
@@ -1216,12 +1428,15 @@ TEST_CASE("Build") {
 
     SECTION("phony step") {
       manifest.steps = { phony };
-      auto build = computeBuild(paths, manifest);
+      auto build = constructBuild(paths, manifest);
+      auto memo = FingerprintMatchesMemo(manifest.steps.size());
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
+          invocations,
+          FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, invocations, manifest),
+          compute_clean_steps(build, memo, invocations, manifest),
           build) == 0);
       CHECK(build.ready_steps.empty());
     }
@@ -1235,11 +1450,14 @@ TEST_CASE("Build") {
           invocations.entries[root.hash()],
           single_output.outputs[0].original(),
           empty_fingerprint);
-      auto build = computeBuild(paths, manifest);
+      auto build = constructBuild(paths, manifest);
+      auto memo = FingerprintMatchesMemo(manifest.steps.size());
       CHECK(build.ready_steps.size() == 1);
       CHECK(discardCleanSteps(
+          invocations,
+          FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, invocations, manifest),
+          compute_clean_steps(build, memo, invocations, manifest),
           build) == 2);
       CHECK(build.ready_steps.empty());
     }
@@ -1248,12 +1466,15 @@ TEST_CASE("Build") {
       manifest.steps = { single_output, root };
       // Add empty entry to mark clean
       invocations.entries[single_output.hash()];
-      auto build = computeBuild(paths, manifest);
+      auto build = constructBuild(paths, manifest);
+      auto memo = FingerprintMatchesMemo(manifest.steps.size());
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
+          invocations,
+          FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, invocations, manifest),
+          compute_clean_steps(build, memo, invocations, manifest),
           build) == 1);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 1);
@@ -1263,12 +1484,15 @@ TEST_CASE("Build") {
       manifest.steps = { single_output, root };
       // Add empty entry to mark clean
       invocations.entries[single_input.hash()];
-      auto build = computeBuild(paths, manifest);
+      auto build = constructBuild(paths, manifest);
+      auto memo = FingerprintMatchesMemo(manifest.steps.size());
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
+          invocations,
+          FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, invocations, manifest),
+          compute_clean_steps(build, memo, invocations, manifest),
           build) == 0);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
@@ -1278,12 +1502,15 @@ TEST_CASE("Build") {
       manifest.steps = { phony, root };
       // Add empty entry to mark clean
       invocations.entries[root.hash()];
-      auto build = computeBuild(paths, manifest);
+      auto build = constructBuild(paths, manifest);
+      auto memo = FingerprintMatchesMemo(manifest.steps.size());
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
       CHECK(discardCleanSteps(
+          invocations,
+          FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, invocations, manifest),
+          compute_clean_steps(build, memo, invocations, manifest),
           build) == 1);
       CHECK(build.ready_steps.empty());
     }

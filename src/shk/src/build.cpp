@@ -87,7 +87,58 @@ std::vector<StepIndex> computeStepsToBuild(
 
 namespace detail {
 
-void Build::markStepNodeAsDone(StepIndex step_idx) {
+std::vector<FileId> outputFileIdsForBuildStep(
+    const Invocations &invocations,
+    const FingerprintMatchesMemo &fingerprint_matches_memo,
+    Step step) {
+  if (step.phony()) {
+    // Phony steps are never recorded in the invocation log, but they also never
+    // have any outputs so it's fine to do nothing here.
+    return {};
+  }
+
+  const auto entry_it = invocations.entries.find(step.hash());
+  if (entry_it == invocations.entries.end()) {
+    // The caller must make sure that the step hash actually exists in the
+    // invocations object. If it doesn't, then the step is not clean, and the
+    // caller should have made sure that it is before calling this function.
+    throw std::runtime_error(
+        "internal error: outputFileIdsForBuildStep invoked with invalid step "
+        "hash");
+  }
+  const auto &entry = entry_it->second;
+
+  std::vector<FileId> file_ids;
+  file_ids.reserve(entry.output_files.size());
+
+  for (const auto fingerprint_idx : entry.output_files) {
+    const auto &matches_result = fingerprint_matches_memo[fingerprint_idx];
+    if (!matches_result) {
+      throw std::runtime_error(
+          "internal error: outputFileIdsForBuildStep invoked with step that is "
+          "not included in the build");
+    }
+
+    file_ids.push_back(matches_result->file_id);
+  }
+
+  return file_ids;
+}
+
+void Build::markStepNodeAsDone(
+    StepIndex step_idx,
+    const std::vector<FileId> &output_file_ids) {
+  for (const auto &file_id : output_file_ids) {
+    if (file_id.missing()) {
+      // If file_id.missing(), then it's just zero, and equal to all other
+      // missing file ids. It does not make sense to add that to output_files.
+      continue;
+    }
+    if (!output_files.emplace(file_id, step_idx).second) {
+      throw BuildError("More than one step wrote to the same file");
+    }
+  }
+
   const auto &dependents = step_nodes[step_idx].dependents;
   for (const auto dependent_idx : dependents) {
     auto &dependent = step_nodes[dependent_idx];
@@ -297,6 +348,8 @@ bool nonGeneratorStepIsClean(
   return clean;
 }
 
+}  // anonymous namespace
+
 FingerprintMatchesMemo computeFingerprintMatchesMemo(
     FileSystem &file_system,
     const Invocations &invocations,
@@ -320,8 +373,6 @@ FingerprintMatchesMemo computeFingerprintMatchesMemo(
       invocations.fingerprints,
       invocations.fingerprintsFor(entries));
 }
-
-}  // anonymous namespace
 
 FingerprintMatchesMemo computeFingerprintMatchesMemo(
     FileSystem &file_system,
@@ -374,13 +425,11 @@ CleanSteps computeCleanSteps(
     InvocationLog &invocation_log,
     const Invocations &invocations,
     StepsView steps,
-    const Build &build) throw(IoError) {
+    const Build &build,
+    const FingerprintMatchesMemo &fingerprint_matches_memo) throw(IoError) {
   assert(steps.size() == build.step_nodes.size());
 
   CleanSteps result(build.step_nodes.size(), false);
-
-  auto fingerprint_memo = computeFingerprintMatchesMemo(
-      file_system, invocations, steps, build);
 
   for (size_t i = 0; i < build.step_nodes.size(); i++) {
     const auto &step_node = build.step_nodes[i];
@@ -390,7 +439,7 @@ CleanSteps computeCleanSteps(
     result[i] = isClean(
         file_system,
         invocation_log,
-        fingerprint_memo,
+        fingerprint_matches_memo,
         invocations,
         steps[i]);
   }
@@ -399,6 +448,8 @@ CleanSteps computeCleanSteps(
 }
 
 int discardCleanSteps(
+    const Invocations &invocations,
+    const FingerprintMatchesMemo &fingerprint_matches_memo,
     StepsView steps,
     const CleanSteps &clean_steps,
     Build &build) {
@@ -429,7 +480,12 @@ int discardCleanSteps(
       if (!phony) {
         discarded_steps++;
       }
-      build.markStepNodeAsDone(step_idx);
+
+      const auto output_file_ids = outputFileIdsForBuildStep(
+          invocations,
+          fingerprint_matches_memo,
+          steps[step_idx]);
+      build.markStepNodeAsDone(step_idx, output_file_ids);
     } else {
       new_ready_steps.push_back(step_idx);
     }
@@ -521,7 +577,11 @@ void commandBypassed(
         /* command output: */"");
   }
 
-  params.build.markStepNodeAsDone(step_idx);
+  const auto output_file_ids = outputFileIdsForBuildStep(
+      params.invocations,
+      params.fingerprint_matches_memo,
+      step);
+  params.build.markStepNodeAsDone(step_idx, output_file_ids);
 }
 
 void commandDone(
@@ -546,6 +606,7 @@ void commandDone(
   }
 
   std::vector<Fingerprint> output_fingerprints;
+  std::vector<FileId> output_file_ids;
   for (const auto &output_file : result.output_files) {
     Fingerprint fingerprint;
     FileId file_id;
@@ -553,6 +614,7 @@ void commandDone(
         params.invocation_log.fingerprint(output_file);
 
     output_fingerprints.push_back(fingerprint);
+    output_file_ids.push_back(file_id);
 
     // fingerprint.stat.couldAccess() can be false for example for a depfile,
     // which will have already been deleted above.
@@ -598,7 +660,7 @@ void commandDone(
           std::vector<Hash>());  // TODO(peck): Set this to something
     }
 
-    params.build.markStepNodeAsDone(step_idx);
+    params.build.markStepNodeAsDone(step_idx, output_file_ids);
     break;
 
   case ExitStatus::INTERRUPTED:
@@ -808,16 +870,24 @@ BuildResult build(
       failures_allowed,
       std::move(steps_to_build));
 
+  const auto fingerprint_matches_memo = computeFingerprintMatchesMemo(
+      file_system, invocations, manifest.steps(), build);
+
   const auto clean_steps = detail::computeCleanSteps(
       clock,
       file_system,
       invocation_log,
       invocations,
       manifest.steps(),
-      build);
+      build,
+      fingerprint_matches_memo);
 
   const auto discarded_steps = detail::discardCleanSteps(
-      manifest.steps(), clean_steps, build);
+      invocations,
+      fingerprint_matches_memo,
+      manifest.steps(),
+      clean_steps,
+      build);
 
   const auto build_status = make_build_status(
       countStepsToBuild(manifest.steps(), build) - discarded_steps);
@@ -831,6 +901,7 @@ BuildResult build(
       invocations,
       clean_steps,
       manifest,
+      fingerprint_matches_memo,
       build);
   detail::enqueueBuildCommands(params);
 

@@ -77,6 +77,10 @@ using CleanSteps = std::vector<bool>;
  *
  * FingerprintMatchesMemo is precalculated for all fingerprints that are
  * actually used by the build. The others will be empty optionals.
+ *
+ * Because FingerprintMatchesMemo is used at the start of a build, each entry
+ * (which represents a file) will become invalid after it is overwritten by
+ * build steps that are invoked.
  */
 using FingerprintMatchesMemo = std::vector<Optional<MatchesResult>>;
 
@@ -129,8 +133,13 @@ struct Build {
    * Take a step by index (which must be in the ready_steps list) and mark it
    * as done; remove it from the ready_steps list and add any new steps that
    * might have become ready to that list.
+   *
+   * output_file_ids is a list that has FileIds of all the files that this build
+   * step wrote to.
    */
-  void markStepNodeAsDone(StepIndex step_idx);
+  void markStepNodeAsDone(
+      StepIndex step_idx,
+      const std::vector<FileId> &output_file_ids);
 
   /**
    * Create a Build object suitable for use as a starting point for the build.
@@ -172,6 +181,16 @@ struct Build {
    * and don't need to be invoked (similar to Ninja's "restat" behavior).
    */
   std::unordered_map<FileId, Hash> written_files;
+
+  /**
+   * Files that have been written to, or that have been written to by build
+   * steps that have been skipped because they were clean, during the build so
+   * far.
+   *
+   * This is used to calculate ignored_deps and additional_deps prior to logging
+   * each build step.
+   */
+  std::unordered_map<FileId, StepIndex> output_files;
 };
 
 /**
@@ -193,6 +212,7 @@ struct BuildCommandParameters {
       const Invocations &invocations,
       const CleanSteps &clean_steps,
       const CompiledManifest &manifest,
+      const FingerprintMatchesMemo &fingerprint_matches_memo,
       Build &build)
       : clock(clock),
         file_system(file_system),
@@ -202,6 +222,7 @@ struct BuildCommandParameters {
         invocation_log(invocation_log),
         clean_steps(clean_steps),
         manifest(manifest),
+        fingerprint_matches_memo(fingerprint_matches_memo),
         build(build) {}
 
   const Clock &clock;
@@ -212,8 +233,20 @@ struct BuildCommandParameters {
   InvocationLog &invocation_log;
   const CleanSteps &clean_steps;
   const CompiledManifest &manifest;
+  const FingerprintMatchesMemo &fingerprint_matches_memo;
   Build &build;
 };
+
+/**
+ * Find the file ids for each of the outputs of a given build step that has been
+ * run in the past and is recorded in the invocation log. For this function to
+ * do what it is supposed to to, the provided build step must be clean (so that
+ * the Invocations object is up to date).
+ */
+std::vector<FileId> outputFileIdsForBuildStep(
+    const Invocations &invocations,
+    const FingerprintMatchesMemo &fingerprint_matches_memo,
+    Step step);
 
 /**
  * Find the steps that should be built. If there are no specified steps, this
@@ -261,7 +294,8 @@ CleanSteps computeCleanSteps(
     InvocationLog &invocation_log,
     const Invocations &invocations,
     StepsView steps,
-    const Build &build) throw(IoError);
+    const Build &build,
+    const FingerprintMatchesMemo &fingerprint_memo) throw(IoError);
 
 /**
  * Before the actual build is performed, this function goes through the build
@@ -271,6 +305,8 @@ CleanSteps computeCleanSteps(
  * Returns the number of discarded steps.
  */
 int discardCleanSteps(
+    const Invocations &invocations,
+    const FingerprintMatchesMemo &fingerprint_matches_memo,
     StepsView steps,
     const CleanSteps &clean_steps,
     Build &build);

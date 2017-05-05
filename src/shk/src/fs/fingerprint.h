@@ -160,8 +160,8 @@ MatchesResult fingerprintMatches(
     const Fingerprint &fingerprint) throw(IoError);
 
 /**
- * Check if a given fingerprint is still clean given a Stat and a Hash of a
- * file.
+ * Check if a given fingerprint is still clean given a Fingerprint::Stat and a
+ * Hash of a file.
  */
 bool fingerprintMatches(
     const Fingerprint &original_fingerprint,

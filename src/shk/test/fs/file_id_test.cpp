@@ -40,6 +40,17 @@ TEST_CASE("FileId") {
     CHECK(FileId(3, 2) != FileId(1, 2));
   }
 
+  SECTION("missing") {
+    CHECK(FileId().missing());
+    CHECK(FileId(0, 0).missing());
+    CHECK(!FileId(1, 0).missing());
+    CHECK(!FileId(0, 1).missing());
+    CHECK(!FileId(1, 1).missing());
+
+    const FileId const_file_id{};
+    CHECK(const_file_id.missing());
+  }
+
   SECTION("hash") {
     CHECK(std::hash<FileId>()(FileId(1, 2)) == std::hash<FileId>()(FileId(1, 2)));
     CHECK(std::hash<FileId>()(FileId(1, 2)) != std::hash<FileId>()(FileId(2, 2)));

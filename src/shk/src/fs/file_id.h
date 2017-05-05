@@ -31,6 +31,13 @@ struct FileId {
   FileId(const Stat &stat)
       : ino(stat.metadata.ino), dev(stat.metadata.dev) {}
 
+  /**
+   * Returns true if the FileId refers to a file that does not exist.
+   */
+  bool missing() const {
+    return ino == 0 && dev == 0;
+  }
+
   ino_t ino = 0;
   dev_t dev = 0;
 };
