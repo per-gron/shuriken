@@ -202,6 +202,8 @@ struct Build {
    *
    * This is used to calculate ignored_deps and additional_deps prior to logging
    * each build step.
+   *
+   * This map does not contain the file ids of generator steps.
    */
   std::unordered_map<FileId, StepIndex> output_files;
 };
@@ -255,6 +257,8 @@ struct BuildCommandParameters {
  * run in the past and is recorded in the invocation log. For this function to
  * do what it is supposed to to, the provided build step must be clean (so that
  * the Invocations object is up to date).
+ *
+ * Returns an empty vector for generator steps.
  */
 std::vector<FileId> outputFileIdsForBuildStep(
     const Invocations &invocations,

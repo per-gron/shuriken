@@ -91,9 +91,19 @@ std::vector<FileId> outputFileIdsForBuildStep(
     const Invocations &invocations,
     const FingerprintMatchesMemo &fingerprint_matches_memo,
     Step step) {
-  if (step.phony()) {
+  if (step.phony() || step.generator()) {
     // Phony steps are never recorded in the invocation log, but they also never
     // have any outputs so it's fine to do nothing here.
+    //
+    // Generator steps are also not recorded in the invocation log. These steps
+    // do have outputs though. The only reason it's okay to return nothing here
+    // in this case is that this function is defined as to not return anything
+    // in that case. This is the reason why Build::output_files does not contain
+    // file ids of generator steps, which in turn is a reason for why normal
+    // steps can't depend on generator steps; because then the
+    // ignored_dependencies and additional_dependencies calculation that is done
+    // when a non-generator build step is finished before writing to the
+    // invocation log would not work.
     return {};
   }
 

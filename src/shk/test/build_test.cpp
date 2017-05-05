@@ -464,6 +464,13 @@ TEST_CASE("Build") {
         .setCommand("")  // Empty command => phony step
         .build(phony_step_builder);
 
+    flatbuffers::FlatBufferBuilder generator_step_builder;
+    auto generator_step = StepBuilder()
+        .setHash(step_hash)
+        .setCommand("a_command")
+        .setGenerator(true)
+        .build(generator_step_builder);
+
     flatbuffers::FlatBufferBuilder step_builder;
     auto step = StepBuilder()
         .setHash(step_hash)
@@ -475,6 +482,14 @@ TEST_CASE("Build") {
           Invocations(),
           FingerprintMatchesMemo(),
           phony_step);
+      CHECK(output == std::vector<FileId>{});
+    }
+
+    SECTION("generator step") {
+      const auto output = detail::outputFileIdsForBuildStep(
+          Invocations(),
+          FingerprintMatchesMemo(),
+          generator_step);
       CHECK(output == std::vector<FileId>{});
     }
 
