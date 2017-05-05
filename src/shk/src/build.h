@@ -150,6 +150,19 @@ struct Build {
       std::vector<StepIndex> &&steps_to_build) throw(BuildError);
 
   /**
+   * Before the actual build is performed, this function goes through the build
+   * graph and removes steps that don't need to be built because they are
+   * already built.
+   *
+   * Returns the number of discarded steps (excluding phony steps).
+   */
+  int discardCleanSteps(
+      const Invocations &invocations,
+      const FingerprintMatchesMemo &fingerprint_matches_memo,
+      StepsView steps,
+      const CleanSteps &clean_steps);
+
+  /**
    * step_nodes.size() == manifest.steps.size()
    *
    * step_nodes contains step dependency information in an easily accessible
@@ -296,20 +309,6 @@ CleanSteps computeCleanSteps(
     StepsView steps,
     const Build &build,
     const FingerprintMatchesMemo &fingerprint_memo) throw(IoError);
-
-/**
- * Before the actual build is performed, this function goes through the build
- * graph and removes steps that don't need to be built because they are already
- * built.
- *
- * Returns the number of discarded steps.
- */
-int discardCleanSteps(
-    const Invocations &invocations,
-    const FingerprintMatchesMemo &fingerprint_matches_memo,
-    StepsView steps,
-    const CleanSteps &clean_steps,
-    Build &build);
 
 /**
  * Prior to invoking the command for a step, delete the files that it previously

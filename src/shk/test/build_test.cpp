@@ -1269,7 +1269,7 @@ TEST_CASE("Build") {
     }
   }
 
-  SECTION("discardCleanSteps") {
+  SECTION("Build::discardCleanSteps") {
     const auto compute_clean_steps = [&](
         const Build &build,
         const FingerprintMatchesMemo &memo,
@@ -1287,12 +1287,11 @@ TEST_CASE("Build") {
 
     SECTION("empty input") {
       Build build;
-      CHECK(discardCleanSteps(
+      CHECK(build.discardCleanSteps(
           invocations,
           FingerprintMatchesMemo(),
           to_compiled_manifest(manifest).steps(),
-          CleanSteps(),
-          build) == 0);
+          CleanSteps()) == 0);
     }
 
     SECTION("all clean (independent)") {
@@ -1303,12 +1302,11 @@ TEST_CASE("Build") {
       auto build = constructBuild(paths, manifest);
       auto memo = FingerprintMatchesMemo(manifest.steps.size());
       CHECK(build.ready_steps.size() == 2);
-      CHECK(discardCleanSteps(
+      CHECK(build.discardCleanSteps(
           invocations,
           FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, memo, invocations, manifest),
-          build) == 2);
+          compute_clean_steps(build, memo, invocations, manifest)) == 2);
       CHECK(build.ready_steps.empty());
     }
 
@@ -1338,12 +1336,11 @@ TEST_CASE("Build") {
 
         auto build = constructBuild(paths, manifest);
         CHECK(build.ready_steps.size() == 3);
-        discardCleanSteps(
+        build.discardCleanSteps(
             invocations,
             memo,
             to_compiled_manifest(manifest).steps(),
-            compute_clean_steps(build, memo, invocations, manifest),
-            build);
+            compute_clean_steps(build, memo, invocations, manifest));
 
         if (clean) {
           CHECK(build.output_files[FileId(1, 1)] == 1);
@@ -1377,12 +1374,11 @@ TEST_CASE("Build") {
 
         auto build = constructBuild(paths, manifest);
         CHECK(build.ready_steps.size() == 3);
-        discardCleanSteps(
+        build.discardCleanSteps(
             invocations,
             memo,
             to_compiled_manifest(manifest).steps(),
-            compute_clean_steps(build, memo, invocations, manifest),
-            build);
+            compute_clean_steps(build, memo, invocations, manifest));
 
         CHECK(build.output_files.count(FileId(0, 0)) == 0);
         CHECK(build.output_files[FileId(1, 2)] == 2);
@@ -1393,12 +1389,11 @@ TEST_CASE("Build") {
       auto build = constructBuild(paths, manifest);
       auto memo = FingerprintMatchesMemo(manifest.steps.size());
       CHECK(build.ready_steps.size() == 2);
-      CHECK(discardCleanSteps(
+      CHECK(build.discardCleanSteps(
           invocations,
           FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, memo, invocations, manifest),
-          build) == 0);
+          compute_clean_steps(build, memo, invocations, manifest)) == 0);
       CHECK(build.ready_steps.size() == 2);
     }
 
@@ -1409,12 +1404,11 @@ TEST_CASE("Build") {
       auto build = constructBuild(paths, manifest);
       auto memo = FingerprintMatchesMemo(manifest.steps.size());
       CHECK(build.ready_steps.size() == 2);
-      CHECK(discardCleanSteps(
+      CHECK(build.discardCleanSteps(
           invocations,
           FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, memo, invocations, manifest),
-          build) == 1);
+          compute_clean_steps(build, memo, invocations, manifest)) == 1);
       CHECK(build.ready_steps.size() == 1);
     }
 
@@ -1432,12 +1426,11 @@ TEST_CASE("Build") {
       auto memo = FingerprintMatchesMemo(manifest.steps.size());
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
-      CHECK(discardCleanSteps(
+      CHECK(build.discardCleanSteps(
           invocations,
           FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, memo, invocations, manifest),
-          build) == 0);
+          compute_clean_steps(build, memo, invocations, manifest)) == 0);
       CHECK(build.ready_steps.empty());
     }
 
@@ -1453,12 +1446,11 @@ TEST_CASE("Build") {
       auto build = constructBuild(paths, manifest);
       auto memo = FingerprintMatchesMemo(manifest.steps.size());
       CHECK(build.ready_steps.size() == 1);
-      CHECK(discardCleanSteps(
+      CHECK(build.discardCleanSteps(
           invocations,
           FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, memo, invocations, manifest),
-          build) == 2);
+          compute_clean_steps(build, memo, invocations, manifest)) == 2);
       CHECK(build.ready_steps.empty());
     }
 
@@ -1470,12 +1462,11 @@ TEST_CASE("Build") {
       auto memo = FingerprintMatchesMemo(manifest.steps.size());
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
-      CHECK(discardCleanSteps(
+      CHECK(build.discardCleanSteps(
           invocations,
           FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, memo, invocations, manifest),
-          build) == 1);
+          compute_clean_steps(build, memo, invocations, manifest)) == 1);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 1);
     }
@@ -1488,12 +1479,11 @@ TEST_CASE("Build") {
       auto memo = FingerprintMatchesMemo(manifest.steps.size());
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
-      CHECK(discardCleanSteps(
+      CHECK(build.discardCleanSteps(
           invocations,
           FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, memo, invocations, manifest),
-          build) == 0);
+          compute_clean_steps(build, memo, invocations, manifest)) == 0);
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
     }
@@ -1506,12 +1496,11 @@ TEST_CASE("Build") {
       auto memo = FingerprintMatchesMemo(manifest.steps.size());
       REQUIRE(build.ready_steps.size() == 1);
       CHECK(build.ready_steps[0] == 0);
-      CHECK(discardCleanSteps(
+      CHECK(build.discardCleanSteps(
           invocations,
           FingerprintMatchesMemo(build.step_nodes.size()),
           to_compiled_manifest(manifest).steps(),
-          compute_clean_steps(build, memo, invocations, manifest),
-          build) == 1);
+          compute_clean_steps(build, memo, invocations, manifest)) == 1);
       CHECK(build.ready_steps.empty());
     }
   }

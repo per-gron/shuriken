@@ -219,6 +219,54 @@ Build Build::construct(
   return build;
 }
 
+int Build::discardCleanSteps(
+    const Invocations &invocations,
+    const FingerprintMatchesMemo &fingerprint_matches_memo,
+    StepsView steps,
+    const CleanSteps &clean_steps) {
+  int discarded_steps = 0;
+
+  // This function goes through and consumes build.ready_steps. While doing that
+  // it adds an element to new_ready_steps for each dirty step that it
+  // encounters. When this function's search is over, it replaces
+  // build.ready_steps with this list.
+  std::vector<StepIndex> new_ready_steps;
+
+  // Memo map of step index => visited. This is to make sure that each step
+  // is processed at most once.
+  std::vector<bool> visited(step_nodes.size(), false);
+
+  // This is a BFS search loop. ready_steps is the work stack.
+  while (!ready_steps.empty()) {
+    const auto step_idx = ready_steps.back();
+    ready_steps.pop_back();
+
+    if (visited[step_idx]) {
+      continue;
+    }
+    visited[step_idx] = true;
+
+    const bool phony = steps[step_idx].phony();
+    if (clean_steps[step_idx] || phony) {
+      if (!phony) {
+        discarded_steps++;
+      }
+
+      const auto output_file_ids = outputFileIdsForBuildStep(
+          invocations,
+          fingerprint_matches_memo,
+          steps[step_idx]);
+      markStepNodeAsDone(step_idx, output_file_ids);
+    } else {
+      new_ready_steps.push_back(step_idx);
+    }
+  }
+
+  ready_steps.swap(new_ready_steps);
+
+  return discarded_steps;
+}
+
 std::vector<StepIndex> computeStepsToBuild(
     const CompiledManifest &manifest,
     std::vector<StepIndex> &&specified_steps) throw(BuildError) {
@@ -445,55 +493,6 @@ CleanSteps computeCleanSteps(
   }
 
   return result;
-}
-
-int discardCleanSteps(
-    const Invocations &invocations,
-    const FingerprintMatchesMemo &fingerprint_matches_memo,
-    StepsView steps,
-    const CleanSteps &clean_steps,
-    Build &build) {
-  int discarded_steps = 0;
-
-  // This function goes through and consumes build.ready_steps. While doing that
-  // it adds an element to new_ready_steps for each dirty step that it
-  // encounters. When this function's search is over, it replaces
-  // build.ready_steps with this list.
-  std::vector<StepIndex> new_ready_steps;
-
-  // Memo map of step index => visited. This is to make sure that each step
-  // is processed at most once.
-  std::vector<bool> visited(build.step_nodes.size(), false);
-
-  // This is a BFS search loop. build.ready_steps is the work stack.
-  while (!build.ready_steps.empty()) {
-    const auto step_idx = build.ready_steps.back();
-    build.ready_steps.pop_back();
-
-    if (visited[step_idx]) {
-      continue;
-    }
-    visited[step_idx] = true;
-
-    const bool phony = steps[step_idx].phony();
-    if (clean_steps[step_idx] || phony) {
-      if (!phony) {
-        discarded_steps++;
-      }
-
-      const auto output_file_ids = outputFileIdsForBuildStep(
-          invocations,
-          fingerprint_matches_memo,
-          steps[step_idx]);
-      build.markStepNodeAsDone(step_idx, output_file_ids);
-    } else {
-      new_ready_steps.push_back(step_idx);
-    }
-  }
-
-  build.ready_steps.swap(new_ready_steps);
-
-  return discarded_steps;
 }
 
 void deleteBuildProduct(
@@ -882,12 +881,11 @@ BuildResult build(
       build,
       fingerprint_matches_memo);
 
-  const auto discarded_steps = detail::discardCleanSteps(
+  const auto discarded_steps = build.discardCleanSteps(
       invocations,
       fingerprint_matches_memo,
       manifest.steps(),
-      clean_steps,
-      build);
+      clean_steps);
 
   const auto build_status = make_build_status(
       countStepsToBuild(manifest.steps(), build) - discarded_steps);
