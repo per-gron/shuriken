@@ -382,6 +382,22 @@ TEST_CASE("CompiledManifest") {
           std::vector<StepIndex>{ 0 });
     }
 
+    SECTION("dependency from non-generator to generator step") {
+      const RawStep *steps[] = {
+          &single_input, &single_implicit_input, &single_dependency };
+      for (const auto *step : steps) {
+        single_output.generator = true;
+
+        RawManifest manifest;
+        manifest.steps = { single_output, *step };
+
+        auto error = get_manifest_compile_error(manifest);
+        CHECK(
+            error ==
+            "Normal build steps must not depend on generator build steps");
+      }
+    }
+
     SECTION("sort dependencies") {
       RawStep two_dependencies;
       two_dependencies.inputs = { paths.get("a"), paths.get("b") };

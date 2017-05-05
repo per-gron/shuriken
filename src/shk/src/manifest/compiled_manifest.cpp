@@ -111,6 +111,7 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
     std::vector<bool> &roots,
     flatbuffers::FlatBufferBuilder &builder,
     const CreateString &create_string,
+    const std::vector<RawStep> &steps,
     const RawStep &raw,
     std::string *err) {
   if (raw.generator && !raw.depfile.empty()) {
@@ -129,6 +130,31 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
         auto dependency_idx = it->second;
         dependencies.push_back(dependency_idx);
         roots[dependency_idx] = false;
+
+        if (!raw.generator && steps[dependency_idx].generator) {
+          // Disallow "normal" non-generator build steps to depend on generator
+          // build steps. Two reasons:
+          //
+          // 1) Because generator build steps have weaker correctness guarantees
+          // due to their racy mtime cleanliness check, these weaker correctness
+          // guarantees could spread to normal build steps too, which can have
+          // bad consequences especially when caching things.
+          //
+          // 2) Because generator build steps are not logged in the invocation
+          // log, the build process can't get the file ids of the outputs of
+          // generator build steps like it can for others. The file ids are used
+          // after invoking a build step to compute the ignored_dependencies and
+          // additional_dependencies fields in the invocation log. If the map
+          // of file ids is incomplete, the ignored/additional dependencies
+          // calculation does not work.
+          //
+          // However, since ignored/additional dependencies only needs to be
+          // computed for steps that are logged to the invocation log (that is:
+          // not generator build steps), it does not matter if the file ids of
+          // generator step outputs are not present if non generator build steps
+          // can't depend on them.
+          *err = "Normal build steps must not depend on generator build steps";
+        }
       }
     }
   };
@@ -229,7 +255,7 @@ std::vector<flatbuffers::Offset<ShkManifest::Step>> convertStepVector(
 
   for (const auto &step : steps) {
     ans.push_back(convertRawStep(
-        output_path_map, roots, builder, create_string, step, err));
+        output_path_map, roots, builder, create_string, steps, step, err));
     if (!err->empty()) {
       break;
     }
