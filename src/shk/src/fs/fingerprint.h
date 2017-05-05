@@ -109,13 +109,19 @@ struct Fingerprint {
 
 struct MatchesResult {
   bool clean = false;
+
   /**
    * Set to true if fingerprintMatch had to do an (expensive) file content
-   * hashing operation in order to know if an update is required. In these
+   * hashing operation in order to know if the fingerprint is clean. In these
    * situations it is beneficial to recompute the fingerprint for the file.
    * There is then a good chance that hashing will no longer be needed later.
    */
   bool should_update = false;
+
+  /**
+   * FileId of the path that the fingerprint refers to.
+   */
+  FileId file_id;
 
   bool operator==(const MatchesResult &other) const;
   bool operator!=(const MatchesResult &other) const;

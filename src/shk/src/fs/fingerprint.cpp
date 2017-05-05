@@ -40,10 +40,14 @@ MatchesResult fingerprintMatches(
     FileSystem &file_system,
     nt_string_view path,
     const Fingerprint &fp,
-    const Fingerprint::Stat &current,
+    const Stat &current_stat,
     Hash *hash) throw(IoError) {
+  Fingerprint::Stat current_fp_stat;
+  Fingerprint::Stat::fromStat(current_stat, &current_fp_stat);
+
   MatchesResult result;
-  if (current == fp.stat && (!fp.racily_clean || fp.stat.mode == 0)) {
+  result.file_id = FileId(current_stat);
+  if (current_fp_stat == fp.stat && (!fp.racily_clean || fp.stat.mode == 0)) {
     // The file's current stat information and the stat information of the
     // fingerprint exactly match. Furthermore, the fingerprint is strictly
     // newer than the files. This means that unless mtime/ctime has been
@@ -52,20 +56,22 @@ MatchesResult fingerprintMatches(
     result.clean = true;
   } else {
     // This branch is hit either when we know for sure that the file has been
-    // touched since the fingerprint was taken (current != fp.stat) or when
-    // the file is "racily clean" (current == fp.stat but the fingerprint was
-    // taken less than one second after the file was last modified).
+    // touched since the fingerprint was taken (current_fp_stat != fp.stat) or
+    // when the file is "racily clean" (current_fp_stat == fp.stat but the
+    // fingerprint was taken less than one second after the file was last
+    // modified).
     //
     // If the file is racily clean, it is not possible to tell if the file
     // matches the fingerprint by looking at stat information only, need to fall
     // back on a file content comparison.
-    if (current.size == fp.stat.size && current.mode == fp.stat.mode) {
+    if (current_fp_stat.size == fp.stat.size &&
+        current_fp_stat.mode == fp.stat.mode) {
       // If the file size or mode would have been different then we would have
       // already known for sure that the file is different, but now they are the
       // same. In order to know if it's dirty or not, we need to hash the file
       // again.
       detail::computeFingerprintHash(file_system, fp.stat.mode, path, hash);
-      result.clean = fingerprintMatches(fp, current, *hash);
+      result.clean = fingerprintMatches(fp, current_fp_stat, *hash);
 
       // At this point, the fingerprint in the invocation log should be
       // re-calculated to avoid this expensive file content check in the future.
@@ -205,13 +211,14 @@ std::pair<Fingerprint, FileId> retakeFingerprint(
   Fingerprint &new_fingerprint = ans.first;
   FileId &file_id = ans.second;
 
-  fingerprintStat(file_system, path, &new_fingerprint.stat, &file_id);
+  const auto stat = file_system.lstat(path);
+  file_id = FileId(stat);
 
   const auto result = fingerprintMatches(
       file_system,
       path,
       old_fingerprint,
-      new_fingerprint.stat,
+      stat,
       &new_fingerprint.hash);
   if (result.clean) {
     new_fingerprint.racily_clean =
@@ -226,18 +233,10 @@ MatchesResult fingerprintMatches(
     FileSystem &file_system,
     nt_string_view path,
     const Fingerprint &fp) throw(IoError) {
-  Hash discard1;
-  FileId discard2;
+  Hash discard;
+  const auto stat = file_system.lstat(path);
 
-  Fingerprint::Stat fingerprint_stat;
-  fingerprintStat(file_system, path, &fingerprint_stat, &discard2);
-
-  return fingerprintMatches(
-      file_system,
-      path,
-      fp,
-      fingerprint_stat,
-      &discard1);
+  return fingerprintMatches(file_system, path, fp, stat, &discard);
 }
 
 bool fingerprintMatches(

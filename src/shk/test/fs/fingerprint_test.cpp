@@ -431,6 +431,7 @@ TEST_CASE("Fingerprint") {
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(result.clean);
       CHECK(result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("a")));
     }
 
     SECTION("no changes, fingerprint taken later") {
@@ -440,6 +441,7 @@ TEST_CASE("Fingerprint") {
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(result.clean);
       CHECK(!result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("a")));
     }
 
     SECTION("file changed, everything at the same time, same size") {
@@ -450,6 +452,7 @@ TEST_CASE("Fingerprint") {
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       CHECK(result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("a")));
     }
 
     SECTION("file changed, everything at the same time, different size") {
@@ -462,6 +465,7 @@ TEST_CASE("Fingerprint") {
       // It can see that the file size is different so no need to re-hash and
       // thus no need to update.
       CHECK(!result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("a")));
     }
 
     SECTION("file changed, including timestamps, same size") {
@@ -476,6 +480,7 @@ TEST_CASE("Fingerprint") {
       // but it needs to hash the contents to find out if it is actually
       // different.
       CHECK(result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("a")));
     }
 
     SECTION("file changed, including timestamps, different size") {
@@ -489,6 +494,7 @@ TEST_CASE("Fingerprint") {
       // It can see that the file size is different so no need to re-hash and
       // thus no need to update.
       CHECK(!result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("a")));
     }
 
     SECTION("only timestamps changed") {
@@ -500,6 +506,7 @@ TEST_CASE("Fingerprint") {
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(result.clean);
       CHECK(result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("a")));
     }
 
     SECTION("missing file before and after") {
@@ -509,6 +516,7 @@ TEST_CASE("Fingerprint") {
       const auto result = fingerprintMatches(fs, "b", initial_fp);
       CHECK(result.clean);
       CHECK(!result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("b")));
     }
 
     SECTION("missing file before and after, zero timestamp") {
@@ -518,6 +526,7 @@ TEST_CASE("Fingerprint") {
       const auto result = fingerprintMatches(fs, "b", initial_fp);
       CHECK(result.clean);
       CHECK(!result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("b")));
     }
 
     SECTION("missing file before but not after") {
@@ -528,6 +537,7 @@ TEST_CASE("Fingerprint") {
       const auto result = fingerprintMatches(fs, "b", initial_fp);
       CHECK(!result.clean);
       CHECK(!result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("b")));
     }
 
     SECTION("missing file after but not before") {
@@ -538,6 +548,7 @@ TEST_CASE("Fingerprint") {
       const auto result = fingerprintMatches(fs, "a", initial_fp);
       CHECK(!result.clean);
       CHECK(!result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("a")));
     }
 
     SECTION(
@@ -549,6 +560,7 @@ TEST_CASE("Fingerprint") {
       const auto result = fingerprintMatches(fs, "d", initial_fp);
       CHECK(result.clean);
       CHECK(result.should_update);
+      CHECK(result.file_id == FileId(fs.stat("d")));
     }
   }
 
