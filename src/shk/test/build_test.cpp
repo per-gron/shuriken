@@ -147,10 +147,12 @@ std::vector<StepIndex> vec(const std::vector<StepIndex> &vec) {
 Build constructBuild(
     Paths &paths,
     const RawManifest &manifest,
+    const Invocations &invocations = Invocations(),
     size_t allowed_failures = 1) throw(BuildError) {
   auto compiled_manifest = compileManifest(paths.get("build.ninja"), manifest);
   return ::shk::detail::Build::construct(
       compiled_manifest,
+      invocations,
       allowed_failures,
       ::shk::detail::computeStepsToBuild(compiled_manifest, {}));
 }
@@ -726,7 +728,8 @@ TEST_CASE("Build") {
     }
 
     SECTION("remaining_failures") {
-      const auto build = constructBuild(paths, RawManifest(), 543);
+      const auto build = constructBuild(
+          paths, RawManifest(), Invocations(), 543);
       CHECK(build.remaining_failures == 543);
     }
 

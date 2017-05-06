@@ -146,6 +146,7 @@ struct Build {
    */
   static Build construct(
       const CompiledManifest &manifest,
+      const Invocations &invocations,
       size_t failures_allowed,
       std::vector<StepIndex> &&steps_to_build) throw(BuildError);
 
