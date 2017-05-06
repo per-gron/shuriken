@@ -400,7 +400,6 @@ class PersistentFileSystem : public FileSystem {
       result.metadata.mode = input.st_mode;
       result.metadata.size = input.st_size;
       result.timestamps.mtime = input.st_mtime;
-      result.timestamps.ctime = input.st_ctime;
     }
     return result;
   }

@@ -592,15 +592,13 @@ Stat InMemoryFileSystem::stat(
       stat.metadata.ino = file->ino;
       stat.metadata.mode |= file->symlink ? S_IFLNK : S_IFREG;
       stat.timestamps.mtime = file->mtime;
-      stat.timestamps.ctime = file->mtime;
     } else {
       const auto &dir = _directories.find(l.canonicalized)->second;
       stat.metadata.ino = dir.ino;
       stat.metadata.mode |= S_IFDIR;
       stat.timestamps.mtime = dir.mtime;
-      stat.timestamps.ctime = dir.mtime;
     }
-    // TODO(peck): Set mtime and ctime
+    // TODO(peck): Set mtime
     break;
   }
 

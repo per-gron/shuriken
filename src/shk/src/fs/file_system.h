@@ -34,7 +34,6 @@ struct FileMetadata {
 
 struct Timestamps {
   time_t mtime = 0;
-  time_t ctime = 0;
 };
 
 struct Stat {

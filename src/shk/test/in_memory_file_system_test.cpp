@@ -76,42 +76,36 @@ TEST_CASE("InMemoryFileSystem") {
     CHECK(fs.stat("a/..").result == 0);
   }
 
-  SECTION("file mtime/ctime") {
+  SECTION("file mtime") {
     now = 1234;
     std::unique_ptr<FileSystem::Stream> stream;
     IoError error;
     std::tie(stream, error) = fs.open("f", "w");
     REQUIRE(!error);
     CHECK(fs.stat("f").timestamps.mtime == 1234);
-    CHECK(fs.stat("f").timestamps.ctime == 1234);
 
     now++;
     CHECK(stream->write(nullptr, 1, 0) == IoError::success());
     CHECK(fs.stat("f").timestamps.mtime == 1235);
-    CHECK(fs.stat("f").timestamps.ctime == 1235);
   }
 
-  SECTION("directory mtime/ctime") {
+  SECTION("directory mtime") {
     now = 123;
     CHECK(fs.mkdir("d") == IoError::success());
     CHECK(fs.mkdir("d/subdir") == IoError::success());
     CHECK(fs.stat("d").timestamps.mtime == 123);
-    CHECK(fs.stat("d").timestamps.ctime == 123);
 
     now++;
     CHECK(fs.open("d/f.txt", "w").second == IoError::success());
     CHECK(fs.stat("d").timestamps.mtime == 124);
-    CHECK(fs.stat("d").timestamps.ctime == 124);
 
     now++;
     CHECK(fs.unlink("d/f.txt") == IoError::success());
     CHECK(fs.stat("d").timestamps.mtime == 125);
-    CHECK(fs.stat("d").timestamps.ctime == 125);
 
     now++;
     CHECK(fs.rmdir("d/subdir") == IoError::success());
     CHECK(fs.stat("d").timestamps.mtime == 126);
-    CHECK(fs.stat("d").timestamps.ctime == 126);
   }
 
   SECTION("mkdir") {
@@ -214,9 +208,7 @@ TEST_CASE("InMemoryFileSystem") {
       now = 123;
       CHECK(fs.rename("a/a", "b/b") == IoError::success());
       CHECK(fs.stat("a").timestamps.mtime == 123);
-      CHECK(fs.stat("a").timestamps.ctime == 123);
       CHECK(fs.stat("b").timestamps.mtime == 123);
-      CHECK(fs.stat("b").timestamps.ctime == 123);
     }
 
     SECTION("file with same name") {

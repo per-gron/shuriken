@@ -50,9 +50,9 @@ MatchesResult fingerprintMatches(
   if (current_fp_stat == fp.stat && (!fp.racily_clean || fp.stat.mode == 0)) {
     // The file's current stat information and the stat information of the
     // fingerprint exactly match. Furthermore, the fingerprint is strictly
-    // newer than the files. This means that unless mtime/ctime has been
-    // tampered with, we know for sure that the file has not been modified
-    // since the fingerprint was taken.
+    // newer than the files. This means that unless mtime has been tampered
+    // with, we know for sure that the file has not been modified since the
+    // fingerprint was taken.
     result.clean = true;
   } else {
     // This branch is hit either when we know for sure that the file has been
@@ -86,7 +86,7 @@ MatchesResult fingerprintMatches(
  * was taken, compute if the fingerprint is clean or not.
  */
 bool isRacilyClean(const Fingerprint::Stat &stat, time_t timestamp) {
-  return stat.mtime >= timestamp || stat.ctime >= timestamp;
+  return stat.mtime >= timestamp;
 }
 
 }  // anonymous namespace
@@ -129,7 +129,6 @@ void Fingerprint::Stat::fromStat(const ::shk::Stat &stat, Stat *out) {
         S_IFMT | S_IRWXU | S_IRWXG | S_IXOTH | S_ISUID | S_ISGID | S_ISVTX;
     out->mode = stat.metadata.mode & mode_mask;
     out->mtime = stat.timestamps.mtime;
-    out->ctime = stat.timestamps.ctime;
   }
 }
 
@@ -146,8 +145,7 @@ bool Fingerprint::Stat::operator==(const Stat &other) const {
       size == other.size &&
       ino == other.ino &&
       mode == other.mode &&
-      mtime == other.mtime &&
-      ctime == other.ctime);
+      mtime == other.mtime);
 }
 
 bool Fingerprint::Stat::operator!=(const Stat &other) const {
@@ -156,8 +154,8 @@ bool Fingerprint::Stat::operator!=(const Stat &other) const {
 
 bool Fingerprint::Stat::operator<(const Stat &other) const {
   return
-      std::tie(size, ino, mode, mtime, ctime) <
-      std::tie(other.size, other.ino, other.mode, other.mtime, other.ctime);
+      std::tie(size, ino, mode, mtime) <
+      std::tie(other.size, other.ino, other.mode, other.mtime);
 }
 
 bool Fingerprint::operator==(const Fingerprint &other) const {

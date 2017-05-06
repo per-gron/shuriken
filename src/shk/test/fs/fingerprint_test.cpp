@@ -101,7 +101,6 @@ TEST_CASE("Fingerprint") {
     a.ino = 2;
     a.mode = 3;
     a.mtime = 4;
-    a.ctime = 5;
     Fingerprint::Stat b = a;
 
     SECTION("fromStat") {
@@ -121,7 +120,6 @@ TEST_CASE("Fingerprint") {
         CHECK(fp_stat.ino == stat.metadata.ino);
         CHECK(S_ISDIR(fp_stat.mode));
         CHECK(fp_stat.mtime == stat.timestamps.mtime);
-        CHECK(fp_stat.ctime == stat.timestamps.ctime);
       }
 
       SECTION("file") {
@@ -133,7 +131,6 @@ TEST_CASE("Fingerprint") {
         CHECK(fp_stat.ino == stat.metadata.ino);
         CHECK(S_ISREG(fp_stat.mode));
         CHECK(fp_stat.mtime == stat.timestamps.mtime);
-        CHECK(fp_stat.ctime == stat.timestamps.ctime);
       }
     }
 
@@ -166,13 +163,6 @@ TEST_CASE("Fingerprint") {
 
     SECTION("mtime") {
       b.mtime++;
-      CHECK(a != b);
-      CHECK(!(a == b));
-      CHECK((a < b || b < a));
-    }
-
-    SECTION("ctime") {
-      b.ctime++;
       CHECK(a != b);
       CHECK(!(a == b));
       CHECK((a < b || b < a));
@@ -227,7 +217,6 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.ino == fs.stat("a").metadata.ino);
       CHECK(S_ISREG(fp.stat.mode));
       CHECK(fp.stat.mtime == now);
-      CHECK(fp.stat.ctime == now);
       CHECK(fp.racily_clean == false);
       CHECK(fp.hash == hashFile(fs, "a"));
       CHECK(fp.stat.couldAccess());
@@ -245,7 +234,6 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.ino == 0);
       CHECK(fp.stat.mode == 0);
       CHECK(fp.stat.mtime == 0);
-      CHECK(fp.stat.ctime == 0);
       CHECK(fp.racily_clean == false);
       Hash zero;
       std::fill(zero.data.begin(), zero.data.end(), 0);
@@ -265,7 +253,6 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.ino == fs.stat("dir").metadata.ino);
       CHECK(S_ISDIR(fp.stat.mode));
       CHECK(fp.stat.mtime == now);
-      CHECK(fp.stat.ctime == now);
       CHECK(fp.racily_clean == false);
       CHECK(fp.hash == hashDir(fs, "dir"));
       CHECK(fp.stat.couldAccess());
@@ -283,7 +270,6 @@ TEST_CASE("Fingerprint") {
       CHECK(fp.stat.ino == fs.lstat("link").metadata.ino);
       CHECK(S_ISLNK(fp.stat.mode));
       CHECK(fp.stat.mtime == now);
-      CHECK(fp.stat.ctime == now);
       CHECK(fp.racily_clean == false);
       CHECK(fp.hash == hashSymlink(fs, "link"));
       CHECK(fp.stat.couldAccess());

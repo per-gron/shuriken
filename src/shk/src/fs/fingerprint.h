@@ -79,7 +79,6 @@ struct Fingerprint {
      */
     mode_t mode = 0;
     time_t mtime = 0;
-    time_t ctime = 0;
 
     /**
      * Returns true if the file was successfully stat-ed. False for example if
@@ -96,8 +95,8 @@ struct Fingerprint {
 
   Stat stat;
   /**
-   * True if the fingeprint was taken at the same time as the file's mtime or
-   * ctime.
+   * True if the fingeprint was taken at the same time as (or before) the file's
+   * mtime.
    */
   bool racily_clean = false;
   Hash hash;
