@@ -256,6 +256,13 @@ void Build::markStepNodeAsDone(
 
       const auto &dependent_step_hash = _steps[dependent_idx].hash();
       if (!stepIsIgnored(_invocations, dependent_step_hash, step_idx)) {
+        // If this (step_idx) step is an ignored dependency for dependent, then
+        // this step doesn't count as a direct dependency and the flag doesn't
+        // need to be set.
+        //
+        // (This assumption would not be safe unless Build::construct/visitStep
+        // went through and marked additional_dependencies as direct
+        // dependencies.)
         dependent.no_direct_dependencies_built = false;
       }
     }
@@ -891,6 +898,7 @@ bool canSkipBuildCommand(
     const CleanSteps &clean_steps,
     const std::unordered_map<FileId, Hash> &written_files,
     const Invocations &invocations,
+    bool no_direct_dependencies_built,
     const Step &step,
     StepIndex step_idx) {
   if (!clean_steps[step_idx]) {
@@ -899,6 +907,13 @@ bool canSkipBuildCommand(
     // Technically, we could check if the step has become clean here and return
     // true, but that doesn't seem like a common use case.
     return false;
+  }
+
+  if (no_direct_dependencies_built) {
+    // If the step was clean at the start of the build, and no direct
+    // dependencies have been built, then we know for sure that this step is
+    // still clean; there is no need to do any other checks.
+    return true;
   }
 
   const auto invocation_entry_it = invocations.entries.find(step.hash());
@@ -956,6 +971,7 @@ bool enqueueBuildCommand(BuildCommandParameters &params) throw(IoError) {
           params.clean_steps,
           params.build.written_files,
           params.invocations,
+          params.build.step_nodes[step_idx].no_direct_dependencies_built,
           step,
           step_idx)) {
     commandBypassed(params, step_idx);

@@ -1916,8 +1916,33 @@ TEST_CASE("Build") {
           CleanSteps{ false },
           {},
           Invocations(),
+          /*no_direct_dependencies_built:*/false,
           StepBuilder().build(fb_builder),
           0));
+    }
+
+    SECTION("no_direct_dependencies_built") {
+      SECTION("clean step") {
+        CHECK(canSkipBuildCommand(
+            fs,
+            CleanSteps{ true },
+            {},
+            Invocations(),
+            /*no_direct_dependencies_built:*/true,
+            StepBuilder().build(fb_builder),
+            0));
+      }
+
+      SECTION("dirty step") {
+        CHECK(!canSkipBuildCommand(
+            fs,
+            CleanSteps{ false },
+            {},
+            Invocations(),
+            /*no_direct_dependencies_built:*/true,
+            StepBuilder().build(fb_builder),
+            0));
+      }
     }
 
     SECTION("no Invocations entry") {
@@ -1926,6 +1951,7 @@ TEST_CASE("Build") {
           CleanSteps{ true },
           {},
           Invocations(),
+          /*no_direct_dependencies_built:*/false,
           StepBuilder().build(fb_builder),
           0));
     }
@@ -1940,6 +1966,7 @@ TEST_CASE("Build") {
           CleanSteps{ true },
           {},
           invocations,
+          /*no_direct_dependencies_built:*/false,
           step,
           0));
     }
@@ -1960,6 +1987,7 @@ TEST_CASE("Build") {
           CleanSteps{ true },
           {},
           invocations,
+          /*no_direct_dependencies_built:*/false,
           step,
           0));
     }
@@ -1980,6 +2008,7 @@ TEST_CASE("Build") {
           CleanSteps{ true },
           { { file_id, file_fingerprint.hash } },
           invocations,
+          /*no_direct_dependencies_built:*/false,
           step,
           0));
     }
@@ -2003,6 +2032,7 @@ TEST_CASE("Build") {
           CleanSteps{ true },
           { { file_id, different_hash } },
           invocations,
+          /*no_direct_dependencies_built:*/false,
           step,
           0));
     }
@@ -2026,6 +2056,7 @@ TEST_CASE("Build") {
           CleanSteps{ true },
           { { file_id, different_hash } },
           invocations,
+          /*no_direct_dependencies_built:*/false,
           step,
           0));
     }

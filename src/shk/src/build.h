@@ -404,6 +404,7 @@ bool canSkipBuildCommand(
     const CleanSteps &clean_steps,
     const std::unordered_map<FileId, Hash> &written_files,
     const Invocations &invocations,
+    bool no_direct_dependencies_built,
     const Step &step,
     StepIndex step_idx);
 
