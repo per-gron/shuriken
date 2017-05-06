@@ -744,6 +744,46 @@ TEST_CASE("Build") {
         CHECK(constructBuild(paths, manifest).ready_steps == vec({ 0, 1 }));
       }
 
+      SECTION("use additional_dependencies when calculating dependencies") {
+        SECTION("existing additional dependency") {
+          manifest.steps = { single_output, single_output_b };
+
+          auto hash_b = single_output_b.hash();
+          auto &entry = invocations.entries[single_output.hash()];
+          entry.additional_dependencies = HashesView(&hash_b, (&hash_b) + 1);
+
+          const auto build = constructBuild(paths, manifest, invocations);
+          // The main assert of the test: single_output should not be in
+          // ready_steps because that build step depends on single_output_b
+          // due to additional_dependencies
+          CHECK(build.ready_steps == vec({ 1 }));
+
+          // Sanity check
+          REQUIRE(build.step_nodes.size() == 2);
+          CHECK(build.step_nodes[0].no_direct_dependencies_built == true);
+          CHECK(build.step_nodes[1].no_direct_dependencies_built == true);
+        }
+
+        SECTION("missing additional dependency") {
+          manifest.steps = { single_output, single_output_b };
+
+          const Hash other_hash{};
+          auto &entry = invocations.entries[single_output.hash()];
+          entry.additional_dependencies = HashesView(
+              &other_hash, (&other_hash) + 1);
+
+          const auto build = constructBuild(paths, manifest, invocations);
+          CHECK(build.ready_steps == vec({ 0, 1 }));
+
+          REQUIRE(build.step_nodes.size() == 2);
+          // The main assert of the test: The first step's
+          // no_direct_dependencies_built should be set to false because of the
+          // unknown additional_dependencies hash.
+          CHECK(build.step_nodes[0].no_direct_dependencies_built == false);
+          CHECK(build.step_nodes[1].no_direct_dependencies_built == true);
+        }
+      }
+
       SECTION("single dep") {
         manifest.steps = { single_output, single_input };
         CHECK(constructBuild(paths, manifest).ready_steps == vec({ 0 }));

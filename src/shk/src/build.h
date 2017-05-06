@@ -106,6 +106,18 @@ struct StepNode {
   int dependencies = 0;
 
   /**
+   * Starts as true and is switched to false if any of the build step's direct
+   * dependencies have been built during this build, or if something happens
+   * that makes it impossible to know if direct dependencies have been built or
+   * not.
+   *
+   * If a step was clean in the beginning of the build and none of its direct
+   * dependencies have been built, then it can be skipped, without even touching
+   * the file system.
+   */
+  bool no_direct_dependencies_built = true;
+
+  /**
    * true if the user has asked to build this step or any step that depends on
    * this step. If false, the step should not be run even if it is dirty.
    *

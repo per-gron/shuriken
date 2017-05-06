@@ -261,6 +261,7 @@ std::vector<StepIndex> computeReadySteps(
  */
 void visitStep(
     const CompiledManifest &manifest,
+    const std::unordered_map<Hash, StepIndex> &step_indices_map,
     const Invocations &invocations,
     Build &build,
     StepIndex idx) throw(BuildError) {
@@ -277,18 +278,50 @@ void visitStep(
   }
   step_node.should_build = true;
 
-  step_node.currently_visited = true;
-  for (const auto &dependency_idx : manifest.steps()[idx].dependencies()) {
+  const auto add_dependency = [&](StepIndex dependency_idx) {
     auto &dependency_node = build.step_nodes[dependency_idx];
     dependency_node.dependents.push_back(idx);
     step_node.dependencies++;
 
     visitStep(
         manifest,
+        step_indices_map,
         invocations,
         build,
         dependency_idx);
+  };
+
+  step_node.currently_visited = true;
+
+  // Iterate over dependencies declared in the manifest.
+  for (const auto &dependency_idx : manifest.steps()[idx].dependencies()) {
+    add_dependency(dependency_idx);
   }
+
+  // If the step has an entry in the invocation log, also iterate over
+  // additional_dependencies. This would normally be a no-op because the
+  // additional_dependencies should always be transitive dependencies of the
+  // dependencies in the manifest. However, the handling of
+  // StepNode::no_direct_dependencies_built requires this to be added, otherwise
+  // these additional dependencies risk to not make no_direct_dependencies_built
+  // false because the direct dependency is marked as ignored.
+  const auto entry_it = invocations.entries.find(manifest.steps()[idx].hash());
+  if (entry_it != invocations.entries.end()) {
+    for (const auto &hash : entry_it->second.additional_dependencies) {
+      const auto idx_it = step_indices_map.find(hash);
+      if (idx_it == step_indices_map.end()) {
+        // One of the additional dependencies that were there when this step was
+        // built is no longer in the manifest, at least not with the exact same
+        // parameters. This means that we can't really know if any of the direct
+        // dependencies will be built or not, so be safe and set the flag
+        // immediately (this )
+        step_node.no_direct_dependencies_built = false;
+      } else {
+        add_dependency(idx_it->second);
+      }
+    }
+  }
+
   step_node.currently_visited = false;
 }
 
@@ -300,9 +333,16 @@ Build Build::construct(
   Build build;
   build.step_nodes.resize(manifest.steps().size());
 
+  std::unordered_map<Hash, StepIndex> step_indices_map;
+  const auto steps = manifest.steps();
+  for (StepIndex i = 0; i < steps.size(); i++) {
+    step_indices_map[steps[i].hash()] = i;
+  }
+
   for (const auto step_idx : steps_to_build) {
     visitStep(
         manifest,
+        step_indices_map,
         invocations,
         build,
         step_idx);
