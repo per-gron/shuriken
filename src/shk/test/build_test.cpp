@@ -724,19 +724,20 @@ TEST_CASE("Build") {
       auto build = constructBuild(paths, manifest);
 
       SECTION("empty output_file_ids") {
-        build.markStepNodeAsDone(1, {});
+        build.markStepNodeAsDone(1, {}, /*step_was_skipped:*/true);
         CHECK(build.output_files.empty());
       }
 
       SECTION("some output_file_ids") {
-        build.markStepNodeAsDone(1, { FileId(1, 2), FileId(3, 4) });
+        build.markStepNodeAsDone(
+            1, { FileId(1, 2), FileId(3, 4) }, /*step_was_skipped:*/true);
         CHECK(build.output_files[FileId(1, 2)] == 1);
         CHECK(build.output_files[FileId(3, 4)] == 1);
       }
 
       SECTION("missing output_file_ids") {
-        build.markStepNodeAsDone(0, { FileId() });
-        build.markStepNodeAsDone(1, { FileId() });
+        build.markStepNodeAsDone(0, { FileId() }, /*step_was_skipped:*/true);
+        build.markStepNodeAsDone(1, { FileId() }, /*step_was_skipped:*/true);
         CHECK(build.output_files.empty());
       }
     }
@@ -746,8 +747,37 @@ TEST_CASE("Build") {
       auto build = constructBuild(paths, manifest);
 
       REQUIRE(build.ready_steps == std::vector<StepIndex>{ 1 });
-      build.markStepNodeAsDone(1, {});
+      build.markStepNodeAsDone(1, {}, /*step_was_skipped:*/true);
       REQUIRE(build.ready_steps == std::vector<StepIndex>({ 1, 0 }));
+    }
+
+    SECTION("update no_direct_dependencies_built") {
+      manifest.steps = { single_input, single_output };
+      auto build = constructBuild(paths, manifest);
+
+      SECTION("set the flag") {
+        CHECK(build.step_nodes[0].no_direct_dependencies_built == true);
+        build.markStepNodeAsDone(1, {}, /*step_was_skipped:*/false);
+        CHECK(build.step_nodes[0].no_direct_dependencies_built == false);
+      }
+
+      SECTION("don't set the flag if the step was skipped") {
+        CHECK(build.step_nodes[0].no_direct_dependencies_built == true);
+        build.markStepNodeAsDone(1, {}, /*step_was_skipped:*/true);
+        CHECK(build.step_nodes[0].no_direct_dependencies_built == true);
+      }
+
+      SECTION("don't set the flag if the step is ignored") {
+        manifest.steps = { single_input, single_output };
+
+        auto &entry = invocations.entries[single_input.hash()];
+        entry.ignored_dependencies = makeIndicesView({ 1 });
+
+        auto build = constructBuild(paths, manifest, invocations);
+        CHECK(build.step_nodes[0].no_direct_dependencies_built == true);
+        build.markStepNodeAsDone(1, {}, /*step_was_skipped:*/false);
+        CHECK(build.step_nodes[0].no_direct_dependencies_built == true);
+      }
     }
   }
 
@@ -1440,7 +1470,7 @@ TEST_CASE("Build") {
           log,
           invocations,
           to_compiled_manifest(manifest).steps(),
-          Build(),
+          constructBuild(paths, manifest),
           FingerprintMatchesMemo()).empty());
     }
 
@@ -1503,7 +1533,7 @@ TEST_CASE("Build") {
     };
 
     SECTION("empty input") {
-      Build build;
+      auto build = constructBuild(paths, manifest);
       CHECK(build.discardCleanSteps(
           invocations,
           FingerprintMatchesMemo(),

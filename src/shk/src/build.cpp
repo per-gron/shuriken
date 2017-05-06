@@ -231,7 +231,8 @@ bool stepIsIgnored(
 
 void Build::markStepNodeAsDone(
     StepIndex step_idx,
-    const std::vector<FileId> &output_file_ids) {
+    const std::vector<FileId> &output_file_ids,
+    bool step_was_skipped) {
   for (const auto &file_id : output_file_ids) {
     if (file_id.missing()) {
       // If file_id.missing(), then it's just zero, and equal to all other
@@ -246,6 +247,19 @@ void Build::markStepNodeAsDone(
   const auto &dependents = step_nodes[step_idx].dependents;
   for (const auto dependent_idx : dependents) {
     auto &dependent = step_nodes[dependent_idx];
+
+    if (!step_was_skipped && dependent.no_direct_dependencies_built) {
+      // If this step_was_skipped then no_direct_dependencies_built is not
+      // affected. Also, if dependent.no_direct_dependencies_built has already
+      // been set to false there is no need to spend time on it since it can
+      // only be set to false.
+
+      const auto &dependent_step_hash = _steps[dependent_idx].hash();
+      if (!stepIsIgnored(_invocations, dependent_step_hash, step_idx)) {
+        dependent.no_direct_dependencies_built = false;
+      }
+    }
+
     assert(dependent.dependencies);
     dependent.dependencies--;
     if (dependent.dependencies == 0) {
@@ -346,7 +360,7 @@ Build Build::construct(
     const Invocations &invocations,
     size_t failures_allowed,
     std::vector<StepIndex> &&steps_to_build) throw(BuildError) {
-  Build build;
+  Build build(invocations, manifest.steps());
   build.step_nodes.resize(manifest.steps().size());
 
   std::unordered_map<Hash, StepIndex> step_indices_map;
@@ -406,7 +420,7 @@ int Build::discardCleanSteps(
           invocations,
           fingerprint_matches_memo,
           steps[step_idx]);
-      markStepNodeAsDone(step_idx, output_file_ids);
+      markStepNodeAsDone(step_idx, output_file_ids, /*step_was_skipped:*/true);
     } else {
       new_ready_steps.push_back(step_idx);
     }
@@ -416,6 +430,10 @@ int Build::discardCleanSteps(
 
   return discarded_steps;
 }
+
+Build::Build(const Invocations &invocations, StepsView steps)
+    : _invocations(invocations),
+      _steps(steps) {}
 
 std::vector<StepIndex> computeStepsToBuild(
     const CompiledManifest &manifest,
@@ -730,7 +748,8 @@ void commandBypassed(
       params.invocations,
       params.fingerprint_matches_memo,
       step);
-  params.build.markStepNodeAsDone(step_idx, output_file_ids);
+  params.build.markStepNodeAsDone(
+      step_idx, output_file_ids, /*step_was_skipped:*/true);
 }
 
 void commandDone(
@@ -830,7 +849,8 @@ void commandDone(
           std::move(additional_dependencies));
     }
 
-    params.build.markStepNodeAsDone(step_idx, output_file_ids);
+    params.build.markStepNodeAsDone(
+        step_idx, output_file_ids, /*step_was_skipped:*/false);
     break;
 
   case ExitStatus::INTERRUPTED:

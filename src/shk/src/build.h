@@ -151,7 +151,8 @@ struct Build {
    */
   void markStepNodeAsDone(
       StepIndex step_idx,
-      const std::vector<FileId> &output_file_ids);
+      const std::vector<FileId> &output_file_ids,
+      bool step_was_skipped);
 
   /**
    * Create a Build object suitable for use as a starting point for the build.
@@ -219,6 +220,12 @@ struct Build {
    * This map does not contain the file ids of generator steps.
    */
   std::unordered_map<FileId, StepIndex> output_files;
+
+ private:
+  Build(const Invocations &invocations, StepsView steps);
+
+  const Invocations &_invocations;
+  const StepsView _steps;
 };
 
 /**
