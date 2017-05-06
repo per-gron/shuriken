@@ -135,6 +135,84 @@ std::vector<FileId> outputFileIdsForBuildStep(
   return file_ids;
 }
 
+std::vector<StepIndex> usedDependencies(
+    const std::unordered_map<FileId, StepIndex> &written_files,
+    const std::vector<FileId> &input_file_ids) {
+  std::vector<StepIndex> used_dependencies;
+  for (auto input_file_id : input_file_ids) {
+    if (input_file_id.missing()) {
+      // This check is not strictly needed since written_files never contains
+      // the empty FileId but it saves on unnecessary hash table lookups.
+      continue;
+    }
+    const auto written_files_it = written_files.find(input_file_id);
+    if (written_files_it == written_files.end()) {
+      continue;
+    }
+
+    used_dependencies.push_back(written_files_it->second);
+  }
+
+  std::sort(used_dependencies.begin(), used_dependencies.end());
+  used_dependencies.erase(
+      std::unique(used_dependencies.begin(), used_dependencies.end()),
+      used_dependencies.end());
+
+  return used_dependencies;
+}
+
+std::pair<std::vector<uint32_t>, std::vector<Hash>>
+ignoredAndAdditionalDependencies(
+    StepsView steps,
+    Step step,
+    const std::vector<StepIndex> &used_dependencies) {
+  std::vector<uint32_t> ignored_dependencies;
+  std::vector<Hash> additional_dependencies;
+
+  auto deps = step.dependencies();
+  auto dep_it = deps.begin();
+  auto used_dep_it = used_dependencies.begin();
+  for (;;) {
+    const bool dep_end = dep_it == deps.end();
+    const bool used_dep_end = used_dep_it == used_dependencies.end();
+    if (dep_end && used_dep_end) {
+      break;
+    }
+
+    if (!dep_end && !used_dep_end && *dep_it == *used_dep_it) {
+      // *dep_it is used, so it's neither ignored nor additional
+      ++dep_it;
+      ++used_dep_it;
+    } else if (used_dep_end || (!dep_end && *dep_it < *used_dep_it)) {
+      // *dep_it is not used
+      ignored_dependencies.push_back(*dep_it);
+      ++dep_it;
+    } else {
+      // *used_dep_it is not in the step's direct dependency list
+      additional_dependencies.push_back(steps[*used_dep_it].hash());
+      ++used_dep_it;
+    }
+  }
+
+  std::sort(additional_dependencies.begin(), additional_dependencies.end());
+
+  return std::make_pair(
+      std::move(ignored_dependencies),
+      std::move(additional_dependencies));
+}
+
+std::pair<std::vector<uint32_t>, std::vector<Hash>>
+ignoredAndAdditionalDependencies(
+    const std::unordered_map<FileId, StepIndex> &written_files,
+    StepsView steps,
+    Step step,
+    const std::vector<FileId> &input_file_ids) {
+  return ignoredAndAdditionalDependencies(
+      steps,
+      step,
+      usedDependencies(written_files, input_file_ids));
+}
+
 void Build::markStepNodeAsDone(
     StepIndex step_idx,
     const std::vector<FileId> &output_file_ids) {
@@ -597,7 +675,7 @@ void commandDone(
     BuildCommandParameters &params,
     StepIndex step_idx,
     CommandRunner::Result &&result) throw(IoError) {
-  const auto &step = params.manifest.steps()[step_idx];
+  const auto step = params.manifest.steps()[step_idx];
 
   if (!step.depfile().empty()) {
     deleteBuildProduct(

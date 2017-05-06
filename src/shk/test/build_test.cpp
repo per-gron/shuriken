@@ -557,6 +557,133 @@ TEST_CASE("Build") {
     }
   }
 
+  SECTION("usedDependencies") {
+    SECTION("empty") {
+      CHECK(detail::usedDependencies({}, {}) == std::vector<StepIndex>{});
+    }
+
+    SECTION("unused written file") {
+      CHECK(
+          detail::usedDependencies({ { FileId(1, 2), 1337 } }, {}) ==
+          std::vector<StepIndex>{});
+    }
+
+    SECTION("missing FileId") {
+      CHECK(
+          detail::usedDependencies(
+              { { FileId(), 1336 } },
+              { FileId() }) == std::vector<StepIndex>{});
+    }
+
+    SECTION("FileId that's not written") {
+      CHECK(
+          detail::usedDependencies(
+              {},
+              { FileId(1, 2) }) == std::vector<StepIndex>{});
+    }
+
+    SECTION("output is sorted") {
+      std::unordered_map<FileId, StepIndex> written_files =
+          { { FileId(1, 2), 1336 }, { FileId(1, 3), 1337 } };
+      CHECK(
+          detail::usedDependencies(
+              written_files, { FileId(1, 2), FileId(1, 3) }) ==
+          std::vector<StepIndex>({ 1336, 1337 }));
+      CHECK(
+          detail::usedDependencies(
+              written_files, { FileId(1, 3), FileId(1, 2) }) ==
+          std::vector<StepIndex>({ 1336, 1337 }));
+    }
+
+    SECTION("output is deduplicated") {
+      std::unordered_map<FileId, StepIndex> written_files =
+          { { FileId(1, 2), 1337 } };
+      CHECK(
+          detail::usedDependencies(
+              written_files, { FileId(1, 2), FileId(1, 2) }) ==
+          std::vector<StepIndex>({ 1337 }));
+    }
+  }
+
+  SECTION("ignoredAndAdditionalDependencies") {
+    const auto compile_manifest_steps = [](
+        int count, const std::string &manifest_str) {
+      InMemoryFileSystem fs;
+      Paths paths(fs);
+      CHECK(fs.writeFile("build.ninja", manifest_str) == IoError::success());
+
+      const auto manifest = compileManifest(
+          paths.get("build.ninja"),
+          parseManifest(paths, fs, "build.ninja"));
+
+      REQUIRE(manifest.steps().size() == count);
+      return manifest.steps();
+    };
+
+    std::vector<uint32_t> ignored_dependencies;
+    std::vector<Hash> additional_dependencies;
+
+    SECTION("empty") {
+      const auto steps = compile_manifest_steps(
+          1, "build test: phony\n");
+
+      std::tie(ignored_dependencies, additional_dependencies) =
+          ignoredAndAdditionalDependencies(steps, steps[0], {});
+      CHECK(ignored_dependencies == std::vector<uint32_t>{});
+      CHECK(additional_dependencies == std::vector<Hash>{});
+    }
+
+    SECTION("used dependencies") {
+      const auto steps = compile_manifest_steps(
+          2,
+          "build one: phony\n"
+          "build two: phony one\n");
+
+      std::tie(ignored_dependencies, additional_dependencies) =
+          ignoredAndAdditionalDependencies(steps, steps[1], { 0 });
+      CHECK(ignored_dependencies == std::vector<uint32_t>{});
+      CHECK(additional_dependencies == std::vector<Hash>{});
+    }
+
+    SECTION("ignored dependencies") {
+      const auto steps = compile_manifest_steps(
+          2,
+          "build one: phony\n"
+          "build two: phony one\n");
+
+      std::tie(ignored_dependencies, additional_dependencies) =
+          ignoredAndAdditionalDependencies(steps, steps[1], {});
+      CHECK(ignored_dependencies == std::vector<uint32_t>{ 0 });
+      CHECK(additional_dependencies == std::vector<Hash>{});
+    }
+
+    SECTION("additional dependencies") {
+      const auto steps = compile_manifest_steps(
+          3,
+          "build additional: phony\n"
+          "build one: phony\n"
+          "build two: phony one\n");
+
+      std::tie(ignored_dependencies, additional_dependencies) =
+          ignoredAndAdditionalDependencies(steps, steps[1], { 0 });
+      CHECK(ignored_dependencies == std::vector<uint32_t>{});
+      CHECK(additional_dependencies == std::vector<Hash>{ steps[0].hash() });
+    }
+
+    SECTION("ignored and additional dependencies") {
+      const auto steps = compile_manifest_steps(
+          3,
+          "build one: phony\n"
+          "build two: phony one\n"
+          "build additional: phony\n");
+
+      std::tie(ignored_dependencies, additional_dependencies) =
+          ignoredAndAdditionalDependencies(steps, steps[1], { 2 });
+      CHECK(ignored_dependencies == std::vector<uint32_t>{ 0 });
+      CHECK(additional_dependencies == std::vector<Hash>{ steps[2].hash() });
+    }
+  }
+
   SECTION("Build::markStepNodeAsDone") {
     SECTION("set output_files") {
       manifest.steps = { single_output, single_output_b };
@@ -2349,10 +2476,6 @@ TEST_CASE("Build") {
       }
 
       SECTION("rebuild when step failed") {
-        // TODO(peck): Test this
-      }
-
-      SECTION("rebuild when step failed linting") {
         // TODO(peck): Test this
       }
 

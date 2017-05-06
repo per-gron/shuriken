@@ -266,6 +266,40 @@ std::vector<FileId> outputFileIdsForBuildStep(
     Step step);
 
 /**
+ * Given a map of written file ids => StepIndex and a list of file ids, find the
+ * sorted list of StepIndex-es that the list of file ids refer to. File ids that
+ * are not in written_files are ignored.
+ */
+std::vector<StepIndex> usedDependencies(
+    const std::unordered_map<FileId, StepIndex> &written_files,
+    const std::vector<FileId> &input_file_ids);
+
+/**
+ * Given a step and a sorted list of step indices that a build invocation
+ * actually used, compute ignored_dependencies and additional_dependencies to
+ * write to the invocation log.
+ *
+ * This is a helper method for the other ignoredAndAdditionalDependencies.
+ */
+std::pair<std::vector<uint32_t>, std::vector<Hash>>
+ignoredAndAdditionalDependencies(
+    StepsView steps,
+    Step step,
+    const std::vector<StepIndex> &used_dependencies);
+
+/**
+ * Given a map of all the written files so far, a step and a list of file ids
+ * that the step read from, compute ignored_dependencies and
+ * additional_dependencies to write to the invocation log.
+ */
+std::pair<std::vector<uint32_t>, std::vector<Hash>>
+ignoredAndAdditionalDependencies(
+    const std::unordered_map<FileId, StepIndex> &written_files,
+    StepsView steps,
+    Step step,
+    const std::vector<FileId> &input_file_ids);
+
+/**
  * Find the steps that should be built. If there are no specified steps, this
  * function will use defaults specified in the manifest, or find the root nodes
  * to build.
