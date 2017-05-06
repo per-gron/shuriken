@@ -128,7 +128,7 @@ void Fingerprint::Stat::fromStat(const ::shk::Stat &stat, Stat *out) {
     static constexpr auto mode_mask =
         S_IFMT | S_IRWXU | S_IRWXG | S_IXOTH | S_ISUID | S_ISGID | S_ISVTX;
     out->mode = stat.metadata.mode & mode_mask;
-    out->mtime = stat.timestamps.mtime;
+    out->mtime = stat.mtime;
   }
 }
 

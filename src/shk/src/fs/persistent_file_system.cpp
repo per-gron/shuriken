@@ -399,7 +399,7 @@ class PersistentFileSystem : public FileSystem {
       result.metadata.dev = input.st_dev;
       result.metadata.mode = input.st_mode;
       result.metadata.size = input.st_size;
-      result.timestamps.mtime = input.st_mtime;
+      result.mtime = input.st_mtime;
     }
     return result;
   }

@@ -52,8 +52,8 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("stat") {
-    CHECK(fs->stat("f").timestamps.mtime == inner_fs.stat("f").timestamps.mtime);
-    CHECK(fs->lstat("f").timestamps.mtime == inner_fs.lstat("f").timestamps.mtime);
+    CHECK(fs->stat("f").mtime == inner_fs.stat("f").mtime);
+    CHECK(fs->lstat("f").mtime == inner_fs.lstat("f").mtime);
   }
 
   SECTION("mkdir") {

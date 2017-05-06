@@ -32,17 +32,13 @@ struct FileMetadata {
   dev_t dev = 0;
 };
 
-struct Timestamps {
-  time_t mtime = 0;
-};
-
 struct Stat {
   /**
    * Return value of stat.
    */
   int result = 0;
   FileMetadata metadata;
-  Timestamps timestamps;
+  time_t mtime;
 };
 
 struct DirEntry {

@@ -556,7 +556,7 @@ Optional<time_t> foldMtime(
     if (stat.result != 0) {
       return Optional<time_t>();
     }
-    ans = ans ? cb(*ans, stat.timestamps.mtime) : stat.timestamps.mtime;
+    ans = ans ? cb(*ans, stat.mtime) : stat.mtime;
   }
   return ans;
 }
@@ -622,7 +622,7 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
   auto input_mtime = CompiledManifest::maxMtime(
       file_system, manifest->manifestFiles());
 
-  if (!input_mtime || *input_mtime >= compiled_stat.timestamps.mtime) {
+  if (!input_mtime || *input_mtime >= compiled_stat.mtime) {
     // The compiled manifest is out of date or has equal timestamps, which means
     // we don't know if it's out of date or not. Recompile just to be sure.
     return std::make_pair(Optional<CompiledManifest>(), nullptr);

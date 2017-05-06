@@ -591,12 +591,12 @@ Stat InMemoryFileSystem::stat(
       stat.metadata.size = file->contents.size();
       stat.metadata.ino = file->ino;
       stat.metadata.mode |= file->symlink ? S_IFLNK : S_IFREG;
-      stat.timestamps.mtime = file->mtime;
+      stat.mtime = file->mtime;
     } else {
       const auto &dir = _directories.find(l.canonicalized)->second;
       stat.metadata.ino = dir.ino;
       stat.metadata.mode |= S_IFDIR;
-      stat.timestamps.mtime = dir.mtime;
+      stat.mtime = dir.mtime;
     }
     // TODO(peck): Set mtime
     break;

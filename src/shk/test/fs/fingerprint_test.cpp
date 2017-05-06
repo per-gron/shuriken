@@ -119,7 +119,7 @@ TEST_CASE("Fingerprint") {
         CHECK(fp_stat.size == 0);
         CHECK(fp_stat.ino == stat.metadata.ino);
         CHECK(S_ISDIR(fp_stat.mode));
-        CHECK(fp_stat.mtime == stat.timestamps.mtime);
+        CHECK(fp_stat.mtime == stat.mtime);
       }
 
       SECTION("file") {
@@ -130,7 +130,7 @@ TEST_CASE("Fingerprint") {
         CHECK(fp_stat.size == stat.metadata.size);
         CHECK(fp_stat.ino == stat.metadata.ino);
         CHECK(S_ISREG(fp_stat.mode));
-        CHECK(fp_stat.mtime == stat.timestamps.mtime);
+        CHECK(fp_stat.mtime == stat.mtime);
       }
     }
 
