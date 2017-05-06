@@ -686,6 +686,38 @@ TEST_CASE("Build") {
     }
   }
 
+  SECTION("stepIsIgnored") {
+    SECTION("step not in Invocations") {
+      Invocations empty_invocations;
+      CHECK(stepIsIgnored(empty_invocations, Hash(), 0) == false);
+    }
+
+    SECTION("empty ignored_dependencies") {
+      const Hash step_hash{};
+
+      Invocations invocations;
+      invocations.entries[step_hash];
+
+      CHECK(stepIsIgnored(invocations, step_hash, 0) == false);
+    }
+
+    SECTION("with ignored_dependencies") {
+      const Hash step_hash{};
+
+      Invocations invocations;
+      auto &entry = invocations.entries[step_hash];
+      entry.ignored_dependencies = makeIndicesView({ 45 });
+
+      SECTION("not ignored") {
+        CHECK(stepIsIgnored(invocations, step_hash, 5) == false);
+      }
+
+      SECTION("ignored") {
+        CHECK(stepIsIgnored(invocations, step_hash, 45) == true);
+      }
+    }
+  }
+
   SECTION("Build::markStepNodeAsDone") {
     SECTION("set output_files") {
       manifest.steps = { single_output, single_output_b };

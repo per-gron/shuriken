@@ -313,6 +313,16 @@ ignoredAndAdditionalDependencies(
     const std::vector<FileId> &input_file_ids);
 
 /**
+ * Returns true if the invocation log says that the step with index
+ * possibly_ignored_step is ignored by the step with hash
+ * possibly_ignoring_step_hash.
+ */
+bool stepIsIgnored(
+    const Invocations &invocations,
+    const Hash &possibly_ignoring_step_hash,
+    StepIndex possibly_ignored_step);
+
+/**
  * Find the steps that should be built. If there are no specified steps, this
  * function will use defaults specified in the manifest, or find the root nodes
  * to build.

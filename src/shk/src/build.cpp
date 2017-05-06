@@ -213,6 +213,22 @@ ignoredAndAdditionalDependencies(
       usedDependencies(written_files, input_file_ids));
 }
 
+bool stepIsIgnored(
+    const Invocations &invocations,
+    const Hash &possibly_ignoring_step_hash,
+    StepIndex possibly_ignored_step) {
+  const auto invocation_entry_it =
+      invocations.entries.find(possibly_ignoring_step_hash);
+  if (invocation_entry_it == invocations.entries.end()) {
+    return false;
+  }
+  const auto &entry = invocation_entry_it->second;
+  return std::binary_search(
+      entry.ignored_dependencies.begin(),
+      entry.ignored_dependencies.end(),
+      possibly_ignored_step);
+}
+
 void Build::markStepNodeAsDone(
     StepIndex step_idx,
     const std::vector<FileId> &output_file_ids) {
