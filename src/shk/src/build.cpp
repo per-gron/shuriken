@@ -265,6 +265,8 @@ void visitStep(
     StepIndex idx) throw(BuildError) {
   auto &step_node = build.step_nodes[idx];
   if (step_node.currently_visited) {
+    // Dependency cycles should be detected when compiling the manifest; this is
+    // just a check to avoid stack overflow in case things go wrong.
     throw BuildError("Dependency cycle");
   }
 
