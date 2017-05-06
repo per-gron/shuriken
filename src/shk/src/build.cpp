@@ -718,6 +718,18 @@ void commandDone(
     }
   }
 
+  std::vector<Fingerprint> input_fingerprints;
+  std::vector<FileId> input_file_ids;
+  for (const auto &input_file : result.input_files) {
+    Fingerprint fingerprint;
+    FileId file_id;
+    std::tie(fingerprint, file_id) =
+        params.invocation_log.fingerprint(input_file);
+
+    input_fingerprints.push_back(fingerprint);
+    input_file_ids.push_back(file_id);
+  }
+
   if (!step.phony()) {
     params.build_status.stepFinished(
         step,
@@ -737,14 +749,23 @@ void commandDone(
       // cause the next build to believe that this step has no inputs so it will
       // immediately report the step as clean regardless of what it depends on.
 
+      std::vector<uint32_t> ignored_dependencies;
+      std::vector<Hash> additional_dependencies;
+      std::tie(ignored_dependencies, additional_dependencies) =
+          ignoredAndAdditionalDependencies(
+              params.build.output_files,
+              params.manifest.steps(),
+              step,
+              input_file_ids);
+
       params.invocation_log.ranCommand(
-          params.manifest.steps()[step_idx].hash(),
+          step.hash(),
           std::move(result.output_files),
-          params.invocation_log.fingerprintFiles(result.output_files),
+          std::move(output_fingerprints),
           std::move(result.input_files),
-          params.invocation_log.fingerprintFiles(result.input_files),
-          std::vector<uint32_t>(),  // TODO(peck): Set this to something
-          std::vector<Hash>());  // TODO(peck): Set this to something
+          std::move(input_fingerprints),
+          std::move(ignored_dependencies),
+          std::move(additional_dependencies));
     }
 
     params.build.markStepNodeAsDone(step_idx, output_file_ids);

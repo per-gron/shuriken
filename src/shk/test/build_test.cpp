@@ -2555,6 +2555,68 @@ TEST_CASE("Build") {
         dummy_runner.checkCommand(fs, cmd);
       }
 
+      SECTION("ignored and additional dependencies") {
+        CHECK(fs.writeFile("one_input", "clean") == IoError::success());
+        const auto one = dummy_runner.constructCommand({"one_input"}, {"one"});
+        const auto two = dummy_runner.constructCommand({}, {"two"});
+        const auto three = dummy_runner.constructCommand({"one"}, {"three"});
+        const auto manifest =
+            "rule one\n"
+            "  command = " + one + "\n"
+            "rule two\n"
+            "  command = " + two + "\n"
+            "rule three\n"
+            "  command = " + three + "\n"
+            "build three: three two\n"
+            "build two: two one\n"
+            "build one: one one_input\n";
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, one);
+        dummy_runner.checkCommand(fs, two);
+        dummy_runner.checkCommand(fs, three);
+        CHECK(dummy_runner.getCommandsRun() == 3);
+
+        const auto find_log_entry_with_output = [&](const std::string &path) {
+          const std::pair<const Hash, InMemoryInvocationLog::Entry> *log_entry =
+              nullptr;
+          for (const auto &entry : log.entries()) {
+            for (const auto &output_file : entry.second.output_files) {
+              if (output_file.first == path) {
+                log_entry = &entry;
+              }
+            }
+          }
+          REQUIRE(log_entry);
+          return *log_entry;
+        };
+
+        SECTION("step should be marked as ignored dependency") {
+          const auto &two_log_entry = find_log_entry_with_output("two").second;
+          CHECK(
+              two_log_entry.ignored_dependencies ==
+              std::vector<uint32_t>{ 2 });
+          CHECK(two_log_entry.additional_dependencies == std::vector<Hash>{});
+        }
+
+        SECTION("step should be marked as additional dependency") {
+          const auto one_hash = find_log_entry_with_output("one").first;
+          const auto &log_entry_3 = find_log_entry_with_output("three").second;
+          CHECK(log_entry_3.ignored_dependencies == std::vector<uint32_t>{ 1 });
+          CHECK(
+              log_entry_3.additional_dependencies ==
+              std::vector<Hash>{ one_hash });
+        }
+
+        SECTION("rebuild when only additional dependency is dirty") {
+          CHECK(fs.writeFile("one_input", "dirty") == IoError::success());
+          CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+          // This should invoke the one and three build steps; one because its
+          // input is dirty; three because its additional_dependency one is
+          // dirty.
+          CHECK(dummy_runner.getCommandsRun() == /* from before */ 3 + 2);
+        }
+      }
+
       SECTION("bypass commands (restat)") {
         // It should not rebuild steps where all inputs and ouputs were clean,
         // even if steps that depend on them had to be rebuilt.
