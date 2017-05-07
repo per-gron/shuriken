@@ -150,14 +150,16 @@ bool DummyCommandRunner::runCommands() {
   // report the right thing if that is called from a callback.
   enqueued_commands.swap(_enqueued_commands);
   for (const auto &command : enqueued_commands) {
-    _commands_run++;
+    _commands_run.push_back(command.first);
     command.second(detail::runCommand(_file_system, command.first));
   }
   return false;
 }
 
-int DummyCommandRunner::getCommandsRun() const {
-  return _commands_run;
+std::vector<std::string> DummyCommandRunner::popCommandsRun() {
+  std::vector<std::string> result;
+  result.swap(_commands_run);
+  return result;
 }
 
 std::string DummyCommandRunner::constructCommand(

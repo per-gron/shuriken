@@ -202,6 +202,11 @@ std::string readFile(FileSystem &fs, nt_string_view path) {
   return data;
 }
 
+std::vector<std::string> sortVector(std::vector<std::string> &&vector) {
+  std::sort(vector.begin(), vector.end());
+  return vector;
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Build") {
@@ -2693,24 +2698,29 @@ TEST_CASE("Build") {
 
       SECTION("ignored and additional dependencies") {
         CHECK(fs.writeFile("one_input", "clean") == IoError::success());
-        const auto one = dummy_runner.constructCommand({"one_input"}, {"one"});
+        auto one = dummy_runner.constructCommand({"one_input"}, {"one"});
         const auto two = dummy_runner.constructCommand({}, {"two"});
         const auto three = dummy_runner.constructCommand({"one"}, {"three"});
-        const auto manifest =
-            "rule one\n"
-            "  command = " + one + "\n"
-            "rule two\n"
-            "  command = " + two + "\n"
-            "rule three\n"
-            "  command = " + three + "\n"
-            "build three: three two\n"
-            "build two: two one\n"
-            "build one: one one_input\n";
-        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+
+        const auto make_manifest = [&]() {
+          return
+              "rule one\n"
+              "  command = " + one + "\n"
+              "rule two\n"
+              "  command = " + two + "\n"
+              "rule three\n"
+              "  command = " + three + "\n"
+              "build three: three two\n"
+              "build two: two one\n"
+              "build one: one one_input\n";
+        };
+        CHECK(build_manifest(make_manifest()) == BuildResult::SUCCESS);
         dummy_runner.checkCommand(fs, one);
         dummy_runner.checkCommand(fs, two);
         dummy_runner.checkCommand(fs, three);
-        CHECK(dummy_runner.getCommandsRun() == 3);
+        CHECK(
+            dummy_runner.popCommandsRun() ==
+            std::vector<std::string>({ one, two, three }));
 
         const auto find_log_entry_with_output = [&](const std::string &path) {
           const std::pair<const Hash, InMemoryInvocationLog::Entry> *log_entry =
@@ -2745,11 +2755,31 @@ TEST_CASE("Build") {
 
         SECTION("rebuild when only additional dependency is dirty") {
           CHECK(fs.writeFile("one_input", "dirty") == IoError::success());
-          CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+          CHECK(build_manifest(make_manifest()) == BuildResult::SUCCESS);
           // This should invoke the one and three build steps; one because its
           // input is dirty; three because its additional_dependency one is
           // dirty.
-          CHECK(dummy_runner.getCommandsRun() == /* from before */ 3 + 2);
+          CHECK(
+              dummy_runner.popCommandsRun() ==
+              std::vector<std::string>({ one, three }));
+        }
+
+        SECTION("rebuild when additional dependency has changed step hash") {
+          // Add a new output to the one command. This will change that build
+          // step's step hash and what is written to the "one" output file.
+          // When this happens, both one (because it has changed) and three
+          // (because an additional dependency has changed) should be rebuilt.
+
+          CHECK(fs.writeFile("new_input", "new") == IoError::success());
+          one = dummy_runner.constructCommand(
+              { "one_input", "new_input" }, { "one" });
+          CHECK(build_manifest(make_manifest()) == BuildResult::SUCCESS);
+          // This should invoke the one and three build steps; one because its
+          // input is dirty; three because its additional_dependency one no
+          // longer points to an existing step in the manifest.
+          CHECK(
+              dummy_runner.popCommandsRun() ==
+              std::vector<std::string>({ one, three }));
         }
       }
 
@@ -2772,7 +2802,9 @@ TEST_CASE("Build") {
             "build out3: cmd3 out2\n";
         CHECK(latest_build_output.size() == 0);
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        CHECK(dummy_runner.getCommandsRun() == 3);
+        CHECK(
+            sortVector(dummy_runner.popCommandsRun()) ==
+            sortVector({ cmd1, cmd2, cmd3 }));
         CHECK(latest_build_output.size() == 3);
         CHECK(build_status_started_steps == 3);
         CHECK(fs.unlink("out1") == IoError::success());
@@ -2781,9 +2813,10 @@ TEST_CASE("Build") {
         dummy_runner.checkCommand(fs, cmd2);
         dummy_runner.checkCommand(fs, cmd3);
 
-        // Should be 3 commands run from the initial run, and then 2 from the
-        // second one. The second time, cmd3 should not have been invoked.
-        CHECK(dummy_runner.getCommandsRun() == 5);
+        // The second time, cmd3 should not have been invoked.
+        CHECK(
+            sortVector(dummy_runner.popCommandsRun()) ==
+            sortVector({ cmd1, cmd2 }));
 
         // Should have reported 3 finished build steps to the BuildStatus during
         // the build.
@@ -2813,7 +2846,9 @@ TEST_CASE("Build") {
             "build out3: cmd3 out2\n"
             "build out4: cmd4 out3\n";
         CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
-        CHECK(dummy_runner.getCommandsRun() == 4);
+        CHECK(
+            sortVector(dummy_runner.popCommandsRun()) ==
+            sortVector({ cmd1, cmd2, cmd3, cmd4 }));
         CHECK(latest_build_output.size() == 4);
         CHECK(build_status_started_steps == 4);
         CHECK(fs.unlink("out1") == IoError::success());
@@ -2824,9 +2859,10 @@ TEST_CASE("Build") {
         dummy_runner.checkCommand(fs, cmd3);
         dummy_runner.checkCommand(fs, cmd4);
 
-        // Should be 3 commands run from the initial run, and then 2 from the
-        // second one. The second time, cmd3 should not have been invoked.
-        CHECK(dummy_runner.getCommandsRun() == 7);
+        // The second time, cmd3 should not have been invoked.
+        CHECK(
+            sortVector(dummy_runner.popCommandsRun()) ==
+            sortVector({ cmd1, cmd2, cmd4 }));
 
         // Should have reported 4 finished build steps to the BuildStatus during
         // the build.

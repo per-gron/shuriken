@@ -123,10 +123,10 @@ TEST_CASE("DummyCommandRunner") {
     runner.runCommands();
   }
 
-  SECTION("getCommandsRun") {
-    CHECK(runner.getCommandsRun() == 0);
+  SECTION("popCommandsRun") {
+    CHECK(runner.popCommandsRun() == std::vector<std::string>{});
     runner.runCommands();
-    CHECK(runner.getCommandsRun() == 0);
+    CHECK(runner.popCommandsRun() == std::vector<std::string>{});
 
     const auto command = DummyCommandRunner::constructCommand({}, { "abc" });
     runner.invoke(command, step, CommandRunner::noopCallback);
@@ -134,7 +134,8 @@ TEST_CASE("DummyCommandRunner") {
       runner.runCommands();
     }
 
-    CHECK(runner.getCommandsRun() == 1);
+    CHECK(runner.popCommandsRun() == std::vector<std::string>{ command });
+    CHECK(runner.popCommandsRun() == std::vector<std::string>{});
   }
 
   SECTION("runCommand") {

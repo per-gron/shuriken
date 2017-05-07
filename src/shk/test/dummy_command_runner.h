@@ -61,7 +61,7 @@ class DummyCommandRunner : public CommandRunner {
 
   bool runCommands() override;
 
-  int getCommandsRun() const;
+  std::vector<std::string> popCommandsRun();
 
   static std::string constructCommand(
       const std::vector<std::string> &inputs,
@@ -78,7 +78,7 @@ class DummyCommandRunner : public CommandRunner {
           throw(IoError, std::runtime_error);
 
  private:
-  int _commands_run = 0;
+  std::vector<std::string> _commands_run;
   FileSystem &_file_system;
   std::list<std::pair<std::string, Callback>> _enqueued_commands;
 };
