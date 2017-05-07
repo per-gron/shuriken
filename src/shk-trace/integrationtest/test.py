@@ -48,7 +48,6 @@ shkTraceFb = os.environ.get(
 sys.path.insert(0, shkTraceFb)
 sys.path.insert(0, '../../../vendor/flatbuffers/python')
 import ShkTrace.Trace
-import ShkTrace.EventType
 
 shkTrace = os.environ.get(
     'SHK_TRACE_PATH',
