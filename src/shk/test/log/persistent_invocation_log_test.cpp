@@ -393,6 +393,25 @@ TEST_CASE("PersistentInvocationLog") {
       });
     }
 
+    SECTION("PathsOfDifferentLengths") {
+      // This is there for testing the logic that decides the path length by
+      // looking only at the last 4 bytes of the path string.
+      writeEntries([&](InvocationLog &log, FileSystem &fs) {
+        Hash hash{};
+        ranCommand(log, hash, {}, { "" }, {}, {});
+        hash.data[0]++;
+        ranCommand(log, hash, {}, { "1" }, {}, {});
+        hash.data[0]++;
+        ranCommand(log, hash, {}, { "12" }, {}, {});
+        hash.data[0]++;
+        ranCommand(log, hash, {}, { "123" }, {}, {});
+        hash.data[0]++;
+        ranCommand(log, hash, {}, { "1234" }, {}, {});
+        hash.data[0]++;
+        ranCommand(log, hash, {}, { "12345" }, {}, {});
+      });
+    }
+
     SECTION("InvocationTwoInputFiles") {
       writeEntries([&](InvocationLog &log, FileSystem &fs) {
         ranCommand(

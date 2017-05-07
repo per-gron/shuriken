@@ -603,13 +603,36 @@ void parsePath(
     string_view entry,
     InvocationLogParseResult &result,
     std::vector<nt_string_view> &paths_by_id) throw(ParseError) {
-  if (strnlen(entry.data(), entry.size()) == entry.size()) {
+  // Path strings are always null terminated and their length is always a
+  // multiple of four. Because of this we can know the string length by only
+  // looking at the last 4 bytes.
+  //
+  // It is typically quite silly to avoid the cost of a strlen but this is in a
+  // pretty tight loop and doing this actually provides a measurable speed
+  // improvement.
+  if (entry.size() == 0 || entry.data()[entry.size() - 1] != 0) {
     throw ParseError(
         "invalid invocation log: Encountered non null terminated path");
   }
+  size_t size = entry.size() - 1;
+  if (size && entry.data()[size - 1] == 0) {
+    size--;
+    if (size && entry.data()[size - 1] == 0) {
+      size--;
+      if (size && entry.data()[size - 1] == 0) {
+        size--;
+        if (size && entry.data()[size - 1] == 0) {
+          throw ParseError(
+              "invalid invocation log: Encountered path with too many null "
+              "terminators");
+        }
+      }
+    }
+  }
+
   // The string contains an unknown number of trailing \0s, so construct the
   // string view in a way that ensures that those are not included.
-  auto path_string_view = nt_string_view(entry.data());
+  auto path_string_view = nt_string_view(entry.data(), size);
   result.parse_data.path_ids[path_string_view] = paths_by_id.size();
   paths_by_id.emplace_back(path_string_view);
 }
