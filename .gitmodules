@@ -10,3 +10,6 @@
 [submodule "vendor/catch"]
 	path = vendor/catch
 	url = git@github.com:philsquared/Catch.git
+[submodule "vendor/grpc"]
+	path = vendor/grpc
+	url = git@github.com:grpc/grpc.git
