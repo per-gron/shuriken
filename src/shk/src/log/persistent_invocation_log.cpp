@@ -729,13 +729,13 @@ InvocationLogParseResult parsePersistentInvocationLog(
   // According to my measurements, this is a little bit slower than mmap, so
   // it's not used normally.
   auto log_contents = std::make_shared<std::string>();
-  try {
-    *log_contents = file_system.readFile(log_path);
-  } catch (IoError &io_error) {
+  IoError io_error;
+  std::tie(*log_contents, io_error) = file_system.readFile(log_path);
+  if (io_error) {
     if (io_error.code() == ENOENT) {
       return result;
     } else {
-      throw;
+      throw io_error;
     }
   }
   auto view = string_view(*log_contents);
