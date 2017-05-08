@@ -1,15 +1,15 @@
 [submodule "vendor/re2c"]
 	path = vendor/re2c
-	url = git@github.com:skvadrik/re2c.git
+	url = https://github.com/skvadrik/re2c.git
 [submodule "vendor/blake2"]
 	path = vendor/blake2
-	url = git@github.com:BLAKE2/BLAKE2.git
+	url = https://github.com/BLAKE2/BLAKE2.git
 [submodule "vendor/flatbuffers"]
 	path = vendor/flatbuffers
-	url = git@github.com:google/flatbuffers.git
+	url = https://github.com/google/flatbuffers.git
 [submodule "vendor/catch"]
 	path = vendor/catch
-	url = git@github.com:philsquared/Catch.git
+	url = https://github.com/philsquared/Catch.git
 [submodule "vendor/grpc"]
 	path = vendor/grpc
-	url = git@github.com:grpc/grpc.git
+	url = https://github.com/grpc/grpc.git
