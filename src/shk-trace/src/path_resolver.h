@@ -82,6 +82,8 @@ class PathResolver : public Tracer::Delegate {
  private:
   std::string resolve(
       uintptr_t thread_id, int at_fd, std::string &&path);
+  std::string resolveWithoutNormalization(
+      uintptr_t thread_id, int at_fd, std::string &&path);
 
   const pid_t *getPid(uintptr_t thread_id) const;
 

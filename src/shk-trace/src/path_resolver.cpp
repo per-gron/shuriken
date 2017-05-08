@@ -16,6 +16,8 @@
 
 #include <fcntl.h>
 
+#include <util/path_operations.h>
+
 namespace shk {
 
 PathResolver::PathResolver(
@@ -117,6 +119,20 @@ void PathResolver::exec(uintptr_t thread_id) {
 }
 
 std::string PathResolver::resolve(
+    uintptr_t thread_id, int at_fd, std::string &&path) {
+  auto resolved_path =
+      resolveWithoutNormalization(thread_id, at_fd, std::move(path));
+  try {
+    canonicalizePath(&resolved_path);
+  } catch (const PathError &path_error) {
+    _delegate->fileEvent(
+        EventType::FATAL_ERROR,
+        std::string("failed to canonicalize path: ") + path_error.what());
+  }
+  return resolved_path;
+}
+
+std::string PathResolver::resolveWithoutNormalization(
     uintptr_t thread_id, int at_fd, std::string &&path) {
   if (path.size() && path[0] == '/') {
     // Path is absolute

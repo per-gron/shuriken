@@ -107,6 +107,28 @@ TEST_CASE("PathResolver") {
     }
   }
 
+  SECTION("PathNormalization") {
+    SECTION("FileEvent") {
+      pr.fileEvent(
+          kThreadId,
+          EventType::READ,
+          AT_FDCWD,
+          "yoyo/../hey");
+      CHECK(delegate.popFileEvent().path == "/initial_path/hey");
+    }
+
+    SECTION("Open") {
+      static constexpr int kFd = 3;
+      static const std::string kFdPath = "/fd/../new_fd";
+
+      pr.open(kThreadId, kFd, AT_FDCWD, std::string(kFdPath), true);
+      pr.fileEvent(kThreadId, EventType::READ, kFd, "yoyo");
+      auto event = delegate.popFileEvent();
+      CHECK(event.type == EventType::READ);
+      CHECK(event.path == "/new_fd/yoyo");
+    }
+  }
+
   SECTION("FileEvent") {
     SECTION("FatalError") {
       // Paths should not be resolved in thi scase

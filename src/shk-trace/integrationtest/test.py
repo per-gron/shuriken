@@ -117,6 +117,13 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('input ' + os.getcwd() + '/file', trace)
 
   @with_testdir()
+  def test_normalize_path(self):
+    os.mkdir('dir')
+    write_file('file', '')
+    trace = trace_cmd("cat dir/../file")
+    self.assertIn('input ' + os.getcwd() + '/file', trace)
+
+  @with_testdir()
   def test_read_file_absolute_path(self):
     trace = trace_cmd("ls -d /bin/echo")
     self.assertIn('input /bin/echo', trace)
@@ -1012,13 +1019,13 @@ class IntegrationTest(unittest.TestCase):
     os.mkdir('dir')
     os.symlink('abc', 'input')
     trace = trace_cmd(helper + ' readlinkat')
-    self.assertIn('input ' + os.getcwd() + '/dir/../input', trace)
+    self.assertIn('input ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_readlinkat_error(self):
     os.mkdir('dir')
     trace = trace_cmd(helper + ' readlinkat')
-    self.assertIn('input ' + os.getcwd() + '/dir/../input', trace)
+    self.assertIn('input ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_removexattr(self):
@@ -1266,7 +1273,7 @@ class IntegrationTest(unittest.TestCase):
     os.mkdir('dir')
     write_file('input', '')
     trace = trace_cmd(helper + ' unlinkat')
-    self.assertIn('deleted file it did not create: ' + os.getcwd() + '/dir/../input', trace)
+    self.assertIn('deleted file it did not create: ' + os.getcwd() + '/input', trace)
 
   @with_testdir()
   def test_unlinkat_dir(self):
