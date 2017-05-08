@@ -459,10 +459,18 @@ std::string getBadGeneratorDependency(StepsView steps) {
     auto illegal_dependency_index = (generator ?
         non_generator_dependency : generator_dependency)[idx];
     if (illegal_dependency_index) {
+      auto verbose_error =
+            std::string(steps[idx].command()) +
+            " depends on " +
+            std::string(steps[*illegal_dependency_index].command());
       if (generator) {
-        return "Generator build steps must not depend on normal build steps";
+        return
+            "Generator build steps must not depend on normal build steps: " +
+            verbose_error;
       } else {
-        return "Normal build steps must not depend on generator build steps";
+        return
+            "Normal build steps must not depend on generator build steps: " +
+            verbose_error;
       }
     }
   }
