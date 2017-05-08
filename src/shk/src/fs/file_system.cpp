@@ -20,6 +20,8 @@
 #include <sys/stat.h>
 
 #include <blake2.h>
+#include <util/path_error.h>
+#include <util/path_operations.h>
 
 #include "path.h"
 

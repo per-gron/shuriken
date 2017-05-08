@@ -19,6 +19,8 @@
 #include <errno.h>
 #include <thread>
 
+#include <util/path_operations.h>
+
 #include "fs/fingerprint.h"
 #include "util.h"
 

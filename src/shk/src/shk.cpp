@@ -32,6 +32,8 @@
 #include <unistd.h>
 #endif
 
+#include <util/path_operations.h>
+
 #include "build.h"
 #include "build_config.h"
 #include "build_error.h"

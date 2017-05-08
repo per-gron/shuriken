@@ -14,6 +14,8 @@
 
 #include "manifest/compiled_manifest.h"
 
+#include <util/path_operations.h>
+
 namespace shk {
 namespace detail {
 

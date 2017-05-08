@@ -43,7 +43,6 @@ add_library(shklib
   src/fs/fingerprint.h
   src/fs/path.cpp
   src/fs/path.h
-  src/fs/path_error.h
   src/fs/persistent_file_system.cpp
   src/fs/persistent_file_system.h
   src/hash.h

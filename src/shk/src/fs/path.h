@@ -19,32 +19,14 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <util/path_error.h>
 #include <util/string_view.h>
 
 #include "fs/file_id.h"
 #include "fs/file_system.h"
-#include "fs/path_error.h"
 #include "optional.h"
 
 namespace shk {
-
-/**
- * Split a path into its dirname and basename. The first element in the
- * pair is the dirname, the second the basename.
- *
- * Acts like the dirname and basename functions in the standard library.
- */
-std::pair<nt_string_view, nt_string_view> basenameSplitPiece(
-    nt_string_view path);
-
-nt_string_view dirname(nt_string_view path);
-
-/**
- * Canonicalize a path like "foo/../bar.h" into just "bar.h".
- */
-void canonicalizePath(std::string *path) throw(PathError);
-void canonicalizePath(char *path, size_t *len) throw(PathError);
-
 namespace detail {
 
 struct CanonicalizedPath {
