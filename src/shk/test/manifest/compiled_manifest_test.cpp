@@ -421,6 +421,23 @@ TEST_CASE("CompiledManifest") {
       }
     }
 
+    SECTION("dependency from generator to non-generator step") {
+      const RawStep *steps[] = {
+          &single_input, &single_implicit_input, &single_dependency };
+      for (const auto *step : steps) {
+        auto step_copy = *step;
+        step_copy.generator = true;
+
+        RawManifest manifest;
+        manifest.steps = { single_output, step_copy };
+
+        auto error = get_manifest_compile_error(manifest);
+        CHECK(
+            error ==
+            "Generator build steps must not depend on normal build steps");
+      }
+    }
+
     SECTION("sort dependencies") {
       RawStep two_dependencies;
       two_dependencies.inputs = { paths.get("a"), paths.get("b") };

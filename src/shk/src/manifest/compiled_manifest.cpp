@@ -133,7 +133,7 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
         dependencies.push_back(dependency_idx);
         roots[dependency_idx] = false;
 
-        if (!raw.generator && steps[dependency_idx].generator) {
+        if (raw.generator != steps[dependency_idx].generator) {
           // Disallow "normal" non-generator build steps to depend on generator
           // build steps. Two reasons:
           //
@@ -155,7 +155,25 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
           // not generator build steps), it does not matter if the file ids of
           // generator step outputs are not present if non generator build steps
           // can't depend on them.
-          *err = "Normal build steps must not depend on generator build steps";
+          //
+          // Also disallow generator build steps to depend on generator build
+          // steps. Reason:
+          //
+          // From a correctness perspective, there is not currently a reason to
+          // disallow generator steps to depend on normal steps, but I'm still
+          // disallowing it, for consistency reasons, and because it allows for
+          // greater flexibility in the future: It is possible that generator
+          // step handling will need to change for one reason or another, and
+          // keeping generator vs non-generator steps as separate islands just
+          // makes it a lot easier to reason about what's going on when changing
+          // build semantics.
+          if (raw.generator) {
+            *err =
+                "Generator build steps must not depend on normal build steps";
+          } else {
+            *err =
+                "Normal build steps must not depend on generator build steps";
+          }
         }
       }
     }
