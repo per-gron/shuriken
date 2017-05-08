@@ -8,6 +8,7 @@ Shuriken currently only works on Mac OS X.
 ## Build instructions
 
 ```
+git submodule update --init --recursive
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release -GNinja ..
 ninja shk shk-trace
