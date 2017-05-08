@@ -171,8 +171,8 @@ set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_link_libraries(shk_test shklib catch)
 set_target_properties(shk_test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 add_dependencies(shk_test shk-trace-dummy)
-add_test(NAME unit COMMAND shk_test)
+add_test(NAME shk_unit COMMAND shk_test)
 add_test(
-  NAME integration
+  NAME shk_integration
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/integrationtest
   COMMAND env SHK_PATH=${PROJECT_BINARY_DIR}/bin/shk python ${CMAKE_CURRENT_LIST_DIR}/integrationtest/test.py)
