@@ -16,8 +16,9 @@
 
 #include <vector>
 
+#include <util/string_view.h>
+
 #include "manifest/wrapper_view.h"
-#include "string_view.h"
 
 namespace shk {
 namespace {

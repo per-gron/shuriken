@@ -18,9 +18,10 @@
 #include <string>
 #include <vector>
 
+#include <util/string_view.h>
+
 #include "exit_status.h"
 #include "manifest/step.h"
-#include "string_view.h"
 
 namespace shk {
 

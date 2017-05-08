@@ -19,11 +19,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <util/string_view.h>
+
 #include "fs/file_id.h"
 #include "fs/file_system.h"
 #include "fs/path_error.h"
 #include "optional.h"
-#include "string_view.h"
 
 namespace shk {
 

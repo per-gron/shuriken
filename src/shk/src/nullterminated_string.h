@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <memory>
 
-#include "string_view.h"
+#include <util/string_view.h>
 
 namespace shk {
 

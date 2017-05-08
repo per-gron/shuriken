@@ -83,7 +83,6 @@ add_library(shklib
   src/status/stopwatch.h
   src/status/terminal_build_status.cpp
   src/status/terminal_build_status.h
-  src/string_view.h
   src/tools/clean.cpp
   src/tools/clean.h
   src/tools/compilation_database.cpp
@@ -165,7 +164,6 @@ add_executable(shk_test
   test/optional_test.cpp
   test/status/line_printer_test.cpp
   test/status/stopwatch_test.cpp
-  test/string_view_test.cpp
   test/util_test.cpp)
 set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
 target_link_libraries(shk_test shklib catch)

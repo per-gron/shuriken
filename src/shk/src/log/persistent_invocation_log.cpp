@@ -18,7 +18,6 @@
 #include <errno.h>
 
 #include "optional.h"
-#include "string_view.h"
 #include "util.h"
 
 namespace shk {

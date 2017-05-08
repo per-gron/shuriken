@@ -19,9 +19,9 @@
 #include <string>
 
 #include <util/raii_helper.h>
+#include <util/string_view.h>
 
 #include "io_error.h"
-#include "string_view.h"
 
 namespace shk {
 

@@ -18,9 +18,10 @@
 
 #include <sys/types.h>
 
+#include <util/string_view.h>
+
 #include "hash.h"
 #include "io_error.h"
-#include "string_view.h"
 #include "util.h"
 
 namespace shk {

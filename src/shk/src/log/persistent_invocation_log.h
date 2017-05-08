@@ -16,12 +16,13 @@
 
 #include <stdint.h>
 
+#include <util/string_view.h>
+
 #include "clock.h"
 #include "fs/file_system.h"
 #include "log/invocation_log.h"
 #include "log/invocations.h"
 #include "parse_error.h"
-#include "string_view.h"
 
 namespace shk {
 
