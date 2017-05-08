@@ -117,6 +117,27 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('input ' + os.getcwd() + '/file', trace)
 
   @with_testdir()
+  def test_read_file_absolute_path(self):
+    trace = trace_cmd("ls -d /bin/echo")
+    self.assertIn('input /bin/echo', trace)
+
+  @with_testdir()
+  def test_read_file_through_symlinked_folder(self):
+    os.mkdir('target')
+    os.symlink('target', 'link')
+    write_file('target/file', '')
+    trace = trace_cmd('cat link/file')
+    self.assertIn('input ' + os.getcwd() + '/target/file', trace)
+
+  @with_testdir()
+  def test_read_file_through_absolute_symlinked_folder(self):
+    os.mkdir('target')
+    os.symlink(os.getcwd() + '/target', 'link')
+    write_file('target/file', '')
+    trace = trace_cmd('cat link/file')
+    self.assertIn('input ' + os.getcwd() + '/target/file', trace)
+
+  @with_testdir()
   def test_copy_file(self):
     write_file('file', '')
     trace = trace_cmd("cp file new_file")
