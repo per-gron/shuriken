@@ -132,49 +132,6 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
         auto dependency_idx = it->second;
         dependencies.push_back(dependency_idx);
         roots[dependency_idx] = false;
-
-        if (raw.generator != steps[dependency_idx].generator) {
-          // Disallow "normal" non-generator build steps to depend on generator
-          // build steps. Two reasons:
-          //
-          // 1) Because generator build steps have weaker correctness guarantees
-          // due to their racy mtime cleanliness check, these weaker correctness
-          // guarantees could spread to normal build steps too, which can have
-          // bad consequences especially when caching things.
-          //
-          // 2) Because generator build steps are not logged in the invocation
-          // log, the build process can't get the file ids of the outputs of
-          // generator build steps like it can for others. The file ids are used
-          // after invoking a build step to compute the ignored_dependencies and
-          // additional_dependencies fields in the invocation log. If the map
-          // of file ids is incomplete, the ignored/additional dependencies
-          // calculation does not work.
-          //
-          // However, since ignored/additional dependencies only needs to be
-          // computed for steps that are logged to the invocation log (that is:
-          // not generator build steps), it does not matter if the file ids of
-          // generator step outputs are not present if non generator build steps
-          // can't depend on them.
-          //
-          // Also disallow generator build steps to depend on generator build
-          // steps. Reason:
-          //
-          // From a correctness perspective, there is not currently a reason to
-          // disallow generator steps to depend on normal steps, but I'm still
-          // disallowing it, for consistency reasons, and because it allows for
-          // greater flexibility in the future: It is possible that generator
-          // step handling will need to change for one reason or another, and
-          // keeping generator vs non-generator steps as separate islands just
-          // makes it a lot easier to reason about what's going on when changing
-          // build semantics.
-          if (raw.generator) {
-            *err =
-                "Generator build steps must not depend on normal build steps";
-          } else {
-            *err =
-                "Normal build steps must not depend on generator build steps";
-          }
-        }
       }
     }
   };
@@ -384,6 +341,135 @@ std::string getDependencyCycle(
   return cycle;
 }
 
+/**
+ * For each of the steps in the provided StepsView, this function returns the
+ * index of a (possibly transitive) dependency for which the predicate returns
+ * true.
+ */
+template <typename Predicate>
+Optional<StepIndex> searchStepDependenciesHelper(
+    StepsView steps,
+    const Predicate &predicate,
+    StepIndex idx,
+    std::vector<bool> &already_visited,
+    std::vector<Optional<StepIndex>> &result) {
+  if (already_visited[idx]) {
+    // The step has already been processed. Avoid unnecessary duplicate
+    // computation for when the build graph forms a non-tree DAG and just quit.
+    //
+    // It is legal to take what's in the result array, because we will either be
+    // taking the result of a step that has been fully computed, or we are in a
+    // cycle and will get nothing. But in the case of a cycle the
+    // searchStepDependencies function as a whole will be able to find a result
+    // if there is one anyway.
+    return result[idx];
+  }
+  already_visited[idx] = true;
+
+  const auto step = steps[idx];
+  if (predicate(step)) {
+    return result[idx] = Optional<StepIndex>(idx);
+  }
+  for (const auto dependency_idx : step.dependencies()) {
+    if (const auto result_index = searchStepDependenciesHelper(
+            steps, predicate, dependency_idx, already_visited, result)) {
+      return result[idx] = result_index;
+    }
+  }
+  return Optional<StepIndex>();
+}
+
+/**
+ * For each of the steps in the provided StepsView, this function returns the
+ * index of a (possibly transitive) dependency for which the predicate returns
+ * true.
+ */
+template <typename Predicate>
+std::vector<Optional<StepIndex>> searchStepDependencies(
+    StepsView steps,
+    const Predicate &predicate) {
+  std::vector<bool> already_visited(steps.size());
+  std::vector<Optional<StepIndex>> result(steps.size());
+
+  for (StepIndex idx = 0; idx < steps.size(); idx++) {
+    searchStepDependenciesHelper(
+        steps,
+        predicate,
+        idx,
+        already_visited,
+        result);
+  }
+
+  return result;
+}
+
+/**
+ * Verify that there are no disallowed dependencies between generator build
+ * steps and non-generator build steps. If there is an erroneous dependency,
+ * return a non-empty error string.
+ *
+ * "normal" non-generator build steps are not allowed to depend on generator
+ * build steps. Two reasons:
+ *
+ * 1) Because generator build steps have weaker correctness guarantees due
+ * to their racy mtime cleanliness check, these weaker correctness
+ * guarantees could spread to normal build steps too, which can have bad
+ * consequences especially when caching things.
+ *
+ * 2) Because generator build steps are not logged in the invocation log,
+ * the build process can't get the file ids of the outputs of generator
+ * build steps like it can for others. The file ids are used after invoking
+ * a build step to compute the ignored_dependencies and
+ * additional_dependencies fields in the invocation log. If the map of file
+ * ids is incomplete, the ignored/additional dependencies calculation does
+ * not work.
+ *
+ * However, since ignored/additional dependencies only needs to be computed
+ * for steps that are logged to the invocation log (that is: not generator
+ * build steps), it does not matter if the file ids of generator step
+ * outputs are not present if non generator build steps can't depend on
+ * them.
+ *
+ * Also, generator build steps are not allowed to depend on non-generator build
+ * steps. Reason:
+ *
+ * From a correctness perspective, there is not currently a reason to
+ * disallow generator steps to depend on normal steps, but I'm still
+ * disallowing it, for consistency reasons, and because it allows for
+ * greater flexibility in the future: It is possible that generator step
+ * handling will need to change for one reason or another, and keeping
+ * generator vs non-generator steps as separate islands just makes it a lot
+ * easier to reason about what's going on when changing build semantics.
+ */
+std::string getBadGeneratorDependency(StepsView steps) {
+  std::vector<bool> already_visited(steps.size());
+  auto generator_dependency = searchStepDependencies(steps, [](Step step) {
+    return !step.phony() && step.generator();
+  });
+  auto non_generator_dependency = searchStepDependencies(steps, [](Step step) {
+    return !step.phony() && !step.generator();
+  });
+
+  for (StepIndex idx = 0; idx < steps.size(); idx++) {
+    if (steps[idx].phony()) {
+      // Phony steps are allowed to depend on anything.
+      continue;
+    }
+    const bool generator = steps[idx].generator();
+    auto illegal_dependency_index = (generator ?
+        non_generator_dependency : generator_dependency)[idx];
+    if (illegal_dependency_index) {
+      if (generator) {
+        return "Generator build steps must not depend on normal build steps";
+      } else {
+        return "Normal build steps must not depend on generator build steps";
+      }
+    }
+  }
+
+  return "";
+}
+
 StepIndex getManifestStep(
     const detail::PathToStepMap &output_path_map,
     Path manifest_path) {
@@ -548,7 +634,7 @@ bool CompiledManifest::compile(
       output_path_map,
       manifest.steps);
   if (!cycle.empty()) {
-    *err = "Dependency cycle: "+ cycle;
+    *err = "Dependency cycle: " + cycle;
   }
 
   ShkManifest::ManifestBuilder manifest_builder(builder);
@@ -563,6 +649,15 @@ bool CompiledManifest::compile(
       getManifestStep(output_path_map, manifest_path));
   manifest_builder.add_manifest_files(manifest_files_vector);
   builder.Finish(manifest_builder.Finish());
+
+  const auto compiled_manifest = CompiledManifest(*ShkManifest::GetManifest(
+      builder.GetBufferPointer()));
+  auto bad_generator_dependency =
+      getBadGeneratorDependency(compiled_manifest.steps());
+  if (!bad_generator_dependency.empty()) {
+    *err = bad_generator_dependency;
+    return false;
+  }
 
   return err->empty();
 }

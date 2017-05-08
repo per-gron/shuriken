@@ -405,36 +405,113 @@ TEST_CASE("CompiledManifest") {
           std::vector<StepIndex>{ 0 });
     }
 
-    SECTION("dependency from non-generator to generator step") {
-      const RawStep *steps[] = {
-          &single_input, &single_implicit_input, &single_dependency };
-      for (const auto *step : steps) {
+    SECTION("non-generator with generator build steps") {
+      SECTION("dependency from non-generator to generator step") {
+        single_output.command = "not_phony";
         single_output.generator = true;
 
-        RawManifest manifest;
-        manifest.steps = { single_output, *step };
+        const RawStep *steps[] = {
+            &single_input, &single_implicit_input, &single_dependency };
+        for (const auto *step : steps) {
+          auto step_copy = *step;
+          step_copy.command = "not_phony";
 
-        auto error = get_manifest_compile_error(manifest);
-        CHECK(
-            error ==
-            "Normal build steps must not depend on generator build steps");
+          RawManifest manifest;
+          manifest.steps = { single_output, step_copy };
+
+          auto error = get_manifest_compile_error(manifest);
+          CHECK(
+              error ==
+              "Normal build steps must not depend on generator build steps");
+        }
       }
-    }
 
-    SECTION("dependency from generator to non-generator step") {
-      const RawStep *steps[] = {
-          &single_input, &single_implicit_input, &single_dependency };
-      for (const auto *step : steps) {
-        auto step_copy = *step;
-        step_copy.generator = true;
+      SECTION("dependency from generator to non-generator step") {
+        single_output.command = "not_phony";
+
+        const RawStep *steps[] = {
+            &single_input, &single_implicit_input, &single_dependency };
+        for (const auto *step : steps) {
+          auto step_copy = *step;
+          step_copy.command = "not_phony";
+          step_copy.generator = true;
+
+          RawManifest manifest;
+          manifest.steps = { single_output, step_copy };
+
+          auto error = get_manifest_compile_error(manifest);
+          CHECK(
+              error ==
+              "Generator build steps must not depend on normal build steps");
+        }
+      }
+
+      SECTION("dependency from generator to phony step") {
+        single_input.command = "not_phony";
+        single_input.generator = true;
+
+        single_output.command = "";  // phony step
 
         RawManifest manifest;
-        manifest.steps = { single_output, step_copy };
+        manifest.steps = { single_output, single_input };
 
-        auto error = get_manifest_compile_error(manifest);
+        CHECK(get_manifest_compile_error(manifest) == "");
+      }
+
+      SECTION("dependency from phony to generator step") {
+        single_output.command = "not_phony";
+        single_output.generator = true;
+
+        single_input.command = "";  // phony step
+
+        RawManifest manifest;
+        manifest.steps = { single_output, single_input };
+
+        CHECK(get_manifest_compile_error(manifest) == "");
+      }
+
+      SECTION("dependency from generator to non-generator step via phony") {
+        RawStep generator;
+        generator.generator = true;
+        generator.command = "not_phony";
+        generator.inputs = { paths.get("b") };
+
+        RawStep phony;
+        phony.outputs = { paths.get("b") };
+        phony.inputs = { paths.get("a") };
+
+        RawStep non_generator;
+        non_generator.command = "non_phony";
+        non_generator.outputs = { paths.get("a") };
+
+        RawManifest manifest;
+        manifest.steps = { generator, phony, non_generator };
+
         CHECK(
-            error ==
+            get_manifest_compile_error(manifest) ==
             "Generator build steps must not depend on normal build steps");
+      }
+
+      SECTION("dependency from non-generator to generator step via phony") {
+        RawStep non_generator;
+        non_generator.command = "not_phony";
+        non_generator.inputs = { paths.get("b") };
+
+        RawStep phony;
+        phony.outputs = { paths.get("b") };
+        phony.inputs = { paths.get("a") };
+
+        RawStep generator;
+        generator.generator = true;
+        generator.command = "non_phony";
+        generator.outputs = { paths.get("a") };
+
+        RawManifest manifest;
+        manifest.steps = { generator, phony, non_generator };
+
+        CHECK(
+            get_manifest_compile_error(manifest) ==
+            "Normal build steps must not depend on generator build steps");
       }
     }
 
