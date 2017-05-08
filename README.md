@@ -1,7 +1,7 @@
 # Shuriken
 
 Shuriken is a mostly Ninja compatible build system with a focus on correctness
-over extreme smallness.
+and reducing average build times over doing as little as possible.
 
 Shuriken currently only works on Mac OS X.
 
