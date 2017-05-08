@@ -27,7 +27,7 @@ PathToStepMap computeOutputPathMap(
     const auto &step = steps[i];
     for (const auto &output : step.outputs) {
       const auto ins = result.emplace(output, i);
-      if (!ins.second) {
+      if (!ins.second && ins.first->second != i) {
         throw BuildError("Multiple rules generate " + output.original());
       }
     }

@@ -2171,6 +2171,16 @@ TEST_CASE("Build") {
         dummy_runner.checkCommand(fs, cmd);
       }
 
+      SECTION("single successful step with duplicate outputs in manifest") {
+        const auto cmd = dummy_runner.constructCommand({}, {"out"});
+        const auto manifest =
+            "rule cmd\n"
+            "  command = " + cmd + "\n"
+            "build out out: cmd\n";
+        CHECK(build_manifest(manifest) == BuildResult::SUCCESS);
+        dummy_runner.checkCommand(fs, cmd);
+      }
+
       SECTION("two steps overwriting each other's outputs") {
         const auto cmd1 = dummy_runner.constructCommand({}, {"out"});
         const auto cmd2 = dummy_runner.constructCommand({}, {"out"});

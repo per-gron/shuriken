@@ -149,9 +149,18 @@ TEST_CASE("CompiledManifest") {
       CHECK(map[paths.get("d")] == 2);
     }
 
-    SECTION("duplicate outputs") {
+    SECTION("duplicate outputs from different steps") {
       CHECK_THROWS_AS(
           computeOutputPathMap({ single_output, single_output }), BuildError);
+    }
+
+    SECTION("duplicate outputs from a single step") {
+      RawStep duplicate_outputs;
+      duplicate_outputs.outputs = { paths.get("c"), paths.get("c") };
+
+      auto map = computeOutputPathMap({ duplicate_outputs });
+      CHECK(map.size() == 1);
+      CHECK(map[paths.get("c")] == 0);
     }
   }
 
@@ -289,6 +298,20 @@ TEST_CASE("CompiledManifest") {
       SECTION("outputs") {
         RawManifest manifest;
         manifest.steps = { single_output };
+
+        auto compiled_manifest = compile_manifest(manifest);
+
+        CHECK(
+            toVector(compiled_manifest.outputs()) ==
+            PathToStepList({ { "a", 0 } }));
+      }
+
+      SECTION("duplicate outputs in the same step") {
+        RawStep duplicate_outputs;
+        duplicate_outputs.outputs = { paths.get("a"), paths.get("a") };
+
+        RawManifest manifest;
+        manifest.steps = { duplicate_outputs };
 
         auto compiled_manifest = compile_manifest(manifest);
 
