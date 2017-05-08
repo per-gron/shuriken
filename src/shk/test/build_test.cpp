@@ -1687,6 +1687,10 @@ TEST_CASE("Build") {
     }
 
     SECTION("all clean") {
+      auto clean = Optional<MatchesResult>(MatchesResult());
+      clean->clean = true;
+      auto memo = FingerprintMatchesMemo{ clean, clean };
+
       manifest.steps = { single_output, root };
       // Add empty entry to mark clean
       invocations.entries[single_output.hash()];
@@ -1696,7 +1700,6 @@ TEST_CASE("Build") {
           single_output.outputs[0].original(),
           empty_fingerprint);
       auto build = constructBuild(paths, manifest);
-      auto memo = FingerprintMatchesMemo(manifest.steps.size());
       CHECK(build.ready_steps.size() == 1);
       CHECK(build.discardCleanSteps(
           invocations,
