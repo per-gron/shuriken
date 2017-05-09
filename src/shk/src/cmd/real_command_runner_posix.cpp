@@ -34,6 +34,8 @@
 #include "nullterminated_string.h"
 #include "util.h"
 
+extern char **environ;
+
 namespace shk {
 
 enum class UseConsole {
@@ -54,7 +56,10 @@ class Subprocess {
   bool done() const;
 
  private:
-  Subprocess(const CommandRunner::Callback &callback, UseConsole use_console);
+  Subprocess(
+      const CommandRunner::Callback &callback,
+      UseConsole use_console,
+      bool generator);
 
   void finish(bool invoke_callback);
   void start(class SubprocessSet *set, nt_string_view command);
@@ -66,6 +71,7 @@ class Subprocess {
   int _fd = -1;
   pid_t _pid = -1;
   UseConsole _use_console;
+  bool _generator = false;
 
   friend class SubprocessSet;
 };
@@ -114,9 +120,11 @@ class SubprocessSet : public CommandRunner {
 
 Subprocess::Subprocess(
     const CommandRunner::Callback &callback,
-    UseConsole use_console)
+    UseConsole use_console,
+    bool generator)
     : _callback(callback),
-      _use_console(use_console) {}
+      _use_console(use_console),
+      _generator(generator) {}
 
 Subprocess::~Subprocess() {
   if (_fd >= 0) {
@@ -208,6 +216,17 @@ void Subprocess::start(SubprocessSet *set, nt_string_view command) {
       "__CF_USER_TEXT_ENCODING=0x1F5:0x0:0x0",
       "LC_CTYPE=UTF-8",
       nullptr };
+  // When a generator is invoked for the first time, it's not invoked with
+  // Shuriken, so it won't be shielded from environment variables. To be
+  // consistent with what is required from a generator command, allow it to see
+  // the environment.
+  //
+  // From a safety/correctness perspective this is fine, because generator rules
+  // are not cached; if they generate different manifests on different machines
+  // that's perfectly fine.
+  char **child_environ = _generator ?
+      environ :
+      const_cast<char **>(const_child_environ);
 
   if (posix_spawn(
           &_pid,
@@ -215,7 +234,7 @@ void Subprocess::start(SubprocessSet *set, nt_string_view command) {
           &action,
           &attr,
           const_cast<char**>(spawned_args),
-          const_cast<char **>(const_child_environ)) != 0) {
+          child_environ) != 0) {
     fatal("posix_spawn: %s", strerror(errno));
   }
 
@@ -360,7 +379,7 @@ void SubprocessSet::invoke(
   auto use_console =
       isConsolePool(step.poolName()) ? UseConsole::YES : UseConsole::NO;
   auto subprocess = std::unique_ptr<Subprocess>(
-      new Subprocess(callback, use_console));
+      new Subprocess(callback, use_console, step.generator()));
   subprocess->start(this, command);
   _running.push_back(std::move(subprocess));
 }

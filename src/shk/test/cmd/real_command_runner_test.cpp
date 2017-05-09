@@ -39,12 +39,16 @@ const char* kSimpleCommand = "ls /";
 
 CommandRunner::Result runCommand(
     const std::string &command,
-    const std::string &pool_name = "a_pool") {
+    const std::string &pool_name = "a_pool",
+    bool generator = false) {
   CommandRunner::Result result;
   const auto runner = makeRealCommandRunner();
 
   flatbuffers::FlatBufferBuilder builder;
-  auto step = StepBuilder().setPoolName(pool_name).build(builder);
+  auto step = StepBuilder()
+      .setPoolName(pool_name)
+      .setGenerator(generator)
+      .build(builder);
 
   bool did_finish = false;
   runner->invoke(
@@ -226,6 +230,13 @@ TEST_CASE("SubprocessSet") {
     const auto result = runCommand("echo $SHK_TEST_ENV_VAR");
     CHECK(result.exit_status == ExitStatus::SUCCESS);
     CHECK(result.output == "\n");
+  }
+
+  SECTION("DontIsolateEnvironmentForGeneratorSteps") {
+    putenv(const_cast<char *>("SHK_TEST_ENV_VAR=secret"));
+    const auto result = runCommand("echo $SHK_TEST_ENV_VAR", "pool", true);
+    CHECK(result.exit_status == ExitStatus::SUCCESS);
+    CHECK(result.output == "secret\n");
   }
 
   SECTION("SetWithMulti") {
