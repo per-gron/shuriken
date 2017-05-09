@@ -32,7 +32,7 @@ namespace shk {
 /**
  * Log a fatal message and exit.
  */
-NORETURN void fatal(const char *msg, ...);
+NO_RETURN void fatal(const char *msg, ...);
 
 /**
  * Log a warning message.
@@ -101,7 +101,7 @@ std::string getLastErrorString();
 /**
  * Calls fatal() with a function name and getLastErrorString.
  */
-NORETURN void win32Fatal(const char *function);
+NO_RETURN void win32Fatal(const char *function);
 #endif
 
 }  // namespace shk

@@ -15,9 +15,9 @@
 #pragma once
 
 #ifdef _MSC_VER
-#define NORETURN __declspec(noreturn)
+#define NO_RETURN __declspec(noreturn)
 #else
-#define NORETURN __attribute__((noreturn))
+#define NO_RETURN __attribute__((noreturn))
 #endif
 
 #if defined(__GNUC__) && (__GNUC__ >= 4)

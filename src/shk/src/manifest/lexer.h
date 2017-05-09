@@ -125,7 +125,7 @@ struct Lexer {
   /**
    * Construct and throw an error message with context.
    */
-  NORETURN void throwError(const std::string& message) const {
+  NO_RETURN void throwError(const std::string& message) const {
     throw ParseError(error(message));
   }
 
