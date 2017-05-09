@@ -16,7 +16,6 @@
 
 #include "fs/persistent_file_system.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/dir.h>
@@ -26,6 +25,7 @@
 
 #include <blake2.h>
 
+#include <util/assert.h>
 #include <util/raii_helper.h>
 
 #include "nullterminated_string.h"
@@ -79,7 +79,7 @@ class PersistentFileSystem : public FileSystem {
       } else if (ferror(_f.get()) != 0) {
         return std::make_pair(0, IoError("Failed to read from stream", 0));
       } else {
-        assert(result == nitems);
+        SHK_ASSERT(result == nitems);
         return std::make_pair(result, IoError::success());
       }
     }

@@ -14,11 +14,11 @@
 
 #include "build.h"
 
-#include <assert.h>
 #include <atomic>
 #include <errno.h>
 #include <thread>
 
+#include <util/assert.h>
 #include <util/path_operations.h>
 
 #include "fs/fingerprint.h"
@@ -269,7 +269,7 @@ void Build::markStepNodeAsDone(
       }
     }
 
-    assert(dependent.dependencies);
+    SHK_ASSERT(dependent.dependencies);
     dependent.dependencies--;
     if (dependent.dependencies == 0) {
       ready_steps.push_back(dependent_idx);
@@ -549,7 +549,7 @@ bool nonGeneratorStepIsClean(
       }
 
       const auto match = fingerprint_matches_memo[fingerprint_idx];
-      assert(match);
+      SHK_ASSERT(match);
       if (!match->clean) {
         clean = false;
       }
@@ -652,7 +652,7 @@ CleanSteps computeCleanSteps(
     StepsView steps,
     const Build &build,
     const FingerprintMatchesMemo &fingerprint_matches_memo) throw(IoError) {
-  assert(steps.size() == build.step_nodes.size());
+  SHK_ASSERT(steps.size() == build.step_nodes.size());
 
   CleanSteps result(build.step_nodes.size(), false);
 
@@ -1019,7 +1019,7 @@ void enqueueBuildCommands(BuildCommandParameters &params) throw(IoError) {
 int countStepsToBuild(StepsView steps, const Build &build) {
   int step_count = 0;
 
-  assert(steps.size() == build.step_nodes.size());
+  SHK_ASSERT(steps.size() == build.step_nodes.size());
   for (size_t i = 0; i < steps.size(); i++) {
     const auto &step_node = build.step_nodes[i];
     const auto step = steps[i];

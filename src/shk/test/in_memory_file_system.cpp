@@ -14,11 +14,11 @@
 
 #include "in_memory_file_system.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <sys/stat.h>
 
 #include <blake2.h>
+#include <util/assert.h>
 #include <util/path_operations.h>
 
 #include "fs/path.h"
@@ -138,7 +138,7 @@ USE_RESULT IoError InMemoryFileSystem::symlink(
     return error;
   }
   const auto l = lookup(source);
-  assert(l.entry_type == EntryType::FILE);
+  SHK_ASSERT(l.entry_type == EntryType::FILE);
 
   const auto file = l.directory->files.find(l.basename)->second;
   file->symlink = true;

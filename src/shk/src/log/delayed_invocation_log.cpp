@@ -14,10 +14,11 @@
 
 #include "log/delayed_invocation_log.h"
 
-#include <assert.h>
 #include <limits>
 #include <stdexcept>
 #include <vector>
+
+#include <util/assert.h>
 
 namespace shk {
 namespace {
@@ -28,7 +29,7 @@ class DelayedInvocationLog : public InvocationLog {
       const Clock &clock, std::unique_ptr<InvocationLog> &&inner_log)
       : _clock(clock),
         _inner_log(std::move(inner_log)) {
-    assert(_inner_log);
+    SHK_ASSERT(_inner_log);
   }
 
   ~DelayedInvocationLog() {
@@ -36,7 +37,7 @@ class DelayedInvocationLog : public InvocationLog {
     // a command was written that second, this won't write all the entries and the
     // assert will trigger. For now, I'm going to ignore that.
     writeDelayedEntries(std::numeric_limits<time_t>::max());
-    assert(_delayed_entries.empty());
+    SHK_ASSERT(_delayed_entries.empty());
   }
 
   void createdDirectory(nt_string_view path) throw(IoError) override {

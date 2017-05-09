@@ -13,8 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <assert.h>
-
 #include <util/assert.h>
 
 #include "fs/path.h"
@@ -37,7 +35,7 @@ void BindingEnv::addBinding(std::string &&key, std::string &&val) {
 }
 
 void BindingEnv::addRule(Rule &&rule) {
-  assert(lookupRuleCurrentScope(rule.name) == NULL);
+  SHK_ASSERT(lookupRuleCurrentScope(rule.name) == NULL);
   _rules.emplace(std::string(rule.name), std::move(rule));
 }
 

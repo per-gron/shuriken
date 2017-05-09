@@ -19,7 +19,6 @@
 #include <vector>
 #include <queue>
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -288,7 +287,7 @@ ExitStatus computeExitStatus(int status) {
 }  // anonymous namespace
 
 void Subprocess::finish(bool invoke_callback) {
-  assert(_pid != -1);
+  SHK_ASSERT(_pid != -1);
   int status;
   while (waitpid(_pid, &status, 0) < 0) {
     if (errno != EINTR) {
@@ -434,7 +433,7 @@ bool SubprocessSet::runCommands() {
     if (fd < 0) {
       continue;
     }
-    assert(fd == fds[cur_nfd].fd);
+    SHK_ASSERT(fd == fds[cur_nfd].fd);
     if (fds[cur_nfd++].revents) {
       (*i)->onPipeReady();
       if ((*i)->done()) {

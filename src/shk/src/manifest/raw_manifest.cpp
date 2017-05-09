@@ -15,9 +15,10 @@
 
 #include "raw_manifest.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <util/assert.h>
 
 #include "manifest/eval_env.h"
 #include "manifest/lexer.h"
@@ -87,7 +88,7 @@ struct ManifestParser {
    * fully parsed.
    */
   void postprocessSteps() {
-    assert(_postprocessing_data.size() == _manifest.steps.size());
+    SHK_ASSERT(_postprocessing_data.size() == _manifest.steps.size());
     for (size_t i = 0; i < _postprocessing_data.size(); i++) {
       const BindingEnv *env;
       const Rule *rule;

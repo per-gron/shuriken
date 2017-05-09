@@ -24,7 +24,6 @@
 #include <share.h>
 #endif
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -98,7 +97,7 @@ static bool stringNeedsWin32Escaping(nt_string_view input) {
 }
 
 void getShellEscapedString(nt_string_view input, std::string *result) {
-  assert(result);
+  SHK_ASSERT(result);
 
   if (!stringNeedsShellEscaping(input)) {
     result->append(input.data(), input.size());
@@ -124,7 +123,8 @@ void getShellEscapedString(nt_string_view input, std::string *result) {
 
 
 void getWin32EscapedString(nt_string_view input, std::string *result) {
-  assert(result);
+  SHK_ASSERT(result);
+
   if (!stringNeedsWin32Escaping(input)) {
     result->append(input.data(), input.size());
     return;
