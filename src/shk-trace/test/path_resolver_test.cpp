@@ -107,6 +107,56 @@ TEST_CASE("PathResolver") {
     }
   }
 
+  SECTION("EtcVarTmpHack") {
+    std::vector<std::string> names{ "etc", "var", "tmp" };
+
+    SECTION("FolderItselfNoSlash") {
+      for (const auto &name : names) {
+        pr.fileEvent(
+            kThreadId,
+            EventType::READ,
+            AT_FDCWD,
+            "private/" + name);
+        CHECK(delegate.popFileEvent().path == "/initial_path/private/" + name);
+      }
+    }
+
+    SECTION("FolderItself") {
+      for (const auto &name : names) {
+        pr.fileEvent(
+            kThreadId,
+            EventType::READ,
+            AT_FDCWD,
+            "private/" + name + "/");
+        CHECK(delegate.popFileEvent().path == "/private/" + name);
+      }
+    }
+
+    SECTION("FileInFolder") {
+      for (const auto &name : names) {
+        pr.fileEvent(
+            kThreadId,
+            EventType::READ,
+            AT_FDCWD,
+            "private/" + name + "/hey");
+        CHECK(delegate.popFileEvent().path == "/private/" + name + "/hey");
+      }
+    }
+
+    SECTION("NoMatch") {
+      for (const auto &name : names) {
+        pr.fileEvent(
+            kThreadId,
+            EventType::READ,
+            AT_FDCWD,
+            "private/" + name + "_blah");
+        CHECK(
+            delegate.popFileEvent().path ==
+            "/initial_path/private/" + name + "_blah");
+      }
+    }
+  }
+
   SECTION("PathNormalization") {
     SECTION("FileEvent") {
       pr.fileEvent(

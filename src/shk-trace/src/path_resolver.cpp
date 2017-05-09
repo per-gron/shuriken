@@ -134,6 +134,22 @@ std::string PathResolver::resolve(
 
 std::string PathResolver::resolveWithoutNormalization(
     uintptr_t thread_id, int at_fd, std::string &&path) {
+  // Don't match unless there is a trailing ';' this helps this hack trigger in
+  // fewer cases, for example if the relative path is "private/etc_x". It is
+  // usually not interesting to see that folders are read anyway.
+  static const std::string kEtc = "private/etc/";
+  static const std::string kVar = "private/var/";
+  static const std::string kTmp = "private/tmp/";
+  if (path.compare(0, kEtc.size(), kEtc) == 0 ||
+      path.compare(0, kEtc.size(), kVar) == 0 ||
+      path.compare(0, kEtc.size(), kTmp) == 0) {
+    // Because of what seems like a bug in Kdebug, when a path lookup involves
+    // a symlink to a relative path in root (which /etc, /var and /tmp are), it
+    // fails to put the / in front that indicates it is an absolute path after
+    // the symlink resolution. This is a workaround for this.
+    path.insert(path.begin(), '/');
+  }
+
   if (path.size() && path[0] == '/') {
     // Path is absolute
     return path;

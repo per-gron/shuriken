@@ -129,6 +129,21 @@ class IntegrationTest(unittest.TestCase):
     self.assertIn('input /bin/echo', trace)
 
   @with_testdir()
+  def test_read_file_in_etc(self):
+    trace = trace_cmd("ls -d /etc/hosts")
+    self.assertIn('input /private/etc/hosts', trace)
+
+  @with_testdir()
+  def test_read_file_in_var(self):
+    trace = trace_cmd("ls -d /var/spool")
+    self.assertIn('input /private/var/spool', trace)
+
+  @with_testdir()
+  def test_read_file_in_tmp(self):
+    trace = trace_cmd("ls -d /tmp/logs")
+    self.assertIn('input /private/tmp/logs', trace)
+
+  @with_testdir()
   def test_read_file_through_symlinked_folder(self):
     os.mkdir('target')
     os.symlink('target', 'link')

@@ -4,6 +4,10 @@ Known Limitations:
   using it.
 * because of limitations in kdebug, shk-trace cannot properly trace paths that
   involve relative symlinks that reside in root. This breaks handling of /etc
+* because of limitations in kdebug that shk-trace tries to work around (symlinks
+  to relative paths in the root are not handled correctly), shk-trace cannot
+  properly resolve relative paths that begin with "private/etc/", "private/var/"
+  or "private/tmp/"
 * shk-trace can't trace shk-trace.
 * cannot accurately trace paths that end with a > character.
 * tracing will do the wrong thing if the traced program moves non-empty
