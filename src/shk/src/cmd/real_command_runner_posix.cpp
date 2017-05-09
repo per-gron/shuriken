@@ -30,6 +30,8 @@
 #include <string.h>
 #include <sys/wait.h>
 
+#include <util/assert.h>
+
 #include "manifest/step.h"
 #include "nullterminated_string.h"
 #include "util.h"

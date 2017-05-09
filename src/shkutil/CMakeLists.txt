@@ -4,6 +4,7 @@ add_custom_command(
   DEPENDS src/shktrace.fbs flatc)
 
 add_library(shkutil
+  include/util/assert.h
   include/util/file_descriptor.h
   include/util/intrinsics.h
   include/util/path_error.h
@@ -11,6 +12,7 @@ add_library(shkutil
   include/util/raii_helper.h
   include/util/shktrace.h
   include/util/string_view.h
+  src/assert.cpp
   src/file_descriptor.cpp
   src/path_operations.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/include/util/shktrace_generated.h)
@@ -20,6 +22,7 @@ target_link_libraries(shkutil flatbuffers)
 set_property(TARGET shkutil PROPERTY CXX_STANDARD 11)
 
 add_executable(shkutil_test
+  test/assert_test.cpp
   test/main.cpp
   test/path_operations_test.cpp
   test/raii_helper_test.cpp

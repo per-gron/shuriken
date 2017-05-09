@@ -50,45 +50,11 @@
 #include <sys/sysinfo.h>
 #endif
 
+#include <util/assert.h>
+
 #include "edit_distance.h"
 
 namespace shk {
-
-void fatal(const char *msg, ...) {
-  va_list ap;
-  fprintf(stderr, "shk: fatal: ");
-  va_start(ap, msg);
-  vfprintf(stderr, msg, ap);
-  va_end(ap);
-  fprintf(stderr, "\n");
-#ifdef _WIN32
-  // On Windows, some tools may inject extra threads.
-  // exit() may block on locks held by those threads, so forcibly exit.
-  fflush(stderr);
-  fflush(stdout);
-  ExitProcess(1);
-#else
-  exit(1);
-#endif
-}
-
-void warning(const char *msg, ...) {
-  va_list ap;
-  fprintf(stderr, "shk: warning: ");
-  va_start(ap, msg);
-  vfprintf(stderr, msg, ap);
-  va_end(ap);
-  fprintf(stderr, "\n");
-}
-
-void error(const char *msg, ...) {
-  va_list ap;
-  fprintf(stderr, "shk: error: ");
-  va_start(ap, msg);
-  vfprintf(stderr, msg, ap);
-  va_end(ap);
-  fprintf(stderr, "\n");
-}
 
 static bool isKnownShellSafeCharacter(char ch) {
   if ('A' <= ch && ch <= 'Z') return true;

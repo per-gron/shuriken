@@ -15,6 +15,8 @@
 
 #include <assert.h>
 
+#include <util/assert.h>
+
 #include "fs/path.h"
 #include "manifest/eval_env.h"
 #include "util.h"

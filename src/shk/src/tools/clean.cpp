@@ -17,6 +17,8 @@
 
 #include <errno.h>
 
+#include <util/assert.h>
+
 #include "../build.h"
 #include "../cmd/dry_run_command_runner.h"
 #include "../fs/cleaning_file_system.h"

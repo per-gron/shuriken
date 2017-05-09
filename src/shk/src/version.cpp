@@ -16,7 +16,7 @@
 
 #include <stdlib.h>
 
-#include "util.h"
+#include <util/assert.h>
 
 namespace shk {
 

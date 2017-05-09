@@ -32,6 +32,7 @@
 #include <unistd.h>
 #endif
 
+#include <util/assert.h>
 #include <util/path_operations.h>
 
 #include "build.h"

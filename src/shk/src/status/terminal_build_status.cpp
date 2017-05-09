@@ -15,6 +15,8 @@
 
 #include "terminal_build_status.h"
 
+#include <util/assert.h>
+
 #include "manifest/step.h"
 #include "status/line_printer.h"
 #include "util.h"

@@ -17,6 +17,8 @@
 
 #include <errno.h>
 
+#include <util/assert.h>
+
 #include "optional.h"
 #include "util.h"
 

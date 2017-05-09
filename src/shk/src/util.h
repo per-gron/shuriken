@@ -30,21 +30,6 @@
 namespace shk {
 
 /**
- * Log a fatal message and exit.
- */
-NO_RETURN void fatal(const char *msg, ...);
-
-/**
- * Log a warning message.
- */
-void warning(const char *msg, ...);
-
-/**
- * Log an error message.
- */
-void error(const char *msg, ...);
-
-/**
  * Appends |input| to |*result|, escaping according to the whims of either
  * Bash, or Win32's CommandLineToArgvW().
  * Appends the string directly to |result| without modification if we can

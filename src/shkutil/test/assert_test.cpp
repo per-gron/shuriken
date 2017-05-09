@@ -12,27 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "recompact.h"
+#include <catch.hpp>
+
+#include <stdexcept>
 
 #include <util/assert.h>
 
-#include "log/persistent_invocation_log.h"
-
 namespace shk {
 
-int toolRecompact(int argc, char *argv[], const ToolParams &params) {
-  try {
-    recompactPersistentInvocationLog(
-        params.file_system,
-        params.clock,
-        params.invocations,
-        params.invocation_log_path);
-  } catch (const IoError &err) {
-    error("failed recompaction: %s", err.what());
-    return 1;
-  }
+TEST_CASE("Assert") {
+  SHK_ASSERT(true);
 
-  return 0;
+  const auto failed_assert = [] {
+    SHK_ASSERT(false);
+  };
+  CHECK_THROWS_AS(failed_assert(), std::logic_error);
 }
 
 }  // namespace shk
