@@ -5,6 +5,7 @@ add_custom_command(
 
 add_library(shkutil
   include/util/file_descriptor.h
+  include/util/intrinsics.h
   include/util/path_error.h
   include/util/path_operations.h
   include/util/raii_helper.h

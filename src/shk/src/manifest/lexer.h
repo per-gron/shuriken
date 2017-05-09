@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <util/intrinsics.h>
 #include <util/string_view.h>
 
 #include "parse_error.h"
