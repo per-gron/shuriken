@@ -361,6 +361,9 @@ TEST_CASE("CompiledManifest") {
       CHECK(
           toVector(compiled_manifest.steps()[0].dependencies()) ==
           std::vector<StepIndex>{});
+      CHECK(
+          toVector(compiled_manifest.steps()[0].orderOnlyDependencies()) ==
+          std::vector<StepIndex>{});
     }
 
     SECTION("inputs") {
@@ -373,8 +376,14 @@ TEST_CASE("CompiledManifest") {
           toVector(compiled_manifest.steps()[0].dependencies()) ==
           std::vector<StepIndex>{});
       CHECK(
+          toVector(compiled_manifest.steps()[0].orderOnlyDependencies()) ==
+          std::vector<StepIndex>{});
+      CHECK(
           toVector(compiled_manifest.steps()[1].dependencies()) ==
           std::vector<StepIndex>{ 0 });
+      CHECK(
+          toVector(compiled_manifest.steps()[1].orderOnlyDependencies()) ==
+          std::vector<StepIndex>{});
     }
 
     SECTION("implicit inputs") {
@@ -387,8 +396,14 @@ TEST_CASE("CompiledManifest") {
           toVector(compiled_manifest.steps()[0].dependencies()) ==
           std::vector<StepIndex>{});
       CHECK(
+          toVector(compiled_manifest.steps()[0].orderOnlyDependencies()) ==
+          std::vector<StepIndex>{});
+      CHECK(
           toVector(compiled_manifest.steps()[1].dependencies()) ==
           std::vector<StepIndex>{ 0 });
+      CHECK(
+          toVector(compiled_manifest.steps()[1].orderOnlyDependencies()) ==
+          std::vector<StepIndex>{});
     }
 
     SECTION("dependencies") {
@@ -401,7 +416,13 @@ TEST_CASE("CompiledManifest") {
           toVector(compiled_manifest.steps()[0].dependencies()) ==
           std::vector<StepIndex>{});
       CHECK(
+          toVector(compiled_manifest.steps()[0].orderOnlyDependencies()) ==
+          std::vector<StepIndex>{});
+      CHECK(
           toVector(compiled_manifest.steps()[1].dependencies()) ==
+          std::vector<StepIndex>{ 0 });
+      CHECK(
+          toVector(compiled_manifest.steps()[1].orderOnlyDependencies()) ==
           std::vector<StepIndex>{ 0 });
     }
 
@@ -521,9 +542,10 @@ TEST_CASE("CompiledManifest") {
 
     SECTION("sort dependencies") {
       RawStep two_dependencies;
-      two_dependencies.inputs = { paths.get("a"), paths.get("b") };
+      two_dependencies.dependencies = { paths.get("a"), paths.get("b") };
       RawStep two_dependencies_reversed;
-      two_dependencies_reversed.inputs = { paths.get("b"), paths.get("a") };
+      two_dependencies_reversed.dependencies =
+          { paths.get("b"), paths.get("a") };
 
       RawManifest manifest;
       manifest.steps = {
@@ -538,13 +560,25 @@ TEST_CASE("CompiledManifest") {
           toVector(compiled_manifest.steps()[0].dependencies()) ==
           std::vector<StepIndex>{});
       CHECK(
+          toVector(compiled_manifest.steps()[0].orderOnlyDependencies()) ==
+          std::vector<StepIndex>{});
+      CHECK(
           toVector(compiled_manifest.steps()[1].dependencies()) ==
+          std::vector<StepIndex>{});
+      CHECK(
+          toVector(compiled_manifest.steps()[1].orderOnlyDependencies()) ==
           std::vector<StepIndex>{});
       CHECK(
           toVector(compiled_manifest.steps()[2].dependencies()) ==
           std::vector<StepIndex>({ 0, 1 }));
       CHECK(
+          toVector(compiled_manifest.steps()[2].orderOnlyDependencies()) ==
+          std::vector<StepIndex>({ 0, 1 }));
+      CHECK(
           toVector(compiled_manifest.steps()[3].dependencies()) ==
+          std::vector<StepIndex>({ 0, 1 }));
+      CHECK(
+          toVector(compiled_manifest.steps()[3].orderOnlyDependencies()) ==
           std::vector<StepIndex>({ 0, 1 }));
     }
 
@@ -1266,7 +1300,7 @@ TEST_CASE("CompiledManifest") {
           flatbuffers::EndianScalar(
               *reinterpret_cast<const decltype(version) *>(
                   buffer.data()));
-      CHECK(version == 1);
+      CHECK(version == 2);
 
       compiled_bufs.emplace_back(
           readFile(fs, path));

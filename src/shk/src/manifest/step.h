@@ -111,6 +111,17 @@ struct Step {
   }
 
   /**
+   * A list of indices for steps that are order-only dependencies to this step.
+   * This list has a subset dependencies().
+   *
+   * The list issorted in ascending order by step index and contains no
+   * duplicates.
+   */
+  const StepIndicesView orderOnlyDependencies() const {
+    return detail::toStepIndicesView(_step->order_only_dependencies());
+  }
+
+  /**
    * A list of directories that Shuriken should ensure are there prior to
    * invoking the command.
    */

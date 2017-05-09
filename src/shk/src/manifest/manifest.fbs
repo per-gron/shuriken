@@ -42,6 +42,7 @@ struct Hash {
 table Step {
   hash:Hash (required);
   dependencies:[int];
+  order_only_dependencies:[int];
   output_dirs:[string];
   pool_name:string;
   command:string;

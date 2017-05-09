@@ -107,6 +107,15 @@ std::vector<flatbuffers::Offset<
   return result;
 }
 
+template <typename T>
+std::vector<T> sortAndDedup(std::vector<T> &&vector) {
+  std::sort(vector.begin(), vector.end());
+  vector.erase(
+      std::unique(vector.begin(), vector.end()),
+      vector.end());
+  return vector;
+}
+
 template <typename CreateString>
 flatbuffers::Offset<ShkManifest::Step> convertRawStep(
     const detail::PathToStepMap &output_path_map,
@@ -123,29 +132,36 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
     *err = "Generator build steps must not have depfile";
   }
 
-  std::vector<StepIndex> dependencies;
-  const auto process_inputs = [&](
-      const std::vector<Path> &paths) {
+  const auto process_inputs = [&output_path_map, &roots](
+      const std::vector<Path> &paths,
+      std::vector<StepIndex> *dependencies) {
     for (const auto &path : paths) {
       const auto it = output_path_map.find(path);
       if (it != output_path_map.end()) {
         auto dependency_idx = it->second;
-        dependencies.push_back(dependency_idx);
+        dependencies->push_back(dependency_idx);
         roots[dependency_idx] = false;
       }
     }
   };
-  process_inputs(raw.inputs);
-  process_inputs(raw.implicit_inputs);
-  process_inputs(raw.dependencies);
 
-  std::sort(dependencies.begin(), dependencies.end());
-  dependencies.erase(
-      std::unique(dependencies.begin(), dependencies.end()),
-      dependencies.end());
+  std::vector<StepIndex> dependencies;
+  process_inputs(raw.inputs, &dependencies);
+  process_inputs(raw.implicit_inputs, &dependencies);
+  process_inputs(raw.dependencies, &dependencies);
+
+  dependencies = sortAndDedup(std::move(dependencies));
 
   auto deps_vector = builder.CreateVector(
       dependencies.data(), dependencies.size());
+
+  std::vector<StepIndex> order_only_dependencies;
+  process_inputs(raw.dependencies, &order_only_dependencies);
+
+  order_only_dependencies = sortAndDedup(std::move(order_only_dependencies));
+
+  auto order_only_deps_vector = builder.CreateVector(
+      order_only_dependencies.data(), order_only_dependencies.size());
 
   std::unordered_set<std::string> output_dirs_set;
   for (const auto &output : raw.outputs) {
@@ -203,6 +219,7 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
   step_builder.add_hash(
       reinterpret_cast<const ShkManifest::Hash *>(raw.hash().data.data()));
   step_builder.add_dependencies(deps_vector);
+  step_builder.add_order_only_dependencies(order_only_deps_vector);
   step_builder.add_output_dirs(output_dirs_vector);
   step_builder.add_pool_name(pool_name_string);
   step_builder.add_command(command_string);
@@ -700,7 +717,7 @@ Optional<time_t> CompiledManifest::minMtime(
 
 namespace {
 
-constexpr uint64_t kCompiledManifestVersion = 1;
+constexpr uint64_t kCompiledManifestVersion = 2;
 
 std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
     loadPrecompiledManifest(
