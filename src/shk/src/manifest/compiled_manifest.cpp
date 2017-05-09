@@ -132,7 +132,7 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
     *err = "Generator build steps must not have depfile";
   }
 
-  std::vector<flatbuffers::Offset<flatbuffers::String>> direct_inputs;
+  std::vector<const std::string *> direct_inputs;
 
   const auto process_inputs = [&](
       const std::vector<Path> &paths,
@@ -145,7 +145,7 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
         dependencies->push_back(dependency_idx);
         roots[dependency_idx] = false;
       } else if (process_direct_inputs) {
-        direct_inputs.push_back(create_string(path.original()));
+        direct_inputs.push_back(&path.original());
       }
     }
   };
@@ -167,8 +167,24 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
   auto order_only_deps_vector = builder.CreateVector(
       order_only_dependencies.data(), order_only_dependencies.size());
 
+  std::sort(
+      direct_inputs.begin(),
+      direct_inputs.end(),
+      [](const std::string *a, const std::string *b) {
+        return *a < *b;
+      });
+  direct_inputs.erase(
+      // std::unique on the std::string pointers works here because the strings
+      // are interned so pointer equality is the same as value equality.
+      std::unique(direct_inputs.begin(), direct_inputs.end()),
+      direct_inputs.end());
+  std::vector<flatbuffers::Offset<flatbuffers::String>> direct_inputs_strings;
+  direct_inputs_strings.reserve(direct_inputs.size());
+  for (const auto direct_input : direct_inputs) {
+    direct_inputs_strings.push_back(create_string(*direct_input));
+  }
   auto direct_inputs_vector = builder.CreateVector(
-      direct_inputs.data(), direct_inputs.size());
+      direct_inputs_strings.data(), direct_inputs_strings.size());
 
   std::unordered_set<std::string> output_dirs_set;
   for (const auto &output : raw.outputs) {

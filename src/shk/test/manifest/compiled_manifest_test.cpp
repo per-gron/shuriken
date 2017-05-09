@@ -1017,6 +1017,21 @@ TEST_CASE("CompiledManifest") {
         }
       }
 
+      SECTION("sort and deduplicate direct inputs") {
+        RawStep inputs;
+        inputs.inputs = std::vector<Path>{
+            paths.get("b"), paths.get("c"), paths.get("a"), paths.get("c") };
+
+        RawManifest manifest;
+        manifest.steps = { inputs };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(
+            toVector(compiled_manifest.steps()[0].directInputs()) ==
+            std::vector<nt_string_view>({ "a", "b", "c" }));
+      }
+
       SECTION("dependency") {
         RawManifest manifest;
         manifest.steps = { single_dependency };

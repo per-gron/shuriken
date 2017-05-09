@@ -226,7 +226,8 @@ struct Step {
    *
    * This is used for generating the primary cache key for this build step.
    *
-   * This list is sorted in ascending lexicographical order.
+   * This list is sorted in ascending lexicographical order and contains no
+   * duplicates.
    */
   StringsView directInputs() const {
     return detail::toFlatbufferView<StringsView>(_step->direct_inputs());
