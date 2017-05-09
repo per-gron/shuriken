@@ -14,6 +14,8 @@ add_library(shklib
   src/build_config.h
   src/build_error.h
   src/clock.h
+  src/cache/file_hasher.cpp
+  src/cache/file_hasher.h
   src/cmd/command_runner.h
   src/cmd/dry_run_command_runner.cpp
   src/cmd/dry_run_command_runner.h
@@ -121,6 +123,7 @@ set_target_properties(shk-trace-dummy PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FL
 
 add_executable(shk_test
   test/build_test.cpp
+  test/cache/file_hasher_test.cpp
   test/cmd/dry_run_command_runner_test.cpp
   test/cmd/limited_command_runner_test.cpp
   test/cmd/pooled_command_runner_test.cpp
