@@ -219,6 +219,7 @@ std::pair<Fingerprint, FileId> retakeFingerprint(
       stat,
       &new_fingerprint.hash);
   if (result.clean) {
+    Fingerprint::Stat::fromStat(stat, &new_fingerprint.stat);
     new_fingerprint.racily_clean =
         isRacilyClean(new_fingerprint.stat, timestamp);
     return ans;

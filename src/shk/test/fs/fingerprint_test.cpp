@@ -330,7 +330,13 @@ TEST_CASE("Fingerprint") {
       Fingerprint fp;
       FileId file_id;
       std::tie(fp, file_id) = takeFingerprint(fs, now, "b");
+
       now++;
+      // Make sure the file's mtime is updated, so that we verify that the
+      // retaken fingerprint has a recent stat and not the old one.
+      CHECK(fs.writeFile("b", "data") == IoError::success());
+      now++;
+
       Fingerprint new_fp;
       FileId new_file_id;
       std::tie(new_fp, new_file_id) = retakeFingerprint(fs, now, "b", fp);
