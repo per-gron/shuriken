@@ -22,6 +22,8 @@ class StepBuilder {
  public:
   StepBuilder &setHash(Hash hash);
   StepBuilder &setDependencies(std::vector<StepIndex> dependencies);
+  StepBuilder &setOrderOnlyDependencies(
+      std::vector<StepIndex> order_only_dependencies);
   StepBuilder &setOutputDirs(std::vector<std::string> output_dirs);
   StepBuilder &setPoolName(std::string pool_name);
   StepBuilder &setCommand(std::string command);
@@ -32,6 +34,7 @@ class StepBuilder {
   StepBuilder &setGenerator(bool generator);
   StepBuilder &setGeneratorInputs(std::vector<std::string> generator_inputs);
   StepBuilder &setGeneratorOutputs(std::vector<std::string> generator_outputs);
+  StepBuilder &setDirectInputs(std::vector<std::string> direct_inputs);
 
   Step build(flatbuffers::FlatBufferBuilder &builder);
 
@@ -40,6 +43,7 @@ class StepBuilder {
  private:
   Hash _hash;
   std::vector<StepIndex> _dependencies;
+  std::vector<StepIndex> _order_only_dependencies;
   std::vector<std::string> _output_dirs;
   std::string _pool_name;
   std::string _command;
@@ -50,6 +54,7 @@ class StepBuilder {
   bool _generator = false;
   std::vector<std::string> _generator_inputs;
   std::vector<std::string> _generator_outputs;
+  std::vector<std::string> _direct_inputs;
 };
 
 }  // namespace shk

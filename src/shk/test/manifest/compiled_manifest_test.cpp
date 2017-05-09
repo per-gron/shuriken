@@ -990,6 +990,63 @@ TEST_CASE("CompiledManifest") {
       }
     }
 
+    SECTION("directInputs") {
+      SECTION("empty") {
+        RawManifest manifest;
+        manifest.steps = { single_output };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(
+            toVector(compiled_manifest.steps()[0].directInputs()) ==
+            std::vector<nt_string_view>({}));
+      }
+
+      SECTION("direct input and implicit input") {
+        const RawStep *steps_to_try[] =
+            { &single_input, &single_implicit_input };
+        for (const auto *step_to_try : steps_to_try) {
+          RawManifest manifest;
+          manifest.steps = { *step_to_try };
+
+          auto compiled_manifest = compile_manifest(manifest);
+          REQUIRE(compiled_manifest.steps().size() == 1);
+          CHECK(
+              toVector(compiled_manifest.steps()[0].directInputs()) ==
+              std::vector<nt_string_view>({ "a" }));
+        }
+      }
+
+      SECTION("dependency") {
+        RawManifest manifest;
+        manifest.steps = { single_dependency };
+
+        auto compiled_manifest = compile_manifest(manifest);
+        REQUIRE(compiled_manifest.steps().size() == 1);
+        CHECK(
+            toVector(compiled_manifest.steps()[0].directInputs()) ==
+            std::vector<nt_string_view>({}));
+      }
+
+      SECTION("dependency input and implicit input") {
+        const RawStep *steps_to_try[] =
+            { &single_input, &single_implicit_input };
+        for (const auto *step_to_try : steps_to_try) {
+          RawManifest manifest;
+          manifest.steps = { single_output, *step_to_try };
+
+          auto compiled_manifest = compile_manifest(manifest);
+          REQUIRE(compiled_manifest.steps().size() == 2);
+          CHECK(
+              toVector(compiled_manifest.steps()[0].directInputs()) ==
+              std::vector<nt_string_view>({}));
+          CHECK(
+              toVector(compiled_manifest.steps()[1].directInputs()) ==
+              std::vector<nt_string_view>({}));
+        }
+      }
+    }
+
     SECTION("manifest_step") {
       SECTION("present") {
         RawStep step;
@@ -1300,7 +1357,7 @@ TEST_CASE("CompiledManifest") {
           flatbuffers::EndianScalar(
               *reinterpret_cast<const decltype(version) *>(
                   buffer.data()));
-      CHECK(version == 2);
+      CHECK(version == 3);
 
       compiled_bufs.emplace_back(
           readFile(fs, path));

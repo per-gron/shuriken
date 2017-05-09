@@ -27,6 +27,12 @@ StepBuilder &StepBuilder::setDependencies(
   return *this;
 }
 
+StepBuilder &StepBuilder::setOrderOnlyDependencies(
+    std::vector<StepIndex> order_only_dependencies) {
+  _order_only_dependencies = std::move(order_only_dependencies);
+  return *this;
+}
+
 StepBuilder &StepBuilder::setOutputDirs(
     std::vector<std::string> output_dirs) {
   _output_dirs = std::move(output_dirs);
@@ -80,9 +86,18 @@ StepBuilder &StepBuilder::setGeneratorOutputs(
   return *this;
 }
 
+StepBuilder &StepBuilder::setDirectInputs(
+    std::vector<std::string> direct_inputs) {
+  _direct_inputs = std::move(direct_inputs);
+  return *this;
+}
+
 Step StepBuilder::build(flatbuffers::FlatBufferBuilder &builder) {
   auto deps_vector = builder.CreateVector(
       _dependencies.data(), _dependencies.size());
+
+  auto order_only_deps_vector = builder.CreateVector(
+      _order_only_dependencies.data(), _order_only_dependencies.size());
 
   const auto to_string_vector = [&](const std::vector<std::string> &strs) {
     std::vector<flatbuffers::Offset<flatbuffers::String>> offsets;
@@ -102,11 +117,13 @@ Step StepBuilder::build(flatbuffers::FlatBufferBuilder &builder) {
   auto rspfile_content_string = builder.CreateString(_rspfile_content);
   auto generator_inputs_vector = to_string_vector(_generator_inputs);
   auto generator_outputs_vector = to_string_vector(_generator_outputs);
+  auto direct_inputs_vector = to_string_vector(_direct_inputs);
 
   ShkManifest::StepBuilder step_builder(builder);
   step_builder.add_hash(
       reinterpret_cast<const ShkManifest::Hash *>(_hash.data.data()));
   step_builder.add_dependencies(deps_vector);
+  step_builder.add_order_only_dependencies(order_only_deps_vector);
   step_builder.add_output_dirs(output_dirs_vector);
   step_builder.add_pool_name(pool_name_string);
   step_builder.add_command(command_string);
@@ -117,6 +134,7 @@ Step StepBuilder::build(flatbuffers::FlatBufferBuilder &builder) {
   step_builder.add_generator(_generator);
   step_builder.add_generator_inputs(generator_inputs_vector);
   step_builder.add_generator_outputs(generator_outputs_vector);
+  step_builder.add_direct_inputs(direct_inputs_vector);
   builder.Finish(step_builder.Finish());
 
   return Step(*flatbuffers::GetRoot<ShkManifest::Step>(

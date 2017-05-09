@@ -220,6 +220,18 @@ struct Step {
     return detail::toFlatbufferView<StringsView>(_step->generator_outputs());
   }
 
+  /**
+   * A list of paths to files that this step has as inputs and that no other
+   * steps have as outputs.
+   *
+   * This is used for generating the primary cache key for this build step.
+   *
+   * This list is sorted in ascending lexicographical order.
+   */
+  StringsView directInputs() const {
+    return detail::toFlatbufferView<StringsView>(_step->direct_inputs());
+  }
+
  private:
   const ShkManifest::Step *_step;
 };

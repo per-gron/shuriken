@@ -16,66 +16,67 @@ namespace ShkManifest;
 
 /// Hash is a 20 byte struct containing a hash.
 struct Hash {
-  h00:byte;
-  h01:byte;
-  h02:byte;
-  h03:byte;
-  h04:byte;
-  h05:byte;
-  h06:byte;
-  h07:byte;
-  h08:byte;
-  h09:byte;
-  h10:byte;
-  h11:byte;
-  h12:byte;
-  h13:byte;
-  h14:byte;
-  h15:byte;
-  h16:byte;
-  h17:byte;
-  h18:byte;
-  h19:byte;
+  h00: byte;
+  h01: byte;
+  h02: byte;
+  h03: byte;
+  h04: byte;
+  h05: byte;
+  h06: byte;
+  h07: byte;
+  h08: byte;
+  h09: byte;
+  h10: byte;
+  h11: byte;
+  h12: byte;
+  h13: byte;
+  h14: byte;
+  h15: byte;
+  h16: byte;
+  h17: byte;
+  h18: byte;
+  h19: byte;
 }
 
 /// See the wrapper type Step in step.h for more info
 table Step {
-  hash:Hash (required);
-  dependencies:[int];
-  order_only_dependencies:[int];
-  output_dirs:[string];
-  pool_name:string;
-  command:string;
-  description:string;
-  depfile:string;
-  rspfile:string;
-  rspfile_content:string;
-  generator:bool = false;
-  generator_inputs:[string];  // Optional. Set only if generator=true
-  generator_outputs:[string];  // Optional. Set only if generator=true
+  hash: Hash (required);
+  dependencies: [int];
+  order_only_dependencies: [int];
+  output_dirs: [string];
+  pool_name: string;
+  command: string;
+  description: string;
+  depfile: string;
+  rspfile: string;
+  rspfile_content: string;
+  generator: bool = false;
+  generator_inputs: [string];  // Optional. Set only if generator=true
+  generator_outputs: [string];  // Optional. Set only if generator=true
+  direct_inputs: [string];
 }
 
 table StepPathReference {
-  path:string (required);
-  step:int;
+  path: string (required);
+  step: int;
 }
 
 table Pool {
-  name:string (required);
-  depth:int = 1;
+  name: string (required);
+  depth: int = 1;
 }
 
 /// See the wrapper type CompiledManifest in compiled_manifest.h for more info
 table Manifest {
-  outputs:[StepPathReference] (required);
-  inputs:[StepPathReference] (required);
-  steps:[Step] (required);
-  defaults:[int] (required);
-  roots:[int] (required);
-  pools:[Pool] (required);
-  build_dir:string;
-  manifest_step:int = 0;
-  manifest_files:[string];
+  outputs: [StepPathReference] (required);
+  inputs: [StepPathReference] (required);
+  steps: [Step] (required);
+  defaults: [int] (required);
+  roots: [int] (required);
+  pools: [Pool] (required);
+  build_dir: string;
+  manifest_step: int = 0;
+  manifest_files: [string];
 }
 
 file_extension "manifest";

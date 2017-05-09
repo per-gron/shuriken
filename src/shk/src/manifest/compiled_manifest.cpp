@@ -132,36 +132,43 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
     *err = "Generator build steps must not have depfile";
   }
 
-  const auto process_inputs = [&output_path_map, &roots](
+  std::vector<flatbuffers::Offset<flatbuffers::String>> direct_inputs;
+
+  const auto process_inputs = [&](
       const std::vector<Path> &paths,
-      std::vector<StepIndex> *dependencies) {
+      std::vector<StepIndex> *dependencies,
+      bool process_direct_inputs) {
     for (const auto &path : paths) {
       const auto it = output_path_map.find(path);
       if (it != output_path_map.end()) {
         auto dependency_idx = it->second;
         dependencies->push_back(dependency_idx);
         roots[dependency_idx] = false;
+      } else if (process_direct_inputs) {
+        direct_inputs.push_back(create_string(path.original()));
       }
     }
   };
 
   std::vector<StepIndex> dependencies;
-  process_inputs(raw.inputs, &dependencies);
-  process_inputs(raw.implicit_inputs, &dependencies);
-  process_inputs(raw.dependencies, &dependencies);
+  process_inputs(raw.inputs, &dependencies, true);
+  process_inputs(raw.implicit_inputs, &dependencies, true);
+  process_inputs(raw.dependencies, &dependencies, false);
 
   dependencies = sortAndDedup(std::move(dependencies));
-
   auto deps_vector = builder.CreateVector(
       dependencies.data(), dependencies.size());
 
   std::vector<StepIndex> order_only_dependencies;
-  process_inputs(raw.dependencies, &order_only_dependencies);
+  process_inputs(raw.dependencies, &order_only_dependencies, false);
 
   order_only_dependencies = sortAndDedup(std::move(order_only_dependencies));
 
   auto order_only_deps_vector = builder.CreateVector(
       order_only_dependencies.data(), order_only_dependencies.size());
+
+  auto direct_inputs_vector = builder.CreateVector(
+      direct_inputs.data(), direct_inputs.size());
 
   std::unordered_set<std::string> output_dirs_set;
   for (const auto &output : raw.outputs) {
@@ -231,6 +238,7 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
     step_builder.add_generator_inputs(generator_inputs_vector);
     step_builder.add_generator_outputs(generator_outputs_vector);
   }
+  step_builder.add_direct_inputs(direct_inputs_vector);
 
   return step_builder.Finish();
 }
@@ -716,7 +724,7 @@ Optional<time_t> CompiledManifest::minMtime(
 
 namespace {
 
-constexpr uint64_t kCompiledManifestVersion = 2;
+constexpr uint64_t kCompiledManifestVersion = 3;
 
 std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
     loadPrecompiledManifest(
