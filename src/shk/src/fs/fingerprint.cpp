@@ -218,7 +218,12 @@ std::pair<Fingerprint, FileId> retakeFingerprint(
       old_fingerprint,
       stat,
       &new_fingerprint.hash);
-  if (result.clean) {
+  if (result.clean || result.should_update) {
+    // result.should_update means that fingerprintMatches actually had to hash
+    // the file to find out if it was clean or not, which means it has set
+    // &new_fingerprint.hash, so there is no need to take the fingerprint again,
+    // we can just set stat and racily_clean.
+
     Fingerprint::Stat::fromStat(stat, &new_fingerprint.stat);
     new_fingerprint.racily_clean =
         isRacilyClean(new_fingerprint.stat, timestamp);

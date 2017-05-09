@@ -347,6 +347,24 @@ TEST_CASE("Fingerprint") {
       CHECK(new_file_id == FileId(fs.lstat("b")));
     }
 
+    SECTION("dirty file with should_update") {
+      CHECK(fs.writeFile("b", "data") == IoError::success());
+      Fingerprint fp;
+      FileId file_id;
+      std::tie(fp, file_id) = takeFingerprint(fs, now, "b");
+
+      CHECK(fs.writeFile("b", "atad") == IoError::success());
+
+      Fingerprint new_fp;
+      FileId new_file_id;
+      std::tie(new_fp, new_file_id) = retakeFingerprint(fs, now, "b", fp);
+      CHECK(fp != new_fp);
+      CHECK(
+          std::make_pair(new_fp, new_file_id) == takeFingerprint(fs, now, "b"));
+
+      CHECK(new_file_id == FileId(fs.lstat("b")));
+    }
+
     SECTION("matching old_fingerprint (dir)") {
       now++;
       Fingerprint fp;
