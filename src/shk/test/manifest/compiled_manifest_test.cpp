@@ -983,7 +983,7 @@ TEST_CASE("CompiledManifest") {
         CHECK(compiled_manifest.steps()[0].generator());
         CHECK(
             toVector(compiled_manifest.steps()[0].generatorInputs()) ==
-            std::vector<nt_string_view>({ "a", "a2", "a3" }));
+            std::vector<nt_string_view>({ "a", "a2" }));
         CHECK(
             toVector(compiled_manifest.steps()[0].generatorOutputs()) ==
             std::vector<nt_string_view>({ "b" }));

@@ -194,8 +194,7 @@ struct Step {
 
   /**
    * A list of paths to files that this step has as inputs. These are taken from
-   * the inputs, the implicit inputs and the order-only dependencies in the
-   * manifest.
+   * the inputs and the implicit inputs in the manifest.
    *
    * Empty if generator() == false.
    *

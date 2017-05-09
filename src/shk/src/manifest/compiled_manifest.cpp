@@ -206,7 +206,6 @@ flatbuffers::Offset<ShkManifest::Step> convertRawStep(
 
     process_strings(generator_inputs, raw.inputs);
     process_strings(generator_inputs, raw.implicit_inputs);
-    process_strings(generator_inputs, raw.dependencies);
     process_strings(generator_outputs, raw.outputs);
 
     generator_inputs_vector = builder.CreateVector(
