@@ -63,7 +63,7 @@ def with_trace_server():
 
 shkTraceFb = os.environ.get(
     'SHK_TRACE_FB_PATH',
-    os.getcwd() + '/../../../build/src/shkutil/include/util')
+    os.getcwd() + '/../../../build/src/shk-util/include/util')
 sys.path.insert(0, shkTraceFb)
 sys.path.insert(0, '../../../vendor/flatbuffers/python')
 import ShkTrace.Trace

@@ -44,10 +44,10 @@ def with_testdir():
 
 shkTraceFb = os.environ.get(
     'SHK_TRACE_FB_PATH',
-    os.getcwd() + '/../../../build/src/shkutil/include/util')
+    os.getcwd() + '/../../../build/src/shk-util/include/util/ShkTrace')
 sys.path.insert(0, shkTraceFb)
 sys.path.insert(0, '../../../vendor/flatbuffers/python')
-import ShkTrace.Trace
+import Trace
 
 shkTrace = os.environ.get(
     'SHK_TRACE_PATH',
@@ -55,7 +55,7 @@ shkTrace = os.environ.get(
 
 helper = os.environ.get(
     'SHK_TRACE_TEST_HELPER_PATH',
-    os.getcwd() + '/../../../build/src/shk-trace/shktrace_integrationtest_helper')
+    os.getcwd() + '/../../../build/src/shk-trace/shktrace-integrationtest-helper')
 
 sys.path.insert(0, '/path/to/application/app/folder')
 
@@ -88,7 +88,7 @@ def trace_to_string(trace):
   return str
 
 def trace_buffer_to_string(data):
-  trace = ShkTrace.Trace.Trace.GetRootAsTrace(data, 0)
+  trace = Trace.Trace.GetRootAsTrace(data, 0)
   return trace_to_string(trace)
 
 def trace_cmd(cmd):

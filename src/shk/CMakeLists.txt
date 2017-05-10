@@ -105,7 +105,7 @@ add_library(shklib
   ${CMAKE_CURRENT_BINARY_DIR}/include/manifest/manifest_generated.h)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 11)
 target_include_directories(shklib PUBLIC src ${CMAKE_CURRENT_BINARY_DIR}/include)
-target_link_libraries(shklib blake2 shkutil)
+target_link_libraries(shklib blake2 shk-util)
 set_target_properties(shklib PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk
@@ -121,7 +121,7 @@ add_executable(shk-trace-dummy
 set_property(TARGET shk-trace-dummy PROPERTY CXX_STANDARD 11)
 set_target_properties(shk-trace-dummy PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
-add_executable(shk_test
+add_executable(shk-test
   test/build_test.cpp
   test/cache/file_hasher_test.cpp
   test/cmd/dry_run_command_runner_test.cpp
@@ -167,12 +167,12 @@ add_executable(shk_test
   test/status/line_printer_test.cpp
   test/status/stopwatch_test.cpp
   test/util_test.cpp)
-set_property(TARGET shk_test PROPERTY CXX_STANDARD 11)
-target_link_libraries(shk_test shklib catch)
-set_target_properties(shk_test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-add_dependencies(shk_test shk-trace-dummy)
-add_test(NAME shk_unit COMMAND shk_test)
+set_property(TARGET shk-test PROPERTY CXX_STANDARD 11)
+target_link_libraries(shk-test shklib catch)
+set_target_properties(shk-test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
+add_dependencies(shk-test shk-trace-dummy)
+add_test(NAME shk-unit COMMAND shk-test)
 add_test(
-  NAME shk_integration
+  NAME shk-integration
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/integrationtest
   COMMAND env SHK_PATH=${PROJECT_BINARY_DIR}/bin/shk python ${CMAKE_CURRENT_LIST_DIR}/integrationtest/test.py)
