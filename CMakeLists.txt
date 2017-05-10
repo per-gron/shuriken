@@ -14,6 +14,7 @@ endif()
 
 add_subdirectory(vendor)
 add_subdirectory(src/benchmark)
-add_subdirectory(src/shkutil)
 add_subdirectory(src/shk)
+add_subdirectory(src/shk-cache)
 add_subdirectory(src/shk-trace)
+add_subdirectory(src/shkutil)
