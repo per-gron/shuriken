@@ -74,8 +74,8 @@ class FailingStatFileSystem : public FileSystem {
     return _fs.readFile(path);
   }
   USE_RESULT std::pair<Hash, IoError> hashFile(
-      nt_string_view path) override {
-    return _fs.hashFile(path);
+      nt_string_view path, string_view extra_data) override {
+    return _fs.hashFile(path, extra_data);
   }
   USE_RESULT std::pair<std::string, IoError> mkstemp(
       std::string &&filename_template) override {

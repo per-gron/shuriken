@@ -111,8 +111,8 @@ TEST_CASE("DryRunFileSystem") {
   }
 
   SECTION("hashFile") {
-    auto outer = fs->hashFile("f");
-    auto inner = inner_fs.hashFile("f");
+    auto outer = fs->hashFile("f", "abc");
+    auto inner = inner_fs.hashFile("f", "abc");
     CHECK(outer == inner);
     CHECK(outer.second == IoError::success());
     CHECK(inner.second == IoError::success());

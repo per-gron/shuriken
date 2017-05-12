@@ -48,57 +48,90 @@ TEST_CASE("FileSystem") {
   }
 
   SECTION("hashDir") {
-    CHECK(fs.mkdir("d") == IoError::success());
-    CHECK(fs.mkdir("e") == IoError::success());
+    const auto hash_dir = [&](nt_string_view path, string_view extra_data) {
+      const auto result = fs.hashDir(path, extra_data);
+      CHECK(result.second == IoError::success());
+      return result.first;
+    };
 
-    const auto e = fs.hashDir("e");
-    CHECK(e.second == IoError::success());
+    SECTION("directory contents") {
+      CHECK(fs.mkdir("d") == IoError::success());
+      CHECK(fs.mkdir("e") == IoError::success());
 
-    {
-      const auto d = fs.hashDir("d");
-      CHECK(d == e);
-      CHECK(d.second == IoError::success());
+      const auto e = hash_dir("e", "");
+
+      {
+        const auto d = hash_dir("d", "");
+        CHECK(d == e);
+      }
+
+      CHECK(fs.mkdir("d/d") == IoError::success());
+      const auto hash_with_one_dir = hash_dir("d", "");
+      CHECK(hash_with_one_dir != e);
+
+      CHECK(fs.open("d/e", "w").second == IoError::success());
+      {
+        const auto hash_with_one_dir_and_one_file = hash_dir("d", "");
+        CHECK(hash_with_one_dir_and_one_file != hash_with_one_dir);
+        CHECK(hash_with_one_dir_and_one_file != e);
+      }
+
+      CHECK(fs.unlink("d/e") == IoError::success());
+      CHECK(hash_with_one_dir == hash_dir("d", ""));
+
+      CHECK(fs.rmdir("d/d") == IoError::success());
+      CHECK(hash_dir("d", "") == e);
     }
 
-    CHECK(fs.mkdir("d/d") == IoError::success());
-    const auto hash_with_one_dir = fs.hashDir("d");
-    CHECK(hash_with_one_dir.second == IoError::success());
-    CHECK(hash_with_one_dir.first != e.first);
-
-    REQUIRE(fs.open("d/e", "w").second == IoError::success());
-    {
-      const auto hash_with_one_dir_and_one_file = fs.hashDir("d");
-      CHECK(hash_with_one_dir_and_one_file.second == IoError::success());
-      CHECK(hash_with_one_dir_and_one_file.first != hash_with_one_dir.first);
-      CHECK(hash_with_one_dir_and_one_file.first != e.first);
+    SECTION("missing directory") {
+      CHECK(fs.hashDir("nonexisting", "").second != IoError::success());
     }
 
-    CHECK(fs.unlink("d/e") == IoError::success());
-    CHECK(hash_with_one_dir == fs.hashDir("d"));
+    SECTION("extra_data") {
+      CHECK(fs.mkdir("d") == IoError::success());
+      CHECK(fs.mkdir("e") == IoError::success());
 
-    CHECK(fs.rmdir("d/d") == IoError::success());
-    CHECK(fs.hashDir("d") == e);
+      CHECK(hash_dir("d", "") == hash_dir("e", ""));
+      CHECK(hash_dir("d", "a") == hash_dir("e", "a"));
+      CHECK(hash_dir("d", "a") != hash_dir("e", ""));
+      CHECK(hash_dir("d", "a") != hash_dir("e", "b"));
 
-    CHECK(fs.hashDir("nonexisting").second != IoError::success());
+      CHECK(fs.open("d/e", "w").second == IoError::success());
+      CHECK(hash_dir("d", "hey") != hash_dir("e", "hey"));
+    }
   }
 
   SECTION("hashSymlink") {
+    const auto hash_symlink = [&](nt_string_view path, string_view extra_data) {
+      const auto result = fs.hashSymlink(path, extra_data);
+      CHECK(result.second == IoError::success());
+      return result.first;
+    };
+
     CHECK(fs.symlink("target", "link_1") == IoError::success());
     CHECK(fs.symlink("target", "link_2") == IoError::success());
     CHECK(fs.symlink("target_other", "link_3") == IoError::success());
 
-    const auto link_1 = fs.hashSymlink("link_1");
-    const auto link_2 = fs.hashSymlink("link_2");
-    const auto link_3 = fs.hashSymlink("link_3");
+    SECTION("contents") {
+      const auto link_1 = hash_symlink("link_1", "");
+      const auto link_2 = hash_symlink("link_2", "");
+      const auto link_3 = hash_symlink("link_3", "");
 
-    CHECK(link_1.second == IoError::success());
-    CHECK(link_2.second == IoError::success());
-    CHECK(link_3.second == IoError::success());
+      CHECK(link_1 == link_2);
+      CHECK(link_2 != link_3);
+    }
 
-    CHECK(link_1 == link_2);
-    CHECK(link_2 != link_3);
+    SECTION("missing symlink") {
+      CHECK(fs.hashSymlink("missing", "").second != IoError::success());
+    }
 
-    CHECK(fs.hashSymlink("missing").second != IoError::success());
+    SECTION("extra_data") {
+      CHECK(hash_symlink("link_1", "") == hash_symlink("link_2", ""));
+      CHECK(hash_symlink("link_1", "a") == hash_symlink("link_2", "a"));
+      CHECK(hash_symlink("link_1", "a") != hash_symlink("link_2", ""));
+      CHECK(hash_symlink("link_1", "a") != hash_symlink("link_2", "b"));
+      CHECK(hash_symlink("link_1", "hey") != hash_symlink("link_3", "hey"));
+    }
   }
 
   SECTION("writeFile") {

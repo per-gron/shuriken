@@ -28,11 +28,16 @@
 namespace shk {
 
 USE_RESULT std::pair<Hash, IoError> FileSystem::hashDir(
-    nt_string_view path) {
+    nt_string_view path, string_view extra_data) {
   Hash hash;
 
   blake2b_state state;
   blake2b_init(&state, hash.data.size());
+
+  blake2b_update(
+      &state,
+      reinterpret_cast<const uint8_t *>(extra_data.data()),
+      sizeof(extra_data.size()));
 
   std::vector<DirEntry> dir_entries;
   IoError error;
@@ -57,11 +62,16 @@ USE_RESULT std::pair<Hash, IoError> FileSystem::hashDir(
 }
 
 USE_RESULT std::pair<Hash, IoError> FileSystem::hashSymlink(
-    nt_string_view path) {
+    nt_string_view path, string_view extra_data) {
   Hash hash;
 
   blake2b_state state;
   blake2b_init(&state, hash.data.size());
+
+  blake2b_update(
+      &state,
+      reinterpret_cast<const uint8_t *>(extra_data.data()),
+      sizeof(extra_data.size()));
 
   std::string link_target;
   IoError error;

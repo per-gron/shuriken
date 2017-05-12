@@ -399,20 +399,36 @@ TEST_CASE("InMemoryFileSystem") {
   }
 
   SECTION("hashFile") {
-    CHECK(fs.writeFile("one", "some_content") == IoError::success());
-    CHECK(fs.writeFile("two", "some_content") == IoError::success());
-    CHECK(fs.writeFile("three", "some_other_content") == IoError::success());
+    const auto hash_file = [&](nt_string_view path, string_view extra_data) {
+      const auto result = fs.hashFile(path, extra_data);
+      CHECK(result.second == IoError::success());
+      return result.first;
+    };
 
-    const auto one = fs.hashFile("one");
-    CHECK(one.second == IoError::success());
-    const auto two = fs.hashFile("two");
-    CHECK(two.second == IoError::success());
-    const auto three = fs.hashFile("three");
-    CHECK(three.second == IoError::success());
+    CHECK(fs.writeFile("one", "data_1") == IoError::success());
+    CHECK(fs.writeFile("same", "data_1") == IoError::success());
+    CHECK(fs.writeFile("two", "data_2") == IoError::success());
 
-    CHECK(one == one);
-    CHECK(one == two);
-    CHECK(one != three);
+    SECTION("contents") {
+      CHECK(hash_file("one", "") == hash_file("same", ""));
+      CHECK(hash_file("one", "") == hash_file("one", ""));
+      CHECK(hash_file("one", "") != hash_file("two", ""));
+    }
+
+    SECTION("missing file") {
+      CHECK(
+          fs.hashFile("/a_missing_file/-a-a-a-aal", "").second !=
+          IoError::success());
+    }
+
+    SECTION("extra_data") {
+      CHECK(hash_file("one", "") == hash_file("same", ""));
+      CHECK(hash_file("one", "a") == hash_file("same", "a"));
+      CHECK(hash_file("one", "a") != hash_file("same", ""));
+      CHECK(hash_file("one", "a") != hash_file("same", "b"));
+      CHECK(
+          hash_file("one", "hey") != hash_file("two", "hey"));
+    }
   }
 
   SECTION("mkstemp creates file") {

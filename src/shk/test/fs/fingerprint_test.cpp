@@ -26,7 +26,7 @@ namespace {
 Hash hashFile(FileSystem &file_system, nt_string_view path) {
   Hash hash;
   IoError error;
-  std::tie(hash, error) = file_system.hashFile(path);
+  std::tie(hash, error) = file_system.hashFile(path, "");
   CHECK(!error);
   return hash;
 }
@@ -34,7 +34,7 @@ Hash hashFile(FileSystem &file_system, nt_string_view path) {
 Hash hashSymlink(FileSystem &file_system, nt_string_view path) {
   Hash hash;
   IoError error;
-  std::tie(hash, error) = file_system.hashSymlink(path);
+  std::tie(hash, error) = file_system.hashSymlink(path, "");
   CHECK(!error);
   return hash;
 }
@@ -42,7 +42,7 @@ Hash hashSymlink(FileSystem &file_system, nt_string_view path) {
 Hash hashDir(FileSystem &file_system, nt_string_view path) {
   Hash hash;
   IoError error;
-  std::tie(hash, error) = file_system.hashDir(path);
+  std::tie(hash, error) = file_system.hashDir(path, "");
   CHECK(!error);
   return hash;
 }

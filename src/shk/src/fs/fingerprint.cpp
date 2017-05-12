@@ -100,12 +100,15 @@ void computeFingerprintHash(
     Hash *hash) throw(IoError) {
   std::string err;
   IoError error;
+
+  string_view extra_data("", 0);
+
   if (S_ISDIR(mode)) {
-    std::tie(*hash, error) = file_system.hashDir(path);
+    std::tie(*hash, error) = file_system.hashDir(path, extra_data);
   } else if (S_ISLNK(mode)) {
-    std::tie(*hash, error) = file_system.hashSymlink(path);
+    std::tie(*hash, error) = file_system.hashSymlink(path, extra_data);
   } else if (S_ISREG(mode)) {
-    std::tie(*hash, error) = file_system.hashFile(path);
+    std::tie(*hash, error) = file_system.hashFile(path, extra_data);
   } else {
     std::fill(hash->data.begin(), hash->data.end(), 0);
   }

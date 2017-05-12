@@ -129,6 +129,37 @@ TEST_CASE("PersistentFileSystem") {
     }
   }
 
+  SECTION("hashFile") {
+    const auto hash_file = [&](nt_string_view path, string_view extra_data) {
+      const auto result = fs->hashFile(path, extra_data);
+      CHECK(result.second == IoError::success());
+      return result.first;
+    };
+
+    CHECK(fs->writeFile(kTestFilename1, "data_1") == IoError::success());
+    CHECK(fs->writeFile(kTestFilename2, "data_2") == IoError::success());
+
+    SECTION("contents") {
+      CHECK(hash_file(kTestFilename1, "") == hash_file(kTestFilename1, ""));
+      CHECK(hash_file(kTestFilename1, "") != hash_file(kTestFilename2, ""));
+    }
+
+    SECTION("missing file") {
+      CHECK(
+          fs->hashFile("/a_missing_file/-a-a-a-aal", "").second !=
+          IoError::success());
+    }
+
+    SECTION("extra_data") {
+      CHECK(hash_file(kTestFilename1, "") == hash_file(kTestFilename1, ""));
+      CHECK(hash_file(kTestFilename1, "a") == hash_file(kTestFilename1, "a"));
+      CHECK(hash_file(kTestFilename1, "a") != hash_file(kTestFilename1, ""));
+      CHECK(hash_file(kTestFilename1, "a") != hash_file(kTestFilename1, "b"));
+      CHECK(
+          hash_file(kTestFilename1, "hey") != hash_file(kTestFilename2, "hey"));
+    }
+  }
+
   unlink(kTestFilename1);
   unlink(kTestFilename2);
 }

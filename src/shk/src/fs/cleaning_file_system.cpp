@@ -101,8 +101,8 @@ USE_RESULT std::pair<std::string, IoError> CleaningFileSystem::readFile(
 }
 
 USE_RESULT std::pair<Hash, IoError> CleaningFileSystem::hashFile(
-      nt_string_view path) {
-  return _inner.hashFile(path);
+      nt_string_view path, string_view extra_data) {
+  return _inner.hashFile(path, extra_data);
 }
 
 USE_RESULT std::pair<std::string, IoError> CleaningFileSystem::mkstemp(

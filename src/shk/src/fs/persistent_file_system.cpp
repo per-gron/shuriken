@@ -280,13 +280,18 @@ class PersistentFileSystem : public FileSystem {
   }
 
   USE_RESULT std::pair<Hash, IoError> hashFile(
-      nt_string_view path) override {
+      nt_string_view path, string_view extra_data) override {
     Hash hash;
     blake2b_state state;
     blake2b_init(&state, hash.data.size());
-    auto error = processFile(path, [&state](const char *buf, size_t len) {
+
+    const auto process = [&state](const char *buf, size_t len) {
       blake2b_update(&state, reinterpret_cast<const uint8_t *>(buf), len);
-    });
+    };
+
+    process(extra_data.data(), extra_data.size());
+
+    auto error = processFile(path, process);
     if (error) {
       return { Hash(), error };
     }

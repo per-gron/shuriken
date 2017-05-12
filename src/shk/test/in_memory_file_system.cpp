@@ -341,11 +341,17 @@ USE_RESULT std::pair<std::string, IoError> InMemoryFileSystem::readFile(
 }
 
 USE_RESULT std::pair<Hash, IoError> InMemoryFileSystem::hashFile(
-      nt_string_view path) {
+      nt_string_view path, string_view extra_data) {
   // This is optimized for readability rather than speed
   Hash hash;
   blake2b_state state;
   blake2b_init(&state, hash.data.size());
+
+  blake2b_update(
+      &state,
+      reinterpret_cast<const uint8_t *>(extra_data.data()),
+      extra_data.size());
+
   std::string file_contents;
   IoError error;
   std::tie(file_contents, error) = readFile(path);

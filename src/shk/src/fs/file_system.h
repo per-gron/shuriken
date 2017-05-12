@@ -149,10 +149,14 @@ class FileSystem {
    * files that it contains. It does not hash the contents of those files or go
    * through subdirectories recursively.
    *
+   * The provided extra_data (if any) is hashed in together with the rest of
+   * the data as if it was before all other data.
+   *
    * Returns the hash and a bool indicating if the operation was successful or
    * not.
    */
-  USE_RESULT std::pair<Hash, IoError> hashDir(nt_string_view path);
+  USE_RESULT std::pair<Hash, IoError> hashDir(
+      nt_string_view path, string_view extra_data);
 
   /**
    * Read the contents of a symlink.
@@ -165,10 +169,14 @@ class FileSystem {
    * hash function works the same for all FileSystem implementations, so it is
    * defined directly here. It is implemented in terms of readlink.
    *
+   * The provided extra_data (if any) is hashed in together with the rest of
+   * the data as if it was before all other data.
+   *
    * Returns the hash of the symlink and a bool indicating if the operation was
    * successful or not.
    */
-  USE_RESULT std::pair<Hash, IoError> hashSymlink(nt_string_view path);
+  USE_RESULT std::pair<Hash, IoError> hashSymlink(
+      nt_string_view path, string_view extra_data);
 
   /**
    * Utility function for reading files. It is on this interface because on
@@ -182,11 +190,14 @@ class FileSystem {
    * the blake2b hash function. Like readFile, it is directly on the FileSystem
    * interface because this is a highly performance sensitive operation.
    *
+   * The provided extra_data (if any) is hashed in together with the rest of
+   * the data as if it was before all other data.
+   *
    * Returns the hash of the file and a bool indicating if the operation was
    * successful or not.
    */
   virtual USE_RESULT std::pair<Hash, IoError> hashFile(
-      nt_string_view path) = 0;
+      nt_string_view path, string_view extra_data) = 0;
 
   /**
    * Helper function for writing a string to a file.
