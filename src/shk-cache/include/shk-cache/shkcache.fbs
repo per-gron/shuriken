@@ -24,27 +24,59 @@ struct Hash {
   h19: byte;
 }
 
+/// A SecondaryIndexKey identifies an undeclared (not in the manifest) input
+/// file that a build command used: It has its path and a hash that identifies
+/// the file contents.
 table SecondaryIndexKey {
   root_name: string;
   path: string;
-  hash: Hash;
+  fingerprint: Hash;
 }
 
 enum Encoding : byte {
   Raw
 }
 
+enum Type : byte {
+  File,
+  Symlink
+}
+
+/// An IndexFileReference points to an output file of a build step.
 table IndexFileReference {
   path: string;
-  mode: uint;
+  /// The file mode. Valid values are 0755 and 0644.
+  mode: ubyte;
   encoding: Encoding;
+  type: Type;
   store_key: Hash;
 }
 
+/// An IndexEntry represents the inputs and outputs of one invocation of a build
+/// step. When saving an invocation to the cache, this is the thing that is
+/// eventually written (after the actual output files have been uploaded).
 table IndexEntry {
   primary_key: Hash;
   secondary_keys: [SecondaryIndexKey];
   files: [IndexFileReference];
+}
+
+/// Like a CompactSecondaryIndexKey but is a more compact representation, for
+/// efficient lookups. It has a meaning only in the context of a Lookup request.
+struct CompactSecondaryIndexKey {
+  /// An index to the strings list of the ongoing IndexLookupRequest
+  root_name: int;
+  /// An index to the strings list of the ongoing IndexLookupRequest
+  path: int;
+  fingerprint: Hash;
+}
+
+table IndexLookupEntry {
+  /// primary_key is an index in the primary_keys array sent in the
+  /// IndexLookupRequest that this is a response to.
+  primary_key: int;
+  secondary_keys: [CompactSecondaryIndexKey];
+  file_list: Hash;
 }
 
 table IndexInsertRequest {
@@ -54,17 +86,29 @@ table IndexInsertRequest {
 table IndexInsertResponse {
 }
 
-table IndexGetRequest {
-  primary_key: Hash;
+table IndexLookupRequest {
+  primary_keys: [Hash];
+  cancel_primary_keys: [int];
 }
 
-table IndexGetResponse {
+table IndexLookupResponse {
+  /// lz4 compressed list of null-terminated path strings
+  strings: [byte];
   entry: IndexEntry;
+}
+
+table GetFileListRequest {
+  file_list: Hash;
+}
+
+table GetFileListResponse {
+  files: [IndexFileReference];
 }
 
 rpc_service Index {
   Insert(IndexInsertRequest): IndexInsertResponse (idempotent);
-  Get(IndexGetRequest): IndexGetResponse (streaming: "server", idempotent);
+  Lookup(IndexLookupRequest): IndexLookupResponse (streaming: "bidi", idempotent);
+  GetFileList(GetFileListRequest): GetFileListResponse (idempotent);
 }
 
 table StoreInsertRequest {
@@ -95,9 +139,17 @@ table StoreTouchResponse {
 }
 
 rpc_service Store {
+  /// Insert an entry into the Store.
   Insert(StoreInsertRequest): StoreInsertResponse (idempotent);
-  Get(StoreGetRequest): StoreGetResponse (idempotent);
+
+  /// Check if an entry is already present in the store. If so, bump its expiry,
+  /// otherwise tell the client that it is absent. (This is used prior to making
+  /// an Insert call, to avoid having to upload things if they are already
+  /// there.)
   Touch(StoreTouchRequest): StoreTouchResponse (idempotent);
+
+  /// Download an entry from the Store.
+  Get(StoreGetRequest): StoreGetResponse (idempotent);
 }
 
 table StoreConfig {
