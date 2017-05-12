@@ -58,6 +58,8 @@ table IndexFileReference {
 table IndexEntry {
   primary_key: Hash;
   secondary_keys: [SecondaryIndexKey];
+  ignored_dependencies: [uint];
+  additional_dependencies: [Hash];
   files: [IndexFileReference];
 }
 
