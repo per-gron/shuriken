@@ -50,5 +50,13 @@ the Apache License version 2.0.
                              ------------------
 
 
+This product bundles the Junction library of concurrent data structures and the
+associated Turf helper library. They are released under the Simplified BSD
+license.
+
+
+                             ------------------
+
+
 This product bundles the re2c lexer generator. It is released under the public
 domain.
