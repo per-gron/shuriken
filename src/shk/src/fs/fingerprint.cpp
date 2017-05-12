@@ -125,9 +125,24 @@ void Fingerprint::Stat::fromStat(const ::shk::Stat &stat, Stat *out) {
   if (stat.result == 0) {
     out->size = stat.metadata.size;
     out->ino = stat.metadata.ino;
-    static constexpr auto mode_mask =
-        S_IFMT | S_IRWXU | S_IRWXG | S_IRWXO | S_ISUID | S_ISGID | S_ISVTX;
-    out->mode = stat.metadata.mode & mode_mask;
+
+    static constexpr auto kDefaultBits =
+        S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;  // 0644
+    static constexpr auto kExecutableBits =
+        S_IXUSR | S_IXGRP | S_IXOTH;  // 0111
+    static constexpr auto kModeMask =
+        S_IFMT | S_ISUID | S_ISGID;
+
+    // Like Git, Fingerprints only keep track of either 0755 or 0644 (executable
+    // or not) file permissions.
+    //
+    // In addition to plain file permissions, the type of file (directory vs
+    // regular etc, S_IFMT) is tracked, along with setuid and setgid bits.
+    const bool executable = !!(stat.metadata.mode & S_IXUSR);
+    out->mode =
+        kDefaultBits |
+        (executable ? kExecutableBits : 0) |
+        (stat.metadata.mode & kModeMask);
     out->mtime = stat.mtime;
   }
 }

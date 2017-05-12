@@ -132,6 +132,45 @@ TEST_CASE("Fingerprint") {
         CHECK(S_ISREG(fp_stat.mode));
         CHECK(fp_stat.mtime == stat.mtime);
       }
+
+      SECTION("ignore mode bits") {
+        // We don't care about the sticky bit or any other permission bits than
+        // the user executable bit (0100/S_IXUSR). (Like Git)
+        static constexpr mode_t kBitsToIgnore[] =
+            { S_ISVTX, S_IRUSR, S_IWUSR, S_IRGRP, S_IWGRP, S_IROTH, S_IWOTH };
+        for (mode_t bit_to_ignore : kBitsToIgnore) {
+          Stat a{};
+          Fingerprint::Stat fp_a{};
+          Fingerprint::Stat::fromStat(a, &fp_a);
+
+          Stat b{};
+          b.metadata.mode |= bit_to_ignore;
+          Fingerprint::Stat fp_b{};
+          Fingerprint::Stat::fromStat(b, &fp_b);
+
+          CHECK(fp_a == fp_b);
+        }
+      }
+
+      SECTION("non-ignored mode bits") {
+        // We do care about if the file is executable by the user and some other
+        // things like type of file.
+        static constexpr mode_t kBitsToNotIgnore[] =
+            { S_IXUSR, S_ISUID, S_ISGID, S_IFLNK, S_IFREG, S_IFDIR };
+        for (mode_t bit_to_not_ignore : kBitsToNotIgnore) {
+          Stat a{};
+          Fingerprint::Stat fp_a{};
+          Fingerprint::Stat::fromStat(a, &fp_a);
+
+          Stat b{};
+          b.metadata.mode |= bit_to_not_ignore;
+          Fingerprint::Stat fp_b{};
+          Fingerprint::Stat::fromStat(b, &fp_b);
+
+          CHECK(fp_a != fp_b);
+          CHECK(!!(fp_b.mode & bit_to_not_ignore));
+        }
+      }
     }
 
     SECTION("equal") {
@@ -613,7 +652,7 @@ TEST_CASE("Fingerprint") {
         const auto fingerprint = takeFingerprint(fs, now, path).first;
 
         auto new_stat = fs.lstat(path);
-        new_stat.metadata.mode++;
+        new_stat.metadata.mode |= ~new_stat.metadata.mode;
 
         const auto new_hash =
             std::string(path) == "dir" ? hashDir(fs, path) :
