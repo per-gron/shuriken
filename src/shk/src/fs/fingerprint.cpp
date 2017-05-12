@@ -16,6 +16,8 @@
 
 #include <sys/stat.h>
 
+#include <flatbuffers/flatbuffers.h>
+
 namespace shk {
 namespace {
 
@@ -70,7 +72,8 @@ MatchesResult fingerprintMatches(
       // already known for sure that the file is different, but now they are the
       // same. In order to know if it's dirty or not, we need to hash the file
       // again.
-      detail::computeFingerprintHash(file_system, fp.stat.mode, path, hash);
+      detail::computeFingerprintHash(
+          file_system, fp.stat.size, fp.stat.mode, path, hash);
       result.clean = fingerprintMatches(fp, current_fp_stat, *hash);
 
       // At this point, the fingerprint in the invocation log should be
@@ -95,13 +98,33 @@ namespace detail {
 
 void computeFingerprintHash(
     FileSystem &file_system,
+    size_t file_size,
     mode_t mode,
     nt_string_view path,
     Hash *hash) throw(IoError) {
   std::string err;
   IoError error;
 
-  string_view extra_data("", 0);
+  static constexpr int kExtraDataSize =
+      sizeof(uint32_t) +  // size of the header
+      sizeof(uint64_t) +  // file size
+      sizeof(uint32_t);  // file mode
+  std::array<char, kExtraDataSize> extra_data_array{};
+
+  // Store the size of the extra data so that if it needs to be expanded in the
+  // future, it can be done without risking collisions with old files that start
+  // with part of the new extra data data.
+  char *extra_data_ptr = extra_data_array.data();
+  *reinterpret_cast<uint32_t *>(extra_data_ptr) =
+      flatbuffers::EndianScalar(kExtraDataSize);
+  extra_data_ptr += sizeof(uint32_t);
+  *reinterpret_cast<uint64_t *>(extra_data_ptr) =
+      flatbuffers::EndianScalar(static_cast<uint64_t>(file_size));
+  extra_data_ptr += sizeof(uint64_t);
+  *reinterpret_cast<uint32_t *>(extra_data_ptr) =
+      flatbuffers::EndianScalar(static_cast<uint32_t>(mode));
+
+  string_view extra_data(extra_data_array.data(), extra_data_array.size());
 
   if (S_ISDIR(mode)) {
     std::tie(*hash, error) = file_system.hashDir(path, extra_data);
@@ -213,7 +236,8 @@ std::pair<Fingerprint, FileId> takeFingerprint(
 
   fingerprintStat(file_system, path, &fp.stat, &file_id);
   fp.racily_clean = isRacilyClean(fp.stat, timestamp);
-  detail::computeFingerprintHash(file_system, fp.stat.mode, path, &fp.hash);
+  detail::computeFingerprintHash(
+      file_system, fp.stat.size, fp.stat.mode, path, &fp.hash);
 
   return ans;
 }

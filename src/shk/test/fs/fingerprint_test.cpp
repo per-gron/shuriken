@@ -23,30 +23,6 @@
 namespace shk {
 namespace {
 
-Hash hashFile(FileSystem &file_system, nt_string_view path) {
-  Hash hash;
-  IoError error;
-  std::tie(hash, error) = file_system.hashFile(path, "");
-  CHECK(!error);
-  return hash;
-}
-
-Hash hashSymlink(FileSystem &file_system, nt_string_view path) {
-  Hash hash;
-  IoError error;
-  std::tie(hash, error) = file_system.hashSymlink(path, "");
-  CHECK(!error);
-  return hash;
-}
-
-Hash hashDir(FileSystem &file_system, nt_string_view path) {
-  Hash hash;
-  IoError error;
-  std::tie(hash, error) = file_system.hashDir(path, "");
-  CHECK(!error);
-  return hash;
-}
-
 std::string readSymlink(FileSystem &file_system, nt_string_view path) {
   std::string target;
   IoError error;
@@ -63,35 +39,103 @@ TEST_CASE("Fingerprint") {
   const std::string initial_contents = "initial_contents";
   CHECK(fs.writeFile("a", initial_contents) == IoError::success());
   CHECK(fs.mkdir("dir") == IoError::success());
+  CHECK(fs.mkdir("other_dir") == IoError::success());
   CHECK(fs.symlink("target", "link") == IoError::success());
 
   SECTION("computeFingerprintHash") {
     const Hash zero{};
     Hash ans_hash;
+    Hash ans_hash_2;
 
     SECTION("directory") {
-      detail::computeFingerprintHash(fs, S_IFDIR, "dir", &ans_hash);
-      CHECK(ans_hash == hashDir(fs, "dir"));
+      const auto dir_stat = fs.stat("dir");
+
+      SECTION("equal") {
+        detail::computeFingerprintHash(
+            fs, dir_stat.metadata.size, S_IFDIR, "dir", &ans_hash);
+        detail::computeFingerprintHash(
+            fs, dir_stat.metadata.size, S_IFDIR, "other_dir", &ans_hash_2);
+
+        CHECK(ans_hash == ans_hash_2);
+      }
+
+      SECTION("different") {
+        CHECK(fs.writeFile("dir/a", "x") == IoError::success());
+
+        detail::computeFingerprintHash(
+            fs, dir_stat.metadata.size, S_IFDIR, "dir", &ans_hash);
+        detail::computeFingerprintHash(
+            fs, dir_stat.metadata.size, S_IFDIR, "other_dir", &ans_hash_2);
+
+        CHECK(ans_hash != ans_hash_2);
+      }
     }
 
     SECTION("link") {
-      detail::computeFingerprintHash(fs, S_IFLNK, "link", &ans_hash);
-      CHECK(ans_hash == hashSymlink(fs, "link"));
+      const auto link_stat = fs.stat("dir");
+      SECTION("equal") {
+        CHECK(fs.symlink("target", "other_link") == IoError::success());
+
+        detail::computeFingerprintHash(
+            fs, link_stat.metadata.size, S_IFLNK, "link", &ans_hash);
+        detail::computeFingerprintHash(
+            fs, link_stat.metadata.size, S_IFLNK, "other_link", &ans_hash_2);
+
+        CHECK(ans_hash == ans_hash_2);
+      }
+
+      SECTION("different") {
+        CHECK(fs.symlink("different", "other_link") == IoError::success());
+
+        detail::computeFingerprintHash(
+            fs, link_stat.metadata.size, S_IFLNK, "link", &ans_hash);
+        detail::computeFingerprintHash(
+            fs, link_stat.metadata.size, S_IFLNK, "other_link", &ans_hash_2);
+
+        CHECK(ans_hash != ans_hash_2);
+      }
     }
 
     SECTION("regular file") {
-      detail::computeFingerprintHash(fs, S_IFREG, "a", &ans_hash);
-      CHECK(ans_hash == hashFile(fs, "a"));
+      SECTION("equal") {
+        CHECK(fs.writeFile("b", initial_contents) == IoError::success());
+
+        detail::computeFingerprintHash(fs, 1, S_IFREG, "a", &ans_hash);
+        detail::computeFingerprintHash(fs, 1, S_IFREG, "b", &ans_hash_2);
+
+        CHECK(ans_hash == ans_hash_2);
+      }
+
+      SECTION("different") {
+        CHECK(fs.writeFile("b", "different") == IoError::success());
+
+        detail::computeFingerprintHash(fs, 1, S_IFREG, "a", &ans_hash);
+        detail::computeFingerprintHash(fs, 1, S_IFREG, "b", &ans_hash_2);
+
+        CHECK(ans_hash != ans_hash_2);
+      }
     }
 
     SECTION("missing file") {
-      detail::computeFingerprintHash(fs, 0, "a", &ans_hash);
+      detail::computeFingerprintHash(fs, 321, 0, "a", &ans_hash);
       CHECK(ans_hash == zero);
     }
 
     SECTION("other") {
-      detail::computeFingerprintHash(fs, S_IFBLK, "a", &ans_hash);
+      detail::computeFingerprintHash(fs, 123, S_IFBLK, "a", &ans_hash);
       CHECK(ans_hash == zero);
+    }
+
+    SECTION("hash includes file size") {
+      detail::computeFingerprintHash(fs, 1, S_IFREG, "a", &ans_hash);
+      detail::computeFingerprintHash(fs, 2, S_IFREG, "a", &ans_hash_2);
+      CHECK(ans_hash != ans_hash_2);
+    }
+
+    SECTION("hash includes mode") {
+      detail::computeFingerprintHash(fs, 1, S_IFREG | 0755, "a", &ans_hash);
+      detail::computeFingerprintHash(fs, 1, S_IFREG | 0644, "a", &ans_hash_2);
+      CHECK(ans_hash != ans_hash_2);
     }
   }
 
@@ -257,7 +301,12 @@ TEST_CASE("Fingerprint") {
       CHECK(S_ISREG(fp.stat.mode));
       CHECK(fp.stat.mtime == now);
       CHECK(fp.racily_clean == false);
-      CHECK(fp.hash == hashFile(fs, "a"));
+
+      Hash expected_hash;
+      detail::computeFingerprintHash(
+          fs, fp.stat.size, fp.stat.mode, "a", &expected_hash);
+      CHECK(fp.hash == expected_hash);
+
       CHECK(fp.stat.couldAccess());
       CHECK(!fp.stat.isDir());
     }
@@ -293,7 +342,12 @@ TEST_CASE("Fingerprint") {
       CHECK(S_ISDIR(fp.stat.mode));
       CHECK(fp.stat.mtime == now);
       CHECK(fp.racily_clean == false);
-      CHECK(fp.hash == hashDir(fs, "dir"));
+
+      Hash expected_hash;
+      detail::computeFingerprintHash(
+          fs, fp.stat.size, fp.stat.mode, "dir", &expected_hash);
+      CHECK(fp.hash == expected_hash);
+
       CHECK(fp.stat.couldAccess());
       CHECK(fp.stat.isDir());
     }
@@ -310,7 +364,13 @@ TEST_CASE("Fingerprint") {
       CHECK(S_ISLNK(fp.stat.mode));
       CHECK(fp.stat.mtime == now);
       CHECK(fp.racily_clean == false);
-      CHECK(fp.hash == hashSymlink(fs, "link"));
+
+
+      Hash expected_hash;
+      detail::computeFingerprintHash(
+          fs, fp.stat.size, fp.stat.mode, "link", &expected_hash);
+      CHECK(fp.hash == expected_hash);
+
       CHECK(fp.stat.couldAccess());
       CHECK(!fp.stat.isDir());
     }
@@ -623,10 +683,11 @@ TEST_CASE("Fingerprint") {
 
         const auto new_stat = fs.lstat(path);
 
-        const auto new_hash =
-            std::string(path) == "dir" ? hashDir(fs, path) :
-            std::string(path) == "missing" ? Hash{} :
-            hashFile(fs, path);
+        Fingerprint::Stat fp_stat;
+        Fingerprint::Stat::fromStat(new_stat, &fp_stat);
+        Hash new_hash;
+        detail::computeFingerprintHash(
+            fs, fp_stat.size, fp_stat.mode, path, &new_hash);
 
         CHECK(fingerprintMatches(fingerprint, new_stat, new_hash));
       }
@@ -636,12 +697,14 @@ TEST_CASE("Fingerprint") {
       for (const char *path : kPathsNoMissing) {
         const auto fingerprint = takeFingerprint(fs, now, path).first;
 
+        Fingerprint::Stat fp_stat;
+        Fingerprint::Stat::fromStat(fs.lstat(path), &fp_stat);
+        Hash new_hash;
+        detail::computeFingerprintHash(
+            fs, fp_stat.size, fp_stat.mode, path, &new_hash);
+
         auto new_stat = fs.lstat(path);
         new_stat.metadata.size++;
-
-        const auto new_hash =
-            std::string(path) == "dir" ? hashDir(fs, path) :
-            hashFile(fs, path);
 
         CHECK(!fingerprintMatches(fingerprint, new_stat, new_hash));
       }
@@ -651,12 +714,14 @@ TEST_CASE("Fingerprint") {
       for (const char *path : kPathsNoMissing) {
         const auto fingerprint = takeFingerprint(fs, now, path).first;
 
+        Fingerprint::Stat fp_stat;
+        Fingerprint::Stat::fromStat(fs.lstat(path), &fp_stat);
+        Hash new_hash;
+        detail::computeFingerprintHash(
+            fs, fp_stat.size, fp_stat.mode, path, &new_hash);
+
         auto new_stat = fs.lstat(path);
         new_stat.metadata.mode |= ~new_stat.metadata.mode;
-
-        const auto new_hash =
-            std::string(path) == "dir" ? hashDir(fs, path) :
-            hashFile(fs, path);
 
         CHECK(!fingerprintMatches(fingerprint, new_stat, new_hash));
       }
@@ -668,10 +733,11 @@ TEST_CASE("Fingerprint") {
 
         const auto new_stat = fs.lstat(path);
 
-        auto new_hash =
-            std::string(path) == "dir" ? hashDir(fs, path) :
-            std::string(path) == "missing" ? Hash{} :
-            hashFile(fs, path);
+        Fingerprint::Stat fp_stat;
+        Fingerprint::Stat::fromStat(fs.lstat(path), &fp_stat);
+        Hash new_hash;
+        detail::computeFingerprintHash(
+            fs, fp_stat.size, fp_stat.mode, path, &new_hash);
 
         new_hash.data[0]++;
 

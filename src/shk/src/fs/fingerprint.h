@@ -30,6 +30,7 @@ namespace detail {
 
 void computeFingerprintHash(
     FileSystem &file_system,
+    size_t file_size,
     mode_t mode,
     nt_string_view path,
     Hash *hash) throw(IoError);
@@ -100,6 +101,16 @@ struct Fingerprint {
    * mtime.
    */
   bool racily_clean = false;
+  /**
+   * Has a hash of the file contents along with some stat information. The hash
+   * contains enough information so that if two fingerprints' hashes are
+   * identical, then the fingerprints match.
+   *
+   * The stat info embedded in the hash includes file size and permissions. It
+   * does not include inode number or mtime or other information that is in the
+   * Fingerprint only to quickly be able to validate that a file has not
+   * changed.
+   */
   Hash hash;
 
   bool operator==(const Fingerprint &other) const;
