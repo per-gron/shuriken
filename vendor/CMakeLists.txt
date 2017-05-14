@@ -23,4 +23,7 @@ set(FLATBUFFERS_BUILD_TESTS OFF)
 add_subdirectory(flatbuffers)
 target_include_directories(flatbuffers PUBLIC "${CMAKE_CURRENT_LIST_DIR}/flatbuffers/include")
 
+# EXCLUDE_FROM_ALL avoids unnecessarily building the lz4 and lz4c programs
+add_subdirectory(lz4/contrib/cmake_unofficial EXCLUDE_FROM_ALL)
+
 add_subdirectory(re2c_cmake)

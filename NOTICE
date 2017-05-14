@@ -50,5 +50,12 @@ the Apache License version 2.0.
                              ------------------
 
 
+This product bundles LZ4 compression library. It is released under a BSD
+2-Clause license.
+
+
+                             ------------------
+
+
 This product bundles the re2c lexer generator. It is released under the public
 domain.
