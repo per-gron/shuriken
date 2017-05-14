@@ -21,6 +21,6 @@ target_include_directories(grpc++ PUBLIC "${CMAKE_CURRENT_LIST_DIR}/grpc/include
 
 set(FLATBUFFERS_BUILD_TESTS OFF)
 add_subdirectory(flatbuffers)
-target_include_directories(flatbuffers PUBLIC include "${CMAKE_CURRENT_LIST_DIR}/flatbuffers/include")
+target_include_directories(flatbuffers PUBLIC "${CMAKE_CURRENT_LIST_DIR}/flatbuffers/include")
 
 add_subdirectory(re2c_cmake)
