@@ -12,7 +12,7 @@
 	url = https://github.com/philsquared/Catch.git
 [submodule "vendor/grpc"]
 	path = vendor/grpc
-	url = https://github.com/grpc/grpc.git
+	url = https://github.com/per-gron/grpc.git
 [submodule "vendor/lz4"]
 	path = vendor/lz4
 	url = https://github.com/lz4/lz4.git
