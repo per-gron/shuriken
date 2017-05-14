@@ -140,8 +140,8 @@ class IntegrationTest(unittest.TestCase):
 
   @with_testdir()
   def test_read_file_in_tmp(self):
-    trace = trace_cmd("ls -d /tmp/logs")
-    self.assertIn('input /private/tmp/logs', trace)
+    trace = trace_cmd("ls -d /tmp/hey_there; true")
+    self.assertIn('input /private/tmp/hey_there', trace)
 
   @with_testdir()
   def test_read_file_through_symlinked_folder(self):
