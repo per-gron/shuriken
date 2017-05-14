@@ -13,9 +13,3 @@
 [submodule "vendor/grpc"]
 	path = vendor/grpc
 	url = https://github.com/grpc/grpc.git
-[submodule "vendor/junction"]
-	path = vendor/junction
-	url = https://github.com/preshing/junction.git
-[submodule "vendor/turf"]
-	path = vendor/turf
-	url = https://github.com/preshing/turf.git

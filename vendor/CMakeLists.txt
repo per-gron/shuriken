@@ -23,13 +23,4 @@ set(FLATBUFFERS_BUILD_TESTS OFF)
 add_subdirectory(flatbuffers)
 target_include_directories(flatbuffers PUBLIC "${CMAKE_CURRENT_LIST_DIR}/flatbuffers/include")
 
-set(JUNCTION_WITH_SAMPLES OFF)
-add_subdirectory(junction)
-set_property(TARGET junction PROPERTY CXX_STANDARD 11)
-target_include_directories(junction PUBLIC
-  "${CMAKE_CURRENT_LIST_DIR}/junction"
-  "${CMAKE_CURRENT_BINARY_DIR}/junction/include"
-  "${CMAKE_CURRENT_BINARY_DIR}/junction/turf/include"
-  "${CMAKE_CURRENT_LIST_DIR}/turf")
-
 add_subdirectory(re2c_cmake)
