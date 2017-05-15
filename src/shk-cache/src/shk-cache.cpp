@@ -100,17 +100,25 @@ int main(int /*argc*/, const char * /*argv*/[]) {
 
   flatbuffers::FlatBufferBuilder fbb;
   {
+    grpc::CompletionQueue cq;
+
     grpc::ClientContext context;
     auto config_get_request = ShkCache::CreateConfigGetRequest(fbb);
     fbb.Finish(config_get_request);
     auto request = flatbuffers::BufferRef<ShkCache::ConfigGetRequest>(
         fbb.GetBufferPointer(), fbb.GetSize());
+    std::unique_ptr<grpc::ClientAsyncResponseReader<
+        flatbuffers::BufferRef<ShkCache::ConfigGetResponse>>> rpc(
+            stub->AsyncGet(&context, request, &cq));
+
     flatbuffers::BufferRef<ShkCache::ConfigGetResponse> response;
+    grpc::Status status;
+    rpc->Finish(&response, &status, (void *)1);
 
-    // The actual RPC.
-    auto status = stub->Get(&context, request, &response);
-
-    if (status.ok()) {
+    void *got_tag;
+    bool ok = false;
+    cq.Next(&got_tag, &ok);
+    if (ok && got_tag == (void *)1) {
       if (!response.Verify()) {
         std::cout << "Verification failed!" << std::endl;
       } else {
@@ -123,8 +131,10 @@ int main(int /*argc*/, const char * /*argv*/[]) {
           std::cout << "RPC response: [no config]" << std::endl;
         }
       }
+    } else if (ok) {
+      std::cout << "Unknown response tag" << std::endl;
     } else {
-      std::cout << "RPC failed" << std::endl;
+      std::cout << "Request not ok" << std::endl;
     }
   }
 
