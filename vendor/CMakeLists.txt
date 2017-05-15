@@ -27,3 +27,6 @@ target_include_directories(flatbuffers PUBLIC "${CMAKE_CURRENT_LIST_DIR}/flatbuf
 add_subdirectory(lz4/contrib/cmake_unofficial EXCLUDE_FROM_ALL)
 
 add_subdirectory(re2c_cmake)
+
+set(RXCPP_BUILD_TESTS OFF)
+add_subdirectory(rxcpp)

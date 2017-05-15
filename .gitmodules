@@ -16,3 +16,6 @@
 [submodule "vendor/lz4"]
 	path = vendor/lz4
 	url = https://github.com/lz4/lz4.git
+[submodule "vendor/rxcpp"]
+	path = vendor/rxcpp
+	url = https://github.com/Reactive-Extensions/RxCpp.git
