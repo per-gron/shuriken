@@ -37,12 +37,12 @@ class RxGrpcTag {
 };
 
 template <typename ResponseType, typename ResponseTransform>
-class RxGrpcClientCall : public RxGrpcTag {
+class RxGrpcClientInvocation : public RxGrpcTag {
  public:
   using TransformedResponseType = decltype(
       std::declval<ResponseTransform>()(std::declval<ResponseType>()));
 
-  RxGrpcClientCall(rxcpp::subscriber<TransformedResponseType> &&subscriber)
+  RxGrpcClientInvocation(rxcpp::subscriber<TransformedResponseType> &&subscriber)
       : _subscriber(std::move(subscriber)) {}
 
   Response operator()() override {
@@ -75,14 +75,14 @@ class RxGrpcClientCall : public RxGrpcTag {
 }  // namespace detail
 
 template <typename Stub, typename ResponseTransform>
-class RxGrpcClient {
+class RxGrpcServiceClient {
  public:
-  RxGrpcClient(std::unique_ptr<Stub> &&stub, grpc::CompletionQueue *cq)
+  RxGrpcServiceClient(std::unique_ptr<Stub> &&stub, grpc::CompletionQueue *cq)
       : _stub(std::move(stub)), _cq(*cq) {}
 
   template <typename ResponseType, typename RequestType>
   rxcpp::observable<
-      typename detail::RxGrpcClientCall<
+      typename detail::RxGrpcClientInvocation<
           ResponseType, ResponseTransform>::TransformedResponseType>
   invoke(
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
@@ -94,7 +94,7 @@ class RxGrpcClient {
       grpc::ClientContext &&context = grpc::ClientContext()) {
 
     using ClientCall =
-        detail::RxGrpcClientCall<ResponseType, ResponseTransform>;
+        detail::RxGrpcClientInvocation<ResponseType, ResponseTransform>;
     using TransformedResponseType =
         typename ClientCall::TransformedResponseType;
 
@@ -113,12 +113,18 @@ class RxGrpcClient {
   grpc::CompletionQueue &_cq;
 };
 
-class RxGrpcHandler {
+class RxGrpcServerHandler {
+ public:
+
+ private:
+};
+
+class RxGrpcClientHandler {
  public:
   void run() {
     void *got_tag;
     bool ok = false;
-    _cq.Next(&got_tag, &ok);
+    _cq.Next(&got_tag, &ok);  // TODO(peck): Use return value here
 
     if (ok) {
       detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
@@ -133,9 +139,9 @@ class RxGrpcHandler {
   template <
       typename ResponseTransform = detail::RxGrpcIdentityTransform,
       typename Stub>
-  RxGrpcClient<Stub, ResponseTransform> makeClient(
+  RxGrpcServiceClient<Stub, ResponseTransform> makeClient(
       std::unique_ptr<Stub> &&stub) {
-    return RxGrpcClient<Stub, ResponseTransform>(std::move(stub), &_cq);
+    return RxGrpcServiceClient<Stub, ResponseTransform>(std::move(stub), &_cq);
   }
 
  private:
