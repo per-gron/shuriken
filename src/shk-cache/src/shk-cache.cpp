@@ -20,10 +20,29 @@
 
 #include <shk-cache/shkcache_generated.h>
 #include <shk-cache/shkcache.grpc.fb.h>
+#include <util/assert.h>
+
+#include "rx_grpc.h"
 
 using namespace ShkCache;
 
 namespace shk {
+
+struct FlatbufferRefTransform {
+  template <typename T>
+  std::shared_ptr<const T> operator()(flatbuffers::BufferRef<T> &&buffer) const {
+    if (!buffer.Verify()) {
+      return nullptr;
+    } else {
+      SHK_ASSERT(buffer.must_free);
+      buffer.must_free = false;
+      uint8_t *buf = buffer.buf;
+      return std::shared_ptr<const T>(
+          buffer.GetRoot(),
+          [buf](const T *) { free(buf); });
+    }
+  }
+};
 
 class ConfigService final : public ShkCache::Config::Service {
   grpc::Status Get(
@@ -96,46 +115,40 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   auto channel = grpc::CreateChannel(
       "localhost:50051",
       grpc::InsecureChannelCredentials());
-  auto stub = ShkCache::Config::NewStub(channel);
 
   flatbuffers::FlatBufferBuilder fbb;
   {
-    grpc::CompletionQueue cq;
-
-    grpc::ClientContext context;
     auto config_get_request = ShkCache::CreateConfigGetRequest(fbb);
     fbb.Finish(config_get_request);
     auto request = flatbuffers::BufferRef<ShkCache::ConfigGetRequest>(
         fbb.GetBufferPointer(), fbb.GetSize());
-    std::unique_ptr<grpc::ClientAsyncResponseReader<
-        flatbuffers::BufferRef<ShkCache::ConfigGetResponse>>> rpc(
-            stub->AsyncGet(&context, request, &cq));
 
-    flatbuffers::BufferRef<ShkCache::ConfigGetResponse> response;
-    grpc::Status status;
-    rpc->Finish(&response, &status, (void *)1);
+    RxGrpcHandler handler;
 
-    void *got_tag;
-    bool ok = false;
-    cq.Next(&got_tag, &ok);
-    if (ok && got_tag == (void *)1) {
-      if (!response.Verify()) {
-        std::cout << "Verification failed!" << std::endl;
-      } else {
-        auto root = response.GetRoot();
-        if (auto config = root->config()) {
-          std::cout <<
-              "RPC response: " << config->soft_store_entry_size_limit() <<
-              ", " << config->hard_store_entry_size_limit() << std::endl;
-        } else {
-          std::cout << "RPC response: [no config]" << std::endl;
-        }
-      }
-    } else if (ok) {
-      std::cout << "Unknown response tag" << std::endl;
-    } else {
-      std::cout << "Request not ok" << std::endl;
-    }
+    auto client = handler.makeClient<FlatbufferRefTransform>(
+        ShkCache::Config::NewStub(channel));
+
+    client
+        .invoke(&ShkCache::Config::Stub::AsyncGet, request)
+        .subscribe(
+            [](const std::shared_ptr<const ConfigGetResponse> &response) {
+              if (!response) {
+                std::cout << "Verification failed!" << std::endl;
+              } else {
+                if (auto config = response->config()) {
+                  std::cout <<
+                      "RPC response: " << config->soft_store_entry_size_limit() <<
+                      ", " << config->hard_store_entry_size_limit() << std::endl;
+                } else {
+                  std::cout << "RPC response: [no config]" << std::endl;
+                }
+              }
+            },
+            []() {
+              printf("OnCompleted\n");
+            });
+
+    handler.run();
   }
 
   server_instance->Shutdown();

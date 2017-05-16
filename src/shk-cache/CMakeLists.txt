@@ -8,13 +8,14 @@ add_custom_command(
 
 add_library(libshk-cache
   src/dummy.cpp
+  src/rx_grpc.h
   ${CMAKE_CURRENT_BINARY_DIR}/include/shk-cache/shkcache.grpc.fb.cc
   ${CMAKE_CURRENT_BINARY_DIR}/include/shk-cache/shkcache.grpc.fb.h
   ${CMAKE_CURRENT_BINARY_DIR}/include/shk-cache/shkcache_generated.h)
 set_target_properties(libshk-cache PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_property(TARGET libshk-cache PROPERTY CXX_STANDARD 11)
-target_include_directories(libshk-cache PUBLIC include ${CMAKE_CURRENT_BINARY_DIR}/include)
-target_link_libraries(libshk-cache flatbuffers grpc++ zlib)
+target_include_directories(libshk-cache PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
+target_link_libraries(libshk-cache flatbuffers grpc++ rxcpp shk-util zlib)
 
 add_executable(shk-cache
   src/shk-cache.cpp)

@@ -28,5 +28,5 @@ add_subdirectory(lz4/contrib/cmake_unofficial EXCLUDE_FROM_ALL)
 
 add_subdirectory(re2c_cmake)
 
-set(RXCPP_BUILD_TESTS OFF)
-add_subdirectory(rxcpp)
+add_library(rxcpp INTERFACE)
+target_include_directories(rxcpp INTERFACE rxcpp/Rx/v2/src)
