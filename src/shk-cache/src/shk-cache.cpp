@@ -24,8 +24,6 @@
 
 #include "rx_grpc.h"
 
-using namespace ShkCache;
-
 namespace shk {
 
 struct FlatbufferRefTransform {
@@ -47,16 +45,16 @@ struct FlatbufferRefTransform {
 class ConfigService final : public ShkCache::Config::Service {
   grpc::Status Get(
       grpc::ServerContext* context,
-      const flatbuffers::BufferRef<ConfigGetRequest>* request,
-      flatbuffers::BufferRef<ConfigGetResponse>* response) override {
+      const flatbuffers::BufferRef<ShkCache::ConfigGetRequest>* request,
+      flatbuffers::BufferRef<ShkCache::ConfigGetResponse>* response) override {
     // Create a response from the incoming request name.
     _builder.Clear();
 
-    auto store_config = CreateStoreConfig(
+    auto store_config = ShkCache::CreateStoreConfig(
         _builder,
         /*soft_store_entry_size_limit:*/1,
         /*hard_store_entry_size_limit:*/2);
-    auto config_get_response = CreateConfigGetResponse(
+    auto config_get_response = ShkCache::CreateConfigGetResponse(
         _builder,
         store_config);
 
@@ -65,7 +63,7 @@ class ConfigService final : public ShkCache::Config::Service {
     // Since we keep reusing the same FlatBufferBuilder, the memory it owns
     // remains valid until the next call (this BufferRef doesn't own the
     // memory it points to).
-    *response = flatbuffers::BufferRef<ConfigGetResponse>(
+    *response = flatbuffers::BufferRef<ShkCache::ConfigGetResponse>(
         _builder.GetBufferPointer(),
         _builder.GetSize());
     return grpc::Status::OK;
@@ -82,7 +80,7 @@ std::mutex wait_for_server;
 std::condition_variable server_instance_cv;
 
 // This function implements the server thread.
-void RunServer() {
+void runServer() {
   auto server_address = "0.0.0.0:50051";
 
   ConfigService config_service;
@@ -103,7 +101,7 @@ void RunServer() {
 
 int main(int /*argc*/, const char * /*argv*/[]) {
   // Launch server.
-  std::thread server_thread(RunServer);
+  std::thread server_thread(runServer);
 
   // wait for server to spin up.
   std::unique_lock<std::mutex> lock(wait_for_server);
@@ -131,7 +129,8 @@ int main(int /*argc*/, const char * /*argv*/[]) {
     client
         .invoke(&ShkCache::Config::Stub::AsyncGet, request)
         .subscribe(
-            [](const std::shared_ptr<const ConfigGetResponse> &response) {
+            [](const std::shared_ptr<
+                   const ShkCache::ConfigGetResponse> &response) {
               if (!response) {
                 std::cout << "Verification failed!" << std::endl;
               } else {
