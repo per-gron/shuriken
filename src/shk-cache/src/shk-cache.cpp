@@ -136,8 +136,11 @@ int main(int /*argc*/, const char * /*argv*/[]) {
               } else {
                 if (auto config = response->config()) {
                   std::cout <<
-                      "RPC response: " << config->soft_store_entry_size_limit() <<
-                      ", " << config->hard_store_entry_size_limit() << std::endl;
+                      "RPC response: " <<
+                      config->soft_store_entry_size_limit() <<
+                      ", " <<
+                      config->hard_store_entry_size_limit() <<
+                      std::endl;
                 } else {
                   std::cout << "RPC response: [no config]" << std::endl;
                 }

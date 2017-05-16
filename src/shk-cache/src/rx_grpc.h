@@ -133,7 +133,8 @@ class RxGrpcHandler {
   template <
       typename ResponseTransform = detail::RxGrpcIdentityTransform,
       typename Stub>
-  RxGrpcClient<Stub, ResponseTransform> makeClient(std::unique_ptr<Stub> &&stub) {
+  RxGrpcClient<Stub, ResponseTransform> makeClient(
+      std::unique_ptr<Stub> &&stub) {
     return RxGrpcClient<Stub, ResponseTransform>(std::move(stub), &_cq);
   }
 
