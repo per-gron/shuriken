@@ -349,10 +349,25 @@ class RxGrpcServer {
     grpc::ServerBuilder _builder;
   };
 
+  /**
+   * Block and process asynchronous events until the server is shut down.
+   */
   void run() {
+    while (next()) {}
+  }
+
+  /**
+   * Block and process one asynchronous event.
+   *
+   * Returns false if the event queue is shutting down.
+   */
+  bool next() {
     void *got_tag;
     bool ok = false;
-    _cq->Next(&got_tag, &ok);  // TODO(peck): Use return value here
+    if (!_cq->Next(&got_tag, &ok)) {
+      // Shutting down
+      return false;
+    }
 
     if (ok) {
       detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
@@ -362,6 +377,8 @@ class RxGrpcServer {
     } else {
       std::cout << "Request not ok" << std::endl;
     }
+
+    return true;
   }
 
   void shutdown() {

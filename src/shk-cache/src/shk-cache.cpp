@@ -87,35 +87,32 @@ struct FlatbufferRefTransform {
   }
 };
 
-// Track the server instance, so we can terminate it later.
-bool server_ready = false;
-// Mutex to protec this variable.
-std::mutex wait_for_server;
-std::condition_variable server_instance_cv;
+rxcpp::observable<
+    std::shared_ptr<const Flatbuffer<ShkCache::ConfigGetResponse>>>
+configGet(const std::shared_ptr<
+    const ShkCache::ConfigGetRequest> &request) {
+  flatbuffers::FlatBufferBuilder response_builder;
+  auto store_config = ShkCache::CreateStoreConfig(
+      response_builder,
+      /*soft_store_entry_size_limit:*/1,
+      /*hard_store_entry_size_limit:*/2);
+  auto config_get_response = ShkCache::CreateConfigGetResponse(
+      response_builder,
+      store_config);
 
-// This function implements the server thread.
-void runServer() {
+  response_builder.Finish(config_get_response);
+
+  // Since we keep reusing the same FlatBufferBuilder, the memory it owns
+  // remains valid until the next call (this BufferRef doesn't own the
+  // memory it points to).
+  auto response = Flatbuffer<ShkCache::ConfigGetResponse>::sharedFromBuilder(
+          &response_builder);
+
+  return rxcpp::observable<>::just(response);
+}
+
+RxGrpcServer makeServer() {
   auto server_address = "0.0.0.0:50051";
-
-  auto response = std::shared_ptr<const Flatbuffer<ShkCache::ConfigGetResponse>>();
-  {
-    flatbuffers::FlatBufferBuilder response_builder;
-    auto store_config = ShkCache::CreateStoreConfig(
-        response_builder,
-        /*soft_store_entry_size_limit:*/1,
-        /*hard_store_entry_size_limit:*/2);
-    auto config_get_response = ShkCache::CreateConfigGetResponse(
-        response_builder,
-        store_config);
-
-    response_builder.Finish(config_get_response);
-
-    // Since we keep reusing the same FlatBufferBuilder, the memory it owns
-    // remains valid until the next call (this BufferRef doesn't own the
-    // memory it points to).
-    response = Flatbuffer<ShkCache::ConfigGetResponse>::sharedFromBuilder(
-            &response_builder);
-  }
 
   RxGrpcServer::Builder builder;
   builder.grpcServerBuilder()
@@ -124,38 +121,14 @@ void runServer() {
   builder.registerService<ShkCache::Config::AsyncService>()
       .registerMethod<FlatbufferRefTransform>(
           &ShkCache::Config::AsyncService::RequestGet,
-          [&](const std::shared_ptr<
-                 const ShkCache::ConfigGetRequest> &request) {
-            printf("Got request\n");
-            return rxcpp::observable<>::just(response);
-          });
+          &configGet);
 
-  auto server = builder.buildAndStart();
-
-  {
-    std::lock_guard<std::mutex> lock(wait_for_server);
-    server_ready = true;
-  }
-  server_instance_cv.notify_one();
-
-  server.run();
-  server.run();
-
-  server.shutdown();
-  server.run();
+  return builder.buildAndStart();
 }
 
 int main(int /*argc*/, const char * /*argv*/[]) {
-  // Launch server.
-  std::thread server_thread(runServer);
-
-  // wait for server to spin up.
-  {
-    std::unique_lock<std::mutex> lock(wait_for_server);
-    while (!server_ready) {
-      server_instance_cv.wait(lock);
-    }
-  }
+  auto server = makeServer();
+  std::thread server_thread([&] { server.run(); });
 
   // Now connect the client.
   auto channel = grpc::CreateChannel(
@@ -201,6 +174,7 @@ int main(int /*argc*/, const char * /*argv*/[]) {
     handler.run();
   }
 
+  server.shutdown();
   server_thread.join();
 
   channel.reset();
