@@ -27,18 +27,36 @@ namespace shk {
 
 struct FlatbufferRefTransform {
   template <typename T>
-  std::shared_ptr<const T> operator()(flatbuffers::BufferRef<T> &&buffer) const {
+  std::shared_ptr<const T> wrap(flatbuffers::BufferRef<T> &&buffer) const {
     if (!buffer.Verify()) {
       // TODO(peck): Handle this more gracefully
       return nullptr;
     } else {
-      SHK_ASSERT(buffer.must_free);
-      buffer.must_free = false;
-      uint8_t *buf = buffer.buf;
-      return std::shared_ptr<const T>(
-          buffer.GetRoot(),
-          [buf](const T *) { free(buf); });
+      if (buffer.must_free) {
+        buffer.must_free = false;
+        uint8_t *buf = buffer.buf;
+        return std::shared_ptr<const T>(
+            buffer.GetRoot(),
+            [buf](const T *) { free(buf); });
+      } else {
+        std::unique_ptr<uint8_t[]> copied_buffer(new uint8_t[buffer.len]);
+        memcpy(copied_buffer.get(), buffer.buf, buffer.len);
+        return std::shared_ptr<const T>(
+            flatbuffers::GetRoot<T>(copied_buffer.get()),
+            [buffer={std::move(copied_buffer)}](const T *) {});
+      }
     }
+  }
+
+  template <typename T>
+  flatbuffers::BufferRef<T> unwrap(
+      // TODO(peck): Make this not a shared_ptr to mutable
+      const std::shared_ptr<flatbuffers::BufferRef<T>> &obj) const {
+    // Construct a non-owning BufferRef<T>
+    flatbuffers::BufferRef<T> ref;
+    ref.len = obj->len;
+    ref.buf = obj->buf;
+    return ref;
   }
 };
 
@@ -52,30 +70,10 @@ std::condition_variable server_instance_cv;
 void runServer() {
   auto server_address = "0.0.0.0:50051";
 
-  ShkCache::Config::AsyncService service;
-  grpc::ServerBuilder builder;
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  builder.RegisterService(&service);
-  auto cq = builder.AddCompletionQueue();
-  auto server = builder.BuildAndStart();
-
+  auto response = std::make_shared<
+      flatbuffers::BufferRef<ShkCache::ConfigGetResponse>>();
   {
-    std::lock_guard<std::mutex> lock(wait_for_server);
-    server_ready = true;
-  }
-  server_instance_cv.notify_one();
-
-  grpc::ServerContext context;
-  flatbuffers::BufferRef<ShkCache::ConfigGetRequest> request;
-  grpc::ServerAsyncResponseWriter<
-      flatbuffers::BufferRef<ShkCache::ConfigGetResponse>> responder(&context);
-
-  service.RequestGet(
-      &context, &request, &responder, cq.get(), cq.get(), (void *)1);
-
-  flatbuffers::BufferRef<ShkCache::ConfigGetResponse> response;
-  flatbuffers::FlatBufferBuilder response_builder;
-  {
+    flatbuffers::FlatBufferBuilder response_builder;
     auto store_config = ShkCache::CreateStoreConfig(
         response_builder,
         /*soft_store_entry_size_limit:*/1,
@@ -89,44 +87,38 @@ void runServer() {
     // Since we keep reusing the same FlatBufferBuilder, the memory it owns
     // remains valid until the next call (this BufferRef doesn't own the
     // memory it points to).
-    response = flatbuffers::BufferRef<ShkCache::ConfigGetResponse>(
-        response_builder.GetBufferPointer(),
-        response_builder.GetSize());
+    response->len = response_builder.GetSize();
+    response->must_free = true;
+    response->buf = reinterpret_cast<uint8_t *>(malloc(response->len));
+    memcpy(response->buf, response_builder.GetBufferPointer(), response->len);
   }
+
+  RxGrpcServer::Builder builder;
+  builder.grpcServerBuilder()
+      .AddListeningPort(server_address, grpc::InsecureServerCredentials());
+
+  builder.registerService<ShkCache::Config::AsyncService>()
+      .registerMethod<FlatbufferRefTransform>(
+          &ShkCache::Config::AsyncService::RequestGet,
+          [&](const std::shared_ptr<
+                 const ShkCache::ConfigGetRequest> &request) {
+            printf("Got request\n");
+            return rxcpp::observable<>::just(response);
+          });
+
+  auto server = builder.buildAndStart();
 
   {
-    grpc::Status status;
-    void *got_tag;
-    bool ok = false;
-    cq->Next(&got_tag, &ok);
-    if (ok && got_tag == (void *)1) {
-      responder.Finish(response, status, (void *)2);
-    } else {
-      std::cout << "[SERVER] FAIL!" << std::endl;
-    }
+    std::lock_guard<std::mutex> lock(wait_for_server);
+    server_ready = true;
   }
+  server_instance_cv.notify_one();
 
-  {
-    void *got_tag;
-    bool ok = false;
-    cq->Next(&got_tag, &ok);
-    if (ok && got_tag == (void *)2) {
-      // clean up
-    } else {
-      std::cout << "[SERVER] CLEANUP FAIL!" << std::endl;
-    }
-  }
+  server.run();
+  server.run();
 
-  server->Shutdown();
-
-  cq->Shutdown();
-  {
-    void *got_tag;
-    bool ok = false;
-    if (cq->Next(&got_tag, &ok) != false) {
-      std::cout << "[SERVER] FAILED TO SHUT DOWN" << std::endl;
-    }
-  }
+  server.shutdown();
+  server.run();
 }
 
 int main(int /*argc*/, const char * /*argv*/[]) {
@@ -153,7 +145,7 @@ int main(int /*argc*/, const char * /*argv*/[]) {
     auto request = flatbuffers::BufferRef<ShkCache::ConfigGetRequest>(
         fbb.GetBufferPointer(), fbb.GetSize());
 
-    RxGrpcClientHandler handler;
+    RxGrpcClient handler;
 
     auto client = handler.makeClient<FlatbufferRefTransform>(
         ShkCache::Config::NewStub(channel));
