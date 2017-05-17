@@ -53,14 +53,14 @@ target_include_directories(libshk-trace PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_link_libraries(libshk-trace util bsm shk-util)
 set_target_properties(libshk-trace PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-set_property(TARGET libshk-trace PROPERTY CXX_STANDARD 11)
+set_property(TARGET libshk-trace PROPERTY CXX_STANDARD 14)
 
 add_executable(shk-trace-nosuid
   src/main.cpp)
 target_link_libraries(shk-trace-nosuid libshk-trace)
 set_target_properties(shk-trace-nosuid PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
-set_property(TARGET shk-trace-nosuid PROPERTY CXX_STANDARD 11)
+set_property(TARGET shk-trace-nosuid PROPERTY CXX_STANDARD 14)
 
 add_executable(shk-trace-test
   test/cmdline_options_test.cpp
@@ -81,7 +81,7 @@ add_executable(shk-trace-test
   test/tracing_server_test.cpp)
 target_link_libraries(shk-trace-test pthread catch libshk-trace)
 set_target_properties(shk-trace-test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-set_property(TARGET shk-trace-test PROPERTY CXX_STANDARD 11)
+set_property(TARGET shk-trace-test PROPERTY CXX_STANDARD 14)
 
 add_executable(shktrace-integrationtest-helper
   integrationtest/test.cpp)
@@ -91,7 +91,7 @@ set_target_properties(shktrace-integrationtest-helper PROPERTIES COMPILE_FLAGS $
 # seem to misbehave when optimization is enabled, so pass -O0. This program is
 # just a test helper anyway so it doesn't need optimization.
 set_target_properties(shktrace-integrationtest-helper PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations -O0")
-set_property(TARGET shktrace-integrationtest-helper PROPERTY CXX_STANDARD 11)
+set_property(TARGET shktrace-integrationtest-helper PROPERTY CXX_STANDARD 14)
 
 add_custom_target(shk-trace
   COMMAND "${PROJECT_SOURCE_DIR}/scripts/make_suid.sh" "$<TARGET_FILE:shk-trace-nosuid>"

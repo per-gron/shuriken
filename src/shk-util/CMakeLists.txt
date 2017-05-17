@@ -19,7 +19,7 @@ add_library(shk-util
 target_include_directories(shk-util PUBLIC include ${CMAKE_CURRENT_BINARY_DIR}/include)
 set_target_properties(shk-util PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 target_link_libraries(shk-util flatbuffers)
-set_property(TARGET shk-util PROPERTY CXX_STANDARD 11)
+set_property(TARGET shk-util PROPERTY CXX_STANDARD 14)
 
 add_executable(shk-util-test
   test/assert_test.cpp
@@ -28,7 +28,7 @@ add_executable(shk-util-test
   test/raii_helper_test.cpp
   test/shktrace_test.cpp
   test/string_view_test.cpp)
-set_property(TARGET shk-util-test PROPERTY CXX_STANDARD 11)
+set_property(TARGET shk-util-test PROPERTY CXX_STANDARD 14)
 target_link_libraries(shk-util-test shk-util catch)
 set_target_properties(shk-util-test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 

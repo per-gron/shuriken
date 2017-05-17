@@ -13,14 +13,14 @@ add_library(libshk-cache
   ${CMAKE_CURRENT_BINARY_DIR}/include/shk-cache/shkcache.grpc.fb.h
   ${CMAKE_CURRENT_BINARY_DIR}/include/shk-cache/shkcache_generated.h)
 set_target_properties(libshk-cache PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-set_property(TARGET libshk-cache PROPERTY CXX_STANDARD 11)
+set_property(TARGET libshk-cache PROPERTY CXX_STANDARD 14)
 target_include_directories(libshk-cache PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_link_libraries(libshk-cache flatbuffers grpc++ rxcpp shk-util zlib)
 
 add_executable(shk-cache
   src/shk-cache.cpp)
 set_target_properties(shk-cache PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-set_property(TARGET shk-cache PROPERTY CXX_STANDARD 11)
+set_property(TARGET shk-cache PROPERTY CXX_STANDARD 14)
 target_link_libraries(shk-cache libshk-cache)
 set_target_properties(shk-cache PROPERTIES
   COMPILE_FLAGS ${SHK_COMPILER_FLAGS}
@@ -28,7 +28,7 @@ set_target_properties(shk-cache PROPERTIES
 
 add_executable(shk-cache-test
   test/main.cpp)
-set_property(TARGET shk-cache-test PROPERTY CXX_STANDARD 11)
+set_property(TARGET shk-cache-test PROPERTY CXX_STANDARD 14)
 target_link_libraries(shk-cache-test catch libshk-cache)
 set_target_properties(shk-cache-test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
