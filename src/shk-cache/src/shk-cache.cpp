@@ -102,11 +102,8 @@ configGet(const std::shared_ptr<
 
   response_builder.Finish(config_get_response);
 
-  // Since we keep reusing the same FlatBufferBuilder, the memory it owns
-  // remains valid until the next call (this BufferRef doesn't own the
-  // memory it points to).
   auto response = Flatbuffer<ShkCache::ConfigGetResponse>::sharedFromBuilder(
-          &response_builder);
+      &response_builder);
 
   return rxcpp::observable<>::just(response);
 }
@@ -136,48 +133,44 @@ int main(int /*argc*/, const char * /*argv*/[]) {
       grpc::InsecureChannelCredentials());
 
   flatbuffers::FlatBufferBuilder fbb;
-  {
-    auto config_get_request = ShkCache::CreateConfigGetRequest(fbb);
-    fbb.Finish(config_get_request);
-    auto request = flatbuffers::BufferRef<ShkCache::ConfigGetRequest>(
-        fbb.GetBufferPointer(), fbb.GetSize());
+  auto config_get_request = ShkCache::CreateConfigGetRequest(fbb);
+  fbb.Finish(config_get_request);
+  auto request = Flatbuffer<ShkCache::ConfigGetRequest>::sharedFromBuilder(
+      &fbb);
 
-    RxGrpcClient handler;
+  RxGrpcClient handler;
 
-    auto client = handler.makeClient<FlatbufferRefTransform>(
-        ShkCache::Config::NewStub(channel));
+  auto client = handler.makeClient<FlatbufferRefTransform>(
+      ShkCache::Config::NewStub(channel));
 
-    client
-        .invoke(&ShkCache::Config::Stub::AsyncGet, request)
-        .subscribe(
-            [](const std::shared_ptr<
-                   const ShkCache::ConfigGetResponse> &response) {
-              if (!response) {
-                std::cout << "Verification failed!" << std::endl;
+  client
+      .invoke(&ShkCache::Config::Stub::AsyncGet, request)
+      .subscribe(
+          [](const std::shared_ptr<
+                 const ShkCache::ConfigGetResponse> &response) {
+            if (!response) {
+              std::cout << "Verification failed!" << std::endl;
+            } else {
+              if (auto config = response->config()) {
+                std::cout <<
+                    "RPC response: " <<
+                    config->soft_store_entry_size_limit() <<
+                    ", " <<
+                    config->hard_store_entry_size_limit() <<
+                    std::endl;
               } else {
-                if (auto config = response->config()) {
-                  std::cout <<
-                      "RPC response: " <<
-                      config->soft_store_entry_size_limit() <<
-                      ", " <<
-                      config->hard_store_entry_size_limit() <<
-                      std::endl;
-                } else {
-                  std::cout << "RPC response: [no config]" << std::endl;
-                }
+                std::cout << "RPC response: [no config]" << std::endl;
               }
-            },
-            []() {
-              std::cout << "OnCompleted" << std::endl;
-            });
+            }
+          },
+          []() {
+            std::cout << "OnCompleted" << std::endl;
+          });
 
-    handler.run();
-  }
+  handler.run();
 
   server.shutdown();
   server_thread.join();
-
-  channel.reset();
 
   return 0;
 }

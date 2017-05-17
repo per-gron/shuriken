@@ -41,21 +41,27 @@ class RxGrpcTag {
   virtual Response operator()() = 0;
 };
 
-template <typename ResponseType, typename ResponseTransform>
+template <
+    typename WrappedRequestType, typename ResponseType, typename Transform>
 class RxGrpcClientInvocation : public RxGrpcTag {
  public:
   using TransformedResponseType = decltype(
-      std::declval<ResponseTransform>().wrap(std::declval<ResponseType>()));
+      std::declval<Transform>().wrap(std::declval<ResponseType>()));
 
   RxGrpcClientInvocation(
+      const WrappedRequestType &request,
       rxcpp::subscriber<TransformedResponseType> &&subscriber)
-      : _subscriber(std::move(subscriber)) {}
+      : _request(request), _subscriber(std::move(subscriber)) {}
 
   Response operator()() override {
     _subscriber.on_next(_transform.wrap(std::move(_response)));
     _subscriber.on_completed();
 
     return Response::DELETE_ME;
+  }
+
+  WrappedRequestType &request() {
+    return _request;
   }
 
   ResponseType &response() {
@@ -71,9 +77,10 @@ class RxGrpcClientInvocation : public RxGrpcTag {
   }
 
  private:
-  ResponseTransform _transform;
-  rxcpp::subscriber<TransformedResponseType> _subscriber;
+  Transform _transform;
+  WrappedRequestType _request;
   ResponseType _response;
+  rxcpp::subscriber<TransformedResponseType> _subscriber;
   grpc::ClientContext _context;
   grpc::Status _status;
 };
@@ -216,27 +223,29 @@ class RxGrpcServerInvocationRequester : public InvocationRequester {
 
 }  // namespace detail
 
-template <typename Stub, typename ResponseTransform>
+template <typename Stub, typename Transform>
 class RxGrpcServiceClient {
  public:
   RxGrpcServiceClient(std::unique_ptr<Stub> &&stub, grpc::CompletionQueue *cq)
       : _stub(std::move(stub)), _cq(*cq) {}
 
-  template <typename ResponseType, typename RequestType>
+  template <typename ResponseType, typename WrappedRequestType>
   rxcpp::observable<
       typename detail::RxGrpcClientInvocation<
-          ResponseType, ResponseTransform>::TransformedResponseType>
+          WrappedRequestType, ResponseType, Transform>::TransformedResponseType>
   invoke(
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
-          const RequestType &request,
+          const decltype(std::declval<Transform>()
+              .unwrap(std::declval<WrappedRequestType>())) &request,
           grpc::CompletionQueue *cq),
-      const RequestType &request,
+      WrappedRequestType &&request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
 
     using ClientInvocation =
-        detail::RxGrpcClientInvocation<ResponseType, ResponseTransform>;
+        detail::RxGrpcClientInvocation<
+            WrappedRequestType, ResponseType, Transform>;
     using TransformedResponseType =
         typename ClientInvocation::TransformedResponseType;
 
@@ -244,8 +253,13 @@ class RxGrpcServiceClient {
         rxcpp::subscriber<TransformedResponseType> subscriber) {
 
       auto call = std::unique_ptr<ClientInvocation>(
-          new ClientInvocation(std::move(subscriber)));
-      auto rpc = ((_stub.get())->*invoke)(&call->context(), request, &_cq);
+          new ClientInvocation(
+              std::forward<WrappedRequestType>(request),
+              std::move(subscriber)));
+      auto rpc = ((_stub.get())->*invoke)(
+          &call->context(),
+          Transform().unwrap(call->request()),
+          &_cq);
       rpc->Finish(&call->response(), &call->status(), call.release());
     });
   }
@@ -413,11 +427,11 @@ class RxGrpcClient {
   }
 
   template <
-      typename ResponseTransform = detail::RxGrpcIdentityTransform,
+      typename Transform = detail::RxGrpcIdentityTransform,
       typename Stub>
-  RxGrpcServiceClient<Stub, ResponseTransform> makeClient(
+  RxGrpcServiceClient<Stub, Transform> makeClient(
       std::unique_ptr<Stub> &&stub) {
-    return RxGrpcServiceClient<Stub, ResponseTransform>(std::move(stub), &_cq);
+    return RxGrpcServiceClient<Stub, Transform>(std::move(stub), &_cq);
   }
 
  private:
