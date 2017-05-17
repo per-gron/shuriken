@@ -5,7 +5,7 @@ target_include_directories(catch INTERFACE catch/include)
 
 set(gRPC_USE_PROTO_LITE ON CACHE BOOL "Use the protobuf-lite library")
 set(BENCHMARK_ENABLE_TESTING OFF)
-add_subdirectory(grpc EXCLUDE_FROM_ALL)
+add_subdirectory(grpc)
 foreach(LIBRARY zlib libprotobuf)
   target_compile_definitions(${LIBRARY} PUBLIC z_size_t=size_t)
 endforeach()
