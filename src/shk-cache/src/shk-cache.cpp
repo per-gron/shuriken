@@ -25,6 +25,38 @@
 
 namespace shk {
 
+/**
+ * A Flatbuffer is an owning typed pointer to a valid Flatbuffer buffer. It is
+ * illegal to construct a Flatbuffer with memory that is not a valid flatbuffer
+ * of that type.
+ */
+template <typename T>
+class Flatbuffer {
+ public:
+  Flatbuffer(flatbuffers::unique_ptr_t &&buffer, flatbuffers::uoffset_t size)
+      : _buffer(std::move(buffer)),
+        _size(size) {}
+
+  static Flatbuffer fromBuilder(flatbuffers::FlatBufferBuilder *builder) {
+    auto size = builder->GetSize();
+    return Flatbuffer(builder->ReleaseBufferPointer(), size);
+  }
+
+  static std::shared_ptr<const Flatbuffer> sharedFromBuilder(
+      flatbuffers::FlatBufferBuilder *builder) {
+    return std::make_shared<const Flatbuffer>(fromBuilder(builder));
+  }
+
+  flatbuffers::BufferRef<T> ref() const {
+    // Construct a non-owning BufferRef<T>
+    return flatbuffers::BufferRef<T>(_buffer.get(), _size);
+  }
+
+ private:
+  flatbuffers::unique_ptr_t _buffer;
+  flatbuffers::uoffset_t _size;
+};
+
 struct FlatbufferRefTransform {
   template <typename T>
   std::shared_ptr<const T> wrap(flatbuffers::BufferRef<T> &&buffer) const {
@@ -50,13 +82,8 @@ struct FlatbufferRefTransform {
 
   template <typename T>
   flatbuffers::BufferRef<T> unwrap(
-      // TODO(peck): Make this not a shared_ptr to mutable
-      const std::shared_ptr<flatbuffers::BufferRef<T>> &obj) const {
-    // Construct a non-owning BufferRef<T>
-    flatbuffers::BufferRef<T> ref;
-    ref.len = obj->len;
-    ref.buf = obj->buf;
-    return ref;
+      const std::shared_ptr<const Flatbuffer<T>> &ref) const {
+    return ref->ref();
   }
 };
 
@@ -70,8 +97,7 @@ std::condition_variable server_instance_cv;
 void runServer() {
   auto server_address = "0.0.0.0:50051";
 
-  auto response = std::make_shared<
-      flatbuffers::BufferRef<ShkCache::ConfigGetResponse>>();
+  auto response = std::shared_ptr<const Flatbuffer<ShkCache::ConfigGetResponse>>();
   {
     flatbuffers::FlatBufferBuilder response_builder;
     auto store_config = ShkCache::CreateStoreConfig(
@@ -87,10 +113,8 @@ void runServer() {
     // Since we keep reusing the same FlatBufferBuilder, the memory it owns
     // remains valid until the next call (this BufferRef doesn't own the
     // memory it points to).
-    response->len = response_builder.GetSize();
-    response->must_free = true;
-    response->buf = reinterpret_cast<uint8_t *>(malloc(response->len));
-    memcpy(response->buf, response_builder.GetBufferPointer(), response->len);
+    response = Flatbuffer<ShkCache::ConfigGetResponse>::sharedFromBuilder(
+            &response_builder);
   }
 
   RxGrpcServer::Builder builder;
