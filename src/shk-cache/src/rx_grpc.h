@@ -162,11 +162,15 @@ using RequestAsyncMethod = void (Service::*)(
  * Helper class that exposes a unified interface for either stream or non-stream
  * server response writers.
  */
-template <typename ServerWriter>
+template <typename OwnedResponse, typename Transform, typename ServerWriter>
 class StreamOrResponseWriter;
 
-template <typename ResponseType>
-class StreamOrResponseWriter<grpc::ServerAsyncResponseWriter<ResponseType>> {
+/**
+ * Non-streaming version.
+ */
+template <typename OwnedResponse, typename Transform, typename ResponseType>
+class StreamOrResponseWriter<
+    OwnedResponse, Transform, grpc::ServerAsyncResponseWriter<ResponseType>> {
  public:
   StreamOrResponseWriter(grpc::ServerContext *context)
       : _responder(context) {}
@@ -175,13 +179,12 @@ class StreamOrResponseWriter<grpc::ServerAsyncResponseWriter<ResponseType>> {
     return &_responder;
   }
 
-  void write(
-      const ResponseType &response, const grpc::Status &status, void *tag) {
-    _responder.Finish(response, status, tag);
+  void write(const OwnedResponse &response, void *tag) {
+    _response = response;
   }
 
-  void finish(const grpc::Status &status, void *tag) {
-    // For the non-streaming writer, this is a no-op
+  void finish(void *tag) {
+    _responder.Finish(Transform::unwrap(_response), grpc::Status::OK, tag);
   }
 
   void finishWithError(const grpc::Status &status, void *tag) {
@@ -189,7 +192,40 @@ class StreamOrResponseWriter<grpc::ServerAsyncResponseWriter<ResponseType>> {
   }
 
  private:
+  OwnedResponse _response;
   grpc::ServerAsyncResponseWriter<ResponseType> _responder;
+};
+
+/**
+ * Streaming version.
+ */
+template <typename OwnedResponse, typename Transform, typename ResponseType>
+class StreamOrResponseWriter<
+    OwnedResponse, Transform, grpc::ServerAsyncWriter<ResponseType>> {
+ public:
+  StreamOrResponseWriter(grpc::ServerContext *context)
+      : _responder(context) {}
+
+  grpc::ServerAsyncWriter<ResponseType> *get() {
+    return &_responder;
+  }
+
+  void write(const OwnedResponse &response, void *tag) {
+    _response = response;
+    _responder.Write(Transform::unwrap(response), tag);
+  }
+
+  void finish(void *tag) {
+    _responder.Finish(grpc::Status::OK, tag);
+  }
+
+  void finishWithError(const grpc::Status &status, void *tag) {
+    _responder.Finish(status, tag);
+  }
+
+ private:
+  OwnedResponse _response;
+  grpc::ServerAsyncWriter<ResponseType> _responder;
 };
 
 template <
@@ -229,47 +265,41 @@ class RxGrpcServerInvocation : public RxGrpcTag {
 
   void operator()(bool success) override {
     if (!success) {
-      auto error_handler = _error_handler;
-      // Delete this already now, in case error_handler throws.
+      // This happens when the server is shutting down.
       delete this;
-      // Unfortunately, gRPC provides literally no information other than that
-      // the operation failed.
-      error_handler(std::make_exception_ptr(GrpcError(grpc::Status(
-          grpc::UNKNOWN, "The async function encountered an error"))));
+      return;
     }
 
     switch (_state) {
       case State::WAITING_FOR_REQUEST: {
         // TODO(peck): Static assert on the callbacks return and parameter types
 
-        _state = State::SENT_RESPONSE;
         auto wrapped = Transform::wrap(std::move(_request));
         if (wrapped.second.ok()) {
           _callback(std::move(wrapped.first))
               .subscribe(
                   [this](const OwnedResponse &response) {
-                    _response = response;
-                    _responder.write(
-                        Transform::unwrap(_response),
-                        grpc::Status::OK,
-                        this);
+                    _responder.write(response, this);
                   },
                   [this](std::exception_ptr error) {
                     // TODO(peck): Make it possible to respond with other errors
                     // than INTERNAL (by catching GrpcErrors and reporting that)
                     const auto what = exceptionMessage(error);
                     const auto status = grpc::Status(grpc::INTERNAL, what);
+                    _state = State::SENT_FINAL_RESPONSE;
                     _responder.finishWithError(status, this);
                   },
                   [this]() {
-                    _responder.finish(grpc::Status::OK, this);
+                    _state = State::SENT_FINAL_RESPONSE;
+                    _responder.finish(this);
                   });
         } else {
+          _state = State::SENT_FINAL_RESPONSE;
           _responder.finishWithError(wrapped.second, this);
         }
         break;
       }
-      case State::SENT_RESPONSE: {
+      case State::SENT_FINAL_RESPONSE: {
         delete this;
         break;
       }
@@ -283,7 +313,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
  private:
   enum class State {
     WAITING_FOR_REQUEST,
-    SENT_RESPONSE
+    SENT_FINAL_RESPONSE
   };
 
   RxGrpcServerInvocation(
@@ -317,8 +347,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
   grpc::ServerCompletionQueue &_cq;
   grpc::ServerContext _context;
   RequestType _request;
-  OwnedResponse _response;
-  StreamOrResponseWriter<ServerWriter> _responder;
+  StreamOrResponseWriter<OwnedResponse, Transform, ServerWriter> _responder;
 };
 
 class InvocationRequester {

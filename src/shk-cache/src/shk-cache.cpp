@@ -141,10 +141,10 @@ RxGrpcServer makeServer() {
   builder.registerService<ShkCache::Config::AsyncService>()
       .registerMethod<FlatbufferRefTransform>(
           &ShkCache::Config::AsyncService::RequestGet,
-          &configGet)/* // TODO(peck): Add me
+          &configGet)
       .registerMethod<FlatbufferRefTransform>(
           &ShkCache::Config::AsyncService::RequestServerStream,
-          &configGet)*/;
+          &configGet);
 
   return builder.buildAndStart();
 }
