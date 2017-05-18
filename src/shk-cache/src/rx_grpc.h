@@ -197,9 +197,10 @@ class RxGrpcServerInvocation : public RxGrpcTag {
                       response.first,
                       this);
                 },
-                // TODO(peck): Handle errors
-                []() {
-                  // OnCompleted. TODO(peck): Implement me
+                [this](std::exception_ptr error) {
+                  const auto what = exceptionMessage(error);
+                  const auto status = grpc::Status(grpc::INTERNAL, what);
+                  _responder.FinishWithError(status, this);
                 });
         break;
       }
@@ -232,6 +233,16 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         _service(*service),
         _cq(*cq),
         _responder(&_context) {}
+
+  static std::string exceptionMessage(const std::exception_ptr &error) {
+    try {
+      std::rethrow_exception(error);
+    } catch (const std::exception &exception) {
+      return exception.what();
+    } catch (...) {
+      return "Unknown error";
+    }
+  }
 
   GrpcErrorHandler _error_handler;
   State _state = State::WAITING_FOR_REQUEST;
