@@ -91,7 +91,9 @@ class FlatbufferRefTransform {
 };
 
 rxcpp::observable<
-    std::shared_ptr<const Flatbuffer<ShkCache::ConfigGetResponse>>>
+    std::pair<
+        grpc::Status,
+        std::shared_ptr<const Flatbuffer<ShkCache::ConfigGetResponse>>>>
 configGet(const std::shared_ptr<
     const ShkCache::ConfigGetRequest> &request) {
   flatbuffers::FlatBufferBuilder response_builder;
@@ -108,7 +110,8 @@ configGet(const std::shared_ptr<
   auto response = Flatbuffer<ShkCache::ConfigGetResponse>::sharedFromBuilder(
       &response_builder);
 
-  return rxcpp::observable<>::just(response);
+  return rxcpp::observable<>::just(
+      std::make_pair(grpc::Status::OK, response));
 }
 
 RxGrpcServer makeServer() {

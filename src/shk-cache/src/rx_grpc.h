@@ -17,6 +17,21 @@
 namespace shk {
 namespace detail {
 
+class GrpcError : public std::runtime_error {
+ public:
+  template <typename string_type>
+  explicit GrpcError(const string_type &what)
+      : runtime_error(what),
+        _what(what) {}
+
+  virtual const char *what() const throw() {
+    return _what.c_str();
+  }
+
+ private:
+  const std::string _what;
+};
+
 class RxGrpcIdentityTransform {
  public:
   RxGrpcIdentityTransform() = delete;
@@ -41,7 +56,7 @@ class RxGrpcTag {
 
   virtual ~RxGrpcTag() = default;
 
-  virtual Response operator()() = 0;
+  virtual Response operator()(bool success) = 0;
 
   /**
    * Block and process one asynchronous event on the given CompletionQueue.
@@ -50,20 +65,15 @@ class RxGrpcTag {
    */
   static bool processOneEvent(grpc::CompletionQueue *cq) {
     void *got_tag;
-    bool ok = false;
-    if (!cq->Next(&got_tag, &ok)) {
+    bool success = false;
+    if (!cq->Next(&got_tag, &success)) {
       // Shutting down
       return false;
     }
 
-    if (ok) {
-      detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
-      if ((*tag)() == detail::RxGrpcTag::Response::DELETE_ME) {
-        delete tag;
-      }
-    } else {
-      // TODO(peck): Handle this better
-      std::cout << "Request not ok" << std::endl;
+    detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
+    if ((*tag)(success) == detail::RxGrpcTag::Response::DELETE_ME) {
+      delete tag;
     }
 
     return true;
@@ -86,9 +96,16 @@ class RxGrpcClientInvocation : public RxGrpcTag {
       rxcpp::subscriber<TransformedResponseType> &&subscriber)
       : _request(request), _subscriber(std::move(subscriber)) {}
 
-  Response operator()() override {
-    _subscriber.on_next(Transform::wrap(std::move(_response)));
-    _subscriber.on_completed();
+  Response operator()(bool success) override {
+    if (success) {
+      _subscriber.on_next(Transform::wrap(std::move(_response)));
+      _subscriber.on_completed();
+    } else {
+      // Unfortunately, gRPC provides literally no information other than that
+      // the operation failed.
+      _subscriber.on_error(std::make_exception_ptr(GrpcError(
+          "The async function encountered an error")));
+    }
 
     return Response::DELETE_ME;
   }
@@ -137,7 +154,8 @@ class RxGrpcServerInvocation : public RxGrpcTag {
       decltype(Transform::wrap(std::declval<RequestType>()));
   using ResponseObservable =
       decltype(std::declval<Callback>()(std::declval<OwnedRequest>()));
-  using OwnedResponse = typename ResponseObservable::value_type;
+  using StatusAndResponse = typename ResponseObservable::value_type;
+  using OwnedResponse = typename StatusAndResponse::second_type;
  public:
   using Method = RequestAsyncMethod<Service, ResponseType, RequestType>;
 
@@ -156,7 +174,9 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         invocation);
   }
 
-  Response operator()() override {
+  Response operator()(bool success) override {
+    // TODO(peck): Use success
+
     switch (_state) {
       case State::WAITING_FOR_REQUEST: {
         // TODO(peck): Static assert on the callbacks return and parameter types
@@ -164,11 +184,11 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         _state = State::SENT_RESPONSE;
         _callback(Transform::wrap(std::move(_request)))
             .subscribe(
-                [this](const OwnedResponse &response) {
-                  _response = response;
+                [this](const std::pair<grpc::Status, OwnedResponse> &response) {
+                  _response = response.second;
                   _responder.Finish(
                       Transform::unwrap(_response),
-                      grpc::Status::OK,  // TODO(peck): Make it possible to select status code
+                      response.first,
                       this);
                 },
                 // TODO(peck): Handle errors
