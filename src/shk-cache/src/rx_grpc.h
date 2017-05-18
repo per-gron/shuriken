@@ -74,8 +74,12 @@ class RxGrpcTag {
       return false;
     }
 
-    detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
-    (*tag)(success);
+    if (got_tag) {
+      detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
+      (*tag)(success);
+    } else {
+      printf("Did not get tag\n");  // TODO(peck): ??
+    }
 
     return true;
   }
@@ -119,6 +123,42 @@ class RxGrpcClientInvocation : public RxGrpcTag {
     delete this;
   }
 
+  /**
+   * Non-stream response.
+   */
+  template <typename Stub>
+  void invoke(
+      std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
+      (Stub::*invoke)(
+          grpc::ClientContext *context,
+          const decltype(std::declval<Transform>()
+              .unwrap(std::declval<WrappedRequestType>())) &request,
+          grpc::CompletionQueue *cq),
+      Stub *stub,
+      grpc::CompletionQueue *cq) {
+    auto rpc = (stub->*invoke)(&_context, Transform::unwrap(_request), cq);
+    rpc->Finish(&_response, &_status, this);
+  }
+
+  /**
+   * Stream response.
+   */
+  template <typename Stub>
+  void invoke(
+      std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
+      (Stub::*invoke)(
+          grpc::ClientContext *context,
+          const decltype(std::declval<Transform>()
+              .unwrap(std::declval<WrappedRequestType>())) &request,
+          grpc::CompletionQueue *cq,
+          void *tag),
+      Stub *stub,
+      grpc::CompletionQueue *cq) {
+    auto rpc = (stub->*invoke)(
+        &_context, Transform::unwrap(_request), cq, nullptr);
+    rpc->Read(&_response, this);
+  }
+
   WrappedRequestType &request() {
     return _request;
   }
@@ -160,6 +200,13 @@ using RequestAsyncMethod = void (Service::*)(
 
 /**
  * Helper class that exposes a unified interface for either stream or non-stream
+ * client response readers.
+ */
+template <typename Reader>
+class StreamOrResponseReader;  // TODO(peck): Use this or delete it.
+
+/**
+ * Helper class that exposes a unified interface for either stream or non-stream
  * server response writers.
  */
 template <typename OwnedResponse, typename Transform, typename ServerWriter>
@@ -191,6 +238,9 @@ class StreamOrResponseWriter<
     _responder.FinishWithError(status, tag);
   }
 
+  void operationFinished(void *tag) {
+  }
+
  private:
   OwnedResponse _response;
   grpc::ServerAsyncResponseWriter<ResponseType> _responder;
@@ -211,23 +261,51 @@ class StreamOrResponseWriter<
   }
 
   void write(const OwnedResponse &response, void *tag) {
-    // TODO(peck): Because we don't have backpressure, this needs to have an
-    // unbounded buffer and make sure to have only one Write invocation at a
-    // time.
-    _response = response;
-    _responder.Write(Transform::unwrap(response), tag);
+    _enqueued_responses.push_back(response);
+    runEnqueuedOperation(tag);
   }
 
   void finish(void *tag) {
-    _responder.Finish(grpc::Status::OK, tag);
+    _enqueued_finish_status = grpc::Status::OK;
+    _enqueued_finish = true;
+    runEnqueuedOperation(tag);
   }
 
   void finishWithError(const grpc::Status &status, void *tag) {
-    _responder.Finish(status, tag);
+    _enqueued_finish_status = status;
+    _enqueued_finish = true;
+    runEnqueuedOperation(tag);
+  }
+
+  void operationFinished(void *tag) {
+    _operation_in_progress = false;
+    runEnqueuedOperation(tag);
   }
 
  private:
-  OwnedResponse _response;
+  void runEnqueuedOperation(void *tag) {
+    if (_operation_in_progress) {
+      return;
+    }
+    if (!_enqueued_responses.empty()) {
+      _operation_in_progress = true;
+      _responder.Write(
+          Transform::unwrap(std::move(_enqueued_responses.front())), tag);
+      _enqueued_responses.pop_front();
+    } else if (_enqueued_finish) {
+      _enqueued_finish = false;
+      _operation_in_progress = true;
+      _responder.Finish(_enqueued_finish_status, tag);
+    }
+  }
+
+  bool _operation_in_progress = false;
+
+  // Because we don't have backpressure we need an unbounded buffer here :-(
+  std::deque<OwnedResponse> _enqueued_responses;
+  bool _enqueued_finish = false;
+  grpc::Status _enqueued_finish_status;
+
   grpc::ServerAsyncWriter<ResponseType> _responder;
 };
 
@@ -305,7 +383,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         break;
       }
       case State::GOT_REQUEST: {
-        // Nothing to do.
+        _responder.operationFinished(this);
         break;
       }
       case State::SENT_FINAL_RESPONSE: {
@@ -413,6 +491,9 @@ class RxGrpcServiceClient {
   RxGrpcServiceClient(std::unique_ptr<Stub> &&stub, grpc::CompletionQueue *cq)
       : _stub(std::move(stub)), _cq(*cq) {}
 
+  /**
+   * Non-stream response.
+   */
   template <typename ResponseType, typename WrappedRequestType>
   rxcpp::observable<
       typename detail::RxGrpcClientInvocation<
@@ -426,6 +507,51 @@ class RxGrpcServiceClient {
           grpc::CompletionQueue *cq),
       WrappedRequestType &&request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
+    return invokeImpl<
+        ResponseType,
+        WrappedRequestType,
+        grpc::ClientAsyncResponseReader<ResponseType>>(
+            invoke, std::move(request), std::move(context));
+  }
+
+  /**
+   * Stream response.
+   */
+  template <typename ResponseType, typename WrappedRequestType>
+  rxcpp::observable<
+      typename detail::RxGrpcClientInvocation<
+          WrappedRequestType, ResponseType, Transform>::WrappedResponseType>
+  invoke(
+      std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
+      (Stub::*invoke)(
+          grpc::ClientContext *context,
+          const decltype(std::declval<Transform>()
+              .unwrap(std::declval<WrappedRequestType>())) &request,
+          grpc::CompletionQueue *cq,
+          void *tag),
+      WrappedRequestType &&request,
+      grpc::ClientContext &&context = grpc::ClientContext()) {
+    return invokeImpl<
+        ResponseType,
+        WrappedRequestType,
+        grpc::ClientAsyncReader<ResponseType>,
+        decltype(invoke)>(
+            invoke, std::move(request), std::move(context));
+  }
+
+ private:
+  template <
+      typename ResponseType,
+      typename WrappedRequestType,
+      typename Reader,
+      typename Invoke>
+  rxcpp::observable<
+      typename detail::RxGrpcClientInvocation<
+          WrappedRequestType, ResponseType, Transform>::WrappedResponseType>
+  invokeImpl(
+      Invoke invoke,
+      WrappedRequestType &&request,
+      grpc::ClientContext &&context = grpc::ClientContext()) {
 
     using ClientInvocation =
         detail::RxGrpcClientInvocation<
@@ -436,19 +562,13 @@ class RxGrpcServiceClient {
     return rxcpp::observable<>::create<WrappedResponseType>([&](
         rxcpp::subscriber<WrappedResponseType> subscriber) {
 
-      auto call = std::unique_ptr<ClientInvocation>(
-          new ClientInvocation(
-              std::forward<WrappedRequestType>(request),
-              std::move(subscriber)));
-      auto rpc = ((_stub.get())->*invoke)(
-          &call->context(),
-          Transform::unwrap(call->request()),
-          &_cq);
-      rpc->Finish(&call->response(), &call->status(), call.release());
+      auto call = new ClientInvocation(
+          std::forward<WrappedRequestType>(request),
+          std::move(subscriber));
+      call->invoke(invoke, _stub.get(), &_cq);
     });
   }
 
- private:
   std::unique_ptr<Stub> _stub;
   grpc::CompletionQueue &_cq;
 };

@@ -162,7 +162,8 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   // TODO(peck): Add support for streaming from server (in client)
   // TODO(peck): Add support for streaming from client (in server)
   // TODO(peck): Add support for streaming from client (in client)
-  // TODO(peck): Add support for bidi streaming
+  // TODO(peck): Add support for bidi streaming (in server)
+  // TODO(peck): Add support for bidi streaming (in client)
   // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
   // TODO(peck): Add support for backpressure (streaming output requires only
   //     one outstanding request at a time. Not possible atm.)
@@ -175,13 +176,14 @@ int main(int /*argc*/, const char * /*argv*/[]) {
       "localhost:50051",
       grpc::InsecureChannelCredentials());
 
-  RxGrpcClient client;
+  RxGrpcClient client;  // TODO(peck): Rename to ClientFactory
 
   auto config_client = client.makeClient<FlatbufferRefTransform>(
       ShkCache::Config::NewStub(channel));
 
   config_client
-      .invoke(&ShkCache::Config::Stub::AsyncGet, makeConfigGetRequest())
+      .invoke(
+          &ShkCache::Config::Stub::AsyncServerStream, makeConfigGetRequest())
       .subscribe(
           [](const FlatbufferPtr<ShkCache::ConfigGetResponse> &response) {
             if (auto config = (*response)->config()) {
