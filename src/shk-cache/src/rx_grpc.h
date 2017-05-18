@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <grpc++/grpc++.h>
 #include <rxcpp/rx-observable.hpp>
 
 namespace shk {
@@ -20,17 +21,21 @@ using GrpcErrorHandler = std::function<void (std::exception_ptr)>;
 
 class GrpcError : public std::runtime_error {
  public:
-  template <typename string_type>
-  explicit GrpcError(const string_type &what)
-      : runtime_error(what),
-        _what(what) {}
+  explicit GrpcError(const grpc::Status &status)
+      : runtime_error(what(status)),
+        _status(status) {}
 
-  virtual const char *what() const throw() {
-    return _what.c_str();
+  const char *what() const throw() override {
+    return what(_status);
   }
 
  private:
-  const std::string _what;
+  static const char *what(const grpc::Status &status) throw() {
+    const auto &message = status.error_message();
+    return message.empty() ? "[No error message]" : message.c_str();
+  }
+
+  const grpc::Status _status;
 };
 
 namespace detail {
@@ -102,8 +107,8 @@ class RxGrpcClientInvocation : public RxGrpcTag {
     } else {
       // Unfortunately, gRPC provides literally no information other than that
       // the operation failed.
-      _subscriber.on_error(std::make_exception_ptr(GrpcError(
-          "The async function encountered an error")));
+      _subscriber.on_error(std::make_exception_ptr(GrpcError(grpc::Status(
+          grpc::UNKNOWN, "The async function encountered an error"))));
     }
 
     delete this;
@@ -182,8 +187,8 @@ class RxGrpcServerInvocation : public RxGrpcTag {
       delete this;
       // Unfortunately, gRPC provides literally no information other than that
       // the operation failed.
-      error_handler(std::make_exception_ptr(GrpcError(
-          "The async function encountered an error")));
+      error_handler(std::make_exception_ptr(GrpcError(grpc::Status(
+          grpc::UNKNOWN, "The async function encountered an error"))));
     }
 
     switch (_state) {
