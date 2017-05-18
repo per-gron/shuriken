@@ -211,6 +211,9 @@ class StreamOrResponseWriter<
   }
 
   void write(const OwnedResponse &response, void *tag) {
+    // TODO(peck): Because we don't have backpressure, this needs to have an
+    // unbounded buffer and make sure to have only one Write invocation at a
+    // time.
     _response = response;
     _responder.Write(Transform::unwrap(response), tag);
   }
@@ -274,6 +277,8 @@ class RxGrpcServerInvocation : public RxGrpcTag {
       case State::WAITING_FOR_REQUEST: {
         // TODO(peck): Static assert on the callbacks return and parameter types
 
+        _state = State::GOT_REQUEST;
+
         auto wrapped = Transform::wrap(std::move(_request));
         if (wrapped.second.ok()) {
           _callback(std::move(wrapped.first))
@@ -299,6 +304,10 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         }
         break;
       }
+      case State::GOT_REQUEST: {
+        // Nothing to do.
+        break;
+      }
       case State::SENT_FINAL_RESPONSE: {
         delete this;
         break;
@@ -313,6 +322,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
  private:
   enum class State {
     WAITING_FOR_REQUEST,
+    GOT_REQUEST,
     SENT_FINAL_RESPONSE
   };
 
@@ -340,6 +350,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
   }
 
   GrpcErrorHandler _error_handler;
+  // TODO(peck): Does _state need to be atomic?
   State _state = State::WAITING_FOR_REQUEST;
   Method _method;
   Callback _callback;

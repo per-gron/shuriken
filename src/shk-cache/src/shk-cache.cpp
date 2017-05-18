@@ -159,11 +159,13 @@ auto makeConfigGetRequest() {
 
 int main(int /*argc*/, const char * /*argv*/[]) {
   // TODO(peck): Add support for making more than one request
-  // TODO(peck): Add support for server streaming
-  // TODO(peck): Add support for client streaming
+  // TODO(peck): Add support for streaming from server (in client)
+  // TODO(peck): Add support for streaming from client (in server)
+  // TODO(peck): Add support for streaming from client (in client)
   // TODO(peck): Add support for bidi streaming
   // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
-  // TODO(peck): Add support for backpressure
+  // TODO(peck): Add support for backpressure (streaming output requires only
+  //     one outstanding request at a time. Not possible atm.)
   // TODO(peck): Test
 
   auto server = makeServer();
