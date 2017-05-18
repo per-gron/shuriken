@@ -127,10 +127,14 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   auto server = makeServer();
   std::thread server_thread([&] { server.run(); });
 
-  // Now connect the client.
   auto channel = grpc::CreateChannel(
       "localhost:50051",
       grpc::InsecureChannelCredentials());
+
+  RxGrpcClient client;
+
+  auto config_client = client.makeClient<FlatbufferRefTransform>(
+      ShkCache::Config::NewStub(channel));
 
   flatbuffers::FlatBufferBuilder fbb;
   auto config_get_request = ShkCache::CreateConfigGetRequest(fbb);
@@ -138,12 +142,7 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   auto request = Flatbuffer<ShkCache::ConfigGetRequest>::sharedFromBuilder(
       &fbb);
 
-  RxGrpcClient handler;
-
-  auto client = handler.makeClient<FlatbufferRefTransform>(
-      ShkCache::Config::NewStub(channel));
-
-  client
+  config_client
       .invoke(&ShkCache::Config::Stub::AsyncGet, request)
       .subscribe(
           [](const std::shared_ptr<
@@ -163,11 +162,12 @@ int main(int /*argc*/, const char * /*argv*/[]) {
               }
             }
           },
-          []() {
+          [&client]() {
             std::cout << "OnCompleted" << std::endl;
+            client.shutdown();
           });
 
-  handler.run();
+  client.run();
 
   server.shutdown();
   server_thread.join();

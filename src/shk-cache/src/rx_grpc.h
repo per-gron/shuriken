@@ -39,6 +39,36 @@ class RxGrpcTag {
   virtual ~RxGrpcTag() = default;
 
   virtual Response operator()() = 0;
+
+  /**
+   * Block and process one asynchronous event on the given CompletionQueue.
+   *
+   * Returns false if the event queue is shutting down.
+   */
+  static bool processOneEvent(grpc::CompletionQueue *cq) {
+    void *got_tag;
+    bool ok = false;
+    if (!cq->Next(&got_tag, &ok)) {
+      // Shutting down
+      return false;
+    }
+
+    if (ok) {
+      detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
+      if ((*tag)() == detail::RxGrpcTag::Response::DELETE_ME) {
+        delete tag;
+      }
+    } else {
+      // TODO(peck): Handle this better
+      std::cout << "Request not ok" << std::endl;
+    }
+
+    return true;
+  }
+
+  static void processAllEvents(grpc::CompletionQueue *cq) {
+    while (processOneEvent(cq)) {}
+  }
 };
 
 template <
@@ -279,6 +309,13 @@ class RxGrpcServer {
         _cq(std::move(cq)),
         _server(std::move(server)) {}
 
+  RxGrpcServer(RxGrpcServer &&) = default;
+  RxGrpcServer &operator=(RxGrpcServer &&) = default;
+
+  ~RxGrpcServer() {
+    shutdown();
+  }
+
   class Builder {
    public:
     template <typename Service>
@@ -367,7 +404,7 @@ class RxGrpcServer {
    * Block and process asynchronous events until the server is shut down.
    */
   void run() {
-    while (next()) {}
+    return detail::RxGrpcTag::processAllEvents(_cq.get());
   }
 
   /**
@@ -376,28 +413,17 @@ class RxGrpcServer {
    * Returns false if the event queue is shutting down.
    */
   bool next() {
-    void *got_tag;
-    bool ok = false;
-    if (!_cq->Next(&got_tag, &ok)) {
-      // Shutting down
-      return false;
-    }
-
-    if (ok) {
-      detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
-      if ((*tag)() == detail::RxGrpcTag::Response::DELETE_ME) {
-        delete tag;
-      }
-    } else {
-      std::cout << "Request not ok" << std::endl;
-    }
-
-    return true;
+    return detail::RxGrpcTag::processOneEvent(_cq.get());
   }
 
   void shutdown() {
-    _server->Shutdown();
-    _cq->Shutdown();
+    // _server and _cq might be nullptr if this object has been moved out from.
+    if (_server) {
+      _server->Shutdown();
+    }
+    if (_cq) {
+      _cq->Shutdown();
+    }
   }
 
  private:
@@ -411,19 +437,8 @@ class RxGrpcServer {
 
 class RxGrpcClient {
  public:
-  void run() {
-    void *got_tag;
-    bool ok = false;
-    _cq.Next(&got_tag, &ok);  // TODO(peck): Use return value here
-
-    if (ok) {
-      detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
-      if ((*tag)() == detail::RxGrpcTag::Response::DELETE_ME) {
-        delete tag;
-      }
-    } else {
-      std::cout << "Request not ok" << std::endl;
-    }
+  ~RxGrpcClient() {
+    shutdown();
   }
 
   template <
@@ -432,6 +447,26 @@ class RxGrpcClient {
   RxGrpcServiceClient<Stub, Transform> makeClient(
       std::unique_ptr<Stub> &&stub) {
     return RxGrpcServiceClient<Stub, Transform>(std::move(stub), &_cq);
+  }
+
+  /**
+   * Block and process asynchronous events until the server is shut down.
+   */
+  void run() {
+    return detail::RxGrpcTag::processAllEvents(&_cq);
+  }
+
+  /**
+   * Block and process one asynchronous event.
+   *
+   * Returns false if the event queue is shutting down.
+   */
+  bool next() {
+    return detail::RxGrpcTag::processOneEvent(&_cq);
+  }
+
+  void shutdown() {
+    _cq.Shutdown();
   }
 
  private:
