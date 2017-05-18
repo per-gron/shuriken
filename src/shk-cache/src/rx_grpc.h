@@ -205,8 +205,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
           Transform::wrap(std::declval<RequestType>()))::first_type;
   using ResponseObservable =
       decltype(std::declval<Callback>()(std::declval<OwnedRequest>()));
-  using StatusAndResponse = typename ResponseObservable::value_type;
-  using OwnedResponse = typename StatusAndResponse::second_type;
+  using OwnedResponse = typename ResponseObservable::value_type;
  public:
   using Method = RequestAsyncMethod<
       Service, ResponseType, RequestType, ServerWriter>;
@@ -248,15 +247,16 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         if (wrapped.second.ok()) {
           _callback(std::move(wrapped.first))
               .subscribe(
-                  [this](
-                      const std::pair<grpc::Status, OwnedResponse> &response) {
-                    _response = response.second;
+                  [this](const OwnedResponse &response) {
+                    _response = response;
                     _responder.write(
                         Transform::unwrap(_response),
-                        response.first,
+                        grpc::Status::OK,
                         this);
                   },
                   [this](std::exception_ptr error) {
+                    // TODO(peck): Make it possible to respond with other errors
+                    // than INTERNAL (by catching GrpcErrors and reporting that)
                     const auto what = exceptionMessage(error);
                     const auto status = grpc::Status(grpc::INTERNAL, what);
                     _responder.finishWithError(status, this);
