@@ -15,7 +15,8 @@
 #include <rxcpp/rx-observable.hpp>
 
 namespace shk {
-namespace detail {
+
+using GrpcErrorHandler = std::function<void (std::exception_ptr)>;
 
 class GrpcError : public std::runtime_error {
  public:
@@ -31,6 +32,8 @@ class GrpcError : public std::runtime_error {
  private:
   const std::string _what;
 };
+
+namespace detail {
 
 class RxGrpcIdentityTransform {
  public:
@@ -49,14 +52,9 @@ class RxGrpcIdentityTransform {
 
 class RxGrpcTag {
  public:
-  enum class Response {
-    OK,
-    DELETE_ME
-  };
-
   virtual ~RxGrpcTag() = default;
 
-  virtual Response operator()(bool success) = 0;
+  virtual void operator()(bool success) = 0;
 
   /**
    * Block and process one asynchronous event on the given CompletionQueue.
@@ -72,9 +70,7 @@ class RxGrpcTag {
     }
 
     detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
-    if ((*tag)(success) == detail::RxGrpcTag::Response::DELETE_ME) {
-      delete tag;
-    }
+    (*tag)(success);
 
     return true;
   }
@@ -96,7 +92,7 @@ class RxGrpcClientInvocation : public RxGrpcTag {
       rxcpp::subscriber<TransformedResponseType> &&subscriber)
       : _request(request), _subscriber(std::move(subscriber)) {}
 
-  Response operator()(bool success) override {
+  void operator()(bool success) override {
     if (success) {
       _subscriber.on_next(Transform::wrap(std::move(_response)));
       _subscriber.on_completed();
@@ -107,7 +103,7 @@ class RxGrpcClientInvocation : public RxGrpcTag {
           "The async function encountered an error")));
     }
 
-    return Response::DELETE_ME;
+    delete this;
   }
 
   WrappedRequestType &request() {
@@ -160,11 +156,13 @@ class RxGrpcServerInvocation : public RxGrpcTag {
   using Method = RequestAsyncMethod<Service, ResponseType, RequestType>;
 
   static void request(
+      GrpcErrorHandler error_handler,
       Method method,
       const Callback &callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = new RxGrpcServerInvocation(method, callback, service, cq);
+    auto invocation = new RxGrpcServerInvocation(
+        error_handler, method, callback, service, cq);
     (service->*method)(
         &invocation->_context,
         &invocation->_request,
@@ -174,8 +172,16 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         invocation);
   }
 
-  Response operator()(bool success) override {
-    // TODO(peck): Use success
+  void operator()(bool success) override {
+    if (!success) {
+      auto error_handler = _error_handler;
+      // Delete this already now, in case error_handler throws.
+      delete this;
+      // Unfortunately, gRPC provides literally no information other than that
+      // the operation failed.
+      error_handler(std::make_exception_ptr(GrpcError(
+          "The async function encountered an error")));
+    }
 
     switch (_state) {
       case State::WAITING_FOR_REQUEST: {
@@ -195,16 +201,17 @@ class RxGrpcServerInvocation : public RxGrpcTag {
                 []() {
                   // OnCompleted. TODO(peck): Implement me
                 });
-
-        return Response::OK;
+        break;
       }
       case State::SENT_RESPONSE: {
-        return Response::DELETE_ME;
+        delete this;
+        break;
+      }
+      default: {
+        // Should be unreachable code
+        abort();
       }
     }
-    // Should be unreachable code
-    abort();
-    return Response::DELETE_ME;
   }
 
  private:
@@ -214,16 +221,19 @@ class RxGrpcServerInvocation : public RxGrpcTag {
   };
 
   RxGrpcServerInvocation(
+      GrpcErrorHandler error_handler,
       Method method,
       const Callback &callback,
       Service *service,
       grpc::ServerCompletionQueue *cq)
-      : _method(method),
+      : _error_handler(error_handler),
+        _method(method),
         _callback(callback),
         _service(*service),
         _cq(*cq),
         _responder(&_context) {}
 
+  GrpcErrorHandler _error_handler;
   State _state = State::WAITING_FOR_REQUEST;
   Method _method;
   Callback _callback;
@@ -239,7 +249,9 @@ class InvocationRequester {
  public:
   virtual ~InvocationRequester() = default;
 
-  virtual void requestInvocation(grpc::ServerCompletionQueue *cq) = 0;
+  virtual void requestInvocation(
+      GrpcErrorHandler error_handler,
+      grpc::ServerCompletionQueue *cq) = 0;
 };
 
 template <
@@ -256,14 +268,16 @@ class RxGrpcServerInvocationRequester : public InvocationRequester {
       Method method, Callback &&callback, Service *service)
       : _method(method), _callback(std::move(callback)), _service(*service) {}
 
-  void requestInvocation(grpc::ServerCompletionQueue *cq) override {
+  void requestInvocation(
+      GrpcErrorHandler error_handler,
+      grpc::ServerCompletionQueue *cq) override {
     using ServerInvocation = RxGrpcServerInvocation<
         Service,
         ResponseType,
         RequestType,
         Transform,
         Callback>;
-    ServerInvocation::request(_method, _callback, &_service, cq);
+    ServerInvocation::request(error_handler, _method, _callback, &_service, cq);
   }
 
  private:
@@ -408,13 +422,16 @@ class RxGrpcServer {
           _builder.BuildAndStart());
 
       for (const auto &requester: _invocation_requesters) {
-        requester->requestInvocation(server._cq.get());
+        requester->requestInvocation(_error_handler, server._cq.get());
       }
 
       return server;
     }
 
    private:
+    GrpcErrorHandler _error_handler = [](std::exception_ptr error) {
+      std::rethrow_exception(error);
+    };
     std::vector<std::unique_ptr<grpc::Service>> _services;
     std::vector<std::unique_ptr<detail::InvocationRequester>>
         _invocation_requesters;
