@@ -146,7 +146,10 @@ RxGrpcServer makeServer() {
   builder.registerService<ShkCache::Config::AsyncService>()
       .registerMethod<FlatbufferRefTransform>(
           &ShkCache::Config::AsyncService::RequestGet,
-          &configGet);
+          &configGet)/* // TODO(peck): Add me
+      .registerMethod<FlatbufferRefTransform>(
+          &ShkCache::Config::AsyncService::RequestServerStream,
+          &configGet)*/;
 
   return builder.buildAndStart();
 }
@@ -160,7 +163,10 @@ auto makeConfigGetRequest() {
 }
 
 int main(int /*argc*/, const char * /*argv*/[]) {
-  // TODO(peck): Add support for streaming
+  // TODO(peck): Add support for making more than one request
+  // TODO(peck): Add support for server streaming
+  // TODO(peck): Add support for client streaming
+  // TODO(peck): Add support for bidi streaming
   // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
   // TODO(peck): Add support for backpressure
   // TODO(peck): Test

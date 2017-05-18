@@ -143,19 +143,60 @@ class RxGrpcClientInvocation : public RxGrpcTag {
   grpc::Status _status;
 };
 
-template <typename Service, typename ResponseType, typename RequestType>
+template <
+    typename Service,
+    typename ResponseType,
+    typename RequestType,
+    // grpc::ServerAsyncResponseWriter<ResponseType> or
+    // grpc::ServerAsyncWriter<ResponseType>
+    typename ServerWriter>
 using RequestAsyncMethod = void (Service::*)(
     grpc::ServerContext *context,
     RequestType *request,
-    grpc::ServerAsyncResponseWriter<ResponseType> *response,
+    ServerWriter *writer,
     grpc::CompletionQueue *new_call_cq,
     grpc::ServerCompletionQueue *notification_cq,
     void *tag);
+
+/**
+ * Helper class that exposes a unified interface for either stream or non-stream
+ * server response writers.
+ */
+template <typename ServerWriter>
+class StreamOrResponseWriter;
+
+template <typename ResponseType>
+class StreamOrResponseWriter<grpc::ServerAsyncResponseWriter<ResponseType>> {
+ public:
+  StreamOrResponseWriter(grpc::ServerContext *context)
+      : _responder(context) {}
+
+  grpc::ServerAsyncResponseWriter<ResponseType> *get() {
+    return &_responder;
+  }
+
+  void write(
+      const ResponseType &response, const grpc::Status &status, void *tag) {
+    _responder.Finish(response, status, tag);
+  }
+
+  void finish(const grpc::Status &status, void *tag) {
+    // For the non-streaming writer, this is a no-op
+  }
+
+  void finishWithError(const grpc::Status &status, void *tag) {
+    _responder.FinishWithError(status, tag);
+  }
+
+ private:
+  grpc::ServerAsyncResponseWriter<ResponseType> _responder;
+};
 
 template <
     typename Service,
     typename ResponseType,
     typename RequestType,
+    typename ServerWriter,
     typename Transform,
     typename Callback>
 class RxGrpcServerInvocation : public RxGrpcTag {
@@ -167,7 +208,8 @@ class RxGrpcServerInvocation : public RxGrpcTag {
   using StatusAndResponse = typename ResponseObservable::value_type;
   using OwnedResponse = typename StatusAndResponse::second_type;
  public:
-  using Method = RequestAsyncMethod<Service, ResponseType, RequestType>;
+  using Method = RequestAsyncMethod<
+      Service, ResponseType, RequestType, ServerWriter>;
 
   static void request(
       GrpcErrorHandler error_handler,
@@ -180,7 +222,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
     (service->*method)(
         &invocation->_context,
         &invocation->_request,
-        &invocation->_responder,
+        invocation->_responder.get(),
         cq,
         cq,
         invocation);
@@ -209,7 +251,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
                   [this](
                       const std::pair<grpc::Status, OwnedResponse> &response) {
                     _response = response.second;
-                    _responder.Finish(
+                    _responder.write(
                         Transform::unwrap(_response),
                         response.first,
                         this);
@@ -217,10 +259,13 @@ class RxGrpcServerInvocation : public RxGrpcTag {
                   [this](std::exception_ptr error) {
                     const auto what = exceptionMessage(error);
                     const auto status = grpc::Status(grpc::INTERNAL, what);
-                    _responder.FinishWithError(status, this);
+                    _responder.finishWithError(status, this);
+                  },
+                  [this]() {
+                    _responder.finish(grpc::Status::OK, this);
                   });
         } else {
-          _responder.FinishWithError(wrapped.second, this);
+          _responder.finishWithError(wrapped.second, this);
         }
         break;
       }
@@ -273,7 +318,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
   grpc::ServerContext _context;
   RequestType _request;
   OwnedResponse _response;
-  grpc::ServerAsyncResponseWriter<ResponseType> _responder;
+  StreamOrResponseWriter<ServerWriter> _responder;
 };
 
 class InvocationRequester {
@@ -289,11 +334,13 @@ template <
     typename Service,
     typename ResponseType,
     typename RequestType,
+    typename ServerWriter,
     typename Transform,
     typename Callback>
 class RxGrpcServerInvocationRequester : public InvocationRequester {
  public:
-  using Method = RequestAsyncMethod<Service, ResponseType, RequestType>;
+  using Method = RequestAsyncMethod<
+      Service, ResponseType, RequestType, ServerWriter>;
 
   RxGrpcServerInvocationRequester(
       Method method, Callback &&callback, Service *service)
@@ -306,6 +353,7 @@ class RxGrpcServerInvocationRequester : public InvocationRequester {
         Service,
         ResponseType,
         RequestType,
+        ServerWriter,
         Transform,
         Callback>;
     ServerInvocation::request(error_handler, _method, _callback, &_service, cq);
@@ -397,34 +445,86 @@ class RxGrpcServer {
           : _service(*service),
             _invocation_requesters(*requesters) {}
 
-      template <typename ResponseType, typename RequestType>
-      using Method = detail::RequestAsyncMethod<
-          Service, ResponseType, RequestType>;
-
+      // Non-streaming response
       template <
           typename Transform = detail::RxGrpcIdentityTransform,
+          typename InnerService,
           typename ResponseType,
           typename RequestType,
           typename Callback>
       ServiceBuilder &registerMethod(
-          Method<ResponseType, RequestType> method,
+          detail::RequestAsyncMethod<
+              InnerService,
+              ResponseType,
+              RequestType,
+              grpc::ServerAsyncResponseWriter<ResponseType>> method,
+          Callback &&callback) {
+        registerMethodImpl<
+            grpc::ServerAsyncResponseWriter<ResponseType>,
+            Transform,
+            Service,
+            ResponseType,
+            RequestType>(
+                method, std::forward<Callback>(callback));
+
+        return *this;
+      }
+
+      // Streaming response
+      template <
+          typename Transform = detail::RxGrpcIdentityTransform,
+          typename InnerService,
+          typename ResponseType,
+          typename RequestType,
+          typename Callback>
+      ServiceBuilder &registerMethod(
+          detail::RequestAsyncMethod<
+              InnerService,
+              ResponseType,
+              RequestType,
+              grpc::ServerAsyncWriter<ResponseType>> method,
+          Callback &&callback) {
+        registerMethodImpl<
+            grpc::ServerAsyncWriter<ResponseType>,
+            Transform,
+            Service,
+            ResponseType,
+            RequestType>(
+                method, std::forward<Callback>(callback));
+
+        return *this;
+      }
+
+     private:
+
+      template <
+          typename ServerWriter,
+          typename Transform,
+          typename InnerService,
+          typename ResponseType,
+          typename RequestType,
+          typename Callback>
+      void registerMethodImpl(
+          detail::RequestAsyncMethod<
+              InnerService,
+              ResponseType,
+              RequestType,
+              ServerWriter> method,
           Callback &&callback) {
         using ServerInvocationRequester =
             detail::RxGrpcServerInvocationRequester<
                 Service,
                 ResponseType,
                 RequestType,
+                ServerWriter,
                 Transform,
                 Callback>;
 
         _invocation_requesters.emplace_back(
             new ServerInvocationRequester(
                 method, std::move(callback), &_service));
-
-        return *this;
       }
 
-     private:
       Service &_service;
       std::vector<std::unique_ptr<detail::InvocationRequester>> &
           _invocation_requesters;

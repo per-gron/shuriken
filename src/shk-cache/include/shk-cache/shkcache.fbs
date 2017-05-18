@@ -172,4 +172,7 @@ table ConfigGetResponse {
 
 rpc_service Config {
   Get(ConfigGetRequest): ConfigGetResponse (idempotent);
+
+  /// Testing endpoint for use when developing RxGrpc. Please remove me.
+  ServerStream(ConfigGetRequest): ConfigGetResponse (streaming: "server", idempotent);
 }
