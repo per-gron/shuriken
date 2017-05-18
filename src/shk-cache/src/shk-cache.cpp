@@ -175,19 +175,11 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   config_client
       .invoke(&ShkCache::Config::Stub::AsyncGet, makeConfigGetRequest())
       .subscribe(
-          // TODO(peck): Somehow make it nicer than passing around a pair like
-          // this.
-          [](const std::pair<
-                grpc::Status,
-                FlatbufferPtr<ShkCache::ConfigGetResponse>> &response) {
-            if (response.first.error_code() != grpc::OK) {
-              std::cout << "Invocation failed: " <<
-                  response.first.error_message() <<
-                  "(" << response.first.error_code() << ")" << std::endl;
-            } else if (!response.second) {
+          [](const FlatbufferPtr<ShkCache::ConfigGetResponse> &response) {
+            if (!response) {
               std::cout << "Verification failed!" << std::endl;
             } else {
-              if (auto config = (*response.second)->config()) {
+              if (auto config = (*response)->config()) {
                 std::cout <<
                     "RPC response: " <<
                     config->soft_store_entry_size_limit() <<
@@ -198,6 +190,11 @@ int main(int /*argc*/, const char * /*argv*/[]) {
                 std::cout << "RPC response: [no config]" << std::endl;
               }
             }
+          },
+          [&client](std::exception_ptr error) {
+            // TODO(peck): Do something useful with this
+            std::cout << "OnError" << std::endl;
+            client.shutdown();
           },
           [&client]() {
             std::cout << "OnCompleted" << std::endl;
