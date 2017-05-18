@@ -52,40 +52,58 @@ class Flatbuffer {
     return flatbuffers::BufferRef<T>(_buffer.get(), _size);
   }
 
+  const T &operator*() const {
+    return *flatbuffers::GetRoot<T>(_buffer.get());
+  }
+
+  const T *operator->() const {
+    return &**this;
+  }
+
  private:
   flatbuffers::unique_ptr_t _buffer;
   flatbuffers::uoffset_t _size;
 };
+
+template <typename T>
+using FlatbufferPtr = std::shared_ptr<const Flatbuffer<T>>;
 
 class FlatbufferRefTransform {
  public:
   FlatbufferRefTransform() = delete;
 
   template <typename T>
-  static std::shared_ptr<const T> wrap(flatbuffers::BufferRef<T> &&buffer) {
+  static FlatbufferPtr<T> wrap(
+      flatbuffers::BufferRef<T> &&buffer) {
     if (!buffer.Verify()) {
       // TODO(peck): Handle this more gracefully
       return nullptr;
     } else {
       if (buffer.must_free) {
+        // buffer owns its memory. Steal its memory
         buffer.must_free = false;
         uint8_t *buf = buffer.buf;
-        return std::shared_ptr<const T>(
-            buffer.GetRoot(),
-            [buf](const T *) { free(buf); });
+        return std::make_shared<const Flatbuffer<T>>(
+            flatbuffers::unique_ptr_t(
+                buf,
+                [buf](const uint8_t *) { free(buf); }),
+            buffer.len);
       } else {
-        std::unique_ptr<uint8_t[]> copied_buffer(new uint8_t[buffer.len]);
+        // buffer does not own its memory. We need to copy
+        auto copied_buffer = flatbuffers::unique_ptr_t(
+            new uint8_t[buffer.len],
+            [](const uint8_t *buf) { delete[] buf; });
         memcpy(copied_buffer.get(), buffer.buf, buffer.len);
-        return std::shared_ptr<const T>(
-            flatbuffers::GetRoot<T>(copied_buffer.get()),
-            [buffer={std::move(copied_buffer)}](const T *) {});
+
+        return std::make_shared<const Flatbuffer<T>>(
+            std::move(copied_buffer), buffer.len);
       }
     }
   }
 
   template <typename T>
   static flatbuffers::BufferRef<T> unwrap(
-      const std::shared_ptr<const Flatbuffer<T>> &ref) {
+      const FlatbufferPtr<T> &ref) {
     return ref->ref();
   }
 };
@@ -93,9 +111,8 @@ class FlatbufferRefTransform {
 rxcpp::observable<
     std::pair<
         grpc::Status,
-        std::shared_ptr<const Flatbuffer<ShkCache::ConfigGetResponse>>>>
-configGet(const std::shared_ptr<
-    const ShkCache::ConfigGetRequest> &request) {
+        FlatbufferPtr<ShkCache::ConfigGetResponse>>>
+configGet(const FlatbufferPtr<ShkCache::ConfigGetRequest> &request) {
   flatbuffers::FlatBufferBuilder response_builder;
   auto store_config = ShkCache::CreateStoreConfig(
       response_builder,
@@ -129,7 +146,20 @@ RxGrpcServer makeServer() {
   return builder.buildAndStart();
 }
 
+auto makeConfigGetRequest() {
+  flatbuffers::FlatBufferBuilder fbb;
+  auto config_get_request = ShkCache::CreateConfigGetRequest(fbb);
+  fbb.Finish(config_get_request);
+  return Flatbuffer<ShkCache::ConfigGetRequest>::sharedFromBuilder(
+      &fbb);
+}
+
 int main(int /*argc*/, const char * /*argv*/[]) {
+  // TODO(peck): Add support for streaming
+  // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
+  // TODO(peck): Add support for backpressure
+  // TODO(peck): Test
+
   auto server = makeServer();
   std::thread server_thread([&] { server.run(); });
 
@@ -142,24 +172,22 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   auto config_client = client.makeClient<FlatbufferRefTransform>(
       ShkCache::Config::NewStub(channel));
 
-  flatbuffers::FlatBufferBuilder fbb;
-  auto config_get_request = ShkCache::CreateConfigGetRequest(fbb);
-  fbb.Finish(config_get_request);
-  auto request = Flatbuffer<ShkCache::ConfigGetRequest>::sharedFromBuilder(
-      &fbb);
-
   config_client
-      .invoke(&ShkCache::Config::Stub::AsyncGet, request)
+      .invoke(&ShkCache::Config::Stub::AsyncGet, makeConfigGetRequest())
       .subscribe(
           // TODO(peck): Somehow make it nicer than passing around a pair like
           // this.
           [](const std::pair<
                 grpc::Status,
-                std::shared_ptr<const ShkCache::ConfigGetResponse>> &response) {
-            if (response.first.error_code() != grpc::OK || !response.second) {
+                FlatbufferPtr<ShkCache::ConfigGetResponse>> &response) {
+            if (response.first.error_code() != grpc::OK) {
+              std::cout << "Invocation failed: " <<
+                  response.first.error_message() <<
+                  "(" << response.first.error_code() << ")" << std::endl;
+            } else if (!response.second) {
               std::cout << "Verification failed!" << std::endl;
             } else {
-              if (auto config = response.second->config()) {
+              if (auto config = (*response.second)->config()) {
                 std::cout <<
                     "RPC response: " <<
                     config->soft_store_entry_size_limit() <<
