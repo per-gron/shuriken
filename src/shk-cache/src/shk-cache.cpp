@@ -57,9 +57,12 @@ class Flatbuffer {
   flatbuffers::uoffset_t _size;
 };
 
-struct FlatbufferRefTransform {
+class FlatbufferRefTransform {
+ public:
+  FlatbufferRefTransform() = delete;
+
   template <typename T>
-  std::shared_ptr<const T> wrap(flatbuffers::BufferRef<T> &&buffer) const {
+  static std::shared_ptr<const T> wrap(flatbuffers::BufferRef<T> &&buffer) {
     if (!buffer.Verify()) {
       // TODO(peck): Handle this more gracefully
       return nullptr;
@@ -81,8 +84,8 @@ struct FlatbufferRefTransform {
   }
 
   template <typename T>
-  flatbuffers::BufferRef<T> unwrap(
-      const std::shared_ptr<const Flatbuffer<T>> &ref) const {
+  static flatbuffers::BufferRef<T> unwrap(
+      const std::shared_ptr<const Flatbuffer<T>> &ref) {
     return ref->ref();
   }
 };

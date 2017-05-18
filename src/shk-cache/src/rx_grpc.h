@@ -17,14 +17,17 @@
 namespace shk {
 namespace detail {
 
-struct RxGrpcIdentityTransform {  // TODO(peck): Make these methods static
+class RxGrpcIdentityTransform {
+ public:
+  RxGrpcIdentityTransform() = delete;
+
   template <typename T>
-  T wrap(T &&value) const {
+  static T wrap(T &&value) {
     return std::forward<T>(value);
   }
 
   template <typename T>
-  T unwrap(T &&value) const {
+  static T unwrap(T &&value) {
     return std::forward<T>(value);
   }
 };
@@ -76,7 +79,7 @@ template <
 class RxGrpcClientInvocation : public RxGrpcTag {
  public:
   using TransformedResponseType = decltype(
-      std::declval<Transform>().wrap(std::declval<ResponseType>()));
+      Transform::wrap(std::declval<ResponseType>()));
 
   RxGrpcClientInvocation(
       const WrappedRequestType &request,
@@ -84,7 +87,7 @@ class RxGrpcClientInvocation : public RxGrpcTag {
       : _request(request), _subscriber(std::move(subscriber)) {}
 
   Response operator()() override {
-    _subscriber.on_next(_transform.wrap(std::move(_response)));
+    _subscriber.on_next(Transform::wrap(std::move(_response)));
     _subscriber.on_completed();
 
     return Response::DELETE_ME;
@@ -107,7 +110,6 @@ class RxGrpcClientInvocation : public RxGrpcTag {
   }
 
  private:
-  Transform _transform;
   WrappedRequestType _request;
   ResponseType _response;
   rxcpp::subscriber<TransformedResponseType> _subscriber;
@@ -132,7 +134,7 @@ template <
     typename Callback>
 class RxGrpcServerInvocation : public RxGrpcTag {
   using OwnedRequest =
-      decltype(std::declval<Transform>().wrap(std::declval<RequestType>()));
+      decltype(Transform::wrap(std::declval<RequestType>()));
   using ResponseObservable =
       decltype(std::declval<Callback>()(std::declval<OwnedRequest>()));
   using OwnedResponse = typename ResponseObservable::value_type;
@@ -160,12 +162,12 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         // TODO(peck): Static assert on the callbacks return and parameter types
 
         _state = State::SENT_RESPONSE;
-        _callback(_transform.wrap(std::move(_request)))
+        _callback(Transform::wrap(std::move(_request)))
             .subscribe(
                 [this](const OwnedResponse &response) {
                   _response = response;
                   _responder.Finish(
-                      _transform.unwrap(_response),
+                      Transform::unwrap(_response),
                       grpc::Status::OK,  // TODO(peck): Make it possible to select status code
                       this);
                 },
@@ -202,7 +204,6 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         _cq(*cq),
         _responder(&_context) {}
 
-  Transform _transform;
   State _state = State::WAITING_FOR_REQUEST;
   Method _method;
   Callback _callback;
@@ -288,7 +289,7 @@ class RxGrpcServiceClient {
               std::move(subscriber)));
       auto rpc = ((_stub.get())->*invoke)(
           &call->context(),
-          Transform().unwrap(call->request()),
+          Transform::unwrap(call->request()),
           &_cq);
       rpc->Finish(&call->response(), &call->status(), call.release());
     });
