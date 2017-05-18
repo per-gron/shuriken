@@ -151,12 +151,15 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   config_client
       .invoke(&ShkCache::Config::Stub::AsyncGet, request)
       .subscribe(
-          [](const std::shared_ptr<
-                 const ShkCache::ConfigGetResponse> &response) {
-            if (!response) {
+          // TODO(peck): Somehow make it nicer than passing around a pair like
+          // this.
+          [](const std::pair<
+                grpc::Status,
+                std::shared_ptr<const ShkCache::ConfigGetResponse>> &response) {
+            if (response.first.error_code() != grpc::OK || !response.second) {
               std::cout << "Verification failed!" << std::endl;
             } else {
-              if (auto config = response->config()) {
+              if (auto config = response.second->config()) {
                 std::cout <<
                     "RPC response: " <<
                     config->soft_store_entry_size_limit() <<

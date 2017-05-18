@@ -87,14 +87,17 @@ class RxGrpcClientInvocation : public RxGrpcTag {
   using TransformedResponseType = decltype(
       Transform::wrap(std::declval<ResponseType>()));
 
+  using StatusAndResponse = std::pair<grpc::Status, TransformedResponseType>;
+
   RxGrpcClientInvocation(
       const WrappedRequestType &request,
-      rxcpp::subscriber<TransformedResponseType> &&subscriber)
+      rxcpp::subscriber<StatusAndResponse> &&subscriber)
       : _request(request), _subscriber(std::move(subscriber)) {}
 
   void operator()(bool success) override {
     if (success) {
-      _subscriber.on_next(Transform::wrap(std::move(_response)));
+      _subscriber.on_next(
+          std::make_pair(_status, Transform::wrap(std::move(_response))));
       _subscriber.on_completed();
     } else {
       // Unfortunately, gRPC provides literally no information other than that
@@ -125,7 +128,7 @@ class RxGrpcClientInvocation : public RxGrpcTag {
  private:
   WrappedRequestType _request;
   ResponseType _response;
-  rxcpp::subscriber<TransformedResponseType> _subscriber;
+  rxcpp::subscriber<StatusAndResponse> _subscriber;
   grpc::ClientContext _context;
   grpc::Status _status;
 };
@@ -308,7 +311,7 @@ class RxGrpcServiceClient {
   template <typename ResponseType, typename WrappedRequestType>
   rxcpp::observable<
       typename detail::RxGrpcClientInvocation<
-          WrappedRequestType, ResponseType, Transform>::TransformedResponseType>
+          WrappedRequestType, ResponseType, Transform>::StatusAndResponse>
   invoke(
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
@@ -322,11 +325,11 @@ class RxGrpcServiceClient {
     using ClientInvocation =
         detail::RxGrpcClientInvocation<
             WrappedRequestType, ResponseType, Transform>;
-    using TransformedResponseType =
-        typename ClientInvocation::TransformedResponseType;
+    using StatusAndResponse =
+        typename ClientInvocation::StatusAndResponse;
 
-    return rxcpp::observable<>::create<TransformedResponseType>([&](
-        rxcpp::subscriber<TransformedResponseType> subscriber) {
+    return rxcpp::observable<>::create<StatusAndResponse>([&](
+        rxcpp::subscriber<StatusAndResponse> subscriber) {
 
       auto call = std::unique_ptr<ClientInvocation>(
           new ClientInvocation(
