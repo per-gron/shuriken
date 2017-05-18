@@ -65,6 +65,9 @@ class Flatbuffer {
   flatbuffers::uoffset_t _size;
 };
 
+template <typename T>
+using FlatbufferPtr = std::shared_ptr<const Flatbuffer<T>>;
+
 class FlatbufferRefTransform {
  public:
   FlatbufferRefTransform() = delete;
@@ -178,19 +181,15 @@ int main(int /*argc*/, const char * /*argv*/[]) {
       .invoke(&ShkCache::Config::Stub::AsyncGet, makeConfigGetRequest())
       .subscribe(
           [](const FlatbufferPtr<ShkCache::ConfigGetResponse> &response) {
-            if (!response) {
-              std::cout << "Verification failed!" << std::endl;
+            if (auto config = (*response)->config()) {
+              std::cout <<
+                  "RPC response: " <<
+                  config->soft_store_entry_size_limit() <<
+                  ", " <<
+                  config->hard_store_entry_size_limit() <<
+                  std::endl;
             } else {
-              if (auto config = (*response)->config()) {
-                std::cout <<
-                    "RPC response: " <<
-                    config->soft_store_entry_size_limit() <<
-                    ", " <<
-                    config->hard_store_entry_size_limit() <<
-                    std::endl;
-              } else {
-                std::cout << "RPC response: [no config]" << std::endl;
-              }
+              std::cout << "RPC response: [no config]" << std::endl;
             }
           },
           [&client](std::exception_ptr error) {
