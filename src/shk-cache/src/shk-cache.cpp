@@ -65,29 +65,29 @@ class Flatbuffer {
   flatbuffers::uoffset_t _size;
 };
 
-template <typename T>
-using FlatbufferPtr = std::shared_ptr<const Flatbuffer<T>>;
-
 class FlatbufferRefTransform {
  public:
   FlatbufferRefTransform() = delete;
 
   template <typename T>
-  static FlatbufferPtr<T> wrap(
+  static std::pair<FlatbufferPtr<T>, grpc::Status> wrap(
       flatbuffers::BufferRef<T> &&buffer) {
     if (!buffer.Verify()) {
-      // TODO(peck): Handle this more gracefully
-      return nullptr;
+      return std::make_pair(
+          nullptr,
+          grpc::Status(grpc::DATA_LOSS, "Got invalid Flatbuffer data"));
     } else {
       if (buffer.must_free) {
         // buffer owns its memory. Steal its memory
         buffer.must_free = false;
         uint8_t *buf = buffer.buf;
-        return std::make_shared<const Flatbuffer<T>>(
-            flatbuffers::unique_ptr_t(
-                buf,
-                [buf](const uint8_t *) { free(buf); }),
-            buffer.len);
+        return std::make_pair(
+            std::make_shared<const Flatbuffer<T>>(
+                flatbuffers::unique_ptr_t(
+                    buf,
+                    [buf](const uint8_t *) { free(buf); }),
+                buffer.len),
+            grpc::Status::OK);
       } else {
         // buffer does not own its memory. We need to copy
         auto copied_buffer = flatbuffers::unique_ptr_t(
@@ -95,8 +95,10 @@ class FlatbufferRefTransform {
             [](const uint8_t *buf) { delete[] buf; });
         memcpy(copied_buffer.get(), buffer.buf, buffer.len);
 
-        return std::make_shared<const Flatbuffer<T>>(
-            std::move(copied_buffer), buffer.len);
+        return std::make_pair(
+            std::make_shared<const Flatbuffer<T>>(
+                std::move(copied_buffer), buffer.len),
+            grpc::Status::OK);
       }
     }
   }
