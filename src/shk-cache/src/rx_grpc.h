@@ -400,6 +400,14 @@ class RxGrpcServer {
     grpc::ServerBuilder _builder;
   };
 
+  template <
+      typename Transform = detail::RxGrpcIdentityTransform,
+      typename Stub>
+  RxGrpcServiceClient<Stub, Transform> makeClient(
+      std::unique_ptr<Stub> &&stub) {
+    return RxGrpcServiceClient<Stub, Transform>(std::move(stub), _cq.get());
+  }
+
   /**
    * Block and process asynchronous events until the server is shut down.
    */
