@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <grpc++/grpc++.h>
 #include <rxcpp/rx-observable.hpp>
 
@@ -574,9 +576,11 @@ class RxGrpcServiceClient {
 };
 
 class RxGrpcServer {
+  using ServiceRef = std::unique_ptr<void, std::function<void (void *)>>;
+  using Services = std::vector<ServiceRef>;
  public:
   RxGrpcServer(
-      std::vector<std::unique_ptr<grpc::Service>> &&services,
+      Services &&services,
       std::unique_ptr<grpc::ServerCompletionQueue> &&cq,
       std::unique_ptr<grpc::Server> &&server)
       : _services(std::move(services)),
@@ -693,7 +697,9 @@ class RxGrpcServer {
     template <typename Service>
     ServiceBuilder<Service> registerService() {
       auto service = new Service();
-      _services.emplace_back(service);
+      _services.emplace_back(service, [](void *service) {
+        delete reinterpret_cast<Service *>(service);
+      });
       _builder.RegisterService(service);
       return ServiceBuilder<Service>(service, &_invocation_requesters);
     }
@@ -723,7 +729,7 @@ class RxGrpcServer {
     GrpcErrorHandler _error_handler = [](std::exception_ptr error) {
       std::rethrow_exception(error);
     };
-    std::vector<std::unique_ptr<grpc::Service>> _services;
+    Services _services;
     std::vector<std::unique_ptr<detail::InvocationRequester>>
         _invocation_requesters;
     grpc::ServerBuilder _builder;
@@ -767,7 +773,7 @@ class RxGrpcServer {
   // This object doesn't really do anything with the services other than owning
   // them, so that they are valid while the server is servicing requests and
   // that they can be destroyed at the right time.
-  std::vector<std::unique_ptr<grpc::Service>> _services;
+  Services _services;
   std::unique_ptr<grpc::ServerCompletionQueue> _cq;
   std::unique_ptr<grpc::Server> _server;
 };

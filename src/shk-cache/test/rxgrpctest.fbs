@@ -1,0 +1,13 @@
+namespace RxGrpcTest;
+
+table TestRequest {
+  data: int;
+}
+
+table TestResponse {
+  data: int;
+}
+
+rpc_service TestService {
+  Double(TestRequest): TestResponse;
+}
