@@ -510,13 +510,14 @@ class RxGrpcServiceClient {
           const decltype(std::declval<Transform>()
               .unwrap(std::declval<WrappedRequestType>())) &request,
           grpc::CompletionQueue *cq),
-      WrappedRequestType &&request,
+      const WrappedRequestType &request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return invokeImpl<
         ResponseType,
-        WrappedRequestType,
         grpc::ClientAsyncResponseReader<ResponseType>>(
-            invoke, std::move(request), std::move(context));
+            invoke,
+            request,
+            std::move(context));
   }
 
   /**
@@ -534,28 +535,29 @@ class RxGrpcServiceClient {
               .unwrap(std::declval<WrappedRequestType>())) &request,
           grpc::CompletionQueue *cq,
           void *tag),
-      WrappedRequestType &&request,
+      const WrappedRequestType &request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return invokeImpl<
         ResponseType,
-        WrappedRequestType,
         grpc::ClientAsyncReader<ResponseType>,
         decltype(invoke)>(
-            invoke, std::move(request), std::move(context));
+            invoke,
+            request,
+            std::move(context));
   }
 
  private:
   template <
       typename ResponseType,
-      typename WrappedRequestType,
       typename Reader,
-      typename Invoke>
+      typename Invoke,
+      typename WrappedRequestType>
   rxcpp::observable<
       typename detail::RxGrpcClientInvocation<
           WrappedRequestType, ResponseType, Transform>::WrappedResponseType>
   invokeImpl(
       Invoke invoke,
-      WrappedRequestType &&request,
+      const WrappedRequestType &request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
 
     using ClientInvocation =
@@ -564,12 +566,12 @@ class RxGrpcServiceClient {
     using WrappedResponseType =
         typename ClientInvocation::WrappedResponseType;
 
-    return rxcpp::observable<>::create<WrappedResponseType>([&](
-        rxcpp::subscriber<WrappedResponseType> subscriber) {
+    return rxcpp::observable<>::create<WrappedResponseType>([
+        this, request, invoke](
+            rxcpp::subscriber<WrappedResponseType> subscriber) {
 
       auto call = new ClientInvocation(
-          std::forward<WrappedRequestType>(request),
-          std::move(subscriber));
+          request, std::move(subscriber));
       call->invoke(invoke, _stub.get(), &_cq);
     });
   }
