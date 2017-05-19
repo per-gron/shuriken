@@ -48,8 +48,6 @@ auto makeTestRequest(int data) {
 }  // anonymous namespace
 
 TEST_CASE("RxGrpc") {
-  bool postcondition = true;
-
   auto server_address = "unix:rx_grpc_test.socket";
 
   RxGrpcServer::Builder server_builder;
@@ -72,16 +70,10 @@ TEST_CASE("RxGrpc") {
   auto server = server_builder.buildAndStart();
   std::thread server_thread([&] { server.run(); });
 
-  SECTION("one non-streaming call") {
-    postcondition = false;
-
-    test_client
-        .invoke(
-            &TestService::Stub::AsyncDouble, makeTestRequest(123))
+  const auto run = [&](const auto &observable) {
+    observable
         .subscribe(
-            [&postcondition](const FlatbufferPtr<TestResponse> &response) {
-              CHECK((*response)->data() == 123 * 2);
-              postcondition = true;  // Ensure that the check actually happened
+            [](auto) {
             },
             [&runloop](std::exception_ptr error) {
               CHECK(!"request should not fail");
@@ -92,12 +84,35 @@ TEST_CASE("RxGrpc") {
             });
 
     runloop.run();
+  };
+
+  SECTION("normal call") {
+    run(test_client
+        .invoke(
+            &TestService::Stub::AsyncDouble, makeTestRequest(123))
+        .map(
+            [](const FlatbufferPtr<TestResponse> &response) {
+              CHECK((*response)->data() == 123 * 2);
+              return "ignored";
+            }));
+  }
+
+  SECTION("delayed normal call") {
+    // This test can break if invoke doesn't take ownership of the request for
+    // example.
+    auto call = test_client
+        .invoke(
+            &TestService::Stub::AsyncDouble, makeTestRequest(123))
+        .map(
+            [](const FlatbufferPtr<TestResponse> &response) {
+              CHECK((*response)->data() == 123 * 2);
+              return "ignored";
+            });
+    run(call);
   }
 
   server.shutdown();
   server_thread.join();
-
-  CHECK(postcondition);
 }
 
 }  // namespace shk
