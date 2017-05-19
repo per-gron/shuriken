@@ -178,6 +178,9 @@ class RxGrpcClientInvocation : public RxGrpcTag {
   }
 
  private:
+  static_assert(
+      !std::is_reference<WrappedRequestType>::value,
+      "Request type must be held by value");
   WrappedRequestType _request;
   ResponseType _response;
   rxcpp::subscriber<WrappedResponseType> _subscriber;
