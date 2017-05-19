@@ -335,11 +335,11 @@ class RxGrpcServerInvocation : public RxGrpcTag {
   static void request(
       GrpcErrorHandler error_handler,
       Method method,
-      const Callback &callback,
+      Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
     auto invocation = new RxGrpcServerInvocation(
-        error_handler, method, callback, service, cq);
+        error_handler, method, std::move(callback), service, cq);
     (service->*method)(
         &invocation->_context,
         &invocation->_request,
@@ -385,6 +385,15 @@ class RxGrpcServerInvocation : public RxGrpcTag {
           _state = State::SENT_FINAL_RESPONSE;
           _responder.finishWithError(wrapped.second, this);
         }
+
+        // Request the a new request, so that the server is always waiting for
+        // one.
+        request(
+            _error_handler,
+            _method,
+            std::move(_callback),  // Reuse the callback functor, don't copy
+            &_service,
+            &_cq);
         break;
       }
       case State::GOT_REQUEST: {
@@ -412,12 +421,12 @@ class RxGrpcServerInvocation : public RxGrpcTag {
   RxGrpcServerInvocation(
       GrpcErrorHandler error_handler,
       Method method,
-      const Callback &callback,
+      Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq)
       : _error_handler(error_handler),
         _method(method),
-        _callback(callback),
+        _callback(std::move(callback)),
         _service(*service),
         _cq(*cq),
         _responder(&_context) {}
@@ -479,7 +488,8 @@ class RxGrpcServerInvocationRequester : public InvocationRequester {
         ServerWriter,
         Transform,
         Callback>;
-    ServerInvocation::request(error_handler, _method, _callback, &_service, cq);
+    ServerInvocation::request(
+        error_handler, _method, Callback(_callback), &_service, cq);
   }
 
  private:

@@ -24,25 +24,27 @@ using namespace RxGrpcTest;
 namespace shk {
 namespace {
 
-auto doubleHandler(const FlatbufferPtr<TestRequest> &request) {
-  flatbuffers::FlatBufferBuilder response_builder;
-  auto test_response = CreateTestResponse(
-      response_builder,
-      /*data:*/(*request)->data() * 2);
-
-  response_builder.Finish(test_response);
-
-  auto response = Flatbuffer<TestResponse>::sharedFromBuilder(
-      &response_builder);
-
-  return rxcpp::observable<>::just(response);
-}
-
 auto makeTestRequest(int data) {
   flatbuffers::FlatBufferBuilder fbb;
   auto test_request = CreateTestRequest(fbb, data);
   fbb.Finish(test_request);
   return Flatbuffer<TestRequest>::sharedFromBuilder(&fbb);
+}
+
+auto makeTestResponse(int data) {
+  flatbuffers::FlatBufferBuilder fbb;
+  auto test_response = CreateTestResponse(fbb, data);
+  fbb.Finish(test_response);
+  return Flatbuffer<TestResponse>::sharedFromBuilder(&fbb);
+}
+
+auto doubleHandler(const FlatbufferPtr<TestRequest> &request) {
+  return rxcpp::observable<>::just(makeTestResponse((*request)->data() * 2));
+}
+
+auto serverStreamHandler(const FlatbufferPtr<TestRequest> &request) {
+  return rxcpp::observable<>::range(1, (*request)->data())
+      .map(&makeTestResponse);
 }
 
 }  // anonymous namespace
@@ -57,7 +59,10 @@ TEST_CASE("RxGrpc") {
   server_builder.registerService<TestService::AsyncService>()
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestDouble,
-          &doubleHandler);
+          &doubleHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestServerStream,
+          &serverStreamHandler);
 
   RxGrpcClient runloop;
 
@@ -87,28 +92,62 @@ TEST_CASE("RxGrpc") {
   };
 
   SECTION("normal call") {
-    run(test_client
-        .invoke(
-            &TestService::Stub::AsyncDouble, makeTestRequest(123))
-        .map(
-            [](const FlatbufferPtr<TestResponse> &response) {
-              CHECK((*response)->data() == 123 * 2);
-              return "ignored";
-            }));
-  }
+    SECTION("direct") {
+      run(test_client
+          .invoke(
+              &TestService::Stub::AsyncDouble, makeTestRequest(123))
+          .map(
+              [](const FlatbufferPtr<TestResponse> &response) {
+                CHECK((*response)->data() == 123 * 2);
+                return "ignored";
+              }));
+    }
 
-  SECTION("delayed normal call") {
-    // This test can break if invoke doesn't take ownership of the request for
-    // example.
-    auto call = test_client
-        .invoke(
-            &TestService::Stub::AsyncDouble, makeTestRequest(123))
-        .map(
-            [](const FlatbufferPtr<TestResponse> &response) {
-              CHECK((*response)->data() == 123 * 2);
-              return "ignored";
-            });
-    run(call);
+    SECTION("delayed") {
+      // This test can break if invoke doesn't take ownership of the request for
+      // example.
+      auto call = test_client
+          .invoke(
+              &TestService::Stub::AsyncDouble, makeTestRequest(123))
+          .map(
+              [](const FlatbufferPtr<TestResponse> &response) {
+                CHECK((*response)->data() == 123 * 2);
+                return "ignored";
+              });
+      run(call);
+    }
+
+    SECTION("two calls") {
+      auto call_a = test_client.invoke(
+          &TestService::Stub::AsyncDouble, makeTestRequest(123));
+      auto call_b = test_client.invoke(
+          &TestService::Stub::AsyncDouble, makeTestRequest(321));
+      run(call_a
+          .zip(call_b)
+          .map(
+              [](std::tuple<
+                    const FlatbufferPtr<TestResponse>,
+                    const FlatbufferPtr<TestResponse>> responses) {
+                CHECK((*std::get<0>(responses))->data() == 123 * 2);
+                CHECK((*std::get<1>(responses))->data() == 321 * 2);
+                return "ignored";
+              }));
+    }
+
+    SECTION("same call twice") {
+      auto call = test_client.invoke(
+          &TestService::Stub::AsyncDouble, makeTestRequest(123));
+      run(call
+          .zip(call)
+          .map(
+              [](std::tuple<
+                    const FlatbufferPtr<TestResponse>,
+                    const FlatbufferPtr<TestResponse>> responses) {
+                CHECK((*std::get<0>(responses))->data() == 123 * 2);
+                CHECK((*std::get<1>(responses))->data() == 123 * 2);
+                return "ignored";
+              }));
+    }
   }
 
   server.shutdown();

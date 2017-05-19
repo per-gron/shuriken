@@ -10,4 +10,5 @@ table TestResponse {
 
 rpc_service TestService {
   Double(TestRequest): TestResponse;
+  ServerStream(TestRequest): TestResponse;
 }

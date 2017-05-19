@@ -54,9 +54,6 @@ RxGrpcServer makeServer() {
   builder.registerService<ShkCache::Config::AsyncService>()
       .registerMethod<FlatbufferRefTransform>(
           &ShkCache::Config::AsyncService::RequestGet,
-          &configGet)
-      .registerMethod<FlatbufferRefTransform>(
-          &ShkCache::Config::AsyncService::RequestServerStream,
           &configGet);
 
   return builder.buildAndStart();
@@ -71,7 +68,6 @@ auto makeConfigGetRequest() {
 }
 
 int main(int /*argc*/, const char * /*argv*/[]) {
-  // TODO(peck): Add support for making more than one request
   // TODO(peck): Add support for streaming from server (in client)
   // TODO(peck): Add support for streaming from client (in server)
   // TODO(peck): Add support for streaming from client (in client)
