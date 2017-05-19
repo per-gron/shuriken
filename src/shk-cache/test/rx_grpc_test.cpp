@@ -43,8 +43,15 @@ auto doubleHandler(const FlatbufferPtr<TestRequest> &request) {
 }
 
 auto serverStreamHandler(const FlatbufferPtr<TestRequest> &request) {
-  return rxcpp::observable<>::range(1, (*request)->data())
-      .map(&makeTestResponse);
+  int count = (*request)->data();
+  if (count == 0) {
+    return rxcpp::observable<>::empty<FlatbufferPtr<TestResponse>>()
+        .as_dynamic();
+  } else {
+    return rxcpp::observable<>::range(1, count)
+        .map(&makeTestResponse)
+        .as_dynamic();
+  }
 }
 
 }  // anonymous namespace
@@ -91,7 +98,7 @@ TEST_CASE("RxGrpc") {
     runloop.run();
   };
 
-  SECTION("normal call") {
+  SECTION("no streaming") {
     SECTION("direct") {
       run(test_client
           .invoke(
@@ -147,6 +154,59 @@ TEST_CASE("RxGrpc") {
                 CHECK((*std::get<1>(responses))->data() == 123 * 2);
                 return "ignored";
               }));
+    }
+  }
+
+  SECTION("server streaming") {
+    SECTION("no responses") {
+      run(test_client
+          .invoke(
+              &TestService::Stub::AsyncServerStream, makeTestRequest(0))
+          .map(
+              [](const FlatbufferPtr<TestResponse> &response) {
+                // Should never be called; this should be a stream that ends
+                // without any values
+                CHECK(false);
+                return "ignored";
+              }));
+    }
+
+    SECTION("one response") {
+      run(test_client
+          .invoke(&TestService::Stub::AsyncServerStream, makeTestRequest(1))
+          .map([](FlatbufferPtr<TestResponse> response) {
+            CHECK((*response)->data() == 1);
+            return "ignored";
+          })
+          .count()
+          .map([](int count) {
+            CHECK(count == 1);
+            return "ignored";
+          }));
+    }
+
+    SECTION("two responses") {
+      auto responses = test_client.invoke(
+          &TestService::Stub::AsyncServerStream, makeTestRequest(2));
+
+      auto check_count = responses
+          .count()
+          .map([](int count) {
+            CHECK(count == 2);
+            return "ignored";
+          });
+
+      auto check_sum = responses
+          .map([](FlatbufferPtr<TestResponse> response) {
+            return (*response)->data();
+          })
+          .sum()
+          .map([](int sum) {
+            CHECK(sum == 3);
+            return "ignored";
+          });
+
+      run(check_count.zip(check_sum));
     }
   }
 
