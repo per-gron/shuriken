@@ -26,7 +26,7 @@
 
 namespace shk {
 
-auto configGet(const FlatbufferPtr<ShkCache::ConfigGetRequest> &request) {
+auto configGet(const Flatbuffer<ShkCache::ConfigGetRequest> &request) {
   flatbuffers::FlatBufferBuilder response_builder;
   auto store_config = ShkCache::CreateStoreConfig(
       response_builder,
@@ -38,7 +38,7 @@ auto configGet(const FlatbufferPtr<ShkCache::ConfigGetRequest> &request) {
 
   response_builder.Finish(config_get_response);
 
-  auto response = Flatbuffer<ShkCache::ConfigGetResponse>::sharedFromBuilder(
+  auto response = Flatbuffer<ShkCache::ConfigGetResponse>::fromBuilder(
       &response_builder);
 
   return rxcpp::observable<>::just(response);
@@ -63,7 +63,7 @@ auto makeConfigGetRequest() {
   flatbuffers::FlatBufferBuilder fbb;
   auto config_get_request = ShkCache::CreateConfigGetRequest(fbb);
   fbb.Finish(config_get_request);
-  return Flatbuffer<ShkCache::ConfigGetRequest>::sharedFromBuilder(
+  return Flatbuffer<ShkCache::ConfigGetRequest>::fromBuilder(
       &fbb);
 }
 
@@ -100,8 +100,8 @@ int main(int /*argc*/, const char * /*argv*/[]) {
         .invoke(
             &ShkCache::Config::Stub::AsyncGet, makeConfigGetRequest())
         .subscribe(
-            [](const FlatbufferPtr<ShkCache::ConfigGetResponse> &response) {
-              if (auto config = (*response)->config()) {
+            [](Flatbuffer<ShkCache::ConfigGetResponse> response) {
+              if (auto config = response->config()) {
                 std::cout <<
                     "RPC response: " <<
                     config->soft_store_entry_size_limit() <<

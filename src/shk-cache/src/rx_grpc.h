@@ -15,7 +15,7 @@
 #pragma once
 
 #include <grpc++/grpc++.h>
-#include <rxcpp/rx-observable.hpp>
+#include <rxcpp/rx.hpp>
 
 namespace shk {
 
@@ -304,8 +304,8 @@ class StreamOrResponseWriter<
     return &_responder;
   }
 
-  void write(const OwnedResponse &response, void *tag) {
-    _response = response;
+  void write(OwnedResponse &&response, void *tag) {
+    _response = std::move(response);
   }
 
   template <typename WillDoFinalWrite>
@@ -470,8 +470,8 @@ class RxGrpcServerInvocation : public RxGrpcTag {
           issueNewServerRequest(std::move(_callback));
 
           values.subscribe(
-              [this](const OwnedResponse &response) {
-                _responder.write(response, this);
+              [this](OwnedResponse response) {
+                _responder.write(std::move(response), this);
               },
               [this](std::exception_ptr error) {
                 // TODO(peck): Make it possible to respond with other errors

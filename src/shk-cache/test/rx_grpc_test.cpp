@@ -14,6 +14,8 @@
 
 #include <catch.hpp>
 
+#include <rxcpp/rx.hpp>
+
 #include "rx_grpc.h"
 #include "rx_grpc_flatbuffers.h"
 
@@ -24,28 +26,29 @@ using namespace RxGrpcTest;
 namespace shk {
 namespace {
 
-auto makeTestRequest(int data) {
+Flatbuffer<TestRequest> makeTestRequest(int data) {
   flatbuffers::FlatBufferBuilder fbb;
   auto test_request = CreateTestRequest(fbb, data);
   fbb.Finish(test_request);
-  return Flatbuffer<TestRequest>::sharedFromBuilder(&fbb);
+  return Flatbuffer<TestRequest>::fromBuilder(&fbb);
 }
 
-auto makeTestResponse(int data) {
+Flatbuffer<TestResponse> makeTestResponse(int data) {
   flatbuffers::FlatBufferBuilder fbb;
   auto test_response = CreateTestResponse(fbb, data);
   fbb.Finish(test_response);
-  return Flatbuffer<TestResponse>::sharedFromBuilder(&fbb);
+  return Flatbuffer<TestResponse>::fromBuilder(&fbb);
 }
 
-auto doubleHandler(const FlatbufferPtr<TestRequest> &request) {
-  return rxcpp::observable<>::just(makeTestResponse((*request)->data() * 2));
+auto doubleHandler(Flatbuffer<TestRequest> request) {
+  return rxcpp::observable<>::just<Flatbuffer<TestResponse>>(
+      makeTestResponse(request->data() * 2));
 }
 
-auto serverStreamHandler(const FlatbufferPtr<TestRequest> &request) {
-  int count = (*request)->data();
+auto serverStreamHandler(Flatbuffer<TestRequest> request) {
+  int count = request->data();
   if (count == 0) {
-    return rxcpp::observable<>::empty<FlatbufferPtr<TestResponse>>()
+    return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>()
         .as_dynamic();
   } else {
     return rxcpp::observable<>::range(1, count)
@@ -104,8 +107,8 @@ TEST_CASE("RxGrpc") {
           .invoke(
               &TestService::Stub::AsyncDouble, makeTestRequest(123))
           .map(
-              [](const FlatbufferPtr<TestResponse> &response) {
-                CHECK((*response)->data() == 123 * 2);
+              [](Flatbuffer<TestResponse> response) {
+                CHECK(response->data() == 123 * 2);
                 return "ignored";
               }));
     }
@@ -117,8 +120,8 @@ TEST_CASE("RxGrpc") {
           .invoke(
               &TestService::Stub::AsyncDouble, makeTestRequest(123))
           .map(
-              [](const FlatbufferPtr<TestResponse> &response) {
-                CHECK((*response)->data() == 123 * 2);
+              [](Flatbuffer<TestResponse> response) {
+                CHECK(response->data() == 123 * 2);
                 return "ignored";
               });
       run(call);
@@ -133,10 +136,10 @@ TEST_CASE("RxGrpc") {
           .zip(call_b)
           .map(
               [](std::tuple<
-                    const FlatbufferPtr<TestResponse>,
-                    const FlatbufferPtr<TestResponse>> responses) {
-                CHECK((*std::get<0>(responses))->data() == 123 * 2);
-                CHECK((*std::get<1>(responses))->data() == 321 * 2);
+                    Flatbuffer<TestResponse>,
+                    Flatbuffer<TestResponse>> responses) {
+                CHECK(std::get<0>(responses)->data() == 123 * 2);
+                CHECK(std::get<1>(responses)->data() == 321 * 2);
                 return "ignored";
               }));
     }
@@ -148,10 +151,10 @@ TEST_CASE("RxGrpc") {
           .zip(call)
           .map(
               [](std::tuple<
-                    const FlatbufferPtr<TestResponse>,
-                    const FlatbufferPtr<TestResponse>> responses) {
-                CHECK((*std::get<0>(responses))->data() == 123 * 2);
-                CHECK((*std::get<1>(responses))->data() == 123 * 2);
+                    Flatbuffer<TestResponse>,
+                    Flatbuffer<TestResponse>> responses) {
+                CHECK(std::get<0>(responses)->data() == 123 * 2);
+                CHECK(std::get<1>(responses)->data() == 123 * 2);
                 return "ignored";
               }));
     }
@@ -163,7 +166,7 @@ TEST_CASE("RxGrpc") {
           .invoke(
               &TestService::Stub::AsyncServerStream, makeTestRequest(0))
           .map(
-              [](const FlatbufferPtr<TestResponse> &response) {
+              [](Flatbuffer<TestResponse> response) {
                 // Should never be called; this should be a stream that ends
                 // without any values
                 CHECK(false);
@@ -174,8 +177,8 @@ TEST_CASE("RxGrpc") {
     SECTION("one response") {
       run(test_client
           .invoke(&TestService::Stub::AsyncServerStream, makeTestRequest(1))
-          .map([](FlatbufferPtr<TestResponse> response) {
-            CHECK((*response)->data() == 1);
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(response->data() == 1);
             return "ignored";
           })
           .count()
@@ -197,8 +200,8 @@ TEST_CASE("RxGrpc") {
           });
 
       auto check_sum = responses
-          .map([](FlatbufferPtr<TestResponse> response) {
-            return (*response)->data();
+          .map([](Flatbuffer<TestResponse> response) {
+            return response->data();
           })
           .sum()
           .map([](int sum) {

@@ -20,9 +20,8 @@
 namespace shk {
 
 /**
- * A Flatbuffer is an owning typed pointer to a valid Flatbuffer buffer. It is
- * illegal to construct a Flatbuffer with memory that is not a valid flatbuffer
- * of that type.
+ * A Flatbuffer is an owning typed pointer to a possibly invalid Flatbuffer
+ * buffer.
  */
 template <typename T>
 class Flatbuffer {
@@ -31,14 +30,26 @@ class Flatbuffer {
       : _buffer(std::move(buffer)),
         _size(size) {}
 
+  Flatbuffer() = default;
+
+  Flatbuffer(const Flatbuffer &other)
+      : _buffer(new uint8_t[other._size], [](const uint8_t *p) { delete[] p; }),
+        _size(other._size) {
+    memcpy(_buffer.get(), other._buffer.get(), _size);
+  }
+
+  Flatbuffer &operator=(const Flatbuffer &other) {
+    // Use move assignment to avoid having to reimplement copying
+    *this = Flatbuffer(other);
+  }
+
+  Flatbuffer(Flatbuffer &&other) = default;
+
+  Flatbuffer &operator=(Flatbuffer &&other) = default;
+
   static Flatbuffer fromBuilder(flatbuffers::FlatBufferBuilder *builder) {
     auto size = builder->GetSize();
     return Flatbuffer(builder->ReleaseBufferPointer(), size);
-  }
-
-  static std::shared_ptr<const Flatbuffer> sharedFromBuilder(
-      flatbuffers::FlatBufferBuilder *builder) {
-    return std::make_shared<const Flatbuffer>(fromBuilder(builder));
   }
 
   flatbuffers::BufferRef<T> ref() const {
@@ -54,24 +65,27 @@ class Flatbuffer {
     return &**this;
   }
 
+  explicit operator bool() const {
+    flatbuffers::Verifier verifier(_buffer.get(), _size);
+    return verifier.VerifyBuffer<T>(nullptr);
+  }
+
+
  private:
   flatbuffers::unique_ptr_t _buffer;
   flatbuffers::uoffset_t _size;
 };
-
-template <typename T>
-using FlatbufferPtr = std::shared_ptr<const Flatbuffer<T>>;
 
 class FlatbufferRefTransform {
  public:
   FlatbufferRefTransform() = delete;
 
   template <typename T>
-  static std::pair<FlatbufferPtr<T>, grpc::Status> wrap(
+  static std::pair<Flatbuffer<T>, grpc::Status> wrap(
       flatbuffers::BufferRef<T> &&buffer) {
     if (!buffer.Verify()) {
       return std::make_pair(
-          nullptr,
+          Flatbuffer<T>(),
           grpc::Status(grpc::DATA_LOSS, "Got invalid Flatbuffer data"));
     } else {
       if (buffer.must_free) {
@@ -79,7 +93,7 @@ class FlatbufferRefTransform {
         buffer.must_free = false;
         uint8_t *buf = buffer.buf;
         return std::make_pair(
-            std::make_shared<const Flatbuffer<T>>(
+            Flatbuffer<T>(
                 flatbuffers::unique_ptr_t(
                     buf,
                     [buf](const uint8_t *) { free(buf); }),
@@ -93,17 +107,15 @@ class FlatbufferRefTransform {
         memcpy(copied_buffer.get(), buffer.buf, buffer.len);
 
         return std::make_pair(
-            std::make_shared<const Flatbuffer<T>>(
-                std::move(copied_buffer), buffer.len),
+            Flatbuffer<T>(std::move(copied_buffer), buffer.len),
             grpc::Status::OK);
       }
     }
   }
 
   template <typename T>
-  static flatbuffers::BufferRef<T> unwrap(
-      const FlatbufferPtr<T> &ref) {
-    return ref->ref();
+  static flatbuffers::BufferRef<T> unwrap(const Flatbuffer<T> &ref) {
+    return ref.ref();
   }
 };
 
