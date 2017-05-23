@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <grpc++/grpc++.h>
 #include <rxcpp/rx.hpp>
 
@@ -85,6 +87,66 @@ class RxGrpcTag {
   static void processAllEvents(grpc::CompletionQueue *cq) {
     while (processOneEvent(cq)) {}
   }
+};
+
+template <typename Stream>
+class StreamTraits;
+
+template <typename ResponseType>
+class StreamTraits<grpc::ServerAsyncResponseWriter<ResponseType>> {
+ public:
+  static constexpr bool kRequestStreaming = false;
+  static constexpr bool kResponseStreaming = false;
+};
+
+template <typename ResponseType>
+class StreamTraits<grpc::ServerAsyncWriter<ResponseType>> {
+ public:
+  static constexpr bool kRequestStreaming = false;
+  static constexpr bool kResponseStreaming = true;
+};
+
+template <typename ResponseType, typename RequestType>
+class StreamTraits<grpc::ServerAsyncReader<ResponseType, RequestType>> {
+ public:
+  static constexpr bool kRequestStreaming = true;
+  static constexpr bool kResponseStreaming = false;
+};
+
+template <typename ResponseType, typename RequestType>
+class StreamTraits<
+    grpc::ServerAsyncReaderWriter<ResponseType, RequestType>> {
+ public:
+  static constexpr bool kRequestStreaming = true;
+  static constexpr bool kResponseStreaming = true;
+};
+
+template <typename ResponseType>
+class StreamTraits<grpc::ClientAsyncResponseReader<ResponseType>> {
+ public:
+  static constexpr bool kRequestStreaming = false;
+  static constexpr bool kResponseStreaming = false;
+};
+
+template <typename ResponseType>
+class StreamTraits<grpc::ClientAsyncWriter<ResponseType>> {
+ public:
+  static constexpr bool kRequestStreaming = true;
+  static constexpr bool kResponseStreaming = false;
+};
+
+template <typename ResponseType>
+class StreamTraits<grpc::ClientAsyncReader<ResponseType>> {
+ public:
+  static constexpr bool kRequestStreaming = false;
+  static constexpr bool kResponseStreaming = true;
+};
+
+template <typename ResponseType, typename RequestType>
+class StreamTraits<grpc::ClientAsyncReaderWriter<ResponseType, RequestType>> {
+ public:
+  static constexpr bool kRequestStreaming = true;
+  static constexpr bool kResponseStreaming = true;
 };
 
 template <
@@ -261,57 +323,132 @@ class RxGrpcClientInvocation<
   std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> _reader;
 };
 
+/**
+ * For requests with a non-streaming response.
+ */
 template <
     typename Service,
-    typename ResponseType,
     typename RequestType,
     // grpc::ServerAsyncResponseWriter<ResponseType> or
     // grpc::ServerAsyncWriter<ResponseType>
-    typename ServerWriter>
-using RequestAsyncMethod = void (Service::*)(
+    typename Stream>
+using RequestMethod = void (Service::*)(
     grpc::ServerContext *context,
     RequestType *request,
-    ServerWriter *writer,
+    Stream *stream,
     grpc::CompletionQueue *new_call_cq,
     grpc::ServerCompletionQueue *notification_cq,
     void *tag);
 
 /**
- * Helper class that exposes a unified interface for either stream or non-stream
- * client response readers.
+ * For requests with a streaming response.
  */
-template <typename Reader>
-class StreamOrResponseReader;  // TODO(peck): Use this or delete it.
+template <
+    typename Service,
+    // grpc::ServerAsyncReader<ResponseType, RequestType> or
+    // grpc::ServerAsyncReaderWriter<ResponseType, RequestType>
+    typename Stream>
+using StreamingRequestMethod = void (Service::*)(
+    grpc::ServerContext *context,
+    Stream *stream,
+    grpc::CompletionQueue *new_call_cq,
+    grpc::ServerCompletionQueue *notification_cq,
+    void *tag);
+
+template <typename ServerCallTraits, bool StreamingRequest>
+class ServerStreamOrResponseReader;
+
+/**
+ * Non-streaming version.
+ */
+template <typename ServerCallTraits>
+class ServerStreamOrResponseReader<ServerCallTraits, false> {
+ public:
+  template <typename Writer>
+  void request(
+      typename ServerCallTraits::Service *service,
+      typename ServerCallTraits::Method method,
+      grpc::ServerContext *context,
+      Writer *writer,
+      grpc::ServerCompletionQueue *cq,
+      void *tag) {
+    (service->*method)(context, &_request, writer, cq, cq, tag);
+  }
+
+  std::pair<typename ServerCallTraits::TransformedRequest, grpc::Status>
+  getCallbackParameter() {
+    return ServerCallTraits::Transform::wrap(std::move(_request));
+  }
+
+ private:
+  typename ServerCallTraits::Request _request;
+};
+
+/**
+ * Streaming version.
+ */
+template <typename ServerCallTraits>
+class ServerStreamOrResponseReader<ServerCallTraits, true> {
+  using TransformedRequest = typename ServerCallTraits::TransformedRequest;
+ public:
+  template <typename Writer>
+  void request(
+      typename ServerCallTraits::Service *service,
+      typename ServerCallTraits::Method method,
+      grpc::ServerContext *context,
+      Writer *writer,
+      grpc::ServerCompletionQueue *cq,
+      void *tag) {
+    (service->*method)(context, writer, cq, cq, tag);
+  }
+
+  std::pair<rxcpp::observable<TransformedRequest>, grpc::Status>
+  getCallbackParameter() {
+    return std::make_pair(
+        rxcpp::observable<>::create<
+            TransformedRequest>([](
+                rxcpp::subscriber<TransformedRequest> subcription) {
+            }),
+        grpc::Status::OK);
+  }
+};
 
 /**
  * Helper class that exposes a unified interface for either stream or non-stream
  * server response writers.
  */
-template <typename OwnedResponse, typename Transform, typename ServerWriter>
-class StreamOrResponseWriter;
+template <
+    typename TransformedResponse,
+    typename Transform,
+    typename Stream,
+    bool StreamingResponse>
+class ServerStreamOrResponseWriter;
 
 /**
  * Non-streaming version.
  */
-template <typename OwnedResponse, typename Transform, typename ResponseType>
-class StreamOrResponseWriter<
-    OwnedResponse, Transform, grpc::ServerAsyncResponseWriter<ResponseType>> {
+template <
+    typename TransformedResponse,
+    typename Transform,
+    typename Stream>
+class ServerStreamOrResponseWriter<
+    TransformedResponse, Transform, Stream, false> {
  public:
-  StreamOrResponseWriter(grpc::ServerContext *context)
-      : _responder(context) {}
+  ServerStreamOrResponseWriter(grpc::ServerContext *context)
+      : _stream(context) {}
 
-  grpc::ServerAsyncResponseWriter<ResponseType> *get() {
-    return &_responder;
+  Stream *get() {
+    return &_stream;
   }
 
-  void write(OwnedResponse &&response, void *tag) {
+  void write(TransformedResponse &&response, void *tag) {
     _response = std::move(response);
   }
 
   template <typename WillDoFinalWrite>
   void finish(void *tag, const WillDoFinalWrite &will_do_final_write) {
     will_do_final_write();
-    _responder.Finish(Transform::unwrap(_response), grpc::Status::OK, tag);
+    _stream.Finish(Transform::unwrap(_response), grpc::Status::OK, tag);
   }
 
   template <typename WillDoFinalWrite>
@@ -320,7 +457,7 @@ class StreamOrResponseWriter<
       void *tag,
       const WillDoFinalWrite &will_do_final_write) {
     will_do_final_write();
-    _responder.FinishWithError(status, tag);
+    _stream.FinishWithError(status, tag);
   }
 
   template <typename WillDoFinalWrite>
@@ -329,25 +466,28 @@ class StreamOrResponseWriter<
   }
 
  private:
-  OwnedResponse _response;
-  grpc::ServerAsyncResponseWriter<ResponseType> _responder;
+  TransformedResponse _response;
+  Stream _stream;
 };
 
 /**
  * Streaming version.
  */
-template <typename OwnedResponse, typename Transform, typename ResponseType>
-class StreamOrResponseWriter<
-    OwnedResponse, Transform, grpc::ServerAsyncWriter<ResponseType>> {
+template <
+    typename TransformedResponse,
+    typename Transform,
+    typename Stream>
+class ServerStreamOrResponseWriter<
+    TransformedResponse, Transform, Stream, true> {
  public:
-  StreamOrResponseWriter(grpc::ServerContext *context)
-      : _responder(context) {}
+  ServerStreamOrResponseWriter(grpc::ServerContext *context)
+      : _stream(context) {}
 
-  grpc::ServerAsyncWriter<ResponseType> *get() {
-    return &_responder;
+  Stream *get() {
+    return &_stream;
   }
 
-  void write(const OwnedResponse &response, void *tag) {
+  void write(const TransformedResponse &response, void *tag) {
     _enqueued_responses.push_back(response);
     runEnqueuedOperation(tag, [] { abort(); /* can't happen */ });
   }
@@ -385,7 +525,7 @@ class StreamOrResponseWriter<
     }
     if (!_enqueued_responses.empty()) {
       _operation_in_progress = true;
-      _responder.Write(
+      _stream.Write(
           Transform::unwrap(std::move(_enqueued_responses.front())), tag);
       _enqueued_responses.pop_front();
     } else if (_enqueued_finish) {
@@ -397,38 +537,83 @@ class StreamOrResponseWriter<
       // on another thread, which could delete tag.
       will_do_final_write();
 
-      _responder.Finish(_enqueued_finish_status, tag);
+      _stream.Finish(_enqueued_finish_status, tag);
     }
   }
 
   bool _operation_in_progress = false;
 
   // Because we don't have backpressure we need an unbounded buffer here :-(
-  std::deque<OwnedResponse> _enqueued_responses;
+  std::deque<TransformedResponse> _enqueued_responses;
   bool _enqueued_finish = false;
   grpc::Status _enqueued_finish_status;
 
-  grpc::ServerAsyncWriter<ResponseType> _responder;
+  Stream _stream;
 };
 
+/**
+ * Group of typedefs related to a server-side invocation, to avoid having to
+ * pass around tons and tons of template parameters everywhere, and to have
+ * something to do partial template specialization on to handle non-streaming
+ * vs uni-streaming vs bidi streaming stuff.
+ */
 template <
-    typename Service,
+    // grpc::ServerAsyncResponseWriter<ResponseType> (non-streaming) or
+    // grpc::ServerAsyncWriter<ResponseType> (streaming response) or
+    // grpc::ServerAsyncReader<ResponseType, RequestType> (streaming request) or
+    // grpc::ServerAsyncReaderWriter<ResponseType, RequestType> (bidi streaming)
+    typename StreamType,
+    // Generated service class
+    typename ServiceType,
     typename ResponseType,
     typename RequestType,
-    typename ServerWriter,
-    typename Transform,
+    typename TransformType,
     typename Callback>
-class RxGrpcServerInvocation : public RxGrpcTag {
-  using OwnedRequest =
+class ServerCallTraits {
+ public:
+  using Stream = StreamType;
+  using Service = ServiceType;
+  using Response = ResponseType;
+  using Request = RequestType;
+  using Transform = TransformType;
+
+
+  using TransformedRequest =
       typename decltype(
           Transform::wrap(std::declval<RequestType>()))::first_type;
-  using ResponseObservable =
-      decltype(std::declval<Callback>()(std::declval<OwnedRequest>()));
-  using OwnedResponse = typename ResponseObservable::value_type;
- public:
-  using Method = RequestAsyncMethod<
-      Service, ResponseType, RequestType, ServerWriter>;
 
+ private:
+  /**
+   * The type of the parameter that the request handler callback takes. If it is
+   * a streaming request, it's an observable, otherwise it's an object directly.
+   */
+  using CallbackParamType = typename std::conditional<
+      StreamTraits<Stream>::kRequestStreaming,
+      rxcpp::observable<TransformedRequest>,
+      TransformedRequest>::type;
+
+  using ResponseObservable =
+      decltype(std::declval<Callback>()(std::declval<CallbackParamType>()));
+
+ public:
+  using TransformedResponse = typename ResponseObservable::value_type;
+
+  using Method = typename std::conditional<
+      StreamTraits<Stream>::kRequestStreaming,
+      StreamingRequestMethod<Service, Stream>,
+      RequestMethod<Service, RequestType, Stream>>::type;
+};
+
+template <typename ServerCallTraits, typename Callback>
+class RxGrpcServerInvocation : public RxGrpcTag {
+  using Stream = typename ServerCallTraits::Stream;
+  using Service = typename ServerCallTraits::Service;
+  using Transform = typename ServerCallTraits::Transform;
+  using TransformedRequest = typename ServerCallTraits::TransformedRequest;
+  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
+  using Method = typename ServerCallTraits::Method;
+
+ public:
   static void request(
       GrpcErrorHandler error_handler,
       Method method,
@@ -437,11 +622,11 @@ class RxGrpcServerInvocation : public RxGrpcTag {
       grpc::ServerCompletionQueue *cq) {
     auto invocation = new RxGrpcServerInvocation(
         error_handler, method, std::move(callback), service, cq);
-    (service->*method)(
+    invocation->_reader.request(
+        service,
+        method,
         &invocation->_context,
-        &invocation->_request,
-        invocation->_responder.get(),
-        cq,
+        invocation->_writer.get(),
         cq,
         invocation);
   }
@@ -455,13 +640,11 @@ class RxGrpcServerInvocation : public RxGrpcTag {
 
     switch (_state) {
       case State::WAITING_FOR_REQUEST: {
-        // TODO(peck): Static assert on the callbacks return and parameter types
-
         _state = State::GOT_REQUEST;
 
-        auto wrapped = Transform::wrap(std::move(_request));
-        if (wrapped.second.ok()) {
-          auto values = _callback(std::move(wrapped.first));
+        auto callback_param = _reader.getCallbackParameter();
+        if (callback_param.second.ok()) {
+          auto values = _callback(std::move(callback_param.first));
 
           // Request the a new request, so that the server is always waiting for
           // one. This is done after the callback (because this steals it) but
@@ -470,32 +653,32 @@ class RxGrpcServerInvocation : public RxGrpcTag {
           issueNewServerRequest(std::move(_callback));
 
           values.subscribe(
-              [this](OwnedResponse response) {
-                _responder.write(std::move(response), this);
+              [this](TransformedResponse response) {
+                _writer.write(std::move(response), this);
               },
               [this](std::exception_ptr error) {
                 // TODO(peck): Make it possible to respond with other errors
                 // than INTERNAL (by catching GrpcErrors and reporting that)
                 const auto what = exceptionMessage(error);
                 const auto status = grpc::Status(grpc::INTERNAL, what);
-                _responder.finishWithError(status, this, [this] {
+                _writer.finishWithError(status, this, [this] {
                   _state = State::SENT_FINAL_RESPONSE;
                 });
               },
               [this]() {
-                _responder.finish(this, [this] {
+                _writer.finish(this, [this] {
                   _state = State::SENT_FINAL_RESPONSE;
                 });
               });
         } else {
-          _responder.finishWithError(wrapped.second, this, [this] {
+          _writer.finishWithError(callback_param.second, this, [this] {
             _state = State::SENT_FINAL_RESPONSE;
           });
         }
         break;
       }
       case State::GOT_REQUEST: {
-        _responder.operationFinished(this, [this] {
+        _writer.operationFinished(this, [this] {
           _state = State::SENT_FINAL_RESPONSE;
         });
         break;
@@ -529,7 +712,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         _callback(std::move(callback)),
         _service(*service),
         _cq(*cq),
-        _responder(&_context) {}
+        _writer(&_context) {}
 
   void issueNewServerRequest(Callback &&callback) {
     // Take callback as an rvalue parameter to make it obvious that we steal it.
@@ -559,8 +742,14 @@ class RxGrpcServerInvocation : public RxGrpcTag {
   Service &_service;
   grpc::ServerCompletionQueue &_cq;
   grpc::ServerContext _context;
-  RequestType _request;
-  StreamOrResponseWriter<OwnedResponse, Transform, ServerWriter> _responder;
+  ServerStreamOrResponseReader<
+      ServerCallTraits,
+      StreamTraits<Stream>::kRequestStreaming> _reader;
+  ServerStreamOrResponseWriter<
+      TransformedResponse,
+      Transform,
+      Stream,
+      StreamTraits<Stream>::kResponseStreaming> _writer;
 };
 
 class InvocationRequester {
@@ -573,17 +762,15 @@ class InvocationRequester {
 };
 
 template <
-    typename Service,
-    typename ResponseType,
-    typename RequestType,
-    typename ServerWriter,
-    typename Transform,
+    // RequestMethod<Service, RequestType, Stream> or
+    // StreamingRequestMethod<Service, Stream>
+    typename Method,
+    typename ServerCallTraits,
     typename Callback>
 class RxGrpcServerInvocationRequester : public InvocationRequester {
- public:
-  using Method = RequestAsyncMethod<
-      Service, ResponseType, RequestType, ServerWriter>;
+  using Service = typename ServerCallTraits::Service;
 
+ public:
   RxGrpcServerInvocationRequester(
       Method method, Callback &&callback, Service *service)
       : _method(method), _callback(std::move(callback)), _service(*service) {}
@@ -592,11 +779,7 @@ class RxGrpcServerInvocationRequester : public InvocationRequester {
       GrpcErrorHandler error_handler,
       grpc::ServerCompletionQueue *cq) override {
     using ServerInvocation = RxGrpcServerInvocation<
-        Service,
-        ResponseType,
-        RequestType,
-        ServerWriter,
-        Transform,
+        ServerCallTraits,
         Callback>;
     ServerInvocation::request(
         error_handler, _method, Callback(_callback), &_service, cq);
@@ -733,8 +916,8 @@ class RxGrpcServer {
     class ServiceBuilder {
      public:
       /**
-       * The pointers passed to the constructor are not owned by this class;
-       * they need to stay alive for as long as this object exists.
+       * The pointers passed to the constructor are not Transformed by this
+       * class; they need to stay alive for as long as this object exists.
        */
       ServiceBuilder(
           Service *service,
@@ -742,7 +925,7 @@ class RxGrpcServer {
           : _service(*service),
             _invocation_requesters(*requesters) {}
 
-      // Non-streaming response
+      // Non-streaming request, non-streaming response
       template <
           typename Transform = detail::RxGrpcIdentityTransform,
           typename InnerService,
@@ -750,24 +933,25 @@ class RxGrpcServer {
           typename RequestType,
           typename Callback>
       ServiceBuilder &registerMethod(
-          detail::RequestAsyncMethod<
+          detail::RequestMethod<
               InnerService,
-              ResponseType,
               RequestType,
               grpc::ServerAsyncResponseWriter<ResponseType>> method,
           Callback &&callback) {
         registerMethodImpl<
-            grpc::ServerAsyncResponseWriter<ResponseType>,
-            Transform,
-            Service,
-            ResponseType,
-            RequestType>(
-                method, std::forward<Callback>(callback));
+            detail::ServerCallTraits<
+                grpc::ServerAsyncResponseWriter<ResponseType>,
+                Service,
+                ResponseType,
+                RequestType,
+                Transform,
+                Callback>>(
+                    method, std::forward<Callback>(callback));
 
         return *this;
       }
 
-      // Streaming response
+      // Non-streaming request streaming response
       template <
           typename Transform = detail::RxGrpcIdentityTransform,
           typename InnerService,
@@ -775,46 +959,61 @@ class RxGrpcServer {
           typename RequestType,
           typename Callback>
       ServiceBuilder &registerMethod(
-          detail::RequestAsyncMethod<
+          detail::RequestMethod<
               InnerService,
-              ResponseType,
               RequestType,
               grpc::ServerAsyncWriter<ResponseType>> method,
           Callback &&callback) {
         registerMethodImpl<
-            grpc::ServerAsyncWriter<ResponseType>,
-            Transform,
-            Service,
-            ResponseType,
-            RequestType>(
-                method, std::forward<Callback>(callback));
+            detail::ServerCallTraits<
+                grpc::ServerAsyncWriter<ResponseType>,
+                Service,
+                ResponseType,
+                RequestType,
+                Transform,
+                Callback>>(
+                    method, std::forward<Callback>(callback));
+
+        return *this;
+      }
+
+      // Streaming request, non-streaming response
+      template <
+          typename Transform = detail::RxGrpcIdentityTransform,
+          typename InnerService,
+          typename ResponseType,
+          typename RequestType,
+          typename Callback>
+      ServiceBuilder &registerMethod(
+          detail::StreamingRequestMethod<
+              InnerService,
+              grpc::ServerAsyncReader<ResponseType, RequestType>> method,
+          Callback &&callback) {
+        registerMethodImpl<
+            detail::ServerCallTraits<
+                grpc::ServerAsyncReader<ResponseType, RequestType>,
+                Service,
+                ResponseType,
+                RequestType,
+                Transform,
+                Callback>>(
+                    method, std::forward<Callback>(callback));
 
         return *this;
       }
 
      private:
-
       template <
-          typename ServerWriter,
-          typename Transform,
-          typename InnerService,
-          typename ResponseType,
-          typename RequestType,
+          typename ServerCallTraits,
+          typename Method,
           typename Callback>
       void registerMethodImpl(
-          detail::RequestAsyncMethod<
-              InnerService,
-              ResponseType,
-              RequestType,
-              ServerWriter> method,
+          Method method,
           Callback &&callback) {
         using ServerInvocationRequester =
             detail::RxGrpcServerInvocationRequester<
-                Service,
-                ResponseType,
-                RequestType,
-                ServerWriter,
-                Transform,
+                Method,
+                ServerCallTraits,
                 Callback>;
 
         _invocation_requesters.emplace_back(

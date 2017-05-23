@@ -10,5 +10,7 @@ table TestResponse {
 
 rpc_service TestService {
   Double(TestRequest): TestResponse;
-  ServerStream(TestRequest): TestResponse (streaming: "server");
+  Repeat(TestRequest): TestResponse (streaming: "server");
+  Sum(TestRequest): TestResponse (streaming: "client");
+  Echo(TestRequest): TestResponse (streaming: "bidi");
 }

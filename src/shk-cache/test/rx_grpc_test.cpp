@@ -42,10 +42,10 @@ Flatbuffer<TestResponse> makeTestResponse(int data) {
 
 auto doubleHandler(Flatbuffer<TestRequest> request) {
   return rxcpp::observable<>::just<Flatbuffer<TestResponse>>(
-      makeTestResponse(request->data() * 2));
+      makeTestResponse(request->data() * 2)).as_dynamic();
 }
 
-auto serverStreamHandler(Flatbuffer<TestRequest> request) {
+auto repeatHandler(Flatbuffer<TestRequest> request) {
   int count = request->data();
   if (count == 0) {
     return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>()
@@ -55,6 +55,15 @@ auto serverStreamHandler(Flatbuffer<TestRequest> request) {
         .map(&makeTestResponse)
         .as_dynamic();
   }
+}
+
+auto sumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+  return requests
+    .map([](Flatbuffer<TestRequest> request) {
+      return request->data();
+    })
+    .sum()
+    .map(makeTestResponse);
 }
 
 }  // anonymous namespace
@@ -71,8 +80,11 @@ TEST_CASE("RxGrpc") {
           &TestService::AsyncService::RequestDouble,
           &doubleHandler)
       .registerMethod<FlatbufferRefTransform>(
-          &TestService::AsyncService::RequestServerStream,
-          &serverStreamHandler);
+          &TestService::AsyncService::RequestRepeat,
+          &repeatHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestSum,
+          &sumHandler);
 
   RxGrpcClient runloop;
 
@@ -164,7 +176,7 @@ TEST_CASE("RxGrpc") {
     SECTION("no responses") {
       run(test_client
           .invoke(
-              &TestService::Stub::AsyncServerStream, makeTestRequest(0))
+              &TestService::Stub::AsyncRepeat, makeTestRequest(0))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 // Should never be called; this should be a stream that ends
@@ -176,7 +188,7 @@ TEST_CASE("RxGrpc") {
 
     SECTION("one response") {
       run(test_client
-          .invoke(&TestService::Stub::AsyncServerStream, makeTestRequest(1))
+          .invoke(&TestService::Stub::AsyncRepeat, makeTestRequest(1))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 1);
             return "ignored";
@@ -190,7 +202,7 @@ TEST_CASE("RxGrpc") {
 
     SECTION("two responses") {
       auto responses = test_client.invoke(
-          &TestService::Stub::AsyncServerStream, makeTestRequest(2));
+          &TestService::Stub::AsyncRepeat, makeTestRequest(2));
 
       auto check_count = responses
           .count()
