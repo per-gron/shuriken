@@ -149,33 +149,38 @@ class StreamTraits<grpc::ClientAsyncReaderWriter<ResponseType, RequestType>> {
   static constexpr bool kResponseStreaming = true;
 };
 
+/**
+ * Shared logic between client and server code to read messages from a gRPC
+ * call.
+ */
 template <
-    typename Reader,
-    typename WrappedRequestType,
+    typename OwnerType,
     typename ResponseType,
-    typename Transform>
-class RxGrpcClientInvocation;
+    typename Transform,
+    typename Reader,
+    bool Streaming>
+class RxGrpcReader;
 
 /**
  * Non-streaming version
  */
 template <
-    typename WrappedRequestType,
+    typename OwnerType,
     typename ResponseType,
-    typename Transform>
-class RxGrpcClientInvocation<
-    grpc::ClientAsyncResponseReader<ResponseType>,
-    WrappedRequestType,
-    ResponseType,
-    Transform> : public RxGrpcTag {
+    typename Transform,
+    typename Reader>
+class RxGrpcReader<
+    OwnerType, ResponseType, Transform, Reader, false> : public RxGrpcTag {
  public:
-  using WrappedResponseType = typename decltype(
+  using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
 
-  RxGrpcClientInvocation(
-      const WrappedRequestType &request,
-      rxcpp::subscriber<WrappedResponseType> &&subscriber)
-      : _request(request), _subscriber(std::move(subscriber)) {}
+  RxGrpcReader(
+      rxcpp::subscriber<TransformedResponseType> &&subscriber,
+      grpc::ClientContext * /*context*/,
+      OwnerType *to_delete)
+      : _subscriber(std::move(subscriber)),
+        _to_delete(*to_delete) {}
 
   void operator()(bool success) override {
     if (!success) {
@@ -196,54 +201,44 @@ class RxGrpcClientInvocation<
       _subscriber.on_error(std::make_exception_ptr(GrpcError(_status)));
     }
 
-    delete this;
+    delete &_to_delete;
   }
 
-  template <typename Stub>
   void invoke(
-      std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
-      (Stub::*invoke)(
-          grpc::ClientContext *context,
-          const decltype(std::declval<Transform>()
-              .unwrap(std::declval<WrappedRequestType>())) &request,
-          grpc::CompletionQueue *cq),
-      Stub *stub,
-      grpc::CompletionQueue *cq) {
-    auto rpc = (stub->*invoke)(&_context, Transform::unwrap(_request), cq);
-    rpc->Finish(&_response, &_status, this);
+      std::unique_ptr<
+          grpc::ClientAsyncResponseReader<ResponseType>> &&reader) {
+    reader->Finish(&_response, &_status, this);
   }
 
  private:
-  static_assert(
-      !std::is_reference<WrappedRequestType>::value,
-      "Request type must be held by value");
-  WrappedRequestType _request;
   ResponseType _response;
-  rxcpp::subscriber<WrappedResponseType> _subscriber;
-  grpc::ClientContext _context;
+  rxcpp::subscriber<TransformedResponseType> _subscriber;
   grpc::Status _status;
+  OwnerType &_to_delete;
 };
+
 
 /**
  * Streaming version
  */
 template <
-    typename WrappedRequestType,
+    typename OwnerType,
     typename ResponseType,
-    typename Transform>
-class RxGrpcClientInvocation<
-    grpc::ClientAsyncReader<ResponseType>,
-    WrappedRequestType,
-    ResponseType,
-    Transform> : public RxGrpcTag {
+    typename Transform,
+    typename Reader>
+class RxGrpcReader<
+    OwnerType, ResponseType, Transform, Reader, true> : public RxGrpcTag {
  public:
-  using WrappedResponseType = typename decltype(
+  using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
 
-  RxGrpcClientInvocation(
-      const WrappedRequestType &request,
-      rxcpp::subscriber<WrappedResponseType> &&subscriber)
-      : _request(request), _subscriber(std::move(subscriber)) {}
+  RxGrpcReader(
+      rxcpp::subscriber<TransformedResponseType> &&subscriber,
+      grpc::ClientContext *context,
+      OwnerType *to_delete)
+      : _subscriber(std::move(subscriber)),
+        _context(*context),
+        _to_delete(*to_delete) {}
 
   void operator()(bool success) override {
     switch (_state) {
@@ -278,29 +273,19 @@ class RxGrpcClientInvocation<
         } else {
           _subscriber.on_error(std::make_exception_ptr(GrpcError(_status)));
         }
-        delete this;
+        delete &_to_delete;
         break;
       }
       case State::READ_FAILURE: {
-        delete this;
+        delete &_to_delete;
         break;
       }
     }
   }
 
-  template <typename Stub>
   void invoke(
-      std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
-      (Stub::*invoke)(
-          grpc::ClientContext *context,
-          const decltype(std::declval<Transform>()
-              .unwrap(std::declval<WrappedRequestType>())) &request,
-          grpc::CompletionQueue *cq,
-          void *tag),
-      Stub *stub,
-      grpc::CompletionQueue *cq) {
-    _reader = (stub->*invoke)(
-        &_context, Transform::unwrap(_request), cq, this);
+      std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> &&reader) {
+    _reader = std::move(reader);
   }
 
  private:
@@ -312,19 +297,124 @@ class RxGrpcClientInvocation<
   };
 
   State _state = State::INIT;
-  static_assert(
-      !std::is_reference<WrappedRequestType>::value,
-      "Request type must be held by value");
-  WrappedRequestType _request;
   ResponseType _response;
-  rxcpp::subscriber<WrappedResponseType> _subscriber;
-  grpc::ClientContext _context;
+  rxcpp::subscriber<TransformedResponseType> _subscriber;
   grpc::Status _status;
   std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> _reader;
+  grpc::ClientContext &_context;
+  OwnerType &_to_delete;
+};
+
+
+template <
+    typename Reader,
+    typename TransformedRequestType,
+    typename ResponseType,
+    typename Transform>
+class RxGrpcClientInvocation;
+
+/**
+ * Non-streaming version
+ */
+template <
+    typename TransformedRequestType,
+    typename ResponseType,
+    typename Transform>
+class RxGrpcClientInvocation<
+    grpc::ClientAsyncResponseReader<ResponseType>,
+    TransformedRequestType,
+    ResponseType,
+    Transform> {
+ public:
+  using TransformedResponseType = typename decltype(
+      Transform::wrap(std::declval<ResponseType>()))::first_type;
+
+  RxGrpcClientInvocation(
+      const TransformedRequestType &request,
+      rxcpp::subscriber<TransformedResponseType> &&subscriber)
+      : _request(request),
+      _reader(std::move(subscriber), &_context, this) {}
+
+  template <typename Stub>
+  void invoke(
+      std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
+      (Stub::*invoke)(
+          grpc::ClientContext *context,
+          const decltype(std::declval<Transform>()
+              .unwrap(std::declval<TransformedRequestType>())) &request,
+          grpc::CompletionQueue *cq),
+      Stub *stub,
+      grpc::CompletionQueue *cq) {
+    _reader.invoke((stub->*invoke)(&_context, Transform::unwrap(_request), cq));
+  }
+
+ private:
+  static_assert(
+      !std::is_reference<TransformedRequestType>::value,
+      "Request type must be held by value");
+  TransformedRequestType _request;
+  grpc::ClientContext _context;
+  RxGrpcReader<
+      RxGrpcClientInvocation,
+      ResponseType,
+      Transform,
+      grpc::ClientAsyncResponseReader<ResponseType>,
+      false> _reader;
 };
 
 /**
- * For requests with a non-streaming response.
+ * Streaming version
+ */
+template <
+    typename TransformedRequestType,
+    typename ResponseType,
+    typename Transform>
+class RxGrpcClientInvocation<
+    grpc::ClientAsyncReader<ResponseType>,
+    TransformedRequestType,
+    ResponseType,
+    Transform> {
+ public:
+  using TransformedResponseType = typename decltype(
+      Transform::wrap(std::declval<ResponseType>()))::first_type;
+
+  RxGrpcClientInvocation(
+      const TransformedRequestType &request,
+      rxcpp::subscriber<TransformedResponseType> &&subscriber)
+      : _request(request),
+        _reader(std::move(subscriber), &_context, this) {}
+
+  template <typename Stub>
+  void invoke(
+      std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
+      (Stub::*invoke)(
+          grpc::ClientContext *context,
+          const decltype(std::declval<Transform>()
+              .unwrap(std::declval<TransformedRequestType>())) &request,
+          grpc::CompletionQueue *cq,
+          void *tag),
+      Stub *stub,
+      grpc::CompletionQueue *cq) {
+    _reader.invoke((stub->*invoke)(
+        &_context, Transform::unwrap(_request), cq, &_reader));
+  }
+
+ private:
+  static_assert(
+      !std::is_reference<TransformedRequestType>::value,
+      "Request type must be held by value");
+  TransformedRequestType _request;
+  grpc::ClientContext _context;
+  RxGrpcReader<
+      RxGrpcClientInvocation,
+      ResponseType,
+      Transform,
+      grpc::ClientAsyncReader<ResponseType>,
+      true> _reader;
+};
+
+/**
+ * For server requests with a non-streaming response.
  */
 template <
     typename Service,
@@ -341,7 +431,7 @@ using RequestMethod = void (Service::*)(
     void *tag);
 
 /**
- * For requests with a streaming response.
+ * For server requests with a streaming response.
  */
 template <
     typename Service,
@@ -802,21 +892,21 @@ class RxGrpcServiceClient {
   /**
    * Non-stream response.
    */
-  template <typename ResponseType, typename WrappedRequestType>
+  template <typename ResponseType, typename TransformedRequestType>
   rxcpp::observable<
       typename detail::RxGrpcClientInvocation<
           grpc::ClientAsyncResponseReader<ResponseType>,
-          WrappedRequestType,
+          TransformedRequestType,
           ResponseType,
-          Transform>::WrappedResponseType>
+          Transform>::TransformedResponseType>
   invoke(
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
           const decltype(std::declval<Transform>()
-              .unwrap(std::declval<WrappedRequestType>())) &request,
+              .unwrap(std::declval<TransformedRequestType>())) &request,
           grpc::CompletionQueue *cq),
-      const WrappedRequestType &request,
+      const TransformedRequestType &request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return invokeImpl<
         grpc::ClientAsyncResponseReader<ResponseType>,
@@ -829,22 +919,22 @@ class RxGrpcServiceClient {
   /**
    * Stream response.
    */
-  template <typename ResponseType, typename WrappedRequestType>
+  template <typename ResponseType, typename TransformedRequestType>
   rxcpp::observable<
       typename detail::RxGrpcClientInvocation<
           grpc::ClientAsyncReader<ResponseType>,
-          WrappedRequestType,
+          TransformedRequestType,
           ResponseType,
-          Transform>::WrappedResponseType>
+          Transform>::TransformedResponseType>
   invoke(
       std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
           const decltype(std::declval<Transform>()
-              .unwrap(std::declval<WrappedRequestType>())) &request,
+              .unwrap(std::declval<TransformedRequestType>())) &request,
           grpc::CompletionQueue *cq,
           void *tag),
-      const WrappedRequestType &request,
+      const TransformedRequestType &request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return invokeImpl<
         grpc::ClientAsyncReader<ResponseType>,
@@ -859,27 +949,27 @@ class RxGrpcServiceClient {
       typename Reader,
       typename ResponseType,
       typename Invoke,
-      typename WrappedRequestType>
+      typename TransformedRequestType>
   rxcpp::observable<
       typename detail::RxGrpcClientInvocation<
           Reader,
-          WrappedRequestType,
+          TransformedRequestType,
           ResponseType,
-          Transform>::WrappedResponseType>
+          Transform>::TransformedResponseType>
   invokeImpl(
       Invoke invoke,
-      const WrappedRequestType &request,
+      const TransformedRequestType &request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
 
     using ClientInvocation =
         detail::RxGrpcClientInvocation<
-            Reader, WrappedRequestType, ResponseType, Transform>;
-    using WrappedResponseType =
-        typename ClientInvocation::WrappedResponseType;
+            Reader, TransformedRequestType, ResponseType, Transform>;
+    using TransformedResponseType =
+        typename ClientInvocation::TransformedResponseType;
 
-    return rxcpp::observable<>::create<WrappedResponseType>([
+    return rxcpp::observable<>::create<TransformedResponseType>([
         this, request, invoke](
-            rxcpp::subscriber<WrappedResponseType> subscriber) {
+            rxcpp::subscriber<TransformedResponseType> subscriber) {
 
       auto call = new ClientInvocation(
           request, std::move(subscriber));
