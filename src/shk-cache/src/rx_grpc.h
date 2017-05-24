@@ -19,29 +19,9 @@
 #include <grpc++/grpc++.h>
 #include <rxcpp/rx.hpp>
 
+#include "grpc_error.h"
+
 namespace shk {
-
-using GrpcErrorHandler = std::function<void (std::exception_ptr)>;
-
-class GrpcError : public std::runtime_error {
- public:
-  explicit GrpcError(const grpc::Status &status)
-      : runtime_error(what(status)),
-        _status(status) {}
-
-  const char *what() const throw() override {
-    return what(_status);
-  }
-
- private:
-  static const char *what(const grpc::Status &status) throw() {
-    const auto &message = status.error_message();
-    return message.empty() ? "[No error message]" : message.c_str();
-  }
-
-  const grpc::Status _status;
-};
-
 namespace detail {
 
 class RxGrpcIdentityTransform {

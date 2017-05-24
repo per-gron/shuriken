@@ -16,6 +16,7 @@ add_custom_command(
 
 add_library(libshk-cache
   src/dummy.cpp
+  src/grpc_error.h
   src/rx_grpc.h
   src/rx_grpc_flatbuffers.h
   ${CMAKE_CURRENT_BINARY_DIR}/include/shk-cache/shkcache.grpc.fb.cc
