@@ -20,6 +20,7 @@
 #include <rxcpp/rx.hpp>
 
 #include "grpc_error.h"
+#include "rx_grpc_tag.h"
 
 namespace shk {
 namespace detail {
@@ -36,36 +37,6 @@ class RxGrpcIdentityTransform {
   template <typename T>
   static T unwrap(T &&value) {
     return std::forward<T>(value);
-  }
-};
-
-class RxGrpcTag {
- public:
-  virtual ~RxGrpcTag() = default;
-
-  virtual void operator()(bool success) = 0;
-
-  /**
-   * Block and process one asynchronous event on the given CompletionQueue.
-   *
-   * Returns false if the event queue is shutting down.
-   */
-  static bool processOneEvent(grpc::CompletionQueue *cq) {
-    void *got_tag;
-    bool success = false;
-    if (!cq->Next(&got_tag, &success)) {
-      // Shutting down
-      return false;
-    }
-
-    detail::RxGrpcTag *tag = reinterpret_cast<detail::RxGrpcTag *>(got_tag);
-    (*tag)(success);
-
-    return true;
-  }
-
-  static void processAllEvents(grpc::CompletionQueue *cq) {
-    while (processOneEvent(cq)) {}
   }
 };
 
