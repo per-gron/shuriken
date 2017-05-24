@@ -21,6 +21,7 @@
 
 #include "grpc_error.h"
 #include "rx_grpc_tag.h"
+#include "stream_traits.h"
 
 namespace shk {
 namespace detail {
@@ -38,66 +39,6 @@ class RxGrpcIdentityTransform {
   static T unwrap(T &&value) {
     return std::forward<T>(value);
   }
-};
-
-template <typename Stream>
-class StreamTraits;
-
-template <typename ResponseType>
-class StreamTraits<grpc::ServerAsyncResponseWriter<ResponseType>> {
- public:
-  static constexpr bool kRequestStreaming = false;
-  static constexpr bool kResponseStreaming = false;
-};
-
-template <typename ResponseType>
-class StreamTraits<grpc::ServerAsyncWriter<ResponseType>> {
- public:
-  static constexpr bool kRequestStreaming = false;
-  static constexpr bool kResponseStreaming = true;
-};
-
-template <typename ResponseType, typename RequestType>
-class StreamTraits<grpc::ServerAsyncReader<ResponseType, RequestType>> {
- public:
-  static constexpr bool kRequestStreaming = true;
-  static constexpr bool kResponseStreaming = false;
-};
-
-template <typename ResponseType, typename RequestType>
-class StreamTraits<
-    grpc::ServerAsyncReaderWriter<ResponseType, RequestType>> {
- public:
-  static constexpr bool kRequestStreaming = true;
-  static constexpr bool kResponseStreaming = true;
-};
-
-template <typename ResponseType>
-class StreamTraits<grpc::ClientAsyncResponseReader<ResponseType>> {
- public:
-  static constexpr bool kRequestStreaming = false;
-  static constexpr bool kResponseStreaming = false;
-};
-
-template <typename ResponseType>
-class StreamTraits<grpc::ClientAsyncWriter<ResponseType>> {
- public:
-  static constexpr bool kRequestStreaming = true;
-  static constexpr bool kResponseStreaming = false;
-};
-
-template <typename ResponseType>
-class StreamTraits<grpc::ClientAsyncReader<ResponseType>> {
- public:
-  static constexpr bool kRequestStreaming = false;
-  static constexpr bool kResponseStreaming = true;
-};
-
-template <typename ResponseType, typename RequestType>
-class StreamTraits<grpc::ClientAsyncReaderWriter<ResponseType, RequestType>> {
- public:
-  static constexpr bool kRequestStreaming = true;
-  static constexpr bool kResponseStreaming = true;
 };
 
 /**
