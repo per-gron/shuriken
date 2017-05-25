@@ -27,6 +27,7 @@ class StreamTraits<grpc::ServerAsyncResponseWriter<ResponseType>> {
  public:
   static constexpr bool kRequestStreaming = false;
   static constexpr bool kResponseStreaming = false;
+  using Context = grpc::ServerContext;
 };
 
 template <typename ResponseType>
@@ -34,6 +35,7 @@ class StreamTraits<grpc::ServerAsyncWriter<ResponseType>> {
  public:
   static constexpr bool kRequestStreaming = false;
   static constexpr bool kResponseStreaming = true;
+  using Context = grpc::ServerContext;
 };
 
 template <typename ResponseType, typename RequestType>
@@ -41,6 +43,7 @@ class StreamTraits<grpc::ServerAsyncReader<ResponseType, RequestType>> {
  public:
   static constexpr bool kRequestStreaming = true;
   static constexpr bool kResponseStreaming = false;
+  using Context = grpc::ServerContext;
 };
 
 template <typename ResponseType, typename RequestType>
@@ -49,6 +52,7 @@ class StreamTraits<
  public:
   static constexpr bool kRequestStreaming = true;
   static constexpr bool kResponseStreaming = true;
+  using Context = grpc::ServerContext;
 };
 
 template <typename ResponseType>
@@ -56,6 +60,7 @@ class StreamTraits<grpc::ClientAsyncResponseReader<ResponseType>> {
  public:
   static constexpr bool kRequestStreaming = false;
   static constexpr bool kResponseStreaming = false;
+  using Context = grpc::ClientContext;
 };
 
 template <typename ResponseType>
@@ -63,6 +68,7 @@ class StreamTraits<grpc::ClientAsyncWriter<ResponseType>> {
  public:
   static constexpr bool kRequestStreaming = true;
   static constexpr bool kResponseStreaming = false;
+  using Context = grpc::ClientContext;
 };
 
 template <typename ResponseType>
@@ -70,6 +76,7 @@ class StreamTraits<grpc::ClientAsyncReader<ResponseType>> {
  public:
   static constexpr bool kRequestStreaming = false;
   static constexpr bool kResponseStreaming = true;
+  using Context = grpc::ClientContext;
 };
 
 template <typename ResponseType, typename RequestType>
@@ -77,6 +84,7 @@ class StreamTraits<grpc::ClientAsyncReaderWriter<ResponseType, RequestType>> {
  public:
   static constexpr bool kRequestStreaming = true;
   static constexpr bool kResponseStreaming = true;
+  using Context = grpc::ClientContext;
 };
 
 }  // namespace detail

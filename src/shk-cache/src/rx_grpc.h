@@ -33,20 +33,7 @@ template <
     typename TransformedRequestType,
     typename ResponseType,
     typename Transform>
-class RxGrpcClientInvocation;
-
-/**
- * Non-streaming version
- */
-template <
-    typename TransformedRequestType,
-    typename ResponseType,
-    typename Transform>
-class RxGrpcClientInvocation<
-    grpc::ClientAsyncResponseReader<ResponseType>,
-    TransformedRequestType,
-    ResponseType,
-    Transform> {
+class RxGrpcClientInvocation {
  public:
   using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
@@ -69,42 +56,6 @@ class RxGrpcClientInvocation<
       grpc::CompletionQueue *cq) {
     _reader.invoke((stub->*invoke)(&_context, Transform::unwrap(_request), cq));
   }
-
- private:
-  static_assert(
-      !std::is_reference<TransformedRequestType>::value,
-      "Request type must be held by value");
-  TransformedRequestType _request;
-  grpc::ClientContext _context;
-  RxGrpcReader<
-      RxGrpcClientInvocation,
-      ResponseType,
-      Transform,
-      grpc::ClientAsyncResponseReader<ResponseType>,
-      false> _reader;
-};
-
-/**
- * Streaming version
- */
-template <
-    typename TransformedRequestType,
-    typename ResponseType,
-    typename Transform>
-class RxGrpcClientInvocation<
-    grpc::ClientAsyncReader<ResponseType>,
-    TransformedRequestType,
-    ResponseType,
-    Transform> {
- public:
-  using TransformedResponseType = typename decltype(
-      Transform::wrap(std::declval<ResponseType>()))::first_type;
-
-  RxGrpcClientInvocation(
-      const TransformedRequestType &request,
-      rxcpp::subscriber<TransformedResponseType> &&subscriber)
-      : _request(request),
-        _reader(std::move(subscriber), &_context, this) {}
 
   template <typename Stub>
   void invoke(
@@ -131,8 +82,8 @@ class RxGrpcClientInvocation<
       RxGrpcClientInvocation,
       ResponseType,
       Transform,
-      grpc::ClientAsyncReader<ResponseType>,
-      true> _reader;
+      Reader,
+      StreamTraits<Reader>::kResponseStreaming> _reader;
 };
 
 /**
@@ -175,7 +126,13 @@ class ServerStreamOrResponseReader;
  */
 template <typename ServerCallTraits>
 class ServerStreamOrResponseReader<ServerCallTraits, false> {
+  using CallbackParameter =
+      std::pair<typename ServerCallTraits::TransformedRequest, grpc::Status>;
  public:
+  ServerStreamOrResponseReader(
+      const std::function<void (CallbackParameter &&)> &got_response)
+      : _got_response(got_response) {}
+
   template <typename Writer>
   void request(
       typename ServerCallTraits::Service *service,
@@ -187,12 +144,12 @@ class ServerStreamOrResponseReader<ServerCallTraits, false> {
     (service->*method)(context, &_request, writer, cq, cq, tag);
   }
 
-  std::pair<typename ServerCallTraits::TransformedRequest, grpc::Status>
-  getCallbackParameter() {
+  CallbackParameter getCallbackParameter() {
     return ServerCallTraits::Transform::wrap(std::move(_request));
   }
 
  private:
+  std::function<void (CallbackParameter &&)> _got_response;
   typename ServerCallTraits::Request _request;
 };
 
@@ -202,7 +159,13 @@ class ServerStreamOrResponseReader<ServerCallTraits, false> {
 template <typename ServerCallTraits>
 class ServerStreamOrResponseReader<ServerCallTraits, true> {
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
+  using CallbackParameter =
+      std::pair<rxcpp::observable<TransformedRequest>, grpc::Status>;
  public:
+  ServerStreamOrResponseReader(
+      const std::function<void (CallbackParameter &&)> &got_response)
+      : _got_response(got_response) {}
+
   template <typename Writer>
   void request(
       typename ServerCallTraits::Service *service,
@@ -214,8 +177,7 @@ class ServerStreamOrResponseReader<ServerCallTraits, true> {
     (service->*method)(context, writer, cq, cq, tag);
   }
 
-  std::pair<rxcpp::observable<TransformedRequest>, grpc::Status>
-  getCallbackParameter() {
+  CallbackParameter getCallbackParameter() {
     return std::make_pair(
         rxcpp::observable<>::create<
             TransformedRequest>([](
@@ -223,13 +185,34 @@ class ServerStreamOrResponseReader<ServerCallTraits, true> {
             }),
         grpc::Status::OK);
   }
+
+ private:
+  std::function<void (CallbackParameter &&)> _got_response;
 };
+
+inline std::string exceptionMessage(const std::exception_ptr &error) {
+  try {
+    std::rethrow_exception(error);
+  } catch (const std::exception &exception) {
+    return exception.what();
+  } catch (...) {
+    return "Unknown error";
+  }
+}
+
+inline grpc::Status exceptionToStatus(const std::exception_ptr &error) {
+  // TODO(peck): Make it possible to respond with other errors
+  // than INTERNAL (by catching GrpcErrors and reporting that)
+  const auto what = exceptionMessage(error);
+  return grpc::Status(grpc::INTERNAL, what);
+}
 
 /**
  * Helper class that exposes a unified interface for either stream or non-stream
  * server response writers.
  */
 template <
+    typename OwnerType,
     typename TransformedResponse,
     typename Transform,
     typename Stream,
@@ -240,44 +223,46 @@ class ServerStreamOrResponseWriter;
  * Non-streaming version.
  */
 template <
+    typename OwnerType,
     typename TransformedResponse,
     typename Transform,
     typename Stream>
 class ServerStreamOrResponseWriter<
-    TransformedResponse, Transform, Stream, false> {
+    OwnerType, TransformedResponse, Transform, Stream, false> :
+        public RxGrpcTag {
  public:
-  ServerStreamOrResponseWriter(grpc::ServerContext *context)
-      : _stream(context) {}
+  ServerStreamOrResponseWriter(
+      OwnerType *owner,
+      grpc::ServerContext *context)
+      : _owner(*owner),
+        _stream(context) {}
 
   Stream *get() {
     return &_stream;
   }
 
-  void write(TransformedResponse &&response, void *tag) {
-    _response = std::move(response);
+  template <typename Observable>
+  void subscribe(Observable &&observable) {
+    observable.subscribe(
+        [this](TransformedResponse response) {
+          _response = std::move(response);
+        },
+        [this](const std::exception_ptr &error) {
+          _stream.FinishWithError(exceptionToStatus(error), this);
+        },
+        [this]() {
+          _stream.Finish(Transform::unwrap(_response), grpc::Status::OK, this);
+        });
   }
 
-  template <typename WillDoFinalWrite>
-  void finish(void *tag, const WillDoFinalWrite &will_do_final_write) {
-    will_do_final_write();
-    _stream.Finish(Transform::unwrap(_response), grpc::Status::OK, tag);
-  }
-
-  template <typename WillDoFinalWrite>
-  void finishWithError(
-      const grpc::Status &status,
-      void *tag,
-      const WillDoFinalWrite &will_do_final_write) {
-    will_do_final_write();
-    _stream.FinishWithError(status, tag);
-  }
-
-  template <typename WillDoFinalWrite>
-  void operationFinished(
-      void *tag, const WillDoFinalWrite &will_do_final_write) {
+  void operator()(bool success) override {
+    // success == false when the server is shutting down. No matter what the
+    // value of success is, we are done.
+    delete &_owner;
   }
 
  private:
+  OwnerType &_owner;
   TransformedResponse _response;
   Stream _stream;
 };
@@ -286,73 +271,83 @@ class ServerStreamOrResponseWriter<
  * Streaming version.
  */
 template <
+    typename OwnerType,
     typename TransformedResponse,
     typename Transform,
     typename Stream>
 class ServerStreamOrResponseWriter<
-    TransformedResponse, Transform, Stream, true> {
+    OwnerType, TransformedResponse, Transform, Stream, true> :
+        public RxGrpcTag {
  public:
-  ServerStreamOrResponseWriter(grpc::ServerContext *context)
-      : _stream(context) {}
+  ServerStreamOrResponseWriter(
+      OwnerType *owner,
+      grpc::ServerContext *context)
+      : _owner(*owner),
+        _stream(context) {}
 
   Stream *get() {
     return &_stream;
   }
 
-  void write(const TransformedResponse &response, void *tag) {
-    _enqueued_responses.push_back(response);
-    runEnqueuedOperation(tag, [] { abort(); /* can't happen */ });
+  template <typename Observable>
+  void subscribe(Observable &&observable) {
+    observable.subscribe(
+        [this](TransformedResponse response) {
+          _enqueued_responses.emplace_back(std::move(response));
+          runEnqueuedOperation();
+        },
+        [this](const std::exception_ptr &error) {
+          _enqueued_finish_status = exceptionToStatus(error);
+          _enqueued_finish = true;
+          runEnqueuedOperation();
+        },
+        [this]() {
+          _enqueued_finish_status = grpc::Status::OK;
+          _enqueued_finish = true;
+          runEnqueuedOperation();
+        });
   }
 
-  template <typename WillDoFinalWrite>
-  void finish(void *tag, const WillDoFinalWrite &will_do_final_write) {
-    _enqueued_finish_status = grpc::Status::OK;
-    _enqueued_finish = true;
-    runEnqueuedOperation(tag, will_do_final_write);
-  }
+  void operator()(bool success) override {
+    if (!success) {
+      // This happens when the server is shutting down.
+      delete &_owner;
+      return;
+    }
 
-  template <typename WillDoFinalWrite>
-  void finishWithError(
-      const grpc::Status &status,
-      void *tag,
-      const WillDoFinalWrite &will_do_final_write) {
-    _enqueued_finish_status = status;
-    _enqueued_finish = true;
-    runEnqueuedOperation(tag, will_do_final_write);
-  }
-
-  template <typename WillDoFinalWrite>
-  void operationFinished(
-      void *tag, const WillDoFinalWrite &will_do_final_write) {
-    _operation_in_progress = false;
-    runEnqueuedOperation(tag, will_do_final_write);
+    if (!_sent_final_response) {
+      _operation_in_progress = false;
+      runEnqueuedOperation();
+    } else {
+      delete &_owner;
+    }
   }
 
  private:
-  template <typename WillDoFinalWrite>
-  void runEnqueuedOperation(
-      void *tag, const WillDoFinalWrite &will_do_final_write) {
+  void runEnqueuedOperation() {
     if (_operation_in_progress) {
       return;
     }
     if (!_enqueued_responses.empty()) {
       _operation_in_progress = true;
       _stream.Write(
-          Transform::unwrap(std::move(_enqueued_responses.front())), tag);
+          Transform::unwrap(std::move(_enqueued_responses.front())), this);
       _enqueued_responses.pop_front();
     } else if (_enqueued_finish) {
       _enqueued_finish = false;
       _operation_in_progress = true;
 
-      // Must be called before the call to Finish because it's not safe to do
+      // Must be done before the call to Finish because it's not safe to do
       // anything after that call; gRPC could invoke the callback immediately
-      // on another thread, which could delete tag.
-      will_do_final_write();
+      // on another thread, which could delete this.
+      _sent_final_response = true;
 
-      _stream.Finish(_enqueued_finish_status, tag);
+      _stream.Finish(_enqueued_finish_status, this);
     }
   }
 
+  OwnerType &_owner;
+  bool _sent_final_response = false;
   bool _operation_in_progress = false;
 
   // Because we don't have backpressure we need an unbounded buffer here :-(
@@ -450,69 +445,22 @@ class RxGrpcServerInvocation : public RxGrpcTag {
       return;
     }
 
-    switch (_state) {
-      case State::WAITING_FOR_REQUEST: {
-        _state = State::GOT_REQUEST;
+    auto callback_param = _reader.getCallbackParameter();
+    auto values = callback_param.second.ok() ?
+        _callback(std::move(callback_param.first)).as_dynamic() :
+        rxcpp::observable<>::error<TransformedResponse>(
+            GrpcError(callback_param.second)).as_dynamic();
 
-        auto callback_param = _reader.getCallbackParameter();
-        if (callback_param.second.ok()) {
-          auto values = _callback(std::move(callback_param.first));
+    // Request the a new request, so that the server is always waiting for
+    // one. This is done after the callback (because this steals it) but
+    // before the subscribe call because that could tell gRPC to respond,
+    // after which it's not safe to do anything with `this` anymore.
+    issueNewServerRequest(std::move(_callback));
 
-          // Request the a new request, so that the server is always waiting for
-          // one. This is done after the callback (because this steals it) but
-          // before the subscribe call because that could tell gRPC to respond,
-          // after which it's not safe to do anything with `this` anymore.
-          issueNewServerRequest(std::move(_callback));
-
-          values.subscribe(
-              [this](TransformedResponse response) {
-                _writer.write(std::move(response), this);
-              },
-              [this](std::exception_ptr error) {
-                // TODO(peck): Make it possible to respond with other errors
-                // than INTERNAL (by catching GrpcErrors and reporting that)
-                const auto what = exceptionMessage(error);
-                const auto status = grpc::Status(grpc::INTERNAL, what);
-                _writer.finishWithError(status, this, [this] {
-                  _state = State::SENT_FINAL_RESPONSE;
-                });
-              },
-              [this]() {
-                _writer.finish(this, [this] {
-                  _state = State::SENT_FINAL_RESPONSE;
-                });
-              });
-        } else {
-          _writer.finishWithError(callback_param.second, this, [this] {
-            _state = State::SENT_FINAL_RESPONSE;
-          });
-        }
-        break;
-      }
-      case State::GOT_REQUEST: {
-        _writer.operationFinished(this, [this] {
-          _state = State::SENT_FINAL_RESPONSE;
-        });
-        break;
-      }
-      case State::SENT_FINAL_RESPONSE: {
-        delete this;
-        break;
-      }
-      default: {
-        // Should be unreachable code
-        abort();
-      }
-    }
+    _writer.subscribe(std::move(values));
   }
 
  private:
-  enum class State {
-    WAITING_FOR_REQUEST,
-    GOT_REQUEST,
-    SENT_FINAL_RESPONSE
-  };
-
   RxGrpcServerInvocation(
       GrpcErrorHandler error_handler,
       Method method,
@@ -524,7 +472,8 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         _callback(std::move(callback)),
         _service(*service),
         _cq(*cq),
-        _writer(&_context) {}
+        _reader([](auto &&callback_param) {}),
+        _writer(this, &_context) {}
 
   void issueNewServerRequest(Callback &&callback) {
     // Take callback as an rvalue parameter to make it obvious that we steal it.
@@ -536,19 +485,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
         &_cq);
   }
 
-  static std::string exceptionMessage(const std::exception_ptr &error) {
-    try {
-      std::rethrow_exception(error);
-    } catch (const std::exception &exception) {
-      return exception.what();
-    } catch (...) {
-      return "Unknown error";
-    }
-  }
-
   GrpcErrorHandler _error_handler;
-  // TODO(peck): Does _state need to be atomic?
-  State _state = State::WAITING_FOR_REQUEST;
   Method _method;
   Callback _callback;
   Service &_service;
@@ -558,6 +495,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
       ServerCallTraits,
       StreamTraits<Stream>::kRequestStreaming> _reader;
   ServerStreamOrResponseWriter<
+      RxGrpcServerInvocation,
       TransformedResponse,
       Transform,
       Stream,

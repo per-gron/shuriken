@@ -19,6 +19,7 @@
 
 #include "grpc_error.h"
 #include "rx_grpc_tag.h"
+#include "stream_traits.h"
 
 namespace shk {
 namespace detail {
@@ -29,7 +30,7 @@ namespace detail {
  */
 template <
     typename OwnerType,
-    typename ResponseType,
+    typename MessageType,
     typename Transform,
     typename Reader,
     bool Streaming>
@@ -40,18 +41,19 @@ class RxGrpcReader;
  */
 template <
     typename OwnerType,
-    typename ResponseType,
+    typename MessageType,
     typename Transform,
     typename Reader>
 class RxGrpcReader<
-    OwnerType, ResponseType, Transform, Reader, false> : public RxGrpcTag {
- public:
-  using TransformedResponseType = typename decltype(
-      Transform::wrap(std::declval<ResponseType>()))::first_type;
+    OwnerType, MessageType, Transform, Reader, false> : public RxGrpcTag {
+  using Context = typename StreamTraits<Reader>::Context;
+  using TransformedMessageType = typename decltype(
+      Transform::wrap(std::declval<MessageType>()))::first_type;
 
+ public:
   RxGrpcReader(
-      rxcpp::subscriber<TransformedResponseType> &&subscriber,
-      grpc::ClientContext * /*context*/,
+      rxcpp::subscriber<TransformedMessageType> &&subscriber,
+      Context * /*context*/,
       OwnerType *to_delete)
       : _subscriber(std::move(subscriber)),
         _to_delete(*to_delete) {}
@@ -78,15 +80,13 @@ class RxGrpcReader<
     delete &_to_delete;
   }
 
-  void invoke(
-      std::unique_ptr<
-          grpc::ClientAsyncResponseReader<ResponseType>> &&reader) {
+  void invoke(std::unique_ptr<Reader> &&reader) {
     reader->Finish(&_response, &_status, this);
   }
 
  private:
-  ResponseType _response;
-  rxcpp::subscriber<TransformedResponseType> _subscriber;
+  MessageType _response;
+  rxcpp::subscriber<TransformedMessageType> _subscriber;
   grpc::Status _status;
   OwnerType &_to_delete;
 };
@@ -97,18 +97,19 @@ class RxGrpcReader<
  */
 template <
     typename OwnerType,
-    typename ResponseType,
+    typename MessageType,
     typename Transform,
     typename Reader>
 class RxGrpcReader<
-    OwnerType, ResponseType, Transform, Reader, true> : public RxGrpcTag {
- public:
-  using TransformedResponseType = typename decltype(
-      Transform::wrap(std::declval<ResponseType>()))::first_type;
+    OwnerType, MessageType, Transform, Reader, true> : public RxGrpcTag {
+  using Context = typename StreamTraits<Reader>::Context;
+  using TransformedMessageType = typename decltype(
+      Transform::wrap(std::declval<MessageType>()))::first_type;
 
+ public:
   RxGrpcReader(
-      rxcpp::subscriber<TransformedResponseType> &&subscriber,
-      grpc::ClientContext *context,
+      rxcpp::subscriber<TransformedMessageType> &&subscriber,
+      Context *context,
       OwnerType *to_delete)
       : _subscriber(std::move(subscriber)),
         _context(*context),
@@ -158,7 +159,7 @@ class RxGrpcReader<
   }
 
   void invoke(
-      std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> &&reader) {
+      std::unique_ptr<Reader> &&reader) {
     _reader = std::move(reader);
   }
 
@@ -171,11 +172,11 @@ class RxGrpcReader<
   };
 
   State _state = State::INIT;
-  ResponseType _response;
-  rxcpp::subscriber<TransformedResponseType> _subscriber;
+  MessageType _response;
+  rxcpp::subscriber<TransformedMessageType> _subscriber;
   grpc::Status _status;
-  std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> _reader;
-  grpc::ClientContext &_context;
+  std::unique_ptr<Reader> _reader;
+  Context &_context;
   OwnerType &_to_delete;
 };
 
