@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <grpc++/grpc++.h>
 #include <rxcpp/rx.hpp>
 
@@ -32,7 +34,7 @@ template <
     typename OwnerType,
     typename MessageType,
     typename Transform,
-    typename Reader,
+    typename Stream,
     bool Streaming>
 class RxGrpcReader;
 
@@ -43,10 +45,10 @@ template <
     typename OwnerType,
     typename MessageType,
     typename Transform,
-    typename Reader>
+    typename Stream>
 class RxGrpcReader<
-    OwnerType, MessageType, Transform, Reader, false> : public RxGrpcTag {
-  using Context = typename StreamTraits<Reader>::Context;
+    OwnerType, MessageType, Transform, Stream, false> : public RxGrpcTag {
+  using Context = typename StreamTraits<Stream>::Context;
   using TransformedMessageType = typename decltype(
       Transform::wrap(std::declval<MessageType>()))::first_type;
 
@@ -80,8 +82,20 @@ class RxGrpcReader<
     delete &_to_delete;
   }
 
-  void invoke(std::unique_ptr<Reader> &&reader) {
-    reader->Finish(&_response, &_status, this);
+  template <typename InnerStream>
+  typename std::enable_if<!StreamTraits<InnerStream>::kRequestStreaming>::type
+  invoke(std::unique_ptr<InnerStream> &&stream) {
+    stream->Finish(&_response, &_status, this);
+  }
+
+  template <typename InnerStream>
+  typename std::enable_if<StreamTraits<InnerStream>::kRequestStreaming>::type
+  invoke(std::unique_ptr<InnerStream> &&stream) {
+    stream->Finish(&_status, this);
+  }
+
+  MessageType &response() {
+    return _response;
   }
 
  private:
@@ -99,10 +113,10 @@ template <
     typename OwnerType,
     typename MessageType,
     typename Transform,
-    typename Reader>
+    typename Stream>
 class RxGrpcReader<
-    OwnerType, MessageType, Transform, Reader, true> : public RxGrpcTag {
-  using Context = typename StreamTraits<Reader>::Context;
+    OwnerType, MessageType, Transform, Stream, true> : public RxGrpcTag {
+  using Context = typename StreamTraits<Stream>::Context;
   using TransformedMessageType = typename decltype(
       Transform::wrap(std::declval<MessageType>()))::first_type;
 
@@ -119,25 +133,25 @@ class RxGrpcReader<
     switch (_state) {
       case State::INIT: {
         _state = State::READING_RESPONSE;
-        _reader->Read(&_response, this);
+        _stream->Read(&_response, this);
         break;
       }
       case State::READING_RESPONSE: {
         if (!success) {
           // We have reached the end of the stream.
           _state = State::FINISHING;
-          _reader->Finish(&_status, this);
+          _stream->Finish(&_status, this);
         } else {
           auto wrapped = Transform::wrap(std::move(_response));
           if (wrapped.second.ok()) {
             _subscriber.on_next(std::move(wrapped.first));
-            _reader->Read(&_response, this);
+            _stream->Read(&_response, this);
           } else {
             _subscriber.on_error(
                 std::make_exception_ptr(GrpcError(wrapped.second)));
             _state = State::READ_FAILURE;
             _context.TryCancel();
-            _reader->Finish(&_status, this);
+            _stream->Finish(&_status, this);
           }
         }
         break;
@@ -158,9 +172,12 @@ class RxGrpcReader<
     }
   }
 
-  void invoke(
-      std::unique_ptr<Reader> &&reader) {
-    _reader = std::move(reader);
+  void invoke(std::unique_ptr<Stream> &&stream) {
+    _stream = std::move(stream);
+  }
+
+  MessageType &response() {
+    return _response;
   }
 
  private:
@@ -175,7 +192,7 @@ class RxGrpcReader<
   MessageType _response;
   rxcpp::subscriber<TransformedMessageType> _subscriber;
   grpc::Status _status;
-  std::unique_ptr<Reader> _reader;
+  std::unique_ptr<Stream> _stream;
   Context &_context;
   OwnerType &_to_delete;
 };

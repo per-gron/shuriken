@@ -45,32 +45,44 @@ class RxGrpcClientInvocation {
       : _request(request),
       _reader(std::move(subscriber), &_context, this) {}
 
-  template <typename Stub>
+  template <typename Stub, typename RequestType>
   void invoke(
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
-          const decltype(std::declval<Transform>()
-              .unwrap(std::declval<TransformedRequestType>())) &request,
+          const RequestType &request,
           grpc::CompletionQueue *cq),
       Stub *stub,
       grpc::CompletionQueue *cq) {
     _reader.invoke((stub->*invoke)(&_context, Transform::unwrap(_request), cq));
   }
 
-  template <typename Stub>
+  template <typename Stub, typename RequestType>
   void invoke(
       std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
-          const decltype(std::declval<Transform>()
-              .unwrap(std::declval<TransformedRequestType>())) &request,
+          const RequestType &request,
           grpc::CompletionQueue *cq,
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
     _reader.invoke((stub->*invoke)(
         &_context, Transform::unwrap(_request), cq, &_reader));
+  }
+
+  template <typename Stub, typename RequestType>
+  void invoke(
+      std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
+      (Stub::*invoke)(
+          grpc::ClientContext *context,
+          ResponseType *response,
+          grpc::CompletionQueue *cq,
+          void *tag),
+      Stub *stub,
+      grpc::CompletionQueue *cq) {
+    _reader.invoke((stub->*invoke)(
+        &_context, &_reader.response(), cq, &_reader));
   }
 
  private:
@@ -180,8 +192,15 @@ class ServerStreamOrResponseReader<OwnerType, ServerCallTraits, true> :
   ServerStreamOrResponseReader(
       const std::function<void (CallbackParameter &&)> &got_response,
       OwnerType *owner)
-      : _owner(*owner),
-        _got_response(got_response) {}
+      : _owner(*owner) {
+    // TODO(peck): Implement me
+    /*got_response(std::make_pair(
+        rxcpp::observable<>::create<TransformedRequest>([](
+            rxcpp::subscriber<TransformedRequest> subscriber) {
+
+        }),
+        grpc::Status::OK));*/
+  }
 
   template <typename Writer>
   void request(
@@ -201,18 +220,8 @@ class ServerStreamOrResponseReader<OwnerType, ServerCallTraits, true> :
     }
   }
 
-  CallbackParameter getCallbackParameter() {
-    return std::make_pair(
-        rxcpp::observable<>::create<
-            TransformedRequest>([](
-                rxcpp::subscriber<TransformedRequest> subcription) {
-            }),
-        grpc::Status::OK);
-  }
-
  private:
   OwnerType &_owner;
-  std::function<void (CallbackParameter &&)> _got_response;
 };
 
 /**
@@ -456,6 +465,36 @@ class RxGrpcServiceClient {
         ResponseType>(
             invoke,
             request,
+            std::move(context));
+  }
+
+  /**
+   * Stream request.
+   */
+  template <
+      typename RequestType,
+      typename ResponseType,
+      typename TransformedRequestType>
+  rxcpp::observable<
+      typename detail::RxGrpcClientInvocation<
+          grpc::ClientAsyncWriter<RequestType>,
+          TransformedRequestType,
+          ResponseType,
+          Transform>::TransformedResponseType>
+  invoke(
+      std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
+      (Stub::*invoke)(
+          grpc::ClientContext *context,
+          ResponseType *response,
+          grpc::CompletionQueue *cq,
+          void *tag),
+      const rxcpp::observable<TransformedRequestType> &requests,
+      grpc::ClientContext &&context = grpc::ClientContext()) {
+    return invokeImpl<
+        grpc::ClientAsyncWriter<RequestType>,
+        ResponseType>(
+            invoke,
+            requests,
             std::move(context));
   }
 

@@ -225,6 +225,69 @@ TEST_CASE("RxGrpc") {
     }
   }
 
+
+  SECTION("client streaming") {
+#if 0
+    SECTION("no requests") {
+      run(test_client
+          .invoke(
+              &TestService::Stub::AsyncSum,
+              rxcpp::observable<>::empty<Flatbuffer<TestRequest>>()
+                  .as_dynamic())
+          .map(
+              [](Flatbuffer<TestResponse> response) {
+                CHECK(response->data() == 0);
+                return "ignored";
+              })
+          .count()
+          .map([](int count) {
+            CHECK(count == 1);
+            return "ignored";
+          }));
+    }
+#endif
+
+#if 0
+    SECTION("one response") {
+      run(test_client
+          .invoke(&TestService::Stub::AsyncRepeat, makeTestRequest(1))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(response->data() == 1);
+            return "ignored";
+          })
+          .count()
+          .map([](int count) {
+            CHECK(count == 1);
+            return "ignored";
+          }));
+    }
+
+    SECTION("two responses") {
+      auto responses = test_client.invoke(
+          &TestService::Stub::AsyncRepeat, makeTestRequest(2));
+
+      auto check_count = responses
+          .count()
+          .map([](int count) {
+            CHECK(count == 2);
+            return "ignored";
+          });
+
+      auto check_sum = responses
+          .map([](Flatbuffer<TestResponse> response) {
+            return response->data();
+          })
+          .sum()
+          .map([](int sum) {
+            CHECK(sum == 3);
+            return "ignored";
+          });
+
+      run(check_count.zip(check_sum));
+    }
+#endif
+  }
+
   server.shutdown();
   server_thread.join();
 }
