@@ -23,6 +23,7 @@
 #include "rx_grpc_identity_transform.h"
 #include "rx_grpc_reader.h"
 #include "rx_grpc_tag.h"
+#include "rx_grpc_writer.h"
 #include "stream_traits.h"
 
 namespace shk {
@@ -191,157 +192,6 @@ class ServerStreamOrResponseReader<ServerCallTraits, true> {
 };
 
 /**
- * Helper class that exposes a unified interface for either stream or non-stream
- * server response writers.
- */
-template <
-    typename OwnerType,
-    typename TransformedResponse,
-    typename Transform,
-    typename Stream,
-    bool StreamingResponse>
-class ServerStreamOrResponseWriter;
-
-/**
- * Non-streaming version.
- */
-template <
-    typename OwnerType,
-    typename TransformedResponse,
-    typename Transform,
-    typename Stream>
-class ServerStreamOrResponseWriter<
-    OwnerType, TransformedResponse, Transform, Stream, false> :
-        public RxGrpcTag {
- public:
-  ServerStreamOrResponseWriter(
-      OwnerType *owner,
-      grpc::ServerContext *context)
-      : _owner(*owner),
-        _stream(context) {}
-
-  Stream *get() {
-    return &_stream;
-  }
-
-  template <typename Observable>
-  void subscribe(Observable &&observable) {
-    observable.subscribe(
-        [this](TransformedResponse response) {
-          _response = std::move(response);
-        },
-        [this](const std::exception_ptr &error) {
-          _stream.FinishWithError(exceptionToStatus(error), this);
-        },
-        [this]() {
-          _stream.Finish(Transform::unwrap(_response), grpc::Status::OK, this);
-        });
-  }
-
-  void operator()(bool success) override {
-    // success == false when the server is shutting down. No matter what the
-    // value of success is, we are done.
-    delete &_owner;
-  }
-
- private:
-  OwnerType &_owner;
-  TransformedResponse _response;
-  Stream _stream;
-};
-
-/**
- * Streaming version.
- */
-template <
-    typename OwnerType,
-    typename TransformedResponse,
-    typename Transform,
-    typename Stream>
-class ServerStreamOrResponseWriter<
-    OwnerType, TransformedResponse, Transform, Stream, true> :
-        public RxGrpcTag {
- public:
-  ServerStreamOrResponseWriter(
-      OwnerType *owner,
-      grpc::ServerContext *context)
-      : _owner(*owner),
-        _stream(context) {}
-
-  Stream *get() {
-    return &_stream;
-  }
-
-  template <typename Observable>
-  void subscribe(Observable &&observable) {
-    observable.subscribe(
-        [this](TransformedResponse response) {
-          _enqueued_responses.emplace_back(std::move(response));
-          runEnqueuedOperation();
-        },
-        [this](const std::exception_ptr &error) {
-          _enqueued_finish_status = exceptionToStatus(error);
-          _enqueued_finish = true;
-          runEnqueuedOperation();
-        },
-        [this]() {
-          _enqueued_finish_status = grpc::Status::OK;
-          _enqueued_finish = true;
-          runEnqueuedOperation();
-        });
-  }
-
-  void operator()(bool success) override {
-    if (!success) {
-      // This happens when the server is shutting down.
-      delete &_owner;
-      return;
-    }
-
-    if (!_sent_final_response) {
-      _operation_in_progress = false;
-      runEnqueuedOperation();
-    } else {
-      delete &_owner;
-    }
-  }
-
- private:
-  void runEnqueuedOperation() {
-    if (_operation_in_progress) {
-      return;
-    }
-    if (!_enqueued_responses.empty()) {
-      _operation_in_progress = true;
-      _stream.Write(
-          Transform::unwrap(std::move(_enqueued_responses.front())), this);
-      _enqueued_responses.pop_front();
-    } else if (_enqueued_finish) {
-      _enqueued_finish = false;
-      _operation_in_progress = true;
-
-      // Must be done before the call to Finish because it's not safe to do
-      // anything after that call; gRPC could invoke the callback immediately
-      // on another thread, which could delete this.
-      _sent_final_response = true;
-
-      _stream.Finish(_enqueued_finish_status, this);
-    }
-  }
-
-  OwnerType &_owner;
-  bool _sent_final_response = false;
-  bool _operation_in_progress = false;
-
-  // Because we don't have backpressure we need an unbounded buffer here :-(
-  std::deque<TransformedResponse> _enqueued_responses;
-  bool _enqueued_finish = false;
-  grpc::Status _enqueued_finish_status;
-
-  Stream _stream;
-};
-
-/**
  * Group of typedefs related to a server-side invocation, to avoid having to
  * pass around tons and tons of template parameters everywhere, and to have
  * something to do partial template specialization on to handle non-streaming
@@ -477,7 +327,7 @@ class RxGrpcServerInvocation : public RxGrpcTag {
   ServerStreamOrResponseReader<
       ServerCallTraits,
       StreamTraits<Stream>::kRequestStreaming> _reader;
-  ServerStreamOrResponseWriter<
+  RxGrpcWriter<
       RxGrpcServerInvocation,
       TransformedResponse,
       Transform,

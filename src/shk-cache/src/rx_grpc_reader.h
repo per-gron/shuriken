@@ -180,6 +180,5 @@ class RxGrpcReader<
   OwnerType &_to_delete;
 };
 
-
 }  // namespace detail
 }  // namespace shk
