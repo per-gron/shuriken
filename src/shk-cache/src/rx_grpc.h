@@ -190,23 +190,6 @@ class ServerStreamOrResponseReader<ServerCallTraits, true> {
   std::function<void (CallbackParameter &&)> _got_response;
 };
 
-inline std::string exceptionMessage(const std::exception_ptr &error) {
-  try {
-    std::rethrow_exception(error);
-  } catch (const std::exception &exception) {
-    return exception.what();
-  } catch (...) {
-    return "Unknown error";
-  }
-}
-
-inline grpc::Status exceptionToStatus(const std::exception_ptr &error) {
-  // TODO(peck): Make it possible to respond with other errors
-  // than INTERNAL (by catching GrpcErrors and reporting that)
-  const auto what = exceptionMessage(error);
-  return grpc::Status(grpc::INTERNAL, what);
-}
-
 /**
  * Helper class that exposes a unified interface for either stream or non-stream
  * server response writers.
