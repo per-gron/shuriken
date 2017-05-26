@@ -20,7 +20,6 @@ add_library(libshk-cache
   src/rx_grpc.h
   src/rx_grpc_flatbuffers.h
   src/rx_grpc_tag.h
-  src/stream_traits.h
   ${CMAKE_CURRENT_BINARY_DIR}/include/shk-cache/shkcache.grpc.fb.cc
   ${CMAKE_CURRENT_BINARY_DIR}/include/shk-cache/shkcache.grpc.fb.h
   ${CMAKE_CURRENT_BINARY_DIR}/include/shk-cache/shkcache_generated.h)

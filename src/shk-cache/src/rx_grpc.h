@@ -24,7 +24,6 @@
 #include "grpc_error.h"
 #include "rx_grpc_identity_transform.h"
 #include "rx_grpc_tag.h"
-#include "stream_traits.h"
 
 namespace shk {
 namespace detail {
@@ -603,22 +602,6 @@ class ServerCallTraits {
   using TransformedRequest =
       typename decltype(
           Transform::wrap(std::declval<RequestType>()))::first_type;
-
- private:
-  /**
-   * The type of the parameter that the request handler callback takes. If it is
-   * a streaming request, it's an observable, otherwise it's an object directly.
-   */
-  using CallbackParamType = typename std::conditional<
-      StreamTraits<Stream>::kRequestStreaming,
-      rxcpp::observable<TransformedRequest>,
-      TransformedRequest>::type;
-
-  using ResponseObservable =
-      decltype(std::declval<Callback>()(std::declval<CallbackParamType>()));
-
- public:
-  using TransformedResponse = typename ResponseObservable::value_type;
 };
 
 
@@ -637,7 +620,11 @@ class RxGrpcServerInvocation<
   using Service = typename ServerCallTraits::Service;
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
+
+  using ResponseObservable =
+      decltype(std::declval<Callback>()(std::declval<TransformedRequest>()));
+  using TransformedResponse = typename ResponseObservable::value_type;
+
   using Method = RequestMethod<
       Service, typename ServerCallTraits::Request, Stream>;
 
@@ -749,7 +736,11 @@ class RxGrpcServerInvocation<
   using Service = typename ServerCallTraits::Service;
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
+
+  using ResponseObservable =
+      decltype(std::declval<Callback>()(std::declval<TransformedRequest>()));
+  using TransformedResponse = typename ResponseObservable::value_type;
+
   using Method = RequestMethod<
       Service, typename ServerCallTraits::Request, Stream>;
 
@@ -906,7 +897,12 @@ class RxGrpcServerInvocation<
   using Service = typename ServerCallTraits::Service;
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
+
+  using ResponseObservable =
+      decltype(std::declval<Callback>()(
+          std::declval<rxcpp::observable<TransformedRequest>>()));
+  using TransformedResponse = typename ResponseObservable::value_type;
+
   using Method = StreamingRequestMethod<Service, Stream>;
 
  public:
@@ -1082,7 +1078,12 @@ class RxGrpcServerInvocation<
   using Service = typename ServerCallTraits::Service;
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
+
+  using ResponseObservable =
+      decltype(std::declval<Callback>()(
+          std::declval<rxcpp::observable<TransformedRequest>>()));
+  using TransformedResponse = typename ResponseObservable::value_type;
+
   using Method = StreamingRequestMethod<Service, Stream>;
 
   /**
