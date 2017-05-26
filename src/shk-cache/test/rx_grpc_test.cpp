@@ -239,7 +239,6 @@ TEST_CASE("RxGrpc") {
     }
   }
 
-
   SECTION("client streaming") {
     SECTION("no requests") {
       run(test_client
@@ -293,6 +292,59 @@ TEST_CASE("RxGrpc") {
             return "ignored";
           }));
     }
+  }
+
+
+  SECTION("bidi streaming") {
+    SECTION("no requests") {
+      run(test_client
+          .invoke(
+              &TestService::Stub::AsyncCumulativeSum,
+              rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
+          .count()
+          .map([](int count) {
+            CHECK(count == 0);
+            return "ignored";
+          }));
+    }
+
+#if 0
+    SECTION("one request") {
+      run(test_client
+          .invoke(
+              &TestService::Stub::AsyncCumulativeSum,
+              rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
+                  makeTestRequest(1337)))
+          .map(
+              [](Flatbuffer<TestResponse> response) {
+                CHECK(response->data() == 1337);
+                return "ignored";
+              })
+          .count()
+          .map([](int count) {
+            CHECK(count == 1);
+            return "ignored";
+          }));
+    }
+
+    SECTION("two requests") {
+      run(test_client
+          .invoke(
+              &TestService::Stub::AsyncCumulativeSum,
+              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
+                  makeTestRequest(13), makeTestRequest(7)))
+          .map(
+              [](Flatbuffer<TestResponse> response) {
+                CHECK(response->data() == 20);
+                return "ignored";
+              })
+          .count()
+          .map([](int count) {
+            CHECK(count == 1);
+            return "ignored";
+          }));
+    }
+#endif
   }
 
   server.shutdown();

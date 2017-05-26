@@ -344,6 +344,133 @@ class RxGrpcClientInvocation<
 };
 
 /**
+ * Bidi.
+ */
+template <
+    typename RequestType,
+    typename ResponseType,
+    typename TransformedRequestType,
+    typename Transform>
+class RxGrpcClientInvocation<
+    grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
+    ResponseType,
+    TransformedRequestType,
+    Transform> : public RxGrpcTag {
+ public:
+  using TransformedResponseType = typename decltype(
+      Transform::wrap(std::declval<ResponseType>()))::first_type;
+
+ public:
+  template <typename Observable>
+  RxGrpcClientInvocation(
+      const Observable &requests,
+      rxcpp::subscriber<TransformedResponseType> &&subscriber)
+      : _requests(requests.as_dynamic()),
+        _subscriber(std::move(subscriber)) {
+    static_assert(
+        rxcpp::is_observable<Observable>::value,
+        "First parameter must be an observable");
+  }
+
+  void operator()(bool success) override {
+    if (_sent_final_request) {
+      if (_request_stream_error) {
+        _subscriber.on_error(_request_stream_error);
+      } else {
+        // TODO(peck): Need to handle actual responses
+        _subscriber.on_completed();
+      }
+      delete this;
+    } else {
+      if (success) {
+        _operation_in_progress = false;
+        runEnqueuedOperation();
+      } else {
+        // This happens when the runloop is shutting down.
+
+        // TODO(peck): Need to handle actual responses
+        _subscriber.on_completed();
+        delete this;
+      }
+    }
+  }
+
+  template <typename Stub>
+  void invoke(
+      std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
+      (Stub::*invoke)(
+          grpc::ClientContext *context,
+          grpc::CompletionQueue *cq,
+          void *tag),
+      Stub *stub,
+      grpc::CompletionQueue *cq) {
+    _stream = (stub->*invoke)(&_context, cq, this);
+    _operation_in_progress = true;
+
+    _requests.subscribe(
+        [this](TransformedRequestType request) {
+          _enqueued_requests.emplace_back(std::move(request));
+          runEnqueuedOperation();
+        },
+        [this](const std::exception_ptr &error) {
+          _request_stream_error = error;
+          _context.TryCancel();
+          _stream->Finish(&_status, this);
+          _sent_final_request = true;
+        },
+        [this]() {
+          _enqueued_writes_done = true;
+          runEnqueuedOperation();
+        });
+  }
+
+ private:
+  void runEnqueuedOperation() {
+    if (_operation_in_progress) {
+      return;
+    }
+    if (!_enqueued_requests.empty()) {
+      _operation_in_progress = true;
+      _stream->Write(
+          Transform::unwrap(std::move(_enqueued_requests.front())), this);
+      _enqueued_requests.pop_front();
+    } else if (_enqueued_writes_done) {
+      _enqueued_writes_done = false;
+      _enqueued_finish = true;
+      _operation_in_progress = true;
+      _stream->WritesDone(this);
+    } else if (_enqueued_finish) {
+      _enqueued_finish = false;
+      _operation_in_progress = true;
+
+      // Must be done before the call to Finish because it's not safe to do
+      // anything after that call; gRPC could invoke the callback immediately
+      // on another thread, which could delete this.
+      _sent_final_request = true;
+
+      _stream->Finish(&_status, this);
+    }
+  }
+
+  rxcpp::observable<TransformedRequestType> _requests;
+  ResponseType _response;
+  std::unique_ptr<
+      grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> _stream;
+  grpc::ClientContext _context;
+  rxcpp::subscriber<TransformedResponseType> _subscriber;
+
+  std::exception_ptr _request_stream_error;
+  bool _sent_final_request = false;
+  bool _operation_in_progress = false;
+
+  // Because we don't have backpressure we need an unbounded buffer here :-(
+  std::deque<TransformedRequestType> _enqueued_requests;
+  bool _enqueued_writes_done = false;
+  bool _enqueued_finish = false;
+  grpc::Status _status;
+};
+
+/**
  * For server requests with a non-streaming response.
  */
 template <
@@ -1166,7 +1293,7 @@ class RxGrpcServiceClient {
       : _stub(std::move(stub)), _cq(*cq) {}
 
   /**
-   * Non-stream response.
+   * Unary rpc.
    */
   template <typename ResponseType, typename TransformedRequestType>
   rxcpp::observable<
@@ -1194,7 +1321,7 @@ class RxGrpcServiceClient {
   }
 
   /**
-   * Stream response.
+   * Server streaming.
    */
   template <typename ResponseType, typename TransformedRequestType>
   rxcpp::observable<
@@ -1223,7 +1350,7 @@ class RxGrpcServiceClient {
   }
 
   /**
-   * Stream request.
+   * Client streaming.
    */
   template <
       typename RequestType,
@@ -1247,6 +1374,37 @@ class RxGrpcServiceClient {
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return invokeImpl<
         grpc::ClientAsyncWriter<RequestType>,
+        ResponseType,
+        TransformedRequestType>(
+            invoke,
+            requests,
+            std::move(context));
+  }
+
+  /**
+   * Bidi streaming
+   */
+  template <
+      typename RequestType,
+      typename ResponseType,
+      typename TransformedRequestType,
+      typename SourceOperator>
+  rxcpp::observable<
+      typename detail::RxGrpcClientInvocation<
+          grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
+          ResponseType,
+          TransformedRequestType,
+          Transform>::TransformedResponseType>
+  invoke(
+      std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
+      (Stub::*invoke)(
+          grpc::ClientContext *context,
+          grpc::CompletionQueue *cq,
+          void *tag),
+      const rxcpp::observable<TransformedRequestType, SourceOperator> &requests,
+      grpc::ClientContext &&context = grpc::ClientContext()) {
+    return invokeImpl<
+        grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
         ResponseType,
         TransformedRequestType>(
             invoke,
