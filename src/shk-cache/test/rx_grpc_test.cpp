@@ -62,8 +62,17 @@ auto sumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
     .map([](Flatbuffer<TestRequest> request) {
       return request->data();
     })
-    .start_with(0)
+    .start_with(0)  // To support empty input
     .sum()
+    .map(makeTestResponse);
+}
+
+auto cumulativeSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+  return requests
+    .map([](Flatbuffer<TestRequest> request) {
+      return request->data();
+    })
+    .scan(0, [](int x, int y) { return x + y; })
     .map(makeTestResponse);
 }
 
@@ -85,7 +94,10 @@ TEST_CASE("RxGrpc") {
           &repeatHandler)
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestSum,
-          &sumHandler);
+          &sumHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestCumulativeSum,
+          &cumulativeSumHandler);
 
   RxGrpcClient runloop;
 

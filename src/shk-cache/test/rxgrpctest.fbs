@@ -12,5 +12,5 @@ rpc_service TestService {
   Double(TestRequest): TestResponse;
   Repeat(TestRequest): TestResponse (streaming: "server");
   Sum(TestRequest): TestResponse (streaming: "client");
-  Echo(TestRequest): TestResponse (streaming: "bidi");
+  CumulativeSum(TestRequest): TestResponse (streaming: "bidi");
 }
