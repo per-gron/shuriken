@@ -455,7 +455,7 @@ class RxGrpcServerInvocation<
     (service->*method)(
         &invocation->_context,
         &invocation->_request,
-        invocation->_writer.get(),
+        &invocation->_stream,
         cq,
         cq,
         invocation);
@@ -468,20 +468,38 @@ class RxGrpcServerInvocation<
       return;
     }
 
-    auto wrapped_request = ServerCallTraits::Transform::wrap(
-        std::move(_request));
-    auto values = wrapped_request.second.ok() ?
-        _callback(std::move(wrapped_request.first)).as_dynamic() :
-        rxcpp::observable<>::error<TransformedResponse>(
-            GrpcError(wrapped_request.second)).as_dynamic();
+    if (_awaiting_request) {
+      // The server has just received a request. Handle it.
 
-    // Request the a new request, so that the server is always waiting for
-    // one. This is done after the callback (because this steals it) but
-    // before the subscribe call because that could tell gRPC to respond,
-    // after which it's not safe to do anything with `this` anymore.
-    issueNewServerRequest(std::move(_callback));
+      auto wrapped_request = ServerCallTraits::Transform::wrap(
+          std::move(_request));
+      auto values = wrapped_request.second.ok() ?
+          _callback(std::move(wrapped_request.first)).as_dynamic() :
+          rxcpp::observable<>::error<TransformedResponse>(
+              GrpcError(wrapped_request.second)).as_dynamic();
 
-    _writer.subscribe(std::move(values));
+      // Request the a new request, so that the server is always waiting for
+      // one. This is done after the callback (because this steals it) but
+      // before the subscribe call because that could tell gRPC to respond,
+      // after which it's not safe to do anything with `this` anymore.
+      issueNewServerRequest(std::move(_callback));
+
+      _awaiting_request = false;
+
+      values.subscribe(
+          [this](TransformedResponse response) {
+            _response = std::move(response);
+          },
+          [this](const std::exception_ptr &error) {
+            _stream.FinishWithError(exceptionToStatus(error), this);
+          },
+          [this]() {
+            _stream.Finish(Transform::unwrap(_response), grpc::Status::OK, this);
+          });
+    } else {
+      // The server has now successfully sent a response. Clean up.
+      delete this;
+    }
   }
 
  private:
@@ -496,7 +514,7 @@ class RxGrpcServerInvocation<
         _callback(std::move(callback)),
         _service(*service),
         _cq(*cq),
-        _writer(this, &_context) {}
+        _stream(&_context) {}
 
   void issueNewServerRequest(Callback &&callback) {
     // Take callback as an rvalue parameter to make it obvious that we steal it.
@@ -508,6 +526,7 @@ class RxGrpcServerInvocation<
         &_cq);
   }
 
+  bool _awaiting_request = true;
   GrpcErrorHandler _error_handler;
   Method _method;
   Callback _callback;
@@ -515,12 +534,8 @@ class RxGrpcServerInvocation<
   grpc::ServerCompletionQueue &_cq;
   grpc::ServerContext _context;
   typename ServerCallTraits::Request _request;
-  RxGrpcWriter<
-      RxGrpcServerInvocation,
-      TransformedResponse,
-      Transform,
-      Stream,
-      StreamTraits<Stream>::kResponseStreaming> _writer;
+  Stream _stream;
+  TransformedResponse _response;
 };
 
 /**
