@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <deque>
 #include <type_traits>
+#include <vector>
 
 #include <grpc++/grpc++.h>
 #include <rxcpp/rx.hpp>
@@ -375,9 +377,7 @@ using StreamingRequestMethod = void (Service::*)(
 
 /**
  * Group of typedefs related to a server-side invocation, to avoid having to
- * pass around tons and tons of template parameters everywhere, and to have
- * something to do partial template specialization on to handle non-streaming
- * vs uni-streaming vs bidi streaming stuff.
+ * pass around tons and tons of template parameters everywhere.
  */
 template <
     // grpc::ServerAsyncResponseWriter<ResponseType> (non-streaming) or
@@ -399,7 +399,6 @@ class ServerCallTraits {
   using Request = RequestType;
   using Transform = TransformType;
 
-
   using TransformedRequest =
       typename decltype(
           Transform::wrap(std::declval<RequestType>()))::first_type;
@@ -419,11 +418,6 @@ class ServerCallTraits {
 
  public:
   using TransformedResponse = typename ResponseObservable::value_type;
-
-  using Method = typename std::conditional<
-      StreamTraits<Stream>::kRequestStreaming,
-      StreamingRequestMethod<Service, Stream>,
-      RequestMethod<Service, RequestType, Stream>>::type;
 };
 
 
@@ -443,7 +437,8 @@ class RxGrpcServerInvocation<
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
   using TransformedResponse = typename ServerCallTraits::TransformedResponse;
-  using Method = typename ServerCallTraits::Method;
+  using Method = RequestMethod<
+      Service, typename ServerCallTraits::Request, Stream>;
 
  public:
   static void request(
@@ -554,7 +549,8 @@ class RxGrpcServerInvocation<
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
   using TransformedResponse = typename ServerCallTraits::TransformedResponse;
-  using Method = typename ServerCallTraits::Method;
+  using Method = RequestMethod<
+      Service, typename ServerCallTraits::Request, Stream>;
 
  public:
   static void request(
@@ -710,7 +706,7 @@ class RxGrpcServerInvocation<
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
   using TransformedResponse = typename ServerCallTraits::TransformedResponse;
-  using Method = typename ServerCallTraits::Method;
+  using Method = StreamingRequestMethod<Service, Stream>;
 
  public:
   static void request(
