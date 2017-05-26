@@ -21,7 +21,6 @@
 
 #include "grpc_error.h"
 #include "rx_grpc_identity_transform.h"
-#include "rx_grpc_reader.h"
 #include "rx_grpc_tag.h"
 #include "rx_grpc_writer.h"
 #include "stream_traits.h"
@@ -34,6 +33,32 @@ template <
     typename TransformedRequestType,
     typename Transform>
 class RxGrpcClientInvocation;
+
+template <
+    typename Transform,
+    typename ResponseType>
+void handleUnaryResponse(
+    bool success,
+    const grpc::Status &status,
+    ResponseType &&response,
+    rxcpp::subscriber<typename decltype(Transform::wrap(
+        std::declval<ResponseType>()))::first_type> *subscriber) {
+  if (!success) {
+    subscriber->on_error(std::make_exception_ptr(GrpcError(grpc::Status(
+        grpc::UNKNOWN, "The request was interrupted"))));
+  } else if (status.ok()) {
+    auto wrapped = Transform::wrap(std::move(response));
+    if (wrapped.second.ok()) {
+      subscriber->on_next(std::move(wrapped.first));
+      subscriber->on_completed();
+    } else {
+      subscriber->on_error(
+          std::make_exception_ptr(GrpcError(wrapped.second)));
+    }
+  } else {
+    subscriber->on_error(std::make_exception_ptr(GrpcError(status)));
+  }
+}
 
 /**
  * Non-streaming client RPC.
@@ -57,24 +82,8 @@ class RxGrpcClientInvocation<
         _subscriber(std::move(subscriber)) {}
 
   void operator()(bool success) override {
-    if (!success) {
-      // Unfortunately, gRPC provides literally no information other than that
-      // the operation failed.
-      _subscriber.on_error(std::make_exception_ptr(GrpcError(grpc::Status(
-          grpc::UNKNOWN, "The async function encountered an error"))));
-    } else if (_status.ok()) {
-      auto wrapped = Transform::wrap(std::move(_response));
-      if (wrapped.second.ok()) {
-        _subscriber.on_next(std::move(wrapped.first));
-        _subscriber.on_completed();
-      } else {
-        _subscriber.on_error(
-            std::make_exception_ptr(GrpcError(wrapped.second)));
-      }
-    } else {
-      _subscriber.on_error(std::make_exception_ptr(GrpcError(_status)));
-    }
-
+    handleUnaryResponse<Transform>(
+        success, _status, std::move(_response), &_subscriber);
     delete this;
   }
 
@@ -198,6 +207,135 @@ class RxGrpcClientInvocation<
   rxcpp::subscriber<TransformedResponseType> _subscriber;
   grpc::Status _status;
   std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> _stream;
+};
+
+/**
+ * Client streaming.
+ */
+template <
+    typename ResponseType,
+    typename TransformedRequestType,
+    typename Transform>
+class RxGrpcClientInvocation<
+    grpc::ClientAsyncWriter<ResponseType>,
+    TransformedRequestType,
+    Transform> : public RxGrpcTag {
+  using TransformedResponseType = typename decltype(
+      Transform::wrap(std::declval<ResponseType>()))::first_type;
+
+  /**
+   * Because the client message stream and the server response have separate
+   * lifetimes (one can end without the other), we handle client streaming by
+   * creating two separate objects with separate lifetime.
+   *
+   * This one handles receiving the response.
+   */
+  class ResponseHandler : public RxGrpcTag {
+   public:
+    ResponseHandler(rxcpp::subscriber<TransformedResponseType> &&subscriber)
+        : _subscriber(subscriber) {}
+
+    void operator()(bool success) override {
+      handleUnaryResponse<Transform>(
+          success, grpc::Status::OK, std::move(_response), &_subscriber);
+      delete this;
+    }
+
+    ResponseType &response() {
+      return _response;
+    }
+
+   private:
+    rxcpp::subscriber<TransformedResponseType> _subscriber;
+    ResponseType _response;
+  };
+
+ public:
+  RxGrpcClientInvocation(
+      const rxcpp::observable<TransformedRequestType> &requests,
+      rxcpp::subscriber<TransformedResponseType> &&subscriber)
+      : _subscriber(std::move(subscriber)) {
+    requests.subscribe(
+        [this](TransformedRequestType &&request) {
+          _enqueued_requests.emplace_back(std::move(request));
+          runEnqueuedOperation();
+        },
+        [this](const std::exception_ptr &error) {
+          _enqueued_finish_status = exceptionToStatus(error);
+          _enqueued_finish = true;
+          runEnqueuedOperation();
+        },
+        [this]() {
+          _enqueued_finish_status = grpc::Status::OK;
+          _enqueued_finish = true;
+          runEnqueuedOperation();
+        });
+  }
+
+  void operator()(bool success) override {
+    if (!success) {
+      // This happens when the runloop is shutting down.
+      delete this;
+      return;
+    }
+
+    if (!_sent_final_response) {
+      _operation_in_progress = false;
+      runEnqueuedOperation();
+    } else {
+      delete this;
+    }
+  }
+
+  template <typename Stub, typename RequestType>
+  void invoke(
+      std::unique_ptr<grpc::ClientAsyncWriter<ResponseType>>
+      (Stub::*invoke)(
+          grpc::ClientContext *context,
+          ResponseType *response,
+          grpc::CompletionQueue *cq,
+          void *tag),
+      Stub *stub,
+      grpc::CompletionQueue *cq) {
+    auto response_handler = new ResponseHandler(std::move(_subscriber));
+    _stream = (stub->*invoke)(
+        &_context, &response_handler.response(), cq, response_handler);
+  }
+
+ private:
+  void runEnqueuedOperation() {
+    if (_operation_in_progress) {
+      return;
+    }
+    if (!_enqueued_requests.empty()) {
+      _operation_in_progress = true;
+      _stream->Write(
+          Transform::unwrap(std::move(_enqueued_requests.front())), this);
+      _enqueued_requests.pop_front();
+    } else if (_enqueued_finish) {
+      _enqueued_finish = false;
+      _operation_in_progress = true;
+
+      // Must be done before the call to Finish because it's not safe to do
+      // anything after that call; gRPC could invoke the callback immediately
+      // on another thread, which could delete this.
+      _sent_final_response = true;
+
+      _stream->Finish(_enqueued_finish_status, this);
+    }
+  }
+
+  std::unique_ptr<grpc::ClientAsyncWriter<ResponseType>> _stream;
+  grpc::ClientContext _context;
+  rxcpp::subscriber<TransformedResponseType> _subscriber;
+
+  bool _sent_final_response = false;
+  bool _operation_in_progress = false;
+
+  // Because we don't have backpressure we need an unbounded buffer here :-(
+  std::deque<TransformedResponseType> _enqueued_requests;
+  bool _enqueued_finish = false;
+  grpc::Status _enqueued_finish_status;
 };
 
 /**
