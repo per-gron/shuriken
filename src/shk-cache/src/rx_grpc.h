@@ -289,7 +289,7 @@ class RxGrpcClientInvocation<
         [this](const std::exception_ptr &error) {
           _request_stream_error = error;
           _context.TryCancel();
-          _stream->Finish(&_status, this);
+          _stream->Finish(&_status, this);  // TODO(peck): This has to go via the queue
           _sent_final_request = true;
         },
         [this]() {
@@ -360,13 +360,78 @@ class RxGrpcClientInvocation<
   using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
 
+ private:
+  /**
+   * Bidi streaming requires separate tags for reading and writing (since they
+   * can happen simultaneously). The purpose of this class is to be the other
+   * tag. It's used for reading.
+   */
+  class Reader : public RxGrpcTag {
+   public:
+    Reader(
+        const std::function<void ()> &shutdown,
+        rxcpp::subscriber<TransformedResponseType> &&subscriber)
+        : _shutdown(shutdown),
+          _subscriber(std::move(subscriber)) {}
+
+    void invoke(
+        grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream) {
+      _stream = stream;
+      _stream->Read(&_response, this);
+    }
+
+    /**
+     * Try to signal an error to the subscriber. If subscriber stream has
+     * already been closed, this is a no-op.
+     */
+    void onError(const std::exception_ptr &error) {
+      if (!_finished) {
+        _finished = true;
+        _subscriber.on_error(error);
+        _shutdown();
+      }
+    }
+
+    void operator()(bool success) override {
+      if (_finished) {
+        // Happens if onError was called in the middle of a read operation.
+        _shutdown();
+      } else if (!success) {
+        // We have reached the end of the stream.
+        _finished = true;
+        _subscriber.on_completed();
+        _shutdown();
+      } else {
+        auto wrapped = Transform::wrap(std::move(_response));
+        if (wrapped.second.ok()) {
+          _subscriber.on_next(std::move(wrapped.first));
+          _stream->Read(&_response, this);
+        } else {
+          _finished = true;
+          _subscriber.on_error(
+              std::make_exception_ptr(GrpcError(wrapped.second)));
+          _shutdown();
+        }
+      }
+    }
+
+   private:
+    bool _finished = false;
+    std::function<void ()> _shutdown;
+    grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *_stream = nullptr;
+    rxcpp::subscriber<TransformedResponseType> _subscriber;
+    ResponseType _response;
+  };
+
  public:
   template <typename Observable>
   RxGrpcClientInvocation(
       const Observable &requests,
       rxcpp::subscriber<TransformedResponseType> &&subscriber)
-      : _requests(requests.as_dynamic()),
-        _subscriber(std::move(subscriber)) {
+      : _reader(
+            [this] { _reader_done = true; tryShutdown(); },
+            std::move(subscriber)),
+        _requests(requests.as_dynamic()) {
     static_assert(
         rxcpp::is_observable<Observable>::value,
         "First parameter must be an observable");
@@ -374,23 +439,16 @@ class RxGrpcClientInvocation<
 
   void operator()(bool success) override {
     if (_sent_final_request) {
-      if (_request_stream_error) {
-        _subscriber.on_error(_request_stream_error);
-      } else {
-        // TODO(peck): Need to handle actual responses
-        _subscriber.on_completed();
-      }
-      delete this;
+      _writer_done = true;
+      tryShutdown();
     } else {
       if (success) {
         _operation_in_progress = false;
         runEnqueuedOperation();
       } else {
         // This happens when the runloop is shutting down.
-
-        // TODO(peck): Need to handle actual responses
-        _subscriber.on_completed();
-        delete this;
+        _writer_done = true;
+        tryShutdown();
       }
     }
   }
@@ -405,6 +463,7 @@ class RxGrpcClientInvocation<
       Stub *stub,
       grpc::CompletionQueue *cq) {
     _stream = (stub->*invoke)(&_context, cq, this);
+    _reader.invoke(_stream.get());
     _operation_in_progress = true;
 
     _requests.subscribe(
@@ -413,10 +472,10 @@ class RxGrpcClientInvocation<
           runEnqueuedOperation();
         },
         [this](const std::exception_ptr &error) {
-          _request_stream_error = error;
+          _reader.onError(error);
           _context.TryCancel();
-          _stream->Finish(&_status, this);
-          _sent_final_request = true;
+          _enqueued_writes_done = true;
+          runEnqueuedOperation();
         },
         [this]() {
           _enqueued_writes_done = true;
@@ -425,6 +484,13 @@ class RxGrpcClientInvocation<
   }
 
  private:
+  enum class State {
+    SENDING_REQUESTS,
+    TO_SEND_WRITES_DONE,
+    TO_SEND_FINISH,
+    DONE
+  };
+
   void runEnqueuedOperation() {
     if (_operation_in_progress) {
       return;
@@ -452,16 +518,24 @@ class RxGrpcClientInvocation<
     }
   }
 
+  void tryShutdown() {
+    if (_writer_done && _reader_done) {
+      delete this;
+    }
+  }
+
+  Reader _reader;
+  bool _reader_done = false;
+
   rxcpp::observable<TransformedRequestType> _requests;
   ResponseType _response;
   std::unique_ptr<
       grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> _stream;
   grpc::ClientContext _context;
-  rxcpp::subscriber<TransformedResponseType> _subscriber;
 
-  std::exception_ptr _request_stream_error;
   bool _sent_final_request = false;
   bool _operation_in_progress = false;
+  bool _writer_done = false;
 
   // Because we don't have backpressure we need an unbounded buffer here :-(
   std::deque<TransformedRequestType> _enqueued_requests;

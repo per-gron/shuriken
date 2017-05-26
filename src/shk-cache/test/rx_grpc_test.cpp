@@ -308,7 +308,6 @@ TEST_CASE("RxGrpc") {
           }));
     }
 
-#if 0
     SECTION("one request") {
       run(test_client
           .invoke(
@@ -332,19 +331,16 @@ TEST_CASE("RxGrpc") {
           .invoke(
               &TestService::Stub::AsyncCumulativeSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(13), makeTestRequest(7)))
-          .map(
-              [](Flatbuffer<TestResponse> response) {
-                CHECK(response->data() == 20);
-                return "ignored";
-              })
-          .count()
-          .map([](int count) {
-            CHECK(count == 1);
+                  makeTestRequest(10), makeTestRequest(20)))
+          .map([](Flatbuffer<TestResponse> response) {
+            return response->data();
+          })
+          .sum()
+          .map([](int sum) {
+            CHECK(sum == 40); // (10) + (10 + 20)
             return "ignored";
           }));
     }
-#endif
   }
 
   server.shutdown();
