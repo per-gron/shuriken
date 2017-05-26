@@ -74,6 +74,11 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   // TODO(peck): Add support for backpressure (streaming output requires only
   //     one outstanding request at a time. Not possible atm.)
   // TODO(peck): Test
+  //  * handlers that return observables that fail with an error
+  //  * ill-formed flatbuffers
+  //  * handlers that return too early
+  //  * finishing bidi and unidirectional streams in different orders
+  //  * go through the code and look for stuff
 
   auto server = makeServer();
   std::thread server_thread([&] { server.run(); });

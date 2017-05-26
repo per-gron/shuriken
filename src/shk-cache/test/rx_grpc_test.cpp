@@ -237,10 +237,38 @@ TEST_CASE("RxGrpc") {
 
       run(check_count.zip(check_sum));
     }
+
+    SECTION("two calls") {
+      auto responses_1 = test_client
+          .invoke(
+              &TestService::Stub::AsyncRepeat, makeTestRequest(2))
+          .map([](Flatbuffer<TestResponse> response) {
+            return response->data();
+          })
+          .sum()
+          .map([](int sum) {
+            CHECK(sum == 3);
+            return "ignored";
+          });
+
+      auto responses_2 = test_client
+          .invoke(
+              &TestService::Stub::AsyncRepeat, makeTestRequest(3))
+          .map([](Flatbuffer<TestResponse> response) {
+            return response->data();
+          })
+          .sum()
+          .map([](int sum) {
+            CHECK(sum == 6);
+            return "ignored";
+          });
+
+      run(responses_1.zip(responses_2));
+    }
   }
 
   SECTION("client streaming") {
-    SECTION("no requests") {
+    SECTION("no messages") {
       run(test_client
           .invoke(
               &TestService::Stub::AsyncSum,
@@ -257,7 +285,7 @@ TEST_CASE("RxGrpc") {
           }));
     }
 
-    SECTION("one request") {
+    SECTION("one message") {
       run(test_client
           .invoke(
               &TestService::Stub::AsyncSum,
@@ -275,7 +303,7 @@ TEST_CASE("RxGrpc") {
           }));
     }
 
-    SECTION("two requests") {
+    SECTION("two message") {
       run(test_client
           .invoke(
               &TestService::Stub::AsyncSum,
@@ -292,11 +320,67 @@ TEST_CASE("RxGrpc") {
             return "ignored";
           }));
     }
+
+    SECTION("two calls") {
+      auto call_0 = test_client
+          .invoke(
+              &TestService::Stub::AsyncSum,
+              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
+                  makeTestRequest(13), makeTestRequest(7)))
+          .map(
+              [](Flatbuffer<TestResponse> response) {
+                CHECK(response->data() == 20);
+                return "ignored";
+              })
+          .count()
+          .map([](int count) {
+            CHECK(count == 1);
+            return "ignored";
+          });
+
+      auto call_1 = test_client
+          .invoke(
+              &TestService::Stub::AsyncSum,
+              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
+                  makeTestRequest(10), makeTestRequest(2)))
+          .map(
+              [](Flatbuffer<TestResponse> response) {
+                CHECK(response->data() == 12);
+                return "ignored";
+              })
+          .count()
+          .map([](int count) {
+            CHECK(count == 1);
+            return "ignored";
+          });
+
+      run(call_0.zip(call_1));
+    }
+
+    SECTION("same call twice") {
+      auto call = test_client
+          .invoke(
+              &TestService::Stub::AsyncSum,
+              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
+                  makeTestRequest(13), makeTestRequest(7)))
+          .map(
+              [](Flatbuffer<TestResponse> response) {
+                CHECK(response->data() == 20);
+                return "ignored";
+              })
+          .count()
+          .map([](int count) {
+            CHECK(count == 1);
+            return "ignored";
+          });
+
+      run(call.zip(call));
+    }
   }
 
 
   SECTION("bidi streaming") {
-    SECTION("no requests") {
+    SECTION("no messages") {
       run(test_client
           .invoke(
               &TestService::Stub::AsyncCumulativeSum,
@@ -308,7 +392,7 @@ TEST_CASE("RxGrpc") {
           }));
     }
 
-    SECTION("one request") {
+    SECTION("one message") {
       run(test_client
           .invoke(
               &TestService::Stub::AsyncCumulativeSum,
@@ -326,7 +410,7 @@ TEST_CASE("RxGrpc") {
           }));
     }
 
-    SECTION("two requests") {
+    SECTION("two message") {
       run(test_client
           .invoke(
               &TestService::Stub::AsyncCumulativeSum,
@@ -340,6 +424,56 @@ TEST_CASE("RxGrpc") {
             CHECK(sum == 40); // (10) + (10 + 20)
             return "ignored";
           }));
+    }
+
+    SECTION("two calls") {
+      auto call_0 = test_client
+          .invoke(
+              &TestService::Stub::AsyncCumulativeSum,
+              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
+                  makeTestRequest(10), makeTestRequest(20)))
+          .map([](Flatbuffer<TestResponse> response) {
+            return response->data();
+          })
+          .sum()
+          .map([](int sum) {
+            CHECK(sum == 40); // (10) + (10 + 20)
+            return "ignored";
+          });
+
+      auto call_1 = test_client
+          .invoke(
+              &TestService::Stub::AsyncCumulativeSum,
+              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
+                  makeTestRequest(1), makeTestRequest(2)))
+          .map([](Flatbuffer<TestResponse> response) {
+            return response->data();
+          })
+          .sum()
+          .map([](int sum) {
+            CHECK(sum == 4); // (1) + (1 + 2)
+            return "ignored";
+          });
+
+      run(call_0.zip(call_1));
+    }
+
+    SECTION("same call twice") {
+      auto call = test_client
+          .invoke(
+              &TestService::Stub::AsyncCumulativeSum,
+              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
+                  makeTestRequest(10), makeTestRequest(20)))
+          .map([](Flatbuffer<TestResponse> response) {
+            return response->data();
+          })
+          .sum()
+          .map([](int sum) {
+            CHECK(sum == 40); // (10) + (10 + 20)
+            return "ignored";
+          });
+
+      run(call.zip(call));
     }
   }
 
