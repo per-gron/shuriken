@@ -980,7 +980,8 @@ class RxGrpcServiceClient {
   template <
       typename RequestType,
       typename ResponseType,
-      typename TransformedRequestType>
+      typename TransformedRequestType,
+      typename SourceOperator>
   rxcpp::observable<
       typename detail::RxGrpcClientInvocation<
           grpc::ClientAsyncWriter<RequestType>,
@@ -994,7 +995,7 @@ class RxGrpcServiceClient {
           ResponseType *response,
           grpc::CompletionQueue *cq,
           void *tag),
-      const rxcpp::observable<TransformedRequestType> &requests,
+      const rxcpp::observable<TransformedRequestType, SourceOperator> &requests,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return invokeImpl<
         grpc::ClientAsyncWriter<RequestType>,

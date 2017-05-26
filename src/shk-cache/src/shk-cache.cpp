@@ -70,7 +70,6 @@ auto makeConfigGetRequest() {
 int main(int /*argc*/, const char * /*argv*/[]) {
   // TODO(peck): Try to deduplicate runEnqueuedOperation
   // TODO(peck): Cleanup ServerCallTraits
-  // TODO(peck): Reduce need for .as_dynamic()
   // TODO(peck): Add support for bidi streaming (in server)
   // TODO(peck): Add support for bidi streaming (in client)
   // TODO(peck): Try to reduce copying of messages

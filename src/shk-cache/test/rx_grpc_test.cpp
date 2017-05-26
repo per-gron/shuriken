@@ -42,7 +42,7 @@ Flatbuffer<TestResponse> makeTestResponse(int data) {
 
 auto doubleHandler(Flatbuffer<TestRequest> request) {
   return rxcpp::observable<>::just<Flatbuffer<TestResponse>>(
-      makeTestResponse(request->data() * 2)).as_dynamic();
+      makeTestResponse(request->data() * 2));
 }
 
 auto repeatHandler(Flatbuffer<TestRequest> request) {
@@ -233,8 +233,7 @@ TEST_CASE("RxGrpc") {
       run(test_client
           .invoke(
               &TestService::Stub::AsyncSum,
-              rxcpp::observable<>::empty<Flatbuffer<TestRequest>>()
-                  .as_dynamic())
+              rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 0);
@@ -252,7 +251,7 @@ TEST_CASE("RxGrpc") {
           .invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  makeTestRequest(1337)).as_dynamic())
+                  makeTestRequest(1337)))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 1337);
@@ -270,7 +269,7 @@ TEST_CASE("RxGrpc") {
           .invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(13), makeTestRequest(7)).as_dynamic())
+                  makeTestRequest(13), makeTestRequest(7)))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 20);
