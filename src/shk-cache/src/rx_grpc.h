@@ -61,7 +61,7 @@ void handleUnaryResponse(
 }
 
 /**
- * Non-streaming client RPC.
+ * Unary client RPC.
  */
 template <
     typename ResponseType,
@@ -370,6 +370,59 @@ using StreamingRequestMethod = void (Service::*)(
     grpc::ServerCompletionQueue *notification_cq,
     void *tag);
 
+/**
+ * Group of typedefs related to a server-side invocation, to avoid having to
+ * pass around tons and tons of template parameters everywhere, and to have
+ * something to do partial template specialization on to handle non-streaming
+ * vs uni-streaming vs bidi streaming stuff.
+ */
+template <
+    // grpc::ServerAsyncResponseWriter<ResponseType> (non-streaming) or
+    // grpc::ServerAsyncWriter<ResponseType> (streaming response) or
+    // grpc::ServerAsyncReader<ResponseType, RequestType> (streaming request) or
+    // grpc::ServerAsyncReaderWriter<ResponseType, RequestType> (bidi streaming)
+    typename StreamType,
+    // Generated service class
+    typename ServiceType,
+    typename ResponseType,
+    typename RequestType,
+    typename TransformType,
+    typename Callback>
+class ServerCallTraits {
+ public:
+  using Stream = StreamType;
+  using Service = ServiceType;
+  using Response = ResponseType;
+  using Request = RequestType;
+  using Transform = TransformType;
+
+
+  using TransformedRequest =
+      typename decltype(
+          Transform::wrap(std::declval<RequestType>()))::first_type;
+
+ private:
+  /**
+   * The type of the parameter that the request handler callback takes. If it is
+   * a streaming request, it's an observable, otherwise it's an object directly.
+   */
+  using CallbackParamType = typename std::conditional<
+      StreamTraits<Stream>::kRequestStreaming,
+      rxcpp::observable<TransformedRequest>,
+      TransformedRequest>::type;
+
+  using ResponseObservable =
+      decltype(std::declval<Callback>()(std::declval<CallbackParamType>()));
+
+ public:
+  using TransformedResponse = typename ResponseObservable::value_type;
+
+  using Method = typename std::conditional<
+      StreamTraits<Stream>::kRequestStreaming,
+      StreamingRequestMethod<Service, Stream>,
+      RequestMethod<Service, RequestType, Stream>>::type;
+};
+
 template <
     typename OwnerType,
     typename ServerCallTraits,
@@ -463,62 +516,212 @@ class ServerStreamOrResponseReader<OwnerType, ServerCallTraits, true> :
   OwnerType &_owner;
 };
 
+template <typename Stream, typename ServerCallTraits, typename Callback>
+class RxGrpcServerInvocation;
+
 /**
- * Group of typedefs related to a server-side invocation, to avoid having to
- * pass around tons and tons of template parameters everywhere, and to have
- * something to do partial template specialization on to handle non-streaming
- * vs uni-streaming vs bidi streaming stuff.
+ * Unary server RPC.
  */
-template <
-    // grpc::ServerAsyncResponseWriter<ResponseType> (non-streaming) or
-    // grpc::ServerAsyncWriter<ResponseType> (streaming response) or
-    // grpc::ServerAsyncReader<ResponseType, RequestType> (streaming request) or
-    // grpc::ServerAsyncReaderWriter<ResponseType, RequestType> (bidi streaming)
-    typename StreamType,
-    // Generated service class
-    typename ServiceType,
-    typename ResponseType,
-    typename RequestType,
-    typename TransformType,
-    typename Callback>
-class ServerCallTraits {
+template <typename ResponseType, typename ServerCallTraits, typename Callback>
+class RxGrpcServerInvocation<
+    grpc::ServerAsyncResponseWriter<ResponseType>,
+    ServerCallTraits,
+    Callback> {
+  using Stream = grpc::ServerAsyncResponseWriter<ResponseType>;
+  using Service = typename ServerCallTraits::Service;
+  using Transform = typename ServerCallTraits::Transform;
+  using TransformedRequest = typename ServerCallTraits::TransformedRequest;
+  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
+  using Method = typename ServerCallTraits::Method;
+
  public:
-  using Stream = StreamType;
-  using Service = ServiceType;
-  using Response = ResponseType;
-  using Request = RequestType;
-  using Transform = TransformType;
-
-
-  using TransformedRequest =
-      typename decltype(
-          Transform::wrap(std::declval<RequestType>()))::first_type;
+  static void request(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq) {
+    auto invocation = new RxGrpcServerInvocation(
+        error_handler, method, std::move(callback), service, cq);
+    invocation->_reader.request(
+        service,
+        method,
+        &invocation->_context,
+        invocation->_writer.get(),
+        cq);
+  }
 
  private:
-  /**
-   * The type of the parameter that the request handler callback takes. If it is
-   * a streaming request, it's an observable, otherwise it's an object directly.
-   */
-  using CallbackParamType = typename std::conditional<
-      StreamTraits<Stream>::kRequestStreaming,
-      rxcpp::observable<TransformedRequest>,
-      TransformedRequest>::type;
+  RxGrpcServerInvocation(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq)
+      : _error_handler(error_handler),
+        _method(method),
+        _callback(std::move(callback)),
+        _service(*service),
+        _cq(*cq),
+        _reader(
+            [this](auto &&callback_param) {
+              processRequest(std::move(callback_param));
+            },
+            this),
+        _writer(this, &_context) {}
 
-  using ResponseObservable =
-      decltype(std::declval<Callback>()(std::declval<CallbackParamType>()));
+  template <typename CallbackParameter>
+  void processRequest(CallbackParameter &&callback_param) {
+    auto values = callback_param.second.ok() ?
+        _callback(std::move(callback_param.first)).as_dynamic() :
+        rxcpp::observable<>::error<TransformedResponse>(
+            GrpcError(callback_param.second)).as_dynamic();
 
- public:
-  using TransformedResponse = typename ResponseObservable::value_type;
+    // Request the a new request, so that the server is always waiting for
+    // one. This is done after the callback (because this steals it) but
+    // before the subscribe call because that could tell gRPC to respond,
+    // after which it's not safe to do anything with `this` anymore.
+    issueNewServerRequest(std::move(_callback));
 
-  using Method = typename std::conditional<
-      StreamTraits<Stream>::kRequestStreaming,
-      StreamingRequestMethod<Service, Stream>,
-      RequestMethod<Service, RequestType, Stream>>::type;
+    _writer.subscribe(std::move(values));
+  }
+
+  void issueNewServerRequest(Callback &&callback) {
+    // Take callback as an rvalue parameter to make it obvious that we steal it.
+    request(
+        _error_handler,
+        _method,
+        std::move(callback),  // Reuse the callback functor, don't copy
+        &_service,
+        &_cq);
+  }
+
+  GrpcErrorHandler _error_handler;
+  Method _method;
+  Callback _callback;
+  Service &_service;
+  grpc::ServerCompletionQueue &_cq;
+  grpc::ServerContext _context;
+  ServerStreamOrResponseReader<
+      RxGrpcServerInvocation,
+      ServerCallTraits,
+      StreamTraits<Stream>::kRequestStreaming> _reader;
+  RxGrpcWriter<
+      RxGrpcServerInvocation,
+      TransformedResponse,
+      Transform,
+      Stream,
+      StreamTraits<Stream>::kResponseStreaming> _writer;
 };
 
-template <typename ServerCallTraits, typename Callback>
-class RxGrpcServerInvocation {
-  using Stream = typename ServerCallTraits::Stream;
+/**
+ * Server streaming.
+ */
+template <typename ResponseType, typename ServerCallTraits, typename Callback>
+class RxGrpcServerInvocation<
+    grpc::ServerAsyncWriter<ResponseType>,
+    ServerCallTraits,
+    Callback> {
+  using Stream = grpc::ServerAsyncWriter<ResponseType>;
+  using Service = typename ServerCallTraits::Service;
+  using Transform = typename ServerCallTraits::Transform;
+  using TransformedRequest = typename ServerCallTraits::TransformedRequest;
+  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
+  using Method = typename ServerCallTraits::Method;
+
+ public:
+  static void request(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq) {
+    auto invocation = new RxGrpcServerInvocation(
+        error_handler, method, std::move(callback), service, cq);
+    invocation->_reader.request(
+        service,
+        method,
+        &invocation->_context,
+        invocation->_writer.get(),
+        cq);
+  }
+
+ private:
+  RxGrpcServerInvocation(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq)
+      : _error_handler(error_handler),
+        _method(method),
+        _callback(std::move(callback)),
+        _service(*service),
+        _cq(*cq),
+        _reader(
+            [this](auto &&callback_param) {
+              processRequest(std::move(callback_param));
+            },
+            this),
+        _writer(this, &_context) {}
+
+  template <typename CallbackParameter>
+  void processRequest(CallbackParameter &&callback_param) {
+    auto values = callback_param.second.ok() ?
+        _callback(std::move(callback_param.first)).as_dynamic() :
+        rxcpp::observable<>::error<TransformedResponse>(
+            GrpcError(callback_param.second)).as_dynamic();
+
+    // Request the a new request, so that the server is always waiting for
+    // one. This is done after the callback (because this steals it) but
+    // before the subscribe call because that could tell gRPC to respond,
+    // after which it's not safe to do anything with `this` anymore.
+    issueNewServerRequest(std::move(_callback));
+
+    _writer.subscribe(std::move(values));
+  }
+
+  void issueNewServerRequest(Callback &&callback) {
+    // Take callback as an rvalue parameter to make it obvious that we steal it.
+    request(
+        _error_handler,
+        _method,
+        std::move(callback),  // Reuse the callback functor, don't copy
+        &_service,
+        &_cq);
+  }
+
+  GrpcErrorHandler _error_handler;
+  Method _method;
+  Callback _callback;
+  Service &_service;
+  grpc::ServerCompletionQueue &_cq;
+  grpc::ServerContext _context;
+  ServerStreamOrResponseReader<
+      RxGrpcServerInvocation,
+      ServerCallTraits,
+      StreamTraits<Stream>::kRequestStreaming> _reader;
+  RxGrpcWriter<
+      RxGrpcServerInvocation,
+      TransformedResponse,
+      Transform,
+      Stream,
+      StreamTraits<Stream>::kResponseStreaming> _writer;
+};
+
+/**
+ * Client streaming.
+ */
+template <
+    typename ResponseType,
+    typename RequestType,
+    typename ServerCallTraits,
+    typename Callback>
+class RxGrpcServerInvocation<
+    grpc::ServerAsyncReader<ResponseType, RequestType>,
+    ServerCallTraits,
+    Callback> {
+  using Stream = grpc::ServerAsyncReader<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
@@ -632,6 +835,7 @@ class RxGrpcServerInvocationRequester : public InvocationRequester {
       GrpcErrorHandler error_handler,
       grpc::ServerCompletionQueue *cq) override {
     using ServerInvocation = RxGrpcServerInvocation<
+        typename ServerCallTraits::Stream,
         ServerCallTraits,
         Callback>;
     ServerInvocation::request(
