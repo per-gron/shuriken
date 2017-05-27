@@ -62,6 +62,12 @@ auto repeatHandler(Flatbuffer<TestRequest> request) {
   }
 }
 
+auto repeatThenFailHandler(Flatbuffer<TestRequest> request) {
+  return repeatHandler(request)
+      .concat(rxcpp::observable<>::error<Flatbuffer<TestResponse>>(
+          std::runtime_error("repeat_fail")));
+}
+
 auto sumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   return requests
     .map([](Flatbuffer<TestRequest> request) {
@@ -100,6 +106,9 @@ TEST_CASE("RxGrpc") {
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeat,
           &repeatHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestRepeatThenFail,
+          &repeatThenFailHandler)
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestSum,
           &sumHandler)
@@ -271,6 +280,40 @@ TEST_CASE("RxGrpc") {
           });
 
       run(check_count.zip(check_sum));
+    }
+
+    SECTION("no responses then fail") {
+      auto error = run_expect_error(test_client
+          .invoke(&TestService::Stub::AsyncRepeatThenFail, makeTestRequest(0))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "repeat_fail");
+    }
+
+    SECTION("one response then fail") {
+      int count = 0;
+      auto error = run_expect_error(test_client
+          .invoke(&TestService::Stub::AsyncRepeatThenFail, makeTestRequest(1))
+          .map([&count](Flatbuffer<TestResponse> response) {
+            count++;
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "repeat_fail");
+      CHECK(count == 1);
+    }
+
+    SECTION("two responses then fail") {
+      int count = 0;
+      auto error = run_expect_error(test_client
+          .invoke(&TestService::Stub::AsyncRepeatThenFail, makeTestRequest(2))
+          .map([&count](Flatbuffer<TestResponse> response) {
+            count++;
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "repeat_fail");
+      CHECK(count == 2);
     }
 
     SECTION("two calls") {
