@@ -48,15 +48,15 @@ RxGrpcServer makeServer() {
   auto server_address = "0.0.0.0:50051";
 
   RxGrpcServer::Builder builder;
-  builder.grpcServerBuilder()
+  builder.GrpcServerBuilder()
       .AddListeningPort(server_address, grpc::InsecureServerCredentials());
 
-  builder.registerService<ShkCache::Config::AsyncService>()
-      .registerMethod<FlatbufferRefTransform>(
+  builder.RegisterService<ShkCache::Config::AsyncService>()
+      .RegisterMethod<FlatbufferRefTransform>(
           &ShkCache::Config::AsyncService::RequestGet,
           &configGet);
 
-  return builder.buildAndStart();
+  return builder.BuildAndStart();
 }
 
 auto makeConfigGetRequest() {
@@ -78,7 +78,7 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   //  * what happens if writesdone is not called? Does the server stall then?
 
   auto server = makeServer();
-  std::thread server_thread([&] { server.run(); });
+  std::thread server_thread([&] { server.Run(); });
 
   auto channel = grpc::CreateChannel(
       "localhost:50051",
@@ -86,18 +86,18 @@ int main(int /*argc*/, const char * /*argv*/[]) {
 
   RxGrpcClient client;  // TODO(peck): Rename to ClientFactory or Runloop
 
-  auto config_client = client.makeClient<FlatbufferRefTransform>(
+  auto config_client = client.MakeClient<FlatbufferRefTransform>(
       ShkCache::Config::NewStub(channel));
 
   int requests_left = 1;
   auto request_done = [&]() {
     if (--requests_left == 0) {
-      client.shutdown();
+      client.Shutdown();
     }
   };
   for (int i = 0; i < requests_left; i++) {
     config_client
-        .invoke(
+        .Invoke(
             &ShkCache::Config::Stub::AsyncGet, makeConfigGetRequest())
         .subscribe(
             [](Flatbuffer<ShkCache::ConfigGetResponse> response) {
@@ -123,9 +123,9 @@ int main(int /*argc*/, const char * /*argv*/[]) {
             });
   }
 
-  client.run();
+  client.Run();
 
-  server.shutdown();
+  server.Shutdown();
   server_thread.join();
 
   return 0;

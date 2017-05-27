@@ -26,69 +26,69 @@ using namespace RxGrpcTest;
 namespace shk {
 namespace {
 
-Flatbuffer<TestRequest> makeTestRequest(int data) {
+Flatbuffer<TestRequest> MakeTestRequest(int data) {
   flatbuffers::FlatBufferBuilder fbb;
   auto test_request = CreateTestRequest(fbb, data);
   fbb.Finish(test_request);
   return Flatbuffer<TestRequest>::fromBuilder(&fbb);
 }
 
-Flatbuffer<TestResponse> makeTestResponse(int data) {
+Flatbuffer<TestResponse> MakeTestResponse(int data) {
   flatbuffers::FlatBufferBuilder fbb;
   auto test_response = CreateTestResponse(fbb, data);
   fbb.Finish(test_response);
   return Flatbuffer<TestResponse>::fromBuilder(&fbb);
 }
 
-auto doubleHandler(Flatbuffer<TestRequest> request) {
+auto DoubleHandler(Flatbuffer<TestRequest> request) {
   return rxcpp::observable<>::just<Flatbuffer<TestResponse>>(
-      makeTestResponse(request->data() * 2));
+      MakeTestResponse(request->data() * 2));
 }
 
-auto unaryFailHandler(Flatbuffer<TestRequest> request) {
+auto UnaryFailHandler(Flatbuffer<TestRequest> request) {
   return rxcpp::observable<>::error<Flatbuffer<TestResponse>>(
       std::runtime_error("unary_fail"));
 }
 
-auto unaryNoResponseHandler(Flatbuffer<TestRequest> request) {
+auto UnaryNoResponseHandler(Flatbuffer<TestRequest> request) {
   return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>();
 }
 
-auto unaryTwoResponsesHandler(Flatbuffer<TestRequest> request) {
+auto UnaryTwoResponsesHandler(Flatbuffer<TestRequest> request) {
   return rxcpp::observable<>::from<Flatbuffer<TestResponse>>(
-      makeTestResponse(1),
-      makeTestResponse(2));
+      MakeTestResponse(1),
+      MakeTestResponse(2));
 }
 
-auto repeatHandler(Flatbuffer<TestRequest> request) {
+auto RepeatHandler(Flatbuffer<TestRequest> request) {
   int count = request->data();
   if (count == 0) {
     return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>()
         .as_dynamic();
   } else {
     return rxcpp::observable<>::range(1, count)
-        .map(&makeTestResponse)
+        .map(&MakeTestResponse)
         .as_dynamic();
   }
 }
 
-auto repeatThenFailHandler(Flatbuffer<TestRequest> request) {
-  return repeatHandler(request)
+auto RepeatThenFailHandler(Flatbuffer<TestRequest> request) {
+  return RepeatHandler(request)
       .concat(rxcpp::observable<>::error<Flatbuffer<TestResponse>>(
           std::runtime_error("repeat_fail")));
 }
 
-auto sumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+auto SumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   return requests
     .map([](Flatbuffer<TestRequest> request) {
       return request->data();
     })
     .start_with(0)  // To support empty input
     .sum()
-    .map(makeTestResponse);
+    .map(MakeTestResponse);
 }
 
-auto immediatelyFailingSumHandler(
+auto ImmediatelyFailingSumHandler(
     rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
@@ -98,8 +98,8 @@ auto immediatelyFailingSumHandler(
       std::runtime_error("sum_fail"));
 }
 
-auto failingSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
-  return sumHandler(requests.map([](Flatbuffer<TestRequest> request) {
+auto FailingSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+  return SumHandler(requests.map([](Flatbuffer<TestRequest> request) {
     if (request->data() == -1) {
       throw std::runtime_error("sum_fail");
     }
@@ -107,7 +107,7 @@ auto failingSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   }));
 }
 
-auto clientStreamNoResponseHandler(
+auto ClientStreamNoResponseHandler(
     rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
@@ -116,27 +116,27 @@ auto clientStreamNoResponseHandler(
   return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>();
 }
 
-auto clientStreamTwoResponsesHandler(
+auto ClientStreamTwoResponsesHandler(
     rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.subscribe([](auto) {});
 
   return rxcpp::observable<>::from<Flatbuffer<TestResponse>>(
-      makeTestResponse(1),
-      makeTestResponse(2));
+      MakeTestResponse(1),
+      MakeTestResponse(2));
 }
 
-auto cumulativeSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+auto CumulativeSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   return requests
     .map([](Flatbuffer<TestRequest> request) {
       return request->data();
     })
     .scan(0, [](int x, int y) { return x + y; })
-    .map(makeTestResponse);
+    .map(MakeTestResponse);
 }
 
-auto immediatelyFailingCumulativeSumHandler(
+auto ImmediatelyFailingCumulativeSumHandler(
     rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
@@ -146,9 +146,9 @@ auto immediatelyFailingCumulativeSumHandler(
       std::runtime_error("cumulative_sum_fail"));
 }
 
-auto failingCumulativeSumHandler(
+auto FailingCumulativeSumHandler(
     rxcpp::observable<Flatbuffer<TestRequest>> requests) {
-  return cumulativeSumHandler(requests.map([](Flatbuffer<TestRequest> request) {
+  return CumulativeSumHandler(requests.map([](Flatbuffer<TestRequest> request) {
     if (request->data() == -1) {
       throw std::runtime_error("cumulative_sum_fail");
     }
@@ -162,63 +162,63 @@ TEST_CASE("RxGrpc") {
   auto server_address = "unix:rx_grpc_test.socket";
 
   RxGrpcServer::Builder server_builder;
-  server_builder.grpcServerBuilder()
+  server_builder.GrpcServerBuilder()
       .AddListeningPort(server_address, grpc::InsecureServerCredentials());
 
-  server_builder.registerService<TestService::AsyncService>()
-      .registerMethod<FlatbufferRefTransform>(
+  server_builder.RegisterService<TestService::AsyncService>()
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestDouble,
-          &doubleHandler)
-      .registerMethod<FlatbufferRefTransform>(
+           DoubleHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestUnaryFail,
-          &unaryFailHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &UnaryFailHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestUnaryNoResponse,
-          &unaryNoResponseHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &UnaryNoResponseHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestUnaryTwoResponses,
-          &unaryTwoResponsesHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &UnaryTwoResponsesHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeat,
-          &repeatHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &RepeatHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeatThenFail,
-          &repeatThenFailHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &RepeatThenFailHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestSum,
-          &sumHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &SumHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestImmediatelyFailingSum,
-          &immediatelyFailingSumHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &ImmediatelyFailingSumHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestFailingSum,
-          &failingSumHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &FailingSumHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestClientStreamNoResponse,
-          &clientStreamNoResponseHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &ClientStreamNoResponseHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestClientStreamTwoResponses,
-          &clientStreamTwoResponsesHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &ClientStreamTwoResponsesHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestCumulativeSum,
-          &cumulativeSumHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &CumulativeSumHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestImmediatelyFailingCumulativeSum,
-          &immediatelyFailingCumulativeSumHandler)
-      .registerMethod<FlatbufferRefTransform>(
+          &ImmediatelyFailingCumulativeSumHandler)
+      .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestFailingCumulativeSum,
-          &failingCumulativeSumHandler);
+          &FailingCumulativeSumHandler);
 
   RxGrpcClient runloop;
 
   auto channel = grpc::CreateChannel(
       server_address, grpc::InsecureChannelCredentials());
 
-  auto test_client = runloop.makeClient<FlatbufferRefTransform>(
+  auto test_client = runloop.MakeClient<FlatbufferRefTransform>(
       TestService::NewStub(channel));
 
-  auto server = server_builder.buildAndStart();
-  std::thread server_thread([&] { server.run(); });
+  auto server = server_builder.BuildAndStart();
+  std::thread server_thread([&] { server.Run(); });
 
   const auto run = [&](const auto &observable) {
     observable
@@ -226,15 +226,15 @@ TEST_CASE("RxGrpc") {
             [](auto) {
             },
             [&runloop](std::exception_ptr error) {
-              runloop.shutdown();
+              runloop.Shutdown();
               CHECK(!"request should not fail");
               printf("Got exception: %s\n", exceptionMessage(error).c_str());
             },
             [&runloop]() {
-              runloop.shutdown();
+              runloop.Shutdown();
             });
 
-    runloop.run();
+    runloop.Run();
   };
 
   const auto run_expect_error = [&](const auto &observable) {
@@ -244,15 +244,15 @@ TEST_CASE("RxGrpc") {
             [](auto) {
             },
             [&runloop, &captured_error](std::exception_ptr error) {
-              runloop.shutdown();
+              runloop.Shutdown();
               captured_error = error;
             },
             [&runloop]() {
               CHECK(!"request should fail");
-              runloop.shutdown();
+              runloop.Shutdown();
             });
 
-    runloop.run();
+    runloop.Run();
 
     REQUIRE(captured_error);
     return captured_error;
@@ -261,8 +261,8 @@ TEST_CASE("RxGrpc") {
   SECTION("unary rpc") {
     SECTION("direct") {
       run(test_client
-          .invoke(
-              &TestService::Stub::AsyncDouble, makeTestRequest(123))
+          .Invoke(
+              &TestService::Stub::AsyncDouble, MakeTestRequest(123))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 123 * 2);
@@ -272,7 +272,7 @@ TEST_CASE("RxGrpc") {
 
     SECTION("failed rpc") {
       auto error = run_expect_error(test_client
-          .invoke(&TestService::Stub::AsyncUnaryFail, makeTestRequest(0))
+          .Invoke(&TestService::Stub::AsyncUnaryFail, MakeTestRequest(0))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -282,7 +282,7 @@ TEST_CASE("RxGrpc") {
 
     SECTION("failed rpc because of no response") {
       auto error = run_expect_error(test_client
-          .invoke(&TestService::Stub::AsyncUnaryNoResponse, makeTestRequest(0))
+          .Invoke(&TestService::Stub::AsyncUnaryNoResponse, MakeTestRequest(0))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -292,9 +292,9 @@ TEST_CASE("RxGrpc") {
 
     SECTION("failed rpc because of two responses") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncUnaryTwoResponses,
-              makeTestRequest(0))
+              MakeTestRequest(0))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -306,8 +306,8 @@ TEST_CASE("RxGrpc") {
       // This test can break if invoke doesn't take ownership of the request for
       // example.
       auto call = test_client
-          .invoke(
-              &TestService::Stub::AsyncDouble, makeTestRequest(123))
+          .Invoke(
+              &TestService::Stub::AsyncDouble, MakeTestRequest(123))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 123 * 2);
@@ -317,10 +317,10 @@ TEST_CASE("RxGrpc") {
     }
 
     SECTION("two calls") {
-      auto call_a = test_client.invoke(
-          &TestService::Stub::AsyncDouble, makeTestRequest(123));
-      auto call_b = test_client.invoke(
-          &TestService::Stub::AsyncDouble, makeTestRequest(321));
+      auto call_a = test_client.Invoke(
+          &TestService::Stub::AsyncDouble, MakeTestRequest(123));
+      auto call_b = test_client.Invoke(
+          &TestService::Stub::AsyncDouble, MakeTestRequest(321));
       run(call_a
           .zip(call_b)
           .map(
@@ -334,8 +334,8 @@ TEST_CASE("RxGrpc") {
     }
 
     SECTION("same call twice") {
-      auto call = test_client.invoke(
-          &TestService::Stub::AsyncDouble, makeTestRequest(123));
+      auto call = test_client.Invoke(
+          &TestService::Stub::AsyncDouble, MakeTestRequest(123));
       run(call
           .zip(call)
           .map(
@@ -352,8 +352,8 @@ TEST_CASE("RxGrpc") {
   SECTION("server streaming") {
     SECTION("no responses") {
       run(test_client
-          .invoke(
-              &TestService::Stub::AsyncRepeat, makeTestRequest(0))
+          .Invoke(
+              &TestService::Stub::AsyncRepeat, MakeTestRequest(0))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 // Should never be called; this should be a stream that ends
@@ -365,7 +365,7 @@ TEST_CASE("RxGrpc") {
 
     SECTION("one response") {
       run(test_client
-          .invoke(&TestService::Stub::AsyncRepeat, makeTestRequest(1))
+          .Invoke(&TestService::Stub::AsyncRepeat, MakeTestRequest(1))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 1);
             return "ignored";
@@ -378,8 +378,8 @@ TEST_CASE("RxGrpc") {
     }
 
     SECTION("two responses") {
-      auto responses = test_client.invoke(
-          &TestService::Stub::AsyncRepeat, makeTestRequest(2));
+      auto responses = test_client.Invoke(
+          &TestService::Stub::AsyncRepeat, MakeTestRequest(2));
 
       auto check_count = responses
           .count()
@@ -403,7 +403,7 @@ TEST_CASE("RxGrpc") {
 
     SECTION("no responses then fail") {
       auto error = run_expect_error(test_client
-          .invoke(&TestService::Stub::AsyncRepeatThenFail, makeTestRequest(0))
+          .Invoke(&TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(0))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -414,7 +414,7 @@ TEST_CASE("RxGrpc") {
     SECTION("one response then fail") {
       int count = 0;
       auto error = run_expect_error(test_client
-          .invoke(&TestService::Stub::AsyncRepeatThenFail, makeTestRequest(1))
+          .Invoke(&TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(1))
           .map([&count](Flatbuffer<TestResponse> response) {
             count++;
             return "unused";
@@ -426,7 +426,7 @@ TEST_CASE("RxGrpc") {
     SECTION("two responses then fail") {
       int count = 0;
       auto error = run_expect_error(test_client
-          .invoke(&TestService::Stub::AsyncRepeatThenFail, makeTestRequest(2))
+          .Invoke(&TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(2))
           .map([&count](Flatbuffer<TestResponse> response) {
             count++;
             return "unused";
@@ -437,8 +437,8 @@ TEST_CASE("RxGrpc") {
 
     SECTION("two calls") {
       auto responses_1 = test_client
-          .invoke(
-              &TestService::Stub::AsyncRepeat, makeTestRequest(2))
+          .Invoke(
+              &TestService::Stub::AsyncRepeat, MakeTestRequest(2))
           .map([](Flatbuffer<TestResponse> response) {
             return response->data();
           })
@@ -449,8 +449,8 @@ TEST_CASE("RxGrpc") {
           });
 
       auto responses_2 = test_client
-          .invoke(
-              &TestService::Stub::AsyncRepeat, makeTestRequest(3))
+          .Invoke(
+              &TestService::Stub::AsyncRepeat, MakeTestRequest(3))
           .map([](Flatbuffer<TestResponse> response) {
             return response->data();
           })
@@ -467,7 +467,7 @@ TEST_CASE("RxGrpc") {
   SECTION("client streaming") {
     SECTION("no messages") {
       run(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
           .map(
@@ -484,10 +484,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("one message") {
       run(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  makeTestRequest(1337)))
+                  MakeTestRequest(1337)))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 1337);
@@ -502,7 +502,7 @@ TEST_CASE("RxGrpc") {
 
     SECTION("immediately failed stream") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>::error<Flatbuffer<TestRequest>>(
                   std::runtime_error("test_error"))));
@@ -511,21 +511,21 @@ TEST_CASE("RxGrpc") {
 
     SECTION("stream failed after one message") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>
                   ::error<Flatbuffer<TestRequest>>(
                       std::runtime_error("test_error"))
-                  .start_with(makeTestRequest(0))));
+                  .start_with(MakeTestRequest(0))));
       CHECK(exceptionMessage(error) == "test_error");
     }
 
     SECTION("two message") {
       run(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(13), makeTestRequest(7)))
+                  MakeTestRequest(13), MakeTestRequest(7)))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 20);
@@ -540,7 +540,7 @@ TEST_CASE("RxGrpc") {
 
     SECTION("no messages then fail") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncImmediatelyFailingSum,
               rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
           .map([](Flatbuffer<TestResponse> response) {
@@ -552,10 +552,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("message then immediately fail") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncImmediatelyFailingSum,
               rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  makeTestRequest(1337)))
+                  MakeTestRequest(1337)))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -565,10 +565,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("fail on first message") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncFailingSum,
               rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  makeTestRequest(-1)))
+                  MakeTestRequest(-1)))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -578,10 +578,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("fail on second message") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncFailingSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(0), makeTestRequest(-1)))
+                  MakeTestRequest(0), MakeTestRequest(-1)))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -591,10 +591,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("fail because of no response") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncClientStreamNoResponse,
               rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  makeTestRequest(0)))
+                  MakeTestRequest(0)))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -604,10 +604,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("fail because of two responses") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncClientStreamTwoResponses,
               rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  makeTestRequest(0)))
+                  MakeTestRequest(0)))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -617,10 +617,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("two calls") {
       auto call_0 = test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(13), makeTestRequest(7)))
+                  MakeTestRequest(13), MakeTestRequest(7)))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 20);
@@ -633,10 +633,10 @@ TEST_CASE("RxGrpc") {
           });
 
       auto call_1 = test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(10), makeTestRequest(2)))
+                  MakeTestRequest(10), MakeTestRequest(2)))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 12);
@@ -653,10 +653,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("same call twice") {
       auto call = test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(13), makeTestRequest(7)))
+                  MakeTestRequest(13), MakeTestRequest(7)))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 20);
@@ -675,7 +675,7 @@ TEST_CASE("RxGrpc") {
   SECTION("bidi streaming") {
     SECTION("no messages") {
       run(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
           .count()
@@ -687,10 +687,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("one message") {
       run(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  makeTestRequest(1337)))
+                  MakeTestRequest(1337)))
           .map(
               [](Flatbuffer<TestResponse> response) {
                 CHECK(response->data() == 1337);
@@ -705,7 +705,7 @@ TEST_CASE("RxGrpc") {
 
     SECTION("immediately failed stream") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               rxcpp::observable<>::error<Flatbuffer<TestRequest>>(
                   std::runtime_error("test_error"))));
@@ -714,21 +714,21 @@ TEST_CASE("RxGrpc") {
 
     SECTION("stream failed after one message") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               rxcpp::observable<>
                   ::error<Flatbuffer<TestRequest>>(
                       std::runtime_error("test_error"))
-                  .start_with(makeTestRequest(0))));
+                  .start_with(MakeTestRequest(0))));
       CHECK(exceptionMessage(error) == "test_error");
     }
 
     SECTION("two message") {
       run(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(10), makeTestRequest(20)))
+                  MakeTestRequest(10), MakeTestRequest(20)))
           .map([](Flatbuffer<TestResponse> response) {
             return response->data();
           })
@@ -741,7 +741,7 @@ TEST_CASE("RxGrpc") {
 
     SECTION("no messages then fail") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
               rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
           .map([](Flatbuffer<TestResponse> response) {
@@ -753,10 +753,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("message then immediately fail") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
               rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  makeTestRequest(1337)))
+                  MakeTestRequest(1337)))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -766,10 +766,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("fail on first message") {
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncFailingCumulativeSum,
               rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  makeTestRequest(-1)))
+                  MakeTestRequest(-1)))
           .map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -780,10 +780,10 @@ TEST_CASE("RxGrpc") {
     SECTION("fail on second message") {
       int count = 0;
       auto error = run_expect_error(test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncFailingCumulativeSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(321), makeTestRequest(-1)))
+                  MakeTestRequest(321), MakeTestRequest(-1)))
           .map([&count](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 321);
             count++;
@@ -795,10 +795,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("two calls") {
       auto call_0 = test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(10), makeTestRequest(20)))
+                  MakeTestRequest(10), MakeTestRequest(20)))
           .map([](Flatbuffer<TestResponse> response) {
             return response->data();
           })
@@ -809,10 +809,10 @@ TEST_CASE("RxGrpc") {
           });
 
       auto call_1 = test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(1), makeTestRequest(2)))
+                  MakeTestRequest(1), MakeTestRequest(2)))
           .map([](Flatbuffer<TestResponse> response) {
             return response->data();
           })
@@ -827,10 +827,10 @@ TEST_CASE("RxGrpc") {
 
     SECTION("same call twice") {
       auto call = test_client
-          .invoke(
+          .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  makeTestRequest(10), makeTestRequest(20)))
+                  MakeTestRequest(10), MakeTestRequest(20)))
           .map([](Flatbuffer<TestResponse> response) {
             return response->data();
           })
@@ -844,7 +844,7 @@ TEST_CASE("RxGrpc") {
     }
   }
 
-  server.shutdown();
+  server.Shutdown();
   server_thread.join();
 }
 
