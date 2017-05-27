@@ -12,6 +12,7 @@ rpc_service TestService {
   Double(TestRequest): TestResponse;
   UnaryFail(TestRequest): TestResponse;
   UnaryNoResponse(TestRequest): TestResponse;
+  UnaryTwoResponses(TestRequest): TestResponse;
 
   Repeat(TestRequest): TestResponse (streaming: "server");
   RepeatThenFail(TestRequest): TestResponse (streaming: "server");
@@ -20,6 +21,7 @@ rpc_service TestService {
   ImmediatelyFailingSum(TestRequest): TestResponse (streaming: "client");
   FailingSum(TestRequest): TestResponse (streaming: "client");
   ClientStreamNoResponse(TestRequest): TestResponse (streaming: "client");
+  ClientStreamTwoResponses(TestRequest): TestResponse (streaming: "client");
 
   CumulativeSum(TestRequest): TestResponse (streaming: "bidi");
   ImmediatelyFailingCumulativeSum(TestRequest):

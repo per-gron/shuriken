@@ -681,19 +681,21 @@ class RxGrpcServerInvocation<
 
       values.subscribe(
           [this](TransformedResponse response) {
-            _has_response = true;
+            _num_responses++;
             _response = std::move(response);
           },
           [this](const std::exception_ptr &error) {
             _stream.FinishWithError(exceptionToStatus(error), this);
           },
           [this]() {
-            if (_has_response) {
+            if (_num_responses == 1) {
               _stream.Finish(
                   Transform::unwrap(_response), grpc::Status::OK, this);
             } else {
+              const auto *error_message =
+                  _num_responses == 0 ? "No response" : "Too many responses";
               _stream.FinishWithError(
-                  grpc::Status(grpc::StatusCode::INTERNAL, "No response"),
+                  grpc::Status(grpc::StatusCode::INTERNAL, error_message),
                   this);
             }
           });
@@ -736,7 +738,7 @@ class RxGrpcServerInvocation<
   grpc::ServerContext _context;
   typename ServerCallTraits::Request _request;
   Stream _stream;
-  bool _has_response = false;
+  int _num_responses = 0;
   TransformedResponse _response;
 };
 
@@ -1032,7 +1034,7 @@ class RxGrpcServerInvocation<
     response.subscribe(
         [this](TransformedResponse response) {
           _response = std::move(response);
-          _has_response = true;
+          _num_responses++;
         },
         [this](const std::exception_ptr &error) {
           _response_error = error;
@@ -1062,14 +1064,16 @@ class RxGrpcServerInvocation<
       _state = State::SENT_RESPONSE;
       if (_response_error) {
         _reader.FinishWithError(exceptionToStatus(_response_error), this);
-      } else if (_has_response) {
+      } else if (_num_responses == 1) {
         _reader.Finish(
             Transform::unwrap(_response),
             grpc::Status::OK,
             this);
       } else {
+        const auto *error_message =
+            _num_responses == 0 ? "No response" : "Too many responses";
         _reader.FinishWithError(
-            grpc::Status(grpc::StatusCode::INTERNAL, "No response"),
+            grpc::Status(grpc::StatusCode::INTERNAL, error_message),
             this);
       }
     }
@@ -1087,7 +1091,7 @@ class RxGrpcServerInvocation<
   grpc::ServerAsyncReader<ResponseType, RequestType> _reader;
 
   TransformedResponse _response;
-  bool _has_response = false;
+  int _num_responses = 0;
 
   std::exception_ptr _response_error;
   bool _finished = false;

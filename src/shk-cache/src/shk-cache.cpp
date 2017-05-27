@@ -73,7 +73,6 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   // TODO(peck): Add support for backpressure (streaming output requires only
   //     one outstanding request at a time. Not possible atm.)
   // TODO(peck): Test
-  //  * handlers that return too many responses
   //  * finishing bidi and unidirectional streams in different orders
   //  * go through the code and look for stuff
   //  * what happens if writesdone is not called? Does the server stall then?

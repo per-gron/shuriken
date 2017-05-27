@@ -54,6 +54,12 @@ auto unaryNoResponseHandler(Flatbuffer<TestRequest> request) {
   return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>();
 }
 
+auto unaryTwoResponsesHandler(Flatbuffer<TestRequest> request) {
+  return rxcpp::observable<>::from<Flatbuffer<TestResponse>>(
+      makeTestResponse(1),
+      makeTestResponse(2));
+}
+
 auto repeatHandler(Flatbuffer<TestRequest> request) {
   int count = request->data();
   if (count == 0) {
@@ -110,6 +116,17 @@ auto clientStreamNoResponseHandler(
   return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>();
 }
 
+auto clientStreamTwoResponsesHandler(
+    rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+  // Hack: unless requests is subscribed to, nothing happens. Would be nice to
+  // fix this.
+  requests.subscribe([](auto) {});
+
+  return rxcpp::observable<>::from<Flatbuffer<TestResponse>>(
+      makeTestResponse(1),
+      makeTestResponse(2));
+}
+
 auto cumulativeSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   return requests
     .map([](Flatbuffer<TestRequest> request) {
@@ -159,6 +176,9 @@ TEST_CASE("RxGrpc") {
           &TestService::AsyncService::RequestUnaryNoResponse,
           &unaryNoResponseHandler)
       .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestUnaryTwoResponses,
+          &unaryTwoResponsesHandler)
+      .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeat,
           &repeatHandler)
       .registerMethod<FlatbufferRefTransform>(
@@ -176,6 +196,9 @@ TEST_CASE("RxGrpc") {
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestClientStreamNoResponse,
           &clientStreamNoResponseHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestClientStreamTwoResponses,
+          &clientStreamTwoResponsesHandler)
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestCumulativeSum,
           &cumulativeSumHandler)
@@ -265,6 +288,18 @@ TEST_CASE("RxGrpc") {
             return "unused";
           }));
       CHECK(exceptionMessage(error) == "No response");
+    }
+
+    SECTION("failed rpc because of two responses") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncUnaryTwoResponses,
+              makeTestRequest(0))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "Too many responses");
     }
 
     SECTION("delayed") {
@@ -565,6 +600,19 @@ TEST_CASE("RxGrpc") {
             return "unused";
           }));
       CHECK(exceptionMessage(error) == "No response");
+    }
+
+    SECTION("fail because of two responses") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncClientStreamTwoResponses,
+              rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
+                  makeTestRequest(0)))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "Too many responses");
     }
 
     SECTION("two calls") {
