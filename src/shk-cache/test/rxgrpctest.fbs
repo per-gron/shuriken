@@ -20,4 +20,7 @@ rpc_service TestService {
   FailingSum(TestRequest): TestResponse (streaming: "client");
 
   CumulativeSum(TestRequest): TestResponse (streaming: "bidi");
+  ImmediatelyFailingCumulativeSum(TestRequest):
+      TestResponse (streaming: "bidi");
+  FailingCumulativeSum(TestRequest): TestResponse (streaming: "bidi");
 }

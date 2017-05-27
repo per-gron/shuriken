@@ -106,6 +106,26 @@ auto cumulativeSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
     .map(makeTestResponse);
 }
 
+auto immediatelyFailingCumulativeSumHandler(
+    rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+  // Hack: unless requests is subscribed to, nothing happens. Would be nice to
+  // fix this.
+  requests.subscribe([](auto) {});
+
+  return rxcpp::observable<>::error<Flatbuffer<TestResponse>>(
+      std::runtime_error("cumulative_sum_fail"));
+}
+
+auto failingCumulativeSumHandler(
+    rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+  return cumulativeSumHandler(requests.map([](Flatbuffer<TestRequest> request) {
+    if (request->data() == -1) {
+      throw std::runtime_error("cumulative_sum_fail");
+    }
+    return request;
+  }));
+}
+
 }  // anonymous namespace
 
 TEST_CASE("RxGrpc") {
@@ -139,7 +159,13 @@ TEST_CASE("RxGrpc") {
           &failingSumHandler)
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestCumulativeSum,
-          &cumulativeSumHandler);
+          &cumulativeSumHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestImmediatelyFailingCumulativeSum,
+          &immediatelyFailingCumulativeSumHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestFailingCumulativeSum,
+          &failingCumulativeSumHandler);
 
   RxGrpcClient runloop;
 
@@ -556,7 +582,6 @@ TEST_CASE("RxGrpc") {
     }
   }
 
-
   SECTION("bidi streaming") {
     SECTION("no messages") {
       run(test_client
@@ -622,6 +647,60 @@ TEST_CASE("RxGrpc") {
             CHECK(sum == 40); // (10) + (10 + 20)
             return "ignored";
           }));
+    }
+
+    SECTION("no messages then fail") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
+              rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "cumulative_sum_fail");
+    }
+
+    SECTION("message then immediately fail") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
+              rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
+                  makeTestRequest(1337)))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "cumulative_sum_fail");
+    }
+
+    SECTION("fail on first message") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncFailingCumulativeSum,
+              rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
+                  makeTestRequest(-1)))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "cumulative_sum_fail");
+    }
+
+    SECTION("fail on second message") {
+      int count = 0;
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncFailingCumulativeSum,
+              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
+                  makeTestRequest(321), makeTestRequest(-1)))
+          .map([&count](Flatbuffer<TestResponse> response) {
+            CHECK(response->data() == 321);
+            count++;
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "cumulative_sum_fail");
+      CHECK(count == 1);
     }
 
     SECTION("two calls") {

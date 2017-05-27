@@ -387,14 +387,25 @@ class RxGrpcClientInvocation<
       _error = error;
     }
 
+    /**
+     * Should be called by _shutdown when the stream is actually about to be
+     * destroyed. We don't call on_error or on_completed on the subscriber until
+     * then because it's not until both the read stream and the write stream
+     * have finished that it is known for sure that there was no error.
+     */
+    void finish(const grpc::Status &status) {
+      if (!status.ok()) {
+        _subscriber.on_error(std::make_exception_ptr(GrpcError(status)));
+      } else if (_error) {
+        _subscriber.on_error(_error);
+      } else {
+        _subscriber.on_completed();
+      }
+    }
+
     void operator()(bool success) override {
       if (!success || _error) {
         // We have reached the end of the stream.
-        if (_error) {
-          _subscriber.on_error(_error);
-        } else {
-          _subscriber.on_completed();
-        }
         _shutdown();
       } else {
         auto wrapped = Transform::wrap(std::move(_response));
@@ -402,8 +413,7 @@ class RxGrpcClientInvocation<
           _subscriber.on_next(std::move(wrapped.first));
           _stream->Read(&_response, this);
         } else {
-          _subscriber.on_error(
-              std::make_exception_ptr(GrpcError(wrapped.second)));
+          _error = std::make_exception_ptr(GrpcError(wrapped.second));
           _shutdown();
         }
       }
@@ -515,6 +525,7 @@ class RxGrpcClientInvocation<
 
   void tryShutdown() {
     if (_writer_done && _reader_done) {
+      _reader.finish(_status);
       delete this;
     }
   }
@@ -926,7 +937,6 @@ class RxGrpcServerInvocation<
       invocation->_callback.reset(
           new Callback(std::move(callback)));
 
-
       (service->*method)(
           &invocation->_context,
           &invocation->_reader,
@@ -1183,34 +1193,14 @@ class RxGrpcServerInvocation<
       Service *service,
       grpc::ServerCompletionQueue *cq) {
     auto invocation = new RxGrpcServerInvocation(
-        error_handler, method, service, cq);
+        error_handler, method, std::move(callback), service, cq);
 
-    auto response = callback(rxcpp::observable<>::create<TransformedRequest>([
-        invocation, error_handler, method, service, cq,
-        callback = std::move(callback)](
-            rxcpp::subscriber<TransformedRequest> subscriber) {
-
-      if (invocation->_subscriber) {
-        throw std::logic_error(
-            "Can't subscribe to this observable more than once");
-      }
-      invocation->_subscriber.reset(
-          new rxcpp::subscriber<TransformedRequest>(std::move(subscriber)));
-      invocation->_callback.reset(
-          new Callback(std::move(callback)));
-
-      (service->*method)(
-          &invocation->_context,
-          &invocation->_stream,
-          cq,
-          cq,
-          invocation);
-    }));
-
-    static_assert(
-        rxcpp::is_observable<decltype(response)>::value,
-        "Callback return type must be observable");
-    invocation->_writer.subscribe(response);
+    (service->*method)(
+        &invocation->_context,
+        &invocation->_stream,
+        cq,
+        cq,
+        invocation);
   }
 
   void operator()(bool success) {
@@ -1219,18 +1209,18 @@ class RxGrpcServerInvocation<
         if (!success) {
           delete this;
         } else {
-          _state = State::REQUESTED_DATA;
-          _stream.Read(&_request, this);
+          // Need to set _state before the call to init, in case it moves on to
+          // the State::REQUESTED_DATA state immediately.
+          _state = State::INITIALIZED;
+          init();
         }
         break;
       }
+      case State::INITIALIZED: {
+        abort();  // Should not get here
+        break;
+      }
       case State::REQUESTED_DATA: {
-        if (_callback) {
-          // Request the a new request, so that the server is always waiting for
-          // one.
-          issueNewServerRequest(std::move(_callback));
-        }
-
         if (success) {
           auto wrapped = Transform::wrap(std::move(_request));
           if (wrapped.second.ok()) {
@@ -1261,6 +1251,7 @@ class RxGrpcServerInvocation<
  private:
   enum class State {
     INIT,
+    INITIALIZED,
     REQUESTED_DATA,
     READ_STREAM_ENDED
   };
@@ -1268,10 +1259,12 @@ class RxGrpcServerInvocation<
   RxGrpcServerInvocation(
       GrpcErrorHandler error_handler,
       Method method,
+      Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq)
       : _error_handler(error_handler),
         _method(method),
+        _callback(std::move(callback)),
         _service(*service),
         _cq(*cq),
         _stream(&_context),
@@ -1279,16 +1272,6 @@ class RxGrpcServerInvocation<
             [this] { _write_stream_ended = true; tryShutdown(); },
             &_context,
             &_stream) {}
-
-  void issueNewServerRequest(std::unique_ptr<Callback> &&callback) {
-    // Take callback as an rvalue parameter to make it obvious that we steal it.
-    request(
-        _error_handler,
-        _method,
-        std::move(*callback),  // Reuse the callback functor, don't copy
-        &_service,
-        &_cq);
-  }
 
   void tryShutdown() {
     if (_state == State::READ_STREAM_ENDED && _write_stream_ended) {
@@ -1298,11 +1281,38 @@ class RxGrpcServerInvocation<
     }
   }
 
+  void init() {
+    auto response = _callback(rxcpp::observable<>::create<TransformedRequest>(
+        [this](rxcpp::subscriber<TransformedRequest> subscriber) {
+      if (_subscriber) {
+        throw std::logic_error(
+            "Can't subscribe to this observable more than once");
+      }
+      _subscriber.reset(
+          new rxcpp::subscriber<TransformedRequest>(std::move(subscriber)));
+
+      _state = State::REQUESTED_DATA;
+      _stream.Read(&_request, this);
+    }));
+
+    static_assert(
+        rxcpp::is_observable<decltype(response)>::value,
+        "Callback return type must be observable");
+    _writer.subscribe(response);
+
+    request(
+        _error_handler,
+        _method,
+        std::move(_callback),  // Reuse the callback functor, don't copy
+        &_service,
+        &_cq);
+  }
+
   std::unique_ptr<rxcpp::subscriber<TransformedRequest>> _subscriber;
   State _state = State::INIT;
   GrpcErrorHandler _error_handler;
   Method _method;
-  std::unique_ptr<Callback> _callback;
+  Callback _callback;
   Service &_service;
   grpc::ServerCompletionQueue &_cq;
   grpc::ServerContext _context;

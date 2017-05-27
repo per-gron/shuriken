@@ -68,13 +68,13 @@ auto makeConfigGetRequest() {
 }
 
 int main(int /*argc*/, const char * /*argv*/[]) {
+  // TODO(peck): Don't immediately call client streaming request handlers
   // TODO(peck): Try to reduce copying of messages
   // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
   // TODO(peck): Add support for timeouts
   // TODO(peck): Add support for backpressure (streaming output requires only
   //     one outstanding request at a time. Not possible atm.)
   // TODO(peck): Test
-  //  * handlers that return observables that fail with an error
   //  * ill-formed flatbuffers
   //  * handlers that return too early
   //  * finishing bidi and unidirectional streams in different orders
