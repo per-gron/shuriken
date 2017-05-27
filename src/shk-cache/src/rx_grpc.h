@@ -385,16 +385,11 @@ class RxGrpcClientInvocation<
      */
     void onError(const std::exception_ptr &error) {
       _error = error;
-      _shutdown();
     }
 
     void operator()(bool success) override {
-      if (_finished) {
-        // Happens if onError was called in the middle of a read operation.
-        _shutdown();
-      } else if (!success) {
+      if (!success || _error) {
         // We have reached the end of the stream.
-        _finished = true;
         if (_error) {
           _subscriber.on_error(_error);
         } else {
@@ -407,7 +402,6 @@ class RxGrpcClientInvocation<
           _subscriber.on_next(std::move(wrapped.first));
           _stream->Read(&_response, this);
         } else {
-          _finished = true;
           _subscriber.on_error(
               std::make_exception_ptr(GrpcError(wrapped.second)));
           _shutdown();
@@ -417,7 +411,8 @@ class RxGrpcClientInvocation<
 
    private:
     std::exception_ptr _error;
-    bool _finished = false;
+    // Should be called when the read stream is finished. Care must be taken so
+    // that this is not called when there is an outstanding async operation.
     std::function<void ()> _shutdown;
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *_stream = nullptr;
     rxcpp::subscriber<TransformedResponseType> _subscriber;
@@ -681,7 +676,8 @@ class RxGrpcServerInvocation<
             _stream.FinishWithError(exceptionToStatus(error), this);
           },
           [this]() {
-            _stream.Finish(Transform::unwrap(_response), grpc::Status::OK, this);
+            _stream.Finish(
+                Transform::unwrap(_response), grpc::Status::OK, this);
           });
     } else {
       // The server has now successfully sent a response. Clean up.
