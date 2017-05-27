@@ -78,6 +78,25 @@ auto sumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
     .map(makeTestResponse);
 }
 
+auto immediatelyFailingSumHandler(
+    rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+  // Hack: unless requests is subscribed to, nothing happens. Would be nice to
+  // fix this.
+  requests.subscribe([](auto) {});
+
+  return rxcpp::observable<>::error<Flatbuffer<TestResponse>>(
+      std::runtime_error("sum_fail"));
+}
+
+auto failingSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+  return sumHandler(requests.map([](Flatbuffer<TestRequest> request) {
+    if (request->data() == -1) {
+      throw std::runtime_error("sum_fail");
+    }
+    return request;
+  }));
+}
+
 auto cumulativeSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   return requests
     .map([](Flatbuffer<TestRequest> request) {
@@ -112,6 +131,12 @@ TEST_CASE("RxGrpc") {
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestSum,
           &sumHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestImmediatelyFailingSum,
+          &immediatelyFailingSumHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestFailingSum,
+          &failingSumHandler)
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestCumulativeSum,
           &cumulativeSumHandler);
@@ -179,7 +204,11 @@ TEST_CASE("RxGrpc") {
 
     SECTION("failed rpc") {
       auto error = run_expect_error(test_client
-          .invoke(&TestService::Stub::AsyncUnaryFail, makeTestRequest(0)));
+          .invoke(&TestService::Stub::AsyncUnaryFail, makeTestRequest(0))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
       CHECK(exceptionMessage(error) == "unary_fail");
     }
 
@@ -417,6 +446,57 @@ TEST_CASE("RxGrpc") {
             CHECK(count == 1);
             return "ignored";
           }));
+    }
+
+    SECTION("no messages then fail") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncImmediatelyFailingSum,
+              rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "sum_fail");
+    }
+
+    SECTION("message then immediately fail") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncImmediatelyFailingSum,
+              rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
+                  makeTestRequest(1337)))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "sum_fail");
+    }
+
+    SECTION("fail on first message") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncFailingSum,
+              rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
+                  makeTestRequest(-1)))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "sum_fail");
+    }
+
+    SECTION("fail on second message") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncFailingSum,
+              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
+                  makeTestRequest(0), makeTestRequest(-1)))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "sum_fail");
     }
 
     SECTION("two calls") {

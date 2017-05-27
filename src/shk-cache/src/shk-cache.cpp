@@ -70,6 +70,7 @@ auto makeConfigGetRequest() {
 int main(int /*argc*/, const char * /*argv*/[]) {
   // TODO(peck): Try to reduce copying of messages
   // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
+  // TODO(peck): Add support for timeouts
   // TODO(peck): Add support for backpressure (streaming output requires only
   //     one outstanding request at a time. Not possible atm.)
   // TODO(peck): Test

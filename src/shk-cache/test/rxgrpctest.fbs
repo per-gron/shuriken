@@ -16,6 +16,8 @@ rpc_service TestService {
   RepeatThenFail(TestRequest): TestResponse (streaming: "server");
 
   Sum(TestRequest): TestResponse (streaming: "client");
+  ImmediatelyFailingSum(TestRequest): TestResponse (streaming: "client");
+  FailingSum(TestRequest): TestResponse (streaming: "client");
 
   CumulativeSum(TestRequest): TestResponse (streaming: "bidi");
 }
