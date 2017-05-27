@@ -286,10 +286,11 @@ class RxGrpcClientInvocation<
           runEnqueuedOperation();
         },
         [this](const std::exception_ptr &error) {
+          // This triggers runEnqueuedOperation to Finish the stream.
           _request_stream_error = error;
+          _enqueued_finish = true;
           _context.TryCancel();
-          _stream->Finish(&_status, this);  // TODO(peck): This has to go via the queue
-          _sent_final_request = true;
+          runEnqueuedOperation();
         },
         [this]() {
           _enqueued_writes_done = true;

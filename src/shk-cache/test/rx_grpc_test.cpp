@@ -127,6 +127,27 @@ TEST_CASE("RxGrpc") {
     runloop.run();
   };
 
+  const auto run_expect_error = [&](const auto &observable) {
+    std::exception_ptr captured_error;
+    observable
+        .subscribe(
+            [](auto) {
+            },
+            [&runloop, &captured_error](std::exception_ptr error) {
+              runloop.shutdown();
+              captured_error = error;
+            },
+            [&runloop]() {
+              CHECK(!"request should fail");
+              runloop.shutdown();
+            });
+
+    runloop.run();
+
+    REQUIRE(captured_error);
+    return captured_error;
+  };
+
   SECTION("no streaming") {
     SECTION("direct") {
       run(test_client
@@ -301,6 +322,15 @@ TEST_CASE("RxGrpc") {
             CHECK(count == 1);
             return "ignored";
           }));
+    }
+
+    SECTION("one error message") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncSum,
+              rxcpp::observable<>::error<Flatbuffer<TestRequest>>(
+                  std::runtime_error("test_error"))));
+      CHECK(exceptionMessage(error) == "test_error");
     }
 
     SECTION("two message") {

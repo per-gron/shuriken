@@ -68,7 +68,6 @@ auto makeConfigGetRequest() {
 }
 
 int main(int /*argc*/, const char * /*argv*/[]) {
-  // TODO(peck): Address TODO about calling Finish at the wrong time.
   // TODO(peck): Try to reduce copying of messages
   // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
   // TODO(peck): Add support for backpressure (streaming output requires only
