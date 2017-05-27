@@ -45,6 +45,11 @@ auto doubleHandler(Flatbuffer<TestRequest> request) {
       makeTestResponse(request->data() * 2));
 }
 
+auto unaryFailHandler(Flatbuffer<TestRequest> request) {
+  return rxcpp::observable<>::error<Flatbuffer<TestResponse>>(
+      std::runtime_error("unary_fail"));
+}
+
 auto repeatHandler(Flatbuffer<TestRequest> request) {
   int count = request->data();
   if (count == 0) {
@@ -89,6 +94,9 @@ TEST_CASE("RxGrpc") {
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestDouble,
           &doubleHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestUnaryFail,
+          &unaryFailHandler)
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeat,
           &repeatHandler)
@@ -148,7 +156,7 @@ TEST_CASE("RxGrpc") {
     return captured_error;
   };
 
-  SECTION("no streaming") {
+  SECTION("unary rpc") {
     SECTION("direct") {
       run(test_client
           .invoke(
@@ -158,6 +166,12 @@ TEST_CASE("RxGrpc") {
                 CHECK(response->data() == 123 * 2);
                 return "ignored";
               }));
+    }
+
+    SECTION("failed rpc") {
+      auto error = run_expect_error(test_client
+          .invoke(&TestService::Stub::AsyncUnaryFail, makeTestRequest(0)));
+      CHECK(exceptionMessage(error) == "unary_fail");
     }
 
     SECTION("delayed") {

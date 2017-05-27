@@ -10,7 +10,11 @@ table TestResponse {
 
 rpc_service TestService {
   Double(TestRequest): TestResponse;
+  UnaryFail(TestRequest): TestResponse;
+
   Repeat(TestRequest): TestResponse (streaming: "server");
+
   Sum(TestRequest): TestResponse (streaming: "client");
+
   CumulativeSum(TestRequest): TestResponse (streaming: "bidi");
 }
