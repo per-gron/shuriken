@@ -78,6 +78,7 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   //  * handlers that return too early
   //  * finishing bidi and unidirectional streams in different orders
   //  * go through the code and look for stuff
+  //  * what happens if writesdone is not called? Does the server stall then?
 
   auto server = makeServer();
   std::thread server_thread([&] { server.run(); });

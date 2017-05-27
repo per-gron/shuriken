@@ -288,8 +288,7 @@ class RxGrpcClientInvocation<
         [this](const std::exception_ptr &error) {
           // This triggers runEnqueuedOperation to Finish the stream.
           _request_stream_error = error;
-          _enqueued_finish = true;
-          _context.TryCancel();
+          _enqueued_writes_done = true;
           runEnqueuedOperation();
         },
         [this]() {
@@ -385,11 +384,8 @@ class RxGrpcClientInvocation<
      * already been closed, this is a no-op.
      */
     void onError(const std::exception_ptr &error) {
-      if (!_finished) {
-        _finished = true;
-        _subscriber.on_error(error);
-        _shutdown();
-      }
+      _error = error;
+      _shutdown();
     }
 
     void operator()(bool success) override {
@@ -399,7 +395,11 @@ class RxGrpcClientInvocation<
       } else if (!success) {
         // We have reached the end of the stream.
         _finished = true;
-        _subscriber.on_completed();
+        if (_error) {
+          _subscriber.on_error(_error);
+        } else {
+          _subscriber.on_completed();
+        }
         _shutdown();
       } else {
         auto wrapped = Transform::wrap(std::move(_response));
@@ -416,6 +416,7 @@ class RxGrpcClientInvocation<
     }
 
    private:
+    std::exception_ptr _error;
     bool _finished = false;
     std::function<void ()> _shutdown;
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *_stream = nullptr;
@@ -473,7 +474,6 @@ class RxGrpcClientInvocation<
         },
         [this](const std::exception_ptr &error) {
           _reader.onError(error);
-          _context.TryCancel();
           _enqueued_writes_done = true;
           runEnqueuedOperation();
         },

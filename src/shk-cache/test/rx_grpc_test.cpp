@@ -324,12 +324,23 @@ TEST_CASE("RxGrpc") {
           }));
     }
 
-    SECTION("one error message") {
+    SECTION("immediately failed stream") {
       auto error = run_expect_error(test_client
           .invoke(
               &TestService::Stub::AsyncSum,
               rxcpp::observable<>::error<Flatbuffer<TestRequest>>(
                   std::runtime_error("test_error"))));
+      CHECK(exceptionMessage(error) == "test_error");
+    }
+
+    SECTION("stream failed after one message") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncSum,
+              rxcpp::observable<>
+                  ::error<Flatbuffer<TestRequest>>(
+                      std::runtime_error("test_error"))
+                  .start_with(makeTestRequest(0))));
       CHECK(exceptionMessage(error) == "test_error");
     }
 
@@ -438,6 +449,15 @@ TEST_CASE("RxGrpc") {
             CHECK(count == 1);
             return "ignored";
           }));
+    }
+
+    SECTION("immediately failed stream") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncCumulativeSum,
+              rxcpp::observable<>::error<Flatbuffer<TestRequest>>(
+                  std::runtime_error("test_error"))));
+      CHECK(exceptionMessage(error) == "test_error");
     }
 
     SECTION("two message") {
