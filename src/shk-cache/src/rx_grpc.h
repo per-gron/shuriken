@@ -681,14 +681,21 @@ class RxGrpcServerInvocation<
 
       values.subscribe(
           [this](TransformedResponse response) {
+            _has_response = true;
             _response = std::move(response);
           },
           [this](const std::exception_ptr &error) {
             _stream.FinishWithError(exceptionToStatus(error), this);
           },
           [this]() {
-            _stream.Finish(
-                Transform::unwrap(_response), grpc::Status::OK, this);
+            if (_has_response) {
+              _stream.Finish(
+                  Transform::unwrap(_response), grpc::Status::OK, this);
+            } else {
+              _stream.FinishWithError(
+                  grpc::Status(grpc::StatusCode::INTERNAL, "No response"),
+                  this);
+            }
           });
     } else {
       // The server has now successfully sent a response. Clean up.
@@ -729,6 +736,7 @@ class RxGrpcServerInvocation<
   grpc::ServerContext _context;
   typename ServerCallTraits::Request _request;
   Stream _stream;
+  bool _has_response = false;
   TransformedResponse _response;
 };
 
@@ -1024,14 +1032,15 @@ class RxGrpcServerInvocation<
     response.subscribe(
         [this](TransformedResponse response) {
           _response = std::move(response);
+          _has_response = true;
         },
         [this](const std::exception_ptr &error) {
           _response_error = error;
-          _has_response = true;
+          _finished = true;
           trySendResponse();
         },
         [this]() {
-          _has_response = true;
+          _finished = true;
           trySendResponse();
         });
 
@@ -1049,12 +1058,20 @@ class RxGrpcServerInvocation<
   }
 
   void trySendResponse() {
-    if (_has_response && _state == State::STREAM_ENDED) {
+    if (_finished && _state == State::STREAM_ENDED) {
       _state = State::SENT_RESPONSE;
-      _reader.Finish(
-          Transform::unwrap(_response),
-          exceptionToStatus(_response_error),
-          this);
+      if (_response_error) {
+        _reader.FinishWithError(exceptionToStatus(_response_error), this);
+      } else if (_has_response) {
+        _reader.Finish(
+            Transform::unwrap(_response),
+            grpc::Status::OK,
+            this);
+      } else {
+        _reader.FinishWithError(
+            grpc::Status(grpc::StatusCode::INTERNAL, "No response"),
+            this);
+      }
     }
   }
 
@@ -1070,8 +1087,10 @@ class RxGrpcServerInvocation<
   grpc::ServerAsyncReader<ResponseType, RequestType> _reader;
 
   TransformedResponse _response;
+  bool _has_response = false;
+
   std::exception_ptr _response_error;
-  bool _has_response;
+  bool _finished = false;
 };
 
 /**
@@ -1328,7 +1347,6 @@ class RxGrpcServerInvocation<
 
   TransformedResponse _response;
   std::exception_ptr _response_error;
-  bool _has_response;
 };
 
 class InvocationRequester {

@@ -50,6 +50,10 @@ auto unaryFailHandler(Flatbuffer<TestRequest> request) {
       std::runtime_error("unary_fail"));
 }
 
+auto unaryNoResponseHandler(Flatbuffer<TestRequest> request) {
+  return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>();
+}
+
 auto repeatHandler(Flatbuffer<TestRequest> request) {
   int count = request->data();
   if (count == 0) {
@@ -95,6 +99,15 @@ auto failingSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
     }
     return request;
   }));
+}
+
+auto clientStreamNoResponseHandler(
+    rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+  // Hack: unless requests is subscribed to, nothing happens. Would be nice to
+  // fix this.
+  requests.subscribe([](auto) {});
+
+  return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>();
 }
 
 auto cumulativeSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
@@ -143,6 +156,9 @@ TEST_CASE("RxGrpc") {
           &TestService::AsyncService::RequestUnaryFail,
           &unaryFailHandler)
       .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestUnaryNoResponse,
+          &unaryNoResponseHandler)
+      .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeat,
           &repeatHandler)
       .registerMethod<FlatbufferRefTransform>(
@@ -157,6 +173,9 @@ TEST_CASE("RxGrpc") {
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestFailingSum,
           &failingSumHandler)
+      .registerMethod<FlatbufferRefTransform>(
+          &TestService::AsyncService::RequestClientStreamNoResponse,
+          &clientStreamNoResponseHandler)
       .registerMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestCumulativeSum,
           &cumulativeSumHandler)
@@ -236,6 +255,16 @@ TEST_CASE("RxGrpc") {
             return "unused";
           }));
       CHECK(exceptionMessage(error) == "unary_fail");
+    }
+
+    SECTION("failed rpc because of no response") {
+      auto error = run_expect_error(test_client
+          .invoke(&TestService::Stub::AsyncUnaryNoResponse, makeTestRequest(0))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "No response");
     }
 
     SECTION("delayed") {
@@ -523,6 +552,19 @@ TEST_CASE("RxGrpc") {
             return "unused";
           }));
       CHECK(exceptionMessage(error) == "sum_fail");
+    }
+
+    SECTION("fail because of no response") {
+      auto error = run_expect_error(test_client
+          .invoke(
+              &TestService::Stub::AsyncClientStreamNoResponse,
+              rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
+                  makeTestRequest(0)))
+          .map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not happen");
+            return "unused";
+          }));
+      CHECK(exceptionMessage(error) == "No response");
     }
 
     SECTION("two calls") {
