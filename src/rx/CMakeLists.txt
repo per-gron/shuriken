@@ -1,4 +1,6 @@
 add_library(rx
+  include/rx/empty.h
+  include/rx/just.h
   include/rx/publisher.h
   include/rx/subscriber.h
   include/rx/subscription.h

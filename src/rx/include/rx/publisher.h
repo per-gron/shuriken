@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <type_traits>
 
 #include <rx/subscriber.h>
@@ -44,62 +45,41 @@ template <typename ...Ts>
 class Publisher : public PublisherBase {
  public:
   template <typename PublisherType>
-  Publisher(PublisherType &&publisher);
+  Publisher(PublisherType &&publisher)
+      : eraser_(std::make_unique<PublisherEraser<PublisherType>>(
+            std::forward<PublisherType>(publisher))) {}
 
-  /**
-   * Callback should be a functor that takes a Subscriber by rvalue reference
-   * and returns a Subscription.
-   */
-  template <typename Callback>
-  Subscription operator()(const Callback &callback);
+  template <typename SubscriberType>
+  Subscription operator()(SubscriberType &&subscriber) {
+    static_assert(
+        IsSubscriber<SubscriberType>,
+        "Publisher was invoked with a non-subscriber parameter");
+    return (*eraser_)(Subscriber<Ts...>(std::move(subscriber)));
+  }
+
+ private:
+  class Eraser {
+   public:
+    virtual ~Eraser() = default;
+
+    virtual Subscription operator()(Subscriber<Ts...> &&subscriber) = 0;
+  };
+
+  template <typename PublisherType>
+  class PublisherEraser : public Eraser {
+   public:
+    PublisherEraser(PublisherType &&publisher)
+        : publisher_(std::move(publisher)) {}
+
+    Subscription operator()(Subscriber<Ts...> &&subscriber) override {
+      return publisher_(std::move(subscriber));
+    }
+
+   private:
+    PublisherType publisher_;
+  };
+
+  std::unique_ptr<Eraser> eraser_;
 };
-
-auto Empty() {
-  return [](auto subscriber) {
-    subscriber.OnComplete();
-    return MakeSubscription();
-  };
-}
-
-template <typename T>
-auto Just(T &&t) {
-  return [t = std::forward<T>(t)](auto subscriber) {
-    return MakeSubscription(
-        [
-            t,
-            subscriber = std::move(subscriber),
-            sent = false](size_t count) mutable {
-          if (!sent && count != 0) {
-            sent = true;
-            subscriber.OnNext(std::move(t));
-            subscriber.OnComplete();
-          }
-        });
-  };
-}
-
-#if 0
-template <typename Source>
-auto Count(const Source &source) {
-  return [source](auto subscriber) {
-    return MakeSubscription(
-        [
-            source,
-            subscriber = std::move(subscriber),
-            sent = false](size_t count) mutable {
-          if (!sent && count != 0) {
-            sent = true;
-
-            auto subscription = source(
-                MakeSubscriber(
-                    [](auto &&next) { count++; },
-                    [](std::exception_ptr &&error) { fail },
-                    []() { complete }));
-            subscription.Request(Subscription::kAll);
-          }
-        });
-  };
-}
-#endif
 
 }  // namespace shk
