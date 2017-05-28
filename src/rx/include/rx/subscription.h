@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <limits>
 #include <memory>
 #include <type_traits>
 
@@ -53,6 +54,8 @@ constexpr bool IsSubscription = std::is_base_of<SubscriptionBase, T>::value;
  */
 class Subscription : public SubscriptionBase {
  public:
+  static constexpr size_t kAll = std::numeric_limits<size_t>::max();
+
   /**
    * S should have a Cancel and a Request method on it.
    */
