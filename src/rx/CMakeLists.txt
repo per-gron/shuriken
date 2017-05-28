@@ -11,6 +11,7 @@ set_property(TARGET rx PROPERTY CXX_STANDARD 14)
 
 add_executable(rx-test
   test/empty_test.cpp
+  test/just_test.cpp
   test/main.cpp
   test/publisher_test.cpp)
 set_property(TARGET rx-test PROPERTY CXX_STANDARD 14)
