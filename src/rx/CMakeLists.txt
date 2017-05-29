@@ -1,6 +1,7 @@
 add_library(rx
   include/rx/empty.h
   include/rx/error.h
+  include/rx/iterate.h
   include/rx/just.h
   include/rx/publisher.h
   include/rx/subscriber.h
@@ -13,6 +14,7 @@ set_property(TARGET rx PROPERTY CXX_STANDARD 14)
 add_executable(rx-test
   test/empty_test.cpp
   test/error_test.cpp
+  test/iterate_test.cpp
   test/just_test.cpp
   test/main.cpp
   test/publisher_test.cpp)
