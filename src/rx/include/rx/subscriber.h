@@ -87,6 +87,29 @@ class ConcreteSubscriber : public SubscriberBase {
   OnCompleteCb on_complete_;
 };
 
+template <typename SubscriberType>
+class SharedPtrSubscriber : public SubscriberBase {
+ public:
+  SharedPtrSubscriber(std::shared_ptr<SubscriberType> subscriber)
+      : subscriber_(subscriber) {}
+
+  template <typename T>
+  void OnNext(T &&t) {
+    subscriber_->OnNext(std::forward<T>(t));
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    subscriber_->OnError(std::move(error));
+  }
+
+  void OnComplete() {
+    subscriber_->OnComplete();
+  }
+
+ private:
+  std::shared_ptr<SubscriberType> subscriber_;
+};
+
 }  // namespace detail
 
 /**
@@ -186,6 +209,15 @@ auto MakeSubscriber(
       std::forward<OnNextCb>(on_next),
       std::forward<OnErrorCb>(on_error),
       std::forward<OnCompleteCb>(on_complete));
+}
+
+template <typename SubscriberType>
+auto MakeSubscriber(const std::shared_ptr<SubscriberType> &subscriber) {
+  static_assert(
+      IsSubscriber<SubscriberType>,
+      "MakeSubscriber must be called with a Subscriber");
+
+  return detail::SharedPtrSubscriber<SubscriberType>(subscriber);
 }
 
 }  // namespace shk

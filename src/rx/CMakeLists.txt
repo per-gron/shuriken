@@ -4,6 +4,7 @@ add_library(rx
   include/rx/iterate.h
   include/rx/just.h
   include/rx/publisher.h
+  include/rx/reduce.h
   include/rx/subscriber.h
   include/rx/subscription.h
   src/subscription.cpp)
@@ -17,7 +18,8 @@ add_executable(rx-test
   test/iterate_test.cpp
   test/just_test.cpp
   test/main.cpp
-  test/publisher_test.cpp)
+  test/publisher_test.cpp
+  test/reduce_test.cpp)
 set_property(TARGET rx-test PROPERTY CXX_STANDARD 14)
 target_link_libraries(rx-test rx catch)
 set_target_properties(rx-test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})

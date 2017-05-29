@@ -18,7 +18,7 @@
 
 namespace shk {
 
-auto Empty() {
+inline auto Empty() {
   return [](auto subscriber) {
     subscriber.OnComplete();
     return MakeSubscription();
