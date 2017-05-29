@@ -5,6 +5,7 @@ add_library(rs
   include/rs/iterate.h
   include/rs/just.h
   include/rs/map.h
+  include/rs/never.h
   include/rs/publisher.h
   include/rs/reduce.h
   include/rs/subscriber.h
@@ -23,6 +24,7 @@ add_executable(rs-test
   test/just_test.cpp
   test/main.cpp
   test/map_test.cpp
+  test/never_test.cpp
   test/publisher_test.cpp
   test/reduce_test.cpp
   test/sum_test.cpp
