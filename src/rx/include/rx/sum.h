@@ -12,31 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <catch.hpp>
+#pragma once
 
-#include <vector>
-
-#include <rx/count.h>
-#include <rx/iterate.h>
-
-#include "get.h"
+#include <rx/reduce.h>
 
 namespace shk {
 
-TEST_CASE("Count") {
-  auto count = Count();
-
-  SECTION("empty") {
-    CHECK(get<int>(count(Iterate(std::vector<int>{}))) == 0);
-  }
-
-  SECTION("one value") {
-    CHECK(get<int>(count(Iterate(std::vector<int>{ 1 }))) == 1);
-  }
-
-  SECTION("two values") {
-    CHECK(get<int>(count(Iterate(std::vector<int>{ 1, 2 }))) == 2);
-  }
+template <typename SumType = int>
+auto Sum() {
+  return Reduce(SumType(0), [](SumType accum, auto &&value) {
+    return accum + value;
+  });
 }
 
 }  // namespace shk
