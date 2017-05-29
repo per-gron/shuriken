@@ -12,13 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <catch.hpp>
-
-#include <rx/publisher.h>
+#include <rs/subscription.h>
 
 namespace shk {
+namespace detail {
 
-TEST_CASE("Publisher") {
+void EmptySubscription::Request(size_t count) {}
+
+}  // namespace detail
+
+Subscription::Eraser::~Eraser() {}
+
+void Subscription::Request(size_t count) {
+  eraser_->Request(count);
+}
+
+detail::EmptySubscription MakeSubscription() {
+  return detail::EmptySubscription();
 }
 
 }  // namespace shk

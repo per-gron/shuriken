@@ -14,14 +14,14 @@
 
 #pragma once
 
-#include <rx/reduce.h>
+#include <rs/reduce.h>
 
 namespace shk {
 
-template <typename SumType = int>
-auto Sum() {
-  return Reduce(SumType(0), [](SumType accum, auto &&value) {
-    return accum + value;
+template <typename CountType = int>
+auto Count() {
+  return Reduce(CountType(0), [](CountType accum, auto &&value) {
+    return accum + 1;
   });
 }
 

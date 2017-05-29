@@ -12,27 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include <catch.hpp>
 
-#include <rx/subscription.h>
+#include <vector>
+
+#include <rs/count.h>
+#include <rs/iterate.h>
+
+#include "test_util.h"
 
 namespace shk {
 
-template <typename T>
-auto Just(T &&t) {
-  return [t = std::forward<T>(t)](auto &&subscriber) {
-    return MakeSubscription(
-        [
-            t,
-            subscriber = std::forward<decltype(subscriber)>(subscriber),
-            sent = false](size_t count) mutable {
-          if (!sent && count != 0) {
-            sent = true;
-            subscriber.OnNext(std::move(t));
-            subscriber.OnComplete();
-          }
-        });
-  };
+TEST_CASE("Count") {
+  auto count = Count();
+
+  SECTION("empty") {
+    CHECK(GetOne<int>(count(Iterate(std::vector<int>{}))) == 0);
+  }
+
+  SECTION("one value") {
+    CHECK(GetOne<int>(count(Iterate(std::vector<int>{ 1 }))) == 1);
+  }
+
+  SECTION("two values") {
+    CHECK(GetOne<int>(count(Iterate(std::vector<int>{ 1, 2 }))) == 2);
+  }
 }
 
 }  // namespace shk

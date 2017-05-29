@@ -14,8 +14,8 @@
 
 #include <catch.hpp>
 
-#include <rx/just.h>
-#include <rx/subscriber.h>
+#include <rs/just.h>
+#include <rs/subscriber.h>
 
 namespace shk {
 

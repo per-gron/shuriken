@@ -14,8 +14,8 @@
 
 #include <vector>
 
-#include <rx/subscriber.h>
-#include <rx/subscription.h>
+#include <rs/subscriber.h>
+#include <rs/subscription.h>
 
 namespace shk {
 

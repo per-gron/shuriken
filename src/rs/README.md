@@ -1,6 +1,6 @@
-# `rx`
+# `rs`
 
-`rx` is a Reactive Streams-compatible library that offers types for reactive
+`rs` is a Reactive Streams-compatible library that offers types for reactive
 streams along with reactive extensions operators on them.
 
 * It is written using C++14 (and uses generic lambdas extensively, so it
@@ -15,7 +15,7 @@ streams along with reactive extensions operators on them.
 ## Threading model
 
 Unlike most other Rx libraries (and future/promise libraries too, for that
-matter), `rx` does not do anything at all about threads or concurrency. The only
+matter), `rs` does not do anything at all about threads or concurrency. The only
 thread safety guarantee that the library offers is that separate objects can be
 used concurrently on separate threads (because it has no global mutable state).
 

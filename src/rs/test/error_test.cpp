@@ -14,8 +14,8 @@
 
 #include <catch.hpp>
 
-#include <rx/error.h>
-#include <rx/subscriber.h>
+#include <rs/error.h>
+#include <rs/subscriber.h>
 
 namespace shk {
 

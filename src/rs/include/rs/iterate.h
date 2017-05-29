@@ -16,7 +16,7 @@
 
 #include <type_traits>
 
-#include <rx/subscription.h>
+#include <rs/subscription.h>
 
 namespace shk {
 

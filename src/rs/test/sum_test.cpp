@@ -14,35 +14,28 @@
 
 #include <catch.hpp>
 
-#include <rx/empty.h>
-#include <rx/subscriber.h>
+#include <vector>
+
+#include <rs/sum.h>
+#include <rs/iterate.h>
+
+#include "test_util.h"
 
 namespace shk {
 
-TEST_CASE("Empty") {
-  SECTION("construct") {
-    auto empty = Empty();
+TEST_CASE("Sum") {
+  auto sum = Sum();
+
+  SECTION("empty") {
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{}))) == 0);
   }
 
-  SECTION("subscribe") {
-    auto empty = Empty();
+  SECTION("one value") {
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10 }))) == 10);
+  }
 
-    bool complete = false;
-    {
-      auto subscription = empty(MakeSubscriber(
-          [](int next) { CHECK(!"should not happen"); },
-          [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
-          [&complete] { complete = true; }));
-      CHECK(complete);
-
-      complete = false;
-      subscription.Request(0);
-      subscription.Request(1);
-      subscription.Request(Subscription::kAll);
-      CHECK(!complete);
-    }  // Destroy subscription
-
-    CHECK(!complete);
+  SECTION("two values") {
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10, 2 }))) == 12);
   }
 }
 

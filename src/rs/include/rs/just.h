@@ -14,15 +14,25 @@
 
 #pragma once
 
-#include <rx/reduce.h>
+#include <rs/subscription.h>
 
 namespace shk {
 
-template <typename CountType = int>
-auto Count() {
-  return Reduce(CountType(0), [](CountType accum, auto &&value) {
-    return accum + 1;
-  });
+template <typename T>
+auto Just(T &&t) {
+  return [t = std::forward<T>(t)](auto &&subscriber) {
+    return MakeSubscription(
+        [
+            t,
+            subscriber = std::forward<decltype(subscriber)>(subscriber),
+            sent = false](size_t count) mutable {
+          if (!sent && count != 0) {
+            sent = true;
+            subscriber.OnNext(std::move(t));
+            subscriber.OnComplete();
+          }
+        });
+  };
 }
 
 }  // namespace shk

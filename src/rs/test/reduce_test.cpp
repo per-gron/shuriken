@@ -16,26 +16,41 @@
 
 #include <vector>
 
-#include <rx/sum.h>
-#include <rx/iterate.h>
+#include <rs/empty.h>
+#include <rs/iterate.h>
+#include <rs/just.h>
+#include <rs/reduce.h>
+#include <rs/subscriber.h>
 
 #include "test_util.h"
 
 namespace shk {
 
-TEST_CASE("Sum") {
-  auto sum = Sum();
+TEST_CASE("Reduce") {
+  auto sum = Reduce(100, [](int a, int v) { return a + v; });
 
   SECTION("empty") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{}))) == 0);
+    CHECK(GetOne<int>(sum(Empty())) == 100);
   }
 
   SECTION("one value") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10 }))) == 10);
+    CHECK(GetOne<int>(sum(Just(1))) == 101);
   }
 
   SECTION("two values") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10, 2 }))) == 12);
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 }))) == 103);
+  }
+
+  SECTION("request zero") {
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 0) == 0);
+  }
+
+  SECTION("request one") {
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 1) == 103);
+  }
+
+  SECTION("request two") {
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 2) == 103);
   }
 }
 

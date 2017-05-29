@@ -17,8 +17,8 @@
 #include <memory>
 #include <type_traits>
 
-#include <rx/subscriber.h>
-#include <rx/subscription.h>
+#include <rs/subscriber.h>
+#include <rs/subscription.h>
 
 namespace shk {
 

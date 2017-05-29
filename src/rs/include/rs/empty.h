@@ -12,23 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <rx/subscription.h>
+#pragma once
+
+#include <rs/subscription.h>
 
 namespace shk {
-namespace detail {
 
-void EmptySubscription::Request(size_t count) {}
-
-}  // namespace detail
-
-Subscription::Eraser::~Eraser() {}
-
-void Subscription::Request(size_t count) {
-  eraser_->Request(count);
-}
-
-detail::EmptySubscription MakeSubscription() {
-  return detail::EmptySubscription();
+inline auto Empty() {
+  return [](auto subscriber) {
+    subscriber.OnComplete();
+    return MakeSubscription();
+  };
 }
 
 }  // namespace shk

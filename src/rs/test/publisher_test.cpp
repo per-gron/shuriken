@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include <catch.hpp>
 
-#include <rx/subscription.h>
+#include <rs/publisher.h>
 
 namespace shk {
 
-inline auto Empty() {
-  return [](auto subscriber) {
-    subscriber.OnComplete();
-    return MakeSubscription();
-  };
+TEST_CASE("Publisher") {
 }
 
 }  // namespace shk

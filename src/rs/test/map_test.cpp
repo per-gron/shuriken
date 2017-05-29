@@ -17,8 +17,8 @@
 #include <string>
 #include <vector>
 
-#include <rx/iterate.h>
-#include <rx/map.h>
+#include <rs/iterate.h>
+#include <rs/map.h>
 
 #include "test_util.h"
 

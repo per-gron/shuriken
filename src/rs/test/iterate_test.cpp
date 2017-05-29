@@ -16,8 +16,8 @@
 
 #include <vector>
 
-#include <rx/iterate.h>
-#include <rx/subscriber.h>
+#include <rs/iterate.h>
+#include <rs/subscriber.h>
 
 namespace shk {
 
