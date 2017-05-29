@@ -1,4 +1,5 @@
 add_library(rx
+  include/rx/count.h
   include/rx/empty.h
   include/rx/error.h
   include/rx/iterate.h
@@ -13,6 +14,7 @@ set_target_properties(rx PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_property(TARGET rx PROPERTY CXX_STANDARD 14)
 
 add_executable(rx-test
+  test/count_test.cpp
   test/empty_test.cpp
   test/error_test.cpp
   test/iterate_test.cpp
