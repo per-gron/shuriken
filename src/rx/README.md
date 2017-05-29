@@ -8,6 +8,9 @@ streams along with reactive extensions operators on them.
 * Like all Reactive Streams based libraries, it offers mandatory back-pressure
   support (RxCpp does not do this).
 * It has a trivial threading model: Nothing in this library is thread safe.
+* It attempts to be small, to avoid excessive compile times.
+* It does not have the concept of a Scheduler, or time. The author of this
+  library believes that such concepts belong in a runloop.
 
 ## Threading model
 
