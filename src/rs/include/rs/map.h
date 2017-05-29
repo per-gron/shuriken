@@ -31,18 +31,39 @@ class MapSubscriber : public SubscriberBase {
 
   template <typename T>
   void OnNext(T &&t) {
-    inner_subscriber_.OnNext(mapper_(std::forward<T>(t)));
+    if (failed_) {
+      return;
+    }
+
+    bool mapper_succeeded = false;
+    try {
+      auto value = mapper_(std::forward<T>(t));
+      mapper_succeeded = true;
+      inner_subscriber_.OnNext(std::move(value));
+    } catch (...) {
+      if (mapper_succeeded) {
+        throw;
+      } else {
+        failed_ = true;
+        inner_subscriber_.OnError(std::current_exception());
+      }
+    }
   }
 
   void OnError(std::exception_ptr &&error) {
-    inner_subscriber_.OnError(std::move(error));
+    if (!failed_) {
+      inner_subscriber_.OnError(std::move(error));
+    }
   }
 
   void OnComplete() {
-    inner_subscriber_.OnComplete();
+    if (!failed_) {
+      inner_subscriber_.OnComplete();
+    }
   }
 
  private:
+  bool failed_ = false;
   InnerSubscriberType inner_subscriber_;
   Mapper mapper_;
 };

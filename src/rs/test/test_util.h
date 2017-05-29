@@ -68,4 +68,27 @@ std::vector<T> GetAll(
   return result;
 }
 
+template <typename Publisher>
+std::exception_ptr GetError(
+    const Publisher &stream,
+    size_t request_count = Subscription::kAll) {
+  std::exception_ptr received_error;
+
+  auto sub = stream(MakeSubscriber(
+      [&received_error](int next) {
+        CHECK(!received_error);
+      },
+      [&received_error](std::exception_ptr &&error) {
+        CHECK(!received_error);
+        received_error = error;
+      },
+      [] { CHECK(!"should not happen"); }));
+  sub.Request(request_count);
+  CHECK(received_error);
+  return received_error ?
+      received_error :
+      std::make_exception_ptr(
+          std::logic_error("[no error when one was expected]"));
+}
+
 }  // namespace shk

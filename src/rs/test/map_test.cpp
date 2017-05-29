@@ -69,6 +69,72 @@ TEST_CASE("Map") {
             add_self(Iterate(std::vector<int>{ 1, 6 })), 2) ==
         (std::vector<int>{ 2, 12 }));
   }
+
+  SECTION("exceptions") {
+    auto fail_on = [](int error_val) {
+      return Map([error_val](int x) {
+        if (x == error_val) {
+          throw std::runtime_error("fail_on");
+        } else {
+          return x;
+        }
+      });
+    };
+
+    SECTION("empty") {
+      CHECK(
+          GetAll<int>(fail_on(0)(Iterate(std::vector<int>{}))) ==
+          (std::vector<int>{}));
+    }
+
+    SECTION("error on first") {
+      auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 0 })));
+      try {
+        std::rethrow_exception(error);
+      } catch (const std::runtime_error &error) {
+        CHECK(std::string(error.what()) == "fail_on");
+      }
+    }
+
+    SECTION("error on second") {
+      auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 1, 0 })));
+      try {
+        std::rethrow_exception(error);
+      } catch (const std::runtime_error &error) {
+        CHECK(std::string(error.what()) == "fail_on");
+      }
+    }
+
+    SECTION("error on first and second") {
+      auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 0, 0 })));
+      try {
+        std::rethrow_exception(error);
+      } catch (const std::runtime_error &error) {
+        CHECK(std::string(error.what()) == "fail_on");
+      }
+    }
+
+    SECTION("source emits value that fails and then fails itself") {
+      auto zero_then_fail = fail_on(1)(Iterate(std::vector<int>{ 0, 1 }));
+
+      // Should only fail once. GetError checks that
+      auto error = GetError(fail_on(0)(zero_then_fail));
+      try {
+        std::rethrow_exception(error);
+      } catch (const std::runtime_error &error) {
+        CHECK(std::string(error.what()) == "fail_on");
+      }
+    }
+
+    SECTION("error on second only one requested") {
+      CHECK(
+          GetAll<int>(
+              fail_on(0)(Iterate(std::vector<int>{ 1, 0 })),
+              1,
+              false) ==
+          (std::vector<int>{ 1 }));
+    }
+  }
 }
 
 }  // namespace shk
