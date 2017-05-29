@@ -86,7 +86,6 @@ auto Reduce(Accumulator &&initial, Reducer &&reducer) {
       auto sub = source(MakeSubscriber(stream_reducer));
 
       return MakeSubscription(
-          [] { /* cancel */ },
           [stream_reducer, sub = std::move(sub)](size_t count) mutable {
             if (count > 0) {
               sub.Request(Subscription::kAll);

@@ -24,9 +24,8 @@ namespace shk {
  * Classes that conform to the Subscription concept should inherit from this
  * class to signify that they are a Subscription.
  *
- * Subscription types must have the following methods:
+ * Subscription types must have the following method:
  *
- * * void Cancel();
  * * void Request(size_t count);
  *
  * Destroying a Subscription object implicitly cancels the subscription.
@@ -40,7 +39,6 @@ namespace detail {
 
 class EmptySubscription : public SubscriptionBase {
  public:
-  void Cancel();
   void Request(size_t count);
 };
 
@@ -57,7 +55,7 @@ class Subscription : public SubscriptionBase {
   static constexpr size_t kAll = std::numeric_limits<size_t>::max();
 
   /**
-   * S should have a Cancel and a Request method on it.
+   * S should implement the Subscription concept.
    */
   template <typename S>
   explicit Subscription(
@@ -67,14 +65,12 @@ class Subscription : public SubscriptionBase {
   Subscription(const Subscription &) = delete;
   Subscription &operator=(const Subscription &) = delete;
 
-  void Cancel();
   void Request(size_t count);
 
  private:
   class Eraser {
    public:
     virtual ~Eraser();
-    virtual void Cancel() = 0;
     virtual void Request(size_t count) = 0;
   };
 
@@ -83,10 +79,6 @@ class Subscription : public SubscriptionBase {
    public:
     SubscriptionEraser(S &&subscription)
         : subscription_(std::move(subscription)) {}
-
-    void Cancel() override {
-      subscription_.Cancel();
-    }
 
     void Request(size_t count) override {
       subscription_.Request(count);
@@ -108,9 +100,6 @@ auto MakeSubscription(RequestCb &&request) {
     RequestSubscription(RequestCb &&request)
         : request_(std::forward<RequestCb>(request)) {}
 
-    void Cancel() {
-    }
-
     void Request(size_t count) {
       request_(count);
     }
@@ -120,32 +109,6 @@ auto MakeSubscription(RequestCb &&request) {
   };
 
   return RequestSubscription(std::forward<RequestCb>(request));
-}
-
-template <typename CancelCb, typename RequestCb>
-auto MakeSubscription(CancelCb &&cancel, RequestCb &&request) {
-  class CancelRequestSubscription : public SubscriptionBase {
-   public:
-    CancelRequestSubscription(CancelCb &&cancel, RequestCb &&request)
-        : cancel_(std::forward<CancelCb>(cancel)),
-          request_(std::forward<RequestCb>(request)) {}
-
-    void Cancel() {
-      cancel_();
-    }
-
-    void Request(size_t count) {
-      request_(count);
-    }
-
-   private:
-    CancelCb cancel_;
-    RequestCb request_;
-  };
-
-  return CancelRequestSubscription(
-      std::forward<CancelCb>(cancel),
-      std::forward<RequestCb>(request));
 }
 
 }  // namespace shk

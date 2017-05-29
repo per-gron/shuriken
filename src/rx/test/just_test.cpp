@@ -47,12 +47,6 @@ TEST_CASE("Just") {
     stream(inert_subscriber());
   }
 
-  SECTION("cancel") {
-    auto stream = Just(1);
-    auto sub = stream(inert_subscriber());
-    sub.Cancel();  // It's a no-op
-  }
-
   SECTION("request 0") {
     auto stream = Just(1);
     auto sub = stream(inert_subscriber());

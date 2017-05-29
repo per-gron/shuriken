@@ -28,19 +28,20 @@ TEST_CASE("Empty") {
     auto empty = Empty();
 
     bool complete = false;
-    auto subscription = empty(MakeSubscriber(
-        [](int next) { CHECK(!"should not happen"); },
-        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
-        [&complete] { complete = true; }));
-    CHECK(complete);
+    {
+      auto subscription = empty(MakeSubscriber(
+          [](int next) { CHECK(!"should not happen"); },
+          [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+          [&complete] { complete = true; }));
+      CHECK(complete);
 
-    complete = false;
-    subscription.Request(0);
-    subscription.Request(1);
-    subscription.Request(Subscription::kAll);
-    CHECK(!complete);
+      complete = false;
+      subscription.Request(0);
+      subscription.Request(1);
+      subscription.Request(Subscription::kAll);
+      CHECK(!complete);
+    }  // Destroy subscription
 
-    subscription.Cancel();
     CHECK(!complete);
   }
 }

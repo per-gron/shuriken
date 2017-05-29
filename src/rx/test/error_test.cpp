@@ -30,21 +30,22 @@ TEST_CASE("Error") {
     auto stream = Error(error);
 
     std::exception_ptr received_error;
-    auto subscription = stream(MakeSubscriber(
-        [](int next) { CHECK(!"should not happen"); },
-        [&received_error](std::exception_ptr &&error) {
-          received_error = error;
-        },
-        [] { CHECK(!"should not happen"); }));
-    CHECK(received_error);
+    {
+      auto subscription = stream(MakeSubscriber(
+          [](int next) { CHECK(!"should not happen"); },
+          [&received_error](std::exception_ptr &&error) {
+            received_error = error;
+          },
+          [] { CHECK(!"should not happen"); }));
+      CHECK(received_error);
 
-    received_error = std::exception_ptr();
-    subscription.Request(0);
-    subscription.Request(1);
-    subscription.Request(Subscription::kAll);
-    CHECK(!received_error);
+      received_error = std::exception_ptr();
+      subscription.Request(0);
+      subscription.Request(1);
+      subscription.Request(Subscription::kAll);
+      CHECK(!received_error);
+    }  // Destroy subscription
 
-    subscription.Cancel();
     CHECK(!received_error);
   }
 }

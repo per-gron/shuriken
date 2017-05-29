@@ -17,17 +17,11 @@
 namespace shk {
 namespace detail {
 
-void EmptySubscription::Cancel() {}
-
 void EmptySubscription::Request(size_t count) {}
 
 }  // namespace detail
 
 Subscription::Eraser::~Eraser() {}
-
-void Subscription::Cancel() {
-  eraser_->Cancel();
-}
 
 void Subscription::Request(size_t count) {
   eraser_->Request(count);
