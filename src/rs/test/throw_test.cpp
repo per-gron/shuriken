@@ -14,20 +14,20 @@
 
 #include <catch.hpp>
 
-#include <rs/error.h>
+#include <rs/throw.h>
 #include <rs/subscriber.h>
 
 namespace shk {
 
-TEST_CASE("Error") {
+TEST_CASE("Throw") {
   auto error = std::make_exception_ptr(std::runtime_error("test"));
 
   SECTION("construct") {
-    auto stream = Error(error);
+    auto stream = Throw(error);
   }
 
   SECTION("subscribe") {
-    auto stream = Error(error);
+    auto stream = Throw(error);
 
     std::exception_ptr received_error;
     {
