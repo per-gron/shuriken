@@ -82,7 +82,9 @@ auto Reduce(Accumulator &&initial, Reducer &&reducer) {
               Accumulator,
               typename std::decay<decltype(subscriber)>::type,
               Reducer>>(
-                  initial, std::move(subscriber), reducer);
+                  initial,
+                  std::forward<decltype(subscriber)>(subscriber),
+                  reducer);
       auto sub = source(MakeSubscriber(stream_reducer));
 
       return MakeSubscription(

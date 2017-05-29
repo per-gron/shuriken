@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <vector>
+
 #include <rx/subscriber.h>
 #include <rx/subscription.h>
 
 namespace shk {
 
 template <typename T, typename Publisher>
-T get(const Publisher &publisher, size_t request_count = Subscription::kAll) {
+T GetOne(
+    const Publisher &publisher,
+    size_t request_count = Subscription::kAll) {
   bool has_value = false;
   bool is_done = false;
   T result{};
@@ -39,6 +43,28 @@ T get(const Publisher &publisher, size_t request_count = Subscription::kAll) {
   CHECK(!is_done);
   sub.Request(request_count);
   CHECK(is_done == (request_count != 0));
+  return result;
+}
+
+template <typename T, typename Publisher>
+std::vector<T> GetAll(
+    const Publisher &publisher,
+    size_t request_count = Subscription::kAll,
+    bool expect_done = true) {
+  std::vector<T> result;
+  bool is_done = false;
+  auto sub = publisher(MakeSubscriber(
+      [&result](T &&val) {
+        result.emplace_back(std::move(val));
+      },
+      [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+      [&is_done] {
+        CHECK(!is_done);
+        is_done = true;
+      }));
+  sub.Request(request_count);
+  CHECK(is_done == expect_done);
+
   return result;
 }
 

@@ -19,7 +19,7 @@
 #include <rx/count.h>
 #include <rx/iterate.h>
 
-#include "get.h"
+#include "test_util.h"
 
 namespace shk {
 
@@ -27,15 +27,15 @@ TEST_CASE("Count") {
   auto count = Count();
 
   SECTION("empty") {
-    CHECK(get<int>(count(Iterate(std::vector<int>{}))) == 0);
+    CHECK(GetOne<int>(count(Iterate(std::vector<int>{}))) == 0);
   }
 
   SECTION("one value") {
-    CHECK(get<int>(count(Iterate(std::vector<int>{ 1 }))) == 1);
+    CHECK(GetOne<int>(count(Iterate(std::vector<int>{ 1 }))) == 1);
   }
 
   SECTION("two values") {
-    CHECK(get<int>(count(Iterate(std::vector<int>{ 1, 2 }))) == 2);
+    CHECK(GetOne<int>(count(Iterate(std::vector<int>{ 1, 2 }))) == 2);
   }
 }
 

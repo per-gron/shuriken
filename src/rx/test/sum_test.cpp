@@ -19,7 +19,7 @@
 #include <rx/sum.h>
 #include <rx/iterate.h>
 
-#include "get.h"
+#include "test_util.h"
 
 namespace shk {
 
@@ -27,15 +27,15 @@ TEST_CASE("Sum") {
   auto sum = Sum();
 
   SECTION("empty") {
-    CHECK(get<int>(sum(Iterate(std::vector<int>{}))) == 0);
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{}))) == 0);
   }
 
   SECTION("one value") {
-    CHECK(get<int>(sum(Iterate(std::vector<int>{ 10 }))) == 10);
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10 }))) == 10);
   }
 
   SECTION("two values") {
-    CHECK(get<int>(sum(Iterate(std::vector<int>{ 10, 2 }))) == 12);
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10, 2 }))) == 12);
   }
 }
 

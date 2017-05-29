@@ -22,7 +22,7 @@
 #include <rx/reduce.h>
 #include <rx/subscriber.h>
 
-#include "get.h"
+#include "test_util.h"
 
 namespace shk {
 
@@ -30,27 +30,27 @@ TEST_CASE("Reduce") {
   auto sum = Reduce(100, [](int a, int v) { return a + v; });
 
   SECTION("empty") {
-    CHECK(get<int>(sum(Empty())) == 100);
+    CHECK(GetOne<int>(sum(Empty())) == 100);
   }
 
   SECTION("one value") {
-    CHECK(get<int>(sum(Just(1))) == 101);
+    CHECK(GetOne<int>(sum(Just(1))) == 101);
   }
 
   SECTION("two values") {
-    CHECK(get<int>(sum(Iterate(std::vector<int>{ 1, 2 }))) == 103);
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 }))) == 103);
   }
 
   SECTION("request zero") {
-    CHECK(get<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 0) == 0);
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 0) == 0);
   }
 
   SECTION("request one") {
-    CHECK(get<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 1) == 103);
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 1) == 103);
   }
 
   SECTION("request two") {
-    CHECK(get<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 2) == 103);
+    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 2) == 103);
   }
 }
 

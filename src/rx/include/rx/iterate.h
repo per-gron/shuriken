@@ -35,7 +35,7 @@ auto Iterate(Container &&container) {
     class ContainerSubscription : public SubscriptionBase {
      public:
       ContainerSubscription(
-          const typename std::decay<Container>::type &container,
+          const Container &container,
           decltype(subscriber) &&subscriber)
           : container_(container),
             subscriber_(std::move(subscriber)),

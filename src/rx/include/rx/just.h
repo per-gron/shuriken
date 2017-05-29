@@ -20,11 +20,11 @@ namespace shk {
 
 template <typename T>
 auto Just(T &&t) {
-  return [t = std::forward<T>(t)](auto subscriber) {
+  return [t = std::forward<T>(t)](auto &&subscriber) {
     return MakeSubscription(
         [
             t,
-            subscriber = std::move(subscriber),
+            subscriber = std::forward<decltype(subscriber)>(subscriber),
             sent = false](size_t count) mutable {
           if (!sent && count != 0) {
             sent = true;
