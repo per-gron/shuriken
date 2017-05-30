@@ -94,7 +94,7 @@ std::exception_ptr GetError(
 inline std::string GetErrorWhat(const std::exception_ptr &error) {
   try {
     std::rethrow_exception(error);
-  } catch (const std::runtime_error &error) {
+  } catch (const std::exception &error) {
     return error.what();
   }
 }

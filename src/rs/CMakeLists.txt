@@ -4,6 +4,7 @@ add_library(rs
   include/rs/throw.h
   include/rs/iterate.h
   include/rs/just.h
+  include/rs/last.h
   include/rs/map.h
   include/rs/never.h
   include/rs/pipe.h
@@ -26,6 +27,7 @@ add_executable(rs-test
   test/throw_test.cpp
   test/iterate_test.cpp
   test/just_test.cpp
+  test/last_test.cpp
   test/main.cpp
   test/map_test.cpp
   test/never_test.cpp

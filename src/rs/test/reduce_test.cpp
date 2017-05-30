@@ -14,6 +14,7 @@
 
 #include <catch.hpp>
 
+#include <memory>
 #include <vector>
 
 #include <rs/empty.h>
@@ -74,6 +75,17 @@ TEST_CASE("Reduce") {
     // The reducer functor should be invoked only once
     auto error = GetError(fail_on(0, 1)(Iterate(std::vector<int>{ 0, 1 })));
     CHECK(GetErrorWhat(error) == "fail_on");
+  }
+
+  SECTION("non-copyable accumulator") {
+    auto wrap_in_unique_ptr = ReduceGet(
+        [] { return std::unique_ptr<int>(); },
+        [](std::unique_ptr<int> &&accum, int val) {
+          return std::make_unique<int>(val);
+        });
+    CHECK(
+        *GetOne<std::unique_ptr<int>>(
+            wrap_in_unique_ptr(Iterate(std::vector<int>{ 1, 2 }))) == 2);
   }
 }
 

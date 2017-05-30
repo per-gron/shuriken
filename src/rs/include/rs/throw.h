@@ -18,7 +18,7 @@
 
 namespace shk {
 
-auto Throw(const std::exception_ptr &error) {
+inline auto Throw(const std::exception_ptr &error) {
   return [error](auto subscriber) {
     subscriber.OnError(std::exception_ptr(error));
     return MakeSubscription();

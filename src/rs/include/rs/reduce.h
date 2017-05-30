@@ -26,10 +26,10 @@ template <typename Accumulator, typename Subscriber, typename Reducer>
 class StreamReducer : public SubscriberBase {
  public:
   StreamReducer(
-      const Accumulator &accumulator,
+      Accumulator &&accumulator,
       Subscriber &&subscriber,
       const Reducer &reducer)
-      : accumulator_(accumulator),
+      : accumulator_(std::move(accumulator)),
         subscriber_(std::move(subscriber)),
         reducer_(reducer) {}
 
@@ -78,20 +78,26 @@ class StreamReducer : public SubscriberBase {
 
 }  // namespace detail
 
-template <typename Accumulator, typename Reducer>
-auto Reduce(Accumulator &&initial, Reducer &&reducer) {
+/**
+ * Like Reduce, but takes a function that returns the initial value instead of
+ * the initial value directly. This is useful if the initial value is not
+ * copyable.
+ */
+template <typename MakeInitial, typename Reducer>
+auto ReduceGet(MakeInitial &&make_initial, Reducer &&reducer) {
   // Return an operator (it takes a Publisher and returns a Publisher)
   return [
-      initial = std::forward<Accumulator>(initial),
+      make_initial = std::forward<MakeInitial>(make_initial),
       reducer = std::forward<Reducer>(reducer)](auto source) {
     // Return a Publisher
-    return [initial, reducer, source = std::move(source)](auto &&subscriber) {
+    return [make_initial, reducer, source = std::move(source)](
+        auto &&subscriber) {
       auto stream_reducer = std::make_shared<
           detail::StreamReducer<
-              Accumulator,
+              typename std::decay<decltype(make_initial())>::type,
               typename std::decay<decltype(subscriber)>::type,
               Reducer>>(
-                  initial,
+                  make_initial(),
                   std::forward<decltype(subscriber)>(subscriber),
                   reducer);
       auto sub = source(MakeSubscriber(stream_reducer));
@@ -105,6 +111,20 @@ auto Reduce(Accumulator &&initial, Reducer &&reducer) {
           });
     };
   };
+}
+
+/**
+ * Like the reduce / fold operator in functional programming but over lists.
+ *
+ * Takes a stream of values and returns a stream of exactly one value.
+ *
+ * Initial must be copyable. If it isn't, consider using ReduceGet.
+ */
+template <typename Accumulator, typename Reducer>
+auto Reduce(Accumulator &&initial, Reducer &&reducer) {
+  return ReduceGet(
+      [initial] { return initial; },
+      std::forward<Reducer>(reducer));
 }
 
 }  // namespace shk
