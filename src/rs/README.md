@@ -36,22 +36,21 @@ The API consists of the following components:
 2. Subscriber
 3. Subscription
 
-In the `rs` library, these are not concrete types; rather, they are concepts.
+In the `rs` library, these are not concrete types; rather, they are concepts: Any type can be a Publisher, a Subscriber or a Subscription as long as they fulfill all the requirements of that concept.
 
-A *Publisher* is a provider of a potentially unbounded number of sequenced elements, publishing them according to the demand received from its Subscriber(s).
+There are type predicates for each concept:
 
-A Publisher needs to publically inherit the `PublisherBase` class and offer an
-`operator()` overload that takes a Subscriber and returns a Subscription.
+* `IsPublisher<T>` is a `constexpr` expression that evaluates to `true` if `T` claims to be a Publisher, otherwise `false.
+* `IsSubscriber<T>` is a `constexpr` expression that evaluates to `true` if `T` claims to be a Subscriber, otherwise `false.
+* `IsSubscription<T>` is a `constexpr` expression that evaluates to `true` if `T` claims to be a Subscription, otherwise `false.
 
-In response to a call to `operator()` the possible invocation sequences for methods on the `Subscriber` are given by the following protocol:
+It is sometimes useful to have a concrete type that can hold an object that is a Publisher, a Subscriber or a Subscription. Since these concepts don't have a single concrete type this is not possible to do directly. To make that possible, there are type erasure wrappers for each concept:
 
-```
-OnNext* (OnError | OnComplete)?
-```
+`Publisher<T> erased_publisher(publisher)` creates a `Publisher<T>` object that is itself a Publisher from `publisher`, regardless of which concrete type `publisher` has. This can be useful to be able to return a Publisher object from a C++ implementation file without having to expose which type of Publisher it is in the header file.
 
-This means that the subscriber will receive a possibly unbounded number of `OnNext` signals (as requested with the `Request` method) followed by an `OnError` signal if there is a failure, or an `OnComplete` signal when no more elements are available—all as long as the `Subscription` is not cancelled.
+Similarly, there are `Subscriber<T>` and `Subscription` type erasure wrappers for Subscriber and Subscription.
 
-TODO(peck): Talk about the others too.
+The type erasure wrappers use `virtual` method calls, so they are not completely free to use.
 
 
 ### NOTES
@@ -77,7 +76,20 @@ TODO(peck): Talk about the others too.
 
 ### 1. Publisher ([Code](include/rs/publisher.h))
 
-TODO(peck)
+A *Publisher* is a provider of a potentially unbounded number of sequenced elements, publishing them according to the demand received from its Subscriber(s). Having a Publisher does not in itself mean that any data is being streamed; many Publishers wait with doing anything until the `operator()` overload (which corresponds to the `subscribe` method in Java Reactive Streams) is invoked.
+
+A Publisher MUST publicly inherit the `PublisherBase` class and MUST offer an
+`operator()` overload for subscribing to the stream that takes an rvalue reference to a Subscriber and returns a Subscription. Because there is no concrete for all Subscribers, this method must be a template.
+
+That `operator()` takes an rvalue reference to a Subscription implies that the Publisher takes over ownership of the Subscriber when it is subscribed to.
+
+In response to a call to `operator()` the possible invocation sequences for methods on the `Subscriber` are given by the following protocol:
+
+```
+OnNext* (OnError | OnComplete)?
+```
+
+This means that the subscriber will receive a possibly unbounded number of `OnNext` signals (as requested with the `Request` method) followed by an `OnError` signal if there is a failure, or an `OnComplete` signal when no more elements are available—all as long as the `Subscription` is not cancelled.
 
 | ID                        | Rule                                                                                                   |
 | ------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -106,7 +118,13 @@ TODO(peck)
 
 ### 2. Subscriber ([Code](include/rs/subscriber.h))
 
-TODO(peck)
+A *Subscriber* is a receiver of a potentially unbounded number of sequenced elements. In order to get to the elements of a Publisher, it needs to be given a Subscriber, which it will then notify of its elements.
+
+A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable and MUST have the following methods:
+
+* `void OnNext(T &&t);`: One such method for each type that the subscriber accepts. There could potentially be zero `OnNext` methods.
+* `void OnError(std::exception_ptr &&error);`
+* `void OnComplete();`
 
 | ID                        | Rule                                                                                                   |
 | ------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -136,7 +154,11 @@ TODO(peck)
 
 ### 3. Subscription ([Code](include/rs/subscription.h))
 
-TODO(peck)
+A *Subscription* is a handle that is provided by the Publisher when a subscription is made against it. Destroying the Subscription object (by calling its destructor) implies that the Subscription is cancelled and the Publisher will eventually stop emitting elements to the Subscriber.
+
+A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable and MUST have the following method:
+
+* `void Request(size_t count);`
 
 | ID                        | Rule                                                                                                   |
 | ------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -167,7 +189,23 @@ TODO(peck)
 | <a name="3.13">13</a>     | A `Subscription` MUST support an unbounded number of calls to `Request` and MUST support a demand up to 2^64-1 (`std::numeric_limits<size_t>::max()`). A demand equal or greater than 2^64-1 (`std::numeric_limits<size_t>::max()`) MAY be considered by the `Publisher` as “effectively unbounded”. |
 | [:bulb:](#3.13 "3.13 explained") | *The intent of this rule is to establish that the Subscriber can request an unbounded number of elements, in any increment above 0, in any number of invocations of `Request`. As it is not feasibly reachable with current or foreseen hardware within a reasonable amount of time to fulfill a demand of 2^64-1, it is allowed for a Publisher to stop tracking demand beyond this point.* |
 
-TODO(peck): there is more in the other doc here
+
+## Subscriber controlled queue bounds
+
+One of the underlying design principles is that all buffer sizes are to be bounded and these bounds must be *known* and *controlled* by the subscribers (subscriber in this context refers to the entity that called the subscribe method on the Publisher, likely but not necessarily the same thing as the Subscriber object). These bounds are expressed in terms of *element count* (which in turn translates to the invocation count of onNext). Any implementation that aims to support infinite streams (especially high output rate streams) needs to enforce bounds all along the way to avoid out-of-memory errors and constrain resource usage in general.
+
+Since back-pressure is mandatory the use of unbounded buffers can be avoided. In general, the only time when a queue might grow without bounds is when the publisher side maintains a higher rate than the subscriber for an extended period of time, but this scenario is handled by backpressure instead.
+
+Queue bounds can be controlled by a subscriber signaling demand for the appropriate number of elements. At any point in time the subscriber knows:
+
+* the total number of elements requested: `P`
+* the number of elements that have been processed: `N`
+
+Then the maximum number of elements that may arrive—until more demand is signaled to the Publisher—is `P - N`. In the case that the subscriber also knows the number of elements B in its input buffer then this bound can be refined to `P - B - N`.
+
+These bounds must be respected by a publisher independent of whether the source it represents can be backpressured or not. In the case of sources whose production rate cannot be influenced—for example clock ticks or mouse movement—the publisher must choose to either buffer or drop elements to obey the imposed bounds.
+
+Subscribers signaling a demand for one element after the reception of an element effectively implement a Stop-and-Wait protocol where the demand signal is equivalent to acknowledgement. By providing demand for multiple elements the cost of acknowledgement is amortized. It is worth noting that the subscriber is allowed to signal demand at any point in time, allowing it to avoid unnecessary delays between the publisher and the subscriber (i.e. keeping its input buffer filled without having to wait for full round-trips).
 
 
 ## Acknowledgements
