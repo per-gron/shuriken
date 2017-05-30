@@ -1,7 +1,7 @@
 add_library(rs
   include/rs/count.h
   include/rs/empty.h
-  include/rs/throw.h
+  include/rs/is_empty.h
   include/rs/iterate.h
   include/rs/just.h
   include/rs/last.h
@@ -18,6 +18,7 @@ add_library(rs
   include/rs/subscriber.h
   include/rs/subscription.h
   include/rs/sum.h
+  include/rs/throw.h
   src/subscription.cpp)
 target_include_directories(rs PUBLIC include)
 set_target_properties(rs PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
@@ -27,6 +28,7 @@ add_executable(rs-test
   test/count_test.cpp
   test/empty_test.cpp
   test/throw_test.cpp
+  test/is_empty_test.cpp
   test/iterate_test.cpp
   test/just_test.cpp
   test/last_test.cpp
