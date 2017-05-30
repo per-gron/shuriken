@@ -1,8 +1,8 @@
 # `rs`
 
-`rs` is a minimalist Reactive Streams-inspired library that offers types for reactive streams along with reactive extensions operators on them.
+`rs` is a minimalist Reactive Streams-inspired library that offers types for reactive streams along functions that operate on them.
 
-* It is written using C++14 (and uses generic lambdas extensively, so it probably cannot be backported to older versions of C++).
+* It is written in C++14.
 * Like all Reactive Streams based libraries, it offers mandatory non-blocking back-pressure support (at the time of writing, [RxCpp](https://github.com/Reactive-Extensions/RxCpp) does not do this).
 * It has a trivial threading model: Nothing in this library is thread safe.
 * It attempts to be small, to avoid excessive compile times.
@@ -40,25 +40,25 @@ In the `rs` library, these are not concrete types; rather, they are concepts: An
 
 There are type predicates for each concept:
 
-* `IsPublisher<T>` is a `constexpr` expression that evaluates to `true` if `T` claims to be a Publisher, otherwise `false.
-* `IsSubscriber<T>` is a `constexpr` expression that evaluates to `true` if `T` claims to be a Subscriber, otherwise `false.
-* `IsSubscription<T>` is a `constexpr` expression that evaluates to `true` if `T` claims to be a Subscription, otherwise `false.
+* `IsPublisher<T>` is a `constexpr` expression that evaluates to `true` if `T` claims to be a Publisher, otherwise `false`.
+* `IsSubscriber<T>` is a `constexpr` expression that evaluates to `true` if `T` claims to be a Subscriber, otherwise `false`.
+* `IsSubscription<T>` is a `constexpr` expression that evaluates to `true` if `T` claims to be a Subscription, otherwise `false`.
 
 It is sometimes useful to have a concrete type that can hold an object that is a Publisher, a Subscriber or a Subscription. Since these concepts don't have a single concrete type this is not possible to do directly. To make that possible, there are type erasure wrappers for each concept:
 
-`Publisher<T> erased_publisher(publisher)` creates a `Publisher<T>` object that is itself a Publisher from `publisher`, regardless of which concrete type `publisher` has. This can be useful to be able to return a Publisher object from a C++ implementation file without having to expose which type of Publisher it is in the header file.
+`Publisher<T> erased_publisher(publisher)` defines a `Publisher<T>` object that is itself a Publisher from `publisher`, regardless of which concrete type `publisher` has. This can be useful to be able to return a Publisher object from a C++ implementation file without having to expose which type of Publisher it is in the header file.
 
 Similarly, there are `Subscriber<T>` and `Subscription` type erasure wrappers for Subscriber and Subscription.
 
-The type erasure wrappers use `virtual` method calls, so they are not completely free to use.
+The type erasure wrappers use `virtual` method calls, so using them incurs some overhead.
 
 
-### NOTES
-
-- The specifications below use binding words in capital letters from https://www.ietf.org/rfc/rfc2119.txt
+## Specification for the Publisher, Subscriber and Subscription concepts
 
 
-## Glossary
+### Glossary
+
+The specifications below use binding words in capital letters from https://www.ietf.org/rfc/rfc2119.txt
 
 | Term                      | Definition                                                                                             |
 | ------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -69,9 +69,6 @@ The type erasure wrappers use `virtual` method calls, so they are not completely
 | <a name="term_non-obstructing">Non-obstructing</a> | Quality describing a method which is as quick to execute as possible—on the calling thread. This means, for example, avoids heavy computations and other things that would stall the caller´s thread of execution. |
 | <a name="term_terminal_state">Terminal state</a> | For a Publisher: When `OnComplete` or `OnError` has been signalled. For a Subscriber: When an `OnComplete` or `OnError` has been received.|
 | <a name="term_nop">NOP</a> | Execution that has no detectable effect to the calling thread, and can as such safely be called any number of times.|
-
-
-## SPECIFICATION
 
 
 ### 1. Publisher ([Code](include/rs/publisher.h))
