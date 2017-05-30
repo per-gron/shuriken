@@ -9,6 +9,7 @@ add_library(rs
   include/rs/publisher.h
   include/rs/range.h
   include/rs/reduce.h
+  include/rs/repeat.h
   include/rs/start.h
   include/rs/subscriber.h
   include/rs/subscription.h
@@ -30,6 +31,7 @@ add_executable(rs-test
   test/publisher_test.cpp
   test/range_test.cpp
   test/reduce_test.cpp
+  test/repeat_test.cpp
   test/start_test.cpp
   test/sum_test.cpp
   test/test_util.h)

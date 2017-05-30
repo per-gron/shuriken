@@ -16,37 +16,37 @@
 
 #include <vector>
 
-#include <rs/range.h>
+#include <rs/repeat.h>
 
 #include "test_util.h"
 
 namespace shk {
 
-TEST_CASE("Range") {
+TEST_CASE("Repeat") {
   SECTION("construct") {
-    auto stream = Range(0, 0);
+    auto stream = Repeat(0, 0);
   }
 
-  SECTION("empty range") {
-    auto stream = Range(1, 0);
+  SECTION("empty repeat") {
+    auto stream = Repeat(1, 0);
     CHECK(GetAll<int>(stream) == std::vector<int>({}));
   }
 
-  SECTION("range with one value") {
-    auto stream = Range(13, 1);
+  SECTION("repeat with one value") {
+    auto stream = Repeat(13, 1);
     CHECK(GetAll<int>(stream) == std::vector<int>({ 13 }));
   }
 
-  SECTION("range with two values") {
-    auto stream = Range(15, 2);
-    CHECK(GetAll<int>(stream) == std::vector<int>({ 15, 16 }));
+  SECTION("repeat with two values") {
+    auto stream = Repeat(15, 2);
+    CHECK(GetAll<int>(stream) == std::vector<int>({ 15, 15 }));
   }
 
   SECTION("don't take reference to its parameter") {
     // Can happen if you forget to std::decay
 
     int val = 13;
-    auto stream = Range(val, 1);
+    auto stream = Repeat(val, 1);
     val++;
     CHECK(GetAll<int>(stream) == std::vector<int>({ 13 }));
   }
