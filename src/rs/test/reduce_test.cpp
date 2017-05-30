@@ -28,6 +28,18 @@ namespace shk {
 
 TEST_CASE("Reduce") {
   auto sum = Reduce(100, [](int a, int v) { return a + v; });
+  auto fail_on = [](int fail_value, int call_count) {
+    return Reduce(100, [fail_value, call_count, times_called = 0](
+        int a, int v) mutable {
+      CHECK(++times_called <= call_count);
+
+      if (v == fail_value) {
+        throw std::runtime_error("fail_on");
+      } else {
+        return a + v;
+      }
+    });
+  };
 
   SECTION("empty") {
     CHECK(GetOne<int>(sum(Empty())) == 100);
@@ -51,6 +63,17 @@ TEST_CASE("Reduce") {
 
   SECTION("request two") {
     CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 2) == 103);
+  }
+
+  SECTION("error on first") {
+    auto error = GetError(fail_on(0, 1)(Iterate(std::vector<int>{ 0 })));
+    CHECK(GetErrorWhat(error) == "fail_on");
+  }
+
+  SECTION("error on first of two") {
+    // The reducer functor should be invoked only once
+    auto error = GetError(fail_on(0, 1)(Iterate(std::vector<int>{ 0, 1 })));
+    CHECK(GetErrorWhat(error) == "fail_on");
   }
 }
 

@@ -89,29 +89,17 @@ TEST_CASE("Map") {
 
     SECTION("error on first") {
       auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 0 })));
-      try {
-        std::rethrow_exception(error);
-      } catch (const std::runtime_error &error) {
-        CHECK(std::string(error.what()) == "fail_on");
-      }
+      CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("error on second") {
       auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 1, 0 })));
-      try {
-        std::rethrow_exception(error);
-      } catch (const std::runtime_error &error) {
-        CHECK(std::string(error.what()) == "fail_on");
-      }
+      CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("error on first and second") {
       auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 0, 0 })));
-      try {
-        std::rethrow_exception(error);
-      } catch (const std::runtime_error &error) {
-        CHECK(std::string(error.what()) == "fail_on");
-      }
+      CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("source emits value that fails and then fails itself") {
@@ -119,11 +107,7 @@ TEST_CASE("Map") {
 
       // Should only fail once. GetError checks that
       auto error = GetError(fail_on(0)(zero_then_fail));
-      try {
-        std::rethrow_exception(error);
-      } catch (const std::runtime_error &error) {
-        CHECK(std::string(error.what()) == "fail_on");
-      }
+      CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("error on second only one requested") {

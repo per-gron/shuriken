@@ -35,7 +35,16 @@ class StreamReducer : public SubscriberBase {
 
   template <typename T>
   void OnNext(T &&t) {
-    accumulator_ = reducer_(std::move(accumulator_), std::forward<T>(t));
+    if (failed_) {
+      return;
+    }
+
+    try {
+      accumulator_ = reducer_(std::move(accumulator_), std::forward<T>(t));
+    } catch (...) {
+      failed_ = true;
+      subscriber_.OnError(std::current_exception());
+    }
   }
 
   void OnError(std::exception_ptr &&error) {

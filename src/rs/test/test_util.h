@@ -91,4 +91,12 @@ std::exception_ptr GetError(
           std::logic_error("[no error when one was expected]"));
 }
 
+inline std::string GetErrorWhat(const std::exception_ptr &error) {
+  try {
+    std::rethrow_exception(error);
+  } catch (const std::runtime_error &error) {
+    return error.what();
+  }
+}
+
 }  // namespace shk
