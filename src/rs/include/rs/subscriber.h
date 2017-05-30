@@ -90,7 +90,7 @@ class ConcreteSubscriber : public SubscriberBase {
 template <typename SubscriberType>
 class SharedPtrSubscriber : public SubscriberBase {
  public:
-  SharedPtrSubscriber(std::shared_ptr<SubscriberType> subscriber)
+  explicit SharedPtrSubscriber(std::shared_ptr<SubscriberType> subscriber)
       : subscriber_(subscriber) {}
 
   template <typename T>

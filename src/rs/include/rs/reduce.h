@@ -69,7 +69,6 @@ class StreamReducer : public SubscriberBase {
   }
 
  private:
-
   int state_ = 0;
 
   bool failed_ = false;
