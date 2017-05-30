@@ -33,7 +33,9 @@ TEST_CASE("Last") {
 
   SECTION("empty") {
     auto error = GetError(Last<int>()(Empty()));
-    CHECK(GetErrorWhat(error) == "Last invoked with empty stream");
+    CHECK(
+        GetErrorWhat(error) ==
+        "ReduceWithoutInitial invoked with empty stream");
   }
 
   SECTION("single value") {

@@ -22,70 +22,110 @@
 #include <rs/just.h>
 #include <rs/reduce.h>
 #include <rs/subscriber.h>
+#include <rs/throw.h>
 
 #include "test_util.h"
 
 namespace shk {
 
 TEST_CASE("Reduce") {
-  auto sum = Reduce(100, [](int a, int v) { return a + v; });
-  auto fail_on = [](int fail_value, int call_count) {
-    return Reduce(100, [fail_value, call_count, times_called = 0](
-        int a, int v) mutable {
-      CHECK(++times_called <= call_count);
+  SECTION("Reduce") {
+    auto sum = Reduce(100, [](int a, int v) { return a + v; });
+    auto fail_on = [](int fail_value, int call_count) {
+      return Reduce(100, [fail_value, call_count, times_called = 0](
+          int a, int v) mutable {
+        CHECK(++times_called <= call_count);
 
-      if (v == fail_value) {
-        throw std::runtime_error("fail_on");
-      } else {
-        return a + v;
-      }
-    });
-  };
+        if (v == fail_value) {
+          throw std::runtime_error("fail_on");
+        } else {
+          return a + v;
+        }
+      });
+    };
 
-  SECTION("empty") {
-    CHECK(GetOne<int>(sum(Empty())) == 100);
+    SECTION("empty") {
+      CHECK(GetOne<int>(sum(Empty())) == 100);
+    }
+
+    SECTION("one value") {
+      CHECK(GetOne<int>(sum(Just(1))) == 101);
+    }
+
+    SECTION("two values") {
+      CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 }))) == 103);
+    }
+
+    SECTION("request zero") {
+      CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 0) == 0);
+    }
+
+    SECTION("request one") {
+      CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 1) == 103);
+    }
+
+    SECTION("request two") {
+      CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 2) == 103);
+    }
+
+    SECTION("error on first") {
+      auto error = GetError(fail_on(0, 1)(Iterate(std::vector<int>{ 0 })));
+      CHECK(GetErrorWhat(error) == "fail_on");
+    }
+
+    SECTION("error on first of two") {
+      // The reducer functor should be invoked only once
+      auto error = GetError(fail_on(0, 1)(Iterate(std::vector<int>{ 0, 1 })));
+      CHECK(GetErrorWhat(error) == "fail_on");
+    }
   }
 
-  SECTION("one value") {
-    CHECK(GetOne<int>(sum(Just(1))) == 101);
+  SECTION("ReduceGet") {
+    SECTION("non-copyable accumulator") {
+      auto wrap_in_unique_ptr = ReduceGet(
+          [] { return std::unique_ptr<int>(); },
+          [](std::unique_ptr<int> &&accum, int val) {
+            return std::make_unique<int>(val);
+          });
+      CHECK(
+          *GetOne<std::unique_ptr<int>>(
+              wrap_in_unique_ptr(Iterate(std::vector<int>{ 1, 2 }))) == 2);
+    }
   }
 
-  SECTION("two values") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 }))) == 103);
-  }
+  SECTION("ReduceWithoutInitial") {
+    auto reducer = [](int a, int b) {
+      return a * a + b;
+    };
+    auto reduce = ReduceWithoutInitial<int>(reducer);
 
-  SECTION("request zero") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 0) == 0);
-  }
+    SECTION("empty") {
+      auto error = GetError(reduce(Empty()));
+      CHECK(
+          GetErrorWhat(error) ==
+          "ReduceWithoutInitial invoked with empty stream");
+    }
 
-  SECTION("request one") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 1) == 103);
-  }
+    SECTION("single value") {
+      CHECK(GetOne<int>(reduce(Just(4))) == 4);
+    }
 
-  SECTION("request two") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 2) == 103);
-  }
+    SECTION("two values") {
+      auto values = Iterate(std::vector<int>({ 2, 3 }));
+      CHECK(GetOne<int>(reduce(values)) == (2 * 2) + 3);
+    }
 
-  SECTION("error on first") {
-    auto error = GetError(fail_on(0, 1)(Iterate(std::vector<int>{ 0 })));
-    CHECK(GetErrorWhat(error) == "fail_on");
-  }
+    SECTION("three values") {
+      auto values = Iterate(std::vector<int>({ 2, 3, 4 }));
+      int first = (2 * 2) + 3;
+      CHECK(GetOne<int>(reduce(values)) == first * first + 4);
+    }
 
-  SECTION("error on first of two") {
-    // The reducer functor should be invoked only once
-    auto error = GetError(fail_on(0, 1)(Iterate(std::vector<int>{ 0, 1 })));
-    CHECK(GetErrorWhat(error) == "fail_on");
-  }
-
-  SECTION("non-copyable accumulator") {
-    auto wrap_in_unique_ptr = ReduceGet(
-        [] { return std::unique_ptr<int>(); },
-        [](std::unique_ptr<int> &&accum, int val) {
-          return std::make_unique<int>(val);
-        });
-    CHECK(
-        *GetOne<std::unique_ptr<int>>(
-            wrap_in_unique_ptr(Iterate(std::vector<int>{ 1, 2 }))) == 2);
+    SECTION("failing input stream") {
+      auto exception = std::make_exception_ptr(std::runtime_error("test_error"));
+      auto error = GetError(reduce(Throw(exception)));
+      CHECK(GetErrorWhat(error) == "test_error");
+    }
   }
 }
 

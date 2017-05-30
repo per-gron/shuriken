@@ -16,8 +16,6 @@
 
 #include <stdexcept>
 
-#include <rs/map.h>
-#include <rs/pipe.h>
 #include <rs/reduce.h>
 
 namespace shk {
@@ -28,20 +26,9 @@ namespace shk {
  */
 template <typename T>
 auto Last() {
-  return Pipe(
-    ReduceGet(
-        [] { return std::unique_ptr<T>(); },
-        [](std::unique_ptr<T> &&accum, auto &&value) {
-          return std::unique_ptr<T>(
-              new T(std::forward<decltype(value)>(value)));
-        }),
-    Map([](std::unique_ptr<T> &&value) {
-      if (value) {
-        return std::move(*value);
-      } else {
-        throw std::out_of_range("Last invoked with empty stream");
-      }
-    }));
+  return ReduceWithoutInitial<T>([](auto &&accum, auto &&value) {
+    return value;
+  });
 }
 
 }  // namespace shk

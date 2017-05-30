@@ -16,6 +16,8 @@
 
 #include <type_traits>
 
+#include <rs/map.h>
+#include <rs/pipe.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
 
@@ -125,6 +127,44 @@ auto Reduce(Accumulator &&initial, Reducer &&reducer) {
   return ReduceGet(
       [initial] { return initial; },
       std::forward<Reducer>(reducer));
+}
+
+/**
+ * Like Reduce, but instead of taking an initial value, it requires that the
+ * input stream has at least one value, and uses the first value of the stream
+ * as the initial value.
+ *
+ * This requires that the type of the input stream is convertible to the return
+ * type of the reducer function (because if there is only one value, the reducer
+ * is not invoked).
+ *
+ * This is used to implement the Last, Max and Min operators.
+ */
+template <typename Accumulator, typename Reducer>
+auto ReduceWithoutInitial(Reducer &&reducer) {
+  return Pipe(
+    ReduceGet(
+        [] { return std::unique_ptr<Accumulator>(); },
+        [reducer = std::forward<Reducer>(reducer)](
+            std::unique_ptr<Accumulator> &&accum, auto &&value) {
+          if (accum) {
+            return std::make_unique<Accumulator>(
+                reducer(
+                    std::move(*accum),
+                    std::forward<decltype(value)>(value)));
+          } else {
+            return std::make_unique<Accumulator>(
+                std::forward<decltype(value)>(value));
+          }
+        }),
+    Map([](std::unique_ptr<Accumulator> &&value) {
+      if (value) {
+        return std::move(*value);
+      } else {
+        throw std::out_of_range(
+            "ReduceWithoutInitial invoked with empty stream");
+      }
+    }));
 }
 
 }  // namespace shk
