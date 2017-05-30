@@ -8,6 +8,7 @@ add_library(rs
   include/rs/never.h
   include/rs/publisher.h
   include/rs/reduce.h
+  include/rs/start.h
   include/rs/subscriber.h
   include/rs/subscription.h
   include/rs/sum.h
@@ -27,6 +28,7 @@ add_executable(rs-test
   test/never_test.cpp
   test/publisher_test.cpp
   test/reduce_test.cpp
+  test/start_test.cpp
   test/sum_test.cpp
   test/test_util.h)
 set_property(TARGET rs-test PROPERTY CXX_STANDARD 14)

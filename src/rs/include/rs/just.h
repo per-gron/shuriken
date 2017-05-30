@@ -14,25 +14,13 @@
 
 #pragma once
 
-#include <rs/subscription.h>
+#include <rs/start.h>
 
 namespace shk {
 
 template <typename T>
 auto Just(T &&t) {
-  return [t = std::forward<T>(t)](auto &&subscriber) {
-    return MakeSubscription(
-        [
-            t,
-            subscriber = std::forward<decltype(subscriber)>(subscriber),
-            sent = false](size_t count) mutable {
-          if (!sent && count != 0) {
-            sent = true;
-            subscriber.OnNext(std::move(t));
-            subscriber.OnComplete();
-          }
-        });
-  };
+  return Start([t = std::forward<T>(t)] { return t; });
 }
 
 }  // namespace shk
