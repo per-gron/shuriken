@@ -102,7 +102,7 @@ auto ReduceGet(MakeInitial &&make_initial, Reducer &&reducer) {
                   make_initial(),
                   std::forward<decltype(subscriber)>(subscriber),
                   reducer);
-      auto sub = source(MakeSubscriber(stream_reducer));
+      auto sub = source.Subscribe(MakeSubscriber(stream_reducer));
 
       return MakeSubscription(
           [stream_reducer, sub = std::move(sub)](size_t count) mutable {

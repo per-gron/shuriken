@@ -73,14 +73,14 @@ The specifications below use binding words in capital letters from https://www.i
 
 ### 1. Publisher ([Code](include/rs/publisher.h))
 
-A *Publisher* is a provider of a potentially unbounded number of sequenced elements, publishing them according to the demand received from its Subscriber(s). Having a Publisher does not in itself mean that any data is being streamed; many Publishers wait with doing anything until the `operator()` overload (which corresponds to the `subscribe` method in Java Reactive Streams) is invoked.
+A *Publisher* is a provider of a potentially unbounded number of sequenced elements, publishing them according to the demand received from its Subscriber(s). Having a Publisher does not in itself mean that any data is being streamed; many Publishers wait with doing anything until the `Subscribe` method is invoked.
 
 A Publisher MUST publicly inherit the `PublisherBase` class and MUST offer an
-`operator()` overload for subscribing to the stream that takes an rvalue reference to a Subscriber and returns a Subscription. Because there is no concrete for all Subscribers, this method must be a template.
+`Subscribe` method for subscribing to the stream that takes an rvalue reference to a Subscriber and returns a Subscription. Because there is no concrete for all Subscribers, this method must be a template.
 
-That `operator()` takes an rvalue reference to a Subscription implies that the Publisher takes over ownership of the Subscriber when it is subscribed to.
+That `Subscribe` takes an rvalue reference to a Subscription implies that the Publisher takes over ownership of the Subscriber when it is subscribed to.
 
-In response to a call to `operator()` the possible invocation sequences for methods on the `Subscriber` are given by the following protocol:
+In response to a call to `Subscribe` the possible invocation sequences for methods on the `Subscriber` are given by the following protocol:
 
 ```
 OnNext* (OnError | OnComplete)?
@@ -106,7 +106,7 @@ This means that the subscriber will receive a possibly unbounded number of `OnNe
 | [:bulb:](#1.7 "1.7 explained") | *The intent of this rule is to make sure that OnError and OnComplete are the final states of an interaction between a Publisher and Subscriber pair.* |
 | <a name="1.8">8</a>       | If a `Subscription` is cancelled its `Subscriber` MUST eventually stop being signaled. |
 | [:bulb:](#1.8 "1.8 explained") | *The intent of this rule is to make sure that Publishers respect a Subscriber’s request to cancel a Subscription when it is destroyed. The reason for *eventually* is because signals can have propagation delay due to being asynchronous.* |
-| <a name="1.9">9</a>       | `Publisher.operator()` MUST [return normally](#term_return_normally). The only legal way to signal failure (or reject the `Subscriber`) is by calling `OnError`. |
+| <a name="1.9">9</a>       | `Publisher.Subscribe` MUST [return normally](#term_return_normally). The only legal way to signal failure (or reject the `Subscriber`) is by calling `OnError`. |
 | [:bulb:](#1.9 "1.9 explained") | *The intent of this rule is to make sure that subscribing to a Publisher never throws. |
 | <a name="1.10">10</a>     | A `Publisher` MAY support multiple `Subscriber`s and decides whether each `Subscription` is unicast or multicast. |
 | [:bulb:](#1.10 "1.10 explained") | *The intent of this rule is to give Publisher implementations the flexibility to decide how many, if any, Subscribers they will support, and how elements are going to be distributed.* |

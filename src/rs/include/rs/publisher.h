@@ -49,12 +49,12 @@ class ConcretePublisher : public PublisherBase {
       : inner_publisher_(std::forward<InnerPublisherType>(inner_publisher)) {}
 
   template <typename T>
-  auto operator()(T &&t) {
+  auto Subscribe(T &&t) {
     return inner_publisher_(std::forward<T>(t));
   }
 
   template <typename T>
-  auto operator()(T &&t) const {
+  auto Subscribe(T &&t) const {
     return inner_publisher_(std::forward<T>(t));
   }
 

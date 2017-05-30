@@ -78,7 +78,7 @@ auto Map(Mapper &&mapper) {
     // Return a Publisher
     return MakePublisher([mapper, source = std::move(source)](
         auto &&subscriber) {
-      return source(detail::MapSubscriber<
+      return source.Subscribe(detail::MapSubscriber<
           typename std::decay<decltype(subscriber)>::type,
           typename std::decay<Mapper>::type>(
               std::forward<decltype(subscriber)>(subscriber),

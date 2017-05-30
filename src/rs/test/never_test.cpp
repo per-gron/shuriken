@@ -30,7 +30,7 @@ TEST_CASE("Never") {
   SECTION("subscribe") {
     auto never = Never();
 
-    auto subscription = never(MakeSubscriber(
+    auto subscription = never.Subscribe(MakeSubscriber(
         [](int next) { CHECK(!"should not happen"); },
         [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
         [] { CHECK(!"should not happen"); }));

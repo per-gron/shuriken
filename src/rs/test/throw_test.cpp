@@ -34,7 +34,7 @@ TEST_CASE("Throw") {
 
     std::exception_ptr received_error;
     {
-      auto subscription = stream(MakeSubscriber(
+      auto subscription = stream.Subscribe(MakeSubscriber(
           [](int next) { CHECK(!"should not happen"); },
           [&received_error](std::exception_ptr &&error) {
             received_error = error;

@@ -33,7 +33,7 @@ TEST_CASE("Iterate") {
     auto stream = Iterate(std::vector<int>{});
 
     int done = 0;
-    auto sub = stream(MakeSubscriber(
+    auto sub = stream.Subscribe(MakeSubscriber(
         [](int next) { CHECK(!"should not happen"); },
         [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
         [&done] { done++; }));
@@ -47,7 +47,7 @@ TEST_CASE("Iterate") {
 
     int done = 0;
     int next = 0;
-    auto sub = stream(MakeSubscriber(
+    auto sub = stream.Subscribe(MakeSubscriber(
         [&next](int val) {
           CHECK(val == 1);
           next++;
@@ -71,7 +71,7 @@ TEST_CASE("Iterate") {
 
     int done = 0;
     int next = 0;
-    auto sub = stream(MakeSubscriber(
+    auto sub = stream.Subscribe(MakeSubscriber(
         [&next](int val) {
           if (next == 0) {
             CHECK(val == 1);
@@ -109,7 +109,7 @@ TEST_CASE("Iterate") {
 
     int done = 0;
     int next = 0;
-    auto sub = stream(MakeSubscriber(
+    auto sub = stream.Subscribe(MakeSubscriber(
         [&next](int val) {
           if (next == 0) {
             CHECK(val == 1);
@@ -143,7 +143,7 @@ TEST_CASE("Iterate") {
 
     int done = 0;
     int next = 0;
-    auto sub = stream(MakeSubscriber(
+    auto sub = stream.Subscribe(MakeSubscriber(
         [&next](int val) {
           if (next == 0) {
             CHECK(val == 1);
@@ -178,7 +178,7 @@ TEST_CASE("Iterate") {
     for (int i = 0; i < 3; i++) {
       int done = 0;
       int next = 0;
-      auto sub = stream(MakeSubscriber(
+      auto sub = stream.Subscribe(MakeSubscriber(
           [&next](int val) {
             CHECK(next == 0);
             CHECK(val == 1);

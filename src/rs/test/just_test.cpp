@@ -47,12 +47,12 @@ TEST_CASE("Just") {
   SECTION("just subscribe") {
     auto stream = Just(1);
 
-    stream(inert_subscriber());
+    stream.Subscribe(inert_subscriber());
   }
 
   SECTION("request 0") {
     auto stream = Just(1);
-    auto sub = stream(inert_subscriber());
+    auto sub = stream.Subscribe(inert_subscriber());
     sub.Request(0);
   }
 
@@ -62,7 +62,7 @@ TEST_CASE("Just") {
 
     auto stream = Just(1);
 
-    auto sub = stream(counting_subscriber(&nexts, &finishes));
+    auto sub = stream.Subscribe(counting_subscriber(&nexts, &finishes));
     CHECK(nexts == 0);
     CHECK(finishes == 0);
 
@@ -79,7 +79,7 @@ TEST_CASE("Just") {
 
       auto stream = Just(1);
 
-      auto sub = stream(counting_subscriber(&nexts, &finishes));
+      auto sub = stream.Subscribe(counting_subscriber(&nexts, &finishes));
       CHECK(nexts == 0);
       CHECK(finishes == 0);
 
@@ -95,7 +95,7 @@ TEST_CASE("Just") {
 
     auto stream = Just(1);
 
-    auto sub = stream(counting_subscriber(&nexts, &finishes));
+    auto sub = stream.Subscribe(counting_subscriber(&nexts, &finishes));
     CHECK(nexts == 0);
     CHECK(finishes == 0);
 

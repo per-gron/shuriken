@@ -30,7 +30,7 @@ TEST_CASE("Empty") {
 
     bool complete = false;
     {
-      auto subscription = empty(MakeSubscriber(
+      auto subscription = empty.Subscribe(MakeSubscriber(
           [](int next) { CHECK(!"should not happen"); },
           [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
           [&complete] { complete = true; }));

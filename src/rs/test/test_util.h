@@ -26,7 +26,7 @@ T GetOne(
   bool has_value = false;
   bool is_done = false;
   T result{};
-  auto sub = publisher(MakeSubscriber(
+  auto sub = publisher.Subscribe(MakeSubscriber(
       [&result, &has_value, &is_done](T &&val) {
         CHECK(!is_done);
         CHECK(!has_value);
@@ -53,7 +53,7 @@ std::vector<T> GetAll(
     bool expect_done = true) {
   std::vector<T> result;
   bool is_done = false;
-  auto sub = publisher(MakeSubscriber(
+  auto sub = publisher.Subscribe(MakeSubscriber(
       [&result](T &&val) {
         result.emplace_back(std::move(val));
       },
@@ -74,7 +74,7 @@ std::exception_ptr GetError(
     size_t request_count = Subscription::kAll) {
   std::exception_ptr received_error;
 
-  auto sub = stream(MakeSubscriber(
+  auto sub = stream.Subscribe(MakeSubscriber(
       [&received_error](int next) {
         CHECK(!received_error);
       },
