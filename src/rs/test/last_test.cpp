@@ -29,6 +29,9 @@ namespace shk {
 TEST_CASE("Last") {
   SECTION("construct") {
     auto stream = Last<int>();
+    static_assert(
+        IsPublisher<decltype(stream(Just(0)))>,
+        "Last stream should be a publisher");
   }
 
   SECTION("empty") {

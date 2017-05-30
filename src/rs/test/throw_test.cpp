@@ -24,6 +24,9 @@ TEST_CASE("Throw") {
 
   SECTION("construct") {
     auto stream = Throw(error);
+    static_assert(
+        IsPublisher<decltype(stream)>,
+        "Throw stream should be a publisher");
   }
 
   SECTION("subscribe") {

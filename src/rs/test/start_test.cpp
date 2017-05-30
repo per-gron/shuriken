@@ -44,6 +44,9 @@ TEST_CASE("Start") {
 
   SECTION("construct") {
     auto stream = Start([] { return 1; });
+    static_assert(
+        IsPublisher<decltype(stream)>,
+        "Start stream should be a publisher");
   }
 
   SECTION("just subscribe") {

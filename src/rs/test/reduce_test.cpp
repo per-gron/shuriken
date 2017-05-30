@@ -44,6 +44,10 @@ TEST_CASE("Reduce") {
       });
     };
 
+    static_assert(
+        IsPublisher<decltype(sum(Just(0)))>,
+        "Range stream should be a publisher");
+
     SECTION("empty") {
       CHECK(GetOne<int>(sum(Empty())) == 100);
     }

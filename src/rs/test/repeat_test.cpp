@@ -25,6 +25,9 @@ namespace shk {
 TEST_CASE("Repeat") {
   SECTION("construct") {
     auto stream = Repeat(0, 0);
+    static_assert(
+        IsPublisher<decltype(stream)>,
+        "Repeat stream should be a publisher");
   }
 
   SECTION("empty repeat") {

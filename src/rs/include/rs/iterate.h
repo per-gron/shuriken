@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/publisher.h>
 #include <rs/subscription.h>
 
 namespace shk {
@@ -30,7 +31,7 @@ namespace shk {
  */
 template <typename Container>
 auto Iterate(Container &&container) {
-  return [container = std::forward<Container>(container)](
+  return MakePublisher([container = std::forward<Container>(container)](
       auto subscriber) {
     class ContainerSubscription : public SubscriptionBase {
      public:
@@ -65,8 +66,8 @@ auto Iterate(Container &&container) {
 
     return ContainerSubscription(
         container,
-        std::forward<decltype(subscriber)>(subscriber));
-  };
+        std::move(subscriber));
+  });
 }
 
 }  // namespace shk

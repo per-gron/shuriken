@@ -24,6 +24,9 @@ namespace shk {
 TEST_CASE("Iterate") {
   SECTION("construct") {
     auto stream = Iterate(std::vector<int>{});
+    static_assert(
+        IsPublisher<decltype(stream)>,
+        "Iterate should be a publisher");
   }
 
   SECTION("empty container") {

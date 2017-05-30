@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
 
@@ -75,13 +76,14 @@ auto Map(Mapper &&mapper) {
   // Return an operator (it takes a Publisher and returns a Publisher)
   return [mapper = std::forward<Mapper>(mapper)](auto source) {
     // Return a Publisher
-    return [mapper, source = std::move(source)](auto &&subscriber) {
+    return MakePublisher([mapper, source = std::move(source)](
+        auto &&subscriber) {
       return source(detail::MapSubscriber<
           typename std::decay<decltype(subscriber)>::type,
           typename std::decay<Mapper>::type>(
               std::forward<decltype(subscriber)>(subscriber),
               mapper));
-    };
+    });
   };
 }
 

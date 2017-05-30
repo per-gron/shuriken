@@ -14,15 +14,16 @@
 
 #pragma once
 
+#include <rs/publisher.h>
 #include <rs/subscription.h>
 
 namespace shk {
 
 inline auto Empty() {
-  return [](auto subscriber) {
+  return MakePublisher([](auto subscriber) {
     subscriber.OnComplete();
     return MakeSubscription();
-  };
+  });
 }
 
 }  // namespace shk

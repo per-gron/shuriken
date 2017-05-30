@@ -39,6 +39,9 @@ TEST_CASE("Just") {
 
   SECTION("construct") {
     auto stream = Just(1);
+    static_assert(
+        IsPublisher<decltype(stream)>,
+        "Just stream should be a publisher");
   }
 
   SECTION("just subscribe") {

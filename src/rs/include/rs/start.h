@@ -14,13 +14,14 @@
 
 #pragma once
 
+#include <rs/publisher.h>
 #include <rs/subscription.h>
 
 namespace shk {
 
 template <typename CreateValue>
 auto Start(CreateValue &&create_value) {
-  return [create_value = std::forward<CreateValue>(create_value)](
+  return MakePublisher([create_value = std::forward<CreateValue>(create_value)](
       auto &&subscriber) {
     return MakeSubscription(
         [
@@ -33,7 +34,7 @@ auto Start(CreateValue &&create_value) {
             subscriber.OnComplete();
           }
         });
-  };
+  });
 }
 
 }  // namespace shk

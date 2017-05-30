@@ -22,6 +22,9 @@ namespace shk {
 TEST_CASE("Never") {
   SECTION("construct") {
     auto never = Never();
+    static_assert(
+        IsPublisher<decltype(never)>,
+        "Never stream should be a publisher");
   }
 
   SECTION("subscribe") {

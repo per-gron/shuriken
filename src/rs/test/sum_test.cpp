@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include <rs/empty.h>
 #include <rs/sum.h>
 #include <rs/iterate.h>
 
@@ -25,6 +26,9 @@ namespace shk {
 
 TEST_CASE("Sum") {
   auto sum = Sum();
+  static_assert(
+      IsPublisher<decltype(sum(Empty()))>,
+      "Empty stream should be a publisher");
 
   SECTION("empty") {
     CHECK(GetOne<int>(sum(Iterate(std::vector<int>{}))) == 0);

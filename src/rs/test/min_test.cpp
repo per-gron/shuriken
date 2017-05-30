@@ -28,6 +28,9 @@ namespace shk {
 
 TEST_CASE("Min") {
   auto min = Min<int>();
+  static_assert(
+      IsPublisher<decltype(min(Just(0)))>,
+      "Min stream should be a publisher");
 
   SECTION("empty") {
     auto error = GetError(min(Empty()));

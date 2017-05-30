@@ -25,6 +25,9 @@ namespace shk {
 
 TEST_CASE("Count") {
   auto count = Count();
+  static_assert(
+      IsPublisher<decltype(count(Iterate(std::vector<int>{})))>,
+      "Count stream should be a publisher");
 
   SECTION("empty") {
     CHECK(GetOne<int>(count(Iterate(std::vector<int>{}))) == 0);

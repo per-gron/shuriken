@@ -28,6 +28,9 @@ namespace shk {
 
 TEST_CASE("Max") {
   auto max = Max<int>();
+  static_assert(
+      IsPublisher<decltype(max(Just(0)))>,
+      "Max stream should be a publisher");
 
   SECTION("empty") {
     auto error = GetError(max(Empty()));

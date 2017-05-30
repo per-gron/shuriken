@@ -18,6 +18,7 @@
 
 #include <rs/map.h>
 #include <rs/pipe.h>
+#include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
 
@@ -91,7 +92,7 @@ auto ReduceGet(MakeInitial &&make_initial, Reducer &&reducer) {
       make_initial = std::forward<MakeInitial>(make_initial),
       reducer = std::forward<Reducer>(reducer)](auto source) {
     // Return a Publisher
-    return [make_initial, reducer, source = std::move(source)](
+    return MakePublisher([make_initial, reducer, source = std::move(source)](
         auto &&subscriber) {
       auto stream_reducer = std::make_shared<
           detail::StreamReducer<
@@ -110,7 +111,7 @@ auto ReduceGet(MakeInitial &&make_initial, Reducer &&reducer) {
               stream_reducer->RequestedResult();
             }
           });
-    };
+    });
   };
 }
 

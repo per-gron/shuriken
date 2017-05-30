@@ -14,15 +14,16 @@
 
 #pragma once
 
+#include <rs/publisher.h>
 #include <rs/subscription.h>
 
 namespace shk {
 
 inline auto Throw(const std::exception_ptr &error) {
-  return [error](auto subscriber) {
+  return MakePublisher([error](auto subscriber) {
     subscriber.OnError(std::exception_ptr(error));
     return MakeSubscription();
-  };
+  });
 }
 
 }  // namespace shk

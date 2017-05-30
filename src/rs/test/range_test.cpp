@@ -25,6 +25,9 @@ namespace shk {
 TEST_CASE("Range") {
   SECTION("construct") {
     auto stream = Range(0, 0);
+    static_assert(
+        IsPublisher<decltype(stream)>,
+        "Range stream should be a publisher");
   }
 
   SECTION("empty range") {

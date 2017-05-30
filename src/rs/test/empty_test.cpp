@@ -22,6 +22,7 @@ namespace shk {
 TEST_CASE("Empty") {
   SECTION("construct") {
     auto empty = Empty();
+    static_assert(IsPublisher<decltype(empty)>, "Empty should be a publisher");
   }
 
   SECTION("subscribe") {

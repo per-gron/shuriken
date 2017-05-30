@@ -28,9 +28,13 @@ TEST_CASE("Map") {
   auto add_self = Map([](auto x) { return x + x; });
 
   SECTION("empty") {
+    auto stream = add_self(Iterate(std::vector<int>{}));
     CHECK(
-        GetAll<int>(add_self(Iterate(std::vector<int>{}))) ==
+        GetAll<int>(stream) ==
         (std::vector<int>{}));
+    static_assert(
+        IsPublisher<decltype(stream)>,
+        "Mapped stream should be a publisher");
   }
 
   SECTION("one int") {

@@ -38,6 +38,32 @@ class PublisherBase {
 template <typename T>
 constexpr bool IsPublisher = std::is_base_of<PublisherBase, T>::value;
 
+namespace detail {
+
+template <typename InnerPublisher>
+class ConcretePublisher : public PublisherBase {
+ public:
+  template <typename InnerPublisherType>
+  explicit ConcretePublisher(
+      InnerPublisherType &&inner_publisher)
+      : inner_publisher_(std::forward<InnerPublisherType>(inner_publisher)) {}
+
+  template <typename T>
+  auto operator()(T &&t) {
+    return inner_publisher_(std::forward<T>(t));
+  }
+
+  template <typename T>
+  auto operator()(T &&t) const {
+    return inner_publisher_(std::forward<T>(t));
+  }
+
+ private:
+  InnerPublisher inner_publisher_;
+};
+
+}  // namespace detail
+
 /**
  * Type erasure wrapper for Publisher objects.
  */
@@ -54,7 +80,8 @@ class Publisher : public PublisherBase {
     static_assert(
         IsSubscriber<SubscriberType>,
         "Publisher was invoked with a non-subscriber parameter");
-    return (*eraser_)(Subscriber<Ts...>(std::move(subscriber)));
+    return (*eraser_)(Subscriber<Ts...>(
+        std::forward<SubscriberType>(subscriber)));
   }
 
  private:
@@ -81,5 +108,16 @@ class Publisher : public PublisherBase {
 
   std::unique_ptr<Eraser> eraser_;
 };
+
+/**
+ * Takes a functor that takes a Subscriber and returns a Subscription and
+ * returns a Publisher object.
+ */
+template <typename PublisherType>
+auto MakePublisher(PublisherType &&publisher) {
+  return detail::ConcretePublisher<
+      typename std::decay<PublisherType>::type>(
+          std::forward<PublisherType>(publisher));
+}
 
 }  // namespace shk

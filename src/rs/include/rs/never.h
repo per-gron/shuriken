@@ -14,14 +14,15 @@
 
 #pragma once
 
+#include <rs/publisher.h>
 #include <rs/subscription.h>
 
 namespace shk {
 
 inline auto Never() {
-  return [](auto subscriber) {
+  return MakePublisher([](auto subscriber) {
     return MakeSubscription();
-  };
+  });
 }
 
 }  // namespace shk
