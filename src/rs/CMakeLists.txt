@@ -7,6 +7,7 @@ add_library(rs
   include/rs/map.h
   include/rs/never.h
   include/rs/publisher.h
+  include/rs/range.h
   include/rs/reduce.h
   include/rs/start.h
   include/rs/subscriber.h
@@ -27,6 +28,7 @@ add_executable(rs-test
   test/map_test.cpp
   test/never_test.cpp
   test/publisher_test.cpp
+  test/range_test.cpp
   test/reduce_test.cpp
   test/start_test.cpp
   test/sum_test.cpp

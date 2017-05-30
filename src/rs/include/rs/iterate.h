@@ -47,8 +47,9 @@ auto Iterate(Container &&container) {
     }
 
     void Request(size_t count) {
-      while (count-- && it_ != end_) {
-        subscriber_.OnNext(std::move(*it_++));
+      while (count-- && !(it_ == end_)) {
+        subscriber_.OnNext(std::move(*it_));
+        ++it_;
         if (it_ == end_) {
           subscriber_.OnComplete();
         }
