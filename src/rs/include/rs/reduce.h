@@ -132,7 +132,8 @@ auto Reduce(Accumulator &&initial, Reducer &&reducer) {
 /**
  * Like Reduce, but instead of taking an initial value, it requires that the
  * input stream has at least one value, and uses the first value of the stream
- * as the initial value.
+ * as the initial value. If the input stream is empty, it fails with an
+ * std::out_of_range exception.
  *
  * This requires that the type of the input stream is convertible to the return
  * type of the reducer function (because if there is only one value, the reducer

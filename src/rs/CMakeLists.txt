@@ -6,6 +6,7 @@ add_library(rs
   include/rs/just.h
   include/rs/last.h
   include/rs/map.h
+  include/rs/max.h
   include/rs/never.h
   include/rs/pipe.h
   include/rs/publisher.h
@@ -30,6 +31,7 @@ add_executable(rs-test
   test/last_test.cpp
   test/main.cpp
   test/map_test.cpp
+  test/max_test.cpp
   test/never_test.cpp
   test/pipe_test.cpp
   test/publisher_test.cpp
