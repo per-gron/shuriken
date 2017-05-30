@@ -6,6 +6,7 @@ add_library(rs
   include/rs/just.h
   include/rs/map.h
   include/rs/never.h
+  include/rs/pipe.h
   include/rs/publisher.h
   include/rs/range.h
   include/rs/reduce.h
@@ -28,6 +29,7 @@ add_executable(rs-test
   test/main.cpp
   test/map_test.cpp
   test/never_test.cpp
+  test/pipe_test.cpp
   test/publisher_test.cpp
   test/range_test.cpp
   test/reduce_test.cpp
