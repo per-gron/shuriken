@@ -24,15 +24,21 @@ namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename Mapper>
-class MapSubscriber : public SubscriberBase {
+class MapSubscriber : public SubscriberBase, public SubscriptionBase {
  public:
   MapSubscriber(InnerSubscriberType &&inner_subscriber, const Mapper &mapper)
       : inner_subscriber_(std::move(inner_subscriber)),
+        subscription_(MakeSubscription()),
         mapper_(mapper) {}
+
+  template <typename SubscriptionT>
+  void TakeSubscription(SubscriptionT &&subscription) {
+    subscription_ = Subscription(std::forward<SubscriptionT>(subscription));
+  }
 
   template <typename T>
   void OnNext(T &&t) {
-    if (failed_) {
+    if (cancelled_) {
       return;
     }
 
@@ -45,27 +51,37 @@ class MapSubscriber : public SubscriberBase {
       if (mapper_succeeded) {
         throw;
       } else {
-        failed_ = true;
+        Cancel();
         inner_subscriber_.OnError(std::current_exception());
       }
     }
   }
 
   void OnError(std::exception_ptr &&error) {
-    if (!failed_) {
+    if (!cancelled_) {
       inner_subscriber_.OnError(std::move(error));
     }
   }
 
   void OnComplete() {
-    if (!failed_) {
+    if (!cancelled_) {
       inner_subscriber_.OnComplete();
     }
   }
 
+  void Request(size_t count) {
+    subscription_.Request(count);
+  }
+
+  void Cancel() {
+    subscription_.Cancel();
+    cancelled_ = true;
+  }
+
  private:
-  bool failed_ = false;
+  bool cancelled_ = false;
   InnerSubscriberType inner_subscriber_;
+  Subscription subscription_;
   Mapper mapper_;
 };
 
@@ -78,11 +94,16 @@ auto Map(Mapper &&mapper) {
     // Return a Publisher
     return MakePublisher([mapper, source = std::move(source)](
         auto &&subscriber) {
-      return source.Subscribe(detail::MapSubscriber<
+      auto map_subscriber = std::make_shared<detail::MapSubscriber<
           typename std::decay<decltype(subscriber)>::type,
-          typename std::decay<Mapper>::type>(
+          typename std::decay<Mapper>::type>>(
               std::forward<decltype(subscriber)>(subscriber),
-              mapper));
+              mapper);
+
+      map_subscriber->TakeSubscription(
+          source.Subscribe(MakeSubscriber(map_subscriber)));
+
+      return MakeSubscription(map_subscriber);
     });
   };
 }

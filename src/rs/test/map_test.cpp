@@ -20,6 +20,7 @@
 #include <rs/iterate.h>
 #include <rs/map.h>
 
+#include "infinite_range.h"
 #include "test_util.h"
 
 namespace shk {
@@ -74,6 +75,19 @@ TEST_CASE("Map") {
         (std::vector<int>{ 2, 12 }));
   }
 
+  SECTION("cancel") {
+    auto null_subscriber = MakeSubscriber(
+        [](int next) { CHECK(!"should not happen"); },
+        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+        [] { CHECK(!"should not happen"); });
+
+    auto sub = add_self(InfiniteRange(0)).Subscribe(std::move(null_subscriber));
+    sub.Cancel();
+    // Because the subscription is cancelled, it should not request values
+    // from the infinite range (which would never terminate).
+    sub.Request(Subscription::kAll);
+  }
+
   SECTION("exceptions") {
     auto fail_on = [](int error_val) {
       return Map([error_val](int x) {
@@ -121,6 +135,13 @@ TEST_CASE("Map") {
               1,
               false) ==
           (std::vector<int>{ 1 }));
+    }
+
+    SECTION("error on first of infinite") {
+      // This will terminate only if the Map operator actually cancels the
+      // underlying InfiniteRange stream.
+      auto error = GetError(fail_on(0)(InfiniteRange(0)));
+      CHECK(GetErrorWhat(error) == "fail_on");
     }
   }
 }
