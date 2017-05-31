@@ -1,12 +1,12 @@
 # `rs`
 
-`rs` is a minimalist Reactive Streams-inspired library that offers types for reactive streams along functions that operate on them.
+`rs` is a minimalist unofficial Reactive Streams library that offers types for reactive streams along functions that operate on them.
 
 * It is written in C++14.
 * Like all Reactive Streams based libraries, it offers mandatory non-blocking back-pressure support (at the time of writing, [RxCpp](https://github.com/Reactive-Extensions/RxCpp) does not do this).
 * It has a trivial threading model: Nothing in this library is thread safe.
 * It attempts to be small, to avoid excessive compile times.
-* It does not have the concept of a Scheduler, or time. The author of this library believes that such concepts belong in a runloop.
+* It does not have the concept of a Scheduler, or time, like Rx libraries do. The author of this library believes that such concepts belong in a runloop.
 
 
 ## Threading model
