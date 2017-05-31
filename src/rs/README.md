@@ -110,6 +110,8 @@ This means that the subscriber will receive a possibly unbounded number of `OnNe
 | [:bulb:](#1.9 "1.9 explained") | *The intent of this rule is to make sure that subscribing to a Publisher never throws. |
 | <a name="1.10">10</a>     | A `Publisher` MAY support multiple `Subscriber`s and decides whether each `Subscription` is unicast or multicast. |
 | [:bulb:](#1.10 "1.10 explained") | *The intent of this rule is to give Publisher implementations the flexibility to decide how many, if any, Subscribers they will support, and how elements are going to be distributed.* |
+| <a name="1.11">11</a>     | A `Publisher` MUST make sure that the subscriptions keep functioning after the Publisher has been destroyed. |
+| [:bulb:](#1.11 "1.11 explained") | *A Publisher object's lifetime does not necessesarily extend beyond the subscriptions that it has created. Users of a Publisher MAY assume that creating a short-lived Publisher object does not cause subscriptions to be prematurely cancelled.* |
 
 
 
