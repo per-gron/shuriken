@@ -200,6 +200,33 @@ TEST_CASE("Iterate") {
     }
   }
 
+  SECTION("request from within OnNext") {
+    int nexts = 0;
+    int finishes = 0;
+
+    auto stream = Iterate(std::vector<int>{ 1 });
+
+    Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
+        [&sub, &nexts](int next) {
+          CHECK(nexts == 0);
+          CHECK(next == 1);
+          nexts++;
+          // If Start does this wrong, it will blow the stack
+          sub.Request(1);
+        },
+        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+        [&finishes, &nexts] {
+          CHECK(nexts == 1);
+          finishes++;
+        })));
+    CHECK(nexts == 0);
+    CHECK(finishes == 0);
+
+    sub.Request(1);
+    CHECK(nexts == 1);
+    CHECK(finishes == 1);
+  }
+
   SECTION("cancel") {
     auto stream = InfiniteRange(0);
 
