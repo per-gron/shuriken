@@ -32,7 +32,11 @@ class StartSubscription : public SubscriptionBase {
 
   void Request(size_t count) {
     if (!_cancelled && count != 0) {
+      // It's important to set _cancelled here before OnNext is called, because
+      // OnNext may call Request. If _cancelled is not true then we will call
+      // OnNext again, which is bad.
       _cancelled = true;
+
       subscriber_.OnNext(create_value_());
       subscriber_.OnComplete();
     }
