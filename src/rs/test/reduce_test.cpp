@@ -24,6 +24,7 @@
 #include <rs/subscriber.h>
 #include <rs/throw.h>
 
+#include "infinite_range.h"
 #include "test_util.h"
 
 namespace shk {
@@ -81,6 +82,26 @@ TEST_CASE("Reduce") {
       // The reducer functor should be invoked only once
       auto error = GetError(fail_on(0, 1)(Iterate(std::vector<int>{ 0, 1 })));
       CHECK(GetErrorWhat(error) == "fail_on");
+    }
+
+    SECTION("error on first of infinite") {
+      // This will terminate only if the Reduce operator actually cancels the
+      // underlying InfiniteRange stream.
+      auto error = GetError(fail_on(0, 1)(InfiniteRange(0)));
+      CHECK(GetErrorWhat(error) == "fail_on");
+    }
+
+    SECTION("cancel") {
+      auto null_subscriber = MakeSubscriber(
+          [](int next) { CHECK(!"should not happen"); },
+          [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+          [] { CHECK(!"should not happen"); });
+
+      auto sub = sum(InfiniteRange(0)).Subscribe(std::move(null_subscriber));
+      sub.Cancel();
+      // Because the subscription is cancelled, it should not request values
+      // from the infinite range (which would never terminate).
+      sub.Request(1);
     }
   }
 

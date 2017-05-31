@@ -19,6 +19,8 @@
 #include <rs/iterate.h>
 #include <rs/subscriber.h>
 
+#include "infinite_range.h"
+
 namespace shk {
 
 TEST_CASE("Iterate") {
@@ -196,6 +198,25 @@ TEST_CASE("Iterate") {
       CHECK(done == 1);
       sub.Request(1);
     }
+  }
+
+  SECTION("cancel") {
+    auto stream = InfiniteRange(0);
+
+    bool next_called = false;
+    Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
+        [&next_called, &sub](int val) {
+          CHECK(!next_called);
+          next_called = true;
+          sub.Cancel();
+        },
+        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+        [] { CHECK(!"should not happen"); })));
+    sub.Request(0);
+    CHECK(!next_called);
+    sub.Request(1000);
+    CHECK(next_called);
+    sub.Request(1);
   }
 }
 

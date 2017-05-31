@@ -24,9 +24,10 @@ namespace shk {
  * Classes that conform to the Subscription concept should inherit from this
  * class to signify that they are a Subscription.
  *
- * Subscription types must have the following method:
+ * Subscription types must have the following methods:
  *
  * * void Request(size_t count);
+ * * void Cancel();
  *
  * Destroying a Subscription object implicitly cancels the subscription.
  */
@@ -40,6 +41,47 @@ namespace detail {
 class EmptySubscription : public SubscriptionBase {
  public:
   void Request(size_t count);
+  void Cancel();
+};
+
+
+template <typename RequestCb, typename CancelCb>
+class CallbackSubscription : public SubscriptionBase {
+ public:
+  template <typename RequestCbT, typename CancelCbT>
+  CallbackSubscription(RequestCbT &&request, CancelCbT &&cancel)
+      : request_(std::forward<RequestCbT>(request)),
+        cancel_(std::forward<CancelCbT>(cancel)) {}
+
+  void Request(size_t count) {
+    request_(count);
+  }
+
+  void Cancel() {
+    cancel_();
+  }
+
+ private:
+  RequestCb request_;
+  CancelCb cancel_;
+};
+
+template <typename SubscriptionType>
+class SharedPtrSubscription : public SubscriptionBase {
+ public:
+  explicit SharedPtrSubscription(std::shared_ptr<SubscriptionType> subscription)
+      : subscription_(subscription) {}
+
+  void Request(size_t count) {
+    subscription_->Request(count);
+  }
+
+  void Cancel() {
+    subscription_->Cancel();
+  }
+
+ private:
+  std::shared_ptr<SubscriptionType> subscription_;
 };
 
 }  // namespace detail
@@ -58,20 +100,24 @@ class Subscription : public SubscriptionBase {
    * S should implement the Subscription concept.
    */
   template <typename S>
-  explicit Subscription(
-      typename std::enable_if<IsSubscription<S>, S>::type &&s)
+  explicit Subscription(S &&s)
       : eraser_(std::make_unique<SubscriptionEraser<S>>(std::forward<S>(s))) {}
 
   Subscription(const Subscription &) = delete;
   Subscription &operator=(const Subscription &) = delete;
+  Subscription(Subscription &&) = default;
+  Subscription &operator=(Subscription &&) = default;
 
   void Request(size_t count);
+
+  void Cancel();
 
  private:
   class Eraser {
    public:
     virtual ~Eraser();
     virtual void Request(size_t count) = 0;
+    virtual void Cancel() = 0;
   };
 
   template <typename S>
@@ -84,6 +130,10 @@ class Subscription : public SubscriptionBase {
       subscription_.Request(count);
     }
 
+    void Cancel() override {
+      subscription_.Cancel();
+    }
+
    private:
     S subscription_;
   };
@@ -93,22 +143,22 @@ class Subscription : public SubscriptionBase {
 
 detail::EmptySubscription MakeSubscription();
 
-template <typename RequestCb>
-auto MakeSubscription(RequestCb &&request) {
-  class RequestSubscription : public SubscriptionBase {
-   public:
-    RequestSubscription(RequestCb &&request)
-        : request_(std::forward<RequestCb>(request)) {}
+template <typename RequestCb, typename CancelCb>
+auto MakeSubscription(RequestCb &&request, CancelCb &&cancel) {
+  return detail::CallbackSubscription<
+      typename std::decay<RequestCb>::type,
+      typename std::decay<CancelCb>::type>(
+          std::forward<RequestCb>(request),
+          std::forward<CancelCb>(cancel));
+}
 
-    void Request(size_t count) {
-      request_(count);
-    }
+template <typename SubscriptionType>
+auto MakeSubscription(const std::shared_ptr<SubscriptionType> &subscription) {
+  static_assert(
+      IsSubscription<SubscriptionType>,
+      "MakeSubscription must be called with a Subscription");
 
-   private:
-    RequestCb request_;
-  };
-
-  return RequestSubscription(std::forward<RequestCb>(request));
+  return detail::SharedPtrSubscription<SubscriptionType>(subscription);
 }
 
 }  // namespace shk

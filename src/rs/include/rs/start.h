@@ -14,26 +14,51 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <rs/publisher.h>
 #include <rs/subscription.h>
 
 namespace shk {
+namespace detail {
+
+template <typename CreateValue, typename Subscriber>
+class StartSubscription : public SubscriptionBase {
+ public:
+  template <typename SubscriberT>
+  StartSubscription(const CreateValue &create_value, SubscriberT &&subscriber)
+      : create_value_(create_value),
+        subscriber_(std::forward<SubscriberT>(subscriber)) {}
+
+  void Request(size_t count) {
+    if (!_cancelled && count != 0) {
+      _cancelled = true;
+      subscriber_.OnNext(create_value_());
+      subscriber_.OnComplete();
+    }
+  }
+
+  void Cancel() {
+    _cancelled = true;
+  }
+
+ private:
+  CreateValue create_value_;
+  Subscriber subscriber_;
+  bool _cancelled = false;
+};
+
+}  // namespace detail
 
 template <typename CreateValue>
 auto Start(CreateValue &&create_value) {
   return MakePublisher([create_value = std::forward<CreateValue>(create_value)](
       auto &&subscriber) {
-    return MakeSubscription(
-        [
+    return detail::StartSubscription<
+        typename std::decay<CreateValue>::type,
+        typename std::decay<decltype(subscriber)>::type>(
             create_value,
-            subscriber = std::forward<decltype(subscriber)>(subscriber),
-            sent = false](size_t count) mutable {
-          if (!sent && count != 0) {
-            sent = true;
-            subscriber.OnNext(create_value());
-            subscriber.OnComplete();
-          }
-        });
+            std::forward<decltype(subscriber)>(subscriber));
   });
 }
 

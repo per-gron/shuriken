@@ -94,6 +94,39 @@ TEST_CASE("Start") {
     }
   }
 
+  SECTION("cancel") {
+    int nexts = 0;
+    int finishes = 0;
+
+    auto stream = Start([] { return 1; });
+
+    auto sub = stream.Subscribe(counting_subscriber(&nexts, &finishes));
+    CHECK(nexts == 0);
+    CHECK(finishes == 0);
+
+    sub.Cancel();
+    sub.Request(1);
+    CHECK(nexts == 0);
+    CHECK(finishes == 0);
+  }
+
+  SECTION("cancel twice") {
+    int nexts = 0;
+    int finishes = 0;
+
+    auto stream = Start([] { return 1; });
+
+    auto sub = stream.Subscribe(counting_subscriber(&nexts, &finishes));
+    CHECK(nexts == 0);
+    CHECK(finishes == 0);
+
+    sub.Cancel();
+    sub.Cancel();
+    sub.Request(1);
+    CHECK(nexts == 0);
+    CHECK(finishes == 0);
+  }
+
   SECTION("request twice") {
     int nexts = 0;
     int finishes = 0;

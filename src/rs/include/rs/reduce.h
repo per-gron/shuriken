@@ -26,7 +26,7 @@ namespace shk {
 namespace detail {
 
 template <typename Accumulator, typename Subscriber, typename Reducer>
-class StreamReducer : public SubscriberBase {
+class StreamReducer : public SubscriberBase, public SubscriptionBase {
  public:
   StreamReducer(
       Accumulator &&accumulator,
@@ -34,33 +34,52 @@ class StreamReducer : public SubscriberBase {
       const Reducer &reducer)
       : accumulator_(std::move(accumulator)),
         subscriber_(std::move(subscriber)),
+        subscription_(MakeSubscription()),
         reducer_(reducer) {}
+
+  template <typename SubscriptionT>
+  void TakeSubscription(SubscriptionT &&subscription) {
+    subscription_ = Subscription(std::forward<SubscriptionT>(subscription));
+  }
 
   template <typename T>
   void OnNext(T &&t) {
-    if (failed_) {
+    if (cancelled_) {
       return;
     }
 
     try {
       accumulator_ = reducer_(std::move(accumulator_), std::forward<T>(t));
     } catch (...) {
-      failed_ = true;
+      Cancel();
       subscriber_.OnError(std::current_exception());
     }
   }
 
   void OnError(std::exception_ptr &&error) {
-    failed_ = true;
+    Cancel();
     subscriber_.OnError(std::move(error));
   }
 
   void OnComplete() {
-    if (!failed_) {
+    if (!cancelled_) {
       RequestedResult();
     }
   }
 
+  void Request(size_t count) {
+    if (count > 0) {
+      subscription_.Request(Subscription::kAll);
+      RequestedResult();
+    }
+  }
+
+  void Cancel() {
+    cancelled_ = true;
+    subscription_.Cancel();
+  }
+
+ private:
   void RequestedResult() {
     state_++;
     if (state_ == 2) {
@@ -69,12 +88,12 @@ class StreamReducer : public SubscriberBase {
     }
   }
 
- private:
   int state_ = 0;
 
-  bool failed_ = false;
+  bool cancelled_ = false;
   Accumulator accumulator_;
   Subscriber subscriber_;
+  Subscription subscription_;
   Reducer reducer_;
 };
 
@@ -102,15 +121,10 @@ auto ReduceGet(MakeInitial &&make_initial, Reducer &&reducer) {
                   make_initial(),
                   std::forward<decltype(subscriber)>(subscriber),
                   reducer);
-      auto sub = source.Subscribe(MakeSubscriber(stream_reducer));
+      stream_reducer->TakeSubscription(
+          source.Subscribe(MakeSubscriber(stream_reducer)));
 
-      return MakeSubscription(
-          [stream_reducer, sub = std::move(sub)](size_t count) mutable {
-            if (count > 0) {
-              sub.Request(Subscription::kAll);
-              stream_reducer->RequestedResult();
-            }
-          });
+      return MakeSubscription(stream_reducer);
     });
   };
 }

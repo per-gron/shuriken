@@ -48,7 +48,7 @@ auto Iterate(Container &&container) {
     }
 
     void Request(size_t count) {
-      while (count-- && !(it_ == end_)) {
+      while (!cancelled_ && count-- && !(it_ == end_)) {
         subscriber_.OnNext(std::move(*it_));
         ++it_;
         if (it_ == end_) {
@@ -57,11 +57,16 @@ auto Iterate(Container &&container) {
       }
     }
 
+    void Cancel() {
+      cancelled_ = true;
+    }
+
      private:
       typename std::decay<Container>::type container_;
       decltype(subscriber) subscriber_;
       decltype(std::begin(std::declval<Container>())) it_;
       decltype(std::end(std::declval<Container>())) end_;
+      bool cancelled_ = false;
     };
 
     return ContainerSubscription(

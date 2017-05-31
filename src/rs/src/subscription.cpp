@@ -19,12 +19,18 @@ namespace detail {
 
 void EmptySubscription::Request(size_t count) {}
 
+void EmptySubscription::Cancel() {}
+
 }  // namespace detail
 
 Subscription::Eraser::~Eraser() {}
 
 void Subscription::Request(size_t count) {
   eraser_->Request(count);
+}
+
+void Subscription::Cancel() {
+  eraser_->Cancel();
 }
 
 detail::EmptySubscription MakeSubscription() {
