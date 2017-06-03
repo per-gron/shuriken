@@ -48,13 +48,25 @@ auto Iterate(Container &&container) {
     }
 
     void Request(size_t count) {
-      while (!cancelled_ && count-- && !(it_ == end_)) {
+      outstanding_request_count_ += count;
+      if (outstanding_request_count_ != count) {
+        // Farther up in the stack, Request is already being called. No need
+        // to do anything here.
+        return;
+      }
+
+      while (!cancelled_ && outstanding_request_count_ && !(it_ == end_)) {
         auto &&value = *it_;
         ++it_;
         subscriber_.OnNext(std::move(value));
         if (it_ == end_) {
+          outstanding_request_count_ = 0;  // Just for sanity, not needed
           subscriber_.OnComplete();
         }
+
+        // Need to decrement this after calling OnNext/OnComplete, to ensure
+        // that re-entrant Request calls always see that they are re-entrant.
+        outstanding_request_count_--;
       }
     }
 
@@ -68,6 +80,7 @@ auto Iterate(Container &&container) {
       decltype(std::begin(std::declval<Container>())) it_;
       decltype(std::end(std::declval<Container>())) end_;
       bool cancelled_ = false;
+      size_t outstanding_request_count_ = 0;
     };
 
     return ContainerSubscription(
