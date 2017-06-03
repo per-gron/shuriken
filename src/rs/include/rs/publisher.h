@@ -76,11 +76,11 @@ class Publisher : public PublisherBase {
             std::forward<PublisherType>(publisher))) {}
 
   template <typename SubscriberType>
-  Subscription operator()(SubscriberType &&subscriber) {
+  Subscription Subscribe(SubscriberType &&subscriber) {
     static_assert(
         IsSubscriber<SubscriberType>,
         "Publisher was invoked with a non-subscriber parameter");
-    return (*eraser_)(Subscriber<Ts...>(
+    return eraser_->Subscribe(Subscriber<Ts...>(
         std::forward<SubscriberType>(subscriber)));
   }
 
@@ -89,7 +89,7 @@ class Publisher : public PublisherBase {
    public:
     virtual ~Eraser() = default;
 
-    virtual Subscription operator()(Subscriber<Ts...> &&subscriber) = 0;
+    virtual Subscription Subscribe(Subscriber<Ts...> &&subscriber) = 0;
   };
 
   template <typename PublisherType>
@@ -98,8 +98,8 @@ class Publisher : public PublisherBase {
     PublisherEraser(PublisherType &&publisher)
         : publisher_(std::move(publisher)) {}
 
-    Subscription operator()(Subscriber<Ts...> &&subscriber) override {
-      return publisher_(std::move(subscriber));
+    Subscription Subscribe(Subscriber<Ts...> &&subscriber) override {
+      return publisher_.Subscribe(std::move(subscriber));
     }
 
    private:
