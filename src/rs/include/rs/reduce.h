@@ -63,6 +63,7 @@ class StreamReducer : public SubscriberBase, public SubscriptionBase {
 
   void OnComplete() {
     if (!cancelled_) {
+      complete_ = true;
       RequestedResult();
     }
   }
@@ -70,6 +71,7 @@ class StreamReducer : public SubscriberBase, public SubscriptionBase {
   void Request(size_t count) {
     if (count > 0) {
       subscription_.Request(Subscription::kAll);
+      requested_ = true;
       RequestedResult();
     }
   }
@@ -81,14 +83,14 @@ class StreamReducer : public SubscriberBase, public SubscriptionBase {
 
  private:
   void RequestedResult() {
-    state_++;
-    if (state_ == 2) {
+    if (complete_ && requested_) {
       subscriber_.OnNext(std::move(accumulator_));
       subscriber_.OnComplete();
     }
   }
 
-  int state_ = 0;
+  bool complete_ = false;
+  bool requested_ = false;
 
   bool cancelled_ = false;
   Accumulator accumulator_;

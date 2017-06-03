@@ -20,6 +20,7 @@
 #include <rs/empty.h>
 #include <rs/iterate.h>
 #include <rs/just.h>
+#include <rs/never.h>
 #include <rs/reduce.h>
 #include <rs/subscriber.h>
 #include <rs/throw.h>
@@ -101,6 +102,24 @@ TEST_CASE("Reduce") {
       sub.Cancel();
       // Because the subscription is cancelled, it should not request values
       // from the infinite range (which would never terminate).
+      sub.Request(1);
+    }
+
+    SECTION("request twice on never input") {
+      bool has_value = false;
+      bool is_done = false;
+      int result = -1;
+      auto sub = sum(Never()).Subscribe(MakeSubscriber(
+          [&result, &has_value, &is_done](auto &&) {
+            CHECK(!"OnNext should not be called");
+          },
+          [](std::exception_ptr &&error) {
+            CHECK(!"OnError should not be called");
+          },
+          [&has_value, &is_done] {
+            CHECK(!"OnComplete should not be called");
+          }));
+      sub.Request(1);
       sub.Request(1);
     }
   }

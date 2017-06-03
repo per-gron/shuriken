@@ -27,10 +27,10 @@ T GetOne(
   bool is_done = false;
   T result{};
   auto sub = publisher.Subscribe(MakeSubscriber(
-      [&result, &has_value, &is_done](T &&val) {
+      [&result, &has_value, &is_done](auto &&val) {
         CHECK(!is_done);
         CHECK(!has_value);
-        result = std::move(val);
+        result = std::forward<decltype(val)>(val);
         has_value = true;
       },
       [](std::exception_ptr &&error) {
