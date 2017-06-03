@@ -54,8 +54,9 @@ std::vector<T> GetAll(
   std::vector<T> result;
   bool is_done = false;
   auto sub = publisher.Subscribe(MakeSubscriber(
-      [&result](T &&val) {
-        result.emplace_back(std::move(val));
+      [&is_done, &result](auto &&val) {
+        CHECK(!is_done);
+        result.emplace_back(std::forward<decltype(val)>(val));
       },
       [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
       [&is_done] {
