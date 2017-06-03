@@ -39,6 +39,11 @@ class SubscriberBase {
 template <typename T>
 constexpr bool IsSubscriber = std::is_base_of<SubscriberBase, T>::value;
 
+template <typename T>
+using IsRvalue = typename std::enable_if<
+    !std::is_lvalue_reference<T>::value &&
+    !(std::is_rvalue_reference<T>::value && std::is_const<T>::value)>::type;
+
 namespace detail {
 
 template <typename Needle, int Index, typename ...Ts>
@@ -93,7 +98,7 @@ class SharedPtrSubscriber : public SubscriberBase {
   explicit SharedPtrSubscriber(std::shared_ptr<SubscriberType> subscriber)
       : subscriber_(subscriber) {}
 
-  template <typename T>
+  template <typename T, class = IsRvalue<T>>
   void OnNext(T &&t) {
     subscriber_->OnNext(std::forward<T>(t));
   }

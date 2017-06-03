@@ -36,7 +36,7 @@ class MapSubscriber : public SubscriberBase, public SubscriptionBase {
     subscription_ = Subscription(std::forward<SubscriptionT>(subscription));
   }
 
-  template <typename T>
+  template <typename T, class = IsRvalue<T>>
   void OnNext(T &&t) {
     if (cancelled_) {
       return;
