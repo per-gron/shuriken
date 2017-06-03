@@ -42,18 +42,14 @@ class MapSubscriber : public SubscriberBase, public SubscriptionBase {
       return;
     }
 
-    bool mapper_succeeded = false;
     try {
-      auto value = mapper_(std::forward<T>(t));
-      mapper_succeeded = true;
-      inner_subscriber_.OnNext(std::move(value));
+      // We're only interested in catching the exception from mapper_ here, not
+      // OnNext. But the specification requires that OnNext does not throw, and
+      // here we rely on that.
+      inner_subscriber_.OnNext(mapper_(std::forward<T>(t)));
     } catch (...) {
-      if (mapper_succeeded) {
-        throw;
-      } else {
-        Cancel();
-        inner_subscriber_.OnError(std::current_exception());
-      }
+      Cancel();
+      inner_subscriber_.OnError(std::current_exception());
     }
   }
 
@@ -87,6 +83,9 @@ class MapSubscriber : public SubscriberBase, public SubscriptionBase {
 
 }  // namespace detail
 
+/**
+ * Map is like the functional map operator that operates on a Publisher.
+ */
 template <typename Mapper>
 auto Map(Mapper &&mapper) {
   // Return an operator (it takes a Publisher and returns a Publisher)
