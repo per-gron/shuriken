@@ -44,6 +44,20 @@ TEST_CASE("Iterate") {
     CHECK(done == 1);
   }
 
+  SECTION("lvalue ref container") {
+    std::vector<int> empty;
+    auto stream = Iterate(empty);
+
+    int done = 0;
+    auto sub = stream.Subscribe(MakeSubscriber(
+        [](int next) { CHECK(!"should not happen"); },
+        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+        [&done] { done++; }));
+    CHECK(done == 1);
+    sub.Request(1);
+    CHECK(done == 1);
+  }
+
   SECTION("one value") {
     auto stream = Iterate(std::vector<int>{ 1 });
 
