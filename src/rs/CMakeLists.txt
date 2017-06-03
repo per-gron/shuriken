@@ -1,6 +1,7 @@
 add_library(rs
   include/rs/count.h
   include/rs/empty.h
+  include/rs/flat_map.h
   include/rs/is_empty.h
   include/rs/iterate.h
   include/rs/just.h
@@ -27,6 +28,7 @@ set_property(TARGET rs PROPERTY CXX_STANDARD 14)
 add_executable(rs-test
   test/count_test.cpp
   test/empty_test.cpp
+  test/flat_map_test.cpp
   test/throw_test.cpp
   test/is_empty_test.cpp
   test/iterate_test.cpp
