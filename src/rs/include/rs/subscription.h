@@ -99,7 +99,9 @@ class Subscription : public SubscriptionBase {
   /**
    * S should implement the Subscription concept.
    */
-  template <typename S>
+  template <
+      typename S,
+      class = typename std::enable_if<IsSubscription<S>>::type>
   explicit Subscription(S &&s)
       : eraser_(std::make_unique<SubscriptionEraser<S>>(std::forward<S>(s))) {}
 

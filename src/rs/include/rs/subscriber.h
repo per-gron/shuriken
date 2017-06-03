@@ -125,7 +125,7 @@ class Subscriber : public SubscriberBase {
  public:
   template <typename S>
   explicit Subscriber(
-      typename std::enable_if<IsSubscriber<S>>::type &&s)
+      typename std::enable_if<IsSubscriber<S>, S>::type &&s)
       : eraser_(std::make_unique<SubscriberEraser<S>>(std::forward<S>(s))) {}
 
   Subscriber(const Subscriber &) = delete;
