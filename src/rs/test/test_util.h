@@ -33,7 +33,9 @@ T GetOne(
         result = std::move(val);
         has_value = true;
       },
-      [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+      [](std::exception_ptr &&error) {
+        CHECK(!"OnError should not be called");
+      },
       [&has_value, &is_done] {
         CHECK(!is_done);
         CHECK(has_value);
@@ -58,7 +60,9 @@ std::vector<T> GetAll(
         CHECK(!is_done);
         result.emplace_back(std::forward<decltype(val)>(val));
       },
-      [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+      [](std::exception_ptr &&error) {
+        CHECK(!"OnError should not be called");
+      },
       [&is_done] {
         CHECK(!is_done);
         is_done = true;
@@ -83,7 +87,7 @@ std::exception_ptr GetError(
         CHECK(!received_error);
         received_error = error;
       },
-      [] { CHECK(!"should not happen"); }));
+      [] { CHECK(!"OnComplete should not be called"); }));
   sub.Request(request_count);
   CHECK(received_error);
   return received_error ?
