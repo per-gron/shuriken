@@ -20,6 +20,7 @@ add_library(rs
   include/rs/repeat.h
   include/rs/scan.h
   include/rs/start.h
+  include/rs/start_with.h
   include/rs/subscriber.h
   include/rs/subscription.h
   include/rs/sum.h
@@ -54,6 +55,7 @@ add_executable(rs-test
   test/repeat_test.cpp
   test/scan_test.cpp
   test/start_test.cpp
+  test/start_with_test.cpp
   test/sum_test.cpp
   test/test_util.h)
 set_property(TARGET rs-test PROPERTY CXX_STANDARD 14)
