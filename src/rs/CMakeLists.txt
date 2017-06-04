@@ -1,5 +1,6 @@
 add_library(rs
   include/rs/count.h
+  include/rs/element_count.h
   include/rs/empty.h
   include/rs/flat_map.h
   include/rs/is_empty.h
@@ -26,7 +27,9 @@ set_target_properties(rs PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_property(TARGET rs PROPERTY CXX_STANDARD 14)
 
 add_executable(rs-test
+  test/backpressure_violator.h
   test/count_test.cpp
+  test/element_count_test.cpp
   test/empty_test.cpp
   test/flat_map_test.cpp
   test/throw_test.cpp
