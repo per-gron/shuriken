@@ -17,29 +17,38 @@
 #include <vector>
 
 #include <rs/empty.h>
-#include <rs/sum.h>
 #include <rs/iterate.h>
+#include <rs/just.h>
+#include <rs/scan.h>
 
 #include "test_util.h"
 
 namespace shk {
 
-TEST_CASE("Sum") {
-  auto sum = Sum();
+TEST_CASE("Scan") {
+  auto running_sum = Scan(3, [](int accum, int v) { return accum + v; });
   static_assert(
-      IsPublisher<decltype(sum(Empty()))>,
-      "Sum stream should be a publisher");
+      IsPublisher<decltype(running_sum(Empty()))>,
+      "Scan stream should be a publisher");
 
   SECTION("empty") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{}))) == 0);
+    CHECK(GetAll<int>(running_sum(Empty())) == std::vector<int>());
   }
 
   SECTION("one value") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10 }))) == 10);
+    CHECK(GetAll<int>(running_sum(Just(1))) == std::vector<int>({ 4 }));
   }
 
   SECTION("two values") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10, 2 }))) == 12);
+    auto values = Iterate(std::vector<int>{ 1, 2, 3 });
+    CHECK(GetAll<int>(running_sum(values)) == std::vector<int>({ 4, 6, 9 }));
+  }
+
+  SECTION("use twice") {
+    auto values = Iterate(std::vector<int>{ 1, 2, 3 });
+    auto stream = running_sum(values);
+    CHECK(GetAll<int>(stream) == std::vector<int>({ 4, 6, 9 }));
+    CHECK(GetAll<int>(stream) == std::vector<int>({ 4, 6, 9 }));
   }
 }
 

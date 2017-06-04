@@ -12,35 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <catch.hpp>
+#pragma once
 
-#include <vector>
-
-#include <rs/empty.h>
-#include <rs/sum.h>
-#include <rs/iterate.h>
-
-#include "test_util.h"
+#include <rs/map.h>
 
 namespace shk {
 
-TEST_CASE("Sum") {
-  auto sum = Sum();
-  static_assert(
-      IsPublisher<decltype(sum(Empty()))>,
-      "Sum stream should be a publisher");
-
-  SECTION("empty") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{}))) == 0);
-  }
-
-  SECTION("one value") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10 }))) == 10);
-  }
-
-  SECTION("two values") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10, 2 }))) == 12);
-  }
+template <typename Accumulator, typename Mapper>
+auto Scan(Accumulator &&accum, Mapper &&mapper) {
+  return Map([
+      accum = std::forward<Accumulator>(accum),
+      mapper = std::forward<Mapper>(mapper)](auto &&value) mutable {
+    accum = mapper(std::move(accum), std::forward<decltype(value)>(value));
+    return accum;
+  });
 }
 
 }  // namespace shk
