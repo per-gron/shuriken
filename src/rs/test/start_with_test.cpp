@@ -24,35 +24,86 @@
 namespace shk {
 
 TEST_CASE("StartWith") {
-  auto start_with_nothing = StartWith();
-  auto start_with_one = StartWith(1);
-  auto start_with_two = StartWith(1, 2);
+  SECTION("StartWith") {
+    auto start_with_nothing = StartWith();
+    auto start_with_one = StartWith(1);
+    auto start_with_two = StartWith(1, 2);
 
-  SECTION("no prefix and no input") {
-    CHECK(GetAll<int>(start_with_nothing(Empty())) == std::vector<int>({}));
+    SECTION("no prefix and no input") {
+      CHECK(GetAll<int>(start_with_nothing(Empty())) == std::vector<int>({}));
+    }
+
+    SECTION("no prefix and some input") {
+      CHECK(
+          GetAll<int>(start_with_nothing(Just(42))) ==
+          std::vector<int>({ 42 }));
+    }
+
+    SECTION("single value prefix and no input") {
+      CHECK(GetAll<int>(start_with_one(Empty())) == std::vector<int>({ 1 }));
+    }
+
+    SECTION("single value prefix and some input") {
+      CHECK(
+          GetAll<int>(start_with_one(Just(42))) ==
+          std::vector<int>({ 1, 42 }));
+    }
+
+    SECTION("two value prefix and no input") {
+      CHECK(GetAll<int>(start_with_two(Empty())) == std::vector<int>({ 1, 2 }));
+    }
+
+    SECTION("two value prefix and some input") {
+      CHECK(
+          GetAll<int>(start_with_two(Just(42))) ==
+          std::vector<int>({ 1, 2, 42 }));
+    }
   }
 
-  SECTION("no prefix and some input") {
-    CHECK(
-        GetAll<int>(start_with_nothing(Just(42))) == std::vector<int>({ 42 }));
-  }
+  SECTION("StartWithGet") {
+    auto start_with_nothing = StartWithGet();
+    auto start_with_one = StartWithGet([] { return 1; });
+    auto start_with_two = StartWithGet([] { return 1; }, [] { return 2; });
 
-  SECTION("single value prefix and no input") {
-    CHECK(GetAll<int>(start_with_one(Empty())) == std::vector<int>({ 1 }));
-  }
+    SECTION("noncopyable prefix and no input") {
+      auto start_with_unique = StartWithGet([] {
+        return std::make_unique<int>(1);
+      });
+      auto result = GetAll<std::unique_ptr<int>>(start_with_unique(Empty()));
+      REQUIRE(result.size() == 1);
+      REQUIRE(result[0]);
+      CHECK(*result[0] == 1);
+    }
 
-  SECTION("single value prefix and some input") {
-    CHECK(GetAll<int>(start_with_one(Just(42))) == std::vector<int>({ 1, 42 }));
-  }
+    SECTION("no prefix and no input") {
+      CHECK(GetAll<int>(start_with_nothing(Empty())) == std::vector<int>({}));
+    }
 
-  SECTION("two value prefix and no input") {
-    CHECK(GetAll<int>(start_with_two(Empty())) == std::vector<int>({ 1, 2 }));
-  }
+    SECTION("no prefix and some input") {
+      CHECK(
+          GetAll<int>(start_with_nothing(Just(42))) ==
+          std::vector<int>({ 42 }));
+    }
 
-  SECTION("two value prefix and some input") {
-    CHECK(
-        GetAll<int>(start_with_two(Just(42))) ==
-        std::vector<int>({ 1, 2, 42 }));
+    SECTION("single value prefix and no input") {
+      CHECK(GetAll<int>(start_with_one(Empty())) == std::vector<int>({ 1 }));
+    }
+
+    SECTION("single value prefix and some input") {
+      CHECK(
+          GetAll<int>(start_with_one(Just(42))) ==
+          std::vector<int>({ 1, 42 }));
+    }
+
+    SECTION("two value prefix and no input") {
+      CHECK(GetAll<int>(start_with_two(Empty())) == std::vector<int>({ 1, 2 }));
+    }
+
+    SECTION("two value prefix and some input") {
+      CHECK(
+          GetAll<int>(start_with_two(Just(42))) ==
+          std::vector<int>({ 1, 2, 42 }));
+    }
   }
 }
 

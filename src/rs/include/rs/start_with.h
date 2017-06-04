@@ -28,4 +28,12 @@ auto StartWith(Values &&...values) {
   };
 }
 
+template <typename ...MakeValues>
+auto StartWithGet(MakeValues &&...make_values) {
+  auto prefix_stream = Start(std::forward<MakeValues>(make_values)...);
+  return [prefix_stream = std::move(prefix_stream)](auto &&stream) {
+    return Concat(prefix_stream, std::forward<decltype(stream)>(stream));
+  };
+}
+
 }  // namespace shk
