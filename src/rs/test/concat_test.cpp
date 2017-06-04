@@ -16,7 +16,6 @@
 
 #include <rs/concat.h>
 #include <rs/empty.h>
-#include <rs/iterate.h>
 #include <rs/just.h>
 
 #include "test_util.h"
@@ -25,27 +24,27 @@ namespace shk {
 
 TEST_CASE("Concat") {
   SECTION("no inputs") {
-    auto stream = Concat(std::vector<decltype(Empty())>{});
+    auto stream = Concat();
     CHECK(GetAll<int>(stream) == std::vector<int>({}));
   }
 
   SECTION("one empty input") {
-    auto stream = Concat(std::vector<decltype(Empty())>{ Empty() });
+    auto stream = Concat(Empty());
     CHECK(GetAll<int>(stream) == std::vector<int>({}));
   }
 
   SECTION("two empty inputs") {
-    auto stream = Concat(std::vector<decltype(Empty())>{ Empty(), Empty() });
+    auto stream = Concat(Empty(), Empty());
     CHECK(GetAll<int>(stream) == std::vector<int>({}));
   }
 
   SECTION("one input with one value") {
-    auto stream = Concat(std::vector<decltype(Just(1))>{ Just(1) });
+    auto stream = Concat(Just(1));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 1 }));
   }
 
   SECTION("two inputs with one value") {
-    auto stream = Concat(std::vector<decltype(Just(1))>{ Just(1), Just(2) });
+    auto stream = Concat(Just(1), Just(2));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 1, 2 }));
   }
 }
