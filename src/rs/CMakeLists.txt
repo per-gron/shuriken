@@ -1,4 +1,5 @@
 add_library(rs
+  include/rs/concat.h
   include/rs/count.h
   include/rs/element_count.h
   include/rs/empty.h
@@ -28,6 +29,7 @@ set_property(TARGET rs PROPERTY CXX_STANDARD 14)
 
 add_executable(rs-test
   test/backpressure_violator.h
+  test/concat_test.cpp
   test/count_test.cpp
   test/element_count_test.cpp
   test/empty_test.cpp
