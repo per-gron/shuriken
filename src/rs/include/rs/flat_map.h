@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
@@ -157,7 +158,7 @@ class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
     }
   }
 
-  void Request(size_t count) {
+  void Request(ElementCount count) {
     requested_ += count;
 
     switch (state_) {
@@ -212,9 +213,9 @@ class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
     if (state_ == State::ON_LAST_PUBLISHER) {
       state_ = State::END;
       inner_subscriber_.OnComplete();
-    } else if (requested_) {
+    } else if (requested_ != 0) {
       state_ = State::REQUESTED_PUBLISHER;
-      publishers_subscription_.Request(1);
+      publishers_subscription_.Request(ElementCount(1));
     } else if (state_ != State::END) {
       // There are no requested elements. Go back to the INIT state and wait
       // for more Requests.
@@ -223,7 +224,7 @@ class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
   }
 
   std::weak_ptr<FlatMapSubscriber> me_;
-  size_t requested_ = 0;
+  ElementCount requested_ = ElementCount(0);
   InnerSubscriberType inner_subscriber_;
   State state_ = State::INIT;
   Subscription publishers_subscription_;

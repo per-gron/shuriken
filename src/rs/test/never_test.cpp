@@ -35,9 +35,9 @@ TEST_CASE("Never") {
         [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
         [] { CHECK(!"should not happen"); }));
 
-    subscription.Request(0);
-    subscription.Request(1);
-    subscription.Request(Subscription::kAll);
+    subscription.Request(ElementCount(0));
+    subscription.Request(ElementCount(1));
+    subscription.Request(ElementCount::Infinite());
   }
 }
 

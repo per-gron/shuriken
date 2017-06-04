@@ -14,6 +14,7 @@
 
 #include <catch.hpp>
 
+#include <rs/element_count.h>
 #include <rs/empty.h>
 #include <rs/flat_map.h>
 #include <rs/iterate.h>
@@ -51,7 +52,7 @@ TEST_CASE("FlatMap") {
       CHECK(!"Should not be requested");
       return 0;
     }));
-    CHECK(GetAll<int>(stream, 0, false) == std::vector<int>({}));
+    CHECK(GetAll<int>(stream, ElementCount(0), false) == std::vector<int>({}));
   }
 
   SECTION("one stream with one value") {
@@ -107,8 +108,8 @@ TEST_CASE("FlatMap") {
             is_done = true;
           }));
       for (int j = 0; j < i; j++) {
-        sub.Request(2);
-        sub.Request(2);
+        sub.Request(ElementCount(2));
+        sub.Request(ElementCount(2));
       }
       CHECK(is_done);
       if (i == 1) {
@@ -156,7 +157,7 @@ TEST_CASE("FlatMap") {
         }));
 
     CHECK(!subscribed);
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(subscribed);
     CHECK(!next_called);
     CHECK(!complete_called);
@@ -170,7 +171,7 @@ TEST_CASE("FlatMap") {
   SECTION("two OnComplete signals on input stream") {
     auto inner_stream = MakePublisher([](auto subscriber) {
       return MakeSubscription(
-        [subscriber = std::move(subscriber)](size_t count) mutable {
+        [subscriber = std::move(subscriber)](ElementCount count) mutable {
           CHECK(count == 1);
           subscriber.OnNext(0);
           subscriber.OnComplete();
@@ -192,7 +193,7 @@ TEST_CASE("FlatMap") {
         [] { CHECK(!"OnComplete should not be called"); }));
 
     CHECK(!got_error);
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(GetErrorWhat(got_error) == "Got more than one OnComplete signal");
   }
 
@@ -207,7 +208,7 @@ TEST_CASE("FlatMap") {
     SECTION("inner stream") {
       auto violator = BackpressureViolator(2, [] { return 0; });
       auto stream = FlatMap([&violator](auto &&) { return violator; })(Just(1));
-      auto error = GetError(stream, 1);
+      auto error = GetError(stream, ElementCount(1));
       CHECK(GetErrorWhat(error) == "Got value that was not Request-ed");
     }
   }
@@ -217,7 +218,7 @@ TEST_CASE("FlatMap") {
       bool cancelled = false;
       auto inner_stream = MakePublisher([&cancelled](auto subscriber) {
         return MakeSubscription(
-          [](size_t count) {
+          [](ElementCount count) {
             CHECK(!"should not be called");
           },
           [&cancelled] {
@@ -245,7 +246,7 @@ TEST_CASE("FlatMap") {
       bool cancelled = false;
       auto inner_stream = MakePublisher([&cancelled](auto subscriber) {
         return MakeSubscription(
-          [&cancelled](size_t count) {
+          [&cancelled](ElementCount count) {
             CHECK(!cancelled);
           },
           [&cancelled] {
@@ -264,7 +265,7 @@ TEST_CASE("FlatMap") {
           },
           [] { CHECK(!"OnComplete should not be called"); }));
 
-      sub.Request(1);
+      sub.Request(ElementCount(1));
       CHECK(!cancelled);
       sub.Cancel();
       CHECK(cancelled);
@@ -307,7 +308,7 @@ TEST_CASE("FlatMap") {
       CHECK(
           GetAll<int>(
               fail_on(0)(Iterate(std::vector<int>{ 1, 0 })),
-              1,
+              ElementCount(1),
               false) ==
           (std::vector<int>{ 42 }));
     }
@@ -386,7 +387,7 @@ TEST_CASE("FlatMap") {
       CHECK(
           GetAll<int>(
               fail_on_inner()(Iterate(std::vector<int>{ -1, 0 })),
-              1,
+              ElementCount(1),
               false) ==
           (std::vector<int>{ 0 }));
     }
@@ -395,7 +396,7 @@ TEST_CASE("FlatMap") {
       CHECK(
           GetAll<int>(
               fail_on_inner()(Iterate(std::vector<int>{ 1, 0 })),
-              1,
+              ElementCount(1),
               false) ==
           (std::vector<int>{ 0 }));
     }

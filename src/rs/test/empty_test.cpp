@@ -37,9 +37,9 @@ TEST_CASE("Empty") {
       CHECK(complete);
 
       complete = false;
-      subscription.Request(0);
-      subscription.Request(1);
-      subscription.Request(Subscription::kAll);
+      subscription.Request(ElementCount(0));
+      subscription.Request(ElementCount(1));
+      subscription.Request(ElementCount::Infinite());
       CHECK(!complete);
     }  // Destroy subscription
 

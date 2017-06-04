@@ -126,7 +126,7 @@ A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable a
 
 | ID                        | Rule                                                                                                   |
 | ------------------------- | ------------------------------------------------------------------------------------------------------ |
-| <a name="2.1">1</a>       | A `Subscriber` MUST indicate demand via `Subscription.Request(size_t n)` to receive `OnNext` signals. |
+| <a name="2.1">1</a>       | A `Subscriber` MUST indicate demand via `Subscription.Request(ElementCount n)` to receive `OnNext` signals. |
 | [:bulb:](#2.1 "2.1 explained") | *The intent of this rule is to establish that it is the responsibility of the Subscriber to indicate when, and how many, elements it is able and willing to receive.* |
 | <a name="2.2">2</a>       | If a `Subscriber` suspects that its processing of signals will negatively impact its `Publisher`’s responsivity, it is RECOMMENDED that it asynchronously dispatches its signals. |
 | [:bulb:](#2.2 "2.2 explained") | *The intent of this rule is that a Subscriber should [not obstruct](#term_non-obstructing) the progress of the Publisher from an execution point-of-view. In other words, the Subscriber should not starve the Publisher from CPU cycles.* |
@@ -140,9 +140,9 @@ A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable a
 | [:bulb:](#2.6 "2.6 explained") | *The intent of this rule is to establish that [external synchronization](#term_ext_sync) must be added if a Subscriber will be using a Subscription concurrently by two or more threads.* |
 | <a name="2.7">7</a>       | A `Subscriber` MUST be prepared to receive one or more `OnNext` signals after having cancelled or destroyed its `Subscription` if there are still requested elements pending [see [3.11](#3.11)]. Destroying a `Subscription` does not guarantee to perform the underlying cleaning operations immediately. |
 | [:bulb:](#2.7 "2.7 explained") | *The intent of this rule is to highlight that there may be a delay between destroying a `Subscription` and the Publisher seeing that.* |
-| <a name="2.8">8</a>       | A `Subscriber` MUST be prepared to receive an `OnComplete` signal with or without a preceding `Subscription.Request(size_t n)` call. |
+| <a name="2.8">8</a>       | A `Subscriber` MUST be prepared to receive an `OnComplete` signal with or without a preceding `Subscription.Request(ElementCount n)` call. |
 | [:bulb:](#2.8 "2.8 explained") | *The intent of this rule is to establish that completion is unrelated to the demand flow—this allows for streams which complete early, and obviates the need to *poll* for completion.* |
-| <a name="2.9">9</a>     | A `Subscriber` MUST be prepared to receive an `OnError` signal with or without a preceding `Subscription.Request(size_t n)` call. |
+| <a name="2.9">9</a>     | A `Subscriber` MUST be prepared to receive an `OnError` signal with or without a preceding `Subscription.Request(ElementCount n)` call. |
 | [:bulb:](#2.9 "2.9 explained") | *The intent of this rule is to establish that Publisher failures may be completely unrelated to signalled demand. This means that Subscribers do not need to poll to find out if the Publisher will not be able to fulfill its requests.* |
 | <a name="2.10">10</a>     | A `Subscriber` MUST make sure that all calls on its [signal](#term_signal) methods happen-before the processing of the respective signals. I.e. the Subscriber must take care of properly publishing the signal to its processing logic. |
 | [:bulb:](#2.10 "2.10 explained") | *The intent of this rule is to establish that it is the responsibility of the Subscriber implementation to make sure that asynchronous processing of its signals are thread safe. See [JMM definition of Happens-Before in section 17.4.5](https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.4.5).* |
@@ -156,7 +156,7 @@ A *Subscription* is a handle that is provided by the Publisher when a subscripti
 
 A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable and MUST have the following methods:
 
-* `void Request(size_t count);`
+* `void Request(ElementCount count);`
 * `void Cancel();`
 
 | ID                        | Rule                                                                                                   |
@@ -171,15 +171,15 @@ A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable a
 | [:bulb:](#3.4 "3.4 explained") | *The intent of this rule is to establish that `Request` is intended to be a [non-obstructing](#term_non-obstructing) method, and should be as quick to execute as possible on the calling thread, so avoid heavy computations and other things that would stall the caller´s thread of execution.* |
 | <a name="3.5">5</a>       | `Subscription.Cancel` and `Subscription`'s destructor MUST respect the responsivity of its caller by returning in a timely manner. |
 | [:bulb:](#3.5 "3.5 explained") | *The intent of this rule is to establish that the destructor is intended to be a [non-obstructing](#term_non-obstructing) method, and should be as quick to execute as possible on the calling thread, so avoid heavy computations and other things that would stall the caller´s thread of execution.* |
-| <a name="3.6">6</a>       | After the `Subscription` is cancelled, additional `Subscription.Request(size_t n)` must be MUST be [NOPs](#term_nop). |
+| <a name="3.6">6</a>       | After the `Subscription` is cancelled, additional `Subscription.Request(ElementCount n)` must be MUST be [NOPs](#term_nop). |
 | [:bulb:](#3.6 "3.6 explained") | *The intent of this rule is to establish a causal relationship between cancellation of a subscription and the subsequent non-operation of requesting more elements.* |
 | <a name="3.7">7</a>       | After the `Subscription` is cancelled, additional `Subscription.cancel()` MUST be [NOPs](#term_nop). |
 | [:bulb:](#3.7 "3.7 explained") | *The intent of this rule is superseded by [3.5](#3.5).* |
-| <a name="3.8">8</a>       | While the `Subscription` is not cancelled, `Subscription.Request(size_t n)` MUST register the given number of additional elements to be produced to the respective subscriber. |
+| <a name="3.8">8</a>       | While the `Subscription` is not cancelled, `Subscription.Request(ElementCount n)` MUST register the given number of additional elements to be produced to the respective subscriber. |
 | [:bulb:](#3.8 "3.8 explained") | *The intent of this rule is to make sure that `Request`-ing is an additive operation, as well as ensuring that a request for elements is delivered to the Publisher.* |
-| <a name="3.9">9</a>     | While the `Subscription` is not cancelled, `Subscription.Request(size_t n)` MAY synchronously call `OnNext` on this (or other) subscriber(s). |
+| <a name="3.9">9</a>     | While the `Subscription` is not cancelled, `Subscription.Request(ElementCount n)` MAY synchronously call `OnNext` on this (or other) subscriber(s). |
 | [:bulb:](#3.9 "3.9 explained") | *The intent of this rule is to establish that it is allowed to create synchronous Publishers, i.e. Publishers who execute their logic on the calling thread.* |
-| <a name="3.10">10</a>     | While the `Subscription` is not cancelled, `Subscription.Request(size_t n)` MAY synchronously call `OnComplete` or `OnError` on this (or other) subscriber(s). |
+| <a name="3.10">10</a>     | While the `Subscription` is not cancelled, `Subscription.Request(ElementCount n)` MAY synchronously call `OnComplete` or `OnError` on this (or other) subscriber(s). |
 | [:bulb:](#3.10 "3.10 explained") | *The intent of this rule is to establish that it is allowed to create synchronous Publishers, i.e. Publishers who execute their logic on the calling thread.* |
 | <a name="3.11">11</a>     | While the `Subscription` is not cancelled, `Subscription.Cancel` (and destroying the `Subscription`) MUST request the `Publisher` to eventually stop signaling its `Subscriber`. The operation is NOT REQUIRED to affect the `Subscription` immediately. |
 | [:bulb:](#3.11 "3.11 explained") | *The intent of this rule is to establish that the desire to cancel a Subscription is eventually respected by the Publisher, acknowledging that it may take some time before the signal is received.* |
@@ -191,7 +191,7 @@ A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable a
 | [:bulb:](#3.14 "3.14 explained") | *The intent of this rule is to allow for Publishers to signal `onComplete` or `onError` following `onSubscribe` for new Subscribers in response to a cancellation signal from an existing Subscriber.* |
 | <a name="3.15">15</a>     | Calling `Subscription.Request` MUST [return normally](#term_return_normally). |
 | [:bulb:](#3.15 "3.15 explained") | *The intent of this rule is to disallow implementations to throw exceptions in response to `Request` being called.* |
-| <a name="3.16">16</a>     | A `Subscription` MUST support an unbounded number of calls to `Request` and MUST support a demand up to 2^64-1 (`std::numeric_limits<size_t>::max()`). A demand equal or greater than 2^64-1 (`std::numeric_limits<size_t>::max()`) MAY be considered by the `Publisher` as “effectively unbounded”. |
+| <a name="3.16">16</a>     | A `Subscription` MUST support an unbounded number of calls to `Request` and MUST support a demand up to 2^64-1 (`std::numeric_limits<ElementCount>::max()`). A demand equal or greater than 2^64-1 (`std::numeric_limits<ElementCount>::max()`) MAY be considered by the `Publisher` as “effectively unbounded”. |
 | [:bulb:](#3.16 "3.16 explained") | *The intent of this rule is to establish that the Subscriber can request an unbounded number of elements, in any increment above 0, in any number of invocations of `Request`. As it is not feasibly reachable with current or foreseen hardware within a reasonable amount of time to fulfill a demand of 2^64-1, it is allowed for a Publisher to stop tracking demand beyond this point.* |
 
 

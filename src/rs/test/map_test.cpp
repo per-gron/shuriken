@@ -63,7 +63,7 @@ TEST_CASE("Map") {
     CHECK(
         GetAll<int>(
             add_self(Iterate(std::vector<int>{ 1, 5 })),
-            1,
+            ElementCount(1),
             false) ==
         (std::vector<int>{ 2 }));
   }
@@ -71,7 +71,8 @@ TEST_CASE("Map") {
   SECTION("request only two") {
     CHECK(
         GetAll<int>(
-            add_self(Iterate(std::vector<int>{ 1, 6 })), 2) ==
+            add_self(Iterate(std::vector<int>{ 1, 6 })),
+            ElementCount(2)) ==
         (std::vector<int>{ 2, 12 }));
   }
 
@@ -85,7 +86,7 @@ TEST_CASE("Map") {
     sub.Cancel();
     // Because the subscription is cancelled, it should not request values
     // from the infinite range (which would never terminate).
-    sub.Request(Subscription::kAll);
+    sub.Request(ElementCount::Infinite());
   }
 
   SECTION("exceptions") {
@@ -132,7 +133,7 @@ TEST_CASE("Map") {
       CHECK(
           GetAll<int>(
               fail_on(0)(Iterate(std::vector<int>{ 1, 0 })),
-              1,
+              ElementCount(1),
               false) ==
           (std::vector<int>{ 1 }));
     }

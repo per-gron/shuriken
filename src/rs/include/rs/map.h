@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
@@ -65,7 +66,7 @@ class MapSubscriber : public SubscriberBase, public SubscriptionBase {
     }
   }
 
-  void Request(size_t count) {
+  void Request(ElementCount count) {
     subscription_.Request(count);
   }
 

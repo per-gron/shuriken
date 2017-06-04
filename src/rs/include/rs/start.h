@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscription.h>
 
@@ -30,7 +31,7 @@ class StartSubscription : public SubscriptionBase {
       : create_value_(create_value),
         subscriber_(std::forward<SubscriberT>(subscriber)) {}
 
-  void Request(size_t count) {
+  void Request(ElementCount count) {
     if (!_cancelled && count != 0) {
       // It's important to set _cancelled here before OnNext is called, because
       // OnNext may call Request. If _cancelled is not true then we will call

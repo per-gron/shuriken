@@ -63,15 +63,18 @@ TEST_CASE("Reduce") {
     }
 
     SECTION("request zero") {
-      CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 0) == 0);
+      CHECK(GetOne<int>(
+          sum(Iterate(std::vector<int>{ 1, 2 })), ElementCount(0)) == 0);
     }
 
     SECTION("request one") {
-      CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 1) == 103);
+      CHECK(GetOne<int>(
+          sum(Iterate(std::vector<int>{ 1, 2 })), ElementCount(1)) == 103);
     }
 
     SECTION("request two") {
-      CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 })), 2) == 103);
+      CHECK(GetOne<int>(
+          sum(Iterate(std::vector<int>{ 1, 2 })), ElementCount(2)) == 103);
     }
 
     SECTION("error on first") {
@@ -102,7 +105,7 @@ TEST_CASE("Reduce") {
       sub.Cancel();
       // Because the subscription is cancelled, it should not request values
       // from the infinite range (which would never terminate).
-      sub.Request(1);
+      sub.Request(ElementCount(1));
     }
 
     SECTION("request twice on never input") {
@@ -119,8 +122,8 @@ TEST_CASE("Reduce") {
           [&has_value, &is_done] {
             CHECK(!"OnComplete should not be called");
           }));
-      sub.Request(1);
-      sub.Request(1);
+      sub.Request(ElementCount(1));
+      sub.Request(ElementCount(1));
     }
   }
 

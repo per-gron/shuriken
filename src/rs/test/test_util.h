@@ -14,6 +14,7 @@
 
 #include <vector>
 
+#include <rs/element_count.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
 
@@ -22,7 +23,7 @@ namespace shk {
 template <typename T, typename Publisher>
 T GetOne(
     const Publisher &publisher,
-    size_t request_count = Subscription::kAll) {
+    ElementCount request_count = ElementCount::Infinite()) {
   bool has_value = false;
   bool is_done = false;
   T result{};
@@ -51,7 +52,7 @@ T GetOne(
 template <typename T, typename Publisher>
 std::vector<T> GetAll(
     const Publisher &publisher,
-    size_t request_count = Subscription::kAll,
+    ElementCount request_count = ElementCount::Infinite(),
     bool expect_done = true) {
   std::vector<T> result;
   bool is_done = false;
@@ -76,7 +77,7 @@ std::vector<T> GetAll(
 template <typename Publisher>
 std::exception_ptr GetError(
     const Publisher &stream,
-    size_t request_count = Subscription::kAll) {
+    ElementCount request_count = ElementCount::Infinite()) {
   std::exception_ptr received_error;
 
   auto sub = stream.Subscribe(MakeSubscriber(

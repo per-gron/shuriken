@@ -40,7 +40,7 @@ TEST_CASE("Iterate") {
         [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
         [&done] { done++; }));
     CHECK(done == 1);
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(done == 1);
   }
 
@@ -54,7 +54,7 @@ TEST_CASE("Iterate") {
         [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
         [&done] { done++; }));
     CHECK(done == 1);
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(done == 1);
   }
 
@@ -74,10 +74,10 @@ TEST_CASE("Iterate") {
         }));
     CHECK(done == 0);
     CHECK(next == 0);
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(done == 1);
     CHECK(next == 1);
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(done == 1);
     CHECK(next == 1);
   }
@@ -107,15 +107,15 @@ TEST_CASE("Iterate") {
     CHECK(done == 0);
     CHECK(next == 0);
 
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(done == 0);
     CHECK(next == 1);
 
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(done == 1);
     CHECK(next == 2);
 
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(done == 1);
     CHECK(next == 2);
   }
@@ -145,11 +145,11 @@ TEST_CASE("Iterate") {
     CHECK(done == 0);
     CHECK(next == 0);
 
-    sub.Request(2);
+    sub.Request(ElementCount(2));
     CHECK(done == 1);
     CHECK(next == 2);
 
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(done == 1);
     CHECK(next == 2);
   }
@@ -179,11 +179,11 @@ TEST_CASE("Iterate") {
     CHECK(done == 0);
     CHECK(next == 0);
 
-    sub.Request(Subscription::kAll);
+    sub.Request(ElementCount::Infinite());
     CHECK(done == 1);
     CHECK(next == 2);
 
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(done == 1);
     CHECK(next == 2);
   }
@@ -208,9 +208,9 @@ TEST_CASE("Iterate") {
           }));
 
       CHECK(done == 0);
-      sub.Request(1);
+      sub.Request(ElementCount(1));
       CHECK(done == 1);
-      sub.Request(1);
+      sub.Request(ElementCount(1));
     }
   }
 
@@ -227,7 +227,7 @@ TEST_CASE("Iterate") {
             CHECK(next == 1);
             nexts++;
             // If Start does this wrong, it will blow the stack
-            sub.Request(1);
+            sub.Request(ElementCount(1));
           },
           [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
           [&finishes, &nexts] {
@@ -237,7 +237,7 @@ TEST_CASE("Iterate") {
       CHECK(nexts == 0);
       CHECK(finishes == 0);
 
-      sub.Request(1);
+      sub.Request(ElementCount(1));
       CHECK(nexts == 1);
       CHECK(finishes == 1);
     }
@@ -255,7 +255,7 @@ TEST_CASE("Iterate") {
             CHECK(next == nexts);
             // If Start does this wrong, it will blow the stack, or result in
             // two calls to OnComplete
-            sub.Request(1);
+            sub.Request(ElementCount(1));
           },
           [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
           [&finishes, &nexts] {
@@ -265,7 +265,7 @@ TEST_CASE("Iterate") {
       CHECK(nexts == 0);
       CHECK(finishes == 0);
 
-      sub.Request(1);
+      sub.Request(ElementCount(1));
       CHECK(nexts == 2);
       CHECK(finishes == 1);
     }
@@ -283,11 +283,11 @@ TEST_CASE("Iterate") {
         },
         [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
         [] { CHECK(!"should not happen"); })));
-    sub.Request(0);
+    sub.Request(ElementCount(0));
     CHECK(!next_called);
-    sub.Request(1000);
+    sub.Request(ElementCount(1000));
     CHECK(next_called);
-    sub.Request(1);
+    sub.Request(ElementCount(1));
   }
 }
 

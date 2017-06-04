@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/element_count.h>
 #include <rs/map.h>
 #include <rs/pipe.h>
 #include <rs/publisher.h>
@@ -68,9 +69,9 @@ class StreamReducer : public SubscriberBase, public SubscriptionBase {
     }
   }
 
-  void Request(size_t count) {
+  void Request(ElementCount count) {
     if (count > 0) {
-      subscription_.Request(Subscription::kAll);
+      subscription_.Request(ElementCount::Infinite());
       requested_ = true;
       RequestedResult();
     }

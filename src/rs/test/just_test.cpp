@@ -53,7 +53,7 @@ TEST_CASE("Just") {
   SECTION("request 0") {
     auto stream = Just(1);
     auto sub = stream.Subscribe(inert_subscriber());
-    sub.Request(0);
+    sub.Request(ElementCount(0));
   }
 
   SECTION("request 1") {
@@ -66,14 +66,18 @@ TEST_CASE("Just") {
     CHECK(nexts == 0);
     CHECK(finishes == 0);
 
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(nexts == 1);
     CHECK(finishes == 1);
   }
 
   SECTION("request more") {
-    static const size_t counts[] = { 2, 3, 5, Subscription::kAll };
-    for (size_t count : counts) {
+    static const ElementCount counts[] = {
+        ElementCount(2),
+        ElementCount(3),
+        ElementCount(5),
+        ElementCount::Infinite() };
+    for (auto count : counts) {
       int nexts = 0;
       int finishes = 0;
 
@@ -99,11 +103,11 @@ TEST_CASE("Just") {
     CHECK(nexts == 0);
     CHECK(finishes == 0);
 
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(nexts == 1);
     CHECK(finishes == 1);
 
-    sub.Request(1);
+    sub.Request(ElementCount(1));
     CHECK(nexts == 1);
     CHECK(finishes == 1);
   }

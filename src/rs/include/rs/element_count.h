@@ -20,7 +20,7 @@
 namespace shk {
 namespace detail {
 
-long long ElementCountAdd(long long a, long long b) {
+inline long long ElementCountAdd(long long a, long long b) {
   if (b > 0 && a > std::numeric_limits<long long>::max() - b) {
     // Overflow
     return std::numeric_limits<long long>::max();
@@ -36,7 +36,7 @@ long long ElementCountAdd(long long a, long long b) {
   return a + b;
 }
 
-long long ElementCountSubtract(long long a, long long b) {
+inline long long ElementCountSubtract(long long a, long long b) {
   if (b < 0 && a > std::numeric_limits<long long>::max() + b) {
     // Overflow
     return std::numeric_limits<long long>::max();

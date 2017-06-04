@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscription.h>
 
@@ -47,7 +48,7 @@ auto Iterate(Container &&container) {
       }
     }
 
-    void Request(size_t count) {
+    void Request(ElementCount count) {
       outstanding_request_count_ += count;
       if (outstanding_request_count_ != count) {
         // Farther up in the stack, Request is already being called. No need
@@ -55,7 +56,7 @@ auto Iterate(Container &&container) {
         return;
       }
 
-      while (!cancelled_ && outstanding_request_count_ && !(it_ == end_)) {
+      while (!cancelled_ && outstanding_request_count_ != 0 && !(it_ == end_)) {
         auto &&value = *it_;
         ++it_;
         subscriber_.OnNext(std::move(value));
@@ -80,7 +81,7 @@ auto Iterate(Container &&container) {
       decltype(std::begin(std::declval<Container>())) it_;
       decltype(std::end(std::declval<Container>())) end_;
       bool cancelled_ = false;
-      size_t outstanding_request_count_ = 0;
+      ElementCount outstanding_request_count_ = ElementCount(0);
     };
 
     return ContainerSubscription(

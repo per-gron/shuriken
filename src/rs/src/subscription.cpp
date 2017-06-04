@@ -17,7 +17,7 @@
 namespace shk {
 namespace detail {
 
-void EmptySubscription::Request(size_t count) {}
+void EmptySubscription::Request(ElementCount count) {}
 
 void EmptySubscription::Cancel() {}
 
@@ -25,7 +25,7 @@ void EmptySubscription::Cancel() {}
 
 Subscription::Eraser::~Eraser() {}
 
-void Subscription::Request(size_t count) {
+void Subscription::Request(ElementCount count) {
   eraser_->Request(count);
 }
 

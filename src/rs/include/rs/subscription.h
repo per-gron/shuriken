@@ -18,6 +18,8 @@
 #include <memory>
 #include <type_traits>
 
+#include <rs/element_count.h>
+
 namespace shk {
 
 /**
@@ -26,7 +28,7 @@ namespace shk {
  *
  * Subscription types must have the following methods:
  *
- * * void Request(size_t count);
+ * * void Request(ElementCount count);
  * * void Cancel();
  *
  * Destroying a Subscription object implicitly cancels the subscription.
@@ -40,7 +42,7 @@ namespace detail {
 
 class EmptySubscription : public SubscriptionBase {
  public:
-  void Request(size_t count);
+  void Request(ElementCount count);
   void Cancel();
 };
 
@@ -53,7 +55,7 @@ class CallbackSubscription : public SubscriptionBase {
       : request_(std::forward<RequestCbT>(request)),
         cancel_(std::forward<CancelCbT>(cancel)) {}
 
-  void Request(size_t count) {
+  void Request(ElementCount count) {
     request_(count);
   }
 
@@ -72,7 +74,7 @@ class SharedPtrSubscription : public SubscriptionBase {
   explicit SharedPtrSubscription(std::shared_ptr<SubscriptionType> subscription)
       : subscription_(subscription) {}
 
-  void Request(size_t count) {
+  void Request(ElementCount count) {
     subscription_->Request(count);
   }
 
@@ -94,8 +96,6 @@ constexpr bool IsSubscription = std::is_base_of<SubscriptionBase, T>::value;
  */
 class Subscription : public SubscriptionBase {
  public:
-  static constexpr size_t kAll = std::numeric_limits<size_t>::max();
-
   /**
    * S should implement the Subscription concept.
    */
@@ -110,7 +110,7 @@ class Subscription : public SubscriptionBase {
   Subscription(Subscription &&) = default;
   Subscription &operator=(Subscription &&) = default;
 
-  void Request(size_t count);
+  void Request(ElementCount count);
 
   void Cancel();
 
@@ -118,7 +118,7 @@ class Subscription : public SubscriptionBase {
   class Eraser {
    public:
     virtual ~Eraser();
-    virtual void Request(size_t count) = 0;
+    virtual void Request(ElementCount count) = 0;
     virtual void Cancel() = 0;
   };
 
@@ -128,7 +128,7 @@ class Subscription : public SubscriptionBase {
     SubscriptionEraser(S &&subscription)
         : subscription_(std::move(subscription)) {}
 
-    void Request(size_t count) override {
+    void Request(ElementCount count) override {
       subscription_.Request(count);
     }
 

@@ -43,9 +43,9 @@ TEST_CASE("Throw") {
       CHECK(received_error);
 
       received_error = std::exception_ptr();
-      subscription.Request(0);
-      subscription.Request(1);
-      subscription.Request(Subscription::kAll);
+      subscription.Request(ElementCount(0));
+      subscription.Request(ElementCount(1));
+      subscription.Request(ElementCount::Infinite());
       CHECK(!received_error);
     }  // Destroy subscription
 
