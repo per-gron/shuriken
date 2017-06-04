@@ -25,6 +25,7 @@ add_library(rs
   include/rs/subscriber.h
   include/rs/subscription.h
   include/rs/sum.h
+  include/rs/take.h
   include/rs/take_while.h
   include/rs/throw.h
   src/subscription.cpp)
@@ -58,6 +59,7 @@ add_executable(rs-test
   test/scan_test.cpp
   test/start_test.cpp
   test/start_with_test.cpp
+  test/take_test.cpp
   test/take_while_test.cpp
   test/sum_test.cpp
   test/test_util.h
