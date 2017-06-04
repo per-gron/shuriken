@@ -23,46 +23,94 @@
 namespace shk {
 namespace detail {
 
-template <typename CreateValue, typename Subscriber>
+template <size_t TryIndex, typename ...CreateValue>
+struct InvokeOnNext {
+  template <typename Subscriber>
+  static void Invoke(
+      size_t index,
+      Subscriber &subscriber,
+      std::tuple<CreateValue...> &create_values) {
+    if (index + 1 == TryIndex) {
+      subscriber.OnNext(std::get<TryIndex - 1>(create_values)());
+    } else {
+      InvokeOnNext<TryIndex - 1, CreateValue...>::Invoke(
+          index, subscriber, create_values);
+    }
+  }
+};
+
+template <typename ...CreateValue>
+struct InvokeOnNext<0, CreateValue...> {
+  template <typename Subscriber>
+  static void Invoke(
+      size_t index,
+      Subscriber &subscriber,
+      std::tuple<CreateValue...> &create_values) {
+    // Not found
+  }
+};
+
+template <typename Subscriber, typename ...CreateValue>
 class StartSubscription : public SubscriptionBase {
  public:
   template <typename SubscriberT>
-  StartSubscription(const CreateValue &create_value, SubscriberT &&subscriber)
-      : create_value_(create_value),
-        subscriber_(std::forward<SubscriberT>(subscriber)) {}
-
-  void Request(ElementCount count) {
-    if (!_cancelled && count != 0) {
-      // It's important to set _cancelled here before OnNext is called, because
-      // OnNext may call Request. If _cancelled is not true then we will call
-      // OnNext again, which is bad.
-      _cancelled = true;
-
-      subscriber_.OnNext(create_value_());
+  StartSubscription(
+      const std::tuple<CreateValue...> &create_values,
+      SubscriberT &&subscriber)
+      : create_values_(create_values),
+        subscriber_(std::forward<SubscriberT>(subscriber)) {
+    if (sizeof...(CreateValue) == 0) {
       subscriber_.OnComplete();
     }
   }
 
+  void Request(ElementCount count) {
+    bool has_outstanding_request_count = outstanding_request_count_ != 0;
+    outstanding_request_count_ += count;
+    if (has_outstanding_request_count) {
+      // Farther up in the stack, Request is already being called. No need
+      // to do anything here.
+      return;
+    }
+
+    while (at_ < sizeof...(CreateValue) && outstanding_request_count_ != 0) {
+      InvokeOnNext<sizeof...(CreateValue), CreateValue...>::Invoke(
+          at_++, subscriber_, create_values_);
+
+      if (at_ == sizeof...(CreateValue)) {
+        subscriber_.OnComplete();
+      }
+
+      // Need to decrement this after calling OnNext/OnComplete, to ensure that
+      // re-entrant Request calls always see that they are re-entrant.
+      outstanding_request_count_--;
+    }
+  }
+
   void Cancel() {
-    _cancelled = true;
+    at_ = sizeof...(CreateValue);
   }
 
  private:
-  CreateValue create_value_;
+  std::tuple<CreateValue...> create_values_;
   Subscriber subscriber_;
-  bool _cancelled = false;
+  size_t at_ = 0;
+  ElementCount outstanding_request_count_ = ElementCount(0);
 };
+
 
 }  // namespace detail
 
-template <typename CreateValue>
-auto Start(CreateValue &&create_value) {
-  return MakePublisher([create_value = std::forward<CreateValue>(create_value)](
-      auto &&subscriber) {
+template <typename ...CreateValue>
+auto Start(CreateValue &&...create_value) {
+  return MakePublisher([
+      create_values = std::make_tuple(
+          std::forward<CreateValue>(create_value)...)](
+              auto &&subscriber) {
     return detail::StartSubscription<
-        typename std::decay<CreateValue>::type,
-        typename std::decay<decltype(subscriber)>::type>(
-            create_value,
+        typename std::decay<decltype(subscriber)>::type,
+        typename std::decay<CreateValue>::type...>(
+            create_values,
             std::forward<decltype(subscriber)>(subscriber));
   });
 }

@@ -17,7 +17,20 @@
 #include <rs/start.h>
 #include <rs/subscriber.h>
 
+#include "test_util.h"
+
 namespace shk {
+namespace {
+
+void checkType(int *ints, int *strings, int value) {
+  (*ints)++;
+}
+
+void checkType(int *ints, int *strings, std::string value) {
+  (*strings)++;
+}
+
+}  // anonymous namespace
 
 TEST_CASE("Start") {
   const auto inert_subscriber = [] {
@@ -29,15 +42,15 @@ TEST_CASE("Start") {
 
   int counting_subscriber_last_next = -1;
   const auto counting_subscriber = [&counting_subscriber_last_next](
-      int *nexts, int *finishes) {
+      int *nexts, int *finishes, int expect_nexts = 1) {
     return MakeSubscriber(
         [nexts, &counting_subscriber_last_next](int next) {
           counting_subscriber_last_next = next;
           (*nexts)++;
         },
         [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
-        [finishes, nexts] {
-          CHECK(*nexts == 1);
+        [finishes, nexts, expect_nexts] {
+          CHECK(*nexts == expect_nexts);
           (*finishes)++;
         });
   };
@@ -76,29 +89,77 @@ TEST_CASE("Start") {
     CHECK(finishes == 1);
   }
 
-  SECTION("request from within OnNext") {
+  SECTION("request one at a time") {
     int nexts = 0;
     int finishes = 0;
 
-    auto stream = Start([] { return 1; });
+    auto stream = Start([] { return 1; }, [] { return 2; }, [] { return 3; });
 
-    Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
-        [&sub, &nexts](int next) {
-          nexts++;
-          // If Start does this wrong, it will blow the stack
-          sub.Request(ElementCount(1));
-        },
-        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
-        [&finishes, &nexts] {
-          CHECK(nexts == 1);
-          finishes++;
-        })));
+    auto sub = stream.Subscribe(counting_subscriber(&nexts, &finishes, 3));
     CHECK(nexts == 0);
     CHECK(finishes == 0);
 
     sub.Request(ElementCount(1));
     CHECK(nexts == 1);
+    CHECK(finishes == 0);
+    sub.Request(ElementCount(1));
+    CHECK(nexts == 2);
+    CHECK(finishes == 0);
+    sub.Request(ElementCount(1));
+    CHECK(nexts == 3);
     CHECK(finishes == 1);
+  }
+
+  SECTION("request from within OnNext") {
+    SECTION("single value") {
+      int nexts = 0;
+      int finishes = 0;
+
+      auto stream = Start([] { return 1; });
+
+      Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
+          [&sub, &nexts](int next) {
+            nexts++;
+            // If Start does this wrong, it will blow the stack
+            sub.Request(ElementCount(1));
+          },
+          [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+          [&finishes, &nexts] {
+            CHECK(nexts == 1);
+            finishes++;
+          })));
+      CHECK(nexts == 0);
+      CHECK(finishes == 0);
+
+      sub.Request(ElementCount(1));
+      CHECK(nexts == 1);
+      CHECK(finishes == 1);
+    }
+
+    SECTION("multiple values") {
+      int nexts = 0;
+      int finishes = 0;
+
+      auto stream = Start([] { return 1; }, [] { return 2; }, [] { return 3; });
+
+      Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
+          [&sub, &nexts](int next) {
+            nexts++;
+            // If Start does this wrong, it will blow the stack
+            sub.Request(ElementCount(1));
+          },
+          [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+          [&finishes, &nexts] {
+            CHECK(nexts == 3);
+            finishes++;
+          })));
+      CHECK(nexts == 0);
+      CHECK(finishes == 0);
+
+      sub.Request(ElementCount(1));
+      CHECK(nexts == 3);
+      CHECK(finishes == 1);
+    }
   }
 
   SECTION("request more") {
@@ -196,6 +257,47 @@ TEST_CASE("Start") {
       CHECK(nexts == 1);
       CHECK(finishes == 1);
     }
+  }
+
+  SECTION("zero values") {
+    auto stream = Start();
+    CHECK(GetAll<int>(stream) == std::vector<int>());
+  }
+
+  SECTION("one value") {
+    auto stream = Start([] { return 1; });
+    CHECK(GetAll<int>(stream) == std::vector<int>({ 1 }));
+  }
+
+  SECTION("three values") {
+    auto stream = Start([] { return 1; }, [] { return 2; }, [] { return 3; });
+    CHECK(GetAll<int>(stream) == std::vector<int>({ 1, 2, 3 }));
+  }
+
+  SECTION("values of different types") {
+    auto stream = Start([] { return 1; }, [] { return std::string("2"); });
+
+    int ints = 0;
+    int strings = 0;
+    int finishes = 0;
+    auto sub = stream.Subscribe(MakeSubscriber(
+        [&ints, &strings, &finishes](auto next) {
+          checkType(&ints, &strings, next);
+          CHECK(finishes == 0);
+        },
+        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+        [&finishes] {
+          CHECK(finishes == 0);
+          finishes++;
+        }));
+
+    CHECK(ints == 0);
+    CHECK(strings == 0);
+    CHECK(finishes == 0);
+    sub.Request(ElementCount::Infinite());
+    CHECK(ints == 1);
+    CHECK(strings == 1);
+    CHECK(finishes == 1);
   }
 }
 
