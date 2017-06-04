@@ -18,9 +18,9 @@
 
 namespace shk {
 
-template <typename T>
-auto Just(T &&t) {
-  return Start([t = std::forward<T>(t)] { return t; });
+template <typename ...Ts>
+auto Just(Ts &&...ts) {
+  return Start([ts = std::forward<Ts>(ts)] { return ts; }...);
 }
 
 }  // namespace shk
