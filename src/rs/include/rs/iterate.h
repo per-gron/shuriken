@@ -49,8 +49,9 @@ auto Iterate(Container &&container) {
     }
 
     void Request(ElementCount count) {
+      bool has_outstanding_request_count = outstanding_request_count_ != 0;
       outstanding_request_count_ += count;
-      if (outstanding_request_count_ != count) {
+      if (has_outstanding_request_count) {
         // Farther up in the stack, Request is already being called. No need
         // to do anything here.
         return;
