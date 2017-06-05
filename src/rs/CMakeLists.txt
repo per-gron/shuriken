@@ -3,6 +3,7 @@ add_library(rs
   include/rs/concat.h
   include/rs/count.h
   include/rs/default_if_empty.h
+  include/rs/element_at.h
   include/rs/element_count.h
   include/rs/empty.h
   include/rs/filter.h
@@ -42,6 +43,7 @@ add_executable(rs-test
   test/concat_test.cpp
   test/count_test.cpp
   test/default_if_empty_test.cpp
+  test/element_at_test.cpp
   test/element_count_test.cpp
   test/empty_test.cpp
   test/filter_test.cpp

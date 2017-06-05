@@ -28,7 +28,7 @@ namespace shk {
  * Takes a stream of values and returns the first of them. If there is no value,
  * the operator fails with an std::out_of_range exception.
  */
-auto First() {
+inline auto First() {
   static const auto range_error = std::make_exception_ptr(std::out_of_range(
       "Cannot take the first element of empty stream"));
 
