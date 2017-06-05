@@ -20,7 +20,7 @@
 namespace shk {
 
 inline auto Throw(const std::exception_ptr &error) {
-  return MakePublisher([error](auto subscriber) {
+  return MakePublisher([error](auto &&subscriber) {
     subscriber.OnError(std::exception_ptr(error));
     return MakeSubscription();
   });

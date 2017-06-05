@@ -17,6 +17,7 @@ add_library(rs
   include/rs/last.h
   include/rs/map.h
   include/rs/max.h
+  include/rs/merge.h
   include/rs/min.h
   include/rs/never.h
   include/rs/pipe.h
@@ -60,6 +61,7 @@ add_executable(rs-test
   test/main.cpp
   test/map_test.cpp
   test/max_test.cpp
+  test/merge_test.cpp
   test/min_test.cpp
   test/never_test.cpp
   test/pipe_test.cpp
