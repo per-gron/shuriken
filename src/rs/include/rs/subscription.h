@@ -42,6 +42,14 @@ namespace detail {
 
 class EmptySubscription : public SubscriptionBase {
  public:
+  EmptySubscription() = default;
+
+  EmptySubscription(const EmptySubscription &) = delete;
+  EmptySubscription& operator=(const EmptySubscription &) = delete;
+
+  EmptySubscription(EmptySubscription &&) = default;
+  EmptySubscription& operator=(EmptySubscription &&) = default;
+
   void Request(ElementCount count);
   void Cancel();
 };
@@ -54,6 +62,12 @@ class CallbackSubscription : public SubscriptionBase {
   CallbackSubscription(RequestCbT &&request, CancelCbT &&cancel)
       : request_(std::forward<RequestCbT>(request)),
         cancel_(std::forward<CancelCbT>(cancel)) {}
+
+  CallbackSubscription(const CallbackSubscription &) = delete;
+  CallbackSubscription &operator=(const CallbackSubscription &) = delete;
+
+  CallbackSubscription(CallbackSubscription &&) = default;
+  CallbackSubscription &operator=(CallbackSubscription &&) = default;
 
   void Request(ElementCount count) {
     request_(count);
@@ -73,6 +87,12 @@ class SharedPtrSubscription : public SubscriptionBase {
  public:
   explicit SharedPtrSubscription(std::shared_ptr<SubscriptionType> subscription)
       : subscription_(subscription) {}
+
+  SharedPtrSubscription(const SharedPtrSubscription &) = delete;
+  SharedPtrSubscription& operator=(const SharedPtrSubscription &) = delete;
+
+  SharedPtrSubscription(SharedPtrSubscription &&) = default;
+  SharedPtrSubscription& operator=(SharedPtrSubscription &&) = default;
 
   void Request(ElementCount count) {
     subscription_->Request(count);
@@ -107,6 +127,7 @@ class Subscription : public SubscriptionBase {
 
   Subscription(const Subscription &) = delete;
   Subscription &operator=(const Subscription &) = delete;
+
   Subscription(Subscription &&) = default;
   Subscription &operator=(Subscription &&) = default;
 
