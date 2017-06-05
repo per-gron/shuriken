@@ -1,4 +1,5 @@
 add_library(rs
+  include/rs/all.h
   include/rs/average.h
   include/rs/concat.h
   include/rs/count.h
@@ -39,6 +40,7 @@ set_target_properties(rs PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_property(TARGET rs PROPERTY CXX_STANDARD 14)
 
 add_executable(rs-test
+  test/all_test.cpp
   test/average_test.cpp
   test/backpressure_violator.h
   test/concat_test.cpp
