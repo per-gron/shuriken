@@ -6,6 +6,7 @@ add_library(rs
   include/rs/element_count.h
   include/rs/empty.h
   include/rs/filter.h
+  include/rs/first.h
   include/rs/flat_map.h
   include/rs/if_empty.h
   include/rs/is_empty.h
@@ -44,6 +45,7 @@ add_executable(rs-test
   test/element_count_test.cpp
   test/empty_test.cpp
   test/filter_test.cpp
+  test/first_test.cpp
   test/flat_map_test.cpp
   test/if_empty_test.cpp
   test/is_empty_test.cpp
