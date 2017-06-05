@@ -6,6 +6,7 @@ add_library(rs
   include/rs/empty.h
   include/rs/filter.h
   include/rs/flat_map.h
+  include/rs/if_empty.h
   include/rs/is_empty.h
   include/rs/iterate.h
   include/rs/just.h
@@ -42,6 +43,7 @@ add_executable(rs-test
   test/empty_test.cpp
   test/filter_test.cpp
   test/flat_map_test.cpp
+  test/if_empty_test.cpp
   test/is_empty_test.cpp
   test/iterate_test.cpp
   test/just_test.cpp
