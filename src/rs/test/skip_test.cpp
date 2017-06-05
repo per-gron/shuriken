@@ -63,6 +63,12 @@ TEST_CASE("Skip") {
         GetAll<int>(Skip(2)(Just(1, 2, 3, 4))) ==
         std::vector<int>({ 3, 4 }));
   }
+
+  SECTION("use twice") {
+    auto stream = Skip(1)(Just(1, 2));
+    CHECK(GetAll<int>(stream) == std::vector<int>({ 2 }));
+    CHECK(GetAll<int>(stream) == std::vector<int>({ 2 }));
+  }
 }
 
 }  // namespace shk

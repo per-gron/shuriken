@@ -27,6 +27,7 @@ add_library(rs
   include/rs/repeat.h
   include/rs/scan.h
   include/rs/skip.h
+  include/rs/skip_while.h
   include/rs/some.h
   include/rs/start.h
   include/rs/start_with.h
@@ -72,6 +73,7 @@ add_executable(rs-test
   test/repeat_test.cpp
   test/scan_test.cpp
   test/skip_test.cpp
+  test/skip_while_test.cpp
   test/some_test.cpp
   test/start_test.cpp
   test/start_with_test.cpp
