@@ -43,10 +43,22 @@ namespace detail {
 template <typename InnerPublisher>
 class ConcretePublisher : public PublisherBase {
  public:
-  template <typename InnerPublisherType>
+  struct FunctorTag {};
+  /**
+   * Constructor that takes a functor/lambda.
+   */
+  template <
+      typename InnerPublisherType,
+      class = std::enable_if<!IsPublisher<InnerPublisherType>>>
   explicit ConcretePublisher(
-      InnerPublisherType &&inner_publisher)
+      FunctorTag, InnerPublisherType &&inner_publisher)
       : inner_publisher_(std::forward<InnerPublisherType>(inner_publisher)) {}
+
+  ConcretePublisher(const ConcretePublisher &) = default;
+  ConcretePublisher& operator=(const ConcretePublisher &) = default;
+
+  ConcretePublisher(ConcretePublisher &&) = default;
+  ConcretePublisher& operator=(ConcretePublisher &&) = default;
 
   template <typename T>
   auto Subscribe(T &&t) {
@@ -115,9 +127,11 @@ class Publisher : public PublisherBase {
  */
 template <typename PublisherType>
 auto MakePublisher(PublisherType &&publisher) {
-  return detail::ConcretePublisher<
-      typename std::decay<PublisherType>::type>(
-          std::forward<PublisherType>(publisher));
+  using ConcretePublisherT = detail::ConcretePublisher<
+      typename std::decay<PublisherType>::type>;
+  return ConcretePublisherT(
+      typename ConcretePublisherT::FunctorTag(),
+      std::forward<PublisherType>(publisher));
 }
 
 }  // namespace shk

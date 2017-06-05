@@ -36,13 +36,11 @@ TEST_CASE("Merge") {
         "Merge stream should be a publisher");
   }
 
-#if 0
   SECTION("stream passed by lvalue") {
     auto inner_stream = Just();
     auto stream = Merge<int>(inner_stream);
     CHECK(GetAll<int>(stream) == (std::vector<int>{}));
   }
-#endif
 
   SECTION("no streams") {
     SECTION("output") {
