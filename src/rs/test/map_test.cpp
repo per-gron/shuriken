@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include <rs/iterate.h>
+#include <rs/from.h>
 #include <rs/map.h>
 
 #include "infinite_range.h"
@@ -29,7 +29,7 @@ TEST_CASE("Map") {
   auto add_self = Map([](auto x) { return x + x; });
 
   SECTION("empty") {
-    auto stream = add_self(Iterate(std::vector<int>{}));
+    auto stream = add_self(From(std::vector<int>{}));
     CHECK(
         GetAll<int>(stream) ==
         (std::vector<int>{}));
@@ -40,13 +40,13 @@ TEST_CASE("Map") {
 
   SECTION("one int") {
     CHECK(
-        GetAll<int>(add_self(Iterate(std::vector<int>{ 1 }))) ==
+        GetAll<int>(add_self(From(std::vector<int>{ 1 }))) ==
         (std::vector<int>{ 2 }));
   }
 
   SECTION("two ints") {
     CHECK(
-        GetAll<int>(add_self(Iterate(std::vector<int>{ 1, 5 }))) ==
+        GetAll<int>(add_self(From(std::vector<int>{ 1, 5 }))) ==
         (std::vector<int>{ 2, 10 }));
   }
 
@@ -55,14 +55,14 @@ TEST_CASE("Map") {
     // with ints).
     CHECK(
         GetAll<std::string>(
-            add_self(Iterate(std::vector<std::string>{ "a" }))) ==
+            add_self(From(std::vector<std::string>{ "a" }))) ==
         (std::vector<std::string>{ "aa" }));
   }
 
   SECTION("request only one") {
     CHECK(
         GetAll<int>(
-            add_self(Iterate(std::vector<int>{ 1, 5 })),
+            add_self(From(std::vector<int>{ 1, 5 })),
             ElementCount(1),
             false) ==
         (std::vector<int>{ 2 }));
@@ -71,7 +71,7 @@ TEST_CASE("Map") {
   SECTION("request only two") {
     CHECK(
         GetAll<int>(
-            add_self(Iterate(std::vector<int>{ 1, 6 })),
+            add_self(From(std::vector<int>{ 1, 6 })),
             ElementCount(2)) ==
         (std::vector<int>{ 2, 12 }));
   }
@@ -102,27 +102,27 @@ TEST_CASE("Map") {
 
     SECTION("empty") {
       CHECK(
-          GetAll<int>(fail_on(0)(Iterate(std::vector<int>{}))) ==
+          GetAll<int>(fail_on(0)(From(std::vector<int>{}))) ==
           (std::vector<int>{}));
     }
 
     SECTION("error on first") {
-      auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 0 })));
+      auto error = GetError(fail_on(0)(From(std::vector<int>{ 0 })));
       CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("error on second") {
-      auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 1, 0 })));
+      auto error = GetError(fail_on(0)(From(std::vector<int>{ 1, 0 })));
       CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("error on first and second") {
-      auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 0, 0 })));
+      auto error = GetError(fail_on(0)(From(std::vector<int>{ 0, 0 })));
       CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("source emits value that fails and then fails itself") {
-      auto zero_then_fail = fail_on(1)(Iterate(std::vector<int>{ 0, 1 }));
+      auto zero_then_fail = fail_on(1)(From(std::vector<int>{ 0, 1 }));
 
       // Should only fail once. GetError checks that
       auto error = GetError(fail_on(0)(zero_then_fail));
@@ -132,7 +132,7 @@ TEST_CASE("Map") {
     SECTION("error on second only one requested") {
       CHECK(
           GetAll<int>(
-              fail_on(0)(Iterate(std::vector<int>{ 1, 0 })),
+              fail_on(0)(From(std::vector<int>{ 1, 0 })),
               ElementCount(1),
               false) ==
           (std::vector<int>{ 1 }));

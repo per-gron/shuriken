@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <rs/iterate.h>
+#include <rs/from.h>
 
 namespace shk {
 namespace detail {
@@ -70,7 +70,7 @@ struct RangeContainer {
  */
 template <typename Begin>
 auto Range(Begin &&begin, size_t count) {
-  return Iterate(
+  return From(
       detail::RangeContainer<typename std::decay<Begin>::type>(
           std::forward<Begin>(begin),
           count));

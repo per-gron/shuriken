@@ -16,23 +16,23 @@
 
 #include <vector>
 
-#include <rs/iterate.h>
+#include <rs/from.h>
 #include <rs/subscriber.h>
 
 #include "infinite_range.h"
 
 namespace shk {
 
-TEST_CASE("Iterate") {
+TEST_CASE("From") {
   SECTION("construct") {
-    auto stream = Iterate(std::vector<int>{});
+    auto stream = From(std::vector<int>{});
     static_assert(
         IsPublisher<decltype(stream)>,
-        "Iterate should be a publisher");
+        "From should be a publisher");
   }
 
   SECTION("empty container") {
-    auto stream = Iterate(std::vector<int>{});
+    auto stream = From(std::vector<int>{});
 
     int done = 0;
     auto sub = stream.Subscribe(MakeSubscriber(
@@ -46,7 +46,7 @@ TEST_CASE("Iterate") {
 
   SECTION("lvalue ref container") {
     std::vector<int> empty;
-    auto stream = Iterate(empty);
+    auto stream = From(empty);
 
     int done = 0;
     auto sub = stream.Subscribe(MakeSubscriber(
@@ -59,7 +59,7 @@ TEST_CASE("Iterate") {
   }
 
   SECTION("one value") {
-    auto stream = Iterate(std::vector<int>{ 1 });
+    auto stream = From(std::vector<int>{ 1 });
 
     int done = 0;
     int next = 0;
@@ -83,7 +83,7 @@ TEST_CASE("Iterate") {
   }
 
   SECTION("multiple values, one at a time") {
-    auto stream = Iterate(std::vector<int>{ 1, 2 });
+    auto stream = From(std::vector<int>{ 1, 2 });
 
     int done = 0;
     int next = 0;
@@ -121,7 +121,7 @@ TEST_CASE("Iterate") {
   }
 
   SECTION("multiple values, all at once") {
-    auto stream = Iterate(std::vector<int>{ 1, 2 });
+    auto stream = From(std::vector<int>{ 1, 2 });
 
     int done = 0;
     int next = 0;
@@ -155,7 +155,7 @@ TEST_CASE("Iterate") {
   }
 
   SECTION("multiple values, more than all at once") {
-    auto stream = Iterate(std::vector<int>{ 1, 2 });
+    auto stream = From(std::vector<int>{ 1, 2 });
 
     int done = 0;
     int next = 0;
@@ -189,7 +189,7 @@ TEST_CASE("Iterate") {
   }
 
   SECTION("multiple iterations") {
-    auto stream = Iterate(std::vector<int>{ 1 });
+    auto stream = From(std::vector<int>{ 1 });
 
     for (int i = 0; i < 3; i++) {
       int done = 0;
@@ -219,7 +219,7 @@ TEST_CASE("Iterate") {
       int nexts = 0;
       int finishes = 0;
 
-      auto stream = Iterate(std::vector<int>{ 1 });
+      auto stream = From(std::vector<int>{ 1 });
 
       Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
           [&sub, &nexts](int next) {
@@ -246,7 +246,7 @@ TEST_CASE("Iterate") {
       int nexts = 0;
       int finishes = 0;
 
-      auto stream = Iterate(std::vector<int>{ 1, 2 });
+      auto stream = From(std::vector<int>{ 1, 2 });
 
       Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
           [&sub, &nexts](int next) {

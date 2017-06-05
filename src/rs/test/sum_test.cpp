@@ -17,8 +17,8 @@
 #include <vector>
 
 #include <rs/empty.h>
+#include <rs/from.h>
 #include <rs/sum.h>
-#include <rs/iterate.h>
 
 #include "test_util.h"
 
@@ -31,15 +31,15 @@ TEST_CASE("Sum") {
       "Sum stream should be a publisher");
 
   SECTION("empty") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{}))) == 0);
+    CHECK(GetOne<int>(sum(From(std::vector<int>{}))) == 0);
   }
 
   SECTION("one value") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10 }))) == 10);
+    CHECK(GetOne<int>(sum(From(std::vector<int>{ 10 }))) == 10);
   }
 
   SECTION("two values") {
-    CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 10, 2 }))) == 12);
+    CHECK(GetOne<int>(sum(From(std::vector<int>{ 10, 2 }))) == 12);
   }
 }
 

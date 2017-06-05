@@ -10,9 +10,9 @@ add_library(rs
   include/rs/filter.h
   include/rs/first.h
   include/rs/flat_map.h
+  include/rs/from.h
   include/rs/if_empty.h
   include/rs/is_empty.h
-  include/rs/iterate.h
   include/rs/just.h
   include/rs/last.h
   include/rs/map.h
@@ -52,9 +52,9 @@ add_executable(rs-test
   test/filter_test.cpp
   test/first_test.cpp
   test/flat_map_test.cpp
+  test/from_test.cpp
   test/if_empty_test.cpp
   test/is_empty_test.cpp
-  test/iterate_test.cpp
   test/just_test.cpp
   test/last_test.cpp
   test/main.cpp

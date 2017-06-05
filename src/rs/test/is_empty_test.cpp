@@ -16,8 +16,8 @@
 
 #include <vector>
 
+#include <rs/from.h>
 #include <rs/is_empty.h>
-#include <rs/iterate.h>
 
 #include "test_util.h"
 
@@ -26,19 +26,19 @@ namespace shk {
 TEST_CASE("IsEmpty") {
   auto is_empty = IsEmpty();
   static_assert(
-      IsPublisher<decltype(is_empty(Iterate(std::vector<int>{})))>,
+      IsPublisher<decltype(is_empty(From(std::vector<int>{})))>,
       "IsEmpty stream should be a publisher");
 
   SECTION("empty") {
-    CHECK(GetOne<int>(is_empty(Iterate(std::vector<int>{}))) == true);
+    CHECK(GetOne<int>(is_empty(From(std::vector<int>{}))) == true);
   }
 
   SECTION("one value") {
-    CHECK(GetOne<int>(is_empty(Iterate(std::vector<int>{ 1 }))) == false);
+    CHECK(GetOne<int>(is_empty(From(std::vector<int>{ 1 }))) == false);
   }
 
   SECTION("two values") {
-    CHECK(GetOne<int>(is_empty(Iterate(std::vector<int>{ 1, 2 }))) == false);
+    CHECK(GetOne<int>(is_empty(From(std::vector<int>{ 1, 2 }))) == false);
   }
 }
 

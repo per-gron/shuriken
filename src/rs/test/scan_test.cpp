@@ -17,7 +17,7 @@
 #include <vector>
 
 #include <rs/empty.h>
-#include <rs/iterate.h>
+#include <rs/from.h>
 #include <rs/just.h>
 #include <rs/scan.h>
 
@@ -40,12 +40,12 @@ TEST_CASE("Scan") {
   }
 
   SECTION("two values") {
-    auto values = Iterate(std::vector<int>{ 1, 2, 3 });
+    auto values = From(std::vector<int>{ 1, 2, 3 });
     CHECK(GetAll<int>(running_sum(values)) == std::vector<int>({ 4, 6, 9 }));
   }
 
   SECTION("use twice") {
-    auto values = Iterate(std::vector<int>{ 1, 2, 3 });
+    auto values = From(std::vector<int>{ 1, 2, 3 });
     auto stream = running_sum(values);
     CHECK(GetAll<int>(stream) == std::vector<int>({ 4, 6, 9 }));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 4, 6, 9 }));

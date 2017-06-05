@@ -16,9 +16,9 @@
 
 #include <vector>
 
-#include <rs/empty.h>
 #include <rs/average.h>
-#include <rs/iterate.h>
+#include <rs/empty.h>
+#include <rs/from.h>
 
 #include "test_util.h"
 
@@ -37,16 +37,16 @@ TEST_CASE("Average") {
   }
 
   SECTION("one value") {
-    CHECK(GetOne<double>(average(Iterate(std::vector<int>{ 10 }))) == 10);
+    CHECK(GetOne<double>(average(From(std::vector<int>{ 10 }))) == 10);
   }
 
   SECTION("two values") {
-    CHECK(GetOne<double>(average(Iterate(std::vector<int>{ 10, 21 }))) == 15.5);
+    CHECK(GetOne<double>(average(From(std::vector<int>{ 10, 21 }))) == 15.5);
   }
 
   SECTION("int values") {
     CHECK(GetOne<int>(
-        Average<int>()(Iterate(std::vector<int>{ 10, 21 }))) == 15);
+        Average<int>()(From(std::vector<int>{ 10, 21 }))) == 15);
   }
 }
 

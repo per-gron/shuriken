@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <rs/iterate.h>
+#include <rs/from.h>
 
 namespace shk {
 namespace detail {
@@ -72,7 +72,7 @@ struct RepeatContainer {
  */
 template <typename Begin>
 auto Repeat(Begin &&begin, size_t count) {
-  return Iterate(
+  return From(
       detail::RepeatContainer<typename std::decay<Begin>::type>(
           std::forward<Begin>(begin),
           count));

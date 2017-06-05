@@ -17,7 +17,7 @@
 #include <vector>
 
 #include <rs/empty.h>
-#include <rs/iterate.h>
+#include <rs/from.h>
 #include <rs/just.h>
 #include <rs/last.h>
 #include <rs/throw.h>
@@ -46,7 +46,7 @@ TEST_CASE("Last") {
   }
 
   SECTION("multiple values") {
-    auto values = Iterate(std::vector<int>({ 1, 2 }));
+    auto values = From(std::vector<int>({ 1, 2 }));
     CHECK(GetOne<int>(Last<int>()(values)) == 2);
   }
 

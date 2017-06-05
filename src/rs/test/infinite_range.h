@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <rs/iterate.h>
+#include <rs/from.h>
 
 namespace shk {
 namespace detail {
@@ -70,7 +70,7 @@ struct InfiniteRangeContainer {
  */
 template <typename Value>
 auto InfiniteRange(Value &&value) {
-  return Iterate(
+  return From(
       detail::InfiniteRangeContainer<typename std::decay<Value>::type>(
           std::forward<Value>(value)));
 }

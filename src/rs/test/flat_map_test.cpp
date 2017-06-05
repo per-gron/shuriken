@@ -17,7 +17,7 @@
 #include <rs/element_count.h>
 #include <rs/empty.h>
 #include <rs/flat_map.h>
-#include <rs/iterate.h>
+#include <rs/from.h>
 #include <rs/just.h>
 #include <rs/map.h>
 #include <rs/never.h>
@@ -62,7 +62,7 @@ TEST_CASE("FlatMap") {
 
   SECTION("one stream with two values") {
     auto flat_map = FlatMap([](auto &&) {
-      return Iterate(std::vector<int>{ 1, 2 });
+      return From(std::vector<int>{ 1, 2 });
     });
     auto stream = flat_map(Just(1));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 1, 2 }));
@@ -70,15 +70,15 @@ TEST_CASE("FlatMap") {
 
   SECTION("two streams with one value") {
     auto stream = FlatMap([](auto &&) { return Just(2); })(
-        Iterate(std::vector<int>{ 0, 0 }));
+        From(std::vector<int>{ 0, 0 }));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 2, 2 }));
   }
 
   SECTION("two streams with two values") {
     auto flat_map = FlatMap([](auto &&) {
-      return Iterate(std::vector<int>{ 1, 2 });
+      return From(std::vector<int>{ 1, 2 });
     });
-    auto stream = flat_map(Iterate(std::vector<int>{ 0, 0 }));
+    auto stream = flat_map(From(std::vector<int>{ 0, 0 }));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 1, 2, 1, 2 }));
   }
 
@@ -89,9 +89,9 @@ TEST_CASE("FlatMap") {
       // state_ == ON_LAST_PUBLISHER. With this loop we test both.
 
       auto flat_map = FlatMap([](auto &&) {
-        return Iterate(std::vector<int>{ 1, 2, 3, 4 });
+        return From(std::vector<int>{ 1, 2, 3, 4 });
       });
-      auto stream = flat_map(Iterate(std::vector<int>(i, 0)));
+      auto stream = flat_map(From(std::vector<int>(i, 0)));
 
       std::vector<int> result;
       bool is_done = false;
@@ -285,29 +285,29 @@ TEST_CASE("FlatMap") {
 
     SECTION("empty") {
       CHECK(
-          GetAll<int>(fail_on(0)(Iterate(std::vector<int>{}))) ==
+          GetAll<int>(fail_on(0)(From(std::vector<int>{}))) ==
           (std::vector<int>{}));
     }
 
     SECTION("error on first") {
-      auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 0 })));
+      auto error = GetError(fail_on(0)(From(std::vector<int>{ 0 })));
       CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("error on second") {
-      auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 1, 0 })));
+      auto error = GetError(fail_on(0)(From(std::vector<int>{ 1, 0 })));
       CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("error on first and second") {
-      auto error = GetError(fail_on(0)(Iterate(std::vector<int>{ 0, 0 })));
+      auto error = GetError(fail_on(0)(From(std::vector<int>{ 0, 0 })));
       CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("error on second only one requested") {
       CHECK(
           GetAll<int>(
-              fail_on(0)(Iterate(std::vector<int>{ 1, 0 })),
+              fail_on(0)(From(std::vector<int>{ 1, 0 })),
               ElementCount(1),
               false) ==
           (std::vector<int>{ 42 }));
@@ -321,7 +321,7 @@ TEST_CASE("FlatMap") {
     }
 
     SECTION("source emits value that fails and then fails itself") {
-      auto zero_then_fail = fail_on(1)(Iterate(std::vector<int>{ 0, 1 }));
+      auto zero_then_fail = fail_on(1)(From(std::vector<int>{ 0, 1 }));
 
       // Should only fail once. GetError checks that
       auto error = GetError(fail_on(42)(zero_then_fail));
@@ -346,7 +346,7 @@ TEST_CASE("FlatMap") {
         } else {
           return value;
         }
-      })(Iterate(std::vector<int>(vec)));
+      })(From(std::vector<int>(vec)));
     };
 
     auto fail_on_inner = [&fail_after]() {
@@ -356,37 +356,37 @@ TEST_CASE("FlatMap") {
     };
 
     SECTION("immediate error on first") {
-      auto error = GetError(fail_on_inner()(Iterate(std::vector<int>{ 0 })));
+      auto error = GetError(fail_on_inner()(From(std::vector<int>{ 0 })));
       CHECK(GetErrorWhat(error) == "fail_after");
     }
 
     SECTION("delayed error on first") {
-      auto error = GetError(fail_on_inner()(Iterate(std::vector<int>{ 1 })));
+      auto error = GetError(fail_on_inner()(From(std::vector<int>{ 1 })));
       CHECK(GetErrorWhat(error) == "fail_after");
     }
 
     SECTION("immediate error on second") {
       auto error = GetError(
-          fail_on_inner()(Iterate(std::vector<int>{ -1, 0 })));
+          fail_on_inner()(From(std::vector<int>{ -1, 0 })));
       CHECK(GetErrorWhat(error) == "fail_after");
     }
 
     SECTION("delayed error on second") {
       auto error = GetError(
-          fail_on_inner()(Iterate(std::vector<int>{ -1, 1 })));
+          fail_on_inner()(From(std::vector<int>{ -1, 1 })));
       CHECK(GetErrorWhat(error) == "fail_after");
     }
 
     SECTION("error on first and second") {
       auto error = GetError(
-          fail_on_inner()(Iterate(std::vector<int>{ 0, 0 })));
+          fail_on_inner()(From(std::vector<int>{ 0, 0 })));
       CHECK(GetErrorWhat(error) == "fail_after");
     }
 
     SECTION("error on second only one requested") {
       CHECK(
           GetAll<int>(
-              fail_on_inner()(Iterate(std::vector<int>{ -1, 0 })),
+              fail_on_inner()(From(std::vector<int>{ -1, 0 })),
               ElementCount(1),
               false) ==
           (std::vector<int>{ 0 }));
@@ -395,7 +395,7 @@ TEST_CASE("FlatMap") {
     SECTION("delayed error on first only one requested") {
       CHECK(
           GetAll<int>(
-              fail_on_inner()(Iterate(std::vector<int>{ 1, 0 })),
+              fail_on_inner()(From(std::vector<int>{ 1, 0 })),
               ElementCount(1),
               false) ==
           (std::vector<int>{ 0 }));

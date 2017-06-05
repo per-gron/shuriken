@@ -17,7 +17,7 @@
 #include <vector>
 
 #include <rs/empty.h>
-#include <rs/iterate.h>
+#include <rs/from.h>
 #include <rs/just.h>
 #include <rs/min.h>
 #include <rs/throw.h>
@@ -44,12 +44,12 @@ TEST_CASE("Min") {
   }
 
   SECTION("multiple values, smallest last") {
-    auto values = Iterate(std::vector<int>({ 2, 1 }));
+    auto values = From(std::vector<int>({ 2, 1 }));
     CHECK(GetOne<int>(min(values)) == 1);
   }
 
   SECTION("multiple values, smallest first") {
-    auto values = Iterate(std::vector<int>({ 1, 2 }));
+    auto values = From(std::vector<int>({ 1, 2 }));
     CHECK(GetOne<int>(min(values)) == 1);
   }
 

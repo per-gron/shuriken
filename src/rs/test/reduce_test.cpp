@@ -18,7 +18,7 @@
 #include <vector>
 
 #include <rs/empty.h>
-#include <rs/iterate.h>
+#include <rs/from.h>
 #include <rs/just.h>
 #include <rs/never.h>
 #include <rs/reduce.h>
@@ -59,32 +59,32 @@ TEST_CASE("Reduce") {
     }
 
     SECTION("two values") {
-      CHECK(GetOne<int>(sum(Iterate(std::vector<int>{ 1, 2 }))) == 103);
+      CHECK(GetOne<int>(sum(From(std::vector<int>{ 1, 2 }))) == 103);
     }
 
     SECTION("request zero") {
       CHECK(GetOne<int>(
-          sum(Iterate(std::vector<int>{ 1, 2 })), ElementCount(0)) == 0);
+          sum(From(std::vector<int>{ 1, 2 })), ElementCount(0)) == 0);
     }
 
     SECTION("request one") {
       CHECK(GetOne<int>(
-          sum(Iterate(std::vector<int>{ 1, 2 })), ElementCount(1)) == 103);
+          sum(From(std::vector<int>{ 1, 2 })), ElementCount(1)) == 103);
     }
 
     SECTION("request two") {
       CHECK(GetOne<int>(
-          sum(Iterate(std::vector<int>{ 1, 2 })), ElementCount(2)) == 103);
+          sum(From(std::vector<int>{ 1, 2 })), ElementCount(2)) == 103);
     }
 
     SECTION("error on first") {
-      auto error = GetError(fail_on(0, 1)(Iterate(std::vector<int>{ 0 })));
+      auto error = GetError(fail_on(0, 1)(From(std::vector<int>{ 0 })));
       CHECK(GetErrorWhat(error) == "fail_on");
     }
 
     SECTION("error on first of two") {
       // The reducer functor should be invoked only once
-      auto error = GetError(fail_on(0, 1)(Iterate(std::vector<int>{ 0, 1 })));
+      auto error = GetError(fail_on(0, 1)(From(std::vector<int>{ 0, 1 })));
       CHECK(GetErrorWhat(error) == "fail_on");
     }
 
@@ -136,7 +136,7 @@ TEST_CASE("Reduce") {
           });
       CHECK(
           *GetOne<std::unique_ptr<int>>(
-              wrap_in_unique_ptr(Iterate(std::vector<int>{ 1, 2 }))) == 2);
+              wrap_in_unique_ptr(From(std::vector<int>{ 1, 2 }))) == 2);
     }
   }
 
@@ -158,12 +158,12 @@ TEST_CASE("Reduce") {
     }
 
     SECTION("two values") {
-      auto values = Iterate(std::vector<int>({ 2, 3 }));
+      auto values = From(std::vector<int>({ 2, 3 }));
       CHECK(GetOne<int>(reduce(values)) == (2 * 2) + 3);
     }
 
     SECTION("three values") {
-      auto values = Iterate(std::vector<int>({ 2, 3, 4 }));
+      auto values = From(std::vector<int>({ 2, 3, 4 }));
       int first = (2 * 2) + 3;
       CHECK(GetOne<int>(reduce(values)) == first * first + 4);
     }

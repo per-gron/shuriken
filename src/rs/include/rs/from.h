@@ -23,15 +23,15 @@
 namespace shk {
 
 /**
- * Iterate takes a C++ container, for example an std::vector and returns a
+ * From takes a C++ container, for example an std::vector and returns a
  * Publisher that emits the values of that container.
  *
- * Iterate makes a copy of the container every time the Publisher is subscribed
+ * From makes a copy of the container every time the Publisher is subscribed
  * to, in order to be able to give ownership of each value in the container to
  * its Subscriber.
  */
 template <typename Container>
-auto Iterate(Container &&container) {
+auto From(Container &&container) {
   return MakePublisher([container = std::forward<Container>(container)](
       auto subscriber) {
     class ContainerSubscription : public SubscriptionBase {

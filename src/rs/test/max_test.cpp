@@ -17,7 +17,7 @@
 #include <vector>
 
 #include <rs/empty.h>
-#include <rs/iterate.h>
+#include <rs/from.h>
 #include <rs/just.h>
 #include <rs/max.h>
 #include <rs/throw.h>
@@ -44,12 +44,12 @@ TEST_CASE("Max") {
   }
 
   SECTION("multiple values, biggest last") {
-    auto values = Iterate(std::vector<int>({ 1, 2 }));
+    auto values = From(std::vector<int>({ 1, 2 }));
     CHECK(GetOne<int>(max(values)) == 2);
   }
 
   SECTION("multiple values, biggest first") {
-    auto values = Iterate(std::vector<int>({ 2, 1 }));
+    auto values = From(std::vector<int>({ 2, 1 }));
     CHECK(GetOne<int>(max(values)) == 2);
   }
 
