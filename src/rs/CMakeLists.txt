@@ -24,6 +24,7 @@ add_library(rs
   include/rs/reduce.h
   include/rs/repeat.h
   include/rs/scan.h
+  include/rs/some.h
   include/rs/start.h
   include/rs/start_with.h
   include/rs/subscriber.h
@@ -65,6 +66,7 @@ add_executable(rs-test
   test/reduce_test.cpp
   test/repeat_test.cpp
   test/scan_test.cpp
+  test/some_test.cpp
   test/start_test.cpp
   test/start_with_test.cpp
   test/take_test.cpp

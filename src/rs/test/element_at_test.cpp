@@ -14,7 +14,6 @@
 
 #include <catch.hpp>
 
-#include <string>
 #include <vector>
 
 #include <rs/element_at.h>
