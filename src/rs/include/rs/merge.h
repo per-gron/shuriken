@@ -117,47 +117,6 @@ class MergeSubscription : public SubscriptionBase {
     }
   }
 
-  void OnInnerSubscriptionNext(size_t idx, Element &&element) {
-    if (finished_) {
-      return;
-    }
-
-    if (idx >= subscriptions_.size()) {
-      // This happens if the Publisher starts emitting values during the
-      // Subscribe method.
-      OnInnerSubscriptionError(std::make_exception_ptr(
-          std::logic_error("Got value before Requesting anything")));
-      return;
-    }
-
-    auto &outstanding = subscriptions_[idx].outstanding;
-    if (outstanding <= 0) {
-      OnInnerSubscriptionError(std::make_exception_ptr(
-          std::logic_error("Got value that was not Request-ed")));
-      return;
-    }
-    --outstanding;
-
-    if (outstanding_ > 0) {
-      --outstanding_;
-      inner_subscriber_.OnNext(std::move(element));
-    } else {
-      buffer_.emplace_back(std::move(element));
-    }
-  }
-
-  void OnInnerSubscriptionError(std::exception_ptr &&error) {
-    if (!finished_) {
-      Cancel();
-      inner_subscriber_.OnError(std::move(error));
-    }
-  }
-
-  void OnInnerSubscriptionComplete() {
-    remaining_subscriptions_--;
-    MaybeSendOnComplete();
-  }
-
   void Request(ElementCount count) {
     if (finished_) {
       return;
@@ -207,6 +166,47 @@ class MergeSubscription : public SubscriptionBase {
   }
 
  private:
+  void OnInnerSubscriptionNext(size_t idx, Element &&element) {
+    if (finished_) {
+      return;
+    }
+
+    if (idx >= subscriptions_.size()) {
+      // This happens if the Publisher starts emitting values during the
+      // Subscribe method.
+      OnInnerSubscriptionError(std::make_exception_ptr(
+          std::logic_error("Got value before Requesting anything")));
+      return;
+    }
+
+    auto &outstanding = subscriptions_[idx].outstanding;
+    if (outstanding <= 0) {
+      OnInnerSubscriptionError(std::make_exception_ptr(
+          std::logic_error("Got value that was not Request-ed")));
+      return;
+    }
+    --outstanding;
+
+    if (outstanding_ > 0) {
+      --outstanding_;
+      inner_subscriber_.OnNext(std::move(element));
+    } else {
+      buffer_.emplace_back(std::move(element));
+    }
+  }
+
+  void OnInnerSubscriptionError(std::exception_ptr &&error) {
+    if (!finished_) {
+      Cancel();
+      inner_subscriber_.OnError(std::move(error));
+    }
+  }
+
+  void OnInnerSubscriptionComplete() {
+    remaining_subscriptions_--;
+    MaybeSendOnComplete();
+  }
+
   void MaybeSendOnComplete() {
     if (!finished_ && remaining_subscriptions_ == 0 && buffer_.empty()) {
       SendOnComplete();
@@ -256,7 +256,6 @@ class MergeSubscription : public SubscriptionBase {
  */
 template <typename Element, typename ...Publishers>
 auto Merge(Publishers &&...publishers) {
-  // TODO(peck): Make it possible to pass publishers by lvalue ref to here
   return MakePublisher([publishers = std::make_tuple(
       std::forward<Publishers>(publishers)...)](auto &&subscriber) {
     auto merge_subscription = std::make_shared<detail::MergeSubscription<
