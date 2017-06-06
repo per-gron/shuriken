@@ -43,38 +43,44 @@ auto From(Container &&container) {
             subscriber_(std::move(subscriber)),
             it_(std::begin(container_)),
             end_(std::end(container_)) {
-      if (it_ == end_) {
-        subscriber_.OnComplete();
-      }
-    }
-
-    void Request(ElementCount count) {
-      bool has_outstanding_request_count = outstanding_request_count_ != 0;
-      outstanding_request_count_ += count;
-      if (has_outstanding_request_count) {
-        // Farther up in the stack, Request is already being called. No need
-        // to do anything here.
-        return;
-      }
-
-      while (!cancelled_ && outstanding_request_count_ != 0 && !(it_ == end_)) {
-        auto &&value = *it_;
-        ++it_;
-        subscriber_.OnNext(std::move(value));
         if (it_ == end_) {
-          outstanding_request_count_ = 0;  // Just for sanity, not needed
           subscriber_.OnComplete();
         }
-
-        // Need to decrement this after calling OnNext/OnComplete, to ensure
-        // that re-entrant Request calls always see that they are re-entrant.
-        outstanding_request_count_--;
       }
-    }
 
-    void Cancel() {
-      cancelled_ = true;
-    }
+      ContainerSubscription(const ContainerSubscription &) = delete;
+      ContainerSubscription& operator=(const ContainerSubscription &) = delete;
+
+      ContainerSubscription(ContainerSubscription &&) = default;
+      ContainerSubscription& operator=(ContainerSubscription &&) = default;
+
+      void Request(ElementCount count) {
+        bool has_outstanding_request_count = outstanding_request_count_ != 0;
+        outstanding_request_count_ += count;
+        if (has_outstanding_request_count) {
+          // Farther up in the stack, Request is already being called. No need
+          // to do anything here.
+          return;
+        }
+
+        while (!cancelled_ && outstanding_request_count_ != 0 && !(it_ == end_)) {
+          auto &&value = *it_;
+          ++it_;
+          subscriber_.OnNext(std::move(value));
+          if (it_ == end_) {
+            outstanding_request_count_ = 0;  // Just for sanity, not needed
+            subscriber_.OnComplete();
+          }
+
+          // Need to decrement this after calling OnNext/OnComplete, to ensure
+          // that re-entrant Request calls always see that they are re-entrant.
+          outstanding_request_count_--;
+        }
+      }
+
+      void Cancel() {
+        cancelled_ = true;
+      }
 
      private:
       typename std::decay<Container>::type container_;
