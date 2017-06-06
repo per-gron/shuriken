@@ -19,6 +19,88 @@
 namespace shk {
 
 TEST_CASE("Publisher") {
+  static_assert(!IsPublisher<int>, "int is not a Publisher");
+
+  SECTION("Publisher type eraser") {
+    int cancelled = 0;
+    // TODO(peck): Make this lambda mutable
+    auto callback_pub = MakePublisher([&cancelled](auto &&subscriber) {
+      subscriber.OnComplete();
+      return MakeSubscription(
+          [](ElementCount) {},
+          [&cancelled] { cancelled++; });
+    });
+    const auto pub = Publisher<int, std::string>(std::move(callback_pub));
+
+    SECTION("type traits") {
+      static_assert(
+          IsPublisher<decltype(pub)>,
+          "MakePublisher should return Publisher");
+    }
+
+    SECTION("Subscribe") {
+      int completed = 0;
+      auto sub = pub.Subscribe(MakeSubscriber(
+          [](auto &&) {},
+          [](std::exception_ptr &&) {},
+          [&completed] { completed++; }));
+
+      CHECK(completed == 1);
+      CHECK(cancelled == 0);
+      sub.Cancel();
+      CHECK(cancelled == 1);
+    }
+  }
+
+  SECTION("Callback MakePublisher") {
+    int cancelled = 0;
+    auto pub = MakePublisher([&cancelled](auto &&subscriber) mutable {
+      subscriber.OnComplete();
+      return MakeSubscription(
+          [](ElementCount) {},
+          [&cancelled] { cancelled++; });
+    });
+
+    SECTION("type traits") {
+      static_assert(
+          IsPublisher<decltype(pub)>,
+          "MakePublisher should return Publisher");
+    }
+
+    SECTION("Subscribe") {
+      int completed = 0;
+      auto sub = pub.Subscribe(MakeSubscriber(
+          [](auto &&) {},
+          [](std::exception_ptr &&) {},
+          [&completed] { completed++; }));
+
+      CHECK(completed == 1);
+      CHECK(cancelled == 0);
+      sub.Cancel();
+      CHECK(cancelled == 1);
+    }
+
+    SECTION("const Subscribe") {
+      int cancelled = 0;
+      const auto const_pub = MakePublisher([&cancelled](auto &&subscriber) {
+        subscriber.OnComplete();
+        return MakeSubscription(
+            [](ElementCount) {},
+            [&cancelled] { cancelled++; });
+      });
+
+      int completed = 0;
+      auto sub = const_pub.Subscribe(MakeSubscriber(
+          [](auto &&) {},
+          [](std::exception_ptr &&) {},
+          [&completed] { completed++; }));
+
+      CHECK(completed == 1);
+      CHECK(cancelled == 0);
+      sub.Cancel();
+      CHECK(cancelled == 1);
+    }
+  }
 }
 
 }  // namespace shk
