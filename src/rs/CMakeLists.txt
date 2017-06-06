@@ -79,6 +79,7 @@ add_executable(rs-test
   test/some_test.cpp
   test/start_test.cpp
   test/start_with_test.cpp
+  test/subscriber_test.cpp
   test/subscription_test.cpp
   test/take_test.cpp
   test/take_while_test.cpp

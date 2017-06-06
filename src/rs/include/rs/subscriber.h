@@ -16,6 +16,7 @@
 
 #include <array>
 #include <memory>
+#include <tuple>
 #include <type_traits>
 
 namespace shk {
@@ -115,28 +116,14 @@ class SharedPtrSubscriber : public SubscriberBase {
   std::shared_ptr<SubscriberType> subscriber_;
 };
 
-}  // namespace detail
-
-/**
- * Type erasure wrapper for Subscriber objects.
- */
 template <typename ...Ts>
-class Subscriber : public SubscriberBase {
+class ErasedSubscriberBase : public SubscriberBase {
  public:
-  template <typename S>
-  explicit Subscriber(
-      typename std::enable_if<IsSubscriber<S>, S>::type &&s)
+  template <
+      typename S,
+      class = typename std::enable_if<IsSubscriber<S>>::type>
+  explicit ErasedSubscriberBase(S &&s)
       : eraser_(std::make_unique<SubscriberEraser<S>>(std::forward<S>(s))) {}
-
-  Subscriber(const Subscriber &) = delete;
-  Subscriber &operator=(const Subscriber &) = delete;
-
-  template <typename T>
-  void OnNext(T &&t) {
-    static constexpr int kIndex = detail::GetTypeIndex<T, 0, Ts...>::kIndex;
-    static_assert(kIndex != -1, "Could not find matching type");
-    eraser_->OnNext(kIndex, static_cast<void *>(&t));
-  }
 
   void OnError(std::exception_ptr &&error) {
     eraser_->OnError(std::move(error));
@@ -144,6 +131,11 @@ class Subscriber : public SubscriberBase {
 
   void OnComplete() {
     eraser_->OnComplete();
+  }
+
+ protected:
+  void OnNextWithPointer(int index, void *rvalue_ref) {
+    eraser_->OnNext(index, rvalue_ref);
   }
 
  private:
@@ -164,7 +156,7 @@ class Subscriber : public SubscriberBase {
 
     void OnNext(void *object, void *rvalue_ref) const override {
       (reinterpret_cast<Object *>(object)->*method_)(
-          reinterpret_cast<Parameter &&>(rvalue_ref));
+          std::move(*reinterpret_cast<Parameter *>(rvalue_ref)));
     }
 
    private:
@@ -180,7 +172,6 @@ class Subscriber : public SubscriberBase {
     virtual void OnComplete() = 0;
   };
 
-  // TODO(peck): Make faster version for single and dual type variant
   template <typename S>
   class SubscriberEraser : public Eraser {
    public:
@@ -188,7 +179,7 @@ class Subscriber : public SubscriberBase {
         : subscriber_(std::move(subscriber)) {}
 
     void OnNext(int index, void *rvalue_ref) override {
-      (*_nexts[index])(&subscriber_, rvalue_ref);
+      (*GetNexts()[index]).OnNext(&subscriber_, rvalue_ref);
     }
 
     void OnError(std::exception_ptr &&error) override {
@@ -199,9 +190,160 @@ class Subscriber : public SubscriberBase {
       subscriber_.OnComplete();
     }
 
-   public:
+   private:
+    using Nexts = std::array<
+        std::unique_ptr<const OnNextEraser>, sizeof...(Ts)>;
+
+    const Nexts &GetNexts() {
+      static Nexts nexts = MakeNexts();
+      return nexts;
+    }
+
+    template <size_t Idx, typename Dummy>
+    class NextsBuilder {
+     public:
+      static void AssignNexts(Nexts *nexts) {
+        using Parameter = std::tuple_element_t<Idx, std::tuple<Ts...>>;
+
+        void (S::*method)(Parameter &&) = &S::OnNext;
+
+        (*nexts)[Idx].reset(new MethodOnNextEraser<S, Parameter>(method));
+        NextsBuilder<Idx + 1, Dummy>::AssignNexts(nexts);
+      }
+    };
+
+    template <typename Dummy>
+    class NextsBuilder<sizeof...(Ts), Dummy> {
+     public:
+      static void AssignNexts(Nexts *nexts) {
+      }
+    };
+
+    static Nexts MakeNexts() {
+      Nexts result{};
+      NextsBuilder<0, int>::AssignNexts(&result);
+      return result;
+    }
+
     S subscriber_;
-    std::array<const OnNextEraser *, sizeof...(Ts)> _nexts;
+  };
+
+  std::unique_ptr<Eraser> eraser_;
+};
+
+/**
+ * ErasedSubscriber is a class that does a templatey inheritance dance in order
+ * to be able to have one OnNext method for each Ts type.
+ */
+template <size_t Idx, typename Base, typename ...Ts>
+class ErasedSubscriber;
+
+template <size_t Idx, typename Base, typename T, typename ...Ts>
+class ErasedSubscriber<Idx, Base, T, Ts...>
+    : public ErasedSubscriber<Idx + 1, Base, Ts...> {
+ public:
+  using ErasedSubscriber<Idx + 1, Base, Ts...>::OnNext;
+
+  void OnNext(T &&val) {
+    this->template OnNextWithPointer(Idx, static_cast<void *>(&val));
+  }
+
+ protected:
+  template <
+      typename S,
+      class = typename std::enable_if<IsSubscriber<S>>::type>
+  explicit ErasedSubscriber(S &&s)
+      : ErasedSubscriber<Idx + 1, Base, Ts...>(std::forward<S>(s)) {}
+};
+
+template <size_t Idx, typename Base>
+class ErasedSubscriber<Idx, Base> : public Base {
+  struct PrivateDummyType {};
+
+ public:
+  // This overload is here so that the using ...::OnNext above can work.
+  void OnNext(PrivateDummyType &&);  // Intentionally not implemented
+
+ protected:
+  template <
+      typename S,
+      class = typename std::enable_if<IsSubscriber<S>>::type>
+  explicit ErasedSubscriber(S &&s)
+      : Base(std::forward<S>(s)) {}
+};
+
+}  // namespace detail
+
+/**
+ * Type erasure wrapper for Subscriber objects.
+ */
+template <typename ...Ts>
+class Subscriber : public detail::ErasedSubscriber<
+    0, detail::ErasedSubscriberBase<Ts...>, Ts...> {
+ public:
+  template <
+      typename S,
+      class = typename std::enable_if<IsSubscriber<S>>::type>
+  explicit Subscriber(S &&s)
+      : detail::ErasedSubscriber<0, detail::ErasedSubscriberBase<Ts...>, Ts...>(
+            std::forward<S>(s)) {}
+};
+
+/**
+ * Template specialization for the common single type case, to increase runtime
+ * and compilation speed.
+ */
+template <typename T>
+class Subscriber<T> : public SubscriberBase {
+ public:
+  template <
+      typename S,
+      class = typename std::enable_if<IsSubscriber<S>>::type>
+  explicit Subscriber(S &&s)
+      : eraser_(std::make_unique<SubscriberEraser<S>>(std::forward<S>(s))) {}
+
+  void OnNext(T &&val) {
+    eraser_->OnNext(std::move(val));
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    eraser_->OnError(std::move(error));
+  }
+
+  void OnComplete() {
+    eraser_->OnComplete();
+  }
+
+ private:
+  class Eraser {
+   public:
+    virtual ~Eraser() = default;
+
+    virtual void OnNext(T &&val) = 0;
+    virtual void OnError(std::exception_ptr &&error) = 0;
+    virtual void OnComplete() = 0;
+  };
+
+  template <typename S>
+  class SubscriberEraser : public Eraser {
+   public:
+    SubscriberEraser(S &&subscriber)
+        : subscriber_(std::move(subscriber)) {}
+
+    void OnNext(T &&val) override {
+      subscriber_.OnNext(std::move(val));
+    }
+
+    void OnError(std::exception_ptr &&error) override {
+      subscriber_.OnError(std::move(error));
+    }
+
+    void OnComplete() override {
+      subscriber_.OnComplete();
+    }
+
+   private:
+    S subscriber_;
   };
 
   std::unique_ptr<Eraser> eraser_;
