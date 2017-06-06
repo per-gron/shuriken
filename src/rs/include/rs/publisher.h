@@ -41,7 +41,7 @@ constexpr bool IsPublisher = std::is_base_of<PublisherBase, T>::value;
 namespace detail {
 
 template <typename InnerPublisher>
-class ConcretePublisher : public PublisherBase {
+class CallbackPublisher : public PublisherBase {
  public:
   struct FunctorTag {};
   /**
@@ -50,15 +50,15 @@ class ConcretePublisher : public PublisherBase {
   template <
       typename InnerPublisherType,
       class = std::enable_if<!IsPublisher<InnerPublisherType>>>
-  explicit ConcretePublisher(
+  explicit CallbackPublisher(
       FunctorTag, InnerPublisherType &&inner_publisher)
       : inner_publisher_(std::forward<InnerPublisherType>(inner_publisher)) {}
 
-  ConcretePublisher(const ConcretePublisher &) = default;
-  ConcretePublisher& operator=(const ConcretePublisher &) = default;
+  CallbackPublisher(const CallbackPublisher &) = default;
+  CallbackPublisher& operator=(const CallbackPublisher &) = default;
 
-  ConcretePublisher(ConcretePublisher &&) = default;
-  ConcretePublisher& operator=(ConcretePublisher &&) = default;
+  CallbackPublisher(CallbackPublisher &&) = default;
+  CallbackPublisher& operator=(CallbackPublisher &&) = default;
 
   template <typename T>
   auto Subscribe(T &&t) {
@@ -127,10 +127,10 @@ class Publisher : public PublisherBase {
  */
 template <typename PublisherType>
 auto MakePublisher(PublisherType &&publisher) {
-  using ConcretePublisherT = detail::ConcretePublisher<
+  using CallbackPublisherT = detail::CallbackPublisher<
       typename std::decay<PublisherType>::type>;
-  return ConcretePublisherT(
-      typename ConcretePublisherT::FunctorTag(),
+  return CallbackPublisherT(
+      typename CallbackPublisherT::FunctorTag(),
       std::forward<PublisherType>(publisher));
 }
 
