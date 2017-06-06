@@ -65,9 +65,9 @@ struct GetTypeIndex<Needle, Index, T, Ts...> {
 };
 
 template <typename OnNextCb, typename OnErrorCb, typename OnCompleteCb>
-class ConcreteSubscriber : public SubscriberBase {
+class CallbackSubscriber : public SubscriberBase {
  public:
-  ConcreteSubscriber(
+  CallbackSubscriber(
       OnNextCb &&on_next, OnErrorCb &&on_error, OnCompleteCb &&on_complete)
       : on_next_(std::forward<OnNextCb>(on_next)),
         on_error_(std::forward<OnErrorCb>(on_error)),
@@ -210,7 +210,7 @@ class Subscriber : public SubscriberBase {
 template <typename OnNextCb, typename OnErrorCb, typename OnCompleteCb>
 auto MakeSubscriber(
     OnNextCb &&on_next, OnErrorCb &&on_error, OnCompleteCb &&on_complete) {
-  return detail::ConcreteSubscriber<OnNextCb, OnErrorCb, OnCompleteCb>(
+  return detail::CallbackSubscriber<OnNextCb, OnErrorCb, OnCompleteCb>(
       std::forward<OnNextCb>(on_next),
       std::forward<OnErrorCb>(on_error),
       std::forward<OnCompleteCb>(on_complete));
