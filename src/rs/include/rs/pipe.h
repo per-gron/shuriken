@@ -69,12 +69,30 @@ class PipeOperator<Operator, Operators...> {
  *     Pipe(
  *         Map([](int x) { return x * x; }),
  *         Sum())
- *
  */
 template <typename ...Operators>
 auto Pipe(Operators &&...operators) {
   return detail::PipeOperator<typename std::decay<Operators>::type...>(
       std::forward<Operators>(operators)...);
+}
+
+/**
+ * PipeWith is like Pipe but instead of returning a function that takes a value
+ * it directly takes the value to pipe through the given operators.
+ *
+ * PipeWith(a, b, c) is roughly equal to c(b(a))
+ *
+ * An example of usage, constructing a stream that has all even numbers from 0
+ * to 99:
+ *
+ *     PipeWith(
+ *         Range(0, 100),
+ *         Filter([](int v) { return (v % 2) == 0; }))
+ */
+template <typename StartValue, typename ...Operators>
+auto PipeWith(StartValue &&start_value, Operators &&...operators) {
+  return Pipe(std::forward<Operators>(operators)...)(
+      std::forward<StartValue>(start_value));
 }
 
 }  // namespace shk

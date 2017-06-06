@@ -19,48 +19,60 @@
 namespace shk {
 
 TEST_CASE("Pipe") {
-  SECTION("Empty pipe") {
-    CHECK(Pipe()(13) == 13);
+  SECTION("Pipe") {
+    SECTION("Empty pipe") {
+      CHECK(Pipe()(13) == 13);
+    }
+
+    SECTION("Pipe with single element") {
+      CHECK(Pipe([](int x) { return x + 2; })(13) == 15);
+    }
+
+    SECTION("Pipe with two elements") {
+      auto pipe = Pipe(
+          [](int x) { return x * x; },
+          [](int x) { return x + x; });
+
+      CHECK(pipe(3) == (3 * 3) + (3 * 3));
+    }
+
+    SECTION("Pipe with varying types") {
+      auto pipe = Pipe(
+          [](int x) { return std::to_string(x); },
+          [](std::string x) { return x + x; });
+
+      CHECK(pipe(3) == "33");
+    }
+
+    SECTION("const pipe") {
+      const auto pipe = Pipe([](int x) { return x + 2; });
+      CHECK(pipe(3) == 5);
+    }
+
+    SECTION("mutable pipe") {
+      auto pipe = Pipe([v = 1](int x) mutable { return x + (v++); });
+      CHECK(pipe(3) == 4);
+      CHECK(pipe(3) == 5);
+    }
+
+    SECTION("pipe should own its callback") {
+      // This can go wrong if you forget to use std::decay
+
+      auto cb = [v = 1](int x) mutable { return x + (v++); };
+      auto pipe = Pipe(cb);
+      CHECK(cb(3) == 4);
+      CHECK(pipe(3) == 4);
+    }
   }
 
-  SECTION("Pipe with single element") {
-    CHECK(Pipe([](int x) { return x + 2; })(13) == 15);
-  }
+  SECTION("PipeWith") {
+    SECTION("no operator") {
+      CHECK(PipeWith(5) == 5);
+    }
 
-  SECTION("Pipe with two elements") {
-    auto pipe = Pipe(
-        [](int x) { return x * x; },
-        [](int x) { return x + x; });
-
-    CHECK(pipe(3) == (3 * 3) + (3 * 3));
-  }
-
-  SECTION("Pipe with varying types") {
-    auto pipe = Pipe(
-        [](int x) { return std::to_string(x); },
-        [](std::string x) { return x + x; });
-
-    CHECK(pipe(3) == "33");
-  }
-
-  SECTION("const pipe") {
-    const auto pipe = Pipe([](int x) { return x + 2; });
-    CHECK(pipe(3) == 5);
-  }
-
-  SECTION("mutable pipe") {
-    auto pipe = Pipe([v = 1](int x) mutable { return x + (v++); });
-    CHECK(pipe(3) == 4);
-    CHECK(pipe(3) == 5);
-  }
-
-  SECTION("pipe should own its callback") {
-    // This can go wrong if you forget to use std::decay
-
-    auto cb = [v = 1](int x) mutable { return x + (v++); };
-    auto pipe = Pipe(cb);
-    CHECK(cb(3) == 4);
-    CHECK(pipe(3) == 4);
+    SECTION("with operators") {
+      CHECK(PipeWith(5, [](int x) { return x * x; }) == 25);
+    }
   }
 }
 
