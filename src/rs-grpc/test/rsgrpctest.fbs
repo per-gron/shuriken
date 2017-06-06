@@ -1,0 +1,30 @@
+namespace RsGrpcTest;
+
+table TestRequest {
+  data: int;
+}
+
+table TestResponse {
+  data: int;
+}
+
+rpc_service TestService {
+  Double(TestRequest): TestResponse;
+  UnaryFail(TestRequest): TestResponse;
+  UnaryNoResponse(TestRequest): TestResponse;
+  UnaryTwoResponses(TestRequest): TestResponse;
+
+  Repeat(TestRequest): TestResponse (streaming: "server");
+  RepeatThenFail(TestRequest): TestResponse (streaming: "server");
+
+  Sum(TestRequest): TestResponse (streaming: "client");
+  ImmediatelyFailingSum(TestRequest): TestResponse (streaming: "client");
+  FailingSum(TestRequest): TestResponse (streaming: "client");
+  ClientStreamNoResponse(TestRequest): TestResponse (streaming: "client");
+  ClientStreamTwoResponses(TestRequest): TestResponse (streaming: "client");
+
+  CumulativeSum(TestRequest): TestResponse (streaming: "bidi");
+  ImmediatelyFailingCumulativeSum(TestRequest):
+      TestResponse (streaming: "bidi");
+  FailingCumulativeSum(TestRequest): TestResponse (streaming: "bidi");
+}
