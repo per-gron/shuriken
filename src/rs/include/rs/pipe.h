@@ -14,11 +14,7 @@
 
 #pragma once
 
-#include <stdexcept>
 #include <type_traits>
-
-#include <rs/pipe.h>
-#include <rs/reduce.h>
 
 namespace shk {
 namespace detail {
