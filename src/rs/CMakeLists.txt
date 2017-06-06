@@ -37,6 +37,7 @@ add_library(rs
   include/rs/take.h
   include/rs/take_while.h
   include/rs/throw.h
+  include/rs/zip.h
   src/subscription.cpp)
 target_include_directories(rs PUBLIC include)
 set_target_properties(rs PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
@@ -81,7 +82,8 @@ add_executable(rs-test
   test/take_while_test.cpp
   test/sum_test.cpp
   test/test_util.h
-  test/throw_test.cpp)
+  test/throw_test.cpp
+  test/zip_test.cpp)
 set_property(TARGET rs-test PROPERTY CXX_STANDARD 14)
 target_link_libraries(rs-test rs catch)
 set_target_properties(rs-test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})

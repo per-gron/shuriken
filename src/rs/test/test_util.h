@@ -81,7 +81,7 @@ std::exception_ptr GetError(
   std::exception_ptr received_error;
 
   auto sub = stream.Subscribe(MakeSubscriber(
-      [&received_error](int next) {
+      [&received_error](auto &&next) {
         CHECK(!received_error);
       },
       [&received_error](std::exception_ptr &&error) {
