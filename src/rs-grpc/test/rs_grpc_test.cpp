@@ -16,11 +16,15 @@
 
 #include <thread>
 
+#include <rs/concat.h>
+#include <rs/count.h>
 #include <rs/empty.h>
 #include <rs/just.h>
 #include <rs/map.h>
+#include <rs/merge.h>
 #include <rs/pipe.h>
 #include <rs/range.h>
+#include <rs/sum.h>
 #include <rs/throw.h>
 #include <rs/unpack.h>
 #include <rs/zip.h>
@@ -74,21 +78,21 @@ auto RepeatHandler(Flatbuffer<TestRequest> request) {
       Map(&MakeTestResponse));
 }
 
-#if 0  // TODO(peck)
 auto RepeatThenFailHandler(Flatbuffer<TestRequest> request) {
-  return RepeatHandler(request)
-      .concat(rxcpp::observable<>::error<Flatbuffer<TestResponse>>(
-          std::runtime_error("repeat_fail")));
+  return Concat(
+      RepeatHandler(request),
+      Throw(std::make_exception_ptr(std::runtime_error("repeat_fail"))));
 }
 
-auto SumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
-  return requests
-    .map([](Flatbuffer<TestRequest> request) {
-      return request->data();
-    })
-    .start_with(0)  // To support empty input
-    .sum()
-    .map(MakeTestResponse);
+#if 0  // TODO(peck)
+auto SumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
+  return PipeWith(
+      requests,
+      Map([](Flatbuffer<TestRequest> request) {
+        return request->data();
+      }),
+      Sum(),
+      Map(MakeTestResponse));
 }
 
 auto ImmediatelyFailingSumHandler(
@@ -185,11 +189,11 @@ TEST_CASE("RsGrpc") {
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeat,
           &RepeatHandler)
-  ;
-#if 0  // TODO(peck)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeatThenFail,
           &RepeatThenFailHandler)
+  ;
+#if 0  // TODO(peck)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestSum,
           &SumHandler)
@@ -378,79 +382,87 @@ TEST_CASE("RsGrpc") {
           })));
     }
 
-#if 0  // TODO(peck)
     SECTION("one response") {
-      run(test_client
-          .Invoke(&TestService::Stub::AsyncRepeat, MakeTestRequest(1))
-          .map([](Flatbuffer<TestResponse> response) {
+      run(PipeWith(
+          test_client
+              .Invoke(&TestService::Stub::AsyncRepeat, MakeTestRequest(1)),
+          Map([](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 1);
             return "ignored";
-          })
-          .count()
-          .map([](int count) {
+          }),
+          Count(),
+          Map([](int count) {
             CHECK(count == 1);
             return "ignored";
-          }));
+          })));
     }
 
+#if 0  // TODO(peck)
     SECTION("two responses") {
       auto responses = test_client.Invoke(
           &TestService::Stub::AsyncRepeat, MakeTestRequest(2));
 
-      auto check_count = responses
-          .count()
-          .map([](int count) {
+      auto check_count = PipeWith(
+          responses,
+          Count(),
+          Map([](int count) {
             CHECK(count == 2);
             return "ignored";
-          });
+          }));
 
-      auto check_sum = responses
-          .map([](Flatbuffer<TestResponse> response) {
+      auto check_sum = PipeWith(
+          responses,
+          Map([](Flatbuffer<TestResponse> response) {
             return response->data();
-          })
-          .sum()
-          .map([](int sum) {
+          }),
+          Sum(),
+          Map([](int sum) {
             CHECK(sum == 3);
             return "ignored";
-          });
+          }));
 
-      run(check_count.zip(check_sum));
+      run(Merge<const char *>(check_count, check_sum));
     }
+#endif
 
     SECTION("no responses then fail") {
-      auto error = run_expect_error(test_client
-          .Invoke(&TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(0))
-          .map([](Flatbuffer<TestResponse> response) {
+      auto error = run_expect_error(PipeWith(
+          test_client.Invoke(
+              &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(0)),
+          Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
-          }));
+          })));
       CHECK(exceptionMessage(error) == "repeat_fail");
     }
 
     SECTION("one response then fail") {
       int count = 0;
-      auto error = run_expect_error(test_client
-          .Invoke(&TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(1))
-          .map([&count](Flatbuffer<TestResponse> response) {
+      auto error = run_expect_error(PipeWith(
+          test_client.Invoke(
+              &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(1)),
+          Map([&count](Flatbuffer<TestResponse> response) {
             count++;
             return "unused";
-          }));
+          })));
       CHECK(exceptionMessage(error) == "repeat_fail");
       CHECK(count == 1);
     }
 
     SECTION("two responses then fail") {
       int count = 0;
-      auto error = run_expect_error(test_client
-          .Invoke(&TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(2))
-          .map([&count](Flatbuffer<TestResponse> response) {
+      auto error = run_expect_error(PipeWith(
+          test_client.Invoke(
+              &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(2)),
+          Map([&count](Flatbuffer<TestResponse> response) {
             count++;
             return "unused";
-          }));
+          })));
       CHECK(exceptionMessage(error) == "repeat_fail");
       CHECK(count == 2);
     }
 
+#if 0  // TODO(peck)
     SECTION("two calls") {
       auto responses_1 = test_client
           .Invoke(
@@ -481,8 +493,8 @@ TEST_CASE("RsGrpc") {
 #endif
   }
 
-#if 0  // TODO(peck)
   SECTION("client streaming") {
+#if 0  // TODO(peck)
     SECTION("no messages") {
       run(test_client
           .Invoke(
@@ -688,8 +700,10 @@ TEST_CASE("RsGrpc") {
 
       run(call.zip(call));
     }
+#endif
   }
 
+#if 0  // TODO(peck)
   SECTION("bidi streaming") {
     SECTION("no messages") {
       run(test_client
