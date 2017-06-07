@@ -78,7 +78,7 @@ class Publisher : public PublisherBase {
  public:
   template <typename PublisherType>
   explicit Publisher(PublisherType &&publisher)
-      : eraser_(std::make_unique<
+      : eraser_(std::make_shared<
             PublisherEraser<typename std::decay<PublisherType>::type>>(
                 std::forward<PublisherType>(publisher))) {}
 
@@ -116,7 +116,7 @@ class Publisher : public PublisherBase {
     PublisherType publisher_;
   };
 
-  std::unique_ptr<Eraser> eraser_;
+  std::shared_ptr<Eraser> eraser_;
 };
 
 /**

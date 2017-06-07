@@ -39,6 +39,13 @@ TEST_CASE("Publisher") {
       auto pub = Publisher<>(inner_publisher);
     }
 
+    SECTION("copyable") {
+      auto pub = Publisher<>(MakePublisher([](auto &&) {
+        return MakeSubscription();
+      }));
+      auto pub_copy = pub;
+    }
+
     SECTION("Subscribe") {
       int cancelled = 0;
       auto callback_pub = MakePublisher([&cancelled](auto &&subscriber) {
