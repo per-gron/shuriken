@@ -65,13 +65,13 @@ TEST_CASE("Pipe") {
     }
   }
 
-  SECTION("PipeWith") {
+  SECTION("Pipe") {
     SECTION("no operator") {
-      CHECK(PipeWith(5) == 5);
+      CHECK(Pipe(5) == 5);
     }
 
     SECTION("with operators") {
-      CHECK(PipeWith(5, [](int x) { return x * x; }) == 25);
+      CHECK(Pipe(5, [](int x) { return x * x; }) == 25);
     }
   }
 }

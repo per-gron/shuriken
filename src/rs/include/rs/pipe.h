@@ -57,8 +57,8 @@ class PipeOperator<Operator, Operators...> {
 }  // namespace detail
 
 /**
- * Pipe is a helper function that makes it easy to pipe operators through each
- * other. It takes a bunch of operators and returns one that strings them
+ * BuildPipe is a helper function that makes it easy to pipe operators through
+ * each other. It takes a bunch of operators and returns one that strings them
  * through each other, one by one.
  *
  * BuildPipe(a, b, c) is roughly equal to [](auto x) { return c(b(a(x))); }
@@ -77,20 +77,20 @@ auto BuildPipe(Operators &&...operators) {
 }
 
 /**
- * PipeWith is like Pipe but instead of returning a function that takes a value
+ * Pipe is like BuildPipe but instead of returning a function that takes a value
  * it directly takes the value to pipe through the given operators.
  *
- * PipeWith(a, b, c) is roughly equal to c(b(a))
+ * Pipe(a, b, c) is roughly equal to c(b(a))
  *
  * An example of usage, constructing a stream that has all even numbers from 0
  * to 99:
  *
- *     PipeWith(
+ *     Pipe(
  *         Range(0, 100),
  *         Filter([](int v) { return (v % 2) == 0; }))
  */
 template <typename StartValue, typename ...Operators>
-auto PipeWith(StartValue &&start_value, Operators &&...operators) {
+auto Pipe(StartValue &&start_value, Operators &&...operators) {
   return BuildPipe(std::forward<Operators>(operators)...)(
       std::forward<StartValue>(start_value));
 }

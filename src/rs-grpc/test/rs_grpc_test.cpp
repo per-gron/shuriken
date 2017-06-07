@@ -73,7 +73,7 @@ auto UnaryTwoResponsesHandler(Flatbuffer<TestRequest> request) {
 
 auto RepeatHandler(Flatbuffer<TestRequest> request) {
   int count = request->data();
-  return PipeWith(
+  return Pipe(
       Range(1, count),
       Map(&MakeTestResponse));
 }
@@ -85,7 +85,7 @@ auto RepeatThenFailHandler(Flatbuffer<TestRequest> request) {
 }
 
 auto SumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
-  return PipeWith(
+  return Pipe(
       std::move(requests),  // TODO(peck): Why is this move necessary?
       Map([](Flatbuffer<TestRequest> request) {
         return request->data();
@@ -278,7 +278,7 @@ TEST_CASE("RsGrpc") {
 
   SECTION("unary rpc") {
     SECTION("direct") {
-      run(PipeWith(
+      run(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
           Map([](Flatbuffer<TestResponse> response) {
@@ -288,7 +288,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("failed rpc") {
-      auto error = run_expect_error(PipeWith(
+      auto error = run_expect_error(Pipe(
           test_client
               .Invoke(&TestService::Stub::AsyncUnaryFail, MakeTestRequest(0)),
           Map([](Flatbuffer<TestResponse> response) {
@@ -299,7 +299,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("failed rpc because of no response") {
-      auto error = run_expect_error(PipeWith(
+      auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncUnaryNoResponse, MakeTestRequest(0)),
           Map([](Flatbuffer<TestResponse> response) {
@@ -310,7 +310,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("failed rpc because of two responses") {
-      auto error = run_expect_error(PipeWith(
+      auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncUnaryTwoResponses,
               MakeTestRequest(0)),
@@ -324,7 +324,7 @@ TEST_CASE("RsGrpc") {
     SECTION("delayed") {
       // This test can break if invoke doesn't take ownership of the request for
       // example.
-      auto call = PipeWith(
+      auto call = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
           Map([](Flatbuffer<TestResponse> response) {
@@ -340,7 +340,7 @@ TEST_CASE("RsGrpc") {
           &TestService::Stub::AsyncDouble, MakeTestRequest(123));
       auto call_b = test_client.Invoke(
           &TestService::Stub::AsyncDouble, MakeTestRequest(321));
-      run(PipeWith(
+      run(Pipe(
           Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
               call_a, call_b),
           Map(Splat([](
@@ -355,7 +355,7 @@ TEST_CASE("RsGrpc") {
     SECTION("same call twice") {
       auto call = test_client.Invoke(
           &TestService::Stub::AsyncDouble, MakeTestRequest(123));
-      run(PipeWith(
+      run(Pipe(
           Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
               call, call),
           Map(Splat([](
@@ -371,7 +371,7 @@ TEST_CASE("RsGrpc") {
 
   SECTION("server streaming") {
     SECTION("no responses") {
-      run(PipeWith(
+      run(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncRepeat, MakeTestRequest(0)),
           Map([](Flatbuffer<TestResponse> &&response) {
@@ -383,7 +383,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("one response") {
-      run(PipeWith(
+      run(Pipe(
           test_client
               .Invoke(&TestService::Stub::AsyncRepeat, MakeTestRequest(1)),
           Map([](Flatbuffer<TestResponse> response) {
@@ -402,7 +402,7 @@ TEST_CASE("RsGrpc") {
       auto responses = test_client.Invoke(
           &TestService::Stub::AsyncRepeat, MakeTestRequest(2));
 
-      auto check_count = PipeWith(
+      auto check_count = Pipe(
           responses,
           Count(),
           Map([](int count) {
@@ -410,7 +410,7 @@ TEST_CASE("RsGrpc") {
             return "ignored";
           }));
 
-      auto check_sum = PipeWith(
+      auto check_sum = Pipe(
           responses,
           Map([](Flatbuffer<TestResponse> response) {
             return response->data();
@@ -426,7 +426,7 @@ TEST_CASE("RsGrpc") {
 #endif
 
     SECTION("no responses then fail") {
-      auto error = run_expect_error(PipeWith(
+      auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(0)),
           Map([](Flatbuffer<TestResponse> response) {
@@ -438,7 +438,7 @@ TEST_CASE("RsGrpc") {
 
     SECTION("one response then fail") {
       int count = 0;
-      auto error = run_expect_error(PipeWith(
+      auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(1)),
           Map([&count](Flatbuffer<TestResponse> response) {
@@ -451,7 +451,7 @@ TEST_CASE("RsGrpc") {
 
     SECTION("two responses then fail") {
       int count = 0;
-      auto error = run_expect_error(PipeWith(
+      auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(2)),
           Map([&count](Flatbuffer<TestResponse> response) {
@@ -496,7 +496,7 @@ TEST_CASE("RsGrpc") {
   SECTION("client streaming") {
 #if 0  // TODO(peck)
     SECTION("no messages") {
-      run(PipeWith(
+      run(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum,
               // TODO(peck): This type erasure should not be needed

@@ -79,7 +79,7 @@ class InvokeSplatCallback<0> {
  * This is particularly useful when dealing with streams that have tuples, for
  * example because of Zip:
  *
- *     PipeWith(
+ *     Pipe(
  *         Zip(Just("a", "b"), Just(1, 2))
  *         Map(Splat([](int num, std::string str) {
  *           return str + " " + std::to_string(num);
