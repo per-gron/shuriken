@@ -19,17 +19,17 @@
 namespace shk {
 
 TEST_CASE("Pipe") {
-  SECTION("Pipe") {
+  SECTION("BuildPipe") {
     SECTION("Empty pipe") {
-      CHECK(Pipe()(13) == 13);
+      CHECK(BuildPipe()(13) == 13);
     }
 
     SECTION("Pipe with single element") {
-      CHECK(Pipe([](int x) { return x + 2; })(13) == 15);
+      CHECK(BuildPipe([](int x) { return x + 2; })(13) == 15);
     }
 
     SECTION("Pipe with two elements") {
-      auto pipe = Pipe(
+      auto pipe = BuildPipe(
           [](int x) { return x * x; },
           [](int x) { return x + x; });
 
@@ -37,7 +37,7 @@ TEST_CASE("Pipe") {
     }
 
     SECTION("Pipe with varying types") {
-      auto pipe = Pipe(
+      auto pipe = BuildPipe(
           [](int x) { return std::to_string(x); },
           [](std::string x) { return x + x; });
 
@@ -45,12 +45,12 @@ TEST_CASE("Pipe") {
     }
 
     SECTION("const pipe") {
-      const auto pipe = Pipe([](int x) { return x + 2; });
+      const auto pipe = BuildPipe([](int x) { return x + 2; });
       CHECK(pipe(3) == 5);
     }
 
     SECTION("mutable pipe") {
-      auto pipe = Pipe([v = 1](int x) mutable { return x + (v++); });
+      auto pipe = BuildPipe([v = 1](int x) mutable { return x + (v++); });
       CHECK(pipe(3) == 4);
       CHECK(pipe(3) == 5);
     }
@@ -59,7 +59,7 @@ TEST_CASE("Pipe") {
       // This can go wrong if you forget to use std::decay
 
       auto cb = [v = 1](int x) mutable { return x + (v++); };
-      auto pipe = Pipe(cb);
+      auto pipe = BuildPipe(cb);
       CHECK(cb(3) == 4);
       CHECK(pipe(3) == 4);
     }

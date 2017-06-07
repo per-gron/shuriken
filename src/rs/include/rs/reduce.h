@@ -160,7 +160,7 @@ auto Reduce(Accumulator &&initial, Reducer &&reducer) {
  */
 template <typename Accumulator, typename Reducer>
 auto ReduceWithoutInitial(Reducer &&reducer) {
-  return Pipe(
+  return BuildPipe(
     ReduceGet(
         [] { return std::unique_ptr<Accumulator>(); },
         [reducer = std::forward<Reducer>(reducer)](

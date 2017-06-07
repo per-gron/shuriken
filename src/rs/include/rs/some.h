@@ -27,7 +27,7 @@ namespace shk {
  */
 template <typename Predicate>
 auto Some(Predicate &&predicate) {
-  return Pipe(
+  return BuildPipe(
       Filter(std::forward<Predicate>(predicate)),
       Take(1),
       Reduce(false, [](bool, auto &&) { return true; }));

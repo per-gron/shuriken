@@ -26,7 +26,7 @@ namespace shk {
  * index + 1 elements, this fails with an std::out_of_range exception.
  */
 inline auto ElementAt(size_t index) {
-  return Pipe(
+  return BuildPipe(
       Take(index + 1),  // This is needed to handle infinite streams
       First([index](auto &&) mutable {
         return index-- == 0;

@@ -33,7 +33,7 @@ inline auto First() {
       "Cannot take the first element of empty stream"));
 
   // Use Last to ensure that there is at least one value.
-  return Pipe(
+  return BuildPipe(
       Take(1),
       IfEmpty(Throw(range_error)));
 }
@@ -46,7 +46,7 @@ inline auto First() {
 template <typename Predicate>
 auto First(Predicate &&predicate) {
   // Use Last to ensure that there is at least one value.
-  return Pipe(
+  return BuildPipe(
       Filter(std::forward<Predicate>(predicate)),
       First());
 }

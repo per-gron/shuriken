@@ -27,7 +27,7 @@ namespace shk {
  */
 template <typename Predicate>
 auto All(Predicate &&predicate) {
-  return Pipe(
+  return BuildPipe(
       Filter([predicate = std::forward<Predicate>(predicate)](
           auto &&value) mutable {
         return !predicate(std::forward<decltype(value)>(value));

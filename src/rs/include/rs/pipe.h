@@ -61,17 +61,17 @@ class PipeOperator<Operator, Operators...> {
  * other. It takes a bunch of operators and returns one that strings them
  * through each other, one by one.
  *
- * Pipe(a, b, c) is roughly equal to [](auto x) { return c(b(a(x))); }
+ * BuildPipe(a, b, c) is roughly equal to [](auto x) { return c(b(a(x))); }
  *
  * An example of usage, constructing an operator that takes a stream makes a
  * stream of the sum of squares in the inner stream:
  *
- *     Pipe(
+ *     BuildPipe(
  *         Map([](int x) { return x * x; }),
  *         Sum())
  */
 template <typename ...Operators>
-auto Pipe(Operators &&...operators) {
+auto BuildPipe(Operators &&...operators) {
   return detail::PipeOperator<typename std::decay<Operators>::type...>(
       std::forward<Operators>(operators)...);
 }
@@ -91,7 +91,7 @@ auto Pipe(Operators &&...operators) {
  */
 template <typename StartValue, typename ...Operators>
 auto PipeWith(StartValue &&start_value, Operators &&...operators) {
-  return Pipe(std::forward<Operators>(operators)...)(
+  return BuildPipe(std::forward<Operators>(operators)...)(
       std::forward<StartValue>(start_value));
 }
 

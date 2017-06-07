@@ -23,7 +23,7 @@ namespace shk {
 template <typename ResultType = double>
 auto Average() {
   using Accumulator = std::pair<ResultType, size_t>;
-  return Pipe(
+  return BuildPipe(
       Reduce(Accumulator(0, 0), [](Accumulator &&accum, auto &&value) {
         accum.first += value;
         accum.second++;
