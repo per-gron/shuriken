@@ -71,7 +71,7 @@ class StreamReducer : public SubscriberBase, public SubscriptionBase {
 
   void Request(ElementCount count) {
     if (count > 0) {
-      subscription_.Request(ElementCount::Infinite());
+      subscription_.Request(ElementCount::Unbounded());
       requested_ = true;
       RequestedResult();
     }

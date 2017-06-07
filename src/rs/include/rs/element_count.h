@@ -26,7 +26,7 @@ inline long long ElementCountAdd(long long a, long long b) {
     return std::numeric_limits<long long>::max();
   } else if (b < 0) {
     if (a == std::numeric_limits<long long>::max()) {
-      // Subtracting from infinite is still infinite
+      // Subtracting from unbounded is still unbounded
       return std::numeric_limits<long long>::max();
     } else if (a < std::numeric_limits<long long>::min() - b) {
       // Negative overflow
@@ -42,7 +42,7 @@ inline long long ElementCountSubtract(long long a, long long b) {
     return std::numeric_limits<long long>::max();
   } else if (b > 0) {
     if (a == std::numeric_limits<long long>::max()) {
-      // Subtracting from infinite is still infinite
+      // Subtracting from unbounded is still unbounded
       return std::numeric_limits<long long>::max();
     } else if (a < std::numeric_limits<long long>::min() + b) {
       // Negative overflow
@@ -56,8 +56,8 @@ inline long long ElementCountSubtract(long long a, long long b) {
 
 /**
  * ElementCount behaves more or less like a long long, except that the maximum
- * value is considered "infinite", and adding or removing from infinite is
- * still infinite.
+ * value is considered "unbounded", and adding or removing from unbounded is
+ * still unbounded.
  *
  * This is useful when implementing the Subscription.Request method: without
  * this class it is very easy to get integer overflow bugs.
@@ -71,7 +71,7 @@ class ElementCount {
   explicit ElementCount(Value count)
       : count_(count) {}
 
-  bool IsInfinite() const {
+  bool IsUnbounded() const {
     return count_ == std::numeric_limits<Value>::max();
   }
 
@@ -79,7 +79,7 @@ class ElementCount {
     return count_;
   }
 
-  static ElementCount Infinite() {
+  static ElementCount Unbounded() {
     return ElementCount(std::numeric_limits<Value>::max());
   }
 
@@ -90,7 +90,7 @@ class ElementCount {
 
   ElementCount &operator++() {
     // Prefix increment
-    if (!IsInfinite()) {
+    if (!IsUnbounded()) {
       count_++;
     }
     return *this;
@@ -101,7 +101,7 @@ class ElementCount {
     if (count_ == std::numeric_limits<Value>::min()) {
       throw std::range_error("Cannot decrement the smallest possible value");
     }
-    if (!IsInfinite()) {
+    if (!IsUnbounded()) {
       count_--;
     }
     return *this;

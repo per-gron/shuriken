@@ -86,7 +86,7 @@ TEST_CASE("Map") {
     sub.Cancel();
     // Because the subscription is cancelled, it should not request values
     // from the infinite range (which would never terminate).
-    sub.Request(ElementCount::Infinite());
+    sub.Request(ElementCount::Unbounded());
   }
 
   SECTION("exceptions") {

@@ -48,7 +48,7 @@ TEST_CASE("Take") {
     }
 
     SECTION("take infinite") {
-      auto stream = Take(ElementCount::Infinite())(Just());
+      auto stream = Take(ElementCount::Unbounded())(Just());
       CHECK(GetAll<int>(stream) == (std::vector<int>{}));
     }
   }
@@ -70,7 +70,7 @@ TEST_CASE("Take") {
     }
 
     SECTION("take infinite") {
-      auto stream = Take(ElementCount::Infinite())(Just(1));
+      auto stream = Take(ElementCount::Unbounded())(Just(1));
       CHECK(GetAll<int>(stream) == (std::vector<int>{ 1 }));
     }
   }
@@ -107,7 +107,7 @@ TEST_CASE("Take") {
     }
 
     SECTION("take infinite") {
-      auto stream = Take(ElementCount::Infinite())(Just(1, 2, 3));
+      auto stream = Take(ElementCount::Unbounded())(Just(1, 2, 3));
       CHECK(GetAll<int>(stream) == (std::vector<int>{ 1, 2, 3 }));
     }
   }

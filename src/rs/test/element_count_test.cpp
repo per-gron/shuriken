@@ -63,13 +63,13 @@ TEST_CASE("ElementCount") {
     }
   }
 
-  SECTION("infinity") {
-    CHECK(ElementCount::Infinite().Get() == kMax);
-    CHECK(ElementCount::Infinite().IsInfinite());
-    CHECK(ElementCount(kMax).IsInfinite());
-    CHECK(!ElementCount(0).IsInfinite());
-    CHECK(!ElementCount(kMax - 1).IsInfinite());
-    CHECK(!ElementCount(kMin).IsInfinite());
+  SECTION("unbounded") {
+    CHECK(ElementCount::Unbounded().Get() == kMax);
+    CHECK(ElementCount::Unbounded().IsUnbounded());
+    CHECK(ElementCount(kMax).IsUnbounded());
+    CHECK(!ElementCount(0).IsUnbounded());
+    CHECK(!ElementCount(kMax - 1).IsUnbounded());
+    CHECK(!ElementCount(kMin).IsUnbounded());
   }
 
   SECTION("prefix increment") {
@@ -85,7 +85,7 @@ TEST_CASE("ElementCount") {
       CHECK(one.Get() == 2);
     }
 
-    SECTION("from infinity") {
+    SECTION("from unbounded") {
       ElementCount one(kMax);
       CHECK((++one).Get() == kMax);
       CHECK(one.Get() == kMax);
@@ -111,7 +111,7 @@ TEST_CASE("ElementCount") {
       CHECK(one.Get() == 2);
     }
 
-    SECTION("from infinity") {
+    SECTION("from unbounded") {
       ElementCount one(kMax);
       CHECK((one++).Get() == kMax);
       CHECK(one.Get() == kMax);
@@ -137,7 +137,7 @@ TEST_CASE("ElementCount") {
       CHECK(one.Get() == 0);
     }
 
-    SECTION("from infinity") {
+    SECTION("from unbounded") {
       ElementCount one(kMax);
       CHECK((--one).Get() == kMax);
       CHECK(one.Get() == kMax);
@@ -174,13 +174,13 @@ TEST_CASE("ElementCount") {
       CHECK(one.Get() == -1);
     }
 
-    SECTION("from infinity") {
+    SECTION("from unbounded") {
       ElementCount one(kMax);
       CHECK((one += 2).Get() == kMax);
       CHECK(one.Get() == kMax);
     }
 
-    SECTION("negative from infinity") {
+    SECTION("negative from unbounded") {
       ElementCount one(kMax);
       CHECK((one += -2).Get() == kMax);
       CHECK(one.Get() == kMax);
@@ -234,13 +234,13 @@ TEST_CASE("ElementCount") {
       CHECK(one.Get() == 3);
     }
 
-    SECTION("from infinity") {
+    SECTION("from unbounded") {
       ElementCount one(kMax);
       CHECK((one -= 2).Get() == kMax);
       CHECK(one.Get() == kMax);
     }
 
-    SECTION("negative from infinity") {
+    SECTION("negative from unbounded") {
       ElementCount one(kMax);
       CHECK((one -= -2).Get() == kMax);
       CHECK(one.Get() == kMax);
@@ -290,33 +290,33 @@ TEST_CASE("ElementCount") {
   SECTION("equality") {
     SECTION("ElementCount vs ElementCount") {
       CHECK(ElementCount(0) == ElementCount(0));
-      CHECK(ElementCount::Infinite() == ElementCount::Infinite());
+      CHECK(ElementCount::Unbounded() == ElementCount::Unbounded());
       CHECK(!(ElementCount(0) == ElementCount(1)));
 
       CHECK(!(ElementCount(0) != ElementCount(0)));
-      CHECK(!(ElementCount::Infinite() != ElementCount::Infinite()));
+      CHECK(!(ElementCount::Unbounded() != ElementCount::Unbounded()));
       CHECK(ElementCount(0) != ElementCount(1));
     }
 
     SECTION("ElementCount vs Value") {
       CHECK(ElementCount(0) == 0);
-      CHECK(ElementCount::Infinite() == kMax);
+      CHECK(ElementCount::Unbounded() == kMax);
       CHECK(!(ElementCount(0) == 1));
 
       CHECK(!(ElementCount(0) != 0));
       CHECK(
-          !(ElementCount::Infinite() != kMax));
+          !(ElementCount::Unbounded() != kMax));
       CHECK(ElementCount(0) != 1);
     }
 
     SECTION("Value vs ElementCount") {
       CHECK(0 == ElementCount(0));
-      CHECK(kMax == ElementCount::Infinite());
+      CHECK(kMax == ElementCount::Unbounded());
       CHECK(!(0 == ElementCount(1)));
 
       CHECK(!(0 != ElementCount(0)));
       CHECK(
-          !(kMax != ElementCount::Infinite()));
+          !(kMax != ElementCount::Unbounded()));
       CHECK(0 != ElementCount(1));
     }
   }
@@ -327,32 +327,32 @@ TEST_CASE("ElementCount") {
         CHECK(ElementCount(0) < ElementCount(1));
         CHECK(!(ElementCount(0) < ElementCount(0)));
         CHECK(!(ElementCount(1) < ElementCount(0)));
-        CHECK(ElementCount(0) < ElementCount::Infinite());
-        CHECK(!(ElementCount::Infinite() < ElementCount::Infinite()));
+        CHECK(ElementCount(0) < ElementCount::Unbounded());
+        CHECK(!(ElementCount::Unbounded() < ElementCount::Unbounded()));
       }
 
       SECTION("less than or equal") {
         CHECK(ElementCount(0) <= ElementCount(1));
         CHECK(ElementCount(0) <= ElementCount(0));
         CHECK(!(ElementCount(1) <= ElementCount(0)));
-        CHECK(ElementCount(0) <= ElementCount::Infinite());
-        CHECK(ElementCount::Infinite() <= ElementCount::Infinite());
+        CHECK(ElementCount(0) <= ElementCount::Unbounded());
+        CHECK(ElementCount::Unbounded() <= ElementCount::Unbounded());
       }
 
       SECTION("greater than") {
         CHECK(ElementCount(1) > ElementCount(0));
         CHECK(!(ElementCount(0) > ElementCount(0)));
         CHECK(!(ElementCount(0) > ElementCount(1)));
-        CHECK(ElementCount::Infinite() > ElementCount(0));
-        CHECK(!(ElementCount::Infinite() > ElementCount::Infinite()));
+        CHECK(ElementCount::Unbounded() > ElementCount(0));
+        CHECK(!(ElementCount::Unbounded() > ElementCount::Unbounded()));
       }
 
       SECTION("greater than or equal") {
         CHECK(ElementCount(1) >= ElementCount(0));
         CHECK(ElementCount(0) >= ElementCount(0));
         CHECK(!(ElementCount(0) >= ElementCount(1)));
-        CHECK(ElementCount::Infinite() >= ElementCount(0));
-        CHECK(ElementCount::Infinite() >= ElementCount::Infinite());
+        CHECK(ElementCount::Unbounded() >= ElementCount(0));
+        CHECK(ElementCount::Unbounded() >= ElementCount::Unbounded());
       }
     }
 
@@ -362,7 +362,7 @@ TEST_CASE("ElementCount") {
         CHECK(!(ElementCount(0) < 0));
         CHECK(!(ElementCount(1) < 0));
         CHECK(ElementCount(0) < kMax);
-        CHECK(!(ElementCount::Infinite() < kMax));
+        CHECK(!(ElementCount::Unbounded() < kMax));
       }
 
       SECTION("less than or equal") {
@@ -370,23 +370,23 @@ TEST_CASE("ElementCount") {
         CHECK(ElementCount(0) <= 0);
         CHECK(!(ElementCount(1) <= 0));
         CHECK(ElementCount(0) <= kMax);
-        CHECK(ElementCount::Infinite() <= kMax);
+        CHECK(ElementCount::Unbounded() <= kMax);
       }
 
       SECTION("greater than") {
         CHECK(ElementCount(1) > 0);
         CHECK(!(ElementCount(0) > 0));
         CHECK(!(ElementCount(0) > 1));
-        CHECK(ElementCount::Infinite() > 0);
-        CHECK(!(ElementCount::Infinite() > kMax));
+        CHECK(ElementCount::Unbounded() > 0);
+        CHECK(!(ElementCount::Unbounded() > kMax));
       }
 
       SECTION("greater than or equal") {
         CHECK(ElementCount(1) >= 0);
         CHECK(ElementCount(0) >= 0);
         CHECK(!(ElementCount(0) >= 1));
-        CHECK(ElementCount::Infinite() >= 0);
-        CHECK(ElementCount::Infinite() >= kMax);
+        CHECK(ElementCount::Unbounded() >= 0);
+        CHECK(ElementCount::Unbounded() >= kMax);
       }
     }
 
@@ -395,16 +395,16 @@ TEST_CASE("ElementCount") {
         CHECK(0 < ElementCount(1));
         CHECK(!(0 < ElementCount(0)));
         CHECK(!(1 < ElementCount(0)));
-        CHECK(0 < ElementCount::Infinite());
-        CHECK(!(kMax < ElementCount::Infinite()));
+        CHECK(0 < ElementCount::Unbounded());
+        CHECK(!(kMax < ElementCount::Unbounded()));
       }
 
       SECTION("less than or equal") {
         CHECK(0 <= ElementCount(1));
         CHECK(0 <= ElementCount(0));
         CHECK(!(1 <= ElementCount(0)));
-        CHECK(0 <= ElementCount::Infinite());
-        CHECK(kMax <= ElementCount::Infinite());
+        CHECK(0 <= ElementCount::Unbounded());
+        CHECK(kMax <= ElementCount::Unbounded());
       }
 
       SECTION("greater than") {
@@ -412,7 +412,7 @@ TEST_CASE("ElementCount") {
         CHECK(!(0 > ElementCount(0)));
         CHECK(!(0 > ElementCount(1)));
         CHECK(kMax > ElementCount(0));
-        CHECK(!(kMax > ElementCount::Infinite()));
+        CHECK(!(kMax > ElementCount::Unbounded()));
       }
 
       SECTION("greater than or equal") {
@@ -420,7 +420,7 @@ TEST_CASE("ElementCount") {
         CHECK(0 >= ElementCount(0));
         CHECK(!(0 >= ElementCount(1)));
         CHECK(kMax >= ElementCount(0));
-        CHECK(kMax >= ElementCount::Infinite());
+        CHECK(kMax >= ElementCount::Unbounded());
       }
     }
   }

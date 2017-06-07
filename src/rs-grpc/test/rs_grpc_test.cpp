@@ -245,7 +245,7 @@ TEST_CASE("RsGrpc") {
             [&runloop]() {
               runloop.Shutdown();
             }));
-    subscription.Request(ElementCount::Infinite());
+    subscription.Request(ElementCount::Unbounded());
 
     runloop.Run();
   };
@@ -265,7 +265,7 @@ TEST_CASE("RsGrpc") {
               CHECK(!"request should fail");
               runloop.Shutdown();
             }));
-    subscription.Request(ElementCount::Infinite());
+    subscription.Request(ElementCount::Unbounded());
 
     runloop.Run();
 

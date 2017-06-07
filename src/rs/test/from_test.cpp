@@ -179,7 +179,7 @@ TEST_CASE("From") {
     CHECK(done == 0);
     CHECK(next == 0);
 
-    sub.Request(ElementCount::Infinite());
+    sub.Request(ElementCount::Unbounded());
     CHECK(done == 1);
     CHECK(next == 2);
 

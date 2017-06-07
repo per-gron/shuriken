@@ -37,7 +37,7 @@ TEST_CASE("Never") {
 
     subscription.Request(ElementCount(0));
     subscription.Request(ElementCount(1));
-    subscription.Request(ElementCount::Infinite());
+    subscription.Request(ElementCount::Unbounded());
   }
 }
 

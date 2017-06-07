@@ -45,7 +45,7 @@ TEST_CASE("Throw") {
       received_error = std::exception_ptr();
       subscription.Request(ElementCount(0));
       subscription.Request(ElementCount(1));
-      subscription.Request(ElementCount::Infinite());
+      subscription.Request(ElementCount::Unbounded());
       CHECK(!received_error);
     }  // Destroy subscription
 

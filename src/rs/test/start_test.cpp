@@ -167,7 +167,7 @@ TEST_CASE("Start") {
         ElementCount(2),
         ElementCount(3),
         ElementCount(5),
-        ElementCount::Infinite() };
+        ElementCount::Unbounded() };
     for (auto count : counts) {
       int nexts = 0;
       int finishes = 0;
@@ -294,7 +294,7 @@ TEST_CASE("Start") {
     CHECK(ints == 0);
     CHECK(strings == 0);
     CHECK(finishes == 0);
-    sub.Request(ElementCount::Infinite());
+    sub.Request(ElementCount::Unbounded());
     CHECK(ints == 1);
     CHECK(strings == 1);
     CHECK(finishes == 1);

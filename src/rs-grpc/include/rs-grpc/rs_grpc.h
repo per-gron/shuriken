@@ -308,7 +308,7 @@ class RsGrpcClientInvocation<
           RunEnqueuedOperation();
         }));
     // TODO(peck): Backpressure, cancellation
-    subscription.Request(ElementCount::Infinite());
+    subscription.Request(ElementCount::Unbounded());
 
     return MakeSubscription();  // TODO(peck): Handle backrpressure and cancellation
   }
@@ -723,7 +723,7 @@ class RsGrpcServerInvocation<
             }
           }));
       // TODO(peck): Backpressure, cancellation
-      subscription.Request(ElementCount::Infinite());
+      subscription.Request(ElementCount::Unbounded());
     } else {
       // The server has now successfully sent a response. Clean up.
       delete this;
@@ -847,7 +847,7 @@ class RsGrpcServerInvocation<
               RunEnqueuedOperation();
             }));
       // TODO(peck): Backpressure, cancellation
-      subscription.Request(ElementCount::Infinite());
+      subscription.Request(ElementCount::Unbounded());
 
         break;
       }
@@ -1073,7 +1073,7 @@ class RsGrpcServerInvocation<
           TrySendResponse();
         }));
     // TODO(peck): Backpressure, cancellation
-    subscription.Request(ElementCount::Infinite());
+    subscription.Request(ElementCount::Unbounded());
 
     // Request the a new request, so that the server is always waiting for
     // one.

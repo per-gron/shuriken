@@ -152,7 +152,7 @@ class MergeSubscription : public SubscriptionBase {
       }
     }
 
-    // Need to reset requested_elements_being_processed_ in case it's Infinite
+    // Need to reset requested_elements_being_processed_ in case it's Unbounded
     requested_elements_being_processed_ = 0;
 
     MaybeSendOnComplete();
@@ -251,7 +251,7 @@ class MergeSubscription : public SubscriptionBase {
  *
  * In order to not violate the backpressure invariants, Merge may need to buffer
  * up to [number of input streams - 1] * [outstanding requested elements]
- * elements. If an infinite number of elements are requested, no buffering is
+ * elements. If an unbounded number of elements are requested, no buffering is
  * performed.
  */
 template <typename Element, typename ...Publishers>

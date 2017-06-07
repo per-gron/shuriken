@@ -23,7 +23,7 @@ namespace shk {
 template <typename T, typename Publisher>
 T GetOne(
     const Publisher &publisher,
-    ElementCount request_count = ElementCount::Infinite()) {
+    ElementCount request_count = ElementCount::Unbounded()) {
   bool has_value = false;
   bool is_done = false;
   T result{};
@@ -52,7 +52,7 @@ T GetOne(
 template <typename T, typename Publisher>
 std::vector<T> GetAll(
     const Publisher &publisher,
-    ElementCount request_count = ElementCount::Infinite(),
+    ElementCount request_count = ElementCount::Unbounded(),
     bool expect_done = true) {
   std::vector<T> result;
   bool is_done = false;
@@ -77,7 +77,7 @@ std::vector<T> GetAll(
 template <typename Publisher>
 std::exception_ptr GetError(
     const Publisher &stream,
-    ElementCount request_count = ElementCount::Infinite()) {
+    ElementCount request_count = ElementCount::Unbounded()) {
   std::exception_ptr received_error;
 
   auto sub = stream.Subscribe(MakeSubscriber(
