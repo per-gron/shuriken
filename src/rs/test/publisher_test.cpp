@@ -23,7 +23,6 @@ TEST_CASE("Publisher") {
 
   SECTION("Publisher type eraser") {
     int cancelled = 0;
-    // TODO(peck): Make this lambda mutable
     auto callback_pub = MakePublisher([&cancelled](auto &&subscriber) {
       subscriber.OnComplete();
       return MakeSubscription(
