@@ -366,20 +366,19 @@ TEST_CASE("RsGrpc") {
   }
 
   SECTION("server streaming") {
-#if 0  // TODO(peck)
     SECTION("no responses") {
-      run(test_client
-          .Invoke(
-              &TestService::Stub::AsyncRepeat, MakeTestRequest(0))
-          .map(
-              [](Flatbuffer<TestResponse> response) {
-                // Should never be called; this should be a stream that ends
-                // without any values
-                CHECK(false);
-                return "ignored";
-              }));
+      run(PipeWith(
+          test_client.Invoke(
+              &TestService::Stub::AsyncRepeat, MakeTestRequest(0)),
+          Map([](Flatbuffer<TestResponse> &&response) {
+            // Should never be called; this should be a stream that ends
+            // without any values
+            CHECK(false);
+            return "ignored";
+          })));
     }
 
+#if 0  // TODO(peck)
     SECTION("one response") {
       run(test_client
           .Invoke(&TestService::Stub::AsyncRepeat, MakeTestRequest(1))

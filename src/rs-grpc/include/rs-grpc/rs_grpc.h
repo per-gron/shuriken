@@ -158,10 +158,10 @@ class RsGrpcClientInvocation<
         } else {
           auto wrapped = Transform::wrap(std::move(response_));
           if (wrapped.second.ok()) {
-            subscriber_.on_next(std::move(wrapped.first));
+            subscriber_.OnNext(std::move(wrapped.first));
             stream_->Read(&response_, this);
           } else {
-            subscriber_.on_error(
+            subscriber_.OnError(
                 std::make_exception_ptr(GrpcError(wrapped.second)));
             state_ = State::READ_FAILURE;
             context_.TryCancel();
@@ -172,9 +172,9 @@ class RsGrpcClientInvocation<
       }
       case State::FINISHING: {
         if (status_.ok()) {
-          subscriber_.on_completed();
+          subscriber_.OnComplete();
         } else {
-          subscriber_.on_error(std::make_exception_ptr(GrpcError(status_)));
+          subscriber_.OnError(std::make_exception_ptr(GrpcError(status_)));
         }
         delete this;
         break;
@@ -187,7 +187,7 @@ class RsGrpcClientInvocation<
   }
 
   template <typename Stub, typename RequestType>
-  void Invoke(
+  auto Invoke(
       std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -197,6 +197,8 @@ class RsGrpcClientInvocation<
       Stub *stub,
       grpc::CompletionQueue *cq) {
     stream_ = (stub->*invoke)(&context_, Transform::unwrap(request_), cq, this);
+
+    return MakeSubscription();  // TODO(peck): Handle backrpressure and cancellation
   }
 
  private:
