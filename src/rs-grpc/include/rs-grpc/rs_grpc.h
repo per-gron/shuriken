@@ -245,21 +245,16 @@ class RsGrpcClientInvocation<
       Transform::wrap(std::declval<ResponseType>()))::first_type;
 
  public:
-  template <typename Publisher>
   RsGrpcClientInvocation(
-      Publisher &&requests,
+      const Publisher<TransformedRequestType> &requests,
       Subscriber<TransformedResponseType> &&subscriber)
-      : requests_(std::forward<Publisher>(requests)),
-        subscriber_(std::move(subscriber)) {
-    static_assert(
-        IsPublisher<Publisher>,
-        "First parameter must be a Publisher");
-  }
+      : requests_(requests),
+        subscriber_(std::move(subscriber)) {}
 
   void operator()(bool success) override {
     if (sent_final_request_) {
       if (request_stream_error_) {
-        subscriber_.on_error(request_stream_error_);
+        subscriber_.OnError(std::move(request_stream_error_));
       } else {
         HandleUnaryResponse<Transform>(
             success, status_, std::move(response_), &subscriber_);

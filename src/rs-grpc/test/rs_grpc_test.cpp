@@ -494,7 +494,6 @@ TEST_CASE("RsGrpc") {
   }
 
   SECTION("client streaming") {
-#if 0  // TODO(peck)
     SECTION("no messages") {
       run(Pipe(
           test_client.Invoke(
@@ -512,6 +511,7 @@ TEST_CASE("RsGrpc") {
           })));
     }
 
+#if 0  // TODO(peck)
     SECTION("one message") {
       run(test_client
           .Invoke(
