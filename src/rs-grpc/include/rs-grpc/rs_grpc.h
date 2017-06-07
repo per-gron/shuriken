@@ -20,6 +20,10 @@
 
 #include <grpc++/grpc++.h>
 
+#include <rs/publisher.h>
+#include <rs/subscriber.h>
+#include <rs/subscription.h>
+#include <rs/throw.h>
 #include <rs-grpc/grpc_error.h>
 #include <rs-grpc/rs_grpc_identity_transform.h>
 #include <rs-grpc/rs_grpc_tag.h>
@@ -27,7 +31,6 @@
 namespace shk {
 namespace detail {
 
-#if 0
 template <
     typename Transform,
     typename ResponseType>
@@ -35,22 +38,24 @@ void HandleUnaryResponse(
     bool success,
     const grpc::Status &status,
     ResponseType &&response,
-    rxcpp::subscriber<typename decltype(Transform::wrap(
+    // TODO(peck): Consider avoiding type erasure here
+    Subscriber<typename decltype(Transform::wrap(
         std::declval<ResponseType>()))::first_type> *subscriber) {
+  // TODO(peck): What about backpressure?
   if (!success) {
-    subscriber->on_error(std::make_exception_ptr(GrpcError(grpc::Status(
+    subscriber->OnError(std::make_exception_ptr(GrpcError(grpc::Status(
         grpc::UNKNOWN, "The request was interrupted"))));
   } else if (status.ok()) {
     auto wrapped = Transform::wrap(std::move(response));
     if (wrapped.second.ok()) {
-      subscriber->on_next(std::move(wrapped.first));
-      subscriber->on_completed();
+      subscriber->OnNext(std::move(wrapped.first));
+      subscriber->OnCompleted();
     } else {
-      subscriber->on_error(
+      subscriber->OnError(
           std::make_exception_ptr(GrpcError(wrapped.second)));
     }
   } else {
-    subscriber->on_error(std::make_exception_ptr(GrpcError(status)));
+    subscriber->OnError(std::make_exception_ptr(GrpcError(status)));
   }
 }
 
@@ -79,7 +84,7 @@ class RsGrpcClientInvocation<
 
   RsGrpcClientInvocation(
       const TransformedRequestType &request,
-      rxcpp::subscriber<TransformedResponseType> &&subscriber)
+      Subscriber<TransformedResponseType> &&subscriber)
       : request_(request),
         subscriber_(std::move(subscriber)) {}
 
@@ -90,7 +95,7 @@ class RsGrpcClientInvocation<
   }
 
   template <typename Stub, typename RequestType>
-  void Invoke(
+  auto Invoke(
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -100,6 +105,8 @@ class RsGrpcClientInvocation<
       grpc::CompletionQueue *cq) {
     auto stream = (stub->*invoke)(&context_, Transform::unwrap(request_), cq);
     stream->Finish(&response_, &status_, this);
+
+    return MakeSubscription();  // TODO(peck): Handle backrpressure and cancellation
   }
 
  private:
@@ -109,7 +116,8 @@ class RsGrpcClientInvocation<
   TransformedRequestType request_;
   grpc::ClientContext context_;
   ResponseType response_;
-  rxcpp::subscriber<TransformedResponseType> subscriber_;
+  // TODO(peck): Consider avoiding type erasure here
+  Subscriber<TransformedResponseType> subscriber_;
   grpc::Status status_;
 };
 
@@ -131,7 +139,7 @@ class RsGrpcClientInvocation<
 
   RsGrpcClientInvocation(
       const TransformedRequestType &request,
-      rxcpp::subscriber<TransformedResponseType> &&subscriber)
+      Subscriber<TransformedResponseType> &&subscriber)
       : request_(request),
         subscriber_(std::move(subscriber)) {}
 
@@ -207,7 +215,8 @@ class RsGrpcClientInvocation<
 
   State state_ = State::INIT;
   ResponseType response_;
-  rxcpp::subscriber<TransformedResponseType> subscriber_;
+  // TODO(peck): Consider avoiding type erasure here
+  Subscriber<TransformedResponseType> subscriber_;
   grpc::Status status_;
   std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> stream_;
 };
@@ -234,15 +243,15 @@ class RsGrpcClientInvocation<
       Transform::wrap(std::declval<ResponseType>()))::first_type;
 
  public:
-  template <typename Observable>
+  template <typename Publisher>
   RsGrpcClientInvocation(
-      const Observable &requests,
-      rxcpp::subscriber<TransformedResponseType> &&subscriber)
+      const Publisher &requests,
+      Subscriber<TransformedResponseType> &&subscriber)
       : requests_(requests.as_dynamic()),
         subscriber_(std::move(subscriber)) {
     static_assert(
-        rxcpp::is_observable<Observable>::value,
-        "First parameter must be an observable");
+        IsPublisher<Publisher>,
+        "First parameter must be a Publisher");
   }
 
   void operator()(bool success) override {
@@ -325,11 +334,13 @@ class RsGrpcClientInvocation<
     }
   }
 
-  rxcpp::observable<TransformedRequestType> requests_;
+  // TODO(peck): Consider avoiding type erasure here
+  Publisher<TransformedRequestType> requests_;
   ResponseType response_;
   std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> stream_;
   grpc::ClientContext context_;
-  rxcpp::subscriber<TransformedResponseType> subscriber_;
+  // TODO(peck): Consider avoiding type erasure here
+  Subscriber<TransformedResponseType> subscriber_;
 
   std::exception_ptr request_stream_error_;
   bool sent_final_request_ = false;
@@ -369,7 +380,7 @@ class RsGrpcClientInvocation<
    public:
     Reader(
         const std::function<void ()> &shutdown,
-        rxcpp::subscriber<TransformedResponseType> &&subscriber)
+        Subscriber<TransformedResponseType> &&subscriber)
         : shutdown_(shutdown),
           subscriber_(std::move(subscriber)) {}
 
@@ -425,22 +436,23 @@ class RsGrpcClientInvocation<
     // that this is not called when there is an outstanding async operation.
     std::function<void ()> shutdown_;
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream_ = nullptr;
-    rxcpp::subscriber<TransformedResponseType> subscriber_;
+    // TODO(peck): Consider avoiding type erasure here
+    Subscriber<TransformedResponseType> subscriber_;
     ResponseType response_;
   };
 
  public:
-  template <typename Observable>
+  template <typename Publisher>
   RsGrpcClientInvocation(
-      const Observable &requests,
-      rxcpp::subscriber<TransformedResponseType> &&subscriber)
+      const Publisher &requests,
+      Subscriber<TransformedResponseType> &&subscriber)
       : reader_(
             [this] { reader_done_ = true; TryShutdown(); },
             std::move(subscriber)),
         requests_(requests.as_dynamic()) {
     static_assert(
-        rxcpp::is_observable<Observable>::value,
-        "First parameter must be an observable");
+        IsPublisher<Publisher>,
+        "First parameter must be a Publisher");
   }
 
   void operator()(bool success) override {
@@ -533,7 +545,8 @@ class RsGrpcClientInvocation<
   Reader reader_;
   bool reader_done_ = false;
 
-  rxcpp::observable<TransformedRequestType> requests_;
+  // TODO(peck): Consider avoiding type erasure here
+  Publisher<TransformedRequestType> requests_;
   ResponseType response_;
   std::unique_ptr<
       grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> stream_;
@@ -628,9 +641,9 @@ class RsGrpcServerInvocation<
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
 
-  using ResponseObservable =
+  using ResponsePublisher =
       decltype(std::declval<Callback>()(std::declval<TransformedRequest>()));
-  using TransformedResponse = typename ResponseObservable::value_type;
+  using TransformedResponse = typename ResponsePublisher::value_type;
 
   using Method = RequestMethod<
       Service, typename ServerCallTraits::Request, Stream>;
@@ -667,9 +680,11 @@ class RsGrpcServerInvocation<
       auto wrapped_request = ServerCallTraits::Transform::wrap(
           std::move(request_));
       auto values = wrapped_request.second.ok() ?
-          callback_(std::move(wrapped_request.first)).as_dynamic() :
-          rxcpp::observable<>::error<TransformedResponse>(
-              GrpcError(wrapped_request.second)).as_dynamic();
+          Publisher<TransformedResponse>(
+              callback_(std::move(wrapped_request.first))) :
+          Publisher<TransformedResponse>(
+              Throw(std::make_exception_ptr(
+                  GrpcError(wrapped_request.second))));
 
       // Request the a new request, so that the server is always waiting for
       // one. This is done after the callback (because this steals it) but
@@ -679,6 +694,8 @@ class RsGrpcServerInvocation<
 
       awaiting_request_ = false;
 
+      // TODO(peck): Take the Subscription here and handle backpressure and
+      // cancellation. Don't hold weak unsafe ref to this etc.
       values.subscribe(
           [this](TransformedResponse response) {
             num_responses_++;
@@ -755,9 +772,9 @@ class RsGrpcServerInvocation<
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
 
-  using ResponseObservable =
+  using ResponsePublisher =
       decltype(std::declval<Callback>()(std::declval<TransformedRequest>()));
-  using TransformedResponse = typename ResponseObservable::value_type;
+  using TransformedResponse = typename ResponsePublisher::value_type;
 
   using Method = RequestMethod<
       Service, typename ServerCallTraits::Request, Stream>;
@@ -796,9 +813,11 @@ class RsGrpcServerInvocation<
         auto wrapped_request = ServerCallTraits::Transform::wrap(
             std::move(request_));
         auto values = wrapped_request.second.ok() ?
-            callback_(std::move(wrapped_request.first)).as_dynamic() :
-            rxcpp::observable<>::error<TransformedResponse>(
-                GrpcError(wrapped_request.second)).as_dynamic();
+            Publisher<TransformedResponse>(
+                callback_(std::move(wrapped_request.first))) :
+            Publisher<TransformedResponse>(
+                Throw(std::make_exception_ptr(
+                    GrpcError(wrapped_request.second))));
 
         // Request the a new request, so that the server is always waiting for
         // one. This is done after the callback (because this steals it) but
@@ -916,10 +935,10 @@ class RsGrpcServerInvocation<
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
 
-  using ResponseObservable =
+  using ResponsePublisher =
       decltype(std::declval<Callback>()(
-          std::declval<rxcpp::observable<TransformedRequest>>()));
-  using TransformedResponse = typename ResponseObservable::value_type;
+          std::declval<Publisher<TransformedRequest>>()));
+  using TransformedResponse = typename ResponsePublisher::value_type;
 
   using Method = StreamingRequestMethod<Service, Stream>;
 
@@ -1015,22 +1034,23 @@ class RsGrpcServerInvocation<
         reader_(&context_) {}
 
   void Init() {
-    auto response = callback_(rxcpp::observable<>::create<TransformedRequest>(
-        [this](rxcpp::subscriber<TransformedRequest> subscriber) {
+    auto response = callback_(Publisher<TransformedRequest>(MakePublisher(
+        [this](auto &&subscriber) {
       if (subscriber_) {
         throw std::logic_error(
             "Can't subscribe to this observable more than once");
       }
       subscriber_.reset(
-          new rxcpp::subscriber<TransformedRequest>(std::move(subscriber)));
+          new Subscriber<TransformedRequest>(
+              std::forward<decltype(subscriber)>(subscriber)));
 
       state_ = State::REQUESTED_DATA;
       reader_.Read(&request_, this);
-    }));
+    })));
 
     static_assert(
-        rxcpp::is_observable<decltype(response)>::value,
-        "Callback return type must be observable");
+        IsPublisher<decltype(response)>,
+        "Callback return type must be Publisher");
     response.subscribe(
         [this](TransformedResponse response) {
           response_ = std::move(response);
@@ -1079,7 +1099,8 @@ class RsGrpcServerInvocation<
     }
   }
 
-  std::unique_ptr<rxcpp::subscriber<TransformedRequest>> subscriber_;
+  // TODO(peck): Consider avoiding type erasure here
+  std::unique_ptr<Subscriber<TransformedRequest>> subscriber_;
   State state_ = State::INIT;
   GrpcErrorHandler error_handler_;
   Method method_;
@@ -1114,10 +1135,10 @@ class RsGrpcServerInvocation<
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
 
-  using ResponseObservable =
+  using ResponsePublisher =
       decltype(std::declval<Callback>()(
-          std::declval<rxcpp::observable<TransformedRequest>>()));
-  using TransformedResponse = typename ResponseObservable::value_type;
+          std::declval<Publisher<TransformedRequest>>()));
+  using TransformedResponse = typename ResponsePublisher::value_type;
 
   using Method = StreamingRequestMethod<Service, Stream>;
 
@@ -1136,13 +1157,12 @@ class RsGrpcServerInvocation<
           context_(*context),
           stream_(*stream) {}
 
-    template <typename SourceOperator>
-    void Subscribe(
-        const rxcpp::observable<
-            TransformedResponse, SourceOperator> &observable) {
-      observable.subscribe(
-          [this](TransformedResponse response) {
-            enqueued_responses_.emplace_back(std::move(response));
+    template <typename Publisher>
+    void Subscribe(const Publisher &publisher) {
+      publisher.subscribe(
+          [this](auto &&response) {
+            enqueued_responses_.emplace_back(
+                std::forward<decltype(response)>(response));
             RunEnqueuedOperation();
           },
           [this](const std::exception_ptr &error) {
@@ -1310,22 +1330,23 @@ class RsGrpcServerInvocation<
   }
 
   void Init() {
-    auto response = callback_(rxcpp::observable<>::create<TransformedRequest>(
-        [this](rxcpp::subscriber<TransformedRequest> subscriber) {
+    auto response = callback_(Publisher<TransformedRequest>(MakePublisher(
+        [this](auto &&subscriber) {
       if (subscriber_) {
         throw std::logic_error(
-            "Can't subscribe to this observable more than once");
+            "Can't subscribe to this Publisher more than once");
       }
       subscriber_.reset(
-          new rxcpp::subscriber<TransformedRequest>(std::move(subscriber)));
+          new Subscriber<TransformedRequest>(
+              std::forward<decltype(subscriber)>(subscriber)));
 
       state_ = State::REQUESTED_DATA;
       stream_.Read(&request_, this);
-    }));
+    })));
 
     static_assert(
-        rxcpp::is_observable<decltype(response)>::value,
-        "Callback return type must be observable");
+        IsPublisher<decltype(response)>,
+        "Callback return type must be Publisher");
     writer_.Subscribe(response);
 
     Request(
@@ -1336,7 +1357,8 @@ class RsGrpcServerInvocation<
         &cq_);
   }
 
-  std::unique_ptr<rxcpp::subscriber<TransformedRequest>> subscriber_;
+  // TODO(peck): Consider avoiding type erasure here
+  std::unique_ptr<Subscriber<TransformedRequest>> subscriber_;
   State state_ = State::INIT;
   GrpcErrorHandler error_handler_;
   Method method_;
@@ -1393,10 +1415,8 @@ class RsGrpcServerInvocationRequester : public InvocationRequester {
   Service &service_;
 };
 
-#endif
 }  // namespace detail
 
-#if 0
 template <typename Stub, typename Transform>
 class RsGrpcServiceClient {
  public:
@@ -1407,7 +1427,7 @@ class RsGrpcServiceClient {
    * Unary rpc.
    */
   template <typename ResponseType, typename TransformedRequestType>
-  rxcpp::observable<
+  Publisher<
       typename detail::RsGrpcClientInvocation<
           grpc::ClientAsyncResponseReader<ResponseType>,
           ResponseType,
@@ -1435,7 +1455,7 @@ class RsGrpcServiceClient {
    * Server streaming.
    */
   template <typename ResponseType, typename TransformedRequestType>
-  rxcpp::observable<
+  Publisher<
       typename detail::RsGrpcClientInvocation<
           grpc::ClientAsyncReader<ResponseType>,
           ResponseType,
@@ -1466,9 +1486,8 @@ class RsGrpcServiceClient {
   template <
       typename RequestType,
       typename ResponseType,
-      typename TransformedRequestType,
-      typename SourceOperator>
-  rxcpp::observable<
+      typename TransformedRequestType>
+  Publisher<
       typename detail::RsGrpcClientInvocation<
           grpc::ClientAsyncWriter<RequestType>,
           ResponseType,
@@ -1481,7 +1500,9 @@ class RsGrpcServiceClient {
           ResponseType *response,
           grpc::CompletionQueue *cq,
           void *tag),
-      const rxcpp::observable<TransformedRequestType, SourceOperator> &requests,
+      // TODO(peck): This should not require a type erased Publisher (with
+      // rxcpp it didn't). What to do?
+      const Publisher<TransformedRequestType> &requests,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return InvokeImpl<
         grpc::ClientAsyncWriter<RequestType>,
@@ -1498,9 +1519,8 @@ class RsGrpcServiceClient {
   template <
       typename RequestType,
       typename ResponseType,
-      typename TransformedRequestType,
-      typename SourceOperator>
-  rxcpp::observable<
+      typename TransformedRequestType>
+  Publisher<
       typename detail::RsGrpcClientInvocation<
           grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
           ResponseType,
@@ -1512,7 +1532,9 @@ class RsGrpcServiceClient {
           grpc::ClientContext *context,
           grpc::CompletionQueue *cq,
           void *tag),
-      const rxcpp::observable<TransformedRequestType, SourceOperator> &requests,
+      // TODO(peck): This should not require a type erased Publisher (with
+      // rxcpp it didn't). What to do?
+      const Publisher<TransformedRequestType> &requests,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return InvokeImpl<
         grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
@@ -1528,9 +1550,9 @@ class RsGrpcServiceClient {
       typename Reader,
       typename ResponseType,
       typename TransformedRequestType,
-      typename RequestOrObservable,
+      typename RequestOrPublisher,
       typename Invoke>
-  rxcpp::observable<
+  Publisher<
       typename detail::RsGrpcClientInvocation<
           Reader,
           ResponseType,
@@ -1538,22 +1560,19 @@ class RsGrpcServiceClient {
           Transform>::TransformedResponseType>
   InvokeImpl(
       Invoke invoke,
-      const RequestOrObservable &request_or_observable,
+      const RequestOrPublisher &request_or_publisher,
       grpc::ClientContext &&context = grpc::ClientContext()) {
 
     using ClientInvocation =
         detail::RsGrpcClientInvocation<
             Reader, ResponseType, TransformedRequestType, Transform>;
-    using TransformedResponseType =
-        typename ClientInvocation::TransformedResponseType;
 
-    return rxcpp::observable<>::create<TransformedResponseType>([
-        this, request_or_observable, invoke](
-            rxcpp::subscriber<TransformedResponseType> subscriber) {
-
+    return MakePublisher(
+        [this, request_or_publisher, invoke](auto &&subscriber) {
       auto call = new ClientInvocation(
-          request_or_observable, std::move(subscriber));
-      call->Invoke(invoke, stub_.get(), &cq_);
+          request_or_publisher,
+          std::forward<delctype(subscriber)>(subscriber));
+      return call->Invoke(invoke, stub_.get(), &cq_);
     });
   }
 
@@ -1842,5 +1861,4 @@ class RsGrpcClient {
  private:
   grpc::CompletionQueue cq_;
 };
-#endif
 }  // namespace shk
