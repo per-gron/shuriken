@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <rs/publisher.h>
 #include <rs/subscription.h>
 
@@ -24,6 +26,16 @@ inline auto Throw(const std::exception_ptr &error) {
     subscriber.OnError(std::exception_ptr(error));
     return MakeSubscription();
   });
+}
+
+template <
+    typename T,
+    class = typename std::enable_if<
+        !std::is_same<
+            std::exception_ptr,
+            typename std::decay<T>::type>::value>::type>
+auto Throw(T &&t) {
+  return Throw(std::make_exception_ptr(std::forward<T>(t)));
 }
 
 }  // namespace shk

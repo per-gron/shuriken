@@ -51,6 +51,29 @@ TEST_CASE("Throw") {
 
     CHECK(!received_error);
   }
+
+  SECTION("create with exception object rather than exception_ptr") {
+    auto stream = Throw(std::runtime_error("test"));
+
+    std::exception_ptr received_error;
+    {
+      auto subscription = stream.Subscribe(MakeSubscriber(
+          [](int next) { CHECK(!"should not happen"); },
+          [&received_error](std::exception_ptr &&error) {
+            received_error = error;
+          },
+          [] { CHECK(!"should not happen"); }));
+      CHECK(received_error);
+
+      received_error = std::exception_ptr();
+      subscription.Request(ElementCount(0));
+      subscription.Request(ElementCount(1));
+      subscription.Request(ElementCount::Unbounded());
+      CHECK(!received_error);
+    }  // Destroy subscription
+
+    CHECK(!received_error);
+  }
 }
 
 }  // namespace shk
