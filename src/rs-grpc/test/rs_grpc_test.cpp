@@ -16,9 +16,14 @@
 
 #include <thread>
 
+#include <rs/empty.h>
 #include <rs/just.h>
 #include <rs/map.h>
 #include <rs/pipe.h>
+#include <rs/range.h>
+#include <rs/throw.h>
+#include <rs/unpack.h>
+#include <rs/zip.h>
 #include <rs-grpc/rs_grpc.h>
 #include <rs-grpc/rs_grpc_flatbuffers.h>
 
@@ -47,34 +52,29 @@ auto DoubleHandler(Flatbuffer<TestRequest> request) {
   return Just(MakeTestResponse(request->data() * 2));
 }
 
-#if 0  // TODO(peck)
 auto UnaryFailHandler(Flatbuffer<TestRequest> request) {
-  return rxcpp::observable<>::error<Flatbuffer<TestResponse>>(
-      std::runtime_error("unary_fail"));
+  return Throw(std::make_exception_ptr(
+      std::runtime_error("unary_fail")));
 }
 
 auto UnaryNoResponseHandler(Flatbuffer<TestRequest> request) {
-  return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>();
+  return Empty();
 }
 
 auto UnaryTwoResponsesHandler(Flatbuffer<TestRequest> request) {
-  return rxcpp::observable<>::from<Flatbuffer<TestResponse>>(
+  return Just(
       MakeTestResponse(1),
       MakeTestResponse(2));
 }
 
 auto RepeatHandler(Flatbuffer<TestRequest> request) {
   int count = request->data();
-  if (count == 0) {
-    return rxcpp::observable<>::empty<Flatbuffer<TestResponse>>()
-        .as_dynamic();
-  } else {
-    return rxcpp::observable<>::range(1, count)
-        .map(&MakeTestResponse)
-        .as_dynamic();
-  }
+  return PipeWith(
+      Range(1, count),
+      Map(&MakeTestResponse));
 }
 
+#if 0  // TODO(peck)
 auto RepeatThenFailHandler(Flatbuffer<TestRequest> request) {
   return RepeatHandler(request)
       .concat(rxcpp::observable<>::error<Flatbuffer<TestResponse>>(
@@ -173,8 +173,6 @@ TEST_CASE("RsGrpc") {
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestDouble,
            DoubleHandler)
-  ;
-#if 0  // TODO(peck)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestUnaryFail,
           &UnaryFailHandler)
@@ -187,6 +185,8 @@ TEST_CASE("RsGrpc") {
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeat,
           &RepeatHandler)
+  ;
+#if 0  // TODO(peck)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeatThenFail,
           &RepeatThenFailHandler)
@@ -269,6 +269,9 @@ TEST_CASE("RsGrpc") {
     return captured_error;
   };
 
+  // TODO(peck): Test what happens when calling unimplemented endpoint. I think
+  // right now it just waits forever, which is not nice at all.
+
   SECTION("unary rpc") {
     SECTION("direct") {
       run(PipeWith(
@@ -280,7 +283,6 @@ TEST_CASE("RsGrpc") {
           })));
     }
 
-#if 0 // TODO(peck)
     SECTION("failed rpc") {
       auto error = run_expect_error(PipeWith(
           test_client
@@ -293,77 +295,78 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("failed rpc because of no response") {
-      auto error = run_expect_error(test_client
-          .Invoke(&TestService::Stub::AsyncUnaryNoResponse, MakeTestRequest(0))
-          .map([](Flatbuffer<TestResponse> response) {
+      auto error = run_expect_error(PipeWith(
+          test_client.Invoke(
+              &TestService::Stub::AsyncUnaryNoResponse, MakeTestRequest(0)),
+          Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
-          }));
+          })));
       CHECK(exceptionMessage(error) == "No response");
     }
 
     SECTION("failed rpc because of two responses") {
-      auto error = run_expect_error(test_client
-          .Invoke(
+      auto error = run_expect_error(PipeWith(
+          test_client.Invoke(
               &TestService::Stub::AsyncUnaryTwoResponses,
-              MakeTestRequest(0))
-          .map([](Flatbuffer<TestResponse> response) {
+              MakeTestRequest(0)),
+          Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
-          }));
+          })));
       CHECK(exceptionMessage(error) == "Too many responses");
     }
 
     SECTION("delayed") {
       // This test can break if invoke doesn't take ownership of the request for
       // example.
-      auto call = test_client
-          .Invoke(
-              &TestService::Stub::AsyncDouble, MakeTestRequest(123))
-          .map(
-              [](Flatbuffer<TestResponse> response) {
-                CHECK(response->data() == 123 * 2);
-                return "ignored";
-              });
+      auto call = PipeWith(
+          test_client.Invoke(
+              &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+          Map([](Flatbuffer<TestResponse> response) {
+            CHECK(response->data() == 123 * 2);
+            return "ignored";
+          }));
       run(call);
     }
 
+#if 0  // TODO(peck)
     SECTION("two calls") {
       auto call_a = test_client.Invoke(
           &TestService::Stub::AsyncDouble, MakeTestRequest(123));
       auto call_b = test_client.Invoke(
           &TestService::Stub::AsyncDouble, MakeTestRequest(321));
-      run(call_a
-          .zip(call_b)
-          .map(
-              [](std::tuple<
-                    Flatbuffer<TestResponse>,
-                    Flatbuffer<TestResponse>> responses) {
-                CHECK(std::get<0>(responses)->data() == 123 * 2);
-                CHECK(std::get<1>(responses)->data() == 321 * 2);
-                return "ignored";
-              }));
+      run(PipeWith(
+          Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
+              call_a, call_b),
+          Map(Unpack([](
+              Flatbuffer<TestResponse> a,
+              Flatbuffer<TestResponse> b) {
+            CHECK(a->data() == 123 * 2);
+            CHECK(b->data() == 321 * 2);
+            return "ignored";
+          }))));
     }
 
     SECTION("same call twice") {
       auto call = test_client.Invoke(
           &TestService::Stub::AsyncDouble, MakeTestRequest(123));
-      run(call
-          .zip(call)
-          .map(
-              [](std::tuple<
-                    Flatbuffer<TestResponse>,
-                    Flatbuffer<TestResponse>> responses) {
-                CHECK(std::get<0>(responses)->data() == 123 * 2);
-                CHECK(std::get<1>(responses)->data() == 123 * 2);
-                return "ignored";
-              }));
+      run(PipeWith(
+          Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
+              call, call),
+          Map(Unpack([](
+              Flatbuffer<TestResponse> a,
+              Flatbuffer<TestResponse> b) {
+            CHECK(a->data() == 123 * 2);
+            CHECK(b->data() == 123 * 2);
+            return "ignored";
+          }))));
     }
 #endif
   }
 
-#if 0  // TODO(peck)
   SECTION("server streaming") {
+#if 0  // TODO(peck)
     SECTION("no responses") {
       run(test_client
           .Invoke(
@@ -476,8 +479,10 @@ TEST_CASE("RsGrpc") {
 
       run(responses_1.zip(responses_2));
     }
+#endif
   }
 
+#if 0  // TODO(peck)
   SECTION("client streaming") {
     SECTION("no messages") {
       run(test_client

@@ -294,7 +294,7 @@ class RsGrpcClientInvocation<
           enqueued_requests_.emplace_back(std::move(request));
           RunEnqueuedOperation();
         },
-        [this](const std::exception_ptr &error) {
+        [this](std::exception_ptr &&error) {
           // This triggers RunEnqueuedOperation to Finish the stream.
           request_stream_error_ = error;
           enqueued_writes_done_ = true;
@@ -489,7 +489,7 @@ class RsGrpcClientInvocation<
           enqueued_requests_.emplace_back(std::move(request));
           RunEnqueuedOperation();
         },
-        [this](const std::exception_ptr &error) {
+        [this](std::exception_ptr &&error) {
           reader_.OnError(error);
           enqueued_writes_done_ = true;
           RunEnqueuedOperation();
@@ -700,7 +700,7 @@ class RsGrpcServerInvocation<
             num_responses_++;
             response_ = std::move(response);
           },
-          [this](const std::exception_ptr &error) {
+          [this](std::exception_ptr &&error) {
             stream_.FinishWithError(exceptionToStatus(error), this);
           },
           [this]() {
@@ -772,10 +772,7 @@ class RsGrpcServerInvocation<
   using Service = typename ServerCallTraits::Service;
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-
-  using ResponsePublisher =
-      decltype(std::declval<Callback>()(std::declval<TransformedRequest>()));
-  using TransformedResponse = typename ResponsePublisher::value_type;
+  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
 
   using Method = RequestMethod<
       Service, typename ServerCallTraits::Request, Stream>;
@@ -826,12 +823,13 @@ class RsGrpcServerInvocation<
         // after which it's not safe to do anything with `this` anymore.
         IssueNewServerRequest(std::move(callback_));
 
-        values.subscribe(
-            [this](TransformedResponse response) {
+        // TODO(peck): Don't hold weak refs to this
+        auto subscription = values.Subscribe(MakeSubscriber(
+            [this](TransformedResponse &&response) {
               enqueued_responses_.emplace_back(std::move(response));
               RunEnqueuedOperation();
             },
-            [this](const std::exception_ptr &error) {
+            [this](std::exception_ptr &&error) {
               enqueued_finish_status_ = exceptionToStatus(error);
               enqueued_finish_ = true;
               RunEnqueuedOperation();
@@ -840,7 +838,9 @@ class RsGrpcServerInvocation<
               enqueued_finish_status_ = grpc::Status::OK;
               enqueued_finish_ = true;
               RunEnqueuedOperation();
-            });
+            }));
+      // TODO(peck): Backpressure, cancellation
+      subscription.Request(ElementCount::Infinite());
 
         break;
       }
@@ -1057,7 +1057,7 @@ class RsGrpcServerInvocation<
           response_ = std::move(response);
           num_responses_++;
         },
-        [this](const std::exception_ptr &error) {
+        [this](std::exception_ptr &&error) {
           response_error_ = error;
           finished_ = true;
           TrySendResponse();
@@ -1166,7 +1166,7 @@ class RsGrpcServerInvocation<
                 std::forward<decltype(response)>(response));
             RunEnqueuedOperation();
           },
-          [this](const std::exception_ptr &error) {
+          [this](std::exception_ptr &&error) {
             OnError(error);
           },
           [this]() {
