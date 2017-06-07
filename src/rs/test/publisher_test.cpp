@@ -22,22 +22,33 @@ TEST_CASE("Publisher") {
   static_assert(!IsPublisher<int>, "int is not a Publisher");
 
   SECTION("Publisher type eraser") {
-    int cancelled = 0;
-    auto callback_pub = MakePublisher([&cancelled](auto &&subscriber) {
-      subscriber.OnComplete();
-      return MakeSubscription(
-          [](ElementCount) {},
-          [&cancelled] { cancelled++; });
-    });
-    const auto pub = Publisher<int, std::string>(std::move(callback_pub));
-
     SECTION("type traits") {
+      auto pub = Publisher<>(MakePublisher([](auto &&) {
+        return MakeSubscription();
+      }));
+
       static_assert(
           IsPublisher<decltype(pub)>,
           "MakePublisher should return Publisher");
     }
 
+    SECTION("construct with lvalue reference") {
+      auto inner_publisher = MakePublisher([](auto &&) {
+        return MakeSubscription();
+      });
+      auto pub = Publisher<>(inner_publisher);
+    }
+
     SECTION("Subscribe") {
+      int cancelled = 0;
+      auto callback_pub = MakePublisher([&cancelled](auto &&subscriber) {
+        subscriber.OnComplete();
+        return MakeSubscription(
+            [](ElementCount) {},
+            [&cancelled] { cancelled++; });
+      });
+      const auto pub = Publisher<int, std::string>(std::move(callback_pub));
+
       int completed = 0;
       auto sub = pub.Subscribe(MakeSubscriber(
           [](auto &&) {},

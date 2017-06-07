@@ -54,12 +54,6 @@ class CallbackPublisher : public PublisherBase {
       FunctorTag, InnerPublisherType &&inner_publisher)
       : inner_publisher_(std::forward<InnerPublisherType>(inner_publisher)) {}
 
-  CallbackPublisher(const CallbackPublisher &) = default;
-  CallbackPublisher& operator=(const CallbackPublisher &) = default;
-
-  CallbackPublisher(CallbackPublisher &&) = default;
-  CallbackPublisher& operator=(CallbackPublisher &&) = default;
-
   template <typename T>
   auto Subscribe(T &&t) {
     return inner_publisher_(std::forward<T>(t));
@@ -84,8 +78,9 @@ class Publisher : public PublisherBase {
  public:
   template <typename PublisherType>
   Publisher(PublisherType &&publisher)
-      : eraser_(std::make_unique<PublisherEraser<PublisherType>>(
-            std::forward<PublisherType>(publisher))) {}
+      : eraser_(std::make_unique<
+            PublisherEraser<typename std::decay<PublisherType>::type>>(
+                std::forward<PublisherType>(publisher))) {}
 
   template <typename SubscriberType>
   Subscription Subscribe(SubscriberType &&subscriber) const {
@@ -109,6 +104,9 @@ class Publisher : public PublisherBase {
    public:
     PublisherEraser(PublisherType &&publisher)
         : publisher_(std::move(publisher)) {}
+
+    PublisherEraser(const PublisherType &publisher)
+        : publisher_(publisher) {}
 
     Subscription Subscribe(Subscriber<Ts...> &&subscriber) const override {
       return Subscription(publisher_.Subscribe(std::move(subscriber)));
