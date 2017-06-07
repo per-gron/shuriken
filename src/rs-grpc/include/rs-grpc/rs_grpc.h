@@ -685,8 +685,7 @@ class RsGrpcServerInvocation<
           Publisher<TransformedResponse>(
               callback_(std::move(wrapped_request.first))) :
           Publisher<TransformedResponse>(
-              Throw(std::make_exception_ptr(
-                  GrpcError(wrapped_request.second))));
+              Throw(GrpcError(wrapped_request.second)));
 
       // Request the a new request, so that the server is always waiting for
       // one. This is done after the callback (because this steals it) but
@@ -816,8 +815,7 @@ class RsGrpcServerInvocation<
             Publisher<TransformedResponse>(
                 callback_(std::move(wrapped_request.first))) :
             Publisher<TransformedResponse>(
-                Throw(std::make_exception_ptr(
-                    GrpcError(wrapped_request.second))));
+                Throw(GrpcError(wrapped_request.second)));
 
         // Request the a new request, so that the server is always waiting for
         // one. This is done after the callback (because this steals it) but
