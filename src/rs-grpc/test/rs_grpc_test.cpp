@@ -24,9 +24,9 @@
 #include <rs/merge.h>
 #include <rs/pipe.h>
 #include <rs/range.h>
+#include <rs/splat.h>
 #include <rs/sum.h>
 #include <rs/throw.h>
-#include <rs/unpack.h>
 #include <rs/zip.h>
 #include <rs-grpc/rs_grpc.h>
 #include <rs-grpc/rs_grpc_flatbuffers.h>
@@ -343,7 +343,7 @@ TEST_CASE("RsGrpc") {
       run(PipeWith(
           Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
               call_a, call_b),
-          Map(Unpack([](
+          Map(Splat([](
               Flatbuffer<TestResponse> a,
               Flatbuffer<TestResponse> b) {
             CHECK(a->data() == 123 * 2);
@@ -358,7 +358,7 @@ TEST_CASE("RsGrpc") {
       run(PipeWith(
           Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
               call, call),
-          Map(Unpack([](
+          Map(Splat([](
               Flatbuffer<TestResponse> a,
               Flatbuffer<TestResponse> b) {
             CHECK(a->data() == 123 * 2);

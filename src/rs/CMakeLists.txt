@@ -29,6 +29,7 @@ add_library(rs
   include/rs/skip.h
   include/rs/skip_while.h
   include/rs/some.h
+  include/rs/splat.h
   include/rs/start.h
   include/rs/start_with.h
   include/rs/subscriber.h
@@ -37,7 +38,6 @@ add_library(rs
   include/rs/take.h
   include/rs/take_while.h
   include/rs/throw.h
-  include/rs/unpack.h
   include/rs/zip.h
   src/subscription.cpp)
 target_include_directories(rs PUBLIC include)
@@ -77,6 +77,7 @@ add_executable(rs-test
   test/skip_test.cpp
   test/skip_while_test.cpp
   test/some_test.cpp
+  test/splat_test.cpp
   test/start_test.cpp
   test/start_with_test.cpp
   test/subscriber_test.cpp
@@ -86,7 +87,6 @@ add_executable(rs-test
   test/sum_test.cpp
   test/test_util.h
   test/throw_test.cpp
-  test/unpack_test.cpp
   test/zip_test.cpp)
 set_property(TARGET rs-test PROPERTY CXX_STANDARD 14)
 target_link_libraries(rs-test rs catch)

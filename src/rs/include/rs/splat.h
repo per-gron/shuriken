@@ -20,7 +20,7 @@ namespace shk {
 namespace detail {
 
 template <size_t Idx>
-class InvokeUnpackCallback {
+class InvokeSplatCallback {
  public:
   template <
       typename Callback,
@@ -33,7 +33,7 @@ class InvokeUnpackCallback {
     static constexpr size_t tuple_size = std::tuple_size<
         typename std::decay<decltype(tuple)>::type>::value;
 
-    return InvokeUnpackCallback<Idx - 1>::Invoke(
+    return InvokeSplatCallback<Idx - 1>::Invoke(
         std::forward<Callback>(callback),
         std::forward<Tuple>(tuple),
         std::forward<Parameters>(parameters)...,
@@ -42,7 +42,7 @@ class InvokeUnpackCallback {
 };
 
 template <>
-class InvokeUnpackCallback<0> {
+class InvokeSplatCallback<0> {
  public:
   template <
       typename Callback,
@@ -59,7 +59,7 @@ class InvokeUnpackCallback<0> {
 }  // namespace detail
 
 /**
- * Unpack is a helper function that can make it easier to access the indivicual
+ * Splat is a helper function that can make it easier to access the indivicual
  * elements of a tuple or pair. What it does is similar to std::tie, but it is
  * meant to be used in a different context. In cases where you would write:
  *
@@ -70,9 +70,9 @@ class InvokeUnpackCallback<0> {
  *       ...
  *     }
  *
- * You could use Unpack and instead write:
+ * You could use Splat and instead write:
  *
- *     Unpack([](int num, std::string str) {
+ *     Splat([](int num, std::string str) {
  *       ...
  *     })
  *
@@ -81,19 +81,19 @@ class InvokeUnpackCallback<0> {
  *
  *     PipeWith(
  *         Zip(Just("a", "b"), Just(1, 2))
- *         Map(Unpack([](int num, std::string str) {
+ *         Map(Splat([](int num, std::string str) {
  *           return str + " " + std::to_string(num);
  *         })))
  *
- * Unpack works with all types for which std::tuple_size and std::get are
+ * Splat works with all types for which std::tuple_size and std::get are
  * defined: In addition to tuples it also works with pair<>s and array<>s.
  */
 template <typename Callback>
-auto Unpack(Callback &&callback) {
+auto Splat(Callback &&callback) {
   return [callback = std::forward<Callback>(callback)](auto &&tuple) mutable {
     static constexpr size_t tuple_size = std::tuple_size<
         typename std::decay<decltype(tuple)>::type>::value;
-    return detail::InvokeUnpackCallback<tuple_size>::Invoke(
+    return detail::InvokeSplatCallback<tuple_size>::Invoke(
         callback,
         std::forward<decltype(tuple)>(tuple));
   };

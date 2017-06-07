@@ -14,26 +14,26 @@
 
 #include <catch.hpp>
 
-#include <rs/unpack.h>
+#include <rs/splat.h>
 
 namespace shk {
 
-TEST_CASE("Unpack") {
+TEST_CASE("Splat") {
   SECTION("empty") {
     int called = 0;
-    Unpack([&called] { called++; })(std::make_tuple());
+    Splat([&called] { called++; })(std::make_tuple());
     CHECK(called == 1);
   }
 
   SECTION("with mutable callback") {
     int called = 0;
-    Unpack([&called]() mutable { called++; })(std::make_tuple());
+    Splat([&called]() mutable { called++; })(std::make_tuple());
     CHECK(called == 1);
   }
 
   SECTION("with single value") {
     int called = 0;
-    Unpack([&called](int val) {
+    Splat([&called](int val) {
       CHECK(val == 1);
       called++;
     })(std::make_tuple(1));
@@ -42,7 +42,7 @@ TEST_CASE("Unpack") {
 
   SECTION("with two values") {
     int called = 0;
-    Unpack([&called](int val, const std::string &str) {
+    Splat([&called](int val, const std::string &str) {
       CHECK(val == 1);
       CHECK(str == "hej");
       called++;
@@ -52,7 +52,7 @@ TEST_CASE("Unpack") {
 
   SECTION("with pair") {
     int called = 0;
-    Unpack([&called](int val, const std::string &str) {
+    Splat([&called](int val, const std::string &str) {
       CHECK(val == 1);
       CHECK(str == "hej");
       called++;
@@ -63,7 +63,7 @@ TEST_CASE("Unpack") {
   SECTION("with lvalue reference") {
     auto a_tuple = std::make_tuple(1);
     int called = 0;
-    Unpack([&called](int val) {
+    Splat([&called](int val) {
       CHECK(val == 1);
       called++;
     })(a_tuple);
@@ -73,7 +73,7 @@ TEST_CASE("Unpack") {
   SECTION("with const lvalue reference") {
     const auto a_tuple = std::make_tuple(1);
     int called = 0;
-    Unpack([&called](const int &val) {
+    Splat([&called](const int &val) {
       CHECK(val == 1);
       called++;
     })(a_tuple);
@@ -83,15 +83,15 @@ TEST_CASE("Unpack") {
   SECTION("copyable") {
     const auto a_tuple = std::make_tuple(1);
     int called = 0;
-    auto unpack = Unpack([&called](const int &val) {
+    auto splat = Splat([&called](const int &val) {
       CHECK(val == 1);
       called++;
     });
-    auto unpack_2 = unpack;
+    auto splat_2 = splat;
   }
 
   SECTION("with return value") {
-    int square = Unpack([](int val) {
+    int square = Splat([](int val) {
       return val * val;
     })(std::make_tuple(3));
     CHECK(square == 9);

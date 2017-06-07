@@ -77,7 +77,7 @@ template <typename ...Ts>
 class Publisher : public PublisherBase {
  public:
   template <typename PublisherType>
-  Publisher(PublisherType &&publisher)
+  explicit Publisher(PublisherType &&publisher)
       : eraser_(std::make_unique<
             PublisherEraser<typename std::decay<PublisherType>::type>>(
                 std::forward<PublisherType>(publisher))) {}
