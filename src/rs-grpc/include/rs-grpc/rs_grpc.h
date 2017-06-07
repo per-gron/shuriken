@@ -49,7 +49,7 @@ void HandleUnaryResponse(
     auto wrapped = Transform::wrap(std::move(response));
     if (wrapped.second.ok()) {
       subscriber->OnNext(std::move(wrapped.first));
-      subscriber->OnCompleted();
+      subscriber->OnComplete();
     } else {
       subscriber->OnError(
           std::make_exception_ptr(GrpcError(wrapped.second)));
@@ -622,6 +622,9 @@ class ServerCallTraits {
   using TransformedRequest =
       typename decltype(
           Transform::wrap(std::declval<RequestType>()))::first_type;
+  using TransformedResponse =
+      typename decltype(
+          Transform::wrap(std::declval<ResponseType>()))::first_type;
 };
 
 
@@ -640,10 +643,7 @@ class RsGrpcServerInvocation<
   using Service = typename ServerCallTraits::Service;
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-
-  using ResponsePublisher =
-      decltype(std::declval<Callback>()(std::declval<TransformedRequest>()));
-  using TransformedResponse = typename ResponsePublisher::value_type;
+  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
 
   using Method = RequestMethod<
       Service, typename ServerCallTraits::Request, Stream>;
@@ -696,6 +696,7 @@ class RsGrpcServerInvocation<
 
       // TODO(peck): Take the Subscription here and handle backpressure and
       // cancellation. Don't hold weak unsafe ref to this etc.
+      #if 0 // TODO(peck): Implement me
       values.subscribe(
           [this](TransformedResponse response) {
             num_responses_++;
@@ -716,6 +717,7 @@ class RsGrpcServerInvocation<
                   this);
             }
           });
+      #endif
     } else {
       // The server has now successfully sent a response. Clean up.
       delete this;
@@ -1571,7 +1573,7 @@ class RsGrpcServiceClient {
         [this, request_or_publisher, invoke](auto &&subscriber) {
       auto call = new ClientInvocation(
           request_or_publisher,
-          std::forward<delctype(subscriber)>(subscriber));
+          std::forward<decltype(subscriber)>(subscriber));
       return call->Invoke(invoke, stub_.get(), &cq_);
     });
   }
