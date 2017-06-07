@@ -694,10 +694,8 @@ class RsGrpcServerInvocation<
 
       awaiting_request_ = false;
 
-      // TODO(peck): Take the Subscription here and handle backpressure and
-      // cancellation. Don't hold weak unsafe ref to this etc.
-      #if 0 // TODO(peck): Implement me
-      values.subscribe(
+      // TODO(peck): Don't hold weak unsafe ref to this
+      auto subscription = values.Subscribe(MakeSubscriber(
           [this](TransformedResponse response) {
             num_responses_++;
             response_ = std::move(response);
@@ -716,8 +714,9 @@ class RsGrpcServerInvocation<
                   grpc::Status(grpc::StatusCode::INTERNAL, error_message),
                   this);
             }
-          });
-      #endif
+          }));
+      // TODO(peck): Backpressure, cancellation
+      subscription.Request(ElementCount::Infinite());
     } else {
       // The server has now successfully sent a response. Clean up.
       delete this;

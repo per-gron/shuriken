@@ -282,12 +282,13 @@ TEST_CASE("RsGrpc") {
 
 #if 0 // TODO(peck)
     SECTION("failed rpc") {
-      auto error = run_expect_error(test_client
-          .Invoke(&TestService::Stub::AsyncUnaryFail, MakeTestRequest(0))
-          .map([](Flatbuffer<TestResponse> response) {
+      auto error = run_expect_error(PipeWith(
+          test_client
+              .Invoke(&TestService::Stub::AsyncUnaryFail, MakeTestRequest(0)),
+          Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
-          }));
+          })));
       CHECK(exceptionMessage(error) == "unary_fail");
     }
 
