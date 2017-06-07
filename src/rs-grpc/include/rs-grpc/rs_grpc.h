@@ -247,9 +247,9 @@ class RsGrpcClientInvocation<
  public:
   template <typename Publisher>
   RsGrpcClientInvocation(
-      const Publisher &requests,
+      Publisher &&requests,
       Subscriber<TransformedResponseType> &&subscriber)
-      : requests_(requests.as_dynamic()),
+      : requests_(std::forward<Publisher>(requests)),
         subscriber_(std::move(subscriber)) {
     static_assert(
         IsPublisher<Publisher>,
@@ -279,7 +279,7 @@ class RsGrpcClientInvocation<
   }
 
   template <typename Stub>
-  void Invoke(
+  auto Invoke(
       std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -291,7 +291,8 @@ class RsGrpcClientInvocation<
     stream_ = (stub->*invoke)(&context_, &response_, cq, this);
     operation_in_progress_ = true;
 
-    requests_.subscribe(
+    // TODO(peck): Don't hold weak unsafe refs to this
+    auto subscription = requests_.Subscribe(MakeSubscriber(
         [this](TransformedRequestType request) {
           enqueued_requests_.emplace_back(std::move(request));
           RunEnqueuedOperation();
@@ -305,7 +306,11 @@ class RsGrpcClientInvocation<
         [this]() {
           enqueued_writes_done_ = true;
           RunEnqueuedOperation();
-        });
+        }));
+    // TODO(peck): Backpressure, cancellation
+    subscription.Request(ElementCount::Infinite());
+
+    return MakeSubscription();  // TODO(peck): Handle backrpressure and cancellation
   }
 
  private:
@@ -937,11 +942,7 @@ class RsGrpcServerInvocation<
   using Service = typename ServerCallTraits::Service;
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-
-  using ResponsePublisher =
-      decltype(std::declval<Callback>()(
-          std::declval<Publisher<TransformedRequest>>()));
-  using TransformedResponse = typename ResponsePublisher::value_type;
+  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
 
   using Method = StreamingRequestMethod<Service, Stream>;
 
@@ -984,10 +985,10 @@ class RsGrpcServerInvocation<
         if (success) {
           auto wrapped = Transform::wrap(std::move(request_));
           if (wrapped.second.ok()) {
-            subscriber_->on_next(std::move(wrapped.first));
+            subscriber_->OnNext(std::move(wrapped.first));
             reader_.Read(&request_, this);
           } else {
-            subscriber_->on_error(
+            subscriber_->OnError(
                 std::make_exception_ptr(GrpcError(wrapped.second)));
 
             state_ = State::SENT_RESPONSE;
@@ -995,7 +996,7 @@ class RsGrpcServerInvocation<
           }
         } else {
           // The client has stopped sending requests.
-          subscriber_->on_completed();
+          subscriber_->OnComplete();
           state_ = State::STREAM_ENDED;
           TrySendResponse();
         }
@@ -1049,12 +1050,15 @@ class RsGrpcServerInvocation<
 
       state_ = State::REQUESTED_DATA;
       reader_.Read(&request_, this);
+
+      return MakeSubscription();  // TODO(peck): Do something sane here
     })));
 
     static_assert(
         IsPublisher<decltype(response)>,
         "Callback return type must be Publisher");
-    response.subscribe(
+    // TODO(peck): Don't hold weak unsafe refs to this
+    auto subscription = response.Subscribe(MakeSubscriber(
         [this](TransformedResponse response) {
           response_ = std::move(response);
           num_responses_++;
@@ -1067,7 +1071,9 @@ class RsGrpcServerInvocation<
         [this]() {
           finished_ = true;
           TrySendResponse();
-        });
+        }));
+    // TODO(peck): Backpressure, cancellation
+    subscription.Request(ElementCount::Infinite());
 
     // Request the a new request, so that the server is always waiting for
     // one.
@@ -1345,6 +1351,8 @@ class RsGrpcServerInvocation<
 
       state_ = State::REQUESTED_DATA;
       stream_.Read(&request_, this);
+
+      return MakeSubscription();  // TODO(peck): Do something sane here
     })));
 
     static_assert(
@@ -1505,14 +1513,14 @@ class RsGrpcServiceClient {
           void *tag),
       // TODO(peck): This should not require a type erased Publisher (with
       // rxcpp it didn't). What to do?
-      const Publisher<TransformedRequestType> &requests,
+      Publisher<TransformedRequestType> &&requests,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return InvokeImpl<
         grpc::ClientAsyncWriter<RequestType>,
         ResponseType,
         TransformedRequestType>(
             invoke,
-            requests,
+            std::move(requests),
             std::move(context));
   }
 
@@ -1537,14 +1545,14 @@ class RsGrpcServiceClient {
           void *tag),
       // TODO(peck): This should not require a type erased Publisher (with
       // rxcpp it didn't). What to do?
-      const Publisher<TransformedRequestType> &requests,
+      Publisher<TransformedRequestType> &&requests,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return InvokeImpl<
         grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
         ResponseType,
         TransformedRequestType>(
             invoke,
-            requests,
+            std::move(requests),
             std::move(context));
   }
 
@@ -1555,28 +1563,33 @@ class RsGrpcServiceClient {
       typename TransformedRequestType,
       typename RequestOrPublisher,
       typename Invoke>
-  Publisher<
-      typename detail::RsGrpcClientInvocation<
-          Reader,
-          ResponseType,
-          TransformedRequestType,
-          Transform>::TransformedResponseType>
-  InvokeImpl(
+  auto InvokeImpl(
       Invoke invoke,
-      const RequestOrPublisher &request_or_publisher,
+      RequestOrPublisher &&request_or_publisher,
       grpc::ClientContext &&context = grpc::ClientContext()) {
 
     using ClientInvocation =
         detail::RsGrpcClientInvocation<
             Reader, ResponseType, TransformedRequestType, Transform>;
 
-    return MakePublisher(
-        [this, request_or_publisher, invoke](auto &&subscriber) {
+    using ErasedPublisher =
+        Publisher<
+            typename detail::RsGrpcClientInvocation<
+                Reader,
+                ResponseType,
+                TransformedRequestType,
+                Transform>::TransformedResponseType>;
+
+    return ErasedPublisher(MakePublisher([
+        this,
+        request_or_publisher =
+            std::forward<RequestOrPublisher>(request_or_publisher),
+        invoke](auto &&subscriber) {
       auto call = new ClientInvocation(
           request_or_publisher,
           std::forward<decltype(subscriber)>(subscriber));
       return call->Invoke(invoke, stub_.get(), &cq_);
-    });
+    }));
   }
 
   std::unique_ptr<Stub> stub_;

@@ -84,10 +84,9 @@ auto RepeatThenFailHandler(Flatbuffer<TestRequest> request) {
       Throw(std::make_exception_ptr(std::runtime_error("repeat_fail"))));
 }
 
-#if 0  // TODO(peck)
 auto SumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
   return PipeWith(
-      requests,
+      std::move(requests),  // TODO(peck): Why is this move necessary?
       Map([](Flatbuffer<TestRequest> request) {
         return request->data();
       }),
@@ -95,6 +94,7 @@ auto SumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
       Map(MakeTestResponse));
 }
 
+#if 0  // TODO(peck)
 auto ImmediatelyFailingSumHandler(
     rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
@@ -192,11 +192,11 @@ TEST_CASE("RsGrpc") {
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestRepeatThenFail,
           &RepeatThenFailHandler)
-  ;
-#if 0  // TODO(peck)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestSum,
           &SumHandler)
+  ;
+#if 0  // TODO(peck)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestImmediatelyFailingSum,
           &ImmediatelyFailingSumHandler)
@@ -496,20 +496,20 @@ TEST_CASE("RsGrpc") {
   SECTION("client streaming") {
 #if 0  // TODO(peck)
     SECTION("no messages") {
-      run(test_client
-          .Invoke(
+      run(PipeWith(
+          test_client.Invoke(
               &TestService::Stub::AsyncSum,
-              rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
-          .map(
-              [](Flatbuffer<TestResponse> response) {
-                CHECK(response->data() == 0);
-                return "ignored";
-              })
-          .count()
-          .map([](int count) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(Empty())),
+          Map([](Flatbuffer<TestResponse> &&response) {
+            CHECK(response->data() == 0);
+            return "ignored";
+          }),
+          Count(),
+          Map([](int count) {
             CHECK(count == 1);
             return "ignored";
-          }));
+          })));
     }
 
     SECTION("one message") {
