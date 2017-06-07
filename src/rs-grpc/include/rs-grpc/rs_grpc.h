@@ -408,11 +408,11 @@ class RsGrpcClientInvocation<
      */
     void Finish(const grpc::Status &status) {
       if (!status.ok()) {
-        subscriber_.on_error(std::make_exception_ptr(GrpcError(status)));
+        subscriber_.OnError(std::make_exception_ptr(GrpcError(status)));
       } else if (error_) {
-        subscriber_.on_error(error_);
+        subscriber_.OnError(std::move(error_));
       } else {
-        subscriber_.on_completed();
+        subscriber_.OnComplete();
       }
     }
 
@@ -423,7 +423,7 @@ class RsGrpcClientInvocation<
       } else {
         auto wrapped = Transform::wrap(std::move(response_));
         if (wrapped.second.ok()) {
-          subscriber_.on_next(std::move(wrapped.first));
+          subscriber_.OnNext(std::move(wrapped.first));
           stream_->Read(&response_, this);
         } else {
           error_ = std::make_exception_ptr(GrpcError(wrapped.second));
@@ -451,7 +451,7 @@ class RsGrpcClientInvocation<
       : reader_(
             [this] { reader_done_ = true; TryShutdown(); },
             std::move(subscriber)),
-        requests_(requests.as_dynamic()) {
+        requests_(requests) {
     static_assert(
         IsPublisher<Publisher>,
         "First parameter must be a Publisher");
@@ -474,7 +474,7 @@ class RsGrpcClientInvocation<
   }
 
   template <typename Stub>
-  void Invoke(
+  auto Invoke(
       std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -486,7 +486,8 @@ class RsGrpcClientInvocation<
     reader_.Invoke(stream_.get());
     operation_in_progress_ = true;
 
-    requests_.subscribe(
+    // TODO(peck): Don't hold weak unsafe ref to this
+    auto subscription = requests_.Subscribe(MakeSubscriber(
         [this](TransformedRequestType request) {
           enqueued_requests_.emplace_back(std::move(request));
           RunEnqueuedOperation();
@@ -499,7 +500,12 @@ class RsGrpcClientInvocation<
         [this]() {
           enqueued_writes_done_ = true;
           RunEnqueuedOperation();
-        });
+        }));
+    // TODO(peck): Backpressure, cancellation
+    subscription.Request(ElementCount::Unbounded());
+
+    // TODO(peck): Do something sane here (use Subscription from above?)
+    return MakeSubscription();
   }
 
  private:

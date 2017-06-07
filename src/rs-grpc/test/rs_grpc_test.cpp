@@ -719,19 +719,20 @@ TEST_CASE("RsGrpc") {
   }
 
   SECTION("bidi streaming") {
-#if 0  // TODO(peck)
     SECTION("no messages") {
-      run(test_client
-          .Invoke(
+      run(Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
-          .count()
-          .map([](int count) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(Empty())),
+          Count(),
+          Map([](int count) {
             CHECK(count == 0);
             return "ignored";
-          }));
+          })));
     }
 
+#if 0  // TODO(peck)
     SECTION("one message") {
       run(test_client
           .Invoke(
