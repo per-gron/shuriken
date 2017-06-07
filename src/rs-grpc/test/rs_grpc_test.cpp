@@ -24,6 +24,7 @@
 #include <rs/merge.h>
 #include <rs/pipe.h>
 #include <rs/range.h>
+#include <rs/scan.h>
 #include <rs/splat.h>
 #include <rs/sum.h>
 #include <rs/throw.h>
@@ -141,16 +142,17 @@ auto ClientStreamTwoResponsesHandler(
       MakeTestResponse(2));
 }
 
-#if 0  // TODO(peck)
-auto CumulativeSumHandler(rxcpp::observable<Flatbuffer<TestRequest>> requests) {
-  return requests
-    .map([](Flatbuffer<TestRequest> request) {
+auto CumulativeSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
+  return Pipe(
+    requests,
+    Map([](Flatbuffer<TestRequest> request) {
       return request->data();
-    })
-    .scan(0, [](int x, int y) { return x + y; })
-    .map(MakeTestResponse);
+    }),
+    Scan(0, [](int x, int y) { return x + y; }),
+    Map(MakeTestResponse));
 }
 
+#if 0  // TODO(peck)
 auto ImmediatelyFailingCumulativeSumHandler(
     rxcpp::observable<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
@@ -215,11 +217,11 @@ TEST_CASE("RsGrpc") {
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestClientStreamTwoResponses,
           &ClientStreamTwoResponsesHandler)
-  ;
-#if 0  // TODO(peck)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestCumulativeSum,
           &CumulativeSumHandler)
+  ;
+#if 0  // TODO(peck)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestImmediatelyFailingCumulativeSum,
           &ImmediatelyFailingCumulativeSumHandler)
@@ -716,8 +718,8 @@ TEST_CASE("RsGrpc") {
 #endif
   }
 
-#if 0  // TODO(peck)
   SECTION("bidi streaming") {
+#if 0  // TODO(peck)
     SECTION("no messages") {
       run(test_client
           .Invoke(
@@ -887,8 +889,8 @@ TEST_CASE("RsGrpc") {
 
       run(call.zip(call));
     }
-  }
 #endif
+  }
 
   server.Shutdown();
   server_thread.join();

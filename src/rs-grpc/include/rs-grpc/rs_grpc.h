@@ -1136,11 +1136,7 @@ class RsGrpcServerInvocation<
   using Service = typename ServerCallTraits::Service;
   using Transform = typename ServerCallTraits::Transform;
   using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-
-  using ResponsePublisher =
-      decltype(std::declval<Callback>()(
-          std::declval<Publisher<TransformedRequest>>()));
-  using TransformedResponse = typename ResponsePublisher::value_type;
+  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
 
   using Method = StreamingRequestMethod<Service, Stream>;
 
@@ -1161,7 +1157,8 @@ class RsGrpcServerInvocation<
 
     template <typename Publisher>
     void Subscribe(const Publisher &publisher) {
-      publisher.subscribe(
+      // TODO(peck): Don't hold weak unsafe refs to this
+      auto subscription = publisher.Subscribe(MakeSubscriber(
           [this](auto &&response) {
             enqueued_responses_.emplace_back(
                 std::forward<decltype(response)>(response));
@@ -1173,7 +1170,9 @@ class RsGrpcServerInvocation<
           [this]() {
             enqueued_finish_ = true;
             RunEnqueuedOperation();
-          });
+          }));
+      // TODO(peck): Backpressure, cancellation
+      subscription.Request(ElementCount::Unbounded());
     }
 
     /**
@@ -1274,18 +1273,18 @@ class RsGrpcServerInvocation<
         if (success) {
           auto wrapped = Transform::wrap(std::move(request_));
           if (wrapped.second.ok()) {
-            subscriber_->on_next(std::move(wrapped.first));
+            subscriber_->OnNext(std::move(wrapped.first));
             stream_.Read(&request_, this);
           } else {
             auto error = std::make_exception_ptr(GrpcError(wrapped.second));
-            subscriber_->on_error(error);
+            subscriber_->OnError(std::exception_ptr(error));
 
             writer_.OnError(error);
             state_ = State::READ_STREAM_ENDED;
           }
         } else {
           // The client has stopped sending requests.
-          subscriber_->on_completed();
+          subscriber_->OnComplete();
           state_ = State::READ_STREAM_ENDED;
           TryShutdown();
         }
