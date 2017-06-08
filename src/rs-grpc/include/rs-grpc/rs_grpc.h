@@ -62,7 +62,7 @@ void HandleUnaryResponse(
 template <
     typename Reader,
     typename ResponseType,
-    typename TransformedRequestType,
+    typename RequestType,
     typename Transform>
 class RsGrpcClientInvocation;
 
@@ -71,16 +71,18 @@ class RsGrpcClientInvocation;
  */
 template <
     typename ResponseType,
-    typename TransformedRequestType,
+    typename RequestType,
     typename Transform>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncResponseReader<ResponseType>,
     ResponseType,
-    TransformedRequestType,
+    RequestType,
     Transform> : public RsGrpcTag {
  public:
   using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
+  using TransformedRequestType = typename decltype(
+      Transform::wrap(std::declval<RequestType>()))::first_type;
 
   RsGrpcClientInvocation(
       const TransformedRequestType &request,
@@ -94,7 +96,7 @@ class RsGrpcClientInvocation<
     delete this;
   }
 
-  template <typename Stub, typename RequestType>
+  template <typename Stub>
   auto Invoke(
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
@@ -126,16 +128,18 @@ class RsGrpcClientInvocation<
  */
 template <
     typename ResponseType,
-    typename TransformedRequestType,
+    typename RequestType,
     typename Transform>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncReader<ResponseType>,
     ResponseType,
-    TransformedRequestType,
+    RequestType,
     Transform> : public RsGrpcTag {
  public:
   using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
+  using TransformedRequestType = typename decltype(
+      Transform::wrap(std::declval<RequestType>()))::first_type;
 
   RsGrpcClientInvocation(
       const TransformedRequestType &request,
@@ -186,7 +190,7 @@ class RsGrpcClientInvocation<
     }
   }
 
-  template <typename Stub, typename RequestType>
+  template <typename Stub>
   auto Invoke(
       std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
@@ -233,16 +237,17 @@ class RsGrpcClientInvocation<
 template <
     typename RequestType,
     typename ResponseType,
-    typename TransformedRequestType,
     typename Transform>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncWriter<RequestType>,
     ResponseType,
-    TransformedRequestType,
+    RequestType,
     Transform> : public RsGrpcTag {
  public:
   using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
+  using TransformedRequestType = typename decltype(
+      Transform::wrap(std::declval<RequestType>()))::first_type;
 
  public:
   RsGrpcClientInvocation(
@@ -361,16 +366,17 @@ class RsGrpcClientInvocation<
 template <
     typename RequestType,
     typename ResponseType,
-    typename TransformedRequestType,
     typename Transform>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
     ResponseType,
-    TransformedRequestType,
+    RequestType,
     Transform> : public RsGrpcTag {
  public:
   using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
+  using TransformedRequestType = typename decltype(
+      Transform::wrap(std::declval<RequestType>()))::first_type;
 
  private:
   /**
@@ -1435,26 +1441,26 @@ class RsGrpcServiceClient {
   /**
    * Unary rpc.
    */
-  template <typename ResponseType, typename TransformedRequestType>
+  template <typename ResponseType, typename RequestType>
   Publisher<
       typename detail::RsGrpcClientInvocation<
           grpc::ClientAsyncResponseReader<ResponseType>,
           ResponseType,
-          TransformedRequestType,
+          RequestType,
           Transform>::TransformedResponseType>
   Invoke(
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
-          const decltype(Transform::unwrap(
-              std::declval<TransformedRequestType>())) &request,
+          const RequestType &request,
           grpc::CompletionQueue *cq),
-      const TransformedRequestType &request,
+      const typename decltype(
+          Transform::wrap(std::declval<RequestType>()))::first_type &request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return InvokeImpl<
         grpc::ClientAsyncResponseReader<ResponseType>,
         ResponseType,
-        TransformedRequestType>(
+        RequestType>(
             invoke,
             request,
             std::move(context));
@@ -1463,27 +1469,27 @@ class RsGrpcServiceClient {
   /**
    * Server streaming.
    */
-  template <typename ResponseType, typename TransformedRequestType>
+  template <typename ResponseType, typename RequestType>
   Publisher<
       typename detail::RsGrpcClientInvocation<
           grpc::ClientAsyncReader<ResponseType>,
           ResponseType,
-          TransformedRequestType,
+          RequestType,
           Transform>::TransformedResponseType>
   Invoke(
       std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
-          const decltype(Transform::unwrap(
-              std::declval<TransformedRequestType>())) &request,
+          const RequestType &request,
           grpc::CompletionQueue *cq,
           void *tag),
-      const TransformedRequestType &request,
+      const typename decltype(
+          Transform::wrap(std::declval<RequestType>()))::first_type &request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return InvokeImpl<
         grpc::ClientAsyncReader<ResponseType>,
         ResponseType,
-        TransformedRequestType>(
+        RequestType>(
             invoke,
             request,
             std::move(context));
@@ -1492,15 +1498,12 @@ class RsGrpcServiceClient {
   /**
    * Client streaming.
    */
-  template <
-      typename RequestType,
-      typename ResponseType,
-      typename TransformedRequestType>
+  template <typename RequestType, typename ResponseType>
   Publisher<
       typename detail::RsGrpcClientInvocation<
           grpc::ClientAsyncWriter<RequestType>,
           ResponseType,
-          TransformedRequestType,
+          RequestType,
           Transform>::TransformedResponseType>
   Invoke(
       std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
@@ -1511,12 +1514,13 @@ class RsGrpcServiceClient {
           void *tag),
       // TODO(peck): This should not require a type erased Publisher (with
       // rxcpp it didn't). What to do?
-      Publisher<TransformedRequestType> &&requests,
+      Publisher<typename decltype(
+          Transform::wrap(std::declval<RequestType>()))::first_type> &&requests,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return InvokeImpl<
         grpc::ClientAsyncWriter<RequestType>,
         ResponseType,
-        TransformedRequestType>(
+        RequestType>(
             invoke,
             std::move(requests),
             std::move(context));
@@ -1525,15 +1529,12 @@ class RsGrpcServiceClient {
   /**
    * Bidi streaming
    */
-  template <
-      typename RequestType,
-      typename ResponseType,
-      typename TransformedRequestType>
+  template <typename RequestType, typename ResponseType>
   Publisher<
       typename detail::RsGrpcClientInvocation<
           grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
           ResponseType,
-          TransformedRequestType,
+          RequestType,
           Transform>::TransformedResponseType>
   Invoke(
       std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
@@ -1543,12 +1544,13 @@ class RsGrpcServiceClient {
           void *tag),
       // TODO(peck): This should not require a type erased Publisher (with
       // rxcpp it didn't). What to do?
-      Publisher<TransformedRequestType> &&requests,
+      Publisher<typename decltype(
+          Transform::wrap(std::declval<RequestType>()))::first_type> &&requests,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return InvokeImpl<
         grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
         ResponseType,
-        TransformedRequestType>(
+        RequestType>(
             invoke,
             std::move(requests),
             std::move(context));
@@ -1558,7 +1560,7 @@ class RsGrpcServiceClient {
   template <
       typename Reader,
       typename ResponseType,
-      typename TransformedRequestType,
+      typename RequestType,
       typename RequestOrPublisher,
       typename Invoke>
   auto InvokeImpl(
@@ -1568,14 +1570,14 @@ class RsGrpcServiceClient {
 
     using ClientInvocation =
         detail::RsGrpcClientInvocation<
-            Reader, ResponseType, TransformedRequestType, Transform>;
+            Reader, ResponseType, RequestType, Transform>;
 
     using ErasedPublisher =
         Publisher<
             typename detail::RsGrpcClientInvocation<
                 Reader,
                 ResponseType,
-                TransformedRequestType,
+                RequestType,
                 Transform>::TransformedResponseType>;
 
     return ErasedPublisher(MakePublisher([
