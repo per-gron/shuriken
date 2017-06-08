@@ -188,7 +188,7 @@ TEST_CASE("RsGrpc") {
   server_builder.RegisterService<TestService::AsyncService>()
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestDouble,
-           DoubleHandler)
+          &DoubleHandler)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestUnaryFail,
           &UnaryFailHandler)
@@ -501,8 +501,7 @@ TEST_CASE("RsGrpc") {
       run(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Empty())),
+              Empty()),
           Map([](Flatbuffer<TestResponse> &&response) {
             CHECK(response->data() == 0);
             return "ignored";
@@ -518,8 +517,7 @@ TEST_CASE("RsGrpc") {
       run(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Just(MakeTestRequest(1337)))),
+              Just(MakeTestRequest(1337))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 1337);
             return "ignored";
@@ -535,9 +533,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(test_client
           .Invoke(
               &TestService::Stub::AsyncSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Throw(
-                  std::runtime_error("test_error")))));
+              Throw(std::runtime_error("test_error"))));
       CHECK(ExceptionMessage(error) == "test_error");
     }
 
@@ -545,11 +541,9 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(test_client
           .Invoke(
               &TestService::Stub::AsyncSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Concat(
-                      Just(MakeTestRequest(0)),
-                      Throw(std::runtime_error("test_error"))))));
+              Concat(
+                  Just(MakeTestRequest(0)),
+                  Throw(std::runtime_error("test_error")))));
       CHECK(ExceptionMessage(error) == "test_error");
     }
 
@@ -557,9 +551,7 @@ TEST_CASE("RsGrpc") {
       run(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(13), MakeTestRequest(7)))),
+              Just(MakeTestRequest(13), MakeTestRequest(7))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 20);
             return "ignored";
@@ -575,8 +567,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncImmediatelyFailingSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Empty())),
+              Empty()),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -588,8 +579,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncImmediatelyFailingSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Just(MakeTestRequest(1337)))),
+              Just(MakeTestRequest(1337))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -601,8 +591,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(Pipe(
           test_client .Invoke(
               &TestService::Stub::AsyncFailingSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Just(MakeTestRequest(-1)))),
+              Just(MakeTestRequest(-1))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -614,9 +603,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(Pipe(
           test_client .Invoke(
               &TestService::Stub::AsyncFailingSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(0), MakeTestRequest(-1)))),
+              Just(MakeTestRequest(0), MakeTestRequest(-1))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -628,9 +615,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(Pipe(
           test_client .Invoke(
               &TestService::Stub::AsyncClientStreamNoResponse,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(0)))),
+              Just(MakeTestRequest(0))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -642,9 +627,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(Pipe(
           test_client .Invoke(
               &TestService::Stub::AsyncClientStreamTwoResponses,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(0)))),
+              Just(MakeTestRequest(0))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -656,9 +639,7 @@ TEST_CASE("RsGrpc") {
       auto call_0 = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(13), MakeTestRequest(7)))),
+              Just(MakeTestRequest(13), MakeTestRequest(7))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 20);
             return "ignored";
@@ -672,9 +653,7 @@ TEST_CASE("RsGrpc") {
       auto call_1 = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(10), MakeTestRequest(2)))),
+              Just(MakeTestRequest(10), MakeTestRequest(2))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 12);
             return "ignored";
@@ -692,9 +671,7 @@ TEST_CASE("RsGrpc") {
       auto call = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(13), MakeTestRequest(7)))),
+              Just(MakeTestRequest(13), MakeTestRequest(7))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 20);
             return "ignored";
@@ -714,8 +691,7 @@ TEST_CASE("RsGrpc") {
       run(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Empty())),
+              Empty()),
           Count(),
           Map([](int count) {
             CHECK(count == 0);
@@ -727,8 +703,7 @@ TEST_CASE("RsGrpc") {
       run(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Just(MakeTestRequest(1337)))),
+              Just(MakeTestRequest(1337))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 1337);
             return "ignored";
@@ -744,9 +719,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Throw(
-                  std::runtime_error("test_error")))));
+              Throw(std::runtime_error("test_error"))));
       CHECK(ExceptionMessage(error) == "test_error");
     }
 
@@ -754,11 +727,9 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(test_client
           .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Concat(
-                      Just(MakeTestRequest(0)),
-                      Throw(std::runtime_error("test_error"))))));
+              Concat(
+                  Just(MakeTestRequest(0)),
+                  Throw(std::runtime_error("test_error")))));
       CHECK(ExceptionMessage(error) == "test_error");
     }
 
@@ -766,9 +737,7 @@ TEST_CASE("RsGrpc") {
       run(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(10), MakeTestRequest(20)))),
+              Just(MakeTestRequest(10), MakeTestRequest(20))),
           Map([](Flatbuffer<TestResponse> response) {
             return response->data();
           }),
@@ -783,8 +752,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Empty())),
+              Empty()),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -796,8 +764,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Just(MakeTestRequest(1337)))),
+              Just(MakeTestRequest(1337))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -809,8 +776,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncFailingCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(Just(MakeTestRequest(-1)))),
+              Just(MakeTestRequest(-1))),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
@@ -823,9 +789,7 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncFailingCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(321), MakeTestRequest(-1)))),
+              Just(MakeTestRequest(321), MakeTestRequest(-1))),
           Map([&count](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 321);
             count++;
@@ -839,9 +803,7 @@ TEST_CASE("RsGrpc") {
       auto call_0 = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(10), MakeTestRequest(20)))),
+              Just(MakeTestRequest(10), MakeTestRequest(20))),
           Map([](Flatbuffer<TestResponse> response) {
             return response->data();
           }),
@@ -854,9 +816,7 @@ TEST_CASE("RsGrpc") {
       auto call_1 = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(1), MakeTestRequest(2)))),
+              Just(MakeTestRequest(1), MakeTestRequest(2))),
           Map([](Flatbuffer<TestResponse> response) {
             return response->data();
           }),
@@ -873,9 +833,7 @@ TEST_CASE("RsGrpc") {
       auto call = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              // TODO(peck): This type erasure should not be needed
-              Publisher<Flatbuffer<TestRequest>>(
-                  Just(MakeTestRequest(10), MakeTestRequest(20)))),
+              Just(MakeTestRequest(10), MakeTestRequest(20))),
           Map([](Flatbuffer<TestResponse> response) {
             return response->data();
           }),

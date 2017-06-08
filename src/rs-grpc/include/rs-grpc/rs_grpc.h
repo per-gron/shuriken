@@ -258,10 +258,14 @@ class RsGrpcClientInvocation<
 
  public:
   RsGrpcClientInvocation(
-      const Publisher<TransformedRequestType> &requests,
+      const RequestOrPublisher &requests,
       Subscriber<TransformedResponseType> &&subscriber)
       : requests_(requests),
-        subscriber_(std::move(subscriber)) {}
+        subscriber_(std::move(subscriber)) {
+    static_assert(
+        IsPublisher<RequestOrPublisher>,
+        "First parameter must be a Publisher");
+  }
 
   void operator()(bool success) override {
     if (sent_final_request_) {
@@ -348,8 +352,7 @@ class RsGrpcClientInvocation<
     }
   }
 
-  // TODO(peck): Consider avoiding type erasure here
-  Publisher<TransformedRequestType> requests_;
+  RequestOrPublisher requests_;
   ResponseType response_;
   std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> stream_;
   grpc::ClientContext context_;
@@ -459,16 +462,15 @@ class RsGrpcClientInvocation<
   };
 
  public:
-  template <typename Publisher>
   RsGrpcClientInvocation(
-      const Publisher &requests,
+      const RequestOrPublisher &requests,
       Subscriber<TransformedResponseType> &&subscriber)
       : reader_(
             [this] { reader_done_ = true; TryShutdown(); },
             std::move(subscriber)),
         requests_(requests) {
     static_assert(
-        IsPublisher<Publisher>,
+        IsPublisher<RequestOrPublisher>,
         "First parameter must be a Publisher");
   }
 
@@ -568,8 +570,7 @@ class RsGrpcClientInvocation<
   Reader reader_;
   bool reader_done_ = false;
 
-  // TODO(peck): Consider avoiding type erasure here
-  Publisher<TransformedRequestType> requests_;
+  RequestOrPublisher requests_;
   ResponseType response_;
   std::unique_ptr<
       grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> stream_;
