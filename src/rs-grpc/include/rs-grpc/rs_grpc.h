@@ -33,14 +33,13 @@ namespace detail {
 
 template <
     typename Transform,
-    typename ResponseType>
+    typename ResponseType,
+    typename SubscriberType>
 void HandleUnaryResponse(
     bool success,
     const grpc::Status &status,
     ResponseType &&response,
-    // TODO(peck): Consider avoiding type erasure here
-    Subscriber<typename decltype(Transform::wrap(
-        std::declval<ResponseType>()))::first_type> *subscriber) {
+    SubscriberType *subscriber) {
   // TODO(peck): What about backpressure?
   if (!success) {
     subscriber->OnError(std::make_exception_ptr(GrpcError(grpc::Status(
@@ -64,7 +63,8 @@ template <
     typename ResponseType,
     typename RequestType,
     typename Transform,
-    typename RequestOrPublisher>
+    typename RequestOrPublisher,
+    typename SubscriberType>
 class RsGrpcClientInvocation;
 
 /**
@@ -74,24 +74,31 @@ template <
     typename ResponseType,
     typename RequestType,
     typename Transform,
-    typename RequestOrPublisher>
+    typename RequestOrPublisher,
+    typename SubscriberType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncResponseReader<ResponseType>,
     ResponseType,
     RequestType,
     Transform,
-    RequestOrPublisher> : public RsGrpcTag {
+    RequestOrPublisher,
+    SubscriberType> : public RsGrpcTag {
  public:
   using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
   using TransformedRequestType = typename decltype(
       Transform::wrap(std::declval<RequestType>()))::first_type;
 
+  template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
       const TransformedRequestType &request,
-      Subscriber<TransformedResponseType> &&subscriber)
+      InnerSubscriberType &&subscriber)
       : request_(request),
-        subscriber_(std::move(subscriber)) {}
+        subscriber_(std::forward<InnerSubscriberType>(subscriber)) {
+    static_assert(
+        IsSubscriber<typename std::decay<InnerSubscriberType>::type>,
+        "Second parameter must be a Subscriber");
+  }
 
   void operator()(bool success) override {
     HandleUnaryResponse<Transform>(
@@ -121,8 +128,7 @@ class RsGrpcClientInvocation<
   TransformedRequestType request_;
   grpc::ClientContext context_;
   ResponseType response_;
-  // TODO(peck): Consider avoiding type erasure here
-  Subscriber<TransformedResponseType> subscriber_;
+  SubscriberType subscriber_;
   grpc::Status status_;
 };
 
@@ -133,24 +139,31 @@ template <
     typename ResponseType,
     typename RequestType,
     typename Transform,
-    typename RequestOrPublisher>
+    typename RequestOrPublisher,
+    typename SubscriberType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncReader<ResponseType>,
     ResponseType,
     RequestType,
     Transform,
-    RequestOrPublisher> : public RsGrpcTag {
+    RequestOrPublisher,
+    SubscriberType> : public RsGrpcTag {
  public:
   using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
   using TransformedRequestType = typename decltype(
       Transform::wrap(std::declval<RequestType>()))::first_type;
 
+  template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
       const TransformedRequestType &request,
-      Subscriber<TransformedResponseType> &&subscriber)
+      InnerSubscriberType &&subscriber)
       : request_(request),
-        subscriber_(std::move(subscriber)) {}
+        subscriber_(std::forward<InnerSubscriberType>(subscriber)) {
+    static_assert(
+        IsSubscriber<typename std::decay<InnerSubscriberType>::type>,
+        "Second parameter must be a Subscriber");
+  }
 
   void operator()(bool success) override {
     switch (state_) {
@@ -226,8 +239,7 @@ class RsGrpcClientInvocation<
 
   State state_ = State::INIT;
   ResponseType response_;
-  // TODO(peck): Consider avoiding type erasure here
-  Subscriber<TransformedResponseType> subscriber_;
+  SubscriberType subscriber_;
   grpc::Status status_;
   std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> stream_;
 };
@@ -243,13 +255,15 @@ template <
     typename RequestType,
     typename ResponseType,
     typename Transform,
-    typename RequestOrPublisher>
+    typename RequestOrPublisher,
+    typename SubscriberType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncWriter<RequestType>,
     ResponseType,
     RequestType,
     Transform,
-    RequestOrPublisher> : public RsGrpcTag {
+    RequestOrPublisher,
+    SubscriberType> : public RsGrpcTag {
  public:
   using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
@@ -257,14 +271,18 @@ class RsGrpcClientInvocation<
       Transform::wrap(std::declval<RequestType>()))::first_type;
 
  public:
+  template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
       const RequestOrPublisher &requests,
-      Subscriber<TransformedResponseType> &&subscriber)
+      InnerSubscriberType &&subscriber)
       : requests_(requests),
-        subscriber_(std::move(subscriber)) {
+        subscriber_(std::forward<InnerSubscriberType>(subscriber)) {
     static_assert(
         IsPublisher<RequestOrPublisher>,
         "First parameter must be a Publisher");
+    static_assert(
+        IsSubscriber<typename std::decay<InnerSubscriberType>::type>,
+        "Second parameter must be a Subscriber");
   }
 
   void operator()(bool success) override {
@@ -356,8 +374,7 @@ class RsGrpcClientInvocation<
   ResponseType response_;
   std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> stream_;
   grpc::ClientContext context_;
-  // TODO(peck): Consider avoiding type erasure here
-  Subscriber<TransformedResponseType> subscriber_;
+  SubscriberType subscriber_;
 
   std::exception_ptr request_stream_error_;
   bool sent_final_request_ = false;
@@ -377,13 +394,15 @@ template <
     typename RequestType,
     typename ResponseType,
     typename Transform,
-    typename RequestOrPublisher>
+    typename RequestOrPublisher,
+    typename SubscriberType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
     ResponseType,
     RequestType,
     Transform,
-    RequestOrPublisher> : public RsGrpcTag {
+    RequestOrPublisher,
+    SubscriberType> : public RsGrpcTag {
  public:
   using TransformedResponseType = typename decltype(
       Transform::wrap(std::declval<ResponseType>()))::first_type;
@@ -398,11 +417,12 @@ class RsGrpcClientInvocation<
    */
   class Reader : public RsGrpcTag {
    public:
+    template <typename InnerSubscriberType>
     Reader(
         const std::function<void ()> &shutdown,
-        Subscriber<TransformedResponseType> &&subscriber)
+        InnerSubscriberType &&subscriber)
         : shutdown_(shutdown),
-          subscriber_(std::move(subscriber)) {}
+          subscriber_(std::forward<InnerSubscriberType>(subscriber)) {}
 
     void Invoke(
         grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream) {
@@ -456,22 +476,25 @@ class RsGrpcClientInvocation<
     // that this is not called when there is an outstanding async operation.
     std::function<void ()> shutdown_;
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream_ = nullptr;
-    // TODO(peck): Consider avoiding type erasure here
-    Subscriber<TransformedResponseType> subscriber_;
+    SubscriberType subscriber_;
     ResponseType response_;
   };
 
  public:
+  template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
       const RequestOrPublisher &requests,
-      Subscriber<TransformedResponseType> &&subscriber)
+      InnerSubscriberType &&subscriber)
       : reader_(
             [this] { reader_done_ = true; TryShutdown(); },
-            std::move(subscriber)),
+            std::forward<SubscriberType>(subscriber)),
         requests_(requests) {
     static_assert(
         IsPublisher<RequestOrPublisher>,
         "First parameter must be a Publisher");
+    static_assert(
+        IsSubscriber<typename std::decay<InnerSubscriberType>::type>,
+        "Second parameter must be a Subscriber");
   }
 
   void operator()(bool success) override {
@@ -1548,27 +1571,25 @@ class RsGrpcServiceClient {
       RequestOrPublisher &&request_or_publisher,
       grpc::ClientContext &&context = grpc::ClientContext()) {
 
-    using ClientInvocation =
-        detail::RsGrpcClientInvocation<
-            Reader,
-            ResponseType,
-            RequestType,
-            Transform,
-            typename std::decay<RequestOrPublisher>::type>;
-    using TransformedResponseType =
-        typename ClientInvocation::TransformedResponseType;
-    using ErasedPublisher = Publisher<TransformedResponseType>;
-
-    return ErasedPublisher(MakePublisher([
+    return MakePublisher([
         this,
         request_or_publisher =
             std::forward<RequestOrPublisher>(request_or_publisher),
         invoke](auto &&subscriber) {
+      using ClientInvocation =
+          detail::RsGrpcClientInvocation<
+              Reader,
+              ResponseType,
+              RequestType,
+              Transform,
+              typename std::decay<RequestOrPublisher>::type,
+              typename std::decay<decltype(subscriber)>::type>;
+
       auto call = new ClientInvocation(
           request_or_publisher,
           std::forward<decltype(subscriber)>(subscriber));
       return call->Invoke(invoke, stub_.get(), &cq_);
-    }));
+    });
   }
 
   std::unique_ptr<Stub> stub_;
