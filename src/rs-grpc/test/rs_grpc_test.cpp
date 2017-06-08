@@ -249,7 +249,7 @@ TEST_CASE("RsGrpc") {
             [&runloop](std::exception_ptr error) {
               runloop.Shutdown();
               CHECK(!"request should not fail");
-              printf("Got exception: %s\n", exceptionMessage(error).c_str());
+              printf("Got exception: %s\n", ExceptionMessage(error).c_str());
             },
             [&runloop]() {
               runloop.Shutdown();
@@ -304,7 +304,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "unary_fail");
+      CHECK(ExceptionMessage(error) == "unary_fail");
     }
 
     SECTION("failed rpc because of no response") {
@@ -315,7 +315,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "No response");
+      CHECK(ExceptionMessage(error) == "No response");
     }
 
     SECTION("failed rpc because of two responses") {
@@ -327,7 +327,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "Too many responses");
+      CHECK(ExceptionMessage(error) == "Too many responses");
     }
 
     SECTION("delayed") {
@@ -438,7 +438,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "repeat_fail");
+      CHECK(ExceptionMessage(error) == "repeat_fail");
     }
 
     SECTION("one response then fail") {
@@ -450,7 +450,7 @@ TEST_CASE("RsGrpc") {
             count++;
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "repeat_fail");
+      CHECK(ExceptionMessage(error) == "repeat_fail");
       CHECK(count == 1);
     }
 
@@ -463,7 +463,7 @@ TEST_CASE("RsGrpc") {
             count++;
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "repeat_fail");
+      CHECK(ExceptionMessage(error) == "repeat_fail");
       CHECK(count == 2);
     }
 
@@ -538,7 +538,7 @@ TEST_CASE("RsGrpc") {
               // TODO(peck): This type erasure should not be needed
               Publisher<Flatbuffer<TestRequest>>(Throw(
                   std::runtime_error("test_error")))));
-      CHECK(exceptionMessage(error) == "test_error");
+      CHECK(ExceptionMessage(error) == "test_error");
     }
 
     SECTION("stream failed after one message") {
@@ -550,7 +550,7 @@ TEST_CASE("RsGrpc") {
                   Concat(
                       Just(MakeTestRequest(0)),
                       Throw(std::runtime_error("test_error"))))));
-      CHECK(exceptionMessage(error) == "test_error");
+      CHECK(ExceptionMessage(error) == "test_error");
     }
 
     SECTION("two message") {
@@ -581,7 +581,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "sum_fail");
+      CHECK(ExceptionMessage(error) == "sum_fail");
     }
 
     SECTION("message then immediately fail") {
@@ -594,7 +594,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "sum_fail");
+      CHECK(ExceptionMessage(error) == "sum_fail");
     }
 
     SECTION("fail on first message") {
@@ -607,7 +607,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "sum_fail");
+      CHECK(ExceptionMessage(error) == "sum_fail");
     }
 
     SECTION("fail on second message") {
@@ -621,7 +621,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "sum_fail");
+      CHECK(ExceptionMessage(error) == "sum_fail");
     }
 
     SECTION("fail because of no response") {
@@ -635,7 +635,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "No response");
+      CHECK(ExceptionMessage(error) == "No response");
     }
 
     SECTION("fail because of two responses") {
@@ -649,7 +649,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "Too many responses");
+      CHECK(ExceptionMessage(error) == "Too many responses");
     }
 
     SECTION("two calls") {
@@ -747,7 +747,7 @@ TEST_CASE("RsGrpc") {
               // TODO(peck): This type erasure should not be needed
               Publisher<Flatbuffer<TestRequest>>(Throw(
                   std::runtime_error("test_error")))));
-      CHECK(exceptionMessage(error) == "test_error");
+      CHECK(ExceptionMessage(error) == "test_error");
     }
 
     SECTION("stream failed after one message") {
@@ -759,7 +759,7 @@ TEST_CASE("RsGrpc") {
                   Concat(
                       Just(MakeTestRequest(0)),
                       Throw(std::runtime_error("test_error"))))));
-      CHECK(exceptionMessage(error) == "test_error");
+      CHECK(ExceptionMessage(error) == "test_error");
     }
 
     SECTION("two message") {
@@ -789,7 +789,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "cumulative_sum_fail");
+      CHECK(ExceptionMessage(error) == "cumulative_sum_fail");
     }
 
     SECTION("message then immediately fail") {
@@ -802,8 +802,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      // TODO(peck): CamelCaseify the exceptionMessage method
-      CHECK(exceptionMessage(error) == "cumulative_sum_fail");
+      CHECK(ExceptionMessage(error) == "cumulative_sum_fail");
     }
 
     SECTION("fail on first message") {
@@ -816,7 +815,7 @@ TEST_CASE("RsGrpc") {
             CHECK(!"should not happen");
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "cumulative_sum_fail");
+      CHECK(ExceptionMessage(error) == "cumulative_sum_fail");
     }
 
     SECTION("fail on second message") {
@@ -832,7 +831,7 @@ TEST_CASE("RsGrpc") {
             count++;
             return "unused";
           })));
-      CHECK(exceptionMessage(error) == "cumulative_sum_fail");
+      CHECK(ExceptionMessage(error) == "cumulative_sum_fail");
       CHECK(count == 1);
     }
 

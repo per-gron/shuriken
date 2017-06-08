@@ -708,7 +708,7 @@ class RsGrpcServerInvocation<
             response_ = std::move(response);
           },
           [this](std::exception_ptr &&error) {
-            stream_.FinishWithError(exceptionToStatus(error), this);
+            stream_.FinishWithError(ExceptionToStatus(error), this);
           },
           [this]() {
             if (num_responses_ == 1) {
@@ -836,7 +836,7 @@ class RsGrpcServerInvocation<
               RunEnqueuedOperation();
             },
             [this](std::exception_ptr &&error) {
-              enqueued_finish_status_ = exceptionToStatus(error);
+              enqueued_finish_status_ = ExceptionToStatus(error);
               enqueued_finish_ = true;
               RunEnqueuedOperation();
             },
@@ -1091,7 +1091,7 @@ class RsGrpcServerInvocation<
     if (finished_ && state_ == State::STREAM_ENDED) {
       state_ = State::SENT_RESPONSE;
       if (response_error_) {
-        reader_.FinishWithError(exceptionToStatus(response_error_), this);
+        reader_.FinishWithError(ExceptionToStatus(response_error_), this);
       } else if (num_responses_ == 1) {
         reader_.Finish(
             Transform::unwrap(response_),
@@ -1186,7 +1186,7 @@ class RsGrpcServerInvocation<
      * already finished, this is a no-op.
      */
     void OnError(const std::exception_ptr &error) {
-      status_ = exceptionToStatus(error);
+      status_ = ExceptionToStatus(error);
       enqueued_finish_ = true;
       RunEnqueuedOperation();
     }

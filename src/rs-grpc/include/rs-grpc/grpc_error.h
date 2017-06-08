@@ -41,7 +41,7 @@ class GrpcError : public std::runtime_error {
   const grpc::Status _status;
 };
 
-inline std::string exceptionMessage(const std::exception_ptr &error) {
+inline std::string ExceptionMessage(const std::exception_ptr &error) {
   try {
     std::rethrow_exception(error);
   } catch (const std::exception &exception) {
@@ -51,13 +51,13 @@ inline std::string exceptionMessage(const std::exception_ptr &error) {
   }
 }
 
-inline grpc::Status exceptionToStatus(const std::exception_ptr &error) {
+inline grpc::Status ExceptionToStatus(const std::exception_ptr &error) {
   if (!error) {
     return grpc::Status::OK;
   } else {
     // TODO(peck): Make it possible to respond with other errors
     // than INTERNAL (by catching GrpcErrors and reporting that)
-    const auto what = exceptionMessage(error);
+    const auto what = ExceptionMessage(error);
     return grpc::Status(grpc::INTERNAL, what);
   }
 }
