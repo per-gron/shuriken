@@ -343,7 +343,6 @@ TEST_CASE("RsGrpc") {
       run(call);
     }
 
-#if 0  // TODO(peck)
     SECTION("two calls") {
       auto call_a = test_client.Invoke(
           &TestService::Stub::AsyncDouble, MakeTestRequest(123));
@@ -375,7 +374,6 @@ TEST_CASE("RsGrpc") {
             return "ignored";
           }))));
     }
-#endif
   }
 
   SECTION("server streaming") {
@@ -406,7 +404,6 @@ TEST_CASE("RsGrpc") {
           })));
     }
 
-#if 0  // TODO(peck)
     SECTION("two responses") {
       auto responses = test_client.Invoke(
           &TestService::Stub::AsyncRepeat, MakeTestRequest(2));
@@ -432,7 +429,6 @@ TEST_CASE("RsGrpc") {
 
       run(Merge<const char *>(check_count, check_sum));
     }
-#endif
 
     SECTION("no responses then fail") {
       auto error = run_expect_error(Pipe(
@@ -471,35 +467,33 @@ TEST_CASE("RsGrpc") {
       CHECK(count == 2);
     }
 
-#if 0  // TODO(peck)
     SECTION("two calls") {
-      auto responses_1 = test_client
-          .Invoke(
-              &TestService::Stub::AsyncRepeat, MakeTestRequest(2))
-          .map([](Flatbuffer<TestResponse> response) {
+      auto responses_1 = Pipe(
+          test_client.Invoke(
+              &TestService::Stub::AsyncRepeat, MakeTestRequest(2)),
+          Map([](Flatbuffer<TestResponse> response) {
             return response->data();
-          })
-          .sum()
-          .map([](int sum) {
+          }),
+          Sum(),
+          Map([](int sum) {
             CHECK(sum == 3);
             return "ignored";
-          });
+          }));
 
-      auto responses_2 = test_client
-          .Invoke(
-              &TestService::Stub::AsyncRepeat, MakeTestRequest(3))
-          .map([](Flatbuffer<TestResponse> response) {
+      auto responses_2 = Pipe(
+          test_client.Invoke(
+              &TestService::Stub::AsyncRepeat, MakeTestRequest(3)),
+          Map([](Flatbuffer<TestResponse> response) {
             return response->data();
-          })
-          .sum()
-          .map([](int sum) {
+          }),
+          Sum(),
+          Map([](int sum) {
             CHECK(sum == 6);
             return "ignored";
-          });
+          }));
 
-      run(responses_1.zip(responses_2));
+      run(Merge<const char *>(responses_1, responses_2));
     }
-#endif
   }
 
   SECTION("client streaming") {
@@ -658,63 +652,61 @@ TEST_CASE("RsGrpc") {
       CHECK(exceptionMessage(error) == "Too many responses");
     }
 
-#if 0  // TODO(peck)
     SECTION("two calls") {
-      auto call_0 = test_client
-          .Invoke(
+      auto call_0 = Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncSum,
-              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(13), MakeTestRequest(7)))
-          .map(
-              [](Flatbuffer<TestResponse> response) {
-                CHECK(response->data() == 20);
-                return "ignored";
-              })
-          .count()
-          .map([](int count) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(
+                  Just(MakeTestRequest(13), MakeTestRequest(7)))),
+          Map([](Flatbuffer<TestResponse> response) {
+            CHECK(response->data() == 20);
+            return "ignored";
+          }),
+          Count(),
+          Map([](int count) {
             CHECK(count == 1);
             return "ignored";
-          });
+          }));
 
-      auto call_1 = test_client
-          .Invoke(
+      auto call_1 = Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncSum,
-              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(10), MakeTestRequest(2)))
-          .map(
-              [](Flatbuffer<TestResponse> response) {
-                CHECK(response->data() == 12);
-                return "ignored";
-              })
-          .count()
-          .map([](int count) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(
+                  Just(MakeTestRequest(10), MakeTestRequest(2)))),
+          Map([](Flatbuffer<TestResponse> response) {
+            CHECK(response->data() == 12);
+            return "ignored";
+          }),
+          Count(),
+          Map([](int count) {
             CHECK(count == 1);
             return "ignored";
-          });
+          }));
 
-      run(call_0.zip(call_1));
+      run(Merge<const char *>(call_0, call_1));
     }
 
     SECTION("same call twice") {
-      auto call = test_client
-          .Invoke(
+      auto call = Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncSum,
-              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(13), MakeTestRequest(7)))
-          .map(
-              [](Flatbuffer<TestResponse> response) {
-                CHECK(response->data() == 20);
-                return "ignored";
-              })
-          .count()
-          .map([](int count) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(
+                  Just(MakeTestRequest(13), MakeTestRequest(7)))),
+          Map([](Flatbuffer<TestResponse> response) {
+            CHECK(response->data() == 20);
+            return "ignored";
+          }),
+          Count(),
+          Map([](int count) {
             CHECK(count == 1);
             return "ignored";
-          });
+          }));
 
-      run(call.zip(call));
+      run(Merge<const char *>(call, call));
     }
-#endif
   }
 
   SECTION("bidi streaming") {
@@ -844,57 +836,58 @@ TEST_CASE("RsGrpc") {
       CHECK(count == 1);
     }
 
-#if 0  // TODO(peck)
     SECTION("two calls") {
-      auto call_0 = test_client
-          .Invoke(
+      auto call_0 = Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(10), MakeTestRequest(20)))
-          .map([](Flatbuffer<TestResponse> response) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(
+                  Just(MakeTestRequest(10), MakeTestRequest(20)))),
+          Map([](Flatbuffer<TestResponse> response) {
             return response->data();
-          })
-          .sum()
-          .map([](int sum) {
+          }),
+          Sum(),
+          Map([](int sum) {
             CHECK(sum == 40); // (10) + (10 + 20)
             return "ignored";
-          });
+          }));
 
-      auto call_1 = test_client
-          .Invoke(
+      auto call_1 = Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(1), MakeTestRequest(2)))
-          .map([](Flatbuffer<TestResponse> response) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(
+                  Just(MakeTestRequest(1), MakeTestRequest(2)))),
+          Map([](Flatbuffer<TestResponse> response) {
             return response->data();
-          })
-          .sum()
-          .map([](int sum) {
+          }),
+          Sum(),
+          Map([](int sum) {
             CHECK(sum == 4); // (1) + (1 + 2)
             return "ignored";
-          });
+          }));
 
-      run(call_0.zip(call_1));
+      run(Merge<const char *>(call_0, call_1));
     }
 
     SECTION("same call twice") {
-      auto call = test_client
-          .Invoke(
+      auto call = Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(10), MakeTestRequest(20)))
-          .map([](Flatbuffer<TestResponse> response) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(
+                  Just(MakeTestRequest(10), MakeTestRequest(20)))),
+          Map([](Flatbuffer<TestResponse> response) {
             return response->data();
-          })
-          .sum()
-          .map([](int sum) {
+          }),
+          Sum(),
+          Map([](int sum) {
             CHECK(sum == 40); // (10) + (10 + 20)
             return "ignored";
-          });
+          }));
 
-      run(call.zip(call));
+      run(Merge<const char *>(call, call));
     }
-#endif
   }
 
   server.Shutdown();
