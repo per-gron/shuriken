@@ -86,7 +86,7 @@ auto RepeatThenFailHandler(Flatbuffer<TestRequest> request) {
 
 auto SumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
   return Pipe(
-      std::move(requests),  // TODO(peck): Why is this move necessary?
+      requests,
       Map([](Flatbuffer<TestRequest> request) {
         return request->data();
       }),
@@ -152,28 +152,30 @@ auto CumulativeSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
     Map(MakeTestResponse));
 }
 
-#if 0  // TODO(peck)
 auto ImmediatelyFailingCumulativeSumHandler(
-    rxcpp::observable<Flatbuffer<TestRequest>> requests) {
+    Publisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
-  requests.subscribe([](auto) {});
+  requests.Subscribe(MakeSubscriber(
+      [](auto &&) {},
+      [](std::exception_ptr &&) {},
+      [] {}));
 
-  return rxcpp::observable<>::error<Flatbuffer<TestResponse>>(
-      std::runtime_error("cumulative_sum_fail"));
+  return Throw(std::runtime_error("cumulative_sum_fail"));
 }
 
 auto FailingCumulativeSumHandler(
-    rxcpp::observable<Flatbuffer<TestRequest>> requests) {
-  return CumulativeSumHandler(requests.map([](Flatbuffer<TestRequest> request) {
-    if (request->data() == -1) {
-      throw std::runtime_error("cumulative_sum_fail");
-    }
-    return request;
-  }));
+    Publisher<Flatbuffer<TestRequest>> requests) {
+  return CumulativeSumHandler(Publisher<Flatbuffer<TestRequest>>(Pipe(
+      requests,
+      Map([](Flatbuffer<TestRequest> request) {
+        if (request->data() == -1) {
+          throw std::runtime_error("cumulative_sum_fail");
+        }
+        return request;
+      }))));
 }
 
-#endif
 }  // anonymous namespace
 
 TEST_CASE("RsGrpc") {
@@ -220,15 +222,12 @@ TEST_CASE("RsGrpc") {
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestCumulativeSum,
           &CumulativeSumHandler)
-  ;
-#if 0  // TODO(peck)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestImmediatelyFailingCumulativeSum,
           &ImmediatelyFailingCumulativeSumHandler)
       .RegisterMethod<FlatbufferRefTransform>(
           &TestService::AsyncService::RequestFailingCumulativeSum,
           &FailingCumulativeSumHandler);
-#endif
 
   RsGrpcClient runloop;
 
@@ -732,31 +731,30 @@ TEST_CASE("RsGrpc") {
           })));
     }
 
-#if 0  // TODO(peck)
     SECTION("one message") {
-      run(test_client
-          .Invoke(
+      run(Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(1337)))
-          .map(
-              [](Flatbuffer<TestResponse> response) {
-                CHECK(response->data() == 1337);
-                return "ignored";
-              })
-          .count()
-          .map([](int count) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(Just(MakeTestRequest(1337)))),
+          Map([](Flatbuffer<TestResponse> response) {
+            CHECK(response->data() == 1337);
+            return "ignored";
+          }),
+          Count(),
+          Map([](int count) {
             CHECK(count == 1);
             return "ignored";
-          }));
+          })));
     }
 
     SECTION("immediately failed stream") {
-      auto error = run_expect_error(test_client
-          .Invoke(
+      auto error = run_expect_error(
+          test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              rxcpp::observable<>::error<Flatbuffer<TestRequest>>(
-                  std::runtime_error("test_error"))));
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(Throw(
+                  std::runtime_error("test_error")))));
       CHECK(exceptionMessage(error) == "test_error");
     }
 
@@ -764,83 +762,89 @@ TEST_CASE("RsGrpc") {
       auto error = run_expect_error(test_client
           .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              rxcpp::observable<>
-                  ::error<Flatbuffer<TestRequest>>(
-                      std::runtime_error("test_error"))
-                  .start_with(MakeTestRequest(0))));
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(
+                  Concat(
+                      Just(MakeTestRequest(0)),
+                      Throw(std::runtime_error("test_error"))))));
       CHECK(exceptionMessage(error) == "test_error");
     }
 
     SECTION("two message") {
-      run(test_client
-          .Invoke(
+      run(Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
-              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(10), MakeTestRequest(20)))
-          .map([](Flatbuffer<TestResponse> response) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(
+                  Just(MakeTestRequest(10), MakeTestRequest(20)))),
+          Map([](Flatbuffer<TestResponse> response) {
             return response->data();
-          })
-          .sum()
-          .map([](int sum) {
+          }),
+          Sum(),
+          Map([](int sum) {
             CHECK(sum == 40); // (10) + (10 + 20)
             return "ignored";
-          }));
+          })));
     }
 
     SECTION("no messages then fail") {
-      auto error = run_expect_error(test_client
-          .Invoke(
+      auto error = run_expect_error(Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
-              rxcpp::observable<>::empty<Flatbuffer<TestRequest>>())
-          .map([](Flatbuffer<TestResponse> response) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(Empty())),
+          Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
-          }));
+          })));
       CHECK(exceptionMessage(error) == "cumulative_sum_fail");
     }
 
     SECTION("message then immediately fail") {
-      auto error = run_expect_error(test_client
-          .Invoke(
+      auto error = run_expect_error(Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
-              rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(1337)))
-          .map([](Flatbuffer<TestResponse> response) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(Just(MakeTestRequest(1337)))),
+          Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
-          }));
+          })));
+      // TODO(peck): CamelCaseify the exceptionMessage method
       CHECK(exceptionMessage(error) == "cumulative_sum_fail");
     }
 
     SECTION("fail on first message") {
-      auto error = run_expect_error(test_client
-          .Invoke(
+      auto error = run_expect_error(Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncFailingCumulativeSum,
-              rxcpp::observable<>::just<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(-1)))
-          .map([](Flatbuffer<TestResponse> response) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(Just(MakeTestRequest(-1)))),
+          Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not happen");
             return "unused";
-          }));
+          })));
       CHECK(exceptionMessage(error) == "cumulative_sum_fail");
     }
 
     SECTION("fail on second message") {
       int count = 0;
-      auto error = run_expect_error(test_client
-          .Invoke(
+      auto error = run_expect_error(Pipe(
+          test_client.Invoke(
               &TestService::Stub::AsyncFailingCumulativeSum,
-              rxcpp::observable<>::from<Flatbuffer<TestRequest>>(
-                  MakeTestRequest(321), MakeTestRequest(-1)))
-          .map([&count](Flatbuffer<TestResponse> response) {
+              // TODO(peck): This type erasure should not be needed
+              Publisher<Flatbuffer<TestRequest>>(
+                  Just(MakeTestRequest(321), MakeTestRequest(-1)))),
+          Map([&count](Flatbuffer<TestResponse> response) {
             CHECK(response->data() == 321);
             count++;
             return "unused";
-          }));
+          })));
       CHECK(exceptionMessage(error) == "cumulative_sum_fail");
       CHECK(count == 1);
     }
 
+#if 0  // TODO(peck)
     SECTION("two calls") {
       auto call_0 = test_client
           .Invoke(
