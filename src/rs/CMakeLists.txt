@@ -39,6 +39,7 @@ add_library(rs
   include/rs/take_while.h
   include/rs/throw.h
   include/rs/zip.h
+  src/subscriber.cpp
   src/subscription.cpp)
 target_include_directories(rs PUBLIC include)
 set_target_properties(rs PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})

@@ -97,10 +97,7 @@ auto SumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
 auto ImmediatelyFailingSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
-  requests.Subscribe(MakeSubscriber(
-      [](auto &&) {},
-      [](std::exception_ptr &&) {},
-      [] {}));
+  requests.Subscribe(MakeSubscriber());
 
   return Throw(std::runtime_error("sum_fail"));
 }
@@ -120,10 +117,7 @@ auto ClientStreamNoResponseHandler(
     Publisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
-  requests.Subscribe(MakeSubscriber(
-      [](auto &&) {},
-      [](std::exception_ptr &&) {},
-      [] {}));
+  requests.Subscribe(MakeSubscriber());
 
   return Empty();
 }
@@ -132,10 +126,7 @@ auto ClientStreamTwoResponsesHandler(
     Publisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
-  requests.Subscribe(MakeSubscriber(
-      [](auto &&) {},
-      [](std::exception_ptr &&) {},
-      [] {}));
+  requests.Subscribe(MakeSubscriber());
 
   return Just(
       MakeTestResponse(1),
@@ -156,10 +147,7 @@ auto ImmediatelyFailingCumulativeSumHandler(
     Publisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
-  requests.Subscribe(MakeSubscriber(
-      [](auto &&) {},
-      [](std::exception_ptr &&) {},
-      [] {}));
+  requests.Subscribe(MakeSubscriber());
 
   return Throw(std::runtime_error("cumulative_sum_fail"));
 }

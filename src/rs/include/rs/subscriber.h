@@ -47,22 +47,20 @@ using IsRvalue = typename std::enable_if<
 
 namespace detail {
 
-template <typename Needle, int Index, typename ...Ts>
-struct GetTypeIndex;
+class EmptySubscriber : public SubscriberBase {
+ public:
+  EmptySubscriber() = default;
 
-template <typename Needle, int Index>
-struct GetTypeIndex<Needle, Index> {
-  static constexpr int kIndex = -1;
-};
+  EmptySubscriber(const EmptySubscriber &) = delete;
+  EmptySubscriber& operator=(const EmptySubscriber &) = delete;
 
-template <typename Needle, int Index, typename ...Ts>
-struct GetTypeIndex<Needle, Index, Needle, Ts...> {
-  static constexpr int kIndex = Index;
-};
+  EmptySubscriber(EmptySubscriber &&) = default;
+  EmptySubscriber& operator=(EmptySubscriber &&) = default;
 
-template <typename Needle, int Index, typename T, typename ...Ts>
-struct GetTypeIndex<Needle, Index, T, Ts...> {
-  static constexpr int kIndex = GetTypeIndex<Needle, Index + 1, Ts...>::kIndex;
+  template <typename T>
+  void OnNext(T &&t) {}
+  void OnError(std::exception_ptr &&error);
+  void OnComplete();
 };
 
 template <typename OnNextCb, typename OnErrorCb, typename OnCompleteCb>
@@ -348,6 +346,10 @@ class Subscriber<T> : public SubscriberBase {
 
   std::unique_ptr<Eraser> eraser_;
 };
+
+inline detail::EmptySubscriber MakeSubscriber() {
+  return detail::EmptySubscriber();
+}
 
 template <typename OnNextCb, typename OnErrorCb, typename OnCompleteCb>
 auto MakeSubscriber(
