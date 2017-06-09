@@ -100,17 +100,18 @@ class RsGrpcClientInvocation<
           grpc::CompletionQueue *cq),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    // TODO(peck): Handle cancellation
-    // TODO(peck): Don't hold weak unsafe reference to this
     return MakeSubscription(
-        [this, invoke, stub, cq, self = self](ElementCount count) mutable {
+        [invoke, stub, cq, self](ElementCount count) mutable {
           if (self && count > 0) {
-            self_ = std::move(self);
-            auto stream = (stub->*invoke)(&context_, request_, cq);
-            stream->Finish(&response_, &status_, this);
+            auto &me = *self;
+            me.self_ = std::move(self);
+            auto stream = (stub->*invoke)(&me.context_, me.request_, cq);
+            stream->Finish(&me.response_, &me.status_, &me);
           }
         },
-        [] { /* cancel */ });
+        [] {
+          // TODO(peck): Handle cancellation
+        });
   }
 
  private:
