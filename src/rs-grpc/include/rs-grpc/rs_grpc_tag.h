@@ -25,27 +25,47 @@ class RsGrpcTag {
 
   virtual void operator()(bool success) = 0;
 
+  static void Invoke(void *got_tag, bool success) {
+    detail::RsGrpcTag *tag = reinterpret_cast<detail::RsGrpcTag *>(got_tag);
+    (*tag)(success);
+  }
+
   /**
    * Block and process one asynchronous event on the given CompletionQueue.
    *
    * Returns false if the event queue is shutting down.
    */
-  static bool processOneEvent(grpc::CompletionQueue *cq) {
+  static bool ProcessOneEvent(grpc::CompletionQueue *cq) {
     void *got_tag;
     bool success = false;
     if (!cq->Next(&got_tag, &success)) {
       // Shutting down
       return false;
+    } else {
+      Invoke(got_tag, success);
+      return true;
     }
-
-    detail::RsGrpcTag *tag = reinterpret_cast<detail::RsGrpcTag *>(got_tag);
-    (*tag)(success);
-
-    return true;
   }
 
-  static void processAllEvents(grpc::CompletionQueue *cq) {
-    while (processOneEvent(cq)) {}
+  /**
+   * Block and process one asynchronous event, with timeout.
+   *
+   * Returns false if the event queue is shutting down.
+   */
+  template <typename T>
+  static grpc::CompletionQueue::NextStatus ProcessOneEvent(
+      grpc::CompletionQueue *cq, const T& deadline) {
+    void *got_tag;
+    bool success = false;
+    auto next_status = cq->AsyncNext(&got_tag, &success, deadline);
+    if (next_status == grpc::CompletionQueue::GOT_EVENT) {
+      Invoke(got_tag, success);
+    }
+    return next_status;
+  }
+
+  static void ProcessAllEvents(grpc::CompletionQueue *cq) {
+    while (ProcessOneEvent(cq)) {}
   }
 };
 

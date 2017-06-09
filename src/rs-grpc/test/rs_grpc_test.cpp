@@ -14,6 +14,7 @@
 
 #include <catch.hpp>
 
+#include <chrono>
 #include <thread>
 
 #include <flatbuffers/grpc.h>
@@ -231,8 +232,10 @@ TEST_CASE("RsGrpc") {
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });
 
-  const auto run = [&](const auto &publisher) {
-    auto subscription = publisher
+  const auto run = [&](
+      const auto &publisher,
+      std::function<void (Subscription &)> subscribe = nullptr) {
+    auto subscription = Subscription(publisher
         .Subscribe(MakeSubscriber(
             [](auto &&) {
               // Ignore OnNext
@@ -244,15 +247,21 @@ TEST_CASE("RsGrpc") {
             },
             [&runloop]() {
               runloop.Shutdown();
-            }));
-    subscription.Request(ElementCount::Unbounded());
+            })));
+    if (subscribe) {
+      subscribe(subscription);
+    } else {
+      subscription.Request(ElementCount::Unbounded());
+    }
 
     runloop.Run();
   };
 
-  const auto run_expect_error = [&](const auto &publisher) {
+  const auto run_expect_error = [&](
+      const auto &publisher,
+      std::function<void (Subscription &)> subscribe = nullptr) {
     std::exception_ptr captured_error;
-    auto subscription = publisher
+    auto subscription = Subscription(publisher
         .Subscribe(MakeSubscriber(
             [](auto &&) {
               // Ignore OnNext
@@ -264,13 +273,43 @@ TEST_CASE("RsGrpc") {
             [&runloop]() {
               CHECK(!"request should fail");
               runloop.Shutdown();
-            }));
-    subscription.Request(ElementCount::Unbounded());
+            })));
+    if (subscribe) {
+      subscribe(subscription);
+    } else {
+      subscription.Request(ElementCount::Unbounded());
+    }
 
     runloop.Run();
 
     REQUIRE(captured_error);
     return captured_error;
+  };
+
+  const auto run_expect_timeout = [&](
+      const auto &publisher,
+      ElementCount count = ElementCount(0)) {
+    std::exception_ptr captured_error;
+    auto subscription = Subscription(publisher
+        .Subscribe(MakeSubscriber(
+            [](auto &&) {
+              // Ignore OnNext
+            },
+            [&runloop, &captured_error](std::exception_ptr error) {
+              CHECK(!"request should not fail");
+            },
+            [&runloop]() {
+              CHECK(!"request should not finish");
+            })));
+
+    subscription.Request(count);
+    for (;;) {
+      using namespace std::chrono_literals;
+      auto deadline = std::chrono::system_clock::now() + 100ms;
+      if (runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT) {
+        break;
+      }
+    }
   };
 
   // TODO(peck): Test what happens when calling unimplemented endpoint. I think
@@ -285,6 +324,31 @@ TEST_CASE("RsGrpc") {
             CHECK(response->data() == 123 * 2);
             return "ignored";
           })));
+    }
+
+    SECTION("call Invoke but don't request a value") {
+      auto publisher = Pipe(
+          test_client.Invoke(
+              &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+          Map([](Flatbuffer<TestResponse> response) {
+            CHECK(response->data() == 123 * 2);
+            return "ignored";
+          }));
+      run_expect_timeout(publisher);
+    }
+
+    SECTION("Request twice") {
+      auto request = Pipe(
+          test_client.Invoke(
+              &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+          Map([](Flatbuffer<TestResponse> response) {
+            CHECK(response->data() == 123 * 2);
+            return "ignored";
+          }));
+      run(request, [](Subscription &sub) {
+        sub.Request(ElementCount(1));
+        sub.Request(ElementCount(1));
+      });
     }
 
     SECTION("failed rpc") {

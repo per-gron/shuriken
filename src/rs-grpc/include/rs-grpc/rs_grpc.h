@@ -38,7 +38,6 @@ void HandleUnaryResponse(
     const grpc::Status &status,
     ResponseType &&response,
     SubscriberType *subscriber) {
-  // TODO(peck): What about backpressure?
   if (!success) {
     subscriber->OnError(std::make_exception_ptr(GrpcError(grpc::Status(
         grpc::UNKNOWN, "The request was interrupted"))));
@@ -99,10 +98,18 @@ class RsGrpcClientInvocation<
           grpc::CompletionQueue *cq),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    auto stream = (stub->*invoke)(&context_, request_, cq);
-    stream->Finish(&response_, &status_, this);
-
-    return MakeSubscription();  // TODO(peck): Handle backrpressure and cancellation
+    // TODO(peck): Handle cancellation
+    // TODO(peck): Don't hold weak unsafe reference to this
+    // TODO(peck): Careful of leaks here: unless Request is invoked, this leaks
+    return MakeSubscription(
+        [this, invoke, stub, cq, done = false](ElementCount count) mutable {
+          if (!done && count > 0) {
+            done = true;
+            auto stream = (stub->*invoke)(&context_, request_, cq);
+            stream->Finish(&response_, &status_, this);
+          }
+        },
+        [] { /* cancel */ });
   }
 
  private:
@@ -188,7 +195,7 @@ class RsGrpcClientInvocation<
       grpc::CompletionQueue *cq) {
     stream_ = (stub->*invoke)(&context_, request_, cq, this);
 
-    return MakeSubscription();  // TODO(peck): Handle backrpressure and cancellation
+    return MakeSubscription();  // TODO(peck): Handle backpressure and cancellation
   }
 
  private:
@@ -299,7 +306,7 @@ class RsGrpcClientInvocation<
     // TODO(peck): Backpressure, cancellation
     subscription.Request(ElementCount::Unbounded());
 
-    return MakeSubscription();  // TODO(peck): Handle backrpressure and cancellation
+    return MakeSubscription();  // TODO(peck): Handle backpressure and cancellation
   }
 
  private:
@@ -1046,7 +1053,6 @@ class RsGrpcServerInvocation<
     }
   }
 
-  // TODO(peck): Consider avoiding type erasure here
   std::unique_ptr<Subscriber<RequestType>> subscriber_;
   State state_ = State::INIT;
   GrpcErrorHandler error_handler_;
@@ -1292,7 +1298,6 @@ class RsGrpcServerInvocation<
         &cq_);
   }
 
-  // TODO(peck): Consider avoiding type erasure here
   std::unique_ptr<Subscriber<RequestType>> subscriber_;
   State state_ = State::INIT;
   GrpcErrorHandler error_handler_;
@@ -1683,7 +1688,7 @@ class RsGrpcServer {
    * Block and process asynchronous events until the server is shut down.
    */
   void Run() {
-    return detail::RsGrpcTag::processAllEvents(cq_.get());
+    return detail::RsGrpcTag::ProcessAllEvents(cq_.get());
   }
 
   /**
@@ -1692,7 +1697,15 @@ class RsGrpcServer {
    * Returns false if the event queue is shutting down.
    */
   bool Next() {
-    return detail::RsGrpcTag::processOneEvent(cq_.get());
+    return detail::RsGrpcTag::ProcessOneEvent(cq_.get());
+  }
+
+  /**
+   * Block and process one asynchronous event, with a timeout.
+   */
+  template <typename T>
+  grpc::CompletionQueue::NextStatus Next(const T& deadline) {
+    return detail::RsGrpcTag::ProcessOneEvent(cq_.get(), deadline);
   }
 
   void Shutdown() {
@@ -1729,7 +1742,7 @@ class RsGrpcClient {
    * Block and process asynchronous events until the server is shut down.
    */
   void Run() {
-    return detail::RsGrpcTag::processAllEvents(&cq_);
+    return detail::RsGrpcTag::ProcessAllEvents(&cq_);
   }
 
   /**
@@ -1738,7 +1751,15 @@ class RsGrpcClient {
    * Returns false if the event queue is shutting down.
    */
   bool Next() {
-    return detail::RsGrpcTag::processOneEvent(&cq_);
+    return detail::RsGrpcTag::ProcessOneEvent(&cq_);
+  }
+
+  /**
+   * Block and process one asynchronous event, with a timeout.
+   */
+  template <typename T>
+  grpc::CompletionQueue::NextStatus Next(const T& deadline) {
+    return detail::RsGrpcTag::ProcessOneEvent(&cq_, deadline);
   }
 
   void Shutdown() {
