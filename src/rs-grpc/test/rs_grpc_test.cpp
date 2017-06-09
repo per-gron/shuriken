@@ -16,6 +16,7 @@
 
 #include <thread>
 
+#include <flatbuffers/grpc.h>
 #include <rs/concat.h>
 #include <rs/count.h>
 #include <rs/empty.h>
@@ -30,7 +31,6 @@
 #include <rs/throw.h>
 #include <rs/zip.h>
 #include <rs-grpc/rs_grpc.h>
-#include <rs-grpc/rs_grpc_flatbuffers.h>
 
 #include "rsgrpctest.grpc.fb.h"
 
@@ -39,18 +39,21 @@ using namespace RsGrpcTest;
 namespace shk {
 namespace {
 
+template <typename T>
+using Flatbuffer = flatbuffers::grpc::Message<T>;
+
 Flatbuffer<TestRequest> MakeTestRequest(int data) {
-  flatbuffers::FlatBufferBuilder fbb;
+  flatbuffers::grpc::MessageBuilder fbb;
   auto test_request = CreateTestRequest(fbb, data);
   fbb.Finish(test_request);
-  return Flatbuffer<TestRequest>::fromBuilder(&fbb);
+  return fbb.GetMessage<TestRequest>();
 }
 
 Flatbuffer<TestResponse> MakeTestResponse(int data) {
-  flatbuffers::FlatBufferBuilder fbb;
+  flatbuffers::grpc::MessageBuilder fbb;
   auto test_response = CreateTestResponse(fbb, data);
   fbb.Finish(test_response);
-  return Flatbuffer<TestResponse>::fromBuilder(&fbb);
+  return fbb.GetMessage<TestResponse>();
 }
 
 auto DoubleHandler(Flatbuffer<TestRequest> request) {
@@ -80,7 +83,7 @@ auto RepeatHandler(Flatbuffer<TestRequest> request) {
 
 auto RepeatThenFailHandler(Flatbuffer<TestRequest> request) {
   return Concat(
-      RepeatHandler(request),
+      RepeatHandler(std::move(request)),
       Throw(std::runtime_error("repeat_fail")));
 }
 
@@ -174,46 +177,46 @@ TEST_CASE("RsGrpc") {
       .AddListeningPort(server_address, grpc::InsecureServerCredentials());
 
   server_builder.RegisterService<TestService::AsyncService>()
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestDouble,
           &DoubleHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestUnaryFail,
           &UnaryFailHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestUnaryNoResponse,
           &UnaryNoResponseHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestUnaryTwoResponses,
           &UnaryTwoResponsesHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestRepeat,
           &RepeatHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestRepeatThenFail,
           &RepeatThenFailHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestSum,
           &SumHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestImmediatelyFailingSum,
           &ImmediatelyFailingSumHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestFailingSum,
           &FailingSumHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestClientStreamNoResponse,
           &ClientStreamNoResponseHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestClientStreamTwoResponses,
           &ClientStreamTwoResponsesHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestCumulativeSum,
           &CumulativeSumHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestImmediatelyFailingCumulativeSum,
           &ImmediatelyFailingCumulativeSumHandler)
-      .RegisterMethod<FlatbufferRefTransform>(
+      .RegisterMethod(
           &TestService::AsyncService::RequestFailingCumulativeSum,
           &FailingCumulativeSumHandler);
 
@@ -222,7 +225,7 @@ TEST_CASE("RsGrpc") {
   auto channel = grpc::CreateChannel(
       server_address, grpc::InsecureChannelCredentials());
 
-  auto test_client = runloop.MakeClient<FlatbufferRefTransform>(
+  auto test_client = runloop.MakeClient(
       TestService::NewStub(channel));
 
   auto server = server_builder.BuildAndStart();

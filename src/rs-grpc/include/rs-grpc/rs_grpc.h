@@ -25,14 +25,12 @@
 #include <rs/subscription.h>
 #include <rs/throw.h>
 #include <rs-grpc/grpc_error.h>
-#include <rs-grpc/rs_grpc_identity_transform.h>
 #include <rs-grpc/rs_grpc_tag.h>
 
 namespace shk {
 namespace detail {
 
 template <
-    typename Transform,
     typename ResponseType,
     typename SubscriberType>
 void HandleUnaryResponse(
@@ -45,14 +43,8 @@ void HandleUnaryResponse(
     subscriber->OnError(std::make_exception_ptr(GrpcError(grpc::Status(
         grpc::UNKNOWN, "The request was interrupted"))));
   } else if (status.ok()) {
-    auto wrapped = Transform::wrap(std::move(response));
-    if (wrapped.second.ok()) {
-      subscriber->OnNext(std::move(wrapped.first));
-      subscriber->OnComplete();
-    } else {
-      subscriber->OnError(
-          std::make_exception_ptr(GrpcError(wrapped.second)));
-    }
+    subscriber->OnNext(std::forward<ResponseType>(response));
+    subscriber->OnComplete();
   } else {
     subscriber->OnError(std::make_exception_ptr(GrpcError(status)));
   }
@@ -62,7 +54,6 @@ template <
     typename Reader,
     typename ResponseType,
     typename RequestType,
-    typename Transform,
     typename RequestOrPublisher,
     typename SubscriberType>
 class RsGrpcClientInvocation;
@@ -73,25 +64,18 @@ class RsGrpcClientInvocation;
 template <
     typename ResponseType,
     typename RequestType,
-    typename Transform,
     typename RequestOrPublisher,
     typename SubscriberType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncResponseReader<ResponseType>,
     ResponseType,
     RequestType,
-    Transform,
     RequestOrPublisher,
     SubscriberType> : public RsGrpcTag {
  public:
-  using TransformedResponseType = typename decltype(
-      Transform::wrap(std::declval<ResponseType>()))::first_type;
-  using TransformedRequestType = typename decltype(
-      Transform::wrap(std::declval<RequestType>()))::first_type;
-
   template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
-      const TransformedRequestType &request,
+      const RequestType &request,
       InnerSubscriberType &&subscriber)
       : request_(request),
         subscriber_(std::forward<InnerSubscriberType>(subscriber)) {
@@ -101,7 +85,7 @@ class RsGrpcClientInvocation<
   }
 
   void operator()(bool success) override {
-    HandleUnaryResponse<Transform>(
+    HandleUnaryResponse(
         success, status_, std::move(response_), &subscriber_);
     delete this;
   }
@@ -115,7 +99,7 @@ class RsGrpcClientInvocation<
           grpc::CompletionQueue *cq),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    auto stream = (stub->*invoke)(&context_, Transform::unwrap(request_), cq);
+    auto stream = (stub->*invoke)(&context_, request_, cq);
     stream->Finish(&response_, &status_, this);
 
     return MakeSubscription();  // TODO(peck): Handle backrpressure and cancellation
@@ -123,9 +107,9 @@ class RsGrpcClientInvocation<
 
  private:
   static_assert(
-      !std::is_reference<TransformedRequestType>::value,
+      !std::is_reference<RequestType>::value,
       "Request type must be held by value");
-  TransformedRequestType request_;
+  RequestType request_;
   grpc::ClientContext context_;
   ResponseType response_;
   SubscriberType subscriber_;
@@ -138,25 +122,18 @@ class RsGrpcClientInvocation<
 template <
     typename ResponseType,
     typename RequestType,
-    typename Transform,
     typename RequestOrPublisher,
     typename SubscriberType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncReader<ResponseType>,
     ResponseType,
     RequestType,
-    Transform,
     RequestOrPublisher,
     SubscriberType> : public RsGrpcTag {
  public:
-  using TransformedResponseType = typename decltype(
-      Transform::wrap(std::declval<ResponseType>()))::first_type;
-  using TransformedRequestType = typename decltype(
-      Transform::wrap(std::declval<RequestType>()))::first_type;
-
   template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
-      const TransformedRequestType &request,
+      const RequestType &request,
       InnerSubscriberType &&subscriber)
       : request_(request),
         subscriber_(std::forward<InnerSubscriberType>(subscriber)) {
@@ -178,17 +155,8 @@ class RsGrpcClientInvocation<
           state_ = State::FINISHING;
           stream_->Finish(&status_, this);
         } else {
-          auto wrapped = Transform::wrap(std::move(response_));
-          if (wrapped.second.ok()) {
-            subscriber_.OnNext(std::move(wrapped.first));
-            stream_->Read(&response_, this);
-          } else {
-            subscriber_.OnError(
-                std::make_exception_ptr(GrpcError(wrapped.second)));
-            state_ = State::READ_FAILURE;
-            context_.TryCancel();
-            stream_->Finish(&status_, this);
-          }
+          subscriber_.OnNext(std::move(response_));
+          stream_->Read(&response_, this);
         }
         break;
       }
@@ -218,7 +186,7 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    stream_ = (stub->*invoke)(&context_, Transform::unwrap(request_), cq, this);
+    stream_ = (stub->*invoke)(&context_, request_, cq, this);
 
     return MakeSubscription();  // TODO(peck): Handle backrpressure and cancellation
   }
@@ -232,9 +200,9 @@ class RsGrpcClientInvocation<
   };
 
   static_assert(
-      !std::is_reference<TransformedRequestType>::value,
+      !std::is_reference<RequestType>::value,
       "Request type must be held by value");
-  TransformedRequestType request_;
+  RequestType request_;
   grpc::ClientContext context_;
 
   State state_ = State::INIT;
@@ -254,22 +222,14 @@ class RsGrpcClientInvocation<
 template <
     typename RequestType,
     typename ResponseType,
-    typename Transform,
     typename RequestOrPublisher,
     typename SubscriberType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncWriter<RequestType>,
     ResponseType,
     RequestType,
-    Transform,
     RequestOrPublisher,
     SubscriberType> : public RsGrpcTag {
- public:
-  using TransformedResponseType = typename decltype(
-      Transform::wrap(std::declval<ResponseType>()))::first_type;
-  using TransformedRequestType = typename decltype(
-      Transform::wrap(std::declval<RequestType>()))::first_type;
-
  public:
   template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
@@ -290,7 +250,7 @@ class RsGrpcClientInvocation<
       if (request_stream_error_) {
         subscriber_.OnError(std::move(request_stream_error_));
       } else {
-        HandleUnaryResponse<Transform>(
+        HandleUnaryResponse(
             success, status_, std::move(response_), &subscriber_);
       }
       delete this;
@@ -300,7 +260,7 @@ class RsGrpcClientInvocation<
         RunEnqueuedOperation();
       } else {
         // This happens when the runloop is shutting down.
-        HandleUnaryResponse<Transform>(
+        HandleUnaryResponse(
             success, status_, std::move(response_), &subscriber_);
         delete this;
       }
@@ -322,7 +282,7 @@ class RsGrpcClientInvocation<
 
     // TODO(peck): Don't hold weak unsafe refs to this
     auto subscription = requests_.Subscribe(MakeSubscriber(
-        [this](TransformedRequestType request) {
+        [this](RequestType &&request) {
           enqueued_requests_.emplace_back(std::move(request));
           RunEnqueuedOperation();
         },
@@ -349,8 +309,7 @@ class RsGrpcClientInvocation<
     }
     if (!enqueued_requests_.empty()) {
       operation_in_progress_ = true;
-      stream_->Write(
-          Transform::unwrap(std::move(enqueued_requests_.front())), this);
+      stream_->Write(enqueued_requests_.front(), this);
       enqueued_requests_.pop_front();
     } else if (enqueued_writes_done_) {
       enqueued_writes_done_ = false;
@@ -381,7 +340,7 @@ class RsGrpcClientInvocation<
   bool operation_in_progress_ = false;
 
   // Because we don't have backpressure we need an unbounded buffer here :-(
-  std::deque<TransformedRequestType> enqueued_requests_;
+  std::deque<RequestType> enqueued_requests_;
   bool enqueued_writes_done_ = false;
   bool enqueued_finish_ = false;
   grpc::Status status_;
@@ -393,22 +352,14 @@ class RsGrpcClientInvocation<
 template <
     typename RequestType,
     typename ResponseType,
-    typename Transform,
     typename RequestOrPublisher,
     typename SubscriberType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
     ResponseType,
     RequestType,
-    Transform,
     RequestOrPublisher,
     SubscriberType> : public RsGrpcTag {
- public:
-  using TransformedResponseType = typename decltype(
-      Transform::wrap(std::declval<ResponseType>()))::first_type;
-  using TransformedRequestType = typename decltype(
-      Transform::wrap(std::declval<RequestType>()))::first_type;
-
  private:
   /**
    * Bidi streaming requires separate tags for reading and writing (since they
@@ -459,14 +410,8 @@ class RsGrpcClientInvocation<
         // We have reached the end of the stream.
         shutdown_();
       } else {
-        auto wrapped = Transform::wrap(std::move(response_));
-        if (wrapped.second.ok()) {
-          subscriber_.OnNext(std::move(wrapped.first));
-          stream_->Read(&response_, this);
-        } else {
-          error_ = std::make_exception_ptr(GrpcError(wrapped.second));
-          shutdown_();
-        }
+        subscriber_.OnNext(std::move(response_));
+        stream_->Read(&response_, this);
       }
     }
 
@@ -528,7 +473,7 @@ class RsGrpcClientInvocation<
 
     // TODO(peck): Don't hold weak unsafe ref to this
     auto subscription = requests_.Subscribe(MakeSubscriber(
-        [this](TransformedRequestType request) {
+        [this](RequestType request) {
           enqueued_requests_.emplace_back(std::move(request));
           RunEnqueuedOperation();
         },
@@ -562,8 +507,7 @@ class RsGrpcClientInvocation<
     }
     if (!enqueued_requests_.empty()) {
       operation_in_progress_ = true;
-      stream_->Write(
-          Transform::unwrap(std::move(enqueued_requests_.front())), this);
+      stream_->Write(enqueued_requests_.front(), this);
       enqueued_requests_.pop_front();
     } else if (enqueued_writes_done_) {
       enqueued_writes_done_ = false;
@@ -604,7 +548,7 @@ class RsGrpcClientInvocation<
   bool writer_done_ = false;
 
   // Because we don't have backpressure we need an unbounded buffer here :-(
-  std::deque<TransformedRequestType> enqueued_requests_;
+  std::deque<RequestType> enqueued_requests_;
   bool enqueued_writes_done_ = false;
   bool enqueued_finish_ = false;
   grpc::Status status_;
@@ -656,7 +600,6 @@ template <
     typename ServiceType,
     typename ResponseType,
     typename RequestType,
-    typename TransformType,
     typename Callback>
 class ServerCallTraits {
  public:
@@ -664,14 +607,6 @@ class ServerCallTraits {
   using Service = ServiceType;
   using Response = ResponseType;
   using Request = RequestType;
-  using Transform = TransformType;
-
-  using TransformedRequest =
-      typename decltype(
-          Transform::wrap(std::declval<RequestType>()))::first_type;
-  using TransformedResponse =
-      typename decltype(
-          Transform::wrap(std::declval<ResponseType>()))::first_type;
 };
 
 
@@ -688,9 +623,6 @@ class RsGrpcServerInvocation<
     Callback> : public RsGrpcTag {
   using Stream = grpc::ServerAsyncResponseWriter<ResponseType>;
   using Service = typename ServerCallTraits::Service;
-  using Transform = typename ServerCallTraits::Transform;
-  using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
 
   using Method = RequestMethod<
       Service, typename ServerCallTraits::Request, Stream>;
@@ -724,13 +656,7 @@ class RsGrpcServerInvocation<
     if (awaiting_request_) {
       // The server has just received a request. Handle it.
 
-      auto wrapped_request = ServerCallTraits::Transform::wrap(
-          std::move(request_));
-      auto values = wrapped_request.second.ok() ?
-          Publisher<TransformedResponse>(
-              callback_(std::move(wrapped_request.first))) :
-          Publisher<TransformedResponse>(
-              Throw(GrpcError(wrapped_request.second)));
+      auto values = callback_(std::move(request_));
 
       // Request the a new request, so that the server is always waiting for
       // one. This is done after the callback (because this steals it) but
@@ -742,7 +668,7 @@ class RsGrpcServerInvocation<
 
       // TODO(peck): Don't hold weak unsafe ref to this
       auto subscription = values.Subscribe(MakeSubscriber(
-          [this](TransformedResponse response) {
+          [this](ResponseType &&response) {
             num_responses_++;
             response_ = std::move(response);
           },
@@ -751,8 +677,7 @@ class RsGrpcServerInvocation<
           },
           [this]() {
             if (num_responses_ == 1) {
-              stream_.Finish(
-                  Transform::unwrap(response_), grpc::Status::OK, this);
+              stream_.Finish(response_, grpc::Status::OK, this);
             } else {
               const auto *error_message =
                   num_responses_ == 0 ? "No response" : "Too many responses";
@@ -803,7 +728,7 @@ class RsGrpcServerInvocation<
   typename ServerCallTraits::Request request_;
   Stream stream_;
   int num_responses_ = 0;
-  TransformedResponse response_;
+  ResponseType response_;
 };
 
 /**
@@ -816,9 +741,6 @@ class RsGrpcServerInvocation<
     Callback> : public RsGrpcTag {
   using Stream = grpc::ServerAsyncWriter<ResponseType>;
   using Service = typename ServerCallTraits::Service;
-  using Transform = typename ServerCallTraits::Transform;
-  using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
 
   using Method = RequestMethod<
       Service, typename ServerCallTraits::Request, Stream>;
@@ -854,13 +776,7 @@ class RsGrpcServerInvocation<
         // The server has just received a request. Handle it.
         state_ = State::AWAITING_RESPONSE;
 
-        auto wrapped_request = ServerCallTraits::Transform::wrap(
-            std::move(request_));
-        auto values = wrapped_request.second.ok() ?
-            Publisher<TransformedResponse>(
-                callback_(std::move(wrapped_request.first))) :
-            Publisher<TransformedResponse>(
-                Throw(GrpcError(wrapped_request.second)));
+        auto values = callback_(std::move(request_));
 
         // Request the a new request, so that the server is always waiting for
         // one. This is done after the callback (because this steals it) but
@@ -870,7 +786,7 @@ class RsGrpcServerInvocation<
 
         // TODO(peck): Don't hold weak refs to this
         auto subscription = values.Subscribe(MakeSubscriber(
-            [this](TransformedResponse &&response) {
+            [this](ResponseType &&response) {
               enqueued_responses_.emplace_back(std::move(response));
               RunEnqueuedOperation();
             },
@@ -939,8 +855,7 @@ class RsGrpcServerInvocation<
     }
     if (!enqueued_responses_.empty()) {
       state_ = State::SENDING_RESPONSE;
-      stream_.Write(
-          Transform::unwrap(std::move(enqueued_responses_.front())), this);
+      stream_.Write(enqueued_responses_.front(), this);
       enqueued_responses_.pop_front();
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
@@ -952,7 +867,7 @@ class RsGrpcServerInvocation<
   State state_ = State::AWAITING_REQUEST;
   bool enqueued_finish_ = false;
   grpc::Status enqueued_finish_status_;
-  std::deque<TransformedResponse> enqueued_responses_;
+  std::deque<ResponseType> enqueued_responses_;
 
   GrpcErrorHandler error_handler_;
   Method method_;
@@ -978,9 +893,6 @@ class RsGrpcServerInvocation<
     Callback> : public RsGrpcTag {
   using Stream = grpc::ServerAsyncReader<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
-  using Transform = typename ServerCallTraits::Transform;
-  using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
 
   using Method = StreamingRequestMethod<Service, Stream>;
 
@@ -1021,17 +933,8 @@ class RsGrpcServerInvocation<
       }
       case State::REQUESTED_DATA: {
         if (success) {
-          auto wrapped = Transform::wrap(std::move(request_));
-          if (wrapped.second.ok()) {
-            subscriber_->OnNext(std::move(wrapped.first));
-            reader_.Read(&request_, this);
-          } else {
-            subscriber_->OnError(
-                std::make_exception_ptr(GrpcError(wrapped.second)));
-
-            state_ = State::SENT_RESPONSE;
-            reader_.FinishWithError(wrapped.second, this);
-          }
+          subscriber_->OnNext(std::move(request_));
+          reader_.Read(&request_, this);
         } else {
           // The client has stopped sending requests.
           subscriber_->OnComplete();
@@ -1076,14 +979,14 @@ class RsGrpcServerInvocation<
         reader_(&context_) {}
 
   void Init() {
-    auto response = callback_(Publisher<TransformedRequest>(MakePublisher(
+    auto response = callback_(Publisher<RequestType>(MakePublisher(
         [this](auto &&subscriber) {
       if (subscriber_) {
         throw std::logic_error(
             "Can't subscribe to this observable more than once");
       }
       subscriber_.reset(
-          new Subscriber<TransformedRequest>(
+          new Subscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
       state_ = State::REQUESTED_DATA;
@@ -1097,7 +1000,7 @@ class RsGrpcServerInvocation<
         "Callback return type must be Publisher");
     // TODO(peck): Don't hold weak unsafe refs to this
     auto subscription = response.Subscribe(MakeSubscriber(
-        [this](TransformedResponse response) {
+        [this](ResponseType &&response) {
           response_ = std::move(response);
           num_responses_++;
         },
@@ -1132,10 +1035,7 @@ class RsGrpcServerInvocation<
       if (response_error_) {
         reader_.FinishWithError(ExceptionToStatus(response_error_), this);
       } else if (num_responses_ == 1) {
-        reader_.Finish(
-            Transform::unwrap(response_),
-            grpc::Status::OK,
-            this);
+        reader_.Finish(response_, grpc::Status::OK, this);
       } else {
         const auto *error_message =
             num_responses_ == 0 ? "No response" : "Too many responses";
@@ -1147,7 +1047,7 @@ class RsGrpcServerInvocation<
   }
 
   // TODO(peck): Consider avoiding type erasure here
-  std::unique_ptr<Subscriber<TransformedRequest>> subscriber_;
+  std::unique_ptr<Subscriber<RequestType>> subscriber_;
   State state_ = State::INIT;
   GrpcErrorHandler error_handler_;
   Method method_;
@@ -1158,7 +1058,7 @@ class RsGrpcServerInvocation<
   typename ServerCallTraits::Request request_;
   grpc::ServerAsyncReader<ResponseType, RequestType> reader_;
 
-  TransformedResponse response_;
+  ResponseType response_;
   int num_responses_ = 0;
 
   std::exception_ptr response_error_;
@@ -1179,9 +1079,6 @@ class RsGrpcServerInvocation<
     Callback> : public RsGrpcTag {
   using Stream = grpc::ServerAsyncReaderWriter<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
-  using Transform = typename ServerCallTraits::Transform;
-  using TransformedRequest = typename ServerCallTraits::TransformedRequest;
-  using TransformedResponse = typename ServerCallTraits::TransformedResponse;
 
   using Method = StreamingRequestMethod<Service, Stream>;
 
@@ -1252,8 +1149,7 @@ class RsGrpcServerInvocation<
       }
       if (!enqueued_responses_.empty()) {
         operation_in_progress_ = true;
-        stream_.Write(
-            Transform::unwrap(std::move(enqueued_responses_.front())), this);
+        stream_.Write(enqueued_responses_.front(), this);
         enqueued_responses_.pop_front();
       } else if (enqueued_finish_ && !sent_final_request_) {
         enqueued_finish_ = false;
@@ -1270,7 +1166,7 @@ class RsGrpcServerInvocation<
 
     std::function<void ()> shutdown_;
     // Because we don't have backpressure we need an unbounded buffer here :-(
-    std::deque<TransformedResponse> enqueued_responses_;
+    std::deque<ResponseType> enqueued_responses_;
     bool enqueued_finish_ = false;
     bool operation_in_progress_ = false;
     bool sent_final_request_ = false;
@@ -1316,17 +1212,8 @@ class RsGrpcServerInvocation<
       }
       case State::REQUESTED_DATA: {
         if (success) {
-          auto wrapped = Transform::wrap(std::move(request_));
-          if (wrapped.second.ok()) {
-            subscriber_->OnNext(std::move(wrapped.first));
-            stream_.Read(&request_, this);
-          } else {
-            auto error = std::make_exception_ptr(GrpcError(wrapped.second));
-            subscriber_->OnError(std::exception_ptr(error));
-
-            writer_.OnError(error);
-            state_ = State::READ_STREAM_ENDED;
-          }
+          subscriber_->OnNext(std::move(request_));
+          stream_.Read(&request_, this);
         } else {
           // The client has stopped sending requests.
           subscriber_->OnComplete();
@@ -1376,14 +1263,14 @@ class RsGrpcServerInvocation<
   }
 
   void Init() {
-    auto response = callback_(Publisher<TransformedRequest>(MakePublisher(
+    auto response = callback_(Publisher<RequestType>(MakePublisher(
         [this](auto &&subscriber) {
       if (subscriber_) {
         throw std::logic_error(
             "Can't subscribe to this Publisher more than once");
       }
       subscriber_.reset(
-          new Subscriber<TransformedRequest>(
+          new Subscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
       state_ = State::REQUESTED_DATA;
@@ -1406,7 +1293,7 @@ class RsGrpcServerInvocation<
   }
 
   // TODO(peck): Consider avoiding type erasure here
-  std::unique_ptr<Subscriber<TransformedRequest>> subscriber_;
+  std::unique_ptr<Subscriber<RequestType>> subscriber_;
   State state_ = State::INIT;
   GrpcErrorHandler error_handler_;
   Method method_;
@@ -1419,7 +1306,7 @@ class RsGrpcServerInvocation<
   bool write_stream_ended_ = false;
   Writer writer_;
 
-  TransformedResponse response_;
+  ResponseType response_;
   std::exception_ptr response_error_;
 };
 
@@ -1465,7 +1352,7 @@ class RsGrpcServerInvocationRequester : public InvocationRequester {
 
 }  // namespace detail
 
-template <typename Stub, typename Transform>
+template <typename Stub>
 class RsGrpcServiceClient {
  public:
   RsGrpcServiceClient(std::unique_ptr<Stub> &&stub, grpc::CompletionQueue *cq)
@@ -1481,8 +1368,7 @@ class RsGrpcServiceClient {
           grpc::ClientContext *context,
           const RequestType &request,
           grpc::CompletionQueue *cq),
-      const typename decltype(
-          Transform::wrap(std::declval<RequestType>()))::first_type &request,
+      const RequestType &request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return InvokeImpl<
         grpc::ClientAsyncResponseReader<ResponseType>,
@@ -1504,8 +1390,7 @@ class RsGrpcServiceClient {
           const RequestType &request,
           grpc::CompletionQueue *cq,
           void *tag),
-      const typename decltype(
-          Transform::wrap(std::declval<RequestType>()))::first_type &request,
+      const RequestType &request,
       grpc::ClientContext &&context = grpc::ClientContext()) {
     return InvokeImpl<
         grpc::ClientAsyncReader<ResponseType>,
@@ -1581,7 +1466,6 @@ class RsGrpcServiceClient {
               Reader,
               ResponseType,
               RequestType,
-              Transform,
               typename std::decay<RequestOrPublisher>::type,
               typename std::decay<decltype(subscriber)>::type>;
 
@@ -1621,7 +1505,7 @@ class RsGrpcServer {
     class ServiceBuilder {
      public:
       /**
-       * The pointers passed to the constructor are not Transformed by this
+       * The pointers passed to the constructor are not transformed by this
        * class; they need to stay alive for as long as this object exists.
        */
       ServiceBuilder(
@@ -1632,7 +1516,6 @@ class RsGrpcServer {
 
       // Unary RPC
       template <
-          typename Transform = detail::RsGrpcIdentityTransform,
           typename InnerService,
           typename ResponseType,
           typename RequestType,
@@ -1649,7 +1532,6 @@ class RsGrpcServer {
                 Service,
                 ResponseType,
                 RequestType,
-                Transform,
                 Callback>>(
                     method, std::forward<Callback>(callback));
 
@@ -1658,7 +1540,6 @@ class RsGrpcServer {
 
       // Server streaming
       template <
-          typename Transform = detail::RsGrpcIdentityTransform,
           typename InnerService,
           typename ResponseType,
           typename RequestType,
@@ -1675,7 +1556,6 @@ class RsGrpcServer {
                 Service,
                 ResponseType,
                 RequestType,
-                Transform,
                 Callback>>(
                     method, std::forward<Callback>(callback));
 
@@ -1684,7 +1564,6 @@ class RsGrpcServer {
 
       // Client streaming
       template <
-          typename Transform = detail::RsGrpcIdentityTransform,
           typename InnerService,
           typename ResponseType,
           typename RequestType,
@@ -1700,7 +1579,6 @@ class RsGrpcServer {
                 Service,
                 ResponseType,
                 RequestType,
-                Transform,
                 Callback>>(
                     method, std::forward<Callback>(callback));
 
@@ -1709,7 +1587,6 @@ class RsGrpcServer {
 
       // Bidi streaming
       template <
-          typename Transform = detail::RsGrpcIdentityTransform,
           typename InnerService,
           typename ResponseType,
           typename RequestType,
@@ -1725,7 +1602,6 @@ class RsGrpcServer {
                 Service,
                 ResponseType,
                 RequestType,
-                Transform,
                 Callback>>(
                     method, std::forward<Callback>(callback));
 
@@ -1797,12 +1673,10 @@ class RsGrpcServer {
     grpc::ServerBuilder builder_;
   };
 
-  template <
-      typename Transform = detail::RsGrpcIdentityTransform,
-      typename Stub>
-  RsGrpcServiceClient<Stub, Transform> MakeClient(
+  template <typename Stub>
+  RsGrpcServiceClient<Stub> MakeClient(
       std::unique_ptr<Stub> &&stub) {
-    return RsGrpcServiceClient<Stub, Transform>(std::move(stub), cq_.get());
+    return RsGrpcServiceClient<Stub>(std::move(stub), cq_.get());
   }
 
   /**
@@ -1846,12 +1720,9 @@ class RsGrpcClient {
     Shutdown();
   }
 
-  template <
-      typename Transform = detail::RsGrpcIdentityTransform,
-      typename Stub>
-  RsGrpcServiceClient<Stub, Transform> MakeClient(
-      std::unique_ptr<Stub> &&stub) {
-    return RsGrpcServiceClient<Stub, Transform>(std::move(stub), &cq_);
+  template <typename Stub>
+  RsGrpcServiceClient<Stub> MakeClient(std::unique_ptr<Stub> &&stub) {
+    return RsGrpcServiceClient<Stub>(std::move(stub), &cq_);
   }
 
   /**
