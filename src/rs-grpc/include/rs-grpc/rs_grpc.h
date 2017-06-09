@@ -86,11 +86,13 @@ class RsGrpcClientInvocation<
   void operator()(bool success) override {
     HandleUnaryResponse(
         success, status_, std::move(response_), &subscriber_);
-    delete this;
+
+    self_.reset();  // Delete this
   }
 
   template <typename Stub>
   auto Invoke(
+      std::shared_ptr<RsGrpcClientInvocation> self,
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -100,11 +102,10 @@ class RsGrpcClientInvocation<
       grpc::CompletionQueue *cq) {
     // TODO(peck): Handle cancellation
     // TODO(peck): Don't hold weak unsafe reference to this
-    // TODO(peck): Careful of leaks here: unless Request is invoked, this leaks
     return MakeSubscription(
-        [this, invoke, stub, cq, done = false](ElementCount count) mutable {
-          if (!done && count > 0) {
-            done = true;
+        [this, invoke, stub, cq, self = self](ElementCount count) mutable {
+          if (self && count > 0) {
+            self_ = std::move(self);
             auto stream = (stub->*invoke)(&context_, request_, cq);
             stream->Finish(&response_, &status_, this);
           }
@@ -113,6 +114,9 @@ class RsGrpcClientInvocation<
   }
 
  private:
+  // While this object has given itself to a gRPC CompletionQueue, which does
+  // not own the object, it owns itself through this shared_ptr.
+  std::shared_ptr<RsGrpcClientInvocation> self_;
   static_assert(
       !std::is_reference<RequestType>::value,
       "Request type must be held by value");
@@ -173,11 +177,11 @@ class RsGrpcClientInvocation<
         } else {
           subscriber_.OnError(std::make_exception_ptr(GrpcError(status_)));
         }
-        delete this;
+        self_.reset();  // Delete this
         break;
       }
       case State::READ_FAILURE: {
-        delete this;
+        self_.reset();  // Delete this
         break;
       }
     }
@@ -185,6 +189,7 @@ class RsGrpcClientInvocation<
 
   template <typename Stub>
   auto Invoke(
+      std::shared_ptr<RsGrpcClientInvocation> self,
       std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -193,6 +198,8 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
+    self_ = self;
+
     stream_ = (stub->*invoke)(&context_, request_, cq, this);
 
     return MakeSubscription();  // TODO(peck): Handle backpressure and cancellation
@@ -206,6 +213,9 @@ class RsGrpcClientInvocation<
     READ_FAILURE
   };
 
+  // While this object has given itself to a gRPC CompletionQueue, which does
+  // not own the object, it owns itself through this shared_ptr.
+  std::shared_ptr<RsGrpcClientInvocation> self_;
   static_assert(
       !std::is_reference<RequestType>::value,
       "Request type must be held by value");
@@ -260,7 +270,7 @@ class RsGrpcClientInvocation<
         HandleUnaryResponse(
             success, status_, std::move(response_), &subscriber_);
       }
-      delete this;
+      self_.reset();  // Delete this
     } else {
       if (success) {
         operation_in_progress_ = false;
@@ -269,13 +279,14 @@ class RsGrpcClientInvocation<
         // This happens when the runloop is shutting down.
         HandleUnaryResponse(
             success, status_, std::move(response_), &subscriber_);
-        delete this;
+        self_.reset();  // Delete this
       }
     }
   }
 
   template <typename Stub>
   auto Invoke(
+      std::shared_ptr<RsGrpcClientInvocation> self,
       std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -284,6 +295,8 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
+    self_ = self;
+
     stream_ = (stub->*invoke)(&context_, &response_, cq, this);
     operation_in_progress_ = true;
 
@@ -336,6 +349,9 @@ class RsGrpcClientInvocation<
     }
   }
 
+  // While this object has given itself to a gRPC CompletionQueue, which does
+  // not own the object, it owns itself through this shared_ptr.
+  std::shared_ptr<RsGrpcClientInvocation> self_;
   RequestOrPublisher requests_;
   ResponseType response_;
   std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> stream_;
@@ -467,6 +483,7 @@ class RsGrpcClientInvocation<
 
   template <typename Stub>
   auto Invoke(
+      std::shared_ptr<RsGrpcClientInvocation> self,
       std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -474,6 +491,8 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
+    self_ = self;
+
     stream_ = (stub->*invoke)(&context_, cq, this);
     reader_.Invoke(stream_.get());
     operation_in_progress_ = true;
@@ -537,10 +556,13 @@ class RsGrpcClientInvocation<
   void TryShutdown() {
     if (writer_done_ && reader_done_) {
       reader_.Finish(status_);
-      delete this;
+      self_.reset();  // Delete this
     }
   }
 
+  // While this object has given itself to a gRPC CompletionQueue, which does
+  // not own the object, it owns itself through this shared_ptr.
+  std::shared_ptr<RsGrpcClientInvocation> self_;
   Reader reader_;
   bool reader_done_ = false;
 
@@ -1474,10 +1496,10 @@ class RsGrpcServiceClient {
               typename std::decay<RequestOrPublisher>::type,
               typename std::decay<decltype(subscriber)>::type>;
 
-      auto call = new ClientInvocation(
+      auto call = std::make_shared<ClientInvocation>(
           request_or_publisher,
           std::forward<decltype(subscriber)>(subscriber));
-      return call->Invoke(invoke, stub_.get(), &cq_);
+      return call->Invoke(call, invoke, stub_.get(), &cq_);
     });
   }
 
