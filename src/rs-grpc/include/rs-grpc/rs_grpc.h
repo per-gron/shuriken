@@ -243,6 +243,9 @@ class RsGrpcClientInvocation<
       state_ = State::READING_RESPONSE;
       stream_->Read(&response_, this);
     } else {
+      // TODO(peck): If the call is left in this state, it leaks: This object
+      // owns itself and if the Subscription goes away nothing will call it
+      // again. Same bug in other call types.
       state_ = State::AWAITING_REQUEST;
     }
   }
@@ -944,8 +947,8 @@ class RsGrpcServerInvocation<
               enqueued_finish_ = true;
               RunEnqueuedOperation();
             }));
-      // TODO(peck): Backpressure, cancellation
-      subscription.Request(ElementCount::Unbounded());
+        // TODO(peck): Backpressure, cancellation
+        subscription.Request(ElementCount::Unbounded());
 
         break;
       }
@@ -1028,7 +1031,6 @@ class RsGrpcServerInvocation<
     Callback> : public RsGrpcTag {
   using Stream = grpc::ServerAsyncReader<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
-
   using Method = StreamingRequestMethod<Service, Stream>;
 
  public:
@@ -1074,19 +1076,20 @@ class RsGrpcServerInvocation<
         } else {
           // Need to set _state before the call to init, in case it moves on to
           // the State::REQUESTED_DATA state immediately.
-          state_ = State::INITIALIZED;
+          state_ = State::WAITING_FOR_DATA_REQUEST;
           Init();
         }
         break;
       }
-      case State::INITIALIZED: {
+      case State::WAITING_FOR_DATA_REQUEST: {
         abort();  // Should not get here
         break;
       }
       case State::REQUESTED_DATA: {
         if (success) {
           subscriber_->OnNext(std::move(request_));
-          reader_.Read(&request_, this);
+          state_ = State::WAITING_FOR_DATA_REQUEST;
+          MaybeReadNext();
         } else {
           // The client has stopped sending requests.
           subscriber_->OnComplete();
@@ -1111,7 +1114,7 @@ class RsGrpcServerInvocation<
  private:
   enum class State {
     INIT,
-    INITIALIZED,
+    WAITING_FOR_DATA_REQUEST,
     REQUESTED_DATA,
     STREAM_ENDED,
     SENT_RESPONSE
@@ -1128,15 +1131,20 @@ class RsGrpcServerInvocation<
           new Subscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
-      state_ = State::REQUESTED_DATA;
-      reader_.Read(&request_, this);
-
-      return MakeSubscription();  // TODO(peck): Do something sane here
+      return MakeSubscription(
+          [self = self_](ElementCount count) {
+            self->requested_ += count;
+            self->MaybeReadNext();
+          },
+          [] {
+            // TODO(peck): Handle cancellation
+          });
     })));
 
     static_assert(
         IsPublisher<decltype(response)>,
         "Callback return type must be Publisher");
+    // TODO(peck): Handle cancellation
     // TODO(peck): Don't hold weak unsafe refs to this
     auto subscription = response.Subscribe(MakeSubscriber(
         [this](ResponseType &&response) {
@@ -1152,7 +1160,9 @@ class RsGrpcServerInvocation<
           finished_ = true;
           TrySendResponse();
         }));
-    // TODO(peck): Backpressure, cancellation
+    // Because this class only uses the first response (and fails if there are
+    // more), it's fine to Request an unbounded number of elements from this
+    // stream; all elements after the first are immediately discarded.
     subscription.Request(ElementCount::Unbounded());
 
     // Request the a new request, so that the server is always waiting for
@@ -1165,7 +1175,20 @@ class RsGrpcServerInvocation<
         &cq_);
   }
 
+  void MaybeReadNext() {
+    if (requested_ > 0 && state_ == State::WAITING_FOR_DATA_REQUEST) {
+      --requested_;
+      state_ = State::REQUESTED_DATA;
+      reader_.Read(&request_, this);
+    } else {
+      // TODO(peck): If the call is left in this state, it leaks: This object
+      // owns itself and if the Subscription goes away nothing will call it
+      // again. Same bug in other call types.
+    }
+  }
+
   void IssueNewServerRequest(std::unique_ptr<Callback> &&callback) {
+    // TODO(peck): Implement me?
   }
 
   void TrySendResponse() {
@@ -1188,6 +1211,9 @@ class RsGrpcServerInvocation<
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
   std::shared_ptr<RsGrpcServerInvocation> self_;
+  // The number of elements that have been requested by the subscriber that have
+  // not yet been requested to be read from gRPC.
+  ElementCount requested_;
 
   std::unique_ptr<Subscriber<RequestType>> subscriber_;
   State state_ = State::INIT;
@@ -1365,12 +1391,12 @@ class RsGrpcServerInvocation<
         } else {
           // Need to set _state before the call to init, in case it moves on to
           // the State::REQUESTED_DATA state immediately.
-          state_ = State::INITIALIZED;
+          state_ = State::WAITING_FOR_DATA_REQUEST;
           Init();
         }
         break;
       }
-      case State::INITIALIZED: {
+      case State::WAITING_FOR_DATA_REQUEST: {
         abort();  // Should not get here
         break;
       }
@@ -1396,7 +1422,7 @@ class RsGrpcServerInvocation<
  private:
   enum class State {
     INIT,
-    INITIALIZED,
+    WAITING_FOR_DATA_REQUEST,
     REQUESTED_DATA,
     READ_STREAM_ENDED
   };

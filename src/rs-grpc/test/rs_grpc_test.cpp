@@ -24,6 +24,7 @@
 #include <rs/just.h>
 #include <rs/map.h>
 #include <rs/merge.h>
+#include <rs/never.h>
 #include <rs/pipe.h>
 #include <rs/range.h>
 #include <rs/repeat.h>
@@ -102,7 +103,7 @@ auto SumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
 auto ImmediatelyFailingSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
-  requests.Subscribe(MakeSubscriber());
+  requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
 
   return Throw(std::runtime_error("sum_fail"));
 }
@@ -122,7 +123,7 @@ auto ClientStreamNoResponseHandler(
     Publisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
-  requests.Subscribe(MakeSubscriber());
+  requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
 
   return Empty();
 }
@@ -131,11 +132,32 @@ auto ClientStreamTwoResponsesHandler(
     Publisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
-  requests.Subscribe(MakeSubscriber());
+  requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
 
   return Just(
       MakeTestResponse(1),
       MakeTestResponse(2));
+}
+
+auto ClientStreamRequestZeroHandler(
+    Publisher<Flatbuffer<TestRequest>> requests) {
+  // The point of this test endpoint is to request some inputs, and verify that
+  // it doesn't get more than that pushed to it. This endpoint never responds
+  // so tests have to suceed by timing out.
+
+  Subscription subscription = Subscription(requests.Subscribe(MakeSubscriber(
+      [](auto &&) {
+        CHECK(!"no elements should be published");
+      },
+      [](std::exception_ptr error) {
+        CHECK(!"request should not fail");
+      },
+      []() {
+        CHECK(!"request should not complete");
+      })));
+  subscription.Request(ElementCount(0));
+
+  return Never();
 }
 
 auto CumulativeSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
@@ -152,7 +174,7 @@ auto ImmediatelyFailingCumulativeSumHandler(
     Publisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
-  requests.Subscribe(MakeSubscriber());
+  requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
 
   return Throw(std::runtime_error("cumulative_sum_fail"));
 }
@@ -221,6 +243,9 @@ TEST_CASE("RsGrpc") {
       .RegisterMethod(
           &TestService::AsyncService::RequestClientStreamTwoResponses,
           &ClientStreamTwoResponsesHandler)
+      .RegisterMethod(
+          &TestService::AsyncService::RequestClientStreamRequestZero,
+          &ClientStreamRequestZeroHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestCumulativeSum,
           &CumulativeSumHandler)
@@ -320,6 +345,9 @@ TEST_CASE("RsGrpc") {
       }
     }
   };
+
+  // TODO(peck): Make endpoint (of each type) that just returns Never() and see
+  // that if they are called, the server can be shut down.
 
   // TODO(peck): Test what happens when calling unimplemented endpoint. I think
   // right now it just waits forever, which is not nice at all.
@@ -649,6 +677,20 @@ TEST_CASE("RsGrpc") {
             }));
         run_expect_timeout(publisher);
       }
+
+#if 0  // TODO(peck): Add this test, and more server side client streaming backpressure tests.
+      SECTION("make call that never requests elements") {
+        auto publisher = Pipe(
+            test_client.Invoke(
+                &TestService::Stub::AsyncClientStreamRequestZero,
+                Just(MakeTestRequest(432))),
+            Map([](Flatbuffer<TestResponse> response) {
+              CHECK(!"should not be invoked");
+              return "ignored";
+            }));
+        run_expect_timeout(publisher, ElementCount::Unbounded());
+      }
+#endif
     }
 
     SECTION("one message") {
