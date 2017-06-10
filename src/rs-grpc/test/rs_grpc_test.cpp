@@ -26,6 +26,7 @@
 #include <rs/merge.h>
 #include <rs/pipe.h>
 #include <rs/range.h>
+#include <rs/repeat.h>
 #include <rs/scan.h>
 #include <rs/splat.h>
 #include <rs/sum.h>
@@ -313,7 +314,7 @@ TEST_CASE("RsGrpc") {
     subscription.Request(count);
     for (;;) {
       using namespace std::chrono_literals;
-      auto deadline = std::chrono::system_clock::now() + 100ms;
+      auto deadline = std::chrono::system_clock::now() + 50ms;
       if (runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT) {
         break;
       }
@@ -488,6 +489,28 @@ TEST_CASE("RsGrpc") {
         subscription.Request(ElementCount(1));
         runloop.Run();
         CHECK(latest_seen_response == 10);
+      }
+
+      SECTION("Request after stream end") {
+        Subscription subscription = Subscription(publisher
+            .Subscribe(MakeSubscriber(
+                [&subscription](auto &&) {
+                  // Ignore
+                },
+                [](std::exception_ptr error) {
+                  CHECK(!"request should not fail");
+                },
+                [&runloop]() {
+                  runloop.Shutdown();
+                })));
+
+        subscription.Request(ElementCount::Unbounded());
+        runloop.Run();
+
+        subscription.Request(ElementCount(0));
+        subscription.Request(ElementCount(1));
+        subscription.Request(ElementCount(2));
+        subscription.Request(ElementCount::Unbounded());
       }
     }
 
@@ -812,6 +835,66 @@ TEST_CASE("RsGrpc") {
             CHECK(count == 0);
             return "ignored";
           })));
+    }
+
+    SECTION("backpressure") {
+      int latest_seen_response = 0;
+      auto publisher = Pipe(
+          test_client.Invoke(
+              &TestService::Stub::AsyncCumulativeSum,
+              Repeat(MakeTestRequest(1), 10)),
+          Map([&latest_seen_response](Flatbuffer<TestResponse> response) {
+            CHECK(++latest_seen_response == response->data());
+            return "ignored";
+          }));
+
+      SECTION("call Invoke, request only some elements") {
+        for (int i = 0; i < 4; i++) {
+          latest_seen_response = 0;
+          run_expect_timeout(publisher, ElementCount(i));
+          CHECK(latest_seen_response == i);
+        }
+      }
+
+      SECTION("Request one element at a time") {
+        Subscription subscription = Subscription(publisher
+            .Subscribe(MakeSubscriber(
+                [&subscription](auto &&) {
+                  subscription.Request(ElementCount(1));
+                },
+                [](std::exception_ptr error) {
+                  CHECK(!"request should not fail");
+                },
+                [&runloop]() {
+                  runloop.Shutdown();
+                })));
+
+        subscription.Request(ElementCount(1));
+        runloop.Run();
+        CHECK(latest_seen_response == 10);
+      }
+
+      SECTION("Request after stream end") {
+        Subscription subscription = Subscription(publisher
+            .Subscribe(MakeSubscriber(
+                [&subscription](auto &&) {
+                  // Ignore
+                },
+                [](std::exception_ptr error) {
+                  CHECK(!"request should not fail");
+                },
+                [&runloop]() {
+                  runloop.Shutdown();
+                })));
+
+        subscription.Request(ElementCount::Unbounded());
+        runloop.Run();
+
+        subscription.Request(ElementCount(0));
+        subscription.Request(ElementCount(1));
+        subscription.Request(ElementCount(2));
+        subscription.Request(ElementCount::Unbounded());
+      }
     }
 
     SECTION("one message") {

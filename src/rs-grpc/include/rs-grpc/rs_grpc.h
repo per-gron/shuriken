@@ -208,23 +208,24 @@ class RsGrpcClientInvocation<
         invoke, stub, cq, self,
         weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)](
             ElementCount count) mutable {
-      if (self) {
-        if (count > 0) {
-          auto &me = *self;
-          me.self_ = std::move(self);
-          me.requested_ = count;
-          me.stream_ = (stub->*invoke)(&me.context_, me.request_, cq, &me);
-        }
-      } else if (auto strong_self = weak_self.lock()) {
-        strong_self->requested_ += count;
-        if (strong_self->state_ == State::AWAITING_REQUEST) {
-          strong_self->MaybeReadNext();
-        }
-      }
-    },
-    [] {
-      // TODO(peck): Handle cancellation
-    });
+          if (self) {
+            // The initial call to invoke has not yet been made
+            if (count > 0) {
+              auto &me = *self;
+              me.self_ = std::move(self);
+              me.requested_ = count;
+              me.stream_ = (stub->*invoke)(&me.context_, me.request_, cq, &me);
+            }
+          } else if (auto strong_self = weak_self.lock()) {
+            strong_self->requested_ += count;
+            if (strong_self->state_ == State::AWAITING_REQUEST) {
+              strong_self->MaybeReadNext();
+            }
+          }
+        },
+        [] {
+          // TODO(peck): Handle cancellation
+        });
   }
 
  private:
@@ -446,7 +447,17 @@ class RsGrpcClientInvocation<
     void Invoke(
         grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream) {
       stream_ = stream;
-      stream_->Read(&response_, this);
+    }
+
+    void Request(ElementCount count) {
+      requested_ += count;
+      if (state_ == State::AWAITING_REQUEST) {
+        if (requested_ > 0) {
+          --requested_;
+          state_ = State::READING_RESPONSE;
+          stream_->Read(&response_, this);
+        }
+      }
     }
 
     /**
@@ -476,14 +487,26 @@ class RsGrpcClientInvocation<
     void operator()(bool success) override {
       if (!success || error_) {
         // We have reached the end of the stream.
+        state_ = State::END;
         shutdown_();
       } else {
         subscriber_.OnNext(std::move(response_));
-        stream_->Read(&response_, this);
+        state_ = State::AWAITING_REQUEST;
+        Request(ElementCount(0));
       }
     }
 
    private:
+    enum class State {
+      AWAITING_REQUEST,  // Awaiting Request call to the Subscription
+      READING_RESPONSE,
+      END
+    };
+    State state_ = State::AWAITING_REQUEST;
+    // The number of elements that have been requested by the subscriber that have
+    // not yet been requested to be read from gRPC.
+    ElementCount requested_;
+
     std::exception_ptr error_;
     // Should be called when the read stream is finished. Care must be taken so
     // that this is not called when there is an outstanding async operation.
@@ -536,12 +559,40 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    self_ = self;
+    return MakeSubscription([
+        invoke, stub, cq, self,
+        weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)](
+            ElementCount count) mutable {
+          if (self) {
+            // The initial call to invoke has not yet been made
+            if (count > 0) {
+              auto &me = *self;
+              me.self_ = std::move(self);
+              me.stream_ = (stub->*invoke)(&me.context_, cq, &me);
+              me.reader_.Invoke(me.stream_.get());
+              me.reader_.Request(count);
+              me.operation_in_progress_ = true;
 
-    stream_ = (stub->*invoke)(&context_, cq, this);
-    reader_.Invoke(stream_.get());
-    operation_in_progress_ = true;
+              me.RequestRequests();
+            }
+          } else if (auto strong_self = weak_self.lock()) {
+            strong_self->reader_.Request(count);
+          }
+        },
+        [] {
+          // TODO(peck): Handle cancellation
+        });
+  }
 
+ private:
+  enum class State {
+    SENDING_REQUESTS,
+    TO_SEND_WRITES_DONE,
+    TO_SEND_FINISH,
+    DONE
+  };
+
+  void RequestRequests() {
     // TODO(peck): Don't hold weak unsafe ref to this
     auto subscription = requests_.Subscribe(MakeSubscriber(
         [this](RequestType request) {
@@ -559,18 +610,7 @@ class RsGrpcClientInvocation<
         }));
     // TODO(peck): Backpressure, cancellation
     subscription.Request(ElementCount::Unbounded());
-
-    // TODO(peck): Do something sane here (use Subscription from above?)
-    return MakeSubscription();
   }
-
- private:
-  enum class State {
-    SENDING_REQUESTS,
-    TO_SEND_WRITES_DONE,
-    TO_SEND_FINISH,
-    DONE
-  };
 
   void RunEnqueuedOperation() {
     if (operation_in_progress_) {
