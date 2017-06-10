@@ -39,8 +39,8 @@ void HandleUnaryResponse(
     ResponseType &&response,
     SubscriberType *subscriber) {
   if (!success) {
-    subscriber->OnError(std::make_exception_ptr(GrpcError(grpc::Status(
-        grpc::UNKNOWN, "The request was interrupted"))));
+    // The runloop is shutting down. This is not an error condition, but it
+    // means that no more signals will be sent to the subscription.
   } else if (status.ok()) {
     subscriber->OnNext(std::forward<ResponseType>(response));
     subscriber->OnComplete();
@@ -84,8 +84,10 @@ class RsGrpcClientInvocation<
   }
 
   void operator()(bool success) override {
-    HandleUnaryResponse(
-        success, status_, std::move(response_), &subscriber_);
+    if (!cancelled_) {
+      HandleUnaryResponse(
+          success, status_, std::move(response_), &subscriber_);
+    }
 
     self_.reset();  // Delete this
   }
@@ -102,15 +104,22 @@ class RsGrpcClientInvocation<
       grpc::CompletionQueue *cq) {
     return MakeSubscription(
         [invoke, stub, cq, self](ElementCount count) mutable {
-          if (self && count > 0) {
-            auto &me = *self;
-            me.self_ = std::move(self);
-            auto stream = (stub->*invoke)(&me.context_, me.request_, cq);
-            stream->Finish(&me.response_, &me.status_, &me);
+          if (self) {
+            if (self->cancelled_) {
+              self.reset();
+            } else if (count > 0) {
+              auto &me = *self;
+              me.self_ = std::move(self);
+              auto stream = (stub->*invoke)(&me.context_, me.request_, cq);
+              stream->Finish(&me.response_, &me.status_, &me);
+            }
           }
         },
-        [] {
-          // TODO(peck): Handle cancellation
+        [weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)] {
+          if (auto strong_self = weak_self.lock()) {
+            strong_self->cancelled_ = true;
+            strong_self->context_.TryCancel();
+          }
         });
   }
 
@@ -118,6 +127,7 @@ class RsGrpcClientInvocation<
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
   std::shared_ptr<RsGrpcClientInvocation> self_;
+  bool cancelled_ = false;
   static_assert(
       !std::is_reference<RequestType>::value,
       "Request type must be held by value");
