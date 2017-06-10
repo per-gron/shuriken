@@ -727,7 +727,7 @@ TEST_CASE("RsGrpc") {
 
     SECTION("fail on first message") {
       auto error = run_expect_error(Pipe(
-          test_client .Invoke(
+          test_client.Invoke(
               &TestService::Stub::AsyncFailingSum,
               Just(MakeTestRequest(-1))),
           Map([](Flatbuffer<TestResponse> response) {

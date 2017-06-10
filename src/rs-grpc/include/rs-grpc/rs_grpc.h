@@ -409,6 +409,7 @@ class RsGrpcClientInvocation<
   bool operation_in_progress_ = false;
 
   // Because we don't have backpressure we need an unbounded buffer here :-(
+  // TODO(peck): Remove this unbounded buffer
   std::deque<RequestType> enqueued_requests_;
   bool enqueued_writes_done_ = false;
   bool enqueued_finish_ = false;
@@ -662,6 +663,7 @@ class RsGrpcClientInvocation<
   bool writer_done_ = false;
 
   // Because we don't have backpressure we need an unbounded buffer here :-(
+  // TODO(peck): Remove this unbounded buffer
   std::deque<RequestType> enqueued_requests_;
   bool enqueued_writes_done_ = false;
   bool enqueued_finish_ = false;
@@ -780,6 +782,7 @@ class RsGrpcServerInvocation<
 
       awaiting_request_ = false;
 
+      // TODO(peck): Handle cancellation
       // TODO(peck): Don't hold weak unsafe ref to this
       auto subscription = values.Subscribe(MakeSubscriber(
           [this](ResponseType &&response) {
@@ -800,7 +803,9 @@ class RsGrpcServerInvocation<
                   this);
             }
           }));
-      // TODO(peck): Backpressure, cancellation
+      // Because this class only uses the first response (and fails if there
+      // are more), it's fine to Request an unbounded number of elements from
+      // this stream; all elements after the first are immediately discarded.
       subscription.Request(ElementCount::Unbounded());
     } else {
       // The server has now successfully sent a response. Clean up.
@@ -1279,6 +1284,7 @@ class RsGrpcServerInvocation<
 
     std::function<void ()> shutdown_;
     // Because we don't have backpressure we need an unbounded buffer here :-(
+    // TODO(peck): Remove this unbounded buffer
     std::deque<ResponseType> enqueued_responses_;
     bool enqueued_finish_ = false;
     bool operation_in_progress_ = false;
