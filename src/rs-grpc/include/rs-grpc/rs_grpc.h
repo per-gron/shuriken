@@ -744,14 +744,31 @@ class RsGrpcServerInvocation<
       Service, typename ServerCallTraits::Request, Stream>;
 
  public:
+  /**
+   * Do not use this directly. Instead, use Request.
+   */
+  RsGrpcServerInvocation(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq)
+      : error_handler_(error_handler),
+        method_(method),
+        callback_(std::move(callback)),
+        service_(*service),
+        cq_(*cq),
+        stream_(&context_) {}
+
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = new RsGrpcServerInvocation(
+    auto invocation = std::make_shared<RsGrpcServerInvocation>(
         error_handler, method, std::move(callback), service, cq);
+    invocation->self_ = invocation;
 
     (service->*method)(
         &invocation->context_,
@@ -759,13 +776,13 @@ class RsGrpcServerInvocation<
         &invocation->stream_,
         cq,
         cq,
-        invocation);
+        invocation.get());
   }
 
   void operator()(bool success) {
     if (!success) {
       // This happens when the server is shutting down.
-      delete this;
+      self_.reset();  // Delete this
       return;
     }
 
@@ -809,24 +826,11 @@ class RsGrpcServerInvocation<
       subscription.Request(ElementCount::Unbounded());
     } else {
       // The server has now successfully sent a response. Clean up.
-      delete this;
+      self_.reset();  // Delete this
     }
   }
 
  private:
-  RsGrpcServerInvocation(
-      GrpcErrorHandler error_handler,
-      Method method,
-      Callback &&callback,
-      Service *service,
-      grpc::ServerCompletionQueue *cq)
-      : error_handler_(error_handler),
-        method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
-        cq_(*cq),
-        stream_(&context_) {}
-
   void IssueNewServerRequest(Callback &&callback) {
     // Take callback as an rvalue parameter to make it obvious that we steal it.
     Request(
@@ -836,6 +840,10 @@ class RsGrpcServerInvocation<
         &service_,
         &cq_);
   }
+
+  // While this object has given itself to a gRPC CompletionQueue, which does
+  // not own the object, it owns itself through this shared_ptr.
+  std::shared_ptr<RsGrpcServerInvocation> self_;
 
   bool awaiting_request_ = true;
   GrpcErrorHandler error_handler_;
@@ -865,14 +873,31 @@ class RsGrpcServerInvocation<
       Service, typename ServerCallTraits::Request, Stream>;
 
  public:
+  /**
+   * Do not use this directly. Instead, use Request.
+   */
+  RsGrpcServerInvocation(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq)
+      : error_handler_(error_handler),
+        method_(method),
+        callback_(std::move(callback)),
+        service_(*service),
+        cq_(*cq),
+        stream_(&context_) {}
+
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = new RsGrpcServerInvocation(
+    auto invocation = std::make_shared<RsGrpcServerInvocation>(
         error_handler, method, std::move(callback), service, cq);
+    invocation->self_ = invocation;
 
     (service->*method)(
         &invocation->context_,
@@ -880,13 +905,13 @@ class RsGrpcServerInvocation<
         &invocation->stream_,
         cq,
         cq,
-        invocation);
+        invocation.get());
   }
 
   void operator()(bool success) {
     if (!success) {
       // This happens when the server is shutting down.
-      delete this;
+      self_.reset();  // Delete this
       return;
     }
 
@@ -931,7 +956,7 @@ class RsGrpcServerInvocation<
         break;
       }
       case State::SENT_FINAL_RESPONSE: {
-        delete this;
+        self_.reset();  // Delete this
         break;
       }
     }
@@ -944,19 +969,6 @@ class RsGrpcServerInvocation<
     SENDING_RESPONSE,
     SENT_FINAL_RESPONSE
   };
-
-  RsGrpcServerInvocation(
-      GrpcErrorHandler error_handler,
-      Method method,
-      Callback &&callback,
-      Service *service,
-      grpc::ServerCompletionQueue *cq)
-      : error_handler_(error_handler),
-        method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
-        cq_(*cq),
-        stream_(&context_) {}
 
   void IssueNewServerRequest(Callback &&callback) {
     // Take callback as an rvalue parameter to make it obvious that we steal it.
@@ -982,6 +994,10 @@ class RsGrpcServerInvocation<
       stream_.Finish(enqueued_finish_status_, this);
     }
   }
+
+  // While this object has given itself to a gRPC CompletionQueue, which does
+  // not own the object, it owns itself through this shared_ptr.
+  std::shared_ptr<RsGrpcServerInvocation> self_;
 
   State state_ = State::AWAITING_REQUEST;
   bool enqueued_finish_ = false;
@@ -1016,28 +1032,45 @@ class RsGrpcServerInvocation<
   using Method = StreamingRequestMethod<Service, Stream>;
 
  public:
+  /**
+   * Do not use this directly. Instead, use Request.
+   */
+  RsGrpcServerInvocation(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq)
+      : error_handler_(error_handler),
+        method_(method),
+        callback_(std::move(callback)),
+        service_(*service),
+        cq_(*cq),
+        reader_(&context_) {}
+
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = new RsGrpcServerInvocation(
+    auto invocation = std::make_shared<RsGrpcServerInvocation>(
         error_handler, method, std::move(callback), service, cq);
+    invocation->self_ = invocation;
 
     (service->*method)(
         &invocation->context_,
         &invocation->reader_,
         cq,
         cq,
-        invocation);
+        invocation.get());
   }
 
   void operator()(bool success) {
     switch (state_) {
       case State::INIT: {
         if (!success) {
-          delete this;
+          self_.reset();  // Delete this
         } else {
           // Need to set _state before the call to init, in case it moves on to
           // the State::REQUESTED_DATA state immediately.
@@ -1069,7 +1102,7 @@ class RsGrpcServerInvocation<
       case State::SENT_RESPONSE: {
         // success == false implies that the server is shutting down. It doesn't
         // change what needs to be done here.
-        delete this;
+        self_.reset();  // Delete this
         break;
       }
     }
@@ -1083,19 +1116,6 @@ class RsGrpcServerInvocation<
     STREAM_ENDED,
     SENT_RESPONSE
   };
-
-  RsGrpcServerInvocation(
-      GrpcErrorHandler error_handler,
-      Method method,
-      Callback &&callback,
-      Service *service,
-      grpc::ServerCompletionQueue *cq)
-      : error_handler_(error_handler),
-        method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
-        cq_(*cq),
-        reader_(&context_) {}
 
   void Init() {
     auto response = callback_(Publisher<RequestType>(MakePublisher(
@@ -1164,6 +1184,10 @@ class RsGrpcServerInvocation<
       }
     }
   }
+
+  // While this object has given itself to a gRPC CompletionQueue, which does
+  // not own the object, it owns itself through this shared_ptr.
+  std::shared_ptr<RsGrpcServerInvocation> self_;
 
   std::unique_ptr<Subscriber<RequestType>> subscriber_;
   State state_ = State::INIT;
@@ -1295,28 +1319,49 @@ class RsGrpcServerInvocation<
   };
 
  public:
+  /**
+   * Do not use this directly. Instead, use Request.
+   */
+  RsGrpcServerInvocation(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq)
+      : error_handler_(error_handler),
+        method_(method),
+        callback_(std::move(callback)),
+        service_(*service),
+        cq_(*cq),
+        stream_(&context_),
+        writer_(
+            [this] { write_stream_ended_ = true; TryShutdown(); },
+            &context_,
+            &stream_) {}
+
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = new RsGrpcServerInvocation(
+    auto invocation = std::make_shared<RsGrpcServerInvocation>(
         error_handler, method, std::move(callback), service, cq);
+    invocation->self_ = invocation;
 
     (service->*method)(
         &invocation->context_,
         &invocation->stream_,
         cq,
         cq,
-        invocation);
+        invocation.get());
   }
 
   void operator()(bool success) {
     switch (state_) {
       case State::INIT: {
         if (!success) {
-          delete this;
+          self_.reset();  // Delete this
         } else {
           // Need to set _state before the call to init, in case it moves on to
           // the State::REQUESTED_DATA state immediately.
@@ -1356,28 +1401,11 @@ class RsGrpcServerInvocation<
     READ_STREAM_ENDED
   };
 
-  RsGrpcServerInvocation(
-      GrpcErrorHandler error_handler,
-      Method method,
-      Callback &&callback,
-      Service *service,
-      grpc::ServerCompletionQueue *cq)
-      : error_handler_(error_handler),
-        method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
-        cq_(*cq),
-        stream_(&context_),
-        writer_(
-            [this] { write_stream_ended_ = true; TryShutdown(); },
-            &context_,
-            &stream_) {}
-
   void TryShutdown() {
     if (state_ == State::READ_STREAM_ENDED && write_stream_ended_) {
       // Only delete this when both the read stream and the write stream have
       // finished.
-      delete this;
+      self_.reset();  // Delete this
     }
   }
 
@@ -1410,6 +1438,10 @@ class RsGrpcServerInvocation<
         &service_,
         &cq_);
   }
+
+  // While this object has given itself to a gRPC CompletionQueue, which does
+  // not own the object, it owns itself through this shared_ptr.
+  std::shared_ptr<RsGrpcServerInvocation> self_;
 
   std::unique_ptr<Subscriber<RequestType>> subscriber_;
   State state_ = State::INIT;
