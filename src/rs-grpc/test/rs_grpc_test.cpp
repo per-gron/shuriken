@@ -887,7 +887,7 @@ TEST_CASE("RsGrpc") {
 
     SECTION("fail on second message") {
       auto error = run_expect_error(Pipe(
-          test_client .Invoke(
+          test_client.Invoke(
               &TestService::Stub::AsyncFailingSum,
               Just(MakeTestRequest(0), MakeTestRequest(-1))),
           Map([](Flatbuffer<TestResponse> response) {
@@ -899,7 +899,7 @@ TEST_CASE("RsGrpc") {
 
     SECTION("fail because of no response") {
       auto error = run_expect_error(Pipe(
-          test_client .Invoke(
+          test_client.Invoke(
               &TestService::Stub::AsyncClientStreamNoResponse,
               Just(MakeTestRequest(0))),
           Map([](Flatbuffer<TestResponse> response) {
@@ -911,7 +911,7 @@ TEST_CASE("RsGrpc") {
 
     SECTION("fail because of two responses") {
       auto error = run_expect_error(Pipe(
-          test_client .Invoke(
+          test_client.Invoke(
               &TestService::Stub::AsyncClientStreamTwoResponses,
               Just(MakeTestRequest(0))),
           Map([](Flatbuffer<TestResponse> response) {
