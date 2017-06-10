@@ -748,7 +748,7 @@ template <typename ResponseType, typename ServerCallTraits, typename Callback>
 class RsGrpcServerInvocation<
     grpc::ServerAsyncResponseWriter<ResponseType>,
     ServerCallTraits,
-    Callback> : public RsGrpcTag {
+    Callback> : public RsGrpcTag, public SubscriberBase {
   using Stream = grpc::ServerAsyncResponseWriter<ResponseType>;
   using Service = typename ServerCallTraits::Service;
 
@@ -812,26 +812,8 @@ class RsGrpcServerInvocation<
       awaiting_request_ = false;
 
       // TODO(peck): Handle cancellation
-      // TODO(peck): Don't hold weak unsafe ref to this
       auto subscription = values.Subscribe(MakeSubscriber(
-          [this](ResponseType &&response) {
-            num_responses_++;
-            response_ = std::move(response);
-          },
-          [this](std::exception_ptr &&error) {
-            stream_.FinishWithError(ExceptionToStatus(error), this);
-          },
-          [this]() {
-            if (num_responses_ == 1) {
-              stream_.Finish(response_, grpc::Status::OK, this);
-            } else {
-              const auto *error_message =
-                  num_responses_ == 0 ? "No response" : "Too many responses";
-              stream_.FinishWithError(
-                  grpc::Status(grpc::StatusCode::INTERNAL, error_message),
-                  this);
-            }
-          }));
+          std::weak_ptr<RsGrpcServerInvocation>(self_)));
       // Because this class only uses the first response (and fails if there
       // are more), it's fine to Request an unbounded number of elements from
       // this stream; all elements after the first are immediately discarded.
@@ -839,6 +821,27 @@ class RsGrpcServerInvocation<
     } else {
       // The server has now successfully sent a response. Clean up.
       self_.reset();  // Delete this
+    }
+  }
+
+  void OnNext(ResponseType &&response) {
+    num_responses_++;
+    response_ = std::move(response);
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    stream_.FinishWithError(ExceptionToStatus(error), this);
+  }
+
+  void OnComplete() {
+    if (num_responses_ == 1) {
+      stream_.Finish(response_, grpc::Status::OK, this);
+    } else {
+      const auto *error_message =
+          num_responses_ == 0 ? "No response" : "Too many responses";
+      stream_.FinishWithError(
+          grpc::Status(grpc::StatusCode::INTERNAL, error_message),
+          this);
     }
   }
 
