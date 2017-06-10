@@ -151,7 +151,7 @@ class RsGrpcClientInvocation<
     ResponseType,
     RequestType,
     RequestOrPublisher,
-    SubscriberType> : public RsGrpcTag {
+    SubscriberType> : public RsGrpcTag, public SubscriptionBase {
  public:
   template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
@@ -214,28 +214,35 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    return MakeSubscription([invoke, stub, cq, self, invoked = false](
-            ElementCount count) mutable {
-          if (!invoked) {
-            // The initial call to invoke has not yet been made
-            if (count > 0) {
-              invoked = true;
-              auto &me = *self;
-              me.weak_self_ = self;
-              me.self_ = self;
-              me.requested_ = count;
-              me.stream_ = (stub->*invoke)(&me.context_, me.request_, cq, &me);
-            }
-          } else {
-            self->requested_ += count;
-            if (self->state_ == State::AWAITING_REQUEST) {
-              self->MaybeReadNext();
-            }
-          }
-        },
-        [] {
-          // TODO(peck): Handle cancellation
-        });
+    weak_self_ = self;
+    invoke_ = [this, stub, invoke, cq] {
+      return (stub->*invoke)(&context_, request_, cq, this);
+    };
+    return MakeSubscription(self);
+  }
+
+  void Request(ElementCount count) {
+    if (cancelled_) {
+      // Nothing to do
+    } else if (invoke_) {
+      // The initial call to invoke has not yet been made
+      if (count > 0) {
+        self_ = weak_self_.lock();
+        requested_ = count;
+        stream_ = invoke_();
+        invoke_ = nullptr;
+      }
+    } else {
+      requested_ += count;
+      if (state_ == State::AWAITING_REQUEST) {
+        MaybeReadNext();
+      }
+    }
+  }
+
+  void Cancel() {
+    cancelled_ = true;
+    context_.TryCancel();
   }
 
  private:
@@ -286,6 +293,13 @@ class RsGrpcClientInvocation<
   SubscriberType subscriber_;
   grpc::Status status_;
   std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> stream_;
+
+  // Member variables that are stored in Invoke for use by Request. Set only
+  // between the Invoke call and the first Request call that requests non-zero
+  // elements.
+  std::function<
+      std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> ()> invoke_;
+  bool cancelled_ = false;
 };
 
 /**

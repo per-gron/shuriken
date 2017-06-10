@@ -95,6 +95,10 @@ auto RepeatThenFailHandler(Flatbuffer<TestRequest> request) {
       Throw(std::runtime_error("repeat_fail")));
 }
 
+auto ServerStreamHangHandler(Flatbuffer<TestRequest> request) {
+  return Never();
+}
+
 auto SumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
   return Pipe(
       requests,
@@ -271,6 +275,9 @@ TEST_CASE("RsGrpc") {
       .RegisterMethod(
           &TestService::AsyncService::RequestRepeatThenFail,
           &RepeatThenFailHandler)
+      .RegisterMethod(
+          &TestService::AsyncService::RequestServerStreamHang,
+          &ServerStreamHangHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestSum,
           &SumHandler)
@@ -610,6 +617,64 @@ TEST_CASE("RsGrpc") {
             CHECK(false);
             return "ignored";
           })));
+    }
+
+    SECTION("cancellation") {
+      SECTION("from client side") {
+        SECTION("after Request") {
+          auto call = test_client.Invoke(
+              &TestService::Stub::AsyncServerStreamHang,
+              MakeTestRequest(0));
+
+          auto subscription = call
+              .Subscribe(MakeSubscriber(
+                  [](auto &&) {
+                    CHECK(!"OnNext should not be called");
+                  },
+                  [](std::exception_ptr error) {
+                    CHECK(!"OnError should not be called");
+                    printf(
+                        "Got exception: %s\n", ExceptionMessage(error).c_str());
+                  },
+                  []() {
+                    CHECK(!"OnComplete should not be called");
+                  }));
+          subscription.Request(ElementCount::Unbounded());
+          subscription.Cancel();
+
+          // The cancelled request will takes two runloop iterations to actually
+          // happen.
+          CHECK(runloop.Next());
+          CHECK(runloop.Next());
+        }
+
+        SECTION("before Request") {
+          auto call = test_client.Invoke(
+              &TestService::Stub::AsyncRepeat,
+              MakeTestRequest(1));
+
+          auto subscription = call
+              .Subscribe(MakeSubscriber(
+                  [](auto &&) {
+                    CHECK(!"OnNext should not be called");
+                  },
+                  [](std::exception_ptr error) {
+                    CHECK(!"OnError should not be called");
+                    printf(
+                        "Got exception: %s\n", ExceptionMessage(error).c_str());
+                  },
+                  []() {
+                    CHECK(!"OnComplete should not be called");
+                  }));
+          subscription.Cancel();
+          subscription.Request(ElementCount::Unbounded());
+
+          // There should be nothing on the runloop
+          using namespace std::chrono_literals;
+          auto deadline = std::chrono::system_clock::now() + 20ms;
+          CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
+        }
+      }
     }
 
     SECTION("backpressure") {
