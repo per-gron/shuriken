@@ -171,7 +171,16 @@ auto FailingCumulativeSumHandler(
 }  // anonymous namespace
 
 TEST_CASE("RsGrpc") {
-  auto server_address = "unix:rx_grpc_test.socket";
+  // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
+  // TODO(peck): Add support for timeouts
+  // TODO(peck): Add support for backpressure (streaming output requires only
+  //     one outstanding request at a time. Not possible atm.)
+  // TODO(peck): Test
+  //  * finishing bidi and unidirectional streams in different orders
+  //  * go through the code and look for stuff
+  //  * what happens if writesdone is not called? Does the server stall then?
+
+  auto server_address = "unix:rs_grpc_test.socket";
 
   RsGrpcServer::Builder server_builder;
   server_builder.GrpcServerBuilder()
@@ -289,16 +298,15 @@ TEST_CASE("RsGrpc") {
   const auto run_expect_timeout = [&](
       const auto &publisher,
       ElementCount count = ElementCount(0)) {
-    std::exception_ptr captured_error;
     auto subscription = Subscription(publisher
         .Subscribe(MakeSubscriber(
             [](auto &&) {
               // Ignore OnNext
             },
-            [&runloop, &captured_error](std::exception_ptr error) {
+            [](std::exception_ptr error) {
               CHECK(!"request should not fail");
             },
-            [&runloop]() {
+            []() {
               CHECK(!"request should not finish");
             })));
 
@@ -326,15 +334,17 @@ TEST_CASE("RsGrpc") {
           })));
     }
 
-    SECTION("call Invoke but don't request a value") {
-      auto publisher = Pipe(
-          test_client.Invoke(
-              &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(response->data() == 123 * 2);
-            return "ignored";
-          }));
-      run_expect_timeout(publisher);
+    SECTION("backpressure") {
+      SECTION("call Invoke but don't request a value") {
+        auto publisher = Pipe(
+            test_client.Invoke(
+                &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+            Map([](Flatbuffer<TestResponse> response) {
+              CHECK(!"should not be invoked");
+              return "ignored";
+            }));
+        run_expect_timeout(publisher);
+      }
     }
 
     SECTION("Request twice") {
@@ -442,6 +452,43 @@ TEST_CASE("RsGrpc") {
             CHECK(false);
             return "ignored";
           })));
+    }
+
+    SECTION("backpressure") {
+      int latest_seen_response = 0;
+      auto publisher = Pipe(
+          test_client.Invoke(
+              &TestService::Stub::AsyncRepeat, MakeTestRequest(10)),
+          Map([&latest_seen_response](Flatbuffer<TestResponse> response) {
+            CHECK(++latest_seen_response == response->data());
+            return "ignored";
+          }));
+
+      SECTION("call Invoke, request only some elements") {
+        for (int i = 0; i < 4; i++) {
+          latest_seen_response = 0;
+          run_expect_timeout(publisher, ElementCount(i));
+          CHECK(latest_seen_response == i);
+        }
+      }
+
+      SECTION("Request one element at a time") {
+        Subscription subscription = Subscription(publisher
+            .Subscribe(MakeSubscriber(
+                [&subscription](auto &&) {
+                  subscription.Request(ElementCount(1));
+                },
+                [](std::exception_ptr error) {
+                  CHECK(!"request should not fail");
+                },
+                [&runloop]() {
+                  runloop.Shutdown();
+                })));
+
+        subscription.Request(ElementCount(1));
+        runloop.Run();
+        CHECK(latest_seen_response == 10);
+      }
     }
 
     SECTION("one response") {

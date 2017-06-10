@@ -157,8 +157,13 @@ class RsGrpcClientInvocation<
   void operator()(bool success) override {
     switch (state_) {
       case State::INIT: {
-        state_ = State::READING_RESPONSE;
-        stream_->Read(&response_, this);
+        MaybeReadNext();
+        break;
+      }
+      case State::AWAITING_REQUEST: {
+        // This is an internal error: When awaiting request there should be no
+        // outstanding gRPC request.
+        throw std::logic_error("Should not get response when awaiting request");
         break;
       }
       case State::READING_RESPONSE: {
@@ -168,7 +173,7 @@ class RsGrpcClientInvocation<
           stream_->Finish(&status_, this);
         } else {
           subscriber_.OnNext(std::move(response_));
-          stream_->Read(&response_, this);
+          MaybeReadNext();
         }
         break;
       }
@@ -199,24 +204,54 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    self_ = self;
-
-    stream_ = (stub->*invoke)(&context_, request_, cq, this);
-
-    return MakeSubscription();  // TODO(peck): Handle backpressure and cancellation
+    return MakeSubscription([
+        invoke, stub, cq, self,
+        weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)](
+            ElementCount count) mutable {
+      if (self) {
+        if (count > 0) {
+          auto &me = *self;
+          me.self_ = std::move(self);
+          me.requested_ = count;
+          me.stream_ = (stub->*invoke)(&me.context_, me.request_, cq, &me);
+        }
+      } else if (auto strong_self = weak_self.lock()) {
+        strong_self->requested_ += count;
+        if (strong_self->state_ == State::AWAITING_REQUEST) {
+          strong_self->MaybeReadNext();
+        }
+      }
+    },
+    [] {
+      // TODO(peck): Handle cancellation
+    });
   }
 
  private:
   enum class State {
     INIT,
+    AWAITING_REQUEST,  // Awaiting Request call to the Subscription
     READING_RESPONSE,
     FINISHING,
     READ_FAILURE
   };
 
+  void MaybeReadNext() {
+    if (requested_ > 0) {
+      --requested_;
+      state_ = State::READING_RESPONSE;
+      stream_->Read(&response_, this);
+    } else {
+      state_ = State::AWAITING_REQUEST;
+    }
+  }
+
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
   std::shared_ptr<RsGrpcClientInvocation> self_;
+  // The number of elements that have been requested by the subscriber that have
+  // not yet been requested to be read from gRPC.
+  ElementCount requested_;
   static_assert(
       !std::is_reference<RequestType>::value,
       "Request type must be held by value");

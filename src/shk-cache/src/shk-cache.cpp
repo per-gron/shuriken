@@ -68,15 +68,6 @@ auto makeConfigGetRequest() {
 }
 
 int main(int /*argc*/, const char * /*argv*/[]) {
-  // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
-  // TODO(peck): Add support for timeouts
-  // TODO(peck): Add support for backpressure (streaming output requires only
-  //     one outstanding request at a time. Not possible atm.)
-  // TODO(peck): Test
-  //  * finishing bidi and unidirectional streams in different orders
-  //  * go through the code and look for stuff
-  //  * what happens if writesdone is not called? Does the server stall then?
-
   auto server = makeServer();
   std::thread server_thread([&] { server.Run(); });
 
