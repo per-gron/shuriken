@@ -14,6 +14,7 @@
 
 #include <catch.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -164,6 +165,39 @@ auto ClientStreamRequestZeroHandler(
   return Never();
 }
 
+auto MakeClientStreamHangOnZeroHandler(
+    std::atomic<int> *hang_on_seen_elements) {
+  return [hang_on_seen_elements](Publisher<Flatbuffer<TestRequest>> requests) {
+    // The point of this test endpoint is to request some inputs, and verify that
+    // it doesn't get more than that pushed to it. This endpoint never responds
+    // so tests have to suceed by timing out.
+
+    bool seen_zero = false;
+    std::shared_ptr<Subscription> sub =
+        std::make_shared<Subscription>(MakeSubscription());
+    *sub = Subscription(requests.Subscribe(MakeSubscriber(
+        [&seen_zero, sub, hang_on_seen_elements](
+            Flatbuffer<TestRequest> &&request) {
+          (*hang_on_seen_elements)++;
+          CHECK(!seen_zero);
+          if (request->data() == 0) {
+            seen_zero = true;
+          } else {
+            sub->Request(ElementCount(1));
+          }
+        },
+        [](std::exception_ptr error) {
+          CHECK(!"requests should not fail");
+        },
+        []() {
+          CHECK(!"requests should not complete");
+        })));
+    sub->Request(ElementCount(1));
+
+    return Never();
+  };
+}
+
 auto CumulativeSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
   return Pipe(
     requests,
@@ -213,6 +247,8 @@ TEST_CASE("RsGrpc") {
   server_builder.GrpcServerBuilder()
       .AddListeningPort(server_address, grpc::InsecureServerCredentials());
 
+  std::atomic<int> hang_on_seen_elements(0);
+
   server_builder.RegisterService<TestService::AsyncService>()
       .RegisterMethod(
           &TestService::AsyncService::RequestDouble,
@@ -253,6 +289,9 @@ TEST_CASE("RsGrpc") {
       .RegisterMethod(
           &TestService::AsyncService::RequestClientStreamRequestZero,
           &ClientStreamRequestZeroHandler)
+      .RegisterMethod(
+          &TestService::AsyncService::RequestClientStreamHangOnZero,
+          MakeClientStreamHangOnZeroHandler(&hang_on_seen_elements))
       .RegisterMethod(
           &TestService::AsyncService::RequestCumulativeSum,
           &CumulativeSumHandler)
@@ -709,7 +748,6 @@ TEST_CASE("RsGrpc") {
         run_expect_timeout(publisher);
       }
 
-#if 0  // TODO(peck): Add this test, and more server side client streaming backpressure tests.
       SECTION("make call that never requests elements") {
         auto publisher = Pipe(
             test_client.Invoke(
@@ -721,7 +759,41 @@ TEST_CASE("RsGrpc") {
             }));
         run_expect_timeout(publisher, ElementCount::Unbounded());
       }
-#endif
+
+      SECTION("make call that requests one element") {
+        auto publisher = Pipe(
+            test_client.Invoke(
+                &TestService::Stub::AsyncClientStreamHangOnZero,
+                Just(
+                    MakeTestRequest(1),
+                    MakeTestRequest(0),  // Hang on this one
+                    MakeTestRequest(1))),
+            Map([](Flatbuffer<TestResponse> response) {
+              CHECK(!"should not be invoked");
+              return "ignored";
+            }));
+        run_expect_timeout(publisher, ElementCount::Unbounded());
+
+        CHECK(hang_on_seen_elements == 2);
+      }
+
+      SECTION("make call that requests two elements") {
+        auto publisher = Pipe(
+            test_client.Invoke(
+                &TestService::Stub::AsyncClientStreamHangOnZero,
+                Just(
+                    MakeTestRequest(1),
+                    MakeTestRequest(2),
+                    MakeTestRequest(0),  // Hang on this one
+                    MakeTestRequest(1))),
+            Map([](Flatbuffer<TestResponse> response) {
+              CHECK(!"should not be invoked");
+              return "ignored";
+            }));
+        run_expect_timeout(publisher, ElementCount::Unbounded());
+
+        CHECK(hang_on_seen_elements == 3);
+      }
     }
 
     SECTION("one message") {

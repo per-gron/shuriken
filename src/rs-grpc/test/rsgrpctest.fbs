@@ -24,6 +24,7 @@ rpc_service TestService {
   ClientStreamNoResponse(TestRequest): TestResponse (streaming: "client");
   ClientStreamTwoResponses(TestRequest): TestResponse (streaming: "client");
   ClientStreamRequestZero(TestRequest): TestResponse (streaming: "client");
+  ClientStreamHangOnZero(TestRequest): TestResponse (streaming: "client");
 
   CumulativeSum(TestRequest): TestResponse (streaming: "bidi");
   ImmediatelyFailingCumulativeSum(TestRequest):
