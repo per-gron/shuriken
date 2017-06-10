@@ -13,6 +13,7 @@ rpc_service TestService {
   UnaryFail(TestRequest): TestResponse;
   UnaryNoResponse(TestRequest): TestResponse;
   UnaryTwoResponses(TestRequest): TestResponse;
+  UnaryHang(TestRequest): TestResponse;
 
   Repeat(TestRequest): TestResponse (streaming: "server");
   RepeatThenFail(TestRequest): TestResponse (streaming: "server");

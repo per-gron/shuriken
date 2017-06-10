@@ -1677,7 +1677,7 @@ class RsGrpcServer {
   RsGrpcServer &operator=(RsGrpcServer &&) = default;
 
   ~RsGrpcServer() {
-    Shutdown();
+    Shutdown(std::chrono::system_clock::now());
   }
 
   class Builder {
@@ -1884,10 +1884,11 @@ class RsGrpcServer {
     return detail::RsGrpcTag::ProcessOneEvent(cq_.get(), deadline);
   }
 
-  void Shutdown() {
+  template <typename T>
+  void Shutdown(const T &deadline) {
     // _server and _cq might be nullptr if this object has been moved out from.
     if (server_) {
-      server_->Shutdown();
+      server_->Shutdown(deadline);
     }
     if (cq_) {
       cq_->Shutdown();

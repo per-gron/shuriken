@@ -77,6 +77,10 @@ auto UnaryTwoResponsesHandler(Flatbuffer<TestRequest> request) {
       MakeTestResponse(2));
 }
 
+auto UnaryHangHandler(Flatbuffer<TestRequest> request) {
+  return Never();
+}
+
 auto RepeatHandler(Flatbuffer<TestRequest> request) {
   int count = request->data();
   return Pipe(
@@ -223,6 +227,9 @@ TEST_CASE("RsGrpc") {
           &TestService::AsyncService::RequestUnaryTwoResponses,
           &UnaryTwoResponsesHandler)
       .RegisterMethod(
+          &TestService::AsyncService::RequestUnaryHang,
+          &UnaryHangHandler)
+      .RegisterMethod(
           &TestService::AsyncService::RequestRepeat,
           &RepeatHandler)
       .RegisterMethod(
@@ -352,7 +359,7 @@ TEST_CASE("RsGrpc") {
   // TODO(peck): Test what happens when calling unimplemented endpoint. I think
   // right now it just waits forever, which is not nice at all.
 
-  SECTION("unary rpc") {
+  SECTION("unary RPC") {
     SECTION("direct") {
       run(Pipe(
           test_client.Invoke(
@@ -390,7 +397,7 @@ TEST_CASE("RsGrpc") {
       });
     }
 
-    SECTION("failed rpc") {
+    SECTION("failed RPC") {
       auto error = run_expect_error(Pipe(
           test_client
               .Invoke(&TestService::Stub::AsyncUnaryFail, MakeTestRequest(0)),
@@ -401,7 +408,7 @@ TEST_CASE("RsGrpc") {
       CHECK(ExceptionMessage(error) == "unary_fail");
     }
 
-    SECTION("failed rpc because of no response") {
+    SECTION("failed RPC because of no response") {
       auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncUnaryNoResponse, MakeTestRequest(0)),
@@ -412,7 +419,7 @@ TEST_CASE("RsGrpc") {
       CHECK(ExceptionMessage(error) == "No response");
     }
 
-    SECTION("failed rpc because of two responses") {
+    SECTION("failed RPC because of two responses") {
       auto error = run_expect_error(Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncUnaryTwoResponses,
@@ -422,6 +429,30 @@ TEST_CASE("RsGrpc") {
             return "unused";
           })));
       CHECK(ExceptionMessage(error) == "Too many responses");
+    }
+
+    SECTION("RPC that never completes") {
+      auto call = test_client.Invoke(
+          &TestService::Stub::AsyncUnaryHang,
+          MakeTestRequest(0));
+
+      auto subscription = call
+          .Subscribe(MakeSubscriber(
+              [](auto &&) {
+                CHECK(!"OnNext should not be called");
+              },
+              [](std::exception_ptr error) {
+                CHECK(!"OnError should not be called");
+              },
+              []() {
+                CHECK(!"OnComplete should not be called");
+              }));
+      subscription.Request(ElementCount::Unbounded());
+
+      using namespace std::chrono_literals;
+      auto deadline = std::chrono::system_clock::now() + 50ms;
+      runloop.Next(deadline);
+      runloop.Shutdown();
     }
 
     SECTION("delayed") {
@@ -1087,7 +1118,7 @@ TEST_CASE("RsGrpc") {
     }
   }
 
-  server.Shutdown();
+  server.Shutdown(std::chrono::system_clock::now());
   server_thread.join();
 }
 
