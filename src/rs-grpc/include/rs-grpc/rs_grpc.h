@@ -1259,7 +1259,7 @@ template <
 class RsGrpcServerInvocation<
     grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
     ServerCallTraits,
-    Callback> : public RsGrpcTag {
+    Callback> : public RsGrpcTag, public SubscriberBase {
   using Stream = grpc::ServerAsyncReaderWriter<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
 
@@ -1280,32 +1280,23 @@ class RsGrpcServerInvocation<
           context_(*context),
           stream_(*stream) {}
 
-    template <typename Publisher>
-    void Subscribe(const Publisher &publisher) {
-      // TODO(peck): Don't hold weak unsafe refs to this
-      auto subscription = publisher.Subscribe(MakeSubscriber(
-          [this](auto &&response) {
-            enqueued_responses_.emplace_back(
-                std::forward<decltype(response)>(response));
-            RunEnqueuedOperation();
-          },
-          [this](std::exception_ptr &&error) {
-            OnError(error);
-          },
-          [this]() {
-            enqueued_finish_ = true;
-            RunEnqueuedOperation();
-          }));
-      // TODO(peck): Backpressure, cancellation
-      subscription.Request(ElementCount::Unbounded());
+    void OnNext(ResponseType &&response) {
+      enqueued_responses_.emplace_back(
+          std::forward<decltype(response)>(response));
+      RunEnqueuedOperation();
     }
 
     /**
      * Try to end the write stream with an error. If the write stream has
      * already finished, this is a no-op.
      */
-    void OnError(const std::exception_ptr &error) {
+    void OnError(std::exception_ptr &&error) {
       status_ = ExceptionToStatus(error);
+      enqueued_finish_ = true;
+      RunEnqueuedOperation();
+    }
+
+    void OnComplete() {
       enqueued_finish_ = true;
       RunEnqueuedOperation();
     }
@@ -1431,6 +1422,18 @@ class RsGrpcServerInvocation<
     }
   }
 
+  void OnNext(ResponseType &&response) {
+    writer_.OnNext(std::move(response));
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    writer_.OnError(std::move(error));
+  }
+
+  void OnComplete() {
+    writer_.OnComplete();
+  }
+
  private:
   enum class State {
     INIT,
@@ -1448,6 +1451,7 @@ class RsGrpcServerInvocation<
   }
 
   void Init() {
+    // TODO(peck): I think this weak this capture in the lambda seems dangerous
     auto response = callback_(Publisher<RequestType>(MakePublisher(
         [this](auto &&subscriber) {
       if (subscriber_) {
@@ -1471,7 +1475,10 @@ class RsGrpcServerInvocation<
     static_assert(
         IsPublisher<decltype(response)>,
         "Callback return type must be Publisher");
-    writer_.Subscribe(response);
+    auto subscription = response.Subscribe(MakeSubscriber(
+        std::weak_ptr<RsGrpcServerInvocation>(self_)));
+    // TODO(peck): Backpressure, cancellation
+    subscription.Request(ElementCount::Unbounded());
 
     Request(
         error_handler_,
