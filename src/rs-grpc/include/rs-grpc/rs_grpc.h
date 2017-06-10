@@ -400,10 +400,6 @@ class RsGrpcClientInvocation<
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
       operation_in_progress_ = true;
-
-      // Must be done before the call to Finish because it's not safe to do
-      // anything after that call; gRPC could invoke the callback immediately
-      // on another thread, which could delete this.
       sent_final_request_ = true;
 
       stream_->Finish(&status_, this);
@@ -444,7 +440,7 @@ class RsGrpcClientInvocation<
     ResponseType,
     RequestType,
     RequestOrPublisher,
-    SubscriberType> : public RsGrpcTag {
+    SubscriberType> : public RsGrpcTag, public SubscriberBase {
  private:
   /**
    * Bidi streaming requires separate tags for reading and writing (since they
@@ -602,6 +598,22 @@ class RsGrpcClientInvocation<
         });
   }
 
+  void OnNext(RequestType &&request) {
+    enqueued_requests_.emplace_back(std::move(request));
+    RunEnqueuedOperation();
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    reader_.OnError(error);
+    enqueued_writes_done_ = true;
+    RunEnqueuedOperation();
+  }
+
+  void OnComplete() {
+    enqueued_writes_done_ = true;
+    RunEnqueuedOperation();
+  }
+
  private:
   enum class State {
     SENDING_REQUESTS,
@@ -611,21 +623,8 @@ class RsGrpcClientInvocation<
   };
 
   void RequestRequests() {
-    // TODO(peck): Don't hold weak unsafe ref to this
     auto subscription = requests_.Subscribe(MakeSubscriber(
-        [this](RequestType request) {
-          enqueued_requests_.emplace_back(std::move(request));
-          RunEnqueuedOperation();
-        },
-        [this](std::exception_ptr &&error) {
-          reader_.OnError(error);
-          enqueued_writes_done_ = true;
-          RunEnqueuedOperation();
-        },
-        [this]() {
-          enqueued_writes_done_ = true;
-          RunEnqueuedOperation();
-        }));
+        std::weak_ptr<RsGrpcClientInvocation>(self_)));
     // TODO(peck): Backpressure, cancellation
     subscription.Request(ElementCount::Unbounded());
   }
@@ -646,10 +645,6 @@ class RsGrpcClientInvocation<
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
       operation_in_progress_ = true;
-
-      // Must be done before the call to Finish because it's not safe to do
-      // anything after that call; gRPC could invoke the callback immediately
-      // on another thread, which could delete this.
       sent_final_request_ = true;
 
       stream_->Finish(&status_, this);
@@ -1332,10 +1327,6 @@ class RsGrpcServerInvocation<
       } else if (enqueued_finish_ && !sent_final_request_) {
         enqueued_finish_ = false;
         operation_in_progress_ = true;
-
-        // Must be done before the call to Finish because it's not safe to do
-        // anything after that call; gRPC could invoke the callback immediately
-        // on another thread, which could delete this.
         sent_final_request_ = true;
 
         stream_.Finish(status_, this);
