@@ -1196,10 +1196,6 @@ class RsGrpcServerInvocation<
     }
   }
 
-  void IssueNewServerRequest(std::unique_ptr<Callback> &&callback) {
-    // TODO(peck): Implement me?
-  }
-
   void TrySendResponse() {
     if (finished_ && state_ == State::STREAM_ENDED) {
       state_ = State::SENT_RESPONSE;
