@@ -589,6 +589,8 @@ class RsGrpcClientInvocation<
               me.RequestRequests();
             }
           } else if (auto strong_self = weak_self.lock()) {
+            // TODO(peck): Is it really right to use a weak_ptr here? Is this
+            // object owning itself at the right times?
             strong_self->reader_.Request(count);
           }
         },
@@ -1408,7 +1410,8 @@ class RsGrpcServerInvocation<
       case State::REQUESTED_DATA: {
         if (success) {
           subscriber_->OnNext(std::move(request_));
-          stream_.Read(&request_, this);
+          state_ = State::WAITING_FOR_DATA_REQUEST;
+          MaybeReadNext();
         } else {
           // The client has stopped sending requests.
           subscriber_->OnComplete();
@@ -1451,10 +1454,14 @@ class RsGrpcServerInvocation<
           new Subscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
-      state_ = State::REQUESTED_DATA;
-      stream_.Read(&request_, this);
-
-      return MakeSubscription();  // TODO(peck): Do something sane here
+      return MakeSubscription(
+          [self = self_](ElementCount count) {
+            self->requested_ += count;
+            self->MaybeReadNext();
+          },
+          [] {
+            // TODO(peck): Handle cancellation
+          });
     })));
 
     static_assert(
@@ -1470,9 +1477,23 @@ class RsGrpcServerInvocation<
         &cq_);
   }
 
+  void MaybeReadNext() {
+    if (requested_ > 0 && state_ == State::WAITING_FOR_DATA_REQUEST) {
+      --requested_;
+      state_ = State::REQUESTED_DATA;
+      stream_.Read(&request_, this);
+    } else {
+      // TODO(peck): I think this can leak, if the RPC handler does not Request
+      // all values.
+    }
+  }
+
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
   std::shared_ptr<RsGrpcServerInvocation> self_;
+  // The number of elements that have been requested by the subscriber that have
+  // not yet been requested to be read from gRPC.
+  ElementCount requested_;
 
   std::unique_ptr<Subscriber<RequestType>> subscriber_;
   State state_ = State::INIT;

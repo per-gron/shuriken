@@ -144,7 +144,7 @@ auto ClientStreamTwoResponsesHandler(
       MakeTestResponse(2));
 }
 
-auto ClientStreamRequestZeroHandler(
+auto RequestZeroHandler(
     Publisher<Flatbuffer<TestRequest>> requests) {
   // The point of this test endpoint is to request some inputs, and verify that
   // it doesn't get more than that pushed to it. This endpoint never responds
@@ -165,7 +165,7 @@ auto ClientStreamRequestZeroHandler(
   return Never();
 }
 
-auto MakeClientStreamHangOnZeroHandler(
+auto MakeHangOnZeroHandler(
     std::atomic<int> *hang_on_seen_elements) {
   return [hang_on_seen_elements](Publisher<Flatbuffer<TestRequest>> requests) {
     // The point of this test endpoint is to request some inputs, and verify that
@@ -288,10 +288,10 @@ TEST_CASE("RsGrpc") {
           &ClientStreamTwoResponsesHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestClientStreamRequestZero,
-          &ClientStreamRequestZeroHandler)
+          &RequestZeroHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestClientStreamHangOnZero,
-          MakeClientStreamHangOnZeroHandler(&hang_on_seen_elements))
+          MakeHangOnZeroHandler(&hang_on_seen_elements))
       .RegisterMethod(
           &TestService::AsyncService::RequestCumulativeSum,
           &CumulativeSumHandler)
@@ -300,7 +300,13 @@ TEST_CASE("RsGrpc") {
           &ImmediatelyFailingCumulativeSumHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestFailingCumulativeSum,
-          &FailingCumulativeSumHandler);
+          &FailingCumulativeSumHandler)
+      .RegisterMethod(
+          &TestService::AsyncService::RequestBidiStreamRequestZero,
+          &RequestZeroHandler)
+      .RegisterMethod(
+          &TestService::AsyncService::RequestBidiStreamHangOnZero,
+          MakeHangOnZeroHandler(&hang_on_seen_elements));
 
   RsGrpcClient runloop;
 
@@ -391,9 +397,6 @@ TEST_CASE("RsGrpc") {
       }
     }
   };
-
-  // TODO(peck): Make endpoint (of each type) that just returns Never() and see
-  // that if they are called, the server can be shut down.
 
   // TODO(peck): Test what happens when calling unimplemented endpoint. I think
   // right now it just waits forever, which is not nice at all.
@@ -1039,6 +1042,53 @@ TEST_CASE("RsGrpc") {
         subscription.Request(ElementCount(1));
         subscription.Request(ElementCount(2));
         subscription.Request(ElementCount::Unbounded());
+      }
+
+      SECTION("make call that never requests elements") {
+        auto publisher = Pipe(
+            test_client.Invoke(
+                &TestService::Stub::AsyncBidiStreamRequestZero,
+                Just(MakeTestRequest(432))),
+            Map([](Flatbuffer<TestResponse> response) {
+              CHECK(!"should not be invoked");
+              return "ignored";
+            }));
+        run_expect_timeout(publisher, ElementCount::Unbounded());
+      }
+
+      SECTION("make call that requests one element") {
+        auto publisher = Pipe(
+            test_client.Invoke(
+                &TestService::Stub::AsyncBidiStreamHangOnZero,
+                Just(
+                    MakeTestRequest(1),
+                    MakeTestRequest(0),  // Hang on this one
+                    MakeTestRequest(1))),
+            Map([](Flatbuffer<TestResponse> response) {
+              CHECK(!"should not be invoked");
+              return "ignored";
+            }));
+        run_expect_timeout(publisher, ElementCount::Unbounded());
+
+        CHECK(hang_on_seen_elements == 2);
+      }
+
+      SECTION("make call that requests two elements") {
+        auto publisher = Pipe(
+            test_client.Invoke(
+                &TestService::Stub::AsyncBidiStreamHangOnZero,
+                Just(
+                    MakeTestRequest(1),
+                    MakeTestRequest(2),
+                    MakeTestRequest(0),  // Hang on this one
+                    MakeTestRequest(1))),
+            Map([](Flatbuffer<TestResponse> response) {
+              CHECK(!"should not be invoked");
+              return "ignored";
+            }));
+        run_expect_timeout(publisher, ElementCount::Unbounded());
+
+        CHECK(hang_on_seen_elements == 3);
       }
     }
 

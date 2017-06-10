@@ -30,4 +30,6 @@ rpc_service TestService {
   ImmediatelyFailingCumulativeSum(TestRequest):
       TestResponse (streaming: "bidi");
   FailingCumulativeSum(TestRequest): TestResponse (streaming: "bidi");
+  BidiStreamRequestZero(TestRequest): TestResponse (streaming: "bidi");
+  BidiStreamHangOnZero(TestRequest): TestResponse (streaming: "bidi");
 }
