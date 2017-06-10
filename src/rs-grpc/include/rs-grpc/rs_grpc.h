@@ -331,11 +331,23 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    self_ = self;
+    return MakeSubscription(
+        [invoke, stub, cq, self](ElementCount count) mutable {
+          if (self && count > 0) {
+            auto &me = *self;
+            me.self_ = std::move(self);
+            me.stream_ = (stub->*invoke)(&me.context_, &me.response_, cq, &me);
+            me.operation_in_progress_ = true;
+            me.RequestRequests();
+          }
+        },
+        [] {
+          // TODO(peck): Handle cancellation
+        });
+  }
 
-    stream_ = (stub->*invoke)(&context_, &response_, cq, this);
-    operation_in_progress_ = true;
-
+ private:
+  void RequestRequests() {
     // TODO(peck): Don't hold weak unsafe refs to this
     auto subscription = requests_.Subscribe(MakeSubscriber(
         [this](RequestType &&request) {
@@ -354,11 +366,8 @@ class RsGrpcClientInvocation<
         }));
     // TODO(peck): Backpressure, cancellation
     subscription.Request(ElementCount::Unbounded());
-
-    return MakeSubscription();  // TODO(peck): Handle backpressure and cancellation
   }
 
- private:
   void RunEnqueuedOperation() {
     if (operation_in_progress_) {
       return;

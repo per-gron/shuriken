@@ -615,6 +615,19 @@ TEST_CASE("RsGrpc") {
           })));
     }
 
+    SECTION("backpressure") {
+      SECTION("call Invoke but don't request a value") {
+        auto publisher = Pipe(
+            test_client.Invoke(
+                &TestService::Stub::AsyncSum, Empty()),
+            Map([](Flatbuffer<TestResponse> response) {
+              CHECK(!"should not be invoked");
+              return "ignored";
+            }));
+        run_expect_timeout(publisher);
+      }
+    }
+
     SECTION("one message") {
       run(Pipe(
           test_client.Invoke(
