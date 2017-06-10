@@ -295,7 +295,7 @@ class RsGrpcClientInvocation<
     ResponseType,
     RequestType,
     RequestOrPublisher,
-    SubscriberType> : public RsGrpcTag {
+    SubscriberType> : public RsGrpcTag, public SubscriberBase {
  public:
   template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
@@ -359,24 +359,27 @@ class RsGrpcClientInvocation<
         });
   }
 
+  void OnNext(RequestType &&request) {
+    enqueued_requests_.emplace_back(std::move(request));
+    RunEnqueuedOperation();
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    // This triggers RunEnqueuedOperation to Finish the stream.
+    request_stream_error_ = error;
+    enqueued_writes_done_ = true;
+    RunEnqueuedOperation();
+  }
+
+  void OnComplete() {
+    enqueued_writes_done_ = true;
+    RunEnqueuedOperation();
+  }
+
  private:
   void RequestRequests() {
-    // TODO(peck): Don't hold weak unsafe refs to this
     auto subscription = requests_.Subscribe(MakeSubscriber(
-        [this](RequestType &&request) {
-          enqueued_requests_.emplace_back(std::move(request));
-          RunEnqueuedOperation();
-        },
-        [this](std::exception_ptr &&error) {
-          // This triggers RunEnqueuedOperation to Finish the stream.
-          request_stream_error_ = error;
-          enqueued_writes_done_ = true;
-          RunEnqueuedOperation();
-        },
-        [this]() {
-          enqueued_writes_done_ = true;
-          RunEnqueuedOperation();
-        }));
+        std::weak_ptr<RsGrpcClientInvocation>(self_)));
     // TODO(peck): Backpressure, cancellation
     subscription.Request(ElementCount::Unbounded());
   }
