@@ -1043,7 +1043,7 @@ template <
 class RsGrpcServerInvocation<
     grpc::ServerAsyncReader<ResponseType, RequestType>,
     ServerCallTraits,
-    Callback> : public RsGrpcTag {
+    Callback> : public RsGrpcTag, public SubscriberBase {
   using Stream = grpc::ServerAsyncReader<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
   using Method = StreamingRequestMethod<Service, Stream>;
@@ -1126,6 +1126,22 @@ class RsGrpcServerInvocation<
     }
   }
 
+  void OnNext(ResponseType &&response) {
+    response_ = std::move(response);
+    num_responses_++;
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    response_error_ = error;
+    finished_ = true;
+    TrySendResponse();
+  }
+
+  void OnComplete() {
+    finished_ = true;
+    TrySendResponse();
+  }
+
  private:
   enum class State {
     INIT,
@@ -1136,6 +1152,7 @@ class RsGrpcServerInvocation<
   };
 
   void Init() {
+    // TODO(peck): I think this weak this capture in the lambda seems dangerous
     auto response = callback_(Publisher<RequestType>(MakePublisher(
         [this](auto &&subscriber) {
       if (subscriber_) {
@@ -1160,21 +1177,8 @@ class RsGrpcServerInvocation<
         IsPublisher<decltype(response)>,
         "Callback return type must be Publisher");
     // TODO(peck): Handle cancellation
-    // TODO(peck): Don't hold weak unsafe refs to this
     auto subscription = response.Subscribe(MakeSubscriber(
-        [this](ResponseType &&response) {
-          response_ = std::move(response);
-          num_responses_++;
-        },
-        [this](std::exception_ptr &&error) {
-          response_error_ = error;
-          finished_ = true;
-          TrySendResponse();
-        },
-        [this]() {
-          finished_ = true;
-          TrySendResponse();
-        }));
+        std::weak_ptr<RsGrpcServerInvocation>(self_)));
     // Because this class only uses the first response (and fails if there are
     // more), it's fine to Request an unbounded number of elements from this
     // stream; all elements after the first are immediately discarded.
