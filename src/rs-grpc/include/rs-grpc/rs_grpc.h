@@ -880,7 +880,7 @@ template <typename ResponseType, typename ServerCallTraits, typename Callback>
 class RsGrpcServerInvocation<
     grpc::ServerAsyncWriter<ResponseType>,
     ServerCallTraits,
-    Callback> : public RsGrpcTag {
+    Callback> : public RsGrpcTag, public SubscriberBase {
   using Stream = grpc::ServerAsyncWriter<ResponseType>;
   using Service = typename ServerCallTraits::Service;
 
@@ -943,22 +943,8 @@ class RsGrpcServerInvocation<
         // after which it's not safe to do anything with `this` anymore.
         IssueNewServerRequest(std::move(callback_));
 
-        // TODO(peck): Don't hold weak refs to this
         auto subscription = values.Subscribe(MakeSubscriber(
-            [this](ResponseType &&response) {
-              enqueued_responses_.emplace_back(std::move(response));
-              RunEnqueuedOperation();
-            },
-            [this](std::exception_ptr &&error) {
-              enqueued_finish_status_ = ExceptionToStatus(error);
-              enqueued_finish_ = true;
-              RunEnqueuedOperation();
-            },
-            [this]() {
-              enqueued_finish_status_ = grpc::Status::OK;
-              enqueued_finish_ = true;
-              RunEnqueuedOperation();
-            }));
+            std::weak_ptr<RsGrpcServerInvocation>(self_)));
         // TODO(peck): Backpressure, cancellation
         subscription.Request(ElementCount::Unbounded());
 
@@ -975,6 +961,23 @@ class RsGrpcServerInvocation<
         break;
       }
     }
+  }
+
+  void OnNext(ResponseType &&response) {
+    enqueued_responses_.emplace_back(std::move(response));
+    RunEnqueuedOperation();
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    enqueued_finish_status_ = ExceptionToStatus(error);
+    enqueued_finish_ = true;
+    RunEnqueuedOperation();
+  }
+
+  void OnComplete() {
+    enqueued_finish_status_ = grpc::Status::OK;
+    enqueued_finish_ = true;
+    RunEnqueuedOperation();
   }
 
  private:
