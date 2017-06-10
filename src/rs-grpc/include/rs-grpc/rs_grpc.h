@@ -204,22 +204,22 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    return MakeSubscription([
-        invoke, stub, cq, self,
-        weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)](
+    return MakeSubscription([invoke, stub, cq, self, invoked = false](
             ElementCount count) mutable {
-          if (self) {
+          if (!invoked) {
             // The initial call to invoke has not yet been made
             if (count > 0) {
+              invoked = true;
               auto &me = *self;
-              me.self_ = std::move(self);
+              me.weak_self_ = self;
+              me.self_ = self;
               me.requested_ = count;
               me.stream_ = (stub->*invoke)(&me.context_, me.request_, cq, &me);
             }
-          } else if (auto strong_self = weak_self.lock()) {
-            strong_self->requested_ += count;
-            if (strong_self->state_ == State::AWAITING_REQUEST) {
-              strong_self->MaybeReadNext();
+          } else {
+            self->requested_ += count;
+            if (self->state_ == State::AWAITING_REQUEST) {
+              self->MaybeReadNext();
             }
           }
         },
@@ -241,18 +241,27 @@ class RsGrpcClientInvocation<
     if (requested_ > 0) {
       --requested_;
       state_ = State::READING_RESPONSE;
+      // We are now handing over ourselves to gRPC. If the subscriber gets rid
+      // of the Subscription we must still make sure to stay alive until gRPC
+      // calls us back with a response, so here we start owning ourselves.
+      self_ = weak_self_.lock();
       stream_->Read(&response_, this);
     } else {
-      // TODO(peck): If the call is left in this state, it leaks: This object
-      // owns itself and if the Subscription goes away nothing will call it
-      // again. Same bug in other call types.
+      // Because this object is not given to a gRPC CompletionQueue, the object
+      // will leak if the subscriber gets rid of its Subscription without
+      // requesting more elements (which it is perfectly allowed to do).
+      self_.reset();
       state_ = State::AWAITING_REQUEST;
     }
   }
 
   // While this object has given itself to a gRPC CompletionQueue, which does
-  // not own the object, it owns itself through this shared_ptr.
+  // not own the object, it owns itself through this shared_ptr. If this object
+  // is in an AWAITING_REQUEST state, then it must not own itself, or there is
+  // a risk that it will leak.
   std::shared_ptr<RsGrpcClientInvocation> self_;
+  // This is used to be able to assign self_ when needed.
+  std::weak_ptr<RsGrpcClientInvocation> weak_self_;
   // The number of elements that have been requested by the subscriber that have
   // not yet been requested to be read from gRPC.
   ElementCount requested_;
