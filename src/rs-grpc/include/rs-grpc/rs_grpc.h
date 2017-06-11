@@ -339,7 +339,7 @@ class RsGrpcClientInvocation<
     if (sent_final_request_) {
       if (request_stream_error_) {
         subscriber_.OnError(std::move(request_stream_error_));
-      } else {
+      } else if (!cancelled_) {
         HandleUnaryResponse(
             success, status_, std::move(response_), &subscriber_);
       }
@@ -350,8 +350,10 @@ class RsGrpcClientInvocation<
         RunEnqueuedOperation();
       } else {
         // This happens when the runloop is shutting down.
-        HandleUnaryResponse(
-            success, status_, std::move(response_), &subscriber_);
+        if (!cancelled_) {
+          HandleUnaryResponse(
+              success, status_, std::move(response_), &subscriber_);
+        }
         self_.reset();  // Delete this
       }
     }
@@ -371,15 +373,22 @@ class RsGrpcClientInvocation<
     return MakeSubscription(
         [invoke, stub, cq, self](ElementCount count) mutable {
           if (self && count > 0) {
-            auto &me = *self;
-            me.self_ = std::move(self);
-            me.stream_ = (stub->*invoke)(&me.context_, &me.response_, cq, &me);
-            me.operation_in_progress_ = true;
-            me.RequestRequests();
+            if (self->cancelled_) {
+              self.reset();
+            } else {
+              auto &me = *self;
+              me.self_ = std::move(self);
+              me.stream_ = (stub->*invoke)(&me.context_, &me.response_, cq, &me);
+              me.operation_in_progress_ = true;
+              me.RequestRequests();
+            }
           }
         },
-        [] {
-          // TODO(peck): Handle cancellation
+        [weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)] {
+          if (auto strong_self = weak_self.lock()) {
+            strong_self->cancelled_ = true;
+            strong_self->context_.TryCancel();
+          }
         });
   }
 
@@ -409,7 +418,7 @@ class RsGrpcClientInvocation<
   }
 
   void RunEnqueuedOperation() {
-    if (operation_in_progress_) {
+    if (operation_in_progress_ || cancelled_) {
       return;
     }
     if (!enqueued_requests_.empty()) {
@@ -433,6 +442,7 @@ class RsGrpcClientInvocation<
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
   std::shared_ptr<RsGrpcClientInvocation> self_;
+  bool cancelled_ = false;
   RequestOrPublisher requests_;
   ResponseType response_;
   std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> stream_;
