@@ -17,8 +17,9 @@ add_custom_command(
   DEPENDS test/rsgrpctest.fbs flatc)
 
 add_executable(rs-grpc-test
+  test/bidi_streaming_test.cpp
+  test/client_streaming_test.cpp
   test/main.cpp
-  test/rs_grpc_test.cpp
   test/server_streaming_test.cpp
   test/test_util.cpp
   test/test_util.h
