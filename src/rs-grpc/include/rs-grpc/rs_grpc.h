@@ -2002,4 +2002,5 @@ class RsGrpcClient {
  private:
   grpc::CompletionQueue cq_;
 };
+
 }  // namespace shk

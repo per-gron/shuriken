@@ -117,206 +117,204 @@ TEST_CASE("Unary RPC") {
   // TODO(peck): Test what happens when calling unimplemented endpoint. I think
   // right now it just waits forever, which is not nice at all.
 
-  SECTION("unary RPC") {
-    SECTION("direct") {
-      Run(&runloop, Pipe(
+  SECTION("direct") {
+    Run(&runloop, Pipe(
+        test_client.Invoke(
+            &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+        Map([](Flatbuffer<TestResponse> response) {
+          CHECK(response->data() == 123 * 2);
+          return "ignored";
+        })));
+  }
+
+  SECTION("backpressure") {
+    SECTION("call Invoke but don't request a value") {
+      auto publisher = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
           Map([](Flatbuffer<TestResponse> response) {
-            CHECK(response->data() == 123 * 2);
+            CHECK(!"should not be invoked");
             return "ignored";
-          })));
+          }));
+      RunExpectTimeout(&runloop, publisher);
     }
+  }
 
-    SECTION("backpressure") {
-      SECTION("call Invoke but don't request a value") {
-        auto publisher = Pipe(
-            test_client.Invoke(
-                &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-            Map([](Flatbuffer<TestResponse> response) {
-              CHECK(!"should not be invoked");
-              return "ignored";
+  SECTION("Request twice") {
+    auto request = Pipe(
+        test_client.Invoke(
+            &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+        Map([](Flatbuffer<TestResponse> response) {
+          CHECK(response->data() == 123 * 2);
+          return "ignored";
+        }));
+    Run(&runloop, request, [](Subscription &sub) {
+      sub.Request(ElementCount(1));
+      sub.Request(ElementCount(1));
+    });
+  }
+
+  SECTION("failed RPC") {
+    auto error = RunExpectError(&runloop, Pipe(
+        test_client
+            .Invoke(&TestService::Stub::AsyncUnaryFail, MakeTestRequest(0)),
+        Map([](Flatbuffer<TestResponse> response) {
+          CHECK(!"should not happen");
+          return "unused";
+        })));
+    CHECK(ExceptionMessage(error) == "unary_fail");
+  }
+
+  SECTION("failed RPC because of no response") {
+    auto error = RunExpectError(&runloop, Pipe(
+        test_client.Invoke(
+            &TestService::Stub::AsyncUnaryNoResponse, MakeTestRequest(0)),
+        Map([](Flatbuffer<TestResponse> response) {
+          CHECK(!"should not happen");
+          return "unused";
+        })));
+    CHECK(ExceptionMessage(error) == "No response");
+  }
+
+  SECTION("failed RPC because of two responses") {
+    auto error = RunExpectError(&runloop, Pipe(
+        test_client.Invoke(
+            &TestService::Stub::AsyncUnaryTwoResponses,
+            MakeTestRequest(0)),
+        Map([](Flatbuffer<TestResponse> response) {
+          CHECK(!"should not happen");
+          return "unused";
+        })));
+    CHECK(ExceptionMessage(error) == "Too many responses");
+  }
+
+  SECTION("RPC that never completes") {
+    auto call = test_client.Invoke(
+        &TestService::Stub::AsyncUnaryHang,
+        MakeTestRequest(0));
+
+    auto subscription = call
+        .Subscribe(MakeSubscriber(
+            [](auto &&) {
+              CHECK(!"OnNext should not be called");
+            },
+            [](std::exception_ptr error) {
+              CHECK(!"OnError should not be called");
+            },
+            []() {
+              CHECK(!"OnComplete should not be called");
             }));
-        RunExpectTimeout(&runloop, publisher);
+    subscription.Request(ElementCount::Unbounded());
+
+    using namespace std::chrono_literals;
+    auto deadline = std::chrono::system_clock::now() + 20ms;
+    CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
+    runloop.Shutdown();
+
+    ShutdownAllowOutstandingCall(&server);
+  }
+
+  SECTION("cancellation") {
+    SECTION("from client side") {
+      SECTION("after Request") {
+        auto call = test_client.Invoke(
+            &TestService::Stub::AsyncUnaryHang,
+            MakeTestRequest(0));
+
+        auto subscription = call
+            .Subscribe(MakeSubscriber(
+                [](auto &&) {
+                  CHECK(!"OnNext should not be called");
+                },
+                [](std::exception_ptr error) {
+                  CHECK(!"OnError should not be called");
+                  printf(
+                      "Got exception: %s\n", ExceptionMessage(error).c_str());
+                },
+                []() {
+                  CHECK(!"OnComplete should not be called");
+                }));
+        subscription.Request(ElementCount::Unbounded());
+        subscription.Cancel();
+
+        // There is only one thing on the runloop: The cancelled request.
+        CHECK(runloop.Next());
+
+        ShutdownAllowOutstandingCall(&server);
+      }
+
+      SECTION("before Request") {
+        auto call = test_client.Invoke(
+            &TestService::Stub::AsyncDouble,
+            MakeTestRequest(0));
+
+        auto subscription = call
+            .Subscribe(MakeSubscriber(
+                [](auto &&) {
+                  CHECK(!"OnNext should not be called");
+                },
+                [](std::exception_ptr error) {
+                  CHECK(!"OnError should not be called");
+                  printf(
+                      "Got exception: %s\n", ExceptionMessage(error).c_str());
+                },
+                []() {
+                  CHECK(!"OnComplete should not be called");
+                }));
+        subscription.Cancel();
+        subscription.Request(ElementCount::Unbounded());
+
+        // There should be nothing on the runloop
+        using namespace std::chrono_literals;
+        auto deadline = std::chrono::system_clock::now() + 20ms;
+        CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
       }
     }
+  }
 
-    SECTION("Request twice") {
-      auto request = Pipe(
-          test_client.Invoke(
-              &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(response->data() == 123 * 2);
-            return "ignored";
-          }));
-      Run(&runloop, request, [](Subscription &sub) {
-        sub.Request(ElementCount(1));
-        sub.Request(ElementCount(1));
-      });
-    }
+  SECTION("delayed") {
+    // This test can break if invoke doesn't take ownership of the request for
+    // example.
+    auto call = Pipe(
+        test_client.Invoke(
+            &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+        Map([](Flatbuffer<TestResponse> response) {
+          CHECK(response->data() == 123 * 2);
+          return "ignored";
+        }));
+    Run(&runloop, call);
+  }
 
-    SECTION("failed RPC") {
-      auto error = RunExpectError(&runloop, Pipe(
-          test_client
-              .Invoke(&TestService::Stub::AsyncUnaryFail, MakeTestRequest(0)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(!"should not happen");
-            return "unused";
-          })));
-      CHECK(ExceptionMessage(error) == "unary_fail");
-    }
+  SECTION("two calls") {
+    auto call_a = test_client.Invoke(
+        &TestService::Stub::AsyncDouble, MakeTestRequest(123));
+    auto call_b = test_client.Invoke(
+        &TestService::Stub::AsyncDouble, MakeTestRequest(321));
+    Run(&runloop, Pipe(
+        Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
+            call_a, call_b),
+        Map(Splat([](
+            Flatbuffer<TestResponse> a,
+            Flatbuffer<TestResponse> b) {
+          CHECK(a->data() == 123 * 2);
+          CHECK(b->data() == 321 * 2);
+          return "ignored";
+        }))));
+  }
 
-    SECTION("failed RPC because of no response") {
-      auto error = RunExpectError(&runloop, Pipe(
-          test_client.Invoke(
-              &TestService::Stub::AsyncUnaryNoResponse, MakeTestRequest(0)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(!"should not happen");
-            return "unused";
-          })));
-      CHECK(ExceptionMessage(error) == "No response");
-    }
-
-    SECTION("failed RPC because of two responses") {
-      auto error = RunExpectError(&runloop, Pipe(
-          test_client.Invoke(
-              &TestService::Stub::AsyncUnaryTwoResponses,
-              MakeTestRequest(0)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(!"should not happen");
-            return "unused";
-          })));
-      CHECK(ExceptionMessage(error) == "Too many responses");
-    }
-
-    SECTION("RPC that never completes") {
-      auto call = test_client.Invoke(
-          &TestService::Stub::AsyncUnaryHang,
-          MakeTestRequest(0));
-
-      auto subscription = call
-          .Subscribe(MakeSubscriber(
-              [](auto &&) {
-                CHECK(!"OnNext should not be called");
-              },
-              [](std::exception_ptr error) {
-                CHECK(!"OnError should not be called");
-              },
-              []() {
-                CHECK(!"OnComplete should not be called");
-              }));
-      subscription.Request(ElementCount::Unbounded());
-
-      using namespace std::chrono_literals;
-      auto deadline = std::chrono::system_clock::now() + 20ms;
-      CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
-      runloop.Shutdown();
-
-      ShutdownAllowOutstandingCall(&server);
-    }
-
-    SECTION("cancellation") {
-      SECTION("from client side") {
-        SECTION("after Request") {
-          auto call = test_client.Invoke(
-              &TestService::Stub::AsyncUnaryHang,
-              MakeTestRequest(0));
-
-          auto subscription = call
-              .Subscribe(MakeSubscriber(
-                  [](auto &&) {
-                    CHECK(!"OnNext should not be called");
-                  },
-                  [](std::exception_ptr error) {
-                    CHECK(!"OnError should not be called");
-                    printf(
-                        "Got exception: %s\n", ExceptionMessage(error).c_str());
-                  },
-                  []() {
-                    CHECK(!"OnComplete should not be called");
-                  }));
-          subscription.Request(ElementCount::Unbounded());
-          subscription.Cancel();
-
-          // There is only one thing on the runloop: The cancelled request.
-          CHECK(runloop.Next());
-
-          ShutdownAllowOutstandingCall(&server);
-        }
-
-        SECTION("before Request") {
-          auto call = test_client.Invoke(
-              &TestService::Stub::AsyncDouble,
-              MakeTestRequest(0));
-
-          auto subscription = call
-              .Subscribe(MakeSubscriber(
-                  [](auto &&) {
-                    CHECK(!"OnNext should not be called");
-                  },
-                  [](std::exception_ptr error) {
-                    CHECK(!"OnError should not be called");
-                    printf(
-                        "Got exception: %s\n", ExceptionMessage(error).c_str());
-                  },
-                  []() {
-                    CHECK(!"OnComplete should not be called");
-                  }));
-          subscription.Cancel();
-          subscription.Request(ElementCount::Unbounded());
-
-          // There should be nothing on the runloop
-          using namespace std::chrono_literals;
-          auto deadline = std::chrono::system_clock::now() + 20ms;
-          CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
-        }
-      }
-    }
-
-    SECTION("delayed") {
-      // This test can break if invoke doesn't take ownership of the request for
-      // example.
-      auto call = Pipe(
-          test_client.Invoke(
-              &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(response->data() == 123 * 2);
-            return "ignored";
-          }));
-      Run(&runloop, call);
-    }
-
-    SECTION("two calls") {
-      auto call_a = test_client.Invoke(
-          &TestService::Stub::AsyncDouble, MakeTestRequest(123));
-      auto call_b = test_client.Invoke(
-          &TestService::Stub::AsyncDouble, MakeTestRequest(321));
-      Run(&runloop, Pipe(
-          Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
-              call_a, call_b),
-          Map(Splat([](
-              Flatbuffer<TestResponse> a,
-              Flatbuffer<TestResponse> b) {
-            CHECK(a->data() == 123 * 2);
-            CHECK(b->data() == 321 * 2);
-            return "ignored";
-          }))));
-    }
-
-    SECTION("same call twice") {
-      auto call = test_client.Invoke(
-          &TestService::Stub::AsyncDouble, MakeTestRequest(123));
-      Run(&runloop, Pipe(
-          Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
-              call, call),
-          Map(Splat([](
-              Flatbuffer<TestResponse> a,
-              Flatbuffer<TestResponse> b) {
-            CHECK(a->data() == 123 * 2);
-            CHECK(b->data() == 123 * 2);
-            return "ignored";
-          }))));
-    }
+  SECTION("same call twice") {
+    auto call = test_client.Invoke(
+        &TestService::Stub::AsyncDouble, MakeTestRequest(123));
+    Run(&runloop, Pipe(
+        Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
+            call, call),
+        Map(Splat([](
+            Flatbuffer<TestResponse> a,
+            Flatbuffer<TestResponse> b) {
+          CHECK(a->data() == 123 * 2);
+          CHECK(b->data() == 123 * 2);
+          return "ignored";
+        }))));
   }
 
   {

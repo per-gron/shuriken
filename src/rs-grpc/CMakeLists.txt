@@ -19,6 +19,7 @@ add_custom_command(
 add_executable(rs-grpc-test
   test/main.cpp
   test/rs_grpc_test.cpp
+  test/server_streaming_test.cpp
   test/test_util.cpp
   test/test_util.h
   test/unary_test.cpp
