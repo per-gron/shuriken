@@ -377,7 +377,8 @@ class RsGrpcClientInvocation<
             } else {
               auto &me = *self;
               me.self_ = std::move(self);
-              me.stream_ = (stub->*invoke)(&me.context_, &me.response_, cq, &me);
+              me.stream_ = (stub->*invoke)(
+                  &me.context_, &me.response_, cq, &me);
               me.operation_in_progress_ = true;
               me.RequestRequests();
             }
@@ -548,8 +549,8 @@ class RsGrpcClientInvocation<
       END
     };
     State state_ = State::AWAITING_REQUEST;
-    // The number of elements that have been requested by the subscriber that have
-    // not yet been requested to be read from gRPC.
+    // The number of elements that have been requested by the subscriber that
+    // have not yet been requested to be read from gRPC.
     ElementCount requested_;
 
     std::exception_ptr error_;
@@ -610,7 +611,9 @@ class RsGrpcClientInvocation<
             ElementCount count) mutable {
           if (self) {
             // The initial call to invoke has not yet been made
-            if (count > 0) {
+            if (self->cancelled_) {
+              self.reset();
+            } else if (count > 0) {
               auto &me = *self;
               me.self_ = std::move(self);
               me.stream_ = (stub->*invoke)(&me.context_, cq, &me);
@@ -626,8 +629,11 @@ class RsGrpcClientInvocation<
             strong_self->reader_.Request(count);
           }
         },
-        [] {
-          // TODO(peck): Handle cancellation
+        [weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)] {
+          if (auto strong_self = weak_self.lock()) {
+            strong_self->cancelled_ = true;
+            strong_self->context_.TryCancel();
+          }
         });
   }
 
@@ -663,7 +669,7 @@ class RsGrpcClientInvocation<
   }
 
   void RunEnqueuedOperation() {
-    if (operation_in_progress_) {
+    if (operation_in_progress_ || cancelled_) {
       return;
     }
     if (!enqueued_requests_.empty()) {
@@ -694,6 +700,7 @@ class RsGrpcClientInvocation<
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
   std::shared_ptr<RsGrpcClientInvocation> self_;
+  bool cancelled_ = false;
   Reader reader_;
   bool reader_done_ = false;
 

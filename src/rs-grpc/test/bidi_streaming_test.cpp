@@ -149,6 +149,65 @@ TEST_CASE("Bidi streaming RPC") {
         })));
   }
 
+  SECTION("cancellation") {
+    SECTION("from client side") {
+      SECTION("after Request") {
+        auto call = test_client.Invoke(
+            &TestService::Stub::AsyncBidiStreamRequestZero,
+            Empty());
+
+        auto subscription = call
+            .Subscribe(MakeSubscriber(
+                [](auto &&) {
+                  CHECK(!"OnNext should not be called");
+                },
+                [](std::exception_ptr error) {
+                  CHECK(!"OnError should not be called");
+                  printf(
+                      "Got exception: %s\n", ExceptionMessage(error).c_str());
+                },
+                []() {
+                  CHECK(!"OnComplete should not be called");
+                }));
+        subscription.Request(ElementCount::Unbounded());
+
+        CHECK(runloop.Next());
+        CHECK(runloop.Next());
+        subscription.Cancel();
+        CHECK(runloop.Next());
+
+        ShutdownAllowOutstandingCall(&server);
+      }
+
+      SECTION("before Request") {
+        auto call = test_client.Invoke(
+            &TestService::Stub::AsyncCumulativeSum,
+            Never());
+
+        auto subscription = call
+            .Subscribe(MakeSubscriber(
+                [](auto &&) {
+                  CHECK(!"OnNext should not be called");
+                },
+                [](std::exception_ptr error) {
+                  CHECK(!"OnError should not be called");
+                  printf(
+                      "Got exception: %s\n", ExceptionMessage(error).c_str());
+                },
+                []() {
+                  CHECK(!"OnComplete should not be called");
+                }));
+        subscription.Cancel();
+        subscription.Request(ElementCount::Unbounded());
+
+        // There should be nothing on the runloop
+        using namespace std::chrono_literals;
+        auto deadline = std::chrono::system_clock::now() + 20ms;
+        CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
+      }
+    }
+  }
+
   SECTION("backpressure") {
     int latest_seen_response = 0;
     auto publisher = Pipe(
