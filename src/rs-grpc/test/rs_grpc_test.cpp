@@ -34,7 +34,7 @@
 #include <rs/sum.h>
 #include <rs/throw.h>
 #include <rs/zip.h>
-#include <rs-grpc/rs_grpc.h>
+#include <rs-grpc/rs_grpc.h>  // TODO(peck): Split this into server.h and client.h
 
 #include "rsgrpctest.grpc.fb.h"
 
@@ -351,6 +351,11 @@ TEST_CASE("RsGrpc") {
     runloop.Run();
   };
 
+  const auto shutdown_allow_outstanding_call = [&server] {
+    auto deadline = std::chrono::system_clock::now();
+    server.Shutdown(deadline);
+  };
+
   const auto run_expect_error = [&](
       const auto &publisher,
       std::function<void (Subscription &)> subscribe = nullptr) {
@@ -502,6 +507,8 @@ TEST_CASE("RsGrpc") {
       auto deadline = std::chrono::system_clock::now() + 20ms;
       CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
       runloop.Shutdown();
+
+      shutdown_allow_outstanding_call();
     }
 
     SECTION("cancellation") {
@@ -529,6 +536,8 @@ TEST_CASE("RsGrpc") {
 
           // There is only one thing on the runloop: The cancelled request.
           CHECK(runloop.Next());
+
+          shutdown_allow_outstanding_call();
         }
 
         SECTION("before Request") {
@@ -646,6 +655,8 @@ TEST_CASE("RsGrpc") {
           // happen.
           CHECK(runloop.Next());
           CHECK(runloop.Next());
+
+          shutdown_allow_outstanding_call();
         }
 
         SECTION("before Request") {
@@ -882,6 +893,8 @@ TEST_CASE("RsGrpc") {
               return "ignored";
             }));
         run_expect_timeout(publisher, ElementCount::Unbounded());
+
+        shutdown_allow_outstanding_call();
       }
 
       SECTION("make call that requests one element") {
@@ -899,6 +912,8 @@ TEST_CASE("RsGrpc") {
         run_expect_timeout(publisher, ElementCount::Unbounded());
 
         CHECK(hang_on_seen_elements == 2);
+
+        shutdown_allow_outstanding_call();
       }
 
       SECTION("make call that requests two elements") {
@@ -917,6 +932,8 @@ TEST_CASE("RsGrpc") {
         run_expect_timeout(publisher, ElementCount::Unbounded());
 
         CHECK(hang_on_seen_elements == 3);
+
+        shutdown_allow_outstanding_call();
       }
     }
 
@@ -1123,6 +1140,8 @@ TEST_CASE("RsGrpc") {
           run_expect_timeout(publisher, ElementCount(i));
           CHECK(latest_seen_response == i);
         }
+
+        shutdown_allow_outstanding_call();
       }
 
       SECTION("Request one element at a time") {
@@ -1175,6 +1194,8 @@ TEST_CASE("RsGrpc") {
               return "ignored";
             }));
         run_expect_timeout(publisher, ElementCount::Unbounded());
+
+        shutdown_allow_outstanding_call();
       }
 
       SECTION("make call that requests one element") {
@@ -1192,6 +1213,8 @@ TEST_CASE("RsGrpc") {
         run_expect_timeout(publisher, ElementCount::Unbounded());
 
         CHECK(hang_on_seen_elements == 2);
+
+        shutdown_allow_outstanding_call();
       }
 
       SECTION("make call that requests two elements") {
@@ -1210,6 +1233,8 @@ TEST_CASE("RsGrpc") {
         run_expect_timeout(publisher, ElementCount::Unbounded());
 
         CHECK(hang_on_seen_elements == 3);
+
+        shutdown_allow_outstanding_call();
       }
     }
 
@@ -1361,7 +1386,11 @@ TEST_CASE("RsGrpc") {
     }
   }
 
-  server.Shutdown(std::chrono::system_clock::now());
+  {
+    using namespace std::chrono_literals;
+    auto deadline = std::chrono::system_clock::now() + 1000h;
+    server.Shutdown(deadline);
+  }
   server_thread.join();
 }
 
