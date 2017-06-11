@@ -34,53 +34,15 @@
 #include <rs/sum.h>
 #include <rs/throw.h>
 #include <rs/zip.h>
-#include <rs-grpc/rs_grpc.h>  // TODO(peck): Split this into server.h and client.h
+#include <rs-grpc/rs_grpc.h>
 
 #include "rsgrpctest.grpc.fb.h"
+#include "test_util.h"
 
 using namespace RsGrpcTest;
 
 namespace shk {
 namespace {
-
-template <typename T>
-using Flatbuffer = flatbuffers::grpc::Message<T>;
-
-Flatbuffer<TestRequest> MakeTestRequest(int data) {
-  flatbuffers::grpc::MessageBuilder fbb;
-  auto test_request = CreateTestRequest(fbb, data);
-  fbb.Finish(test_request);
-  return fbb.GetMessage<TestRequest>();
-}
-
-Flatbuffer<TestResponse> MakeTestResponse(int data) {
-  flatbuffers::grpc::MessageBuilder fbb;
-  auto test_response = CreateTestResponse(fbb, data);
-  fbb.Finish(test_response);
-  return fbb.GetMessage<TestResponse>();
-}
-
-auto DoubleHandler(Flatbuffer<TestRequest> request) {
-  return Just(MakeTestResponse(request->data() * 2));
-}
-
-auto UnaryFailHandler(Flatbuffer<TestRequest> request) {
-  return Throw(std::runtime_error("unary_fail"));
-}
-
-auto UnaryNoResponseHandler(Flatbuffer<TestRequest> request) {
-  return Empty();
-}
-
-auto UnaryTwoResponsesHandler(Flatbuffer<TestRequest> request) {
-  return Just(
-      MakeTestResponse(1),
-      MakeTestResponse(2));
-}
-
-auto UnaryHangHandler(Flatbuffer<TestRequest> request) {
-  return Never();
-}
 
 auto RepeatHandler(Flatbuffer<TestRequest> request) {
   int count = request->data();
@@ -236,15 +198,6 @@ auto FailingCumulativeSumHandler(
 }  // anonymous namespace
 
 TEST_CASE("RsGrpc") {
-  // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
-  // TODO(peck): Add support for timeouts
-  // TODO(peck): Add support for backpressure (streaming output requires only
-  //     one outstanding request at a time. Not possible atm.)
-  // TODO(peck): Test
-  //  * finishing bidi and unidirectional streams in different orders
-  //  * go through the code and look for stuff
-  //  * what happens if writesdone is not called? Does the server stall then?
-
   auto server_address = "unix:rs_grpc_test.socket";
 
   RsGrpcServer::Builder server_builder;
@@ -254,21 +207,6 @@ TEST_CASE("RsGrpc") {
   std::atomic<int> hang_on_seen_elements(0);
 
   server_builder.RegisterService<TestService::AsyncService>()
-      .RegisterMethod(
-          &TestService::AsyncService::RequestDouble,
-          &DoubleHandler)
-      .RegisterMethod(
-          &TestService::AsyncService::RequestUnaryFail,
-          &UnaryFailHandler)
-      .RegisterMethod(
-          &TestService::AsyncService::RequestUnaryNoResponse,
-          &UnaryNoResponseHandler)
-      .RegisterMethod(
-          &TestService::AsyncService::RequestUnaryTwoResponses,
-          &UnaryTwoResponsesHandler)
-      .RegisterMethod(
-          &TestService::AsyncService::RequestUnaryHang,
-          &UnaryHangHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestRepeat,
           &RepeatHandler)
@@ -326,298 +264,9 @@ TEST_CASE("RsGrpc") {
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });
 
-  const auto run = [&](
-      const auto &publisher,
-      std::function<void (Subscription &)> subscribe = nullptr) {
-    auto subscription = Subscription(publisher
-        .Subscribe(MakeSubscriber(
-            [](auto &&) {
-              // Ignore OnNext
-            },
-            [&runloop](std::exception_ptr error) {
-              runloop.Shutdown();
-              CHECK(!"request should not fail");
-              printf("Got exception: %s\n", ExceptionMessage(error).c_str());
-            },
-            [&runloop]() {
-              runloop.Shutdown();
-            })));
-    if (subscribe) {
-      subscribe(subscription);
-    } else {
-      subscription.Request(ElementCount::Unbounded());
-    }
-
-    runloop.Run();
-  };
-
-  const auto shutdown_allow_outstanding_call = [&server] {
-    auto deadline = std::chrono::system_clock::now();
-    server.Shutdown(deadline);
-  };
-
-  const auto run_expect_error = [&](
-      const auto &publisher,
-      std::function<void (Subscription &)> subscribe = nullptr) {
-    std::exception_ptr captured_error;
-    auto subscription = Subscription(publisher
-        .Subscribe(MakeSubscriber(
-            [](auto &&) {
-              // Ignore OnNext
-            },
-            [&runloop, &captured_error](std::exception_ptr error) {
-              runloop.Shutdown();
-              captured_error = error;
-            },
-            [&runloop]() {
-              CHECK(!"request should fail");
-              runloop.Shutdown();
-            })));
-    if (subscribe) {
-      subscribe(subscription);
-    } else {
-      subscription.Request(ElementCount::Unbounded());
-    }
-
-    runloop.Run();
-
-    REQUIRE(captured_error);
-    return captured_error;
-  };
-
-  const auto run_expect_timeout = [&](
-      const auto &publisher,
-      ElementCount count = ElementCount(0)) {
-    auto subscription = Subscription(publisher
-        .Subscribe(MakeSubscriber(
-            [](auto &&) {
-              // Ignore OnNext
-            },
-            [](std::exception_ptr error) {
-              CHECK(!"request should not fail");
-            },
-            []() {
-              CHECK(!"request should not finish");
-            })));
-
-    subscription.Request(count);
-    for (;;) {
-      using namespace std::chrono_literals;
-      auto deadline = std::chrono::system_clock::now() + 20ms;
-      if (runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT) {
-        break;
-      }
-    }
-  };
-
-  // TODO(peck): Test what happens when calling unimplemented endpoint. I think
-  // right now it just waits forever, which is not nice at all.
-
-  SECTION("unary RPC") {
-    SECTION("direct") {
-      run(Pipe(
-          test_client.Invoke(
-              &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(response->data() == 123 * 2);
-            return "ignored";
-          })));
-    }
-
-    SECTION("backpressure") {
-      SECTION("call Invoke but don't request a value") {
-        auto publisher = Pipe(
-            test_client.Invoke(
-                &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-            Map([](Flatbuffer<TestResponse> response) {
-              CHECK(!"should not be invoked");
-              return "ignored";
-            }));
-        run_expect_timeout(publisher);
-      }
-    }
-
-    SECTION("Request twice") {
-      auto request = Pipe(
-          test_client.Invoke(
-              &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(response->data() == 123 * 2);
-            return "ignored";
-          }));
-      run(request, [](Subscription &sub) {
-        sub.Request(ElementCount(1));
-        sub.Request(ElementCount(1));
-      });
-    }
-
-    SECTION("failed RPC") {
-      auto error = run_expect_error(Pipe(
-          test_client
-              .Invoke(&TestService::Stub::AsyncUnaryFail, MakeTestRequest(0)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(!"should not happen");
-            return "unused";
-          })));
-      CHECK(ExceptionMessage(error) == "unary_fail");
-    }
-
-    SECTION("failed RPC because of no response") {
-      auto error = run_expect_error(Pipe(
-          test_client.Invoke(
-              &TestService::Stub::AsyncUnaryNoResponse, MakeTestRequest(0)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(!"should not happen");
-            return "unused";
-          })));
-      CHECK(ExceptionMessage(error) == "No response");
-    }
-
-    SECTION("failed RPC because of two responses") {
-      auto error = run_expect_error(Pipe(
-          test_client.Invoke(
-              &TestService::Stub::AsyncUnaryTwoResponses,
-              MakeTestRequest(0)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(!"should not happen");
-            return "unused";
-          })));
-      CHECK(ExceptionMessage(error) == "Too many responses");
-    }
-
-    SECTION("RPC that never completes") {
-      auto call = test_client.Invoke(
-          &TestService::Stub::AsyncUnaryHang,
-          MakeTestRequest(0));
-
-      auto subscription = call
-          .Subscribe(MakeSubscriber(
-              [](auto &&) {
-                CHECK(!"OnNext should not be called");
-              },
-              [](std::exception_ptr error) {
-                CHECK(!"OnError should not be called");
-              },
-              []() {
-                CHECK(!"OnComplete should not be called");
-              }));
-      subscription.Request(ElementCount::Unbounded());
-
-      using namespace std::chrono_literals;
-      auto deadline = std::chrono::system_clock::now() + 20ms;
-      CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
-      runloop.Shutdown();
-
-      shutdown_allow_outstanding_call();
-    }
-
-    SECTION("cancellation") {
-      SECTION("from client side") {
-        SECTION("after Request") {
-          auto call = test_client.Invoke(
-              &TestService::Stub::AsyncUnaryHang,
-              MakeTestRequest(0));
-
-          auto subscription = call
-              .Subscribe(MakeSubscriber(
-                  [](auto &&) {
-                    CHECK(!"OnNext should not be called");
-                  },
-                  [](std::exception_ptr error) {
-                    CHECK(!"OnError should not be called");
-                    printf(
-                        "Got exception: %s\n", ExceptionMessage(error).c_str());
-                  },
-                  []() {
-                    CHECK(!"OnComplete should not be called");
-                  }));
-          subscription.Request(ElementCount::Unbounded());
-          subscription.Cancel();
-
-          // There is only one thing on the runloop: The cancelled request.
-          CHECK(runloop.Next());
-
-          shutdown_allow_outstanding_call();
-        }
-
-        SECTION("before Request") {
-          auto call = test_client.Invoke(
-              &TestService::Stub::AsyncDouble,
-              MakeTestRequest(0));
-
-          auto subscription = call
-              .Subscribe(MakeSubscriber(
-                  [](auto &&) {
-                    CHECK(!"OnNext should not be called");
-                  },
-                  [](std::exception_ptr error) {
-                    CHECK(!"OnError should not be called");
-                    printf(
-                        "Got exception: %s\n", ExceptionMessage(error).c_str());
-                  },
-                  []() {
-                    CHECK(!"OnComplete should not be called");
-                  }));
-          subscription.Cancel();
-          subscription.Request(ElementCount::Unbounded());
-
-          // There should be nothing on the runloop
-          using namespace std::chrono_literals;
-          auto deadline = std::chrono::system_clock::now() + 20ms;
-          CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
-        }
-      }
-    }
-
-    SECTION("delayed") {
-      // This test can break if invoke doesn't take ownership of the request for
-      // example.
-      auto call = Pipe(
-          test_client.Invoke(
-              &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-          Map([](Flatbuffer<TestResponse> response) {
-            CHECK(response->data() == 123 * 2);
-            return "ignored";
-          }));
-      run(call);
-    }
-
-    SECTION("two calls") {
-      auto call_a = test_client.Invoke(
-          &TestService::Stub::AsyncDouble, MakeTestRequest(123));
-      auto call_b = test_client.Invoke(
-          &TestService::Stub::AsyncDouble, MakeTestRequest(321));
-      run(Pipe(
-          Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
-              call_a, call_b),
-          Map(Splat([](
-              Flatbuffer<TestResponse> a,
-              Flatbuffer<TestResponse> b) {
-            CHECK(a->data() == 123 * 2);
-            CHECK(b->data() == 321 * 2);
-            return "ignored";
-          }))));
-    }
-
-    SECTION("same call twice") {
-      auto call = test_client.Invoke(
-          &TestService::Stub::AsyncDouble, MakeTestRequest(123));
-      run(Pipe(
-          Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
-              call, call),
-          Map(Splat([](
-              Flatbuffer<TestResponse> a,
-              Flatbuffer<TestResponse> b) {
-            CHECK(a->data() == 123 * 2);
-            CHECK(b->data() == 123 * 2);
-            return "ignored";
-          }))));
-    }
-  }
-
   SECTION("server streaming") {
     SECTION("no responses") {
-      run(Pipe(
+      Run(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncRepeat, MakeTestRequest(0)),
           Map([](Flatbuffer<TestResponse> &&response) {
@@ -656,7 +305,7 @@ TEST_CASE("RsGrpc") {
           CHECK(runloop.Next());
           CHECK(runloop.Next());
 
-          shutdown_allow_outstanding_call();
+          ShutdownAllowOutstandingCall(&server);
         }
 
         SECTION("before Request") {
@@ -701,7 +350,7 @@ TEST_CASE("RsGrpc") {
       SECTION("call Invoke, request only some elements") {
         for (int i = 0; i < 4; i++) {
           latest_seen_response = 0;
-          run_expect_timeout(publisher, ElementCount(i));
+          RunExpectTimeout(&runloop, publisher, ElementCount(i));
           CHECK(latest_seen_response == i);
         }
       }
@@ -748,7 +397,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("one response") {
-      run(Pipe(
+      Run(&runloop, Pipe(
           test_client
               .Invoke(&TestService::Stub::AsyncRepeat, MakeTestRequest(1)),
           Map([](Flatbuffer<TestResponse> response) {
@@ -785,11 +434,11 @@ TEST_CASE("RsGrpc") {
             return "ignored";
           }));
 
-      run(Merge<const char *>(check_count, check_sum));
+      Run(&runloop, Merge<const char *>(check_count, check_sum));
     }
 
     SECTION("no responses then fail") {
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(0)),
           Map([](Flatbuffer<TestResponse> response) {
@@ -801,7 +450,7 @@ TEST_CASE("RsGrpc") {
 
     SECTION("one response then fail") {
       int count = 0;
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(1)),
           Map([&count](Flatbuffer<TestResponse> response) {
@@ -814,7 +463,7 @@ TEST_CASE("RsGrpc") {
 
     SECTION("two responses then fail") {
       int count = 0;
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(2)),
           Map([&count](Flatbuffer<TestResponse> response) {
@@ -850,13 +499,13 @@ TEST_CASE("RsGrpc") {
             return "ignored";
           }));
 
-      run(Merge<const char *>(responses_1, responses_2));
+      Run(&runloop, Merge<const char *>(responses_1, responses_2));
     }
   }
 
   SECTION("client streaming") {
     SECTION("no messages") {
-      run(Pipe(
+      Run(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum,
               Empty()),
@@ -880,7 +529,7 @@ TEST_CASE("RsGrpc") {
               CHECK(!"should not be invoked");
               return "ignored";
             }));
-        run_expect_timeout(publisher);
+        RunExpectTimeout(&runloop, publisher);
       }
 
       SECTION("make call that never requests elements") {
@@ -892,9 +541,9 @@ TEST_CASE("RsGrpc") {
               CHECK(!"should not be invoked");
               return "ignored";
             }));
-        run_expect_timeout(publisher, ElementCount::Unbounded());
+        RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
-        shutdown_allow_outstanding_call();
+        ShutdownAllowOutstandingCall(&server);
       }
 
       SECTION("make call that requests one element") {
@@ -909,11 +558,11 @@ TEST_CASE("RsGrpc") {
               CHECK(!"should not be invoked");
               return "ignored";
             }));
-        run_expect_timeout(publisher, ElementCount::Unbounded());
+        RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
         CHECK(hang_on_seen_elements == 2);
 
-        shutdown_allow_outstanding_call();
+        ShutdownAllowOutstandingCall(&server);
       }
 
       SECTION("make call that requests two elements") {
@@ -929,16 +578,16 @@ TEST_CASE("RsGrpc") {
               CHECK(!"should not be invoked");
               return "ignored";
             }));
-        run_expect_timeout(publisher, ElementCount::Unbounded());
+        RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
         CHECK(hang_on_seen_elements == 3);
 
-        shutdown_allow_outstanding_call();
+        ShutdownAllowOutstandingCall(&server);
       }
     }
 
     SECTION("one message") {
-      run(Pipe(
+      Run(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum,
               Just(MakeTestRequest(1337))),
@@ -954,7 +603,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("immediately failed stream") {
-      auto error = run_expect_error(test_client
+      auto error = RunExpectError(&runloop, test_client
           .Invoke(
               &TestService::Stub::AsyncSum,
               Throw(std::runtime_error("test_error"))));
@@ -962,7 +611,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("stream failed after one message") {
-      auto error = run_expect_error(test_client
+      auto error = RunExpectError(&runloop, test_client
           .Invoke(
               &TestService::Stub::AsyncSum,
               Concat(
@@ -972,7 +621,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("two message") {
-      run(Pipe(
+      Run(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum,
               Just(MakeTestRequest(13), MakeTestRequest(7))),
@@ -988,7 +637,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("no messages then fail") {
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncImmediatelyFailingSum,
               Empty()),
@@ -1000,7 +649,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("message then immediately fail") {
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncImmediatelyFailingSum,
               Just(MakeTestRequest(1337))),
@@ -1012,7 +661,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("fail on first message") {
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncFailingSum,
               Just(MakeTestRequest(-1))),
@@ -1024,7 +673,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("fail on second message") {
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncFailingSum,
               Just(MakeTestRequest(0), MakeTestRequest(-1))),
@@ -1036,7 +685,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("fail because of no response") {
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncClientStreamNoResponse,
               Just(MakeTestRequest(0))),
@@ -1048,7 +697,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("fail because of two responses") {
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncClientStreamTwoResponses,
               Just(MakeTestRequest(0))),
@@ -1088,7 +737,7 @@ TEST_CASE("RsGrpc") {
             return "ignored";
           }));
 
-      run(Merge<const char *>(call_0, call_1));
+      Run(&runloop, Merge<const char *>(call_0, call_1));
     }
 
     SECTION("same call twice") {
@@ -1106,13 +755,13 @@ TEST_CASE("RsGrpc") {
             return "ignored";
           }));
 
-      run(Merge<const char *>(call, call));
+      Run(&runloop, Merge<const char *>(call, call));
     }
   }
 
   SECTION("bidi streaming") {
     SECTION("no messages") {
-      run(Pipe(
+      Run(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               Empty()),
@@ -1137,11 +786,11 @@ TEST_CASE("RsGrpc") {
       SECTION("call Invoke, request only some elements") {
         for (int i = 0; i < 4; i++) {
           latest_seen_response = 0;
-          run_expect_timeout(publisher, ElementCount(i));
+          RunExpectTimeout(&runloop, publisher, ElementCount(i));
           CHECK(latest_seen_response == i);
         }
 
-        shutdown_allow_outstanding_call();
+        ShutdownAllowOutstandingCall(&server);
       }
 
       SECTION("Request one element at a time") {
@@ -1193,9 +842,9 @@ TEST_CASE("RsGrpc") {
               CHECK(!"should not be invoked");
               return "ignored";
             }));
-        run_expect_timeout(publisher, ElementCount::Unbounded());
+        RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
-        shutdown_allow_outstanding_call();
+        ShutdownAllowOutstandingCall(&server);
       }
 
       SECTION("make call that requests one element") {
@@ -1210,11 +859,11 @@ TEST_CASE("RsGrpc") {
               CHECK(!"should not be invoked");
               return "ignored";
             }));
-        run_expect_timeout(publisher, ElementCount::Unbounded());
+        RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
         CHECK(hang_on_seen_elements == 2);
 
-        shutdown_allow_outstanding_call();
+        ShutdownAllowOutstandingCall(&server);
       }
 
       SECTION("make call that requests two elements") {
@@ -1230,16 +879,16 @@ TEST_CASE("RsGrpc") {
               CHECK(!"should not be invoked");
               return "ignored";
             }));
-        run_expect_timeout(publisher, ElementCount::Unbounded());
+        RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
         CHECK(hang_on_seen_elements == 3);
 
-        shutdown_allow_outstanding_call();
+        ShutdownAllowOutstandingCall(&server);
       }
     }
 
     SECTION("one message") {
-      run(Pipe(
+      Run(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               Just(MakeTestRequest(1337))),
@@ -1255,7 +904,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("immediately failed stream") {
-      auto error = run_expect_error(
+      auto error = RunExpectError(&runloop, 
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               Throw(std::runtime_error("test_error"))));
@@ -1263,7 +912,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("stream failed after one message") {
-      auto error = run_expect_error(test_client
+      auto error = RunExpectError(&runloop, test_client
           .Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               Concat(
@@ -1273,7 +922,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("two message") {
-      run(Pipe(
+      Run(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
               Just(MakeTestRequest(10), MakeTestRequest(20))),
@@ -1288,7 +937,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("no messages then fail") {
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
               Empty()),
@@ -1300,7 +949,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("message then immediately fail") {
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
               Just(MakeTestRequest(1337))),
@@ -1312,7 +961,7 @@ TEST_CASE("RsGrpc") {
     }
 
     SECTION("fail on first message") {
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncFailingCumulativeSum,
               Just(MakeTestRequest(-1))),
@@ -1325,7 +974,7 @@ TEST_CASE("RsGrpc") {
 
     SECTION("fail on second message") {
       int count = 0;
-      auto error = run_expect_error(Pipe(
+      auto error = RunExpectError(&runloop, Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncFailingCumulativeSum,
               Just(MakeTestRequest(321), MakeTestRequest(-1))),
@@ -1365,7 +1014,7 @@ TEST_CASE("RsGrpc") {
             return "ignored";
           }));
 
-      run(Merge<const char *>(call_0, call_1));
+      Run(&runloop, Merge<const char *>(call_0, call_1));
     }
 
     SECTION("same call twice") {
@@ -1382,7 +1031,7 @@ TEST_CASE("RsGrpc") {
             return "ignored";
           }));
 
-      run(Merge<const char *>(call, call));
+      Run(&runloop, Merge<const char *>(call, call));
     }
   }
 
