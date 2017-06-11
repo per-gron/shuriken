@@ -318,7 +318,8 @@ class RsGrpcClientInvocation<
     ResponseType,
     RequestType,
     RequestOrPublisher,
-    SubscriberType> : public RsGrpcTag, public SubscriberBase {
+    SubscriberType> :
+        public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
  public:
   template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
@@ -336,16 +337,18 @@ class RsGrpcClientInvocation<
 
   void operator()(bool success) override {
     if (sent_final_request_) {
-      if (request_stream_error_) {
+      if (cancelled_) {
+        // Do nothing
+      } else if (request_stream_error_) {
         subscriber_.OnError(std::move(request_stream_error_));
-      } else if (!cancelled_) {
+      } else {
         HandleUnaryResponse(
             success, status_, std::move(response_), &subscriber_);
       }
       self_.reset();  // Delete this
     } else {
       if (success) {
-        operation_in_progress_ = false;
+        OperationFinished();
         RunEnqueuedOperation();
       } else {
         // This happens when the runloop is shutting down.
@@ -369,31 +372,36 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    return MakeSubscription(
-        [invoke, stub, cq, self](ElementCount count) mutable {
-          if (self && count > 0) {
-            if (self->cancelled_) {
-              self.reset();
-            } else {
-              auto &me = *self;
-              me.self_ = std::move(self);
-              me.stream_ = (stub->*invoke)(
-                  &me.context_, &me.response_, cq, &me);
-              me.operation_in_progress_ = true;
-              me.RequestRequests();
-            }
-          }
-        },
-        [weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)] {
-          if (auto strong_self = weak_self.lock()) {
-            strong_self->cancelled_ = true;
-            strong_self->context_.TryCancel();
-          }
-        });
+    weak_self_ = self;
+    invoke_ = [this, stub, invoke, cq] {
+      return (stub->*invoke)(&context_, &response_, cq, this);
+    };
+    return MakeSubscription(self);
+  }
+
+  void Request(ElementCount count) {
+    if (cancelled_) {
+      return;
+    }
+
+    if (!stream_ && count > 0) {
+      OperationStarted();
+      stream_ = invoke_();
+      subscription_ = Subscription(requests_.Subscribe(
+          MakeSubscriber(std::weak_ptr<RsGrpcClientInvocation>(
+              weak_self_.lock()))));
+      subscription_.Request(ElementCount(1));
+    }
+  }
+
+  void Cancel() {
+    cancelled_ = true;
+    context_.TryCancel();
+    // TODO(peck): Call subscription_.Cancel()
   }
 
   void OnNext(RequestType &&request) {
-    enqueued_requests_.emplace_back(std::move(request));
+    next_request_ = std::make_unique<RequestType>(std::move(request));
     RunEnqueuedOperation();
   }
 
@@ -410,29 +418,39 @@ class RsGrpcClientInvocation<
   }
 
  private:
-  void RequestRequests() {
-    auto subscription = requests_.Subscribe(MakeSubscriber(
-        std::weak_ptr<RsGrpcClientInvocation>(self_)));
-    // TODO(peck): Backpressure, cancellation
-    subscription.Request(ElementCount::Unbounded());
+  void OperationStarted() {
+    // While there is an outstanding gRPC operation, the CompletionQueue has a
+    // weak reference to this, so this object has to own itself.
+    self_ = weak_self_.lock();
+  }
+
+  void OperationFinished() {
+    // While there is no outstanding gRPC operation, this object must not own
+    // itself, or memory will be leaked if the Subscription is destroyed.
+    self_.reset();
+  }
+
+  bool AnOperationIsInProgress() const {
+    return !!self_;
   }
 
   void RunEnqueuedOperation() {
-    if (operation_in_progress_ || cancelled_) {
+    if (AnOperationIsInProgress() || cancelled_) {
       return;
     }
-    if (!enqueued_requests_.empty()) {
-      operation_in_progress_ = true;
-      stream_->Write(enqueued_requests_.front(), this);
-      enqueued_requests_.pop_front();
+    if (next_request_) {
+      OperationStarted();
+      stream_->Write(*next_request_, this);
+      next_request_.reset();
+      subscription_.Request(ElementCount(1));
     } else if (enqueued_writes_done_) {
       enqueued_writes_done_ = false;
       enqueued_finish_ = true;
-      operation_in_progress_ = true;
+      OperationStarted();
       stream_->WritesDone(this);
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
-      operation_in_progress_ = true;
+      OperationStarted();
       sent_final_request_ = true;
 
       stream_->Finish(&status_, this);
@@ -442,20 +460,22 @@ class RsGrpcClientInvocation<
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
   std::shared_ptr<RsGrpcClientInvocation> self_;
+  // This is used to be able to assign self_ when needed.
+  std::weak_ptr<RsGrpcClientInvocation> weak_self_;
   bool cancelled_ = false;
   RequestOrPublisher requests_;
   ResponseType response_;
   std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> stream_;
+  std::function<
+      std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> ()> invoke_;
   grpc::ClientContext context_;
   SubscriberType subscriber_;
+  Subscription subscription_;
 
   std::exception_ptr request_stream_error_;
   bool sent_final_request_ = false;
-  bool operation_in_progress_ = false;
 
-  // Because we don't have backpressure we need an unbounded buffer here :-(
-  // TODO(peck): Remove this unbounded buffer
-  std::deque<RequestType> enqueued_requests_;
+  std::unique_ptr<RequestType> next_request_;
   bool enqueued_writes_done_ = false;
   bool enqueued_finish_ = false;
   grpc::Status status_;

@@ -369,6 +369,7 @@ class RsGrpcServerInvocation<
   State state_ = State::AWAITING_REQUEST;
   bool enqueued_finish_ = false;
   grpc::Status enqueued_finish_status_;
+  // TODO(peck): Remove this unbounded buffer
   std::deque<ResponseType> enqueued_responses_;
 
   GrpcErrorHandler error_handler_;

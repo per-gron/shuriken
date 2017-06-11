@@ -69,13 +69,12 @@ auto UnaryHangHandler(Flatbuffer<TestRequest> request) {
 }  // anonymous namespace
 
 TEST_CASE("Unary RPC") {
-  // TODO(peck): Add support for cancellation (cancel is called unsubscribe)
+  // TODO(peck): Add support for cancellation
   // TODO(peck): Add support for timeouts
   // TODO(peck): Add support for backpressure (streaming output requires only
   //     one outstanding request at a time. Not possible atm.)
   // TODO(peck): Test
   //  * finishing bidi and unidirectional streams in different orders
-  //  * go through the code and look for stuff
   //  * what happens if writesdone is not called? Does the server stall then?
 
   auto server_address = "unix:rs_grpc_test.socket";
@@ -240,7 +239,7 @@ TEST_CASE("Unary RPC") {
         // There is only one thing on the runloop: The cancelled request.
         CHECK(runloop.Next());
 
-        ShutdownAllowOutstandingCall(&server);
+        // ShutdownAllowOutstandingCall(&server);
       }
 
       SECTION("before Request") {
