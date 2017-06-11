@@ -17,6 +17,7 @@
 #include <rs/concat.h>
 #include <rs/empty.h>
 #include <rs/just.h>
+#include <rs/take.h>
 
 #include "test_util.h"
 
@@ -46,6 +47,19 @@ TEST_CASE("Concat") {
   SECTION("two inputs with one value") {
     auto stream = Concat(Just(1), Just(2));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 1, 2 }));
+  }
+
+
+  SECTION("make infinite stream by concatenating with self") {
+    Publisher<int> infinite =
+        Publisher<int>(Concat(
+            Just(1),
+            MakePublisher([&infinite](auto &&subscriber) {
+              return infinite.Subscribe(
+                  std::forward<decltype(subscriber)>(subscriber));
+            })));
+
+    CHECK(GetAll<int>(Take(3)(infinite)) == std::vector<int>({ 1, 1, 1 }));
   }
 }
 
