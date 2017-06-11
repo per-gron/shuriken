@@ -22,7 +22,7 @@
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
 #include <flatbuffers/grpc.h>
-#include <rs-grpc/rs_grpc.h>
+#include <rs-grpc/server.h>
 
 #include "rsgrpctest.grpc.fb.h"
 

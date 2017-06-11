@@ -34,7 +34,7 @@
 #include <rs/sum.h>
 #include <rs/throw.h>
 #include <rs/zip.h>
-#include <rs-grpc/rs_grpc.h>  // TODO(peck): Split this into server.h and client.h
+#include <rs-grpc/server.h>
 
 #include "rsgrpctest.grpc.fb.h"
 #include "test_util.h"

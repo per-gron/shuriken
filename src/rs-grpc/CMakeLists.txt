@@ -1,7 +1,8 @@
 add_library(rs-grpc
+  include/rs-grpc/client.h
   include/rs-grpc/grpc_error.h
-  include/rs-grpc/rs_grpc.h
   include/rs-grpc/rs_grpc_tag.h
+  include/rs-grpc/server.h
   src/dummy.cpp)
 target_include_directories(rs PUBLIC include)
 target_link_libraries(rs-grpc rs flatbuffers grpc++)
