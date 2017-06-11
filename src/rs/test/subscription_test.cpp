@@ -26,6 +26,12 @@ TEST_CASE("Subscription") {
           "Subscription must be a Subscription");
     }
 
+    SECTION("default constructed") {
+      Subscription sub;
+      sub.Request(ElementCount(0));
+      sub.Cancel();
+    }
+
     SECTION("Move") {
       auto sub = Subscription(MakeSubscription(
           [](ElementCount) {}, [] {}));

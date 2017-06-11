@@ -25,12 +25,18 @@ void EmptySubscription::Cancel() {}
 
 Subscription::Eraser::~Eraser() {}
 
+Subscription::Subscription() {}
+
 void Subscription::Request(ElementCount count) {
-  eraser_->Request(count);
+  if (eraser_) {
+    eraser_->Request(count);
+  }
 }
 
 void Subscription::Cancel() {
-  eraser_->Cancel();
+  if (eraser_) {
+    eraser_->Cancel();
+  }
 }
 
 detail::EmptySubscription MakeSubscription() {

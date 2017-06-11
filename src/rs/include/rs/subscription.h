@@ -116,6 +116,8 @@ constexpr bool IsSubscription = std::is_base_of<SubscriptionBase, T>::value;
  */
 class Subscription : public SubscriptionBase {
  public:
+  Subscription();
+
   /**
    * S should implement the Subscription concept.
    */
