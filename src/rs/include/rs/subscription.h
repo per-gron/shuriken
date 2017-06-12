@@ -123,9 +123,11 @@ class Subscription : public SubscriptionBase {
    */
   template <
       typename S,
-      class = typename std::enable_if<IsSubscription<S>>::type>
+      class = typename std::enable_if<IsSubscription<
+          typename std::remove_reference<S>::type>>::type>
   explicit Subscription(S &&s)
-      : eraser_(std::make_unique<SubscriptionEraser<S>>(std::forward<S>(s))) {}
+      : eraser_(std::make_unique<SubscriptionEraser<
+            typename std::decay<S>::type>>(std::forward<S>(s))) {}
 
   Subscription(const Subscription &) = delete;
   Subscription &operator=(const Subscription &) = delete;
@@ -148,8 +150,9 @@ class Subscription : public SubscriptionBase {
   template <typename S>
   class SubscriptionEraser : public Eraser {
    public:
-    SubscriptionEraser(S &&subscription)
-        : subscription_(std::move(subscription)) {}
+    template <typename SType>
+    SubscriptionEraser(SType &&subscription)
+        : subscription_(std::forward<SType>(subscription)) {}
 
     void Request(ElementCount count) override {
       subscription_.Request(count);
@@ -160,6 +163,11 @@ class Subscription : public SubscriptionBase {
     }
 
    private:
+    // Sanity check... it's really bad if the user of this class forgets to
+    // std::decay the template parameter if necessary.
+    static_assert(
+        !std::is_reference<S>::value,
+        "Subscription type must be held by value");
     S subscription_;
   };
 

@@ -17,6 +17,26 @@
 #include <rs/subscription.h>
 
 namespace shk {
+namespace {
+
+class DummySubscription : public SubscriptionBase {
+ public:
+  DummySubscription(DummySubscription **last_called)
+      : last_called_(last_called) {}
+
+  void Request(ElementCount count) {
+    *last_called_ = this;
+  }
+
+  void Cancel() {
+    *last_called_ = this;
+  }
+
+ private:
+  DummySubscription **last_called_;
+};
+
+}  // anonymous namespace
 
 TEST_CASE("Subscription") {
   SECTION("Subscription the type eraser") {
@@ -32,10 +52,22 @@ TEST_CASE("Subscription") {
       sub.Cancel();
     }
 
-    SECTION("Move") {
+    SECTION("move") {
       auto sub = Subscription(MakeSubscription(
           [](ElementCount) {}, [] {}));
       auto moved_sub = std::move(sub);
+    }
+
+    SECTION("create from lvalue") {
+      DummySubscription *last_called;
+      auto dummy = DummySubscription(&last_called);
+
+      auto sub = Subscription(dummy);
+
+      sub.Request(ElementCount(0));
+      CHECK(last_called != &dummy);  // dummy should be copied not held by ref
+      sub.Cancel();
+      CHECK(last_called != &dummy);  // dummy should be copied not held by ref
     }
 
     SECTION("Request") {
