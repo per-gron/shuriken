@@ -541,13 +541,15 @@ class RsGrpcClientInvocation<
      * then because it's not until both the read stream and the write stream
      * have finished that it is known for sure that there was no error.
      */
-    void Finish(const grpc::Status &status) {
-      if (!status.ok()) {
-        subscriber_.OnError(std::make_exception_ptr(GrpcError(status)));
-      } else if (error_) {
-        subscriber_.OnError(std::move(error_));
-      } else {
-        subscriber_.OnComplete();
+    void Finish(bool cancelled, const grpc::Status &status) {
+      if (!cancelled) {
+        if (!status.ok()) {
+          subscriber_.OnError(std::make_exception_ptr(GrpcError(status)));
+        } else if (error_) {
+          subscriber_.OnError(std::move(error_));
+        } else {
+          subscriber_.OnComplete();
+        }
       }
     }
 
@@ -611,6 +613,7 @@ class RsGrpcClientInvocation<
       } else {
         // This happens when the runloop is shutting down.
         writer_done_ = true;
+        cancelled_ = true;
         TryShutdown();
       }
     }
@@ -634,7 +637,7 @@ class RsGrpcClientInvocation<
   }
 
   void OnNext(RequestType &&request) {
-    enqueued_requests_.emplace_back(std::move(request));
+    next_request_ = std::make_unique<RequestType>(std::move(request));
     RunEnqueuedOperation();
   }
 
@@ -661,10 +664,9 @@ class RsGrpcClientInvocation<
         reader_.Invoke(stream_.get());
         reader_.Request(count);
 
-        auto subscription = requests_.Subscribe(MakeSubscriber(
-            std::weak_ptr<RsGrpcClientInvocation>(self_)));
-        // TODO(peck): Backpressure, cancellation
-        subscription.Request(ElementCount::Unbounded());
+        subscription_ = Subscription(requests_.Subscribe(MakeSubscriber(
+            std::weak_ptr<RsGrpcClientInvocation>(self_))));
+        subscription_.Request(ElementCount(1));
       }
     } else {
       reader_.Request(count);
@@ -674,6 +676,7 @@ class RsGrpcClientInvocation<
   void Cancel() {
     cancelled_ = true;
     context_.TryCancel();
+    // TODO(peck): Call subscription_.Cancel()
   }
 
  private:
@@ -704,10 +707,11 @@ class RsGrpcClientInvocation<
     if (AnOperationIsInProgress() || cancelled_) {
       return;
     }
-    if (!enqueued_requests_.empty()) {
+    if (next_request_) {
       OperationStarted();
-      stream_->Write(enqueued_requests_.front(), this);
-      enqueued_requests_.pop_front();
+      stream_->Write(*next_request_, this);
+      next_request_.reset();
+      subscription_.Request(ElementCount(1));
     } else if (enqueued_writes_done_) {
       enqueued_writes_done_ = false;
       enqueued_finish_ = true;
@@ -724,7 +728,7 @@ class RsGrpcClientInvocation<
 
   void TryShutdown() {
     if (writer_done_ && reader_done_) {
-      reader_.Finish(status_);
+      reader_.Finish(cancelled_, status_);
       self_.reset();  // Delete this
     }
   }
@@ -747,13 +751,12 @@ class RsGrpcClientInvocation<
   std::unique_ptr<
       grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> stream_;
   grpc::ClientContext context_;
+  Subscription subscription_;
 
   bool sent_final_request_ = false;
   bool writer_done_ = false;
 
-  // Because we don't have backpressure we need an unbounded buffer here :-(
-  // TODO(peck): Remove this unbounded buffer
-  std::deque<RequestType> enqueued_requests_;
+  std::unique_ptr<RequestType> next_request_;
   bool enqueued_writes_done_ = false;
   bool enqueued_finish_ = false;
   grpc::Status status_;

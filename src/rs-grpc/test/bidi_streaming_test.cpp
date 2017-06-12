@@ -19,6 +19,7 @@
 #include <thread>
 
 #include <flatbuffers/grpc.h>
+#include <grpc++/resource_quota.h>
 #include <rs/concat.h>
 #include <rs/count.h>
 #include <rs/empty.h>
@@ -115,8 +116,14 @@ TEST_CASE("Bidi streaming RPC") {
 
   RsGrpcClient runloop;
 
-  auto channel = grpc::CreateChannel(
-      server_address, grpc::InsecureChannelCredentials());
+  grpc::ResourceQuota quota;
+  grpc::ChannelArguments channel_args;
+  channel_args.SetResourceQuota(quota);
+
+  auto channel = grpc::CreateCustomChannel(
+      server_address,
+      grpc::InsecureChannelCredentials(),
+      channel_args);
 
   auto test_client = runloop.MakeClient(
       TestService::NewStub(channel));
@@ -318,6 +325,38 @@ TEST_CASE("Bidi streaming RPC") {
       RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
       CHECK(hang_on_seen_elements == 3);
+
+      ShutdownAllowOutstandingCall(&server);
+    }
+
+    SECTION("make call with unlimited stream") {
+      // This test is supposed to push messages to the server until the buffers
+      // get full. The default buffer size in gRPC is so big that the test takes
+      // a lot of time to complete. This reduces the buffer size so that this
+      // test completes reasonably quickly.
+      quota.Resize(1024);
+
+      // If client-side rs-grpc violates backpressure requirements by requesting
+      // an unbounded number of elements from this infinite stream (which the
+      // server does not do), then this will smash the stack or run out of
+      // memory.
+      Publisher<Flatbuffer<TestRequest>> infinite =
+          Publisher<Flatbuffer<TestRequest>>(Concat(
+              Just(MakeTestRequest(1)),
+              MakePublisher([&infinite](auto &&subscriber) {
+                return infinite.Subscribe(
+                    std::forward<decltype(subscriber)>(subscriber));
+              })));
+
+      auto publisher = Pipe(
+          test_client.Invoke(
+              &TestService::Stub::AsyncBidiStreamRequestZero,
+              infinite),
+          Map([](Flatbuffer<TestResponse> response) {
+            CHECK(!"should not be invoked");
+            return "ignored";
+          }));
+      RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
       ShutdownAllowOutstandingCall(&server);
     }
