@@ -148,9 +148,11 @@ class ErasedSubscriberBase : public SubscriberBase {
  public:
   template <
       typename S,
-      class = typename std::enable_if<IsSubscriber<S>>::type>
+      class = typename std::enable_if<IsSubscriber<
+          typename std::remove_reference<S>::type>>::type>
   explicit ErasedSubscriberBase(S &&s)
-      : eraser_(std::make_unique<SubscriberEraser<S>>(std::forward<S>(s))) {}
+      : eraser_(std::make_unique<SubscriberEraser<
+            typename std::decay<S>::type>>(std::forward<S>(s))) {}
 
   void OnError(std::exception_ptr &&error) {
     eraser_->OnError(std::move(error));
@@ -202,8 +204,9 @@ class ErasedSubscriberBase : public SubscriberBase {
   template <typename S>
   class SubscriberEraser : public Eraser {
    public:
-    SubscriberEraser(S &&subscriber)
-        : subscriber_(std::move(subscriber)) {}
+    template <typename UniversalSReference>
+    SubscriberEraser(UniversalSReference &&subscriber)
+        : subscriber_(std::forward<UniversalSReference>(subscriber)) {}
 
     void OnNext(int index, void *rvalue_ref) override {
       (*GetNexts()[index]).OnNext(&subscriber_, rvalue_ref);
@@ -252,6 +255,11 @@ class ErasedSubscriberBase : public SubscriberBase {
       return result;
     }
 
+    // Sanity check to ensure that the user of this class didn't forget
+    // std::decay
+    static_assert(
+        !std::is_reference<S>::value,
+        "SubscriberEraser can't hold a reference type");
     S subscriber_;
   };
 
@@ -278,7 +286,8 @@ class ErasedSubscriber<Idx, Base, T, Ts...>
  protected:
   template <
       typename S,
-      class = typename std::enable_if<IsSubscriber<S>>::type>
+      class = typename std::enable_if<IsSubscriber<
+          typename std::remove_reference<S>::type>>::type>
   explicit ErasedSubscriber(S &&s)
       : ErasedSubscriber<Idx + 1, Base, Ts...>(std::forward<S>(s)) {}
 };
@@ -294,7 +303,8 @@ class ErasedSubscriber<Idx, Base> : public Base {
  protected:
   template <
       typename S,
-      class = typename std::enable_if<IsSubscriber<S>>::type>
+      class = typename std::enable_if<IsSubscriber<
+          typename std::remove_reference<S>::type>>::type>
   explicit ErasedSubscriber(S &&s)
       : Base(std::forward<S>(s)) {}
 };
@@ -310,7 +320,8 @@ class Subscriber : public detail::ErasedSubscriber<
  public:
   template <
       typename S,
-      class = typename std::enable_if<IsSubscriber<S>>::type>
+      class = typename std::enable_if<IsSubscriber<
+          typename std::remove_reference<S>::type>>::type>
   explicit Subscriber(S &&s)
       : detail::ErasedSubscriber<0, detail::ErasedSubscriberBase<Ts...>, Ts...>(
             std::forward<S>(s)) {}
@@ -325,9 +336,11 @@ class Subscriber<T> : public SubscriberBase {
  public:
   template <
       typename S,
-      class = typename std::enable_if<IsSubscriber<S>>::type>
+      class = typename std::enable_if<IsSubscriber<
+          typename std::remove_reference<S>::type>>::type>
   explicit Subscriber(S &&s)
-      : eraser_(std::make_unique<SubscriberEraser<S>>(std::forward<S>(s))) {}
+      : eraser_(std::make_unique<SubscriberEraser<
+            typename std::decay<S>::type>>(std::forward<S>(s))) {}
 
   void OnNext(T &&val) {
     eraser_->OnNext(std::move(val));
@@ -354,8 +367,9 @@ class Subscriber<T> : public SubscriberBase {
   template <typename S>
   class SubscriberEraser : public Eraser {
    public:
-    SubscriberEraser(S &&subscriber)
-        : subscriber_(std::move(subscriber)) {}
+    template <typename UniversalSReference>
+    SubscriberEraser(UniversalSReference &&subscriber)
+        : subscriber_(std::forward<UniversalSReference>(subscriber)) {}
 
     void OnNext(T &&val) override {
       subscriber_.OnNext(std::move(val));
@@ -370,6 +384,11 @@ class Subscriber<T> : public SubscriberBase {
     }
 
    private:
+    // Sanity check to ensure that the user of this class didn't forget
+    // std::decay
+    static_assert(
+        !std::is_reference<S>::value,
+        "SubscriberEraser can't hold a reference type");
     S subscriber_;
   };
 

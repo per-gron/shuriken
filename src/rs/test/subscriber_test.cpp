@@ -35,6 +35,12 @@ TEST_CASE("Subscriber") {
         auto moved_sub = std::move(sub);
       }
 
+      SECTION("create from lvalue ref") {
+        auto inner_sub = MakeSubscriber(
+            [](auto &&) {}, [](std::exception_ptr &&) {}, [] {});
+        auto sub = Subscriber<int>(inner_sub);
+      }
+
       SECTION("OnNext") {
         int invocations = 0;
         {
@@ -110,6 +116,12 @@ TEST_CASE("Subscriber") {
         auto sub = Subscriber<int, std::string>(MakeSubscriber(
             [](auto &&) {}, [](std::exception_ptr &&) {}, [] {}));
         auto moved_sub = std::move(sub);
+      }
+
+      SECTION("create from lvalue ref") {
+        auto inner_sub = MakeSubscriber(
+            [](auto &&) {}, [](std::exception_ptr &&) {}, [] {});
+        auto sub = Subscriber<int, std::string>(inner_sub);
       }
 
       SECTION("OnNext") {
