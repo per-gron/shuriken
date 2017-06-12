@@ -606,7 +606,7 @@ class RsGrpcClientInvocation<
       TryShutdown();
     } else {
       if (success) {
-        operation_in_progress_ = false;
+        OperationFinished();
         RunEnqueuedOperation();
       } else {
         // This happens when the runloop is shutting down.
@@ -626,7 +626,6 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    // TODO(peck): Is the object owning itself at the right times?
     weak_self_ = self;
     invoke_ = [this, stub, invoke, cq] {
       return (stub->*invoke)(&context_, cq, this);
@@ -656,12 +655,11 @@ class RsGrpcClientInvocation<
     } else if (invoke_) {
       // The initial call to invoke has not yet been made
       if (count > 0) {
-        self_ = weak_self_.lock();
+        OperationStarted();
         stream_ = invoke_();
         invoke_ = nullptr;
         reader_.Invoke(stream_.get());
         reader_.Request(count);
-        operation_in_progress_ = true;
 
         auto subscription = requests_.Subscribe(MakeSubscriber(
             std::weak_ptr<RsGrpcClientInvocation>(self_)));
@@ -686,22 +684,38 @@ class RsGrpcClientInvocation<
     DONE
   };
 
+  void OperationStarted() {
+    // While there is an outstanding gRPC operation, the CompletionQueue has a
+    // weak reference to this, so this object has to own itself.
+    self_ = weak_self_.lock();
+  }
+
+  void OperationFinished() {
+    // While there is no outstanding gRPC operation, this object must not own
+    // itself, or memory will be leaked if the Subscription is destroyed.
+    self_.reset();
+  }
+
+  bool AnOperationIsInProgress() const {
+    return !!self_;
+  }
+
   void RunEnqueuedOperation() {
-    if (operation_in_progress_ || cancelled_) {
+    if (AnOperationIsInProgress() || cancelled_) {
       return;
     }
     if (!enqueued_requests_.empty()) {
-      operation_in_progress_ = true;
+      OperationStarted();
       stream_->Write(enqueued_requests_.front(), this);
       enqueued_requests_.pop_front();
     } else if (enqueued_writes_done_) {
       enqueued_writes_done_ = false;
       enqueued_finish_ = true;
-      operation_in_progress_ = true;
+      OperationStarted();
       stream_->WritesDone(this);
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
-      operation_in_progress_ = true;
+      OperationStarted();
       sent_final_request_ = true;
 
       stream_->Finish(&status_, this);
@@ -735,7 +749,6 @@ class RsGrpcClientInvocation<
   grpc::ClientContext context_;
 
   bool sent_final_request_ = false;
-  bool operation_in_progress_ = false;
   bool writer_done_ = false;
 
   // Because we don't have backpressure we need an unbounded buffer here :-(
