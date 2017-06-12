@@ -157,25 +157,26 @@ TEST_CASE("Bidi streaming RPC") {
   }
 
   SECTION("cancellation") {
+    auto null_subscriber = MakeSubscriber(
+        [](auto &&) {
+          CHECK(!"OnNext should not be called");
+        },
+        [](std::exception_ptr error) {
+          CHECK(!"OnError should not be called");
+          printf(
+              "Got exception: %s\n", ExceptionMessage(error).c_str());
+        },
+        []() {
+          CHECK(!"OnComplete should not be called");
+        });
+
     SECTION("from client side") {
       SECTION("after Request") {
         auto call = test_client.Invoke(
             &TestService::Stub::AsyncBidiStreamRequestZero,
             Empty());
 
-        auto subscription = call
-            .Subscribe(MakeSubscriber(
-                [](auto &&) {
-                  CHECK(!"OnNext should not be called");
-                },
-                [](std::exception_ptr error) {
-                  CHECK(!"OnError should not be called");
-                  printf(
-                      "Got exception: %s\n", ExceptionMessage(error).c_str());
-                },
-                []() {
-                  CHECK(!"OnComplete should not be called");
-                }));
+        auto subscription = call.Subscribe(null_subscriber);
         subscription.Request(ElementCount::Unbounded());
 
         CHECK(runloop.Next());
@@ -191,19 +192,7 @@ TEST_CASE("Bidi streaming RPC") {
             &TestService::Stub::AsyncCumulativeSum,
             Never());
 
-        auto subscription = call
-            .Subscribe(MakeSubscriber(
-                [](auto &&) {
-                  CHECK(!"OnNext should not be called");
-                },
-                [](std::exception_ptr error) {
-                  CHECK(!"OnError should not be called");
-                  printf(
-                      "Got exception: %s\n", ExceptionMessage(error).c_str());
-                },
-                []() {
-                  CHECK(!"OnComplete should not be called");
-                }));
+        auto subscription = call.Subscribe(null_subscriber);
         subscription.Cancel();
         subscription.Request(ElementCount::Unbounded());
 
@@ -211,6 +200,29 @@ TEST_CASE("Bidi streaming RPC") {
         using namespace std::chrono_literals;
         auto deadline = std::chrono::system_clock::now() + 20ms;
         CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
+      }
+
+      SECTION("cancel input stream") {
+        bool cancelled = false;
+
+        auto detect_cancel = MakePublisher([&cancelled](auto &&subscriber) {
+          return MakeSubscription(
+              [](ElementCount) {},
+              [&cancelled] {
+                cancelled = true;
+              });
+        });
+
+        auto call = test_client.Invoke(
+            &TestService::Stub::AsyncBidiStreamRequestZero,
+            detect_cancel);
+
+        auto subscription = call.Subscribe(null_subscriber);
+        subscription.Request(ElementCount::Unbounded());
+        subscription.Cancel();
+        CHECK(cancelled);
+
+        ShutdownAllowOutstandingCall(&server);
       }
     }
   }

@@ -48,6 +48,8 @@ void HandleUnaryResponse(
   }
 }
 
+// TODO(peck): Try to improve compile times by reducing the number of template
+// parameters here.
 template <
     typename Reader,
     typename ResponseType,
@@ -676,7 +678,7 @@ class RsGrpcClientInvocation<
   void Cancel() {
     cancelled_ = true;
     context_.TryCancel();
-    // TODO(peck): Call subscription_.Cancel()
+    subscription_.Cancel();
   }
 
  private:
