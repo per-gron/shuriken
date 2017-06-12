@@ -48,14 +48,10 @@ void HandleUnaryResponse(
   }
 }
 
-// TODO(peck): Try to improve compile times by reducing the number of template
-// parameters here.
 template <
     typename Reader,
     typename ResponseType,
-    typename RequestType,
-    typename RequestOrPublisher,
-    typename SubscriberType>
+    typename RequestType>
 class RsGrpcClientInvocation;
 
 /**
@@ -63,26 +59,17 @@ class RsGrpcClientInvocation;
  */
 template <
     typename ResponseType,
-    typename RequestType,
-    typename RequestOrPublisher,
-    typename SubscriberType>
+    typename RequestType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncResponseReader<ResponseType>,
     ResponseType,
-    RequestType,
-    RequestOrPublisher,
-    SubscriberType> : public RsGrpcTag {
+    RequestType> : public RsGrpcTag {
  public:
-  template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
       const RequestType &request,
-      InnerSubscriberType &&subscriber)
+      Subscriber<ResponseType> &&subscriber)
       : request_(request),
-        subscriber_(std::forward<InnerSubscriberType>(subscriber)) {
-    static_assert(
-        IsSubscriber<typename std::decay<InnerSubscriberType>::type>,
-        "Second parameter must be a Subscriber");
-  }
+        subscriber_(std::move(subscriber)) {}
 
   void operator()(bool success) override {
     if (!cancelled_) {
@@ -135,7 +122,7 @@ class RsGrpcClientInvocation<
   RequestType request_;
   grpc::ClientContext context_;
   ResponseType response_;
-  SubscriberType subscriber_;
+  Subscriber<ResponseType> subscriber_;
   grpc::Status status_;
 };
 
@@ -144,26 +131,17 @@ class RsGrpcClientInvocation<
  */
 template <
     typename ResponseType,
-    typename RequestType,
-    typename RequestOrPublisher,
-    typename SubscriberType>
+    typename RequestType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncReader<ResponseType>,
     ResponseType,
-    RequestType,
-    RequestOrPublisher,
-    SubscriberType> : public RsGrpcTag, public SubscriptionBase {
+    RequestType> : public RsGrpcTag, public SubscriptionBase {
  public:
-  template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
       const RequestType &request,
-      InnerSubscriberType &&subscriber)
+      Subscriber<ResponseType> &&subscriber)
       : request_(request),
-        subscriber_(std::forward<InnerSubscriberType>(subscriber)) {
-    static_assert(
-        IsSubscriber<typename std::decay<InnerSubscriberType>::type>,
-        "Second parameter must be a Subscriber");
-  }
+        subscriber_(std::move(subscriber)) {}
 
   void operator()(bool success) override {
     switch (state_) {
@@ -291,7 +269,7 @@ class RsGrpcClientInvocation<
 
   State state_ = State::INIT;
   ResponseType response_;
-  SubscriberType subscriber_;
+  Subscriber<ResponseType> subscriber_;
   grpc::Status status_;
   std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> stream_;
 
@@ -312,30 +290,18 @@ class RsGrpcClientInvocation<
  */
 template <
     typename RequestType,
-    typename ResponseType,
-    typename RequestOrPublisher,
-    typename SubscriberType>
+    typename ResponseType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncWriter<RequestType>,
     ResponseType,
-    RequestType,
-    RequestOrPublisher,
-    SubscriberType> :
+    RequestType> :
         public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
  public:
-  template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
-      const RequestOrPublisher &requests,
-      InnerSubscriberType &&subscriber)
+      const Publisher<RequestType> &requests,
+      Subscriber<ResponseType> &&subscriber)
       : requests_(requests),
-        subscriber_(std::forward<InnerSubscriberType>(subscriber)) {
-    static_assert(
-        IsPublisher<RequestOrPublisher>,
-        "First parameter must be a Publisher");
-    static_assert(
-        IsSubscriber<typename std::decay<InnerSubscriberType>::type>,
-        "Second parameter must be a Subscriber");
-  }
+        subscriber_(std::move(subscriber)) {}
 
   void operator()(bool success) override {
     if (sent_final_request_) {
@@ -465,13 +431,13 @@ class RsGrpcClientInvocation<
   // This is used to be able to assign self_ when needed.
   std::weak_ptr<RsGrpcClientInvocation> weak_self_;
   bool cancelled_ = false;
-  RequestOrPublisher requests_;
+  Publisher<RequestType> requests_;
   ResponseType response_;
   std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> stream_;
   std::function<
       std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> ()> invoke_;
   grpc::ClientContext context_;
-  SubscriberType subscriber_;
+  Subscriber<ResponseType> subscriber_;
   Subscription subscription_;
 
   std::exception_ptr request_stream_error_;
@@ -488,15 +454,11 @@ class RsGrpcClientInvocation<
  */
 template <
     typename RequestType,
-    typename ResponseType,
-    typename RequestOrPublisher,
-    typename SubscriberType>
+    typename ResponseType>
 class RsGrpcClientInvocation<
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
     ResponseType,
-    RequestType,
-    RequestOrPublisher,
-    SubscriberType>
+    RequestType>
         : public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
  private:
   /**
@@ -506,12 +468,11 @@ class RsGrpcClientInvocation<
    */
   class Reader : public RsGrpcTag {
    public:
-    template <typename InnerSubscriberType>
     Reader(
         const std::function<void ()> &shutdown,
-        InnerSubscriberType &&subscriber)
+        Subscriber<ResponseType> &&subscriber)
         : shutdown_(shutdown),
-          subscriber_(std::forward<InnerSubscriberType>(subscriber)) {}
+          subscriber_(std::move(subscriber)) {}
 
     void Invoke(
         grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream) {
@@ -583,26 +544,18 @@ class RsGrpcClientInvocation<
     // that this is not called when there is an outstanding async operation.
     std::function<void ()> shutdown_;
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream_ = nullptr;
-    SubscriberType subscriber_;
+    Subscriber<ResponseType> subscriber_;
     ResponseType response_;
   };
 
  public:
-  template <typename InnerSubscriberType>
   RsGrpcClientInvocation(
-      const RequestOrPublisher &requests,
-      InnerSubscriberType &&subscriber)
+      const Publisher<RequestType> &requests,
+      Subscriber<ResponseType> &&subscriber)
       : reader_(
             [this] { reader_done_ = true; TryShutdown(); },
-            std::forward<SubscriberType>(subscriber)),
-        requests_(requests) {
-    static_assert(
-        IsPublisher<RequestOrPublisher>,
-        "First parameter must be a Publisher");
-    static_assert(
-        IsSubscriber<typename std::decay<InnerSubscriberType>::type>,
-        "Second parameter must be a Subscriber");
-  }
+            std::move(subscriber)),
+        requests_(requests) {}
 
   void operator()(bool success) override {
     if (sent_final_request_) {
@@ -748,7 +701,7 @@ class RsGrpcClientInvocation<
   Reader reader_;
   bool reader_done_ = false;
 
-  RequestOrPublisher requests_;
+  Publisher<RequestType> requests_;
   ResponseType response_;
   std::unique_ptr<
       grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> stream_;
@@ -833,7 +786,7 @@ class RsGrpcServiceClient {
         ResponseType,
         RequestType>(
             invoke,
-            std::forward<PublisherType>(requests),
+            Publisher<RequestType>(std::forward<PublisherType>(requests)),
             std::move(context));
   }
 
@@ -854,7 +807,7 @@ class RsGrpcServiceClient {
         ResponseType,
         RequestType>(
             invoke,
-            std::forward<PublisherType>(requests),
+            Publisher<RequestType>(std::forward<PublisherType>(requests)),
             std::move(context));
   }
 
@@ -879,13 +832,12 @@ class RsGrpcServiceClient {
           detail::RsGrpcClientInvocation<
               Reader,
               ResponseType,
-              RequestType,
-              typename std::decay<RequestOrPublisher>::type,
-              typename std::decay<decltype(subscriber)>::type>;
+              RequestType>;
 
       auto call = std::make_shared<ClientInvocation>(
           request_or_publisher,
-          std::forward<decltype(subscriber)>(subscriber));
+          Subscriber<ResponseType>(
+              std::forward<decltype(subscriber)>(subscriber)));
       return call->Invoke(call, invoke, stub_.get(), &cq_);
     });
   }
