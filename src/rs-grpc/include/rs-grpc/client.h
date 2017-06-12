@@ -397,7 +397,7 @@ class RsGrpcClientInvocation<
   void Cancel() {
     cancelled_ = true;
     context_.TryCancel();
-    // TODO(peck): Call subscription_.Cancel()
+    subscription_.Cancel();
   }
 
   void OnNext(RequestType &&request) {
