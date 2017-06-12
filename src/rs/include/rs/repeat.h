@@ -42,7 +42,7 @@ struct RepeatContainer {
     }
 
    private:
-    const Value &value_;
+    Value value_;
     size_t count_;
   };
 

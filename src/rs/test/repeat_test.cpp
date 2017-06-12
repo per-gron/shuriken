@@ -53,6 +53,20 @@ TEST_CASE("Repeat") {
     val++;
     CHECK(GetAll<int>(stream) == std::vector<int>({ 13 }));
   }
+
+  SECTION("move subscription") {
+    int received_value = 0;
+    auto pub = Repeat(std::make_shared<int>(321), 1);
+    auto sub = pub.Subscribe(MakeSubscriber(
+        [&received_value](std::shared_ptr<int> &&req) {
+          received_value = *req;
+        },
+        [](std::exception_ptr &&) {},
+        [] {}));
+    auto sub2 = std::move(sub);
+    sub2.Request(ElementCount::Unbounded());
+    CHECK(received_value == 321);
+  }
 }
 
 }  // namespace shk
