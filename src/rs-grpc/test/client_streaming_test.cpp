@@ -29,12 +29,8 @@
 #include <rs/never.h>
 #include <rs/pipe.h>
 #include <rs/range.h>
-#include <rs/repeat.h>
-#include <rs/scan.h>
-#include <rs/splat.h>
 #include <rs/sum.h>
 #include <rs/throw.h>
-#include <rs/zip.h>
 #include <rs-grpc/server.h>
 
 #include "rsgrpctest.grpc.fb.h"
@@ -140,9 +136,7 @@ TEST_CASE("Client streaming RPC") {
 
   RsGrpcClient runloop;
 
-  // Set a small quota in order to con
   grpc::ResourceQuota quota;
-
   grpc::ChannelArguments channel_args;
   channel_args.SetResourceQuota(quota);
 
@@ -258,8 +252,8 @@ TEST_CASE("Client streaming RPC") {
       // test completes reasonably quickly.
       quota.Resize(1024);
 
-      // If rs-grpc violates backpressure requirements by requesting an
-      // unbounded number of elements from this infinite stream (which the
+      // If client-side rs-grpc violates backpressure requirements by requesting
+      // an unbounded number of elements from this infinite stream (which the
       // server does not do), then this will smash the stack or run out of
       // memory.
       Publisher<Flatbuffer<TestRequest>> infinite =
