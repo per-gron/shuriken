@@ -494,7 +494,8 @@ class RsGrpcClientInvocation<
     ResponseType,
     RequestType,
     RequestOrPublisher,
-    SubscriberType> : public RsGrpcTag, public SubscriberBase {
+    SubscriberType>
+        : public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
  private:
   /**
    * Bidi streaming requires separate tags for reading and writing (since they
@@ -625,36 +626,12 @@ class RsGrpcClientInvocation<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    return MakeSubscription([
-        invoke, stub, cq, self,
-        weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)](
-            ElementCount count) mutable {
-          if (self) {
-            // The initial call to invoke has not yet been made
-            if (self->cancelled_) {
-              self.reset();
-            } else if (count > 0) {
-              auto &me = *self;
-              me.self_ = std::move(self);
-              me.stream_ = (stub->*invoke)(&me.context_, cq, &me);
-              me.reader_.Invoke(me.stream_.get());
-              me.reader_.Request(count);
-              me.operation_in_progress_ = true;
-
-              me.RequestRequests();
-            }
-          } else if (auto strong_self = weak_self.lock()) {
-            // TODO(peck): Is it really right to use a weak_ptr here? Is this
-            // object owning itself at the right times?
-            strong_self->reader_.Request(count);
-          }
-        },
-        [weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)] {
-          if (auto strong_self = weak_self.lock()) {
-            strong_self->cancelled_ = true;
-            strong_self->context_.TryCancel();
-          }
-        });
+    // TODO(peck): Is the object owning itself at the right times?
+    weak_self_ = self;
+    invoke_ = [this, stub, invoke, cq] {
+      return (stub->*invoke)(&context_, cq, this);
+    };
+    return MakeSubscription(self);
   }
 
   void OnNext(RequestType &&request) {
@@ -673,6 +650,34 @@ class RsGrpcClientInvocation<
     RunEnqueuedOperation();
   }
 
+  void Request(ElementCount count) {
+    if (cancelled_) {
+      // Do nothing
+    } else if (invoke_) {
+      // The initial call to invoke has not yet been made
+      if (count > 0) {
+        self_ = weak_self_.lock();
+        stream_ = invoke_();
+        invoke_ = nullptr;
+        reader_.Invoke(stream_.get());
+        reader_.Request(count);
+        operation_in_progress_ = true;
+
+        auto subscription = requests_.Subscribe(MakeSubscriber(
+            std::weak_ptr<RsGrpcClientInvocation>(self_)));
+        // TODO(peck): Backpressure, cancellation
+        subscription.Request(ElementCount::Unbounded());
+      }
+    } else {
+      reader_.Request(count);
+    }
+  }
+
+  void Cancel() {
+    cancelled_ = true;
+    context_.TryCancel();
+  }
+
  private:
   enum class State {
     SENDING_REQUESTS,
@@ -680,13 +685,6 @@ class RsGrpcClientInvocation<
     TO_SEND_FINISH,
     DONE
   };
-
-  void RequestRequests() {
-    auto subscription = requests_.Subscribe(MakeSubscriber(
-        std::weak_ptr<RsGrpcClientInvocation>(self_)));
-    // TODO(peck): Backpressure, cancellation
-    subscription.Request(ElementCount::Unbounded());
-  }
 
   void RunEnqueuedOperation() {
     if (operation_in_progress_ || cancelled_) {
@@ -720,6 +718,12 @@ class RsGrpcClientInvocation<
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
   std::shared_ptr<RsGrpcClientInvocation> self_;
+  // This is used to be able to assign self_ when needed.
+  std::weak_ptr<RsGrpcClientInvocation> weak_self_;
+  // Set only between the Invoke call and the first Request call that requests
+  // non-zero elements.
+  std::function<std::unique_ptr<
+      grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> ()> invoke_;
   bool cancelled_ = false;
   Reader reader_;
   bool reader_done_ = false;
