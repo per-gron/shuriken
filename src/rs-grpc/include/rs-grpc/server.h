@@ -395,7 +395,8 @@ template <
 class RsGrpcServerInvocation<
     grpc::ServerAsyncReader<ResponseType, RequestType>,
     ServerCallTraits,
-    Callback> : public RsGrpcTag, public SubscriberBase {
+    Callback>
+        : public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
   using Stream = grpc::ServerAsyncReader<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
   using Method = StreamingRequestMethod<Service, Stream>;
@@ -494,6 +495,15 @@ class RsGrpcServerInvocation<
     TrySendResponse();
   }
 
+  void Request(ElementCount count) {
+    requested_ += count;
+    MaybeReadNext();
+  }
+
+  void Cancel() {
+    // TODO(peck): Handle cancellation
+  }
+
  private:
   enum class State {
     INIT,
@@ -505,6 +515,8 @@ class RsGrpcServerInvocation<
 
   void Init() {
     // TODO(peck): I think this weak this capture in the lambda seems dangerous
+    // (I think it might be safe because self_ is set even when this object is
+    // not given to gRPC, which is wrong.)
     auto response = callback_(Publisher<RequestType>(MakePublisher(
         [this](auto &&subscriber) {
       if (subscriber_) {
@@ -515,14 +527,7 @@ class RsGrpcServerInvocation<
           new Subscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
-      return MakeSubscription(
-          [self = self_](ElementCount count) {
-            self->requested_ += count;
-            self->MaybeReadNext();
-          },
-          [] {
-            // TODO(peck): Handle cancellation
-          });
+      return MakeSubscription(self_);
     })));
 
     static_assert(
@@ -813,6 +818,8 @@ class RsGrpcServerInvocation<
 
   void Init() {
     // TODO(peck): I think this weak this capture in the lambda seems dangerous
+    // (I think it might be safe because self_ is set even when this object is
+    // not given to gRPC, which is wrong.)
     auto response = callback_(Publisher<RequestType>(MakePublisher(
         [this](auto &&subscriber) {
       if (subscriber_) {
