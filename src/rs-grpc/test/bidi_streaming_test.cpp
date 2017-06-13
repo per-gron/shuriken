@@ -92,6 +92,18 @@ auto BidiStreamInfiniteResponseHandler(
   return MakeInfiniteResponse();
 }
 
+auto BidiStreamBackpressureViolationHandler(
+    Publisher<Flatbuffer<TestRequest>> request) {
+  return MakePublisher([](auto &&subscriber) {
+    // Emit element before it was asked for: streams should not do
+    // this.
+    subscriber.OnNext(MakeTestResponse(1));
+    subscriber.OnNext(MakeTestResponse(2));
+    subscriber.OnNext(MakeTestResponse(3));
+    return MakeSubscription();
+  });
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Bidi streaming RPC") {
@@ -124,7 +136,10 @@ TEST_CASE("Bidi streaming RPC") {
           MakeHangOnZeroHandler(&hang_on_seen_elements))
       .RegisterMethod(
           &TestService::AsyncService::RequestBidiStreamInfiniteResponse,
-          &BidiStreamInfiniteResponseHandler);
+          &BidiStreamInfiniteResponseHandler)
+      .RegisterMethod(
+          &TestService::AsyncService::RequestBidiStreamBackpressureViolation,
+          &BidiStreamBackpressureViolationHandler);
 
   RsGrpcClient runloop;
 
@@ -392,7 +407,7 @@ TEST_CASE("Bidi streaming RPC") {
       ShutdownAllowOutstandingCall(&server);
     }
 
-    SECTION("violate backpressure in provided publisher") {
+    SECTION("violate backpressure in provided publisher (client side)") {
       auto publisher = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncCumulativeSum,
@@ -403,6 +418,15 @@ TEST_CASE("Bidi streaming RPC") {
                 subscriber.OnNext(MakeTestRequest(2));
                 return MakeSubscription();
               })));
+      auto error = RunExpectError(&runloop, publisher);
+      CHECK(ExceptionMessage(error) == "Backpressure violation");
+    }
+
+    SECTION("violate backpressure in provided publisher (server side)") {
+      auto publisher = Pipe(
+          test_client.Invoke(
+              &TestService::Stub::AsyncBidiStreamBackpressureViolation,
+              Empty()));
       auto error = RunExpectError(&runloop, publisher);
       CHECK(ExceptionMessage(error) == "Backpressure violation");
     }

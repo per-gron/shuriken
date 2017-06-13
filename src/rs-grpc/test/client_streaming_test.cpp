@@ -100,7 +100,8 @@ auto ClientStreamTwoResponsesHandler(
 }  // anonymous namespace
 
 TEST_CASE("Client streaming RPC") {
-  // TODO(peck): Fix occasional aborts in these tests
+  // TODO(peck): Fix occasional aborts in these tests:
+  // completion_queue.c:352  assertion failed: !cc->shutdown_called
 
   auto server_address = "unix:rs_grpc_test.socket";
 

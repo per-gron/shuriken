@@ -313,6 +313,7 @@ class RsGrpcServerInvocation<
 
   void OnNext(ResponseType &&response) {
     if (next_response_) {
+      next_response_.reset();
       OnError(std::make_exception_ptr(
           std::logic_error("Backpressure violation")));
     } else {
@@ -649,12 +650,15 @@ class RsGrpcServerInvocation<
     }
 
     void OnNext(ResponseType &&response) {
-      // TODO(peck): Verify that this doesn't overwrite next_response_. If that
-      // happens, backpressure has been violated, and it's better to fail than
-      // to silently drop data.
-      next_response_ = std::make_unique<ResponseType>(
-          std::forward<decltype(response)>(response));
-      RunEnqueuedOperation();
+      if (next_response_) {
+        next_response_.reset();
+        OnError(std::make_exception_ptr(
+            std::logic_error("Backpressure violation")));
+      } else {
+        next_response_ = std::make_unique<ResponseType>(
+            std::forward<decltype(response)>(response));
+        RunEnqueuedOperation();
+      }
     }
 
     /**

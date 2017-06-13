@@ -37,4 +37,6 @@ rpc_service TestService {
   BidiStreamRequestZero(TestRequest): TestResponse (streaming: "bidi");
   BidiStreamHangOnZero(TestRequest): TestResponse (streaming: "bidi");
   BidiStreamInfiniteResponse(TestRequest): TestResponse (streaming: "bidi");
+  BidiStreamBackpressureViolation(TestRequest):
+      TestResponse (streaming: "bidi");
 }
