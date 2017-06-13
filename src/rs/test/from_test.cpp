@@ -82,6 +82,35 @@ TEST_CASE("From") {
     CHECK(next == 1);
   }
 
+  SECTION("move Subscription with string container") {
+    // Short std::string objects (that don't heap allocate) will invalidate
+    // all iterators to it when moving the string. In order to support this,
+    // From must make sure to not move the container when moving the
+    // subscription (because it keeps iterators in the subscription).
+    auto stream = From(std::string("a"));
+
+    int done = 0;
+    int next = 0;
+    auto sub_pre_move = stream.Subscribe(MakeSubscriber(
+        [&next](char val) {
+          CHECK(val == 'a');
+          next++;
+        },
+        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+        [&done] {
+          done++;
+        }));
+    auto sub = std::move(sub_pre_move);
+    CHECK(done == 0);
+    CHECK(next == 0);
+    sub.Request(ElementCount(1));
+    CHECK(done == 1);
+    CHECK(next == 1);
+    sub.Request(ElementCount(1));
+    CHECK(done == 1);
+    CHECK(next == 1);
+  }
+
   SECTION("multiple values, one at a time") {
     auto stream = From(std::vector<int>{ 1, 2 });
 

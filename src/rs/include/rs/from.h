@@ -34,15 +34,17 @@ template <typename Container>
 auto From(Container &&container) {
   return MakePublisher([container = std::forward<Container>(container)](
       auto subscriber) {
+    using DecayedContainer = typename std::decay<Container>::type;
+
     class ContainerSubscription : public SubscriptionBase {
      public:
       ContainerSubscription(
-          const typename std::decay<Container>::type &container,
+          const DecayedContainer &container,
           decltype(subscriber) &&subscriber)
-          : container_(container),
+          : container_(std::make_unique<DecayedContainer>(container)),
             subscriber_(std::move(subscriber)),
-            it_(std::begin(container_)),
-            end_(std::end(container_)) {
+            it_(std::begin(*container_)),
+            end_(std::end(*container_)) {
         if (it_ == end_) {
           subscriber_.OnComplete();
         }
@@ -83,7 +85,12 @@ auto From(Container &&container) {
       }
 
      private:
-      typename std::decay<Container>::type container_;
+      // container_ needs to be in a unique_ptr because this object is movable
+      // and STL does not guarantee that the iterators will remain valid after
+      // moving the container. Keeping it in a unique_ptr ensures that the
+      // iterators stay valid even when this object is moved because the
+      // container itself is never moved.
+      std::unique_ptr<DecayedContainer> container_;
       decltype(subscriber) subscriber_;
       decltype(std::begin(std::declval<Container>())) it_;
       decltype(std::end(std::declval<Container>())) end_;

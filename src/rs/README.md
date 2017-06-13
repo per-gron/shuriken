@@ -6,7 +6,7 @@
 * Like all Reactive Streams based libraries, it offers mandatory non-blocking back-pressure support (at the time of writing, [RxCpp](https://github.com/Reactive-Extensions/RxCpp) does not do this).
 * It has a trivial threading model: Nothing in this library is thread safe.
 * It attempts to be small, to avoid excessive compile times.
-* It does not have the concept of a Scheduler, or time, like Rx libraries do. The author of this library believes that such concepts belong in a runloop.
+* It does not (yet?) have the concept of a Scheduler, or time, like Rx libraries do.
 
 
 ## Threading model
