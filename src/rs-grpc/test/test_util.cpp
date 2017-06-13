@@ -14,6 +14,9 @@
 
 #include "test_util.h"
 
+#include <rs/concat.h>
+#include <rs/just.h>
+
 namespace shk {
 
 Flatbuffer<TestRequest> MakeTestRequest(int data) {
@@ -33,6 +36,28 @@ Flatbuffer<TestResponse> MakeTestResponse(int data) {
 void ShutdownAllowOutstandingCall(RsGrpcServer *server) {
   auto deadline = std::chrono::system_clock::now();
   server->Shutdown(deadline);
+}
+
+namespace {
+
+template <typename Make>
+auto MakeInfinite(const Make &make) -> Publisher<decltype(make(1))> {
+  return Publisher<decltype(make(1))>(Concat(
+      Just(make(1)),
+      MakePublisher([make](auto &&subscriber) {
+        return MakeInfinite(make).Subscribe(
+            std::forward<decltype(subscriber)>(subscriber));
+      })));
+}
+
+}  // anonymous namespace
+
+Publisher<Flatbuffer<TestRequest>> MakeInfiniteRequest() {
+  return MakeInfinite(&MakeTestRequest);
+}
+
+Publisher<Flatbuffer<TestResponse>> MakeInfiniteResponse() {
+  return MakeInfinite(&MakeTestResponse);
 }
 
 }  // namespace shk

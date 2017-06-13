@@ -39,6 +39,10 @@ Flatbuffer<TestResponse> MakeTestResponse(int data);
 
 void ShutdownAllowOutstandingCall(RsGrpcServer *server);
 
+Publisher<Flatbuffer<TestRequest>> MakeInfiniteRequest();
+
+Publisher<Flatbuffer<TestResponse>> MakeInfiniteResponse();
+
 template <typename Publisher>
 std::exception_ptr RunExpectError(
     RsGrpcClient *runloop,

@@ -352,18 +352,10 @@ TEST_CASE("Bidi streaming RPC") {
       // an unbounded number of elements from this infinite stream (which the
       // server does not do), then this will smash the stack or run out of
       // memory.
-      Publisher<Flatbuffer<TestRequest>> infinite =
-          Publisher<Flatbuffer<TestRequest>>(Concat(
-              Just(MakeTestRequest(1)),
-              MakePublisher([&infinite](auto &&subscriber) {
-                return infinite.Subscribe(
-                    std::forward<decltype(subscriber)>(subscriber));
-              })));
-
       auto publisher = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncBidiStreamRequestZero,
-              infinite),
+              MakeInfiniteRequest()),
           Map([](Flatbuffer<TestResponse> response) {
             CHECK(!"should not be invoked");
             return "ignored";

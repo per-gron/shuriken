@@ -61,20 +61,11 @@ auto ServerStreamHangHandler(Flatbuffer<TestRequest> request) {
   return Never();
 }
 
-Publisher<Flatbuffer<TestResponse>> MakeInfinite() {
-  return Publisher<Flatbuffer<TestResponse>>(Concat(
-      Just(MakeTestResponse(1)),
-      MakePublisher([](auto &&subscriber) {
-        return MakeInfinite().Subscribe(
-            std::forward<decltype(subscriber)>(subscriber));
-      })));
-}
-
 auto InfiniteRepeatHandler(Flatbuffer<TestRequest> request) {
   // If client-side rs-grpc violates backpressure requirements by requesting
   // an unbounded number of elements from this infinite stream, then this will
   // smash the stack or run out of memory.
-  return MakeInfinite();
+  return MakeInfiniteResponse();
 }
 
 }  // anonymous namespace
