@@ -89,7 +89,7 @@ auto ClientStreamNoResponseHandler(
 auto ClientStreamTwoResponsesHandler(
     Publisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
-  // fix this.
+  // fix this. TODO(peck): Try to this unnecessary
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
 
   return Just(
