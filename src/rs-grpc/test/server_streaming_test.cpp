@@ -68,6 +68,17 @@ auto InfiniteRepeatHandler(Flatbuffer<TestRequest> request) {
   return MakeInfiniteResponse();
 }
 
+auto ServerStreamBackpressureViolationHandler(Flatbuffer<TestRequest> request) {
+  return MakePublisher([](auto &&subscriber) {
+    // Emit element before it was asked for: streams should not do
+    // this.
+    subscriber.OnNext(MakeTestResponse(1));
+    subscriber.OnNext(MakeTestResponse(2));
+    subscriber.OnNext(MakeTestResponse(3));
+    return MakeSubscription();
+  });
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Server streaming RPC") {
@@ -91,7 +102,10 @@ TEST_CASE("Server streaming RPC") {
           &ServerStreamHangHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestInfiniteRepeat,
-          &InfiniteRepeatHandler);
+          &InfiniteRepeatHandler)
+      .RegisterMethod(
+          &TestService::AsyncService::RequestServerStreamBackpressureViolation,
+          &ServerStreamBackpressureViolationHandler);
 
   RsGrpcClient runloop;
 
@@ -245,6 +259,15 @@ TEST_CASE("Server streaming RPC") {
       CHECK(runloop.Next());
 
       ShutdownAllowOutstandingCall(&server);
+    }
+
+    SECTION("violate backpressure in provided publisher (server side)") {
+      auto publisher = Pipe(
+          test_client.Invoke(
+              &TestService::Stub::AsyncServerStreamBackpressureViolation,
+              MakeTestRequest(0)));
+      auto error = RunExpectError(&runloop, publisher);
+      CHECK(ExceptionMessage(error) == "Backpressure violation");
     }
   }
 

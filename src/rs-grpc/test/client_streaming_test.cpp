@@ -100,6 +100,8 @@ auto ClientStreamTwoResponsesHandler(
 }  // anonymous namespace
 
 TEST_CASE("Client streaming RPC") {
+  // TODO(peck): Fix occasional aborts in these tests
+
   auto server_address = "unix:rs_grpc_test.socket";
 
   RsGrpcServer::Builder server_builder;

@@ -312,8 +312,13 @@ class RsGrpcServerInvocation<
   }
 
   void OnNext(ResponseType &&response) {
-    next_response_ = std::make_unique<ResponseType>(std::move(response));
-    RunEnqueuedOperation();
+    if (next_response_) {
+      OnError(std::make_exception_ptr(
+          std::logic_error("Backpressure violation")));
+    } else {
+      next_response_ = std::make_unique<ResponseType>(std::move(response));
+      RunEnqueuedOperation();
+    }
   }
 
   void OnError(std::exception_ptr &&error) {

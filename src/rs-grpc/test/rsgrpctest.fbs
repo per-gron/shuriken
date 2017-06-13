@@ -19,6 +19,8 @@ rpc_service TestService {
   RepeatThenFail(TestRequest): TestResponse (streaming: "server");
   ServerStreamHang(TestRequest): TestResponse (streaming: "server");
   InfiniteRepeat(TestRequest): TestResponse (streaming: "server");
+  ServerStreamBackpressureViolation(TestRequest):
+      TestResponse (streaming: "server");
 
   Sum(TestRequest): TestResponse (streaming: "client");
   ImmediatelyFailingSum(TestRequest): TestResponse (streaming: "client");
