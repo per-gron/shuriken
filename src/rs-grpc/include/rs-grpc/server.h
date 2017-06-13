@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <deque>
 #include <type_traits>
 #include <vector>
 
@@ -633,8 +632,17 @@ class RsGrpcServerInvocation<
           context_(*context),
           stream_(*stream) {}
 
+    void Subscribed(Subscription &&subscription) {
+      subscription_ = std::move(subscription);
+      // TODO(peck): Cancellation
+      subscription_.Request(ElementCount(1));
+    }
+
     void OnNext(ResponseType &&response) {
-      enqueued_responses_.emplace_back(
+      // TODO(peck): Verify that this doesn't overwrite next_response_. If that
+      // happens, backpressure has been violated, and it's better to fail than
+      // to silently drop data.
+      next_response_ = std::make_unique<ResponseType>(
           std::forward<decltype(response)>(response));
       RunEnqueuedOperation();
     }
@@ -674,10 +682,11 @@ class RsGrpcServerInvocation<
       if (operation_in_progress_) {
         return;
       }
-      if (!enqueued_responses_.empty()) {
+      if (next_response_) {
         operation_in_progress_ = true;
-        stream_.Write(enqueued_responses_.front(), this);
-        enqueued_responses_.pop_front();
+        stream_.Write(*next_response_, this);
+        next_response_.reset();
+        subscription_.Request(ElementCount(1));
       } else if (enqueued_finish_ && !sent_final_request_) {
         enqueued_finish_ = false;
         operation_in_progress_ = true;
@@ -687,10 +696,9 @@ class RsGrpcServerInvocation<
       }
     }
 
+    Subscription subscription_;
     std::function<void ()> shutdown_;
-    // Because we don't have backpressure we need an unbounded buffer here :-(
-    // TODO(peck): Remove this unbounded buffer
-    std::deque<ResponseType> enqueued_responses_;
+    std::unique_ptr<ResponseType> next_response_;
     bool enqueued_finish_ = false;
     bool operation_in_progress_ = false;
     bool sent_final_request_ = false;
@@ -828,10 +836,8 @@ class RsGrpcServerInvocation<
     static_assert(
         IsPublisher<decltype(response)>,
         "Callback return type must be Publisher");
-    auto subscription = response.Subscribe(MakeSubscriber(
-        std::weak_ptr<RsGrpcServerInvocation>(self_)));
-    // TODO(peck): Backpressure, cancellation
-    subscription.Request(ElementCount::Unbounded());
+    writer_.Subscribed(Subscription(response.Subscribe(MakeSubscriber(
+        std::weak_ptr<RsGrpcServerInvocation>(self_)))));
 
     Request(
         error_handler_,

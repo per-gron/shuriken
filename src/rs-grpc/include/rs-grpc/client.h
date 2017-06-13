@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <deque>
 #include <type_traits>
 
 #include <grpc++/grpc++.h>

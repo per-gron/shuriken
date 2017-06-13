@@ -83,6 +83,15 @@ auto FailingCumulativeSumHandler(
       }))));
 }
 
+auto BidiStreamInfiniteResponseHandler(
+    Publisher<Flatbuffer<TestRequest>> requests) {
+  // Hack: unless requests is subscribed to, nothing happens. Would be nice to
+  // fix this.
+  requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
+
+  return MakeInfiniteResponse();
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Bidi streaming RPC") {
@@ -112,7 +121,10 @@ TEST_CASE("Bidi streaming RPC") {
           &RequestZeroHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestBidiStreamHangOnZero,
-          MakeHangOnZeroHandler(&hang_on_seen_elements));
+          MakeHangOnZeroHandler(&hang_on_seen_elements))
+      .RegisterMethod(
+          &TestService::AsyncService::RequestBidiStreamInfiniteResponse,
+          &BidiStreamInfiniteResponseHandler);
 
   RsGrpcClient runloop;
 
@@ -361,6 +373,21 @@ TEST_CASE("Bidi streaming RPC") {
             return "ignored";
           }));
       RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
+
+      ShutdownAllowOutstandingCall(&server);
+    }
+
+    SECTION("Request one element from infinite response stream") {
+      auto request = test_client.Invoke(
+          &TestService::Stub::AsyncBidiStreamInfiniteResponse,
+          Empty());
+
+      auto subscription = request.Subscribe(MakeSubscriber());
+      subscription.Request(ElementCount(1));
+
+      CHECK(runloop.Next());
+      CHECK(runloop.Next());
+      CHECK(runloop.Next());
 
       ShutdownAllowOutstandingCall(&server);
     }
