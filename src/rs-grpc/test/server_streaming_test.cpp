@@ -61,6 +61,22 @@ auto ServerStreamHangHandler(Flatbuffer<TestRequest> request) {
   return Never();
 }
 
+Publisher<Flatbuffer<TestResponse>> MakeInfinite() {
+  return Publisher<Flatbuffer<TestResponse>>(Concat(
+      Just(MakeTestResponse(1)),
+      MakePublisher([](auto &&subscriber) {
+        return MakeInfinite().Subscribe(
+            std::forward<decltype(subscriber)>(subscriber));
+      })));
+}
+
+auto InfiniteRepeatHandler(Flatbuffer<TestRequest> request) {
+  // If client-side rs-grpc violates backpressure requirements by requesting
+  // an unbounded number of elements from this infinite stream, then this will
+  // smash the stack or run out of memory.
+  return MakeInfinite();
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Server streaming RPC") {
@@ -81,7 +97,10 @@ TEST_CASE("Server streaming RPC") {
           &RepeatThenFailHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestServerStreamHang,
-          &ServerStreamHangHandler);
+          &ServerStreamHangHandler)
+      .RegisterMethod(
+          &TestService::AsyncService::RequestInfiniteRepeat,
+          &InfiniteRepeatHandler);
 
   RsGrpcClient runloop;
 
@@ -129,7 +148,7 @@ TEST_CASE("Server streaming RPC") {
         subscription.Request(ElementCount::Unbounded());
         subscription.Cancel();
 
-        // The cancelled request will takes two runloop iterations to actually
+        // The cancelled request will take two runloop iterations to actually
         // happen.
         CHECK(runloop.Next());
         CHECK(runloop.Next());
@@ -222,6 +241,19 @@ TEST_CASE("Server streaming RPC") {
       subscription.Request(ElementCount(1));
       subscription.Request(ElementCount(2));
       subscription.Request(ElementCount::Unbounded());
+    }
+
+    SECTION("Request one element from infinite stream") {
+      auto request = test_client.Invoke(
+          &TestService::Stub::AsyncInfiniteRepeat, MakeTestRequest(0));
+
+      auto subscription = request.Subscribe(MakeSubscriber());
+      subscription.Request(ElementCount(1));
+
+      CHECK(runloop.Next());
+      CHECK(runloop.Next());
+
+      ShutdownAllowOutstandingCall(&server);
     }
   }
 

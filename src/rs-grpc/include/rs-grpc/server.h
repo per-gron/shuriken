@@ -292,10 +292,10 @@ class RsGrpcServerInvocation<
         // after which it's not safe to do anything with `this` anymore.
         IssueNewServerRequest(std::move(callback_));
 
-        auto subscription = values.Subscribe(MakeSubscriber(
-            std::weak_ptr<RsGrpcServerInvocation>(self_)));
-        // TODO(peck): Backpressure, cancellation
-        subscription.Request(ElementCount::Unbounded());
+        subscription_ = Subscription(values.Subscribe(MakeSubscriber(
+            std::weak_ptr<RsGrpcServerInvocation>(self_))));
+        // TODO(peck): Cancellation
+        subscription_.Request(ElementCount(1));
 
         break;
       }
@@ -313,7 +313,7 @@ class RsGrpcServerInvocation<
   }
 
   void OnNext(ResponseType &&response) {
-    enqueued_responses_.emplace_back(std::move(response));
+    next_response_ = std::make_unique<ResponseType>(std::move(response));
     RunEnqueuedOperation();
   }
 
@@ -348,13 +348,16 @@ class RsGrpcServerInvocation<
   }
 
   void RunEnqueuedOperation() {
+    // TODO(peck): This object should not own itself when it's not given to
+    // gRPC.
     if (state_ != State::AWAITING_RESPONSE) {
       return;
     }
-    if (!enqueued_responses_.empty()) {
+    if (next_response_) {
       state_ = State::SENDING_RESPONSE;
-      stream_.Write(enqueued_responses_.front(), this);
-      enqueued_responses_.pop_front();
+      stream_.Write(*next_response_, this);
+      next_response_.reset();
+      subscription_.Request(ElementCount(1));
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
       state_ = State::SENT_FINAL_RESPONSE;
@@ -369,8 +372,8 @@ class RsGrpcServerInvocation<
   State state_ = State::AWAITING_REQUEST;
   bool enqueued_finish_ = false;
   grpc::Status enqueued_finish_status_;
-  // TODO(peck): Remove this unbounded buffer
-  std::deque<ResponseType> enqueued_responses_;
+  Subscription subscription_;
+  std::unique_ptr<ResponseType> next_response_;
 
   GrpcErrorHandler error_handler_;
   Method method_;
