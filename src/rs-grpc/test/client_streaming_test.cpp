@@ -268,6 +268,21 @@ TEST_CASE("Client streaming RPC") {
 
       ShutdownAllowOutstandingCall(&server);
     }
+
+    SECTION("violate backpressure in provided publisher") {
+      auto publisher = Pipe(
+          test_client.Invoke(
+              &TestService::Stub::AsyncSum,
+              MakePublisher([](auto &&subscriber) {
+                // Emit element before it was asked for: streams should not do
+                // this.
+                subscriber.OnNext(MakeTestRequest(1));
+                subscriber.OnNext(MakeTestRequest(2));
+                return MakeSubscription();
+              })));
+      auto error = RunExpectError(&runloop, publisher);
+      CHECK(ExceptionMessage(error) == "Backpressure violation");
+    }
   }
 
   SECTION("cancellation") {
