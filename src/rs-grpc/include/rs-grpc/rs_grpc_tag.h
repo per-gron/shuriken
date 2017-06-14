@@ -39,50 +39,75 @@ class RsGrpcTag {
   /**
    * A class that behaves like a std::shared_ptr<long>, but without thread
    * safety. RsGrpcTag uses it to be able to implement WeakPtr.
+   *
+   * Refcount heap allocates only when copied.
    */
   class Refcount {
    public:
-    Refcount() : data_(new Data) {}
+    Refcount() : data_(nullptr), local_data_(1L) {}
 
     Refcount(const Refcount &other)
-        : data_(other.data_) {
-      data_->Retain();
+        : data_(other.data_),
+          local_data_(other.local_data_) {
+      if (data_) {
+        data_->Retain();
+      } else {
+        // Copying a Refcount that did not have a heap-allocated data_ means
+        // that we have to allocate.
+        data_ = new Data;
+        data_->Retain();
+        data_->data = local_data_;
+        other.data_ = data_;
+      }
     }
 
     Refcount &operator=(const Refcount &other) {
-      data_->Release();
+      this->~Refcount();
       data_ = other.data_;
-      data_->Retain();
+      local_data_ = other.local_data_;
+      if (data_) {
+        data_->Retain();
+      } else {
+        // Copying a Refcount that did not have a heap-allocated data_ means
+        // that we have to allocate.
+        data_ = new Data;
+        data_->Retain();
+        data_->data = local_data_;
+        other.data_ = data_;
+      }
       return *this;
     }
 
     Refcount(Refcount &&other)
-        : data_(other.data_) {
-      other.data_ = new Data;
+        : data_(other.data_),
+          local_data_(other.local_data_) {
+      other.data_ = nullptr;
     }
 
     Refcount &operator=(Refcount &&other) {
-      data_->Release();
+      this->~Refcount();
       data_ = other.data_;
-      other.data_ = new Data;
+      local_data_ = other.local_data_;
       return *this;
     }
 
     void Reset() {
-      data_->Release();
-      data_ = new Data;
+      this->~Refcount();
+      data_ = nullptr;
     }
 
     ~Refcount() {
-      data_->Release();
+      if (data_) {
+        data_->Release();
+      }
     }
 
     long &operator*() {
-      return data_->data;
+      return data_ ? data_->data : local_data_;
     }
 
     const long &operator*() const {
-      return data_->data;
+      return data_ ? data_->data : local_data_;
     }
 
    private:
@@ -106,7 +131,10 @@ class RsGrpcTag {
       long internal_refcount_ = 1L;
     };
 
-    Data *data_;
+    // If data_ is non-null, data_->data is the refcount
+    mutable Data *data_;
+    // If data_ is null, then local_data_ is the refcount
+    long local_data_;
   };
 
  public:
@@ -218,6 +246,12 @@ class RsGrpcTag {
 
   RsGrpcTag() = default;
   virtual ~RsGrpcTag() = default;
+
+  // It's not safe to let RsGrpcTag be copyable because of its intrusive
+  // refcounting. And besides, the subclasses of this class are probably not
+  // going to be copyable anyway.
+  RsGrpcTag(const RsGrpcTag &) = delete;
+  RsGrpcTag &operator=(const RsGrpcTag &) = delete;
 
   virtual void operator()(bool success) = 0;
 
