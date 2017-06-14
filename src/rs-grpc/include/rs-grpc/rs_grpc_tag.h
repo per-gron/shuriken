@@ -14,19 +14,107 @@
 
 #pragma once
 
+#include <atomic>
+
 #include <grpc++/grpc++.h>
 
 namespace shk {
 namespace detail {
 
+/**
+ * A RsGrpcTag object is the type of objects that rs-grpc casts to void* and
+ * gives to gRPC. No other object types are allowed on CompletionQueues that
+ * rs-grpc use directly, and the void*s that are given to the CompletionQueue
+ * must be created with the RsGrpcTag::ToTag() method.
+ *
+ * RsGrpcTag has its own intrusive refcount mechanism. Classes that inherit from
+ * RsGrpcTag inherits from that too. This intrusive refcount is used instead of
+ * std::shared_ptr partly to avoid a noticeable amount of compile time overhead,
+ * but mostly because it needs to manually meddle with the refcount:
+ *
+ * When ToTag() is called, the refcount is increased. When the CompletionQueue
+ * gives the object back, the refcount is decreased. This allows for nearly
+ * automatic memory management of RsGrpcTag objects despite CompletionQueue's
+ * decidedly non-automatic memory management API style.
+ */
 class RsGrpcTag {
  public:
+  /**
+   * Smart pointer class to RsGrpcTag that behaves like a shared_ptr.
+   */
+  class Ptr {
+   public:
+    Ptr() = default;
+
+    Ptr(const Ptr &other) : tag_(other.tag_) {
+      if (tag_) {
+        tag_->Retain();
+      }
+    }
+
+    Ptr(Ptr &&other) : tag_(other.tag_) {
+      other.tag_ = nullptr;
+    }
+
+    Ptr &operator=(const Ptr &other) {
+      this->~Ptr();
+      tag_ = other.tag_;
+      if (tag_) {
+        tag_->Retain();
+      }
+      return *this;
+    }
+
+    Ptr &operator=(Ptr &&other) {
+      this->~Ptr();
+      tag_ = other.tag_;
+      other.tag_ = nullptr;
+      return *this;
+    }
+
+    ~Ptr() {
+      if (tag_) {
+        tag_->Release();
+      }
+    }
+
+    void Reset() {
+      this->~Ptr();
+      tag_ = nullptr;
+    }
+
+    explicit operator bool() const {
+      return !!tag_;
+    }
+
+    RsGrpcTag *Get() {
+      return tag_;
+    }
+
+    const RsGrpcTag *Get() const {
+      return tag_;
+    }
+
+   private:
+    friend class RsGrpcTag;
+
+    Ptr(RsGrpcTag *tag) : tag_(tag) {
+      if (tag_) {
+        tag_->Retain();
+      }
+    }
+
+    RsGrpcTag *tag_ = nullptr;
+  };
+
+  RsGrpcTag() : count_(1L) {}
   virtual ~RsGrpcTag() = default;
 
   virtual void operator()(bool success) = 0;
 
   static void Invoke(void *got_tag, bool success) {
     detail::RsGrpcTag *tag = reinterpret_cast<detail::RsGrpcTag *>(got_tag);
+    tag->Release();
     (*tag)(success);
   }
 
@@ -67,6 +155,28 @@ class RsGrpcTag {
   static void ProcessAllEvents(grpc::CompletionQueue *cq) {
     while (ProcessOneEvent(cq)) {}
   }
+
+  void *ToTag() {
+    Retain();
+    return this;
+  }
+
+  Ptr ToShared() {
+    return Ptr(this);
+  }
+
+  void Retain() {
+    count_.fetch_add(1L);
+  }
+
+  void Release() {
+    if (count_.fetch_sub(1L) == 1L) {
+      delete this;
+    }
+  }
+
+ private:
+  std::atomic<long> count_;
 };
 
 }  // namespace detail

@@ -136,7 +136,7 @@ class RsGrpcServerCall<
         &invocation->stream_,
         cq,
         cq,
-        invocation.get());
+        invocation->ToTag());
   }
 
   void operator()(bool success) {
@@ -178,18 +178,18 @@ class RsGrpcServerCall<
   }
 
   void OnError(std::exception_ptr &&error) {
-    stream_.FinishWithError(ExceptionToStatus(error), this);
+    stream_.FinishWithError(ExceptionToStatus(error), ToTag());
   }
 
   void OnComplete() {
     if (num_responses_ == 1) {
-      stream_.Finish(response_, grpc::Status::OK, this);
+      stream_.Finish(response_, grpc::Status::OK, ToTag());
     } else {
       const auto *error_message =
           num_responses_ == 0 ? "No response" : "Too many responses";
       stream_.FinishWithError(
           grpc::Status(grpc::StatusCode::INTERNAL, error_message),
-          this);
+          ToTag());
     }
   }
 
@@ -268,7 +268,7 @@ class RsGrpcServerCall<
         &invocation->stream_,
         cq,
         cq,
-        invocation.get());
+        invocation->ToTag());
   }
 
   void operator()(bool success) {
@@ -360,13 +360,13 @@ class RsGrpcServerCall<
     }
     if (next_response_) {
       state_ = State::SENDING_RESPONSE;
-      stream_.Write(*next_response_, this);
+      stream_.Write(*next_response_, ToTag());
       next_response_.reset();
       subscription_.Request(ElementCount(1));
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
       state_ = State::SENT_FINAL_RESPONSE;
-      stream_.Finish(enqueued_finish_status_, this);
+      stream_.Finish(enqueued_finish_status_, ToTag());
     }
   }
 
@@ -439,7 +439,7 @@ class RsGrpcServerCall<
         &invocation->reader_,
         cq,
         cq,
-        invocation.get());
+        invocation->ToTag());
   }
 
   void operator()(bool success) {
@@ -561,7 +561,7 @@ class RsGrpcServerCall<
     if (requested_ > 0 && state_ == State::WAITING_FOR_DATA_REQUEST) {
       --requested_;
       state_ = State::REQUESTED_DATA;
-      reader_.Read(&request_, this);
+      reader_.Read(&request_, ToTag());
     } else {
       // TODO(peck): If the call is left in this state, it leaks: This object
       // owns itself and if the Subscription goes away nothing will call it
@@ -573,15 +573,15 @@ class RsGrpcServerCall<
     if (finished_ && state_ == State::STREAM_ENDED) {
       state_ = State::SENT_RESPONSE;
       if (response_error_) {
-        reader_.FinishWithError(ExceptionToStatus(response_error_), this);
+        reader_.FinishWithError(ExceptionToStatus(response_error_), ToTag());
       } else if (num_responses_ == 1) {
-        reader_.Finish(response_, grpc::Status::OK, this);
+        reader_.Finish(response_, grpc::Status::OK, ToTag());
       } else {
         const auto *error_message =
             num_responses_ == 0 ? "No response" : "Too many responses";
         reader_.FinishWithError(
             grpc::Status(grpc::StatusCode::INTERNAL, error_message),
-            this);
+            ToTag());
       }
     }
   }
@@ -698,7 +698,7 @@ class RsGrpcServerCall<
       }
       if (next_response_) {
         operation_in_progress_ = true;
-        stream_.Write(*next_response_, this);
+        stream_.Write(*next_response_, ToTag());  // TODO(peck): This object is not heap allocated so ToTag() is not the right thing
         next_response_.reset();
         subscription_.Request(ElementCount(1));
       } else if (enqueued_finish_ && !sent_final_request_) {
@@ -706,7 +706,7 @@ class RsGrpcServerCall<
         operation_in_progress_ = true;
         sent_final_request_ = true;
 
-        stream_.Finish(status_, this);
+        stream_.Finish(status_, ToTag());  // TODO(peck): This object is not heap allocated so ToTag() is not the right thing
       }
     }
 
@@ -757,7 +757,7 @@ class RsGrpcServerCall<
         &invocation->stream_,
         cq,
         cq,
-        invocation.get());
+        invocation->ToTag());
   }
 
   void operator()(bool success) {
@@ -867,7 +867,7 @@ class RsGrpcServerCall<
     if (requested_ > 0 && state_ == State::WAITING_FOR_DATA_REQUEST) {
       --requested_;
       state_ = State::REQUESTED_DATA;
-      stream_.Read(&request_, this);
+      stream_.Read(&request_, ToTag());
     } else {
       // TODO(peck): I think this can leak, if the RPC handler does not Request
       // all values.

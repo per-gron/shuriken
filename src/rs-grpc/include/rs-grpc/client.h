@@ -98,7 +98,7 @@ class RsGrpcClientCall<
               auto &me = *self;
               me.self_ = std::move(self);
               auto stream = (stub->*invoke)(&me.context_, me.request_, cq);
-              stream->Finish(&me.response_, &me.status_, &me);
+              stream->Finish(&me.response_, &me.status_, me.ToTag());
             }
           }
         },
@@ -158,7 +158,7 @@ class RsGrpcClientCall<
         if (!success) {
           // We have reached the end of the stream.
           state_ = State::FINISHING;
-          stream_->Finish(&status_, this);
+          stream_->Finish(&status_, ToTag());
         } else {
           subscriber_.OnNext(std::move(response_));
           MaybeReadNext();
@@ -194,7 +194,7 @@ class RsGrpcClientCall<
       grpc::CompletionQueue *cq) {
     weak_self_ = self;
     invoke_ = [this, stub, invoke, cq] {
-      return (stub->*invoke)(&context_, request_, cq, this);
+      return (stub->*invoke)(&context_, request_, cq, ToTag());
     };
     return MakeSubscription(self);
   }
@@ -240,7 +240,7 @@ class RsGrpcClientCall<
       // of the Subscription we must still make sure to stay alive until gRPC
       // calls us back with a response, so here we start owning ourselves.
       self_ = weak_self_.lock();
-      stream_->Read(&response_, this);
+      stream_->Read(&response_, ToTag());
     } else {
       // Because this object is not given to a gRPC CompletionQueue, the object
       // will leak if the subscriber gets rid of its Subscription without
@@ -341,7 +341,7 @@ class RsGrpcClientCall<
       grpc::CompletionQueue *cq) {
     weak_self_ = self;
     invoke_ = [this, stub, invoke, cq] {
-      return (stub->*invoke)(&context_, &response_, cq, this);
+      return (stub->*invoke)(&context_, &response_, cq, ToTag());
     };
     return MakeSubscription(self);
   }
@@ -412,20 +412,20 @@ class RsGrpcClientCall<
     }
     if (next_request_) {
       OperationStarted();
-      stream_->Write(*next_request_, this);
+      stream_->Write(*next_request_, ToTag());
       next_request_.reset();
       subscription_.Request(ElementCount(1));
     } else if (enqueued_writes_done_) {
       enqueued_writes_done_ = false;
       enqueued_finish_ = true;
       OperationStarted();
-      stream_->WritesDone(this);
+      stream_->WritesDone(ToTag());
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
       OperationStarted();
       sent_final_request_ = true;
 
-      stream_->Finish(&status_, this);
+      stream_->Finish(&status_, ToTag());
     }
   }
 
@@ -489,7 +489,7 @@ class RsGrpcClientCall<
         if (requested_ > 0) {
           --requested_;
           state_ = State::READING_RESPONSE;
-          stream_->Read(&response_, this);
+          stream_->Read(&response_, ToTag());
         }
       }
     }
@@ -590,7 +590,7 @@ class RsGrpcClientCall<
       grpc::CompletionQueue *cq) {
     weak_self_ = self;
     invoke_ = [this, stub, invoke, cq] {
-      return (stub->*invoke)(&context_, cq, this);
+      return (stub->*invoke)(&context_, cq, ToTag());
     };
     return MakeSubscription(self);
   }
@@ -673,20 +673,20 @@ class RsGrpcClientCall<
     }
     if (next_request_) {
       OperationStarted();
-      stream_->Write(*next_request_, this);
+      stream_->Write(*next_request_, ToTag());
       next_request_.reset();
       subscription_.Request(ElementCount(1));
     } else if (enqueued_writes_done_) {
       enqueued_writes_done_ = false;
       enqueued_finish_ = true;
       OperationStarted();
-      stream_->WritesDone(this);
+      stream_->WritesDone(ToTag());
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
       OperationStarted();
       sent_final_request_ = true;
 
-      stream_->Finish(&status_, this);
+      stream_->Finish(&status_, ToTag());
     }
   }
 
