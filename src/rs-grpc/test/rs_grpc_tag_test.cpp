@@ -193,6 +193,15 @@ TEST_CASE("RsGrpcTag") {
         }
         CHECK(destroyed);
       }
+
+      SECTION("TakeOver") {
+        {
+          auto *tag = new MockRsGrpcTag(&destroyed);
+          auto ptr = RsGrpcTag::Ptr::TakeOver(tag);
+          CHECK(!destroyed);
+        }
+        CHECK(destroyed);
+      }
     }
 
     SECTION("RsGrpcTag::WeakPtr") {

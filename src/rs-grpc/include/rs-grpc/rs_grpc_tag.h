@@ -114,6 +114,15 @@ class RsGrpcTag {
       return *this;
     }
 
+    /**
+     * Take ownership of a raw RsGrpcTag pointer. This method is useful when
+     * creating such an object, for exception safety (it is often unsafe to
+     * manually Release() later).
+     */
+    static Ptr TakeOver(RsGrpcTag *tag) {
+      return Ptr(tag, false);
+    }
+
     ~Ptr() {
       if (tag_) {
         tag_->Release();
@@ -136,8 +145,8 @@ class RsGrpcTag {
    private:
     friend class RsGrpcTag;
 
-    Ptr(RsGrpcTag *tag) : tag_(tag) {
-      if (tag_) {
+    Ptr(RsGrpcTag *tag, bool retain) : tag_(tag) {
+      if (tag_ && retain) {
         tag_->Retain();
       }
     }
@@ -231,7 +240,7 @@ class RsGrpcTag {
   }
 
   Ptr ToShared() {
-    return Ptr(this);
+    return Ptr(this, true);
   }
 
   void Retain() {
