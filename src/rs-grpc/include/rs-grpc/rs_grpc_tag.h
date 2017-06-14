@@ -84,6 +84,7 @@ class RsGrpcTag {
    * Smart pointer class to RsGrpcTag that behaves like a thread-unsafe
    * std::shared_ptr.
    */
+  template <typename T>
   class Ptr {
    public:
     Ptr() : tag_(nullptr) {}
@@ -119,7 +120,7 @@ class RsGrpcTag {
      * creating such an object, for exception safety (it is often unsafe to
      * manually Release() later).
      */
-    static Ptr TakeOver(RsGrpcTag *tag) {
+    static Ptr TakeOver(T *tag) {
       return Ptr(tag, false);
     }
 
@@ -138,32 +139,34 @@ class RsGrpcTag {
       return !!tag_;
     }
 
-    RsGrpcTag *Get() const {
+    T *Get() const {
       return tag_;
+    }
+
+    T *operator->() const {
+      return Get();
     }
 
    private:
     friend class RsGrpcTag;
 
-    Ptr(RsGrpcTag *tag, bool retain) : tag_(tag) {
+    Ptr(T *tag, bool retain) : tag_(tag) {
       if (tag_ && retain) {
         tag_->Retain();
       }
     }
 
-    RsGrpcTag *tag_;
+    T *tag_;
   };
 
   /**
    * Smart pointer class to RsGrpcTag that behaves like a thread-unsafe
    * std::weak_ptr.
    */
+  template <typename T>
   class WeakPtr {
    public:
     WeakPtr() = default;
-    explicit WeakPtr(const Ptr &ptr)
-        : tag_(ptr.Get()),
-          count_(ptr.Get()->count_) {}
 
     WeakPtr(const WeakPtr &) = default;
     WeakPtr &operator=(const WeakPtr &) = default;
@@ -184,14 +187,20 @@ class RsGrpcTag {
       count_.Reset();
     }
 
-    Ptr Lock() const {
+    Ptr<T> Lock() const {
       return tag_ && *count_ ?
-          tag_->ToShared() :
-          Ptr();
+          ToShared(tag_) :
+          Ptr<T>();
     }
 
    private:
-    RsGrpcTag *tag_ = nullptr;
+    friend class RsGrpcTag;
+
+    explicit WeakPtr(T *tag)
+        : tag_(tag),
+          count_(tag->count_) {}
+
+    T *tag_ = nullptr;
     Refcount count_;
   };
 
@@ -239,8 +248,14 @@ class RsGrpcTag {
     return this;
   }
 
-  Ptr ToShared() {
-    return Ptr(this, true);
+  template <typename T>
+  static Ptr<T> ToShared(T *tag) {
+    return Ptr<T>(tag, true);
+  }
+
+  template <typename T>
+  static WeakPtr<T> ToWeak(T *tag) {
+    return WeakPtr<T>(tag);
   }
 
   void Retain() {
@@ -254,8 +269,6 @@ class RsGrpcTag {
   }
 
  private:
-  friend class WeakPtr;
-
   Refcount count_;
 };
 
