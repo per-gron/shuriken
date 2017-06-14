@@ -17,9 +17,5 @@
 namespace shk {
 namespace detail {
 
-// This particular constructor is in a .cpp file because std::make_shared is
-// quite expensive to compile.
-RsGrpcTag::RsGrpcTag() : count_(std::make_shared<long>(1L)) {}
-
 }  // namespace detail
 }  // namespace shk

@@ -36,6 +36,79 @@ namespace detail {
  * decidedly non-automatic memory management API style.
  */
 class RsGrpcTag {
+  /**
+   * A class that behaves like a std::shared_ptr<long>, but without thread
+   * safety. RsGrpcTag uses it to be able to implement WeakPtr.
+   */
+  class Refcount {
+   public:
+    Refcount() : data_(new Data) {}
+
+    Refcount(const Refcount &other)
+        : data_(other.data_) {
+      data_->Retain();
+    }
+
+    Refcount &operator=(const Refcount &other) {
+      data_->Release();
+      data_ = other.data_;
+      data_->Retain();
+      return *this;
+    }
+
+    Refcount(Refcount &&other)
+        : data_(other.data_) {
+      other.data_ = new Data;
+    }
+
+    Refcount &operator=(Refcount &&other) {
+      data_->Release();
+      data_ = other.data_;
+      other.data_ = new Data;
+      return *this;
+    }
+
+    void Reset() {
+      data_->Release();
+      data_ = new Data;
+    }
+
+    ~Refcount() {
+      data_->Release();
+    }
+
+    long &operator*() {
+      return data_->data;
+    }
+
+    const long &operator*() const {
+      return data_->data;
+    }
+
+   private:
+    class Data {
+     public:
+      // The number of references to the RsGrpcTag object
+      long data = 1L;
+
+      void Retain() {
+        internal_refcount_++;
+      }
+
+      void Release() {
+        if (internal_refcount_-- == 1L) {
+          delete this;
+        }
+      }
+
+     private:
+      // The number of references to the Refcount object
+      long internal_refcount_ = 1L;
+    };
+
+    Data *data_;
+  };
+
  public:
   /**
    * Smart pointer class to RsGrpcTag that behaves like a thread-unsafe
@@ -129,7 +202,7 @@ class RsGrpcTag {
 
     void Reset() {
       tag_ = nullptr;
-      count_.reset();
+      count_.Reset();
     }
 
     Ptr Lock() const {
@@ -140,10 +213,10 @@ class RsGrpcTag {
 
    private:
     RsGrpcTag *tag_ = nullptr;
-    std::shared_ptr<long> count_;
+    Refcount count_;
   };
 
-  RsGrpcTag();
+  RsGrpcTag() = default;
   virtual ~RsGrpcTag() = default;
 
   virtual void operator()(bool success) = 0;
@@ -214,8 +287,7 @@ class RsGrpcTag {
  private:
   friend class WeakPtr;
 
-  // This is a shared_ptr to the refcount to be able to implenent WeakPtr
-  std::shared_ptr<long> count_;
+  Refcount count_;
 };
 
 }  // namespace detail
