@@ -95,8 +95,9 @@ void RsGrpcTag::Refcount::Data::Release() {
 
 void RsGrpcTag::Invoke(void *got_tag, bool success) {
   detail::RsGrpcTag *tag = reinterpret_cast<detail::RsGrpcTag *>(got_tag);
-  tag->Release();
   (*tag)(success);
+  // Must release after invoking the tag because this could destroy tag
+  tag->Release();
 }
 
 bool RsGrpcTag::ProcessOneEvent(grpc::CompletionQueue *cq) {
