@@ -51,7 +51,7 @@ template <
     typename Reader,
     typename ResponseType,
     typename RequestType>
-class RsGrpcClientInvocation;
+class RsGrpcClientCall;
 
 /**
  * Unary client RPC.
@@ -59,12 +59,12 @@ class RsGrpcClientInvocation;
 template <
     typename ResponseType,
     typename RequestType>
-class RsGrpcClientInvocation<
+class RsGrpcClientCall<
     grpc::ClientAsyncResponseReader<ResponseType>,
     ResponseType,
     RequestType> : public RsGrpcTag {
  public:
-  RsGrpcClientInvocation(
+  RsGrpcClientCall(
       const RequestType &request,
       Subscriber<ResponseType> &&subscriber)
       : request_(request),
@@ -81,7 +81,7 @@ class RsGrpcClientInvocation<
 
   template <typename Stub>
   auto Invoke(
-      std::shared_ptr<RsGrpcClientInvocation> self,
+      std::shared_ptr<RsGrpcClientCall> self,
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -102,7 +102,7 @@ class RsGrpcClientInvocation<
             }
           }
         },
-        [weak_self = std::weak_ptr<RsGrpcClientInvocation>(self)] {
+        [weak_self = std::weak_ptr<RsGrpcClientCall>(self)] {
           if (auto strong_self = weak_self.lock()) {
             strong_self->cancelled_ = true;
             strong_self->context_.TryCancel();
@@ -113,7 +113,7 @@ class RsGrpcClientInvocation<
  private:
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcClientInvocation> self_;
+  std::shared_ptr<RsGrpcClientCall> self_;
   bool cancelled_ = false;
   static_assert(
       !std::is_reference<RequestType>::value,
@@ -131,12 +131,12 @@ class RsGrpcClientInvocation<
 template <
     typename ResponseType,
     typename RequestType>
-class RsGrpcClientInvocation<
+class RsGrpcClientCall<
     grpc::ClientAsyncReader<ResponseType>,
     ResponseType,
     RequestType> : public RsGrpcTag, public SubscriptionBase {
  public:
-  RsGrpcClientInvocation(
+  RsGrpcClientCall(
       const RequestType &request,
       Subscriber<ResponseType> &&subscriber)
       : request_(request),
@@ -183,7 +183,7 @@ class RsGrpcClientInvocation<
 
   template <typename Stub>
   auto Invoke(
-      std::shared_ptr<RsGrpcClientInvocation> self,
+      std::shared_ptr<RsGrpcClientCall> self,
       std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -254,9 +254,9 @@ class RsGrpcClientInvocation<
   // not own the object, it owns itself through this shared_ptr. If this object
   // is in an AWAITING_REQUEST state, then it must not own itself, or there is
   // a risk that it will leak.
-  std::shared_ptr<RsGrpcClientInvocation> self_;
+  std::shared_ptr<RsGrpcClientCall> self_;
   // This is used to be able to assign self_ when needed.
-  std::weak_ptr<RsGrpcClientInvocation> weak_self_;
+  std::weak_ptr<RsGrpcClientCall> weak_self_;
   // The number of elements that have been requested by the subscriber that have
   // not yet been requested to be read from gRPC.
   ElementCount requested_;
@@ -290,13 +290,13 @@ class RsGrpcClientInvocation<
 template <
     typename RequestType,
     typename ResponseType>
-class RsGrpcClientInvocation<
+class RsGrpcClientCall<
     grpc::ClientAsyncWriter<RequestType>,
     ResponseType,
     RequestType> :
         public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
  public:
-  RsGrpcClientInvocation(
+  RsGrpcClientCall(
       const Publisher<RequestType> &requests,
       Subscriber<ResponseType> &&subscriber)
       : requests_(requests),
@@ -330,7 +330,7 @@ class RsGrpcClientInvocation<
 
   template <typename Stub>
   auto Invoke(
-      std::shared_ptr<RsGrpcClientInvocation> self,
+      std::shared_ptr<RsGrpcClientCall> self,
       std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -355,7 +355,7 @@ class RsGrpcClientInvocation<
       OperationStarted();
       stream_ = invoke_();
       subscription_ = Subscription(requests_.Subscribe(
-          MakeSubscriber(std::weak_ptr<RsGrpcClientInvocation>(
+          MakeSubscriber(std::weak_ptr<RsGrpcClientCall>(
               weak_self_.lock()))));
       subscription_.Request(ElementCount(1));
     }
@@ -431,9 +431,9 @@ class RsGrpcClientInvocation<
 
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcClientInvocation> self_;
+  std::shared_ptr<RsGrpcClientCall> self_;
   // This is used to be able to assign self_ when needed.
-  std::weak_ptr<RsGrpcClientInvocation> weak_self_;
+  std::weak_ptr<RsGrpcClientCall> weak_self_;
   bool cancelled_ = false;
   Publisher<RequestType> requests_;
   ResponseType response_;
@@ -459,7 +459,7 @@ class RsGrpcClientInvocation<
 template <
     typename RequestType,
     typename ResponseType>
-class RsGrpcClientInvocation<
+class RsGrpcClientCall<
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
     ResponseType,
     RequestType>
@@ -553,7 +553,7 @@ class RsGrpcClientInvocation<
   };
 
  public:
-  RsGrpcClientInvocation(
+  RsGrpcClientCall(
       const Publisher<RequestType> &requests,
       Subscriber<ResponseType> &&subscriber)
       : reader_(
@@ -580,7 +580,7 @@ class RsGrpcClientInvocation<
 
   template <typename Stub>
   auto Invoke(
-      std::shared_ptr<RsGrpcClientInvocation> self,
+      std::shared_ptr<RsGrpcClientCall> self,
       std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -629,7 +629,7 @@ class RsGrpcClientInvocation<
         reader_.Request(count);
 
         subscription_ = Subscription(requests_.Subscribe(MakeSubscriber(
-            std::weak_ptr<RsGrpcClientInvocation>(self_))));
+            std::weak_ptr<RsGrpcClientCall>(self_))));
         subscription_.Request(ElementCount(1));
       }
     } else {
@@ -699,9 +699,9 @@ class RsGrpcClientInvocation<
 
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcClientInvocation> self_;
+  std::shared_ptr<RsGrpcClientCall> self_;
   // This is used to be able to assign self_ when needed.
-  std::weak_ptr<RsGrpcClientInvocation> weak_self_;
+  std::weak_ptr<RsGrpcClientCall> weak_self_;
   // Set only between the Invoke call and the first Request call that requests
   // non-zero elements.
   std::function<std::unique_ptr<
@@ -838,7 +838,7 @@ class RsGrpcServiceClient {
             std::forward<RequestOrPublisher>(request_or_publisher),
         invoke](auto &&subscriber) {
       using ClientInvocation =
-          detail::RsGrpcClientInvocation<
+          detail::RsGrpcClientCall<
               Reader,
               ResponseType,
               RequestType>;

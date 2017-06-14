@@ -71,8 +71,6 @@ auto UnaryHangHandler(Flatbuffer<TestRequest> request) {
 TEST_CASE("Unary RPC") {
   // TODO(peck): Add support for cancellation
   // TODO(peck): Add support for timeouts
-  // TODO(peck): Add support for backpressure (streaming output requires only
-  //     one outstanding request at a time. Not possible atm.)
   // TODO(peck): Test
   //  * finishing bidi and unidirectional streams in different orders
   //  * what happens if writesdone is not called? Does the server stall then?

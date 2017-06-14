@@ -87,13 +87,13 @@ class ServerCallTraits {
 
 
 template <typename Stream, typename ServerCallTraits, typename Callback>
-class RsGrpcServerInvocation;
+class RsGrpcServerCall;
 
 /**
  * Unary server RPC.
  */
 template <typename ResponseType, typename ServerCallTraits, typename Callback>
-class RsGrpcServerInvocation<
+class RsGrpcServerCall<
     grpc::ServerAsyncResponseWriter<ResponseType>,
     ServerCallTraits,
     Callback> : public RsGrpcTag, public SubscriberBase {
@@ -107,7 +107,7 @@ class RsGrpcServerInvocation<
   /**
    * Do not use this directly. Instead, use Request.
    */
-  RsGrpcServerInvocation(
+  RsGrpcServerCall(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
@@ -126,7 +126,7 @@ class RsGrpcServerInvocation<
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = std::make_shared<RsGrpcServerInvocation>(
+    auto invocation = std::make_shared<RsGrpcServerCall>(
         error_handler, method, std::move(callback), service, cq);
     invocation->self_ = invocation;
 
@@ -161,7 +161,7 @@ class RsGrpcServerInvocation<
 
       // TODO(peck): Handle cancellation
       auto subscription = values.Subscribe(MakeSubscriber(
-          std::weak_ptr<RsGrpcServerInvocation>(self_)));
+          std::weak_ptr<RsGrpcServerCall>(self_)));
       // Because this class only uses the first response (and fails if there
       // are more), it's fine to Request an unbounded number of elements from
       // this stream; all elements after the first are immediately discarded.
@@ -206,7 +206,7 @@ class RsGrpcServerInvocation<
 
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcServerInvocation> self_;
+  std::shared_ptr<RsGrpcServerCall> self_;
 
   bool awaiting_request_ = true;
   GrpcErrorHandler error_handler_;
@@ -225,7 +225,7 @@ class RsGrpcServerInvocation<
  * Server streaming.
  */
 template <typename ResponseType, typename ServerCallTraits, typename Callback>
-class RsGrpcServerInvocation<
+class RsGrpcServerCall<
     grpc::ServerAsyncWriter<ResponseType>,
     ServerCallTraits,
     Callback> : public RsGrpcTag, public SubscriberBase {
@@ -239,7 +239,7 @@ class RsGrpcServerInvocation<
   /**
    * Do not use this directly. Instead, use Request.
    */
-  RsGrpcServerInvocation(
+  RsGrpcServerCall(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
@@ -258,7 +258,7 @@ class RsGrpcServerInvocation<
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = std::make_shared<RsGrpcServerInvocation>(
+    auto invocation = std::make_shared<RsGrpcServerCall>(
         error_handler, method, std::move(callback), service, cq);
     invocation->self_ = invocation;
 
@@ -292,7 +292,7 @@ class RsGrpcServerInvocation<
         IssueNewServerRequest(std::move(callback_));
 
         subscription_ = Subscription(values.Subscribe(MakeSubscriber(
-            std::weak_ptr<RsGrpcServerInvocation>(self_))));
+            std::weak_ptr<RsGrpcServerCall>(self_))));
         // TODO(peck): Cancellation
         subscription_.Request(ElementCount(1));
 
@@ -372,7 +372,7 @@ class RsGrpcServerInvocation<
 
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcServerInvocation> self_;
+  std::shared_ptr<RsGrpcServerCall> self_;
 
   State state_ = State::AWAITING_REQUEST;
   bool enqueued_finish_ = false;
@@ -398,7 +398,7 @@ template <
     typename RequestType,
     typename ServerCallTraits,
     typename Callback>
-class RsGrpcServerInvocation<
+class RsGrpcServerCall<
     grpc::ServerAsyncReader<ResponseType, RequestType>,
     ServerCallTraits,
     Callback>
@@ -411,7 +411,7 @@ class RsGrpcServerInvocation<
   /**
    * Do not use this directly. Instead, use Request.
    */
-  RsGrpcServerInvocation(
+  RsGrpcServerCall(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
@@ -430,7 +430,7 @@ class RsGrpcServerInvocation<
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = std::make_shared<RsGrpcServerInvocation>(
+    auto invocation = std::make_shared<RsGrpcServerCall>(
         error_handler, method, std::move(callback), service, cq);
     invocation->self_ = invocation;
 
@@ -541,7 +541,7 @@ class RsGrpcServerInvocation<
         "Callback return type must be Publisher");
     // TODO(peck): Handle cancellation
     auto subscription = response.Subscribe(MakeSubscriber(
-        std::weak_ptr<RsGrpcServerInvocation>(self_)));
+        std::weak_ptr<RsGrpcServerCall>(self_)));
     // Because this class only uses the first response (and fails if there are
     // more), it's fine to Request an unbounded number of elements from this
     // stream; all elements after the first are immediately discarded.
@@ -588,7 +588,7 @@ class RsGrpcServerInvocation<
 
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcServerInvocation> self_;
+  std::shared_ptr<RsGrpcServerCall> self_;
   // The number of elements that have been requested by the subscriber that have
   // not yet been requested to be read from gRPC.
   ElementCount requested_;
@@ -619,7 +619,7 @@ template <
     typename RequestType,
     typename ServerCallTraits,
     typename Callback>
-class RsGrpcServerInvocation<
+class RsGrpcServerCall<
     grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
     ServerCallTraits,
     Callback> : public RsGrpcTag, public SubscriberBase {
@@ -725,7 +725,7 @@ class RsGrpcServerInvocation<
   /**
    * Do not use this directly. Instead, use Request.
    */
-  RsGrpcServerInvocation(
+  RsGrpcServerCall(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
@@ -748,7 +748,7 @@ class RsGrpcServerInvocation<
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = std::make_shared<RsGrpcServerInvocation>(
+    auto invocation = std::make_shared<RsGrpcServerCall>(
         error_handler, method, std::move(callback), service, cq);
     invocation->self_ = invocation;
 
@@ -853,7 +853,7 @@ class RsGrpcServerInvocation<
         IsPublisher<decltype(response)>,
         "Callback return type must be Publisher");
     writer_.Subscribed(Subscription(response.Subscribe(MakeSubscriber(
-        std::weak_ptr<RsGrpcServerInvocation>(self_)))));
+        std::weak_ptr<RsGrpcServerCall>(self_)))));
 
     Request(
         error_handler_,
@@ -876,7 +876,7 @@ class RsGrpcServerInvocation<
 
   // While this object has given itself to a gRPC CompletionQueue, which does
   // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcServerInvocation> self_;
+  std::shared_ptr<RsGrpcServerCall> self_;
   // The number of elements that have been requested by the subscriber that have
   // not yet been requested to be read from gRPC.
   ElementCount requested_;
@@ -913,18 +913,18 @@ template <
     typename Method,
     typename ServerCallTraits,
     typename Callback>
-class RsGrpcServerInvocationRequester : public InvocationRequester {
+class RsGrpcServerCallRequester : public InvocationRequester {
   using Service = typename ServerCallTraits::Service;
 
  public:
-  RsGrpcServerInvocationRequester(
+  RsGrpcServerCallRequester(
       Method method, Callback &&callback, Service *service)
       : method_(method), callback_(std::move(callback)), service_(*service) {}
 
   void RequestInvocation(
       GrpcErrorHandler error_handler,
       grpc::ServerCompletionQueue *cq) override {
-    using ServerInvocation = RsGrpcServerInvocation<
+    using ServerInvocation = RsGrpcServerCall<
         typename ServerCallTraits::Stream,
         ServerCallTraits,
         Callback>;
@@ -1077,7 +1077,7 @@ class RsGrpcServer {
           Method method,
           Callback &&callback) {
         using ServerInvocationRequester =
-            detail::RsGrpcServerInvocationRequester<
+            detail::RsGrpcServerCallRequester<
                 Method,
                 ServerCallTraits,
                 Callback>;
