@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <atomic>
-
 #include <grpc++/grpc++.h>
 
 namespace shk {
@@ -40,11 +38,12 @@ namespace detail {
 class RsGrpcTag {
  public:
   /**
-   * Smart pointer class to RsGrpcTag that behaves like a shared_ptr.
+   * Smart pointer class to RsGrpcTag that behaves like a thread-unsafe
+   * std::shared_ptr.
    */
   class Ptr {
    public:
-    Ptr() = default;
+    Ptr() : tag_(nullptr) {}
 
     Ptr(const Ptr &other) : tag_(other.tag_) {
       if (tag_) {
@@ -87,11 +86,7 @@ class RsGrpcTag {
       return !!tag_;
     }
 
-    RsGrpcTag *Get() {
-      return tag_;
-    }
-
-    const RsGrpcTag *Get() const {
+    RsGrpcTag *Get() const {
       return tag_;
     }
 
@@ -104,10 +99,51 @@ class RsGrpcTag {
       }
     }
 
-    RsGrpcTag *tag_ = nullptr;
+    RsGrpcTag *tag_;
   };
 
-  RsGrpcTag() : count_(1L) {}
+  /**
+   * Smart pointer class to RsGrpcTag that behaves like a thread-unsafe
+   * std::weak_ptr.
+   */
+  class WeakPtr {
+   public:
+    WeakPtr() = default;
+    explicit WeakPtr(const Ptr &ptr)
+        : tag_(ptr.Get()),
+          count_(ptr.Get()->count_) {}
+
+    WeakPtr(const WeakPtr &) = default;
+    WeakPtr &operator=(const WeakPtr &) = default;
+
+    WeakPtr(WeakPtr &&other)
+        : tag_(other.tag_), count_(std::move(other.count_)) {
+      other.tag_ = nullptr;
+    }
+    WeakPtr &operator=(WeakPtr &&other) {
+      tag_ = other.tag_;
+      other.tag_ = nullptr;
+      count_ = std::move(other.count_);
+      return *this;
+    }
+
+    void Reset() {
+      tag_ = nullptr;
+      count_.reset();
+    }
+
+    Ptr Lock() const {
+      return tag_ && *count_ ?
+          tag_->ToShared() :
+          Ptr();
+    }
+
+   private:
+    RsGrpcTag *tag_ = nullptr;
+    std::shared_ptr<long> count_;
+  };
+
+  RsGrpcTag();
   virtual ~RsGrpcTag() = default;
 
   virtual void operator()(bool success) = 0;
@@ -166,17 +202,20 @@ class RsGrpcTag {
   }
 
   void Retain() {
-    count_.fetch_add(1L);
+    (*count_)++;
   }
 
   void Release() {
-    if (count_.fetch_sub(1L) == 1L) {
+    if ((*count_)-- == 1L) {
       delete this;
     }
   }
 
  private:
-  std::atomic<long> count_;
+  friend class WeakPtr;
+
+  // This is a shared_ptr to the refcount to be able to implenent WeakPtr
+  std::shared_ptr<long> count_;
 };
 
 }  // namespace detail

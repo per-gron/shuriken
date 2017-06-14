@@ -105,6 +105,7 @@ TEST_CASE("RsGrpcTag") {
           CHECK(!destroyed);
 
           CHECK(ptr);
+          CHECK(!!ptr);
           CHECK(ptr.Get() == tag);
         }
         CHECK(destroyed);
@@ -189,6 +190,119 @@ TEST_CASE("RsGrpcTag") {
           CHECK(static_cast<void *>(tag) == static_cast<void *>(moved.Get()));
           CHECK(!ptr);
           CHECK(!destroyed);
+        }
+        CHECK(destroyed);
+      }
+    }
+
+    SECTION("RsGrpcTag::WeakPtr") {
+      SECTION("default constructor") {
+        RsGrpcTag::WeakPtr ptr;
+        CHECK(!ptr.Lock());
+      }
+
+      SECTION("from Ptr") {
+        {
+          auto *tag = new MockRsGrpcTag(&destroyed);
+          auto ptr = tag->ToShared();
+          tag->Release();
+          const auto weak_ptr = RsGrpcTag::WeakPtr(ptr);
+          CHECK(!destroyed);
+          CHECK(weak_ptr.Lock().Get() == ptr.Get());
+          ptr.Reset();
+          CHECK(!weak_ptr.Lock());
+          CHECK(destroyed);
+        }
+        CHECK(destroyed);
+      }
+
+      SECTION("Reset") {
+        {
+          auto *tag = new MockRsGrpcTag(&destroyed);
+          auto ptr = tag->ToShared();
+          tag->Release();
+          auto weak_ptr = RsGrpcTag::WeakPtr(ptr);
+          weak_ptr.Reset();
+          CHECK(!weak_ptr.Lock());
+        }
+      }
+
+      SECTION("copy") {
+        {
+          auto *tag = new MockRsGrpcTag(&destroyed);
+          auto ptr = tag->ToShared();
+          tag->Release();
+          const auto weak_ptr = RsGrpcTag::WeakPtr(ptr);
+          CHECK(!destroyed);
+          CHECK(weak_ptr.Lock());
+
+          RsGrpcTag::WeakPtr copy(weak_ptr);
+          CHECK(weak_ptr.Lock().Get() == copy.Lock().Get());
+          ptr.Reset();
+          CHECK(!copy.Lock());
+          CHECK(!weak_ptr.Lock());
+          CHECK(destroyed);
+        }
+        CHECK(destroyed);
+      }
+
+      SECTION("assignment operator") {
+        {
+          auto *tag = new MockRsGrpcTag(&destroyed);
+          auto ptr = tag->ToShared();
+          tag->Release();
+          const auto weak_ptr = RsGrpcTag::WeakPtr(ptr);
+          CHECK(!destroyed);
+          CHECK(weak_ptr.Lock());
+
+          RsGrpcTag::WeakPtr copy;
+          copy = weak_ptr;
+          CHECK(weak_ptr.Lock().Get() == copy.Lock().Get());
+          ptr.Reset();
+          CHECK(!copy.Lock());
+          CHECK(!weak_ptr.Lock());
+          CHECK(destroyed);
+        }
+        CHECK(destroyed);
+      }
+
+      SECTION("move constructor") {
+        {
+          auto *tag = new MockRsGrpcTag(&destroyed);
+          auto ptr = tag->ToShared();
+          tag->Release();
+          auto weak_ptr = RsGrpcTag::WeakPtr(ptr);
+          CHECK(!destroyed);
+          CHECK(weak_ptr.Lock());
+
+          RsGrpcTag::WeakPtr moved(std::move(weak_ptr));
+          CHECK(!weak_ptr.Lock());
+          CHECK(moved.Lock().Get() == ptr.Get());
+          ptr.Reset();
+          CHECK(!moved.Lock());
+          CHECK(!weak_ptr.Lock());
+          CHECK(destroyed);
+        }
+        CHECK(destroyed);
+      }
+
+      SECTION("move assignment") {
+        {
+          auto *tag = new MockRsGrpcTag(&destroyed);
+          auto ptr = tag->ToShared();
+          tag->Release();
+          auto weak_ptr = RsGrpcTag::WeakPtr(ptr);
+          CHECK(!destroyed);
+          CHECK(weak_ptr.Lock());
+
+          RsGrpcTag::WeakPtr moved;
+          moved = std::move(weak_ptr);
+          CHECK(!weak_ptr.Lock());
+          CHECK(moved.Lock().Get() == ptr.Get());
+          ptr.Reset();
+          CHECK(!moved.Lock());
+          CHECK(!weak_ptr.Lock());
+          CHECK(destroyed);
         }
         CHECK(destroyed);
       }

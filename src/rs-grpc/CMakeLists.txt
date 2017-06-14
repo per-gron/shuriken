@@ -3,7 +3,7 @@ add_library(rs-grpc
   include/rs-grpc/grpc_error.h
   include/rs-grpc/rs_grpc_tag.h
   include/rs-grpc/server.h
-  src/dummy.cpp)
+  src/rs_grpc_tag.cpp)
 target_include_directories(rs PUBLIC include)
 target_link_libraries(rs-grpc rs flatbuffers grpc++)
 set_target_properties(rs-grpc PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
