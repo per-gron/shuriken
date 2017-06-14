@@ -17,5 +17,103 @@
 namespace shk {
 namespace detail {
 
+RsGrpcTag::Refcount::Refcount() : data_(nullptr), local_data_(1L) {}
+
+RsGrpcTag::Refcount::Refcount(const Refcount &other)
+    : data_(other.data_),
+      local_data_(other.local_data_) {
+  if (data_) {
+    data_->Retain();
+  } else {
+    // Copying a Refcount that did not have a heap-allocated data_ means
+    // that we have to allocate.
+    data_ = new Data;
+    data_->Retain();
+    data_->data = local_data_;
+    other.data_ = data_;
+  }
+}
+
+RsGrpcTag::Refcount &RsGrpcTag::Refcount::operator=(const Refcount &other) {
+  this->~Refcount();
+  data_ = other.data_;
+  local_data_ = other.local_data_;
+  if (data_) {
+    data_->Retain();
+  } else {
+    // Copying a Refcount that did not have a heap-allocated data_ means
+    // that we have to allocate.
+    data_ = new Data;
+    data_->Retain();
+    data_->data = local_data_;
+    other.data_ = data_;
+  }
+  return *this;
+}
+
+RsGrpcTag::Refcount::Refcount(Refcount &&other)
+    : data_(other.data_),
+      local_data_(other.local_data_) {
+  other.data_ = nullptr;
+}
+
+RsGrpcTag::Refcount &RsGrpcTag::Refcount::operator=(Refcount &&other) {
+  this->~Refcount();
+  data_ = other.data_;
+  local_data_ = other.local_data_;
+  return *this;
+}
+
+RsGrpcTag::Refcount::~Refcount() {
+  if (data_) {
+    data_->Release();
+  }
+}
+
+void RsGrpcTag::Refcount::Reset() {
+  this->~Refcount();
+  data_ = nullptr;
+}
+
+long &RsGrpcTag::Refcount::operator*() {
+  return data_ ? data_->data : local_data_;
+}
+
+const long &RsGrpcTag::Refcount::operator*() const {
+  return data_ ? data_->data : local_data_;
+}
+
+void RsGrpcTag::Refcount::Data::Retain() {
+  internal_refcount_++;
+}
+
+void RsGrpcTag::Refcount::Data::Release() {
+  if (internal_refcount_-- == 1L) {
+    delete this;
+  }
+}
+
+void RsGrpcTag::Invoke(void *got_tag, bool success) {
+  detail::RsGrpcTag *tag = reinterpret_cast<detail::RsGrpcTag *>(got_tag);
+  tag->Release();
+  (*tag)(success);
+}
+
+bool RsGrpcTag::ProcessOneEvent(grpc::CompletionQueue *cq) {
+  void *got_tag;
+  bool success = false;
+  if (!cq->Next(&got_tag, &success)) {
+    // Shutting down
+    return false;
+  } else {
+    Invoke(got_tag, success);
+    return true;
+  }
+}
+
+void RsGrpcTag::ProcessAllEvents(grpc::CompletionQueue *cq) {
+  while (ProcessOneEvent(cq)) {}
+}
+
 }  // namespace detail
 }  // namespace shk

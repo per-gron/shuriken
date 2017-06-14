@@ -44,71 +44,20 @@ class RsGrpcTag {
    */
   class Refcount {
    public:
-    Refcount() : data_(nullptr), local_data_(1L) {}
+    Refcount();
 
-    Refcount(const Refcount &other)
-        : data_(other.data_),
-          local_data_(other.local_data_) {
-      if (data_) {
-        data_->Retain();
-      } else {
-        // Copying a Refcount that did not have a heap-allocated data_ means
-        // that we have to allocate.
-        data_ = new Data;
-        data_->Retain();
-        data_->data = local_data_;
-        other.data_ = data_;
-      }
-    }
+    Refcount(const Refcount &other);
+    Refcount &operator=(const Refcount &other);
 
-    Refcount &operator=(const Refcount &other) {
-      this->~Refcount();
-      data_ = other.data_;
-      local_data_ = other.local_data_;
-      if (data_) {
-        data_->Retain();
-      } else {
-        // Copying a Refcount that did not have a heap-allocated data_ means
-        // that we have to allocate.
-        data_ = new Data;
-        data_->Retain();
-        data_->data = local_data_;
-        other.data_ = data_;
-      }
-      return *this;
-    }
+    Refcount(Refcount &&other);
+    Refcount &operator=(Refcount &&other);
 
-    Refcount(Refcount &&other)
-        : data_(other.data_),
-          local_data_(other.local_data_) {
-      other.data_ = nullptr;
-    }
+    ~Refcount();
 
-    Refcount &operator=(Refcount &&other) {
-      this->~Refcount();
-      data_ = other.data_;
-      local_data_ = other.local_data_;
-      return *this;
-    }
+    void Reset();
 
-    void Reset() {
-      this->~Refcount();
-      data_ = nullptr;
-    }
-
-    ~Refcount() {
-      if (data_) {
-        data_->Release();
-      }
-    }
-
-    long &operator*() {
-      return data_ ? data_->data : local_data_;
-    }
-
-    const long &operator*() const {
-      return data_ ? data_->data : local_data_;
-    }
+    long &operator*();
+    const long &operator*() const;
 
    private:
     class Data {
@@ -116,15 +65,8 @@ class RsGrpcTag {
       // The number of references to the RsGrpcTag object
       long data = 1L;
 
-      void Retain() {
-        internal_refcount_++;
-      }
-
-      void Release() {
-        if (internal_refcount_-- == 1L) {
-          delete this;
-        }
-      }
+      void Retain();
+      void Release();
 
      private:
       // The number of references to the Refcount object
@@ -255,28 +197,14 @@ class RsGrpcTag {
 
   virtual void operator()(bool success) = 0;
 
-  static void Invoke(void *got_tag, bool success) {
-    detail::RsGrpcTag *tag = reinterpret_cast<detail::RsGrpcTag *>(got_tag);
-    tag->Release();
-    (*tag)(success);
-  }
+  static void Invoke(void *got_tag, bool success);
 
   /**
    * Block and process one asynchronous event on the given CompletionQueue.
    *
    * Returns false if the event queue is shutting down.
    */
-  static bool ProcessOneEvent(grpc::CompletionQueue *cq) {
-    void *got_tag;
-    bool success = false;
-    if (!cq->Next(&got_tag, &success)) {
-      // Shutting down
-      return false;
-    } else {
-      Invoke(got_tag, success);
-      return true;
-    }
-  }
+  static bool ProcessOneEvent(grpc::CompletionQueue *cq);
 
   /**
    * Block and process one asynchronous event, with timeout.
@@ -295,9 +223,7 @@ class RsGrpcTag {
     return next_status;
   }
 
-  static void ProcessAllEvents(grpc::CompletionQueue *cq) {
-    while (ProcessOneEvent(cq)) {}
-  }
+  static void ProcessAllEvents(grpc::CompletionQueue *cq);
 
   void *ToTag() {
     Retain();
