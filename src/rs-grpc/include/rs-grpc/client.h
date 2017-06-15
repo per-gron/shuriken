@@ -24,6 +24,8 @@
 #include <rs/throw.h>
 #include <rs-grpc/grpc_error.h>
 #include <rs-grpc/rs_grpc_tag.h>
+#include <rs-grpc/subscriber.h>
+#include <rs-grpc/subscription.h>
 
 namespace shk {
 namespace detail {
@@ -75,13 +77,10 @@ class RsGrpcClientCall<
       HandleUnaryResponse(
           success, status_, std::move(response_), &subscriber_);
     }
-
-    self_.reset();  // Delete this
   }
 
   template <typename Stub>
   auto Invoke(
-      std::shared_ptr<RsGrpcClientCall> self,
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -89,21 +88,25 @@ class RsGrpcClientCall<
           grpc::CompletionQueue *cq),
       Stub *stub,
       grpc::CompletionQueue *cq) {
+    // TODO(peck): Don't use lambdas here, I think they don't help readability.
     return MakeSubscription(
-        [invoke, stub, cq, self](ElementCount count) mutable {
+        [invoke, stub, cq, self = ToShared(this)](ElementCount count) mutable {
           if (self) {
             if (self->cancelled_) {
-              self.reset();
+              self.Reset();
             } else if (count > 0) {
               auto &me = *self;
-              me.self_ = std::move(self);
               auto stream = (stub->*invoke)(&me.context_, me.request_, cq);
               stream->Finish(&me.response_, &me.status_, me.ToTag());
+
+              // Need to reset self after the me.ToTag() call, otherwise there
+              // would be some time where there is no owning ref.
+              self.Reset();
             }
           }
         },
-        [weak_self = std::weak_ptr<RsGrpcClientCall>(self)] {
-          if (auto strong_self = weak_self.lock()) {
+        [weak_self = ToWeak(this)] {
+          if (auto strong_self = weak_self.Lock()) {
             strong_self->cancelled_ = true;
             strong_self->context_.TryCancel();
           }
@@ -111,9 +114,6 @@ class RsGrpcClientCall<
   }
 
  private:
-  // While this object has given itself to a gRPC CompletionQueue, which does
-  // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcClientCall> self_;
   bool cancelled_ = false;
   static_assert(
       !std::is_reference<RequestType>::value,
@@ -171,11 +171,9 @@ class RsGrpcClientCall<
         } else {
           subscriber_.OnError(std::make_exception_ptr(GrpcError(status_)));
         }
-        self_.reset();  // Delete this
         break;
       }
       case State::READ_FAILURE: {
-        self_.reset();  // Delete this
         break;
       }
     }
@@ -183,7 +181,6 @@ class RsGrpcClientCall<
 
   template <typename Stub>
   auto Invoke(
-      std::shared_ptr<RsGrpcClientCall> self,
       std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -192,11 +189,10 @@ class RsGrpcClientCall<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    weak_self_ = self;
     invoke_ = [this, stub, invoke, cq] {
       return (stub->*invoke)(&context_, request_, cq, ToTag());
     };
-    return MakeSubscription(self);
+    return MakeRsGrpcTagSubscription(ToShared(this));
   }
 
   void Request(ElementCount count) {
@@ -205,7 +201,6 @@ class RsGrpcClientCall<
     } else if (invoke_) {
       // The initial call to invoke has not yet been made
       if (count > 0) {
-        self_ = weak_self_.lock();
         requested_ = count;
         stream_ = invoke_();
         invoke_ = nullptr;
@@ -239,24 +234,15 @@ class RsGrpcClientCall<
       // We are now handing over ourselves to gRPC. If the subscriber gets rid
       // of the Subscription we must still make sure to stay alive until gRPC
       // calls us back with a response, so here we start owning ourselves.
-      self_ = weak_self_.lock();
       stream_->Read(&response_, ToTag());
     } else {
       // Because this object is not given to a gRPC CompletionQueue, the object
       // will leak if the subscriber gets rid of its Subscription without
       // requesting more elements (which it is perfectly allowed to do).
-      self_.reset();
       state_ = State::AWAITING_REQUEST;
     }
   }
 
-  // While this object has given itself to a gRPC CompletionQueue, which does
-  // not own the object, it owns itself through this shared_ptr. If this object
-  // is in an AWAITING_REQUEST state, then it must not own itself, or there is
-  // a risk that it will leak.
-  std::shared_ptr<RsGrpcClientCall> self_;
-  // This is used to be able to assign self_ when needed.
-  std::weak_ptr<RsGrpcClientCall> weak_self_;
   // The number of elements that have been requested by the subscriber that have
   // not yet been requested to be read from gRPC.
   ElementCount requested_;
@@ -312,10 +298,9 @@ class RsGrpcClientCall<
         HandleUnaryResponse(
             success, status_, std::move(response_), &subscriber_);
       }
-      self_.reset();  // Delete this
     } else {
       if (success) {
-        OperationFinished();
+        operation_in_progress_ = false;
         RunEnqueuedOperation();
       } else {
         // This happens when the runloop is shutting down.
@@ -323,14 +308,12 @@ class RsGrpcClientCall<
           HandleUnaryResponse(
               success, status_, std::move(response_), &subscriber_);
         }
-        self_.reset();  // Delete this
       }
     }
   }
 
   template <typename Stub>
   auto Invoke(
-      std::shared_ptr<RsGrpcClientCall> self,
       std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -339,11 +322,10 @@ class RsGrpcClientCall<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    weak_self_ = self;
     invoke_ = [this, stub, invoke, cq] {
       return (stub->*invoke)(&context_, &response_, cq, ToTag());
     };
-    return MakeSubscription(self);
+    return MakeRsGrpcTagSubscription(ToShared(this));
   }
 
   void Request(ElementCount count) {
@@ -352,11 +334,10 @@ class RsGrpcClientCall<
     }
 
     if (!stream_ && count > 0) {
-      OperationStarted();
+      operation_in_progress_ = true;
       stream_ = invoke_();
       subscription_ = Subscription(requests_.Subscribe(
-          MakeSubscriber(std::weak_ptr<RsGrpcClientCall>(
-              weak_self_.lock()))));
+          MakeRsGrpcTagSubscriber(ToWeak(this))));
       subscription_.Request(ElementCount(1));
     }
   }
@@ -390,50 +371,30 @@ class RsGrpcClientCall<
   }
 
  private:
-  void OperationStarted() {
-    // While there is an outstanding gRPC operation, the CompletionQueue has a
-    // weak reference to this, so this object has to own itself.
-    self_ = weak_self_.lock();
-  }
-
-  void OperationFinished() {
-    // While there is no outstanding gRPC operation, this object must not own
-    // itself, or memory will be leaked if the Subscription is destroyed.
-    self_.reset();
-  }
-
-  bool AnOperationIsInProgress() const {
-    return !!self_;
-  }
-
   void RunEnqueuedOperation() {
-    if (AnOperationIsInProgress() || cancelled_) {
+    if (operation_in_progress_ || cancelled_) {
       return;
     }
     if (next_request_) {
-      OperationStarted();
+      operation_in_progress_ = true;
       stream_->Write(*next_request_, ToTag());
       next_request_.reset();
       subscription_.Request(ElementCount(1));
     } else if (enqueued_writes_done_) {
       enqueued_writes_done_ = false;
       enqueued_finish_ = true;
-      OperationStarted();
+      operation_in_progress_ = true;
       stream_->WritesDone(ToTag());
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
-      OperationStarted();
+      operation_in_progress_ = true;
       sent_final_request_ = true;
 
       stream_->Finish(&status_, ToTag());
     }
   }
 
-  // While this object has given itself to a gRPC CompletionQueue, which does
-  // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcClientCall> self_;
-  // This is used to be able to assign self_ when needed.
-  std::weak_ptr<RsGrpcClientCall> weak_self_;
+  bool operation_in_progress_ = false;
   bool cancelled_ = false;
   Publisher<RequestType> requests_;
   ResponseType response_;
@@ -567,7 +528,7 @@ class RsGrpcClientCall<
       TryShutdown();
     } else {
       if (success) {
-        OperationFinished();
+        operation_in_progress_ = false;
         RunEnqueuedOperation();
       } else {
         // This happens when the runloop is shutting down.
@@ -580,7 +541,6 @@ class RsGrpcClientCall<
 
   template <typename Stub>
   auto Invoke(
-      std::shared_ptr<RsGrpcClientCall> self,
       std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -588,11 +548,10 @@ class RsGrpcClientCall<
           void *tag),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    weak_self_ = self;
     invoke_ = [this, stub, invoke, cq] {
       return (stub->*invoke)(&context_, cq, ToTag());
     };
-    return MakeSubscription(self);
+    return MakeRsGrpcTagSubscription(ToShared(this));
   }
 
   void OnNext(RequestType &&request) {
@@ -622,14 +581,14 @@ class RsGrpcClientCall<
     } else if (invoke_) {
       // The initial call to invoke has not yet been made
       if (count > 0) {
-        OperationStarted();
+        operation_in_progress_ = true;
         stream_ = invoke_();
         invoke_ = nullptr;
         reader_.Invoke(stream_.get());
         reader_.Request(count);
 
-        subscription_ = Subscription(requests_.Subscribe(MakeSubscriber(
-            std::weak_ptr<RsGrpcClientCall>(self_))));
+        subscription_ = Subscription(requests_.Subscribe(
+            MakeRsGrpcTagSubscriber(ToWeak(this))));
         subscription_.Request(ElementCount(1));
       }
     } else {
@@ -651,39 +610,23 @@ class RsGrpcClientCall<
     DONE
   };
 
-  void OperationStarted() {
-    // While there is an outstanding gRPC operation, the CompletionQueue has a
-    // weak reference to this, so this object has to own itself.
-    self_ = weak_self_.lock();
-  }
-
-  void OperationFinished() {
-    // While there is no outstanding gRPC operation, this object must not own
-    // itself, or memory will be leaked if the Subscription is destroyed.
-    self_.reset();
-  }
-
-  bool AnOperationIsInProgress() const {
-    return !!self_;
-  }
-
   void RunEnqueuedOperation() {
-    if (AnOperationIsInProgress() || cancelled_) {
+    if (operation_in_progress_ || cancelled_) {
       return;
     }
     if (next_request_) {
-      OperationStarted();
+      operation_in_progress_ = true;
       stream_->Write(*next_request_, ToTag());
       next_request_.reset();
       subscription_.Request(ElementCount(1));
     } else if (enqueued_writes_done_) {
       enqueued_writes_done_ = false;
       enqueued_finish_ = true;
-      OperationStarted();
+      operation_in_progress_ = true;
       stream_->WritesDone(ToTag());
     } else if (enqueued_finish_) {
       enqueued_finish_ = false;
-      OperationStarted();
+      operation_in_progress_ = true;
       sent_final_request_ = true;
 
       stream_->Finish(&status_, ToTag());
@@ -693,15 +636,10 @@ class RsGrpcClientCall<
   void TryShutdown() {
     if (writer_done_ && reader_done_) {
       reader_.Finish(cancelled_, status_);
-      self_.reset();  // Delete this
     }
   }
 
-  // While this object has given itself to a gRPC CompletionQueue, which does
-  // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcClientCall> self_;
-  // This is used to be able to assign self_ when needed.
-  std::weak_ptr<RsGrpcClientCall> weak_self_;
+  bool operation_in_progress_ = false;
   // Set only between the Invoke call and the first Request call that requests
   // non-zero elements.
   std::function<std::unique_ptr<
@@ -843,11 +781,12 @@ class RsGrpcServiceClient {
               ResponseType,
               RequestType>;
 
-      auto call = std::make_shared<ClientInvocation>(
-          request_or_publisher,
-          Subscriber<ResponseType>(
-              std::forward<decltype(subscriber)>(subscriber)));
-      return call->Invoke(call, invoke, stub_.get(), &cq_);
+      auto call = detail::RsGrpcTag::Ptr<ClientInvocation>::TakeOver(
+          new ClientInvocation(
+              request_or_publisher,
+              Subscriber<ResponseType>(
+                  std::forward<decltype(subscriber)>(subscriber))));
+      return call->Invoke(invoke, stub_.get(), &cq_);
     });
   }
 
