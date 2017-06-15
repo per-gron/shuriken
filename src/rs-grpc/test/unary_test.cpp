@@ -190,25 +190,8 @@ TEST_CASE("Unary RPC") {
         &TestService::Stub::AsyncUnaryHang,
         MakeTestRequest(0));
 
-    auto subscription = call
-        .Subscribe(MakeSubscriber(
-            [](auto &&) {
-              CHECK(!"OnNext should not be called");
-            },
-            [](std::exception_ptr error) {
-              CHECK(!"OnError should not be called");
-            },
-            []() {
-              CHECK(!"OnComplete should not be called");
-            }));
-    subscription.Request(ElementCount::Unbounded());
-
-    using namespace std::chrono_literals;
-    auto deadline = std::chrono::system_clock::now() + 20ms;
-    CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
-    runloop.Shutdown();
-
-    ShutdownAllowOutstandingCall(&server);
+    auto error = RunExpectError(&runloop, call);
+    CHECK(ExceptionMessage(error) == "Cancelled");
   }
 
   SECTION("cancellation") {
@@ -236,8 +219,6 @@ TEST_CASE("Unary RPC") {
 
         // There is only one thing on the runloop: The cancelled request.
         CHECK(runloop.Next());
-
-        // ShutdownAllowOutstandingCall(&server);
       }
 
       SECTION("before Request") {

@@ -24,6 +24,8 @@
 #include <rs/subscription.h>
 #include <rs/throw.h>
 #include <rs-grpc/detail/rs_grpc_tag.h>
+#include <rs-grpc/detail/subscriber.h>
+#include <rs-grpc/detail/subscription.h>
 #include <rs-grpc/client.h>
 #include <rs-grpc/grpc_error.h>
 
@@ -104,45 +106,28 @@ class RsGrpcServerCall<
       Service, typename ServerCallTraits::Request, Stream>;
 
  public:
-  /**
-   * Do not use this directly. Instead, use Request.
-   */
-  RsGrpcServerCall(
-      GrpcErrorHandler error_handler,
-      Method method,
-      Callback &&callback,
-      Service *service,
-      grpc::ServerCompletionQueue *cq)
-      : error_handler_(error_handler),
-        method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
-        cq_(*cq),
-        stream_(&context_) {}
-
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = std::make_shared<RsGrpcServerCall>(
-        error_handler, method, std::move(callback), service, cq);
-    invocation->self_ = invocation;
+    auto call = detail::RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
+        new RsGrpcServerCall(
+            error_handler, method, std::move(callback), service, cq));
 
     (service->*method)(
-        &invocation->context_,
-        &invocation->request_,
-        &invocation->stream_,
+        &call->context_,
+        &call->request_,
+        &call->stream_,
         cq,
         cq,
-        invocation->ToTag());
+        call->ToTag());
   }
 
   void operator()(bool success) {
     if (!success) {
       // This happens when the server is shutting down.
-      self_.reset();  // Delete this
       return;
     }
 
@@ -160,15 +145,14 @@ class RsGrpcServerCall<
       awaiting_request_ = false;
 
       // TODO(peck): Handle cancellation
-      auto subscription = values.Subscribe(MakeSubscriber(
-          std::weak_ptr<RsGrpcServerCall>(self_)));
+      auto subscription = values.Subscribe(
+          MakeRsGrpcTagSubscriber(ToShared(this)));
       // Because this class only uses the first response (and fails if there
       // are more), it's fine to Request an unbounded number of elements from
       // this stream; all elements after the first are immediately discarded.
       subscription.Request(ElementCount::Unbounded());
     } else {
-      // The server has now successfully sent a response. Clean up.
-      self_.reset();  // Delete this
+      // The server has now successfully sent a response.
     }
   }
 
@@ -194,6 +178,19 @@ class RsGrpcServerCall<
   }
 
  private:
+  RsGrpcServerCall(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq)
+      : error_handler_(error_handler),
+        method_(method),
+        callback_(std::move(callback)),
+        service_(*service),
+        cq_(*cq),
+        stream_(&context_) {}
+
   void IssueNewServerRequest(Callback &&callback) {
     // Take callback as an rvalue parameter to make it obvious that we steal it.
     Request(
@@ -203,10 +200,6 @@ class RsGrpcServerCall<
         &service_,
         &cq_);
   }
-
-  // While this object has given itself to a gRPC CompletionQueue, which does
-  // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcServerCall> self_;
 
   bool awaiting_request_ = true;
   GrpcErrorHandler error_handler_;
@@ -238,6 +231,8 @@ class RsGrpcServerCall<
  public:
   /**
    * Do not use this directly. Instead, use Request.
+   *
+   * TODO(peck): Make private
    */
   RsGrpcServerCall(
       GrpcErrorHandler error_handler,
@@ -410,6 +405,8 @@ class RsGrpcServerCall<
  public:
   /**
    * Do not use this directly. Instead, use Request.
+   *
+   * TODO(peck): Make private
    */
   RsGrpcServerCall(
       GrpcErrorHandler error_handler,
@@ -724,6 +721,8 @@ class RsGrpcServerCall<
  public:
   /**
    * Do not use this directly. Instead, use Request.
+   *
+   * TODO(peck): Make private
    */
   RsGrpcServerCall(
       GrpcErrorHandler error_handler,
