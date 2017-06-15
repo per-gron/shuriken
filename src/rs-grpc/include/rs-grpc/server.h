@@ -393,47 +393,30 @@ class RsGrpcServerCall<
   using Method = StreamingRequestMethod<Service, Stream>;
 
  public:
-  /**
-   * Do not use this directly. Instead, use Request.
-   *
-   * TODO(peck): Make private
-   */
-  RsGrpcServerCall(
-      GrpcErrorHandler error_handler,
-      Method method,
-      Callback &&callback,
-      Service *service,
-      grpc::ServerCompletionQueue *cq)
-      : error_handler_(error_handler),
-        method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
-        cq_(*cq),
-        reader_(&context_) {}
-
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = std::make_shared<RsGrpcServerCall>(
-        error_handler, method, std::move(callback), service, cq);
-    invocation->self_ = invocation;
+    auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
+        new RsGrpcServerCall(
+            error_handler, method, std::move(callback), service, cq));
 
     (service->*method)(
-        &invocation->context_,
-        &invocation->reader_,
+        &call->context_,
+        &call->reader_,
         cq,
         cq,
-        invocation->ToTag());
+        call->ToTag());
   }
 
   void operator()(bool success) {
     switch (state_) {
       case State::INIT: {
         if (!success) {
-          self_.reset();  // Delete this
+          // The runloop was shut down before a request was received. There is
+          // nothing to do here.
         } else {
           // Need to set _state before the call to init, in case it moves on to
           // the State::REQUESTED_DATA state immediately.
@@ -466,7 +449,6 @@ class RsGrpcServerCall<
       case State::SENT_RESPONSE: {
         // success == false implies that the server is shutting down. It doesn't
         // change what needs to be done here.
-        self_.reset();  // Delete this
         break;
       }
     }
@@ -506,6 +488,19 @@ class RsGrpcServerCall<
     SENT_RESPONSE
   };
 
+  RsGrpcServerCall(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq)
+      : error_handler_(error_handler),
+        method_(method),
+        callback_(std::move(callback)),
+        service_(*service),
+        cq_(*cq),
+        reader_(&context_) {}
+
   void Init() {
     // TODO(peck): I think this weak this capture in the lambda seems dangerous
     // (I think it might be safe because self_ is set even when this object is
@@ -520,15 +515,18 @@ class RsGrpcServerCall<
           new Subscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
-      return MakeSubscription(self_);
+      return MakeRsGrpcTagSubscription(ToShared(this));
     })));
 
     static_assert(
         IsPublisher<decltype(response)>,
         "Callback return type must be Publisher");
     // TODO(peck): Handle cancellation
-    auto subscription = response.Subscribe(MakeSubscriber(
-        std::weak_ptr<RsGrpcServerCall>(self_)));
+    // TODO(peck): I think it's wrong for this Subscriber to hold a weak
+    // reference to this. I think it needs to be a strong ref. But that
+    // would cause a cyclic ref it seems...?
+    auto subscription = Subscription(response.Subscribe(
+        MakeRsGrpcTagSubscriber(ToWeak(this))));
     // Because this class only uses the first response (and fails if there are
     // more), it's fine to Request an unbounded number of elements from this
     // stream; all elements after the first are immediately discarded.
@@ -549,10 +547,6 @@ class RsGrpcServerCall<
       --requested_;
       state_ = State::REQUESTED_DATA;
       reader_.Read(&request_, ToTag());
-    } else {
-      // TODO(peck): If the call is left in this state, it leaks: This object
-      // owns itself and if the Subscription goes away nothing will call it
-      // again. Same bug in other call types.
     }
   }
 
@@ -573,9 +567,6 @@ class RsGrpcServerCall<
     }
   }
 
-  // While this object has given itself to a gRPC CompletionQueue, which does
-  // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcServerCall> self_;
   // The number of elements that have been requested by the subscriber that have
   // not yet been requested to be read from gRPC.
   ElementCount requested_;
