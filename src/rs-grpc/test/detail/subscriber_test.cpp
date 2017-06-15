@@ -15,8 +15,8 @@
 #include <catch.hpp>
 
 #include <rs/subscriber.h>
+#include <rs-grpc/detail/subscriber.h>
 #include <rs-grpc/rs_grpc_tag.h>
-#include <rs-grpc/subscriber.h>
 
 namespace shk {
 namespace detail {

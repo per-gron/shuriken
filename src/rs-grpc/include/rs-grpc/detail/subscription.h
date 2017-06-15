@@ -15,11 +15,10 @@
 #pragma once
 
 #include <rs/subscription.h>
+#include <rs-grpc/rs_grpc_tag.h>
 
 namespace shk {
 namespace detail {
-
-// TODO(peck): Move this file to detail dir
 
 template <typename SubscriptionType>
 class RsGrpcTagPtrSubscription : public SubscriptionBase {

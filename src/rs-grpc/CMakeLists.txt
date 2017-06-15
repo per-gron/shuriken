@@ -1,10 +1,10 @@
 add_library(rs-grpc
+  include/rs-grpc/detail/subscriber.h
+  include/rs-grpc/detail/subscription.h
   include/rs-grpc/client.h
   include/rs-grpc/grpc_error.h
   include/rs-grpc/rs_grpc_tag.h
   include/rs-grpc/server.h
-  include/rs-grpc/subscriber.h
-  include/rs-grpc/subscription.h
   src/rs_grpc_tag.cpp)
 target_include_directories(rs PUBLIC include)
 target_link_libraries(rs-grpc rs flatbuffers grpc++)
@@ -20,13 +20,13 @@ add_custom_command(
   DEPENDS test/rsgrpctest.fbs flatc)
 
 add_executable(rs-grpc-test
+  test/detail/subscription_test.cpp
+  test/detail/subscriber_test.cpp
   test/bidi_streaming_test.cpp
   test/client_streaming_test.cpp
   test/main.cpp
   test/rs_grpc_tag_test.cpp
   test/server_streaming_test.cpp
-  test/subscriber_test.cpp
-  test/subscription_test.cpp
   test/test_util.cpp
   test/test_util.h
   test/unary_test.cpp
