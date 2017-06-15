@@ -147,6 +147,10 @@ class RsGrpcTag {
       return Get();
     }
 
+    T &operator*() const {
+      return *Get();
+    }
+
    private:
     friend class RsGrpcTag;
 

@@ -26,17 +26,24 @@ namespace {
 
 class MockRsGrpcTag : public RsGrpcTag {
  public:
-  MockRsGrpcTag(bool *destroyed) : destroyed_(*destroyed) {}
+  explicit MockRsGrpcTag(bool *destroyed)
+      : alive_(true), destroyed_(*destroyed) {}
 
   ~MockRsGrpcTag() {
     CHECK(!destroyed_);
     destroyed_ = true;
+    alive_ = false;
+  }
+
+  bool Alive() const {
+    return alive_;
   }
 
   void operator()(bool success) override {
   }
 
  private:
+  bool alive_;
   bool &destroyed_;
 };
 
@@ -107,6 +114,18 @@ TEST_CASE("RsGrpcTag") {
           CHECK(ptr);
           CHECK(!!ptr);
           CHECK(ptr.Get() == tag);
+        }
+        CHECK(destroyed);
+      }
+
+      SECTION("smart pointer operators") {
+        {
+          auto *tag = new MockRsGrpcTag(&destroyed);
+          const auto ptr = RsGrpcTag::ToShared(tag);
+          tag->Release();
+          CHECK(ptr->Alive());
+          CHECK((*ptr).Alive());
+          CHECK(!destroyed);
         }
         CHECK(destroyed);
       }
