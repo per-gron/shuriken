@@ -67,50 +67,95 @@ TEST_CASE("Subscriber") {
   auto ptr = RsGrpcTag::Ptr<TestSubscriber>::TakeOver(
       new TestSubscriber());
 
-  SECTION("type traits") {
-    auto sub = MakeRsGrpcTagSubscriber(
-        TestSubscriber::ToWeak<TestSubscriber>(ptr.Get()));
-    static_assert(IsSubscriber<decltype(sub)>, "Should be Subscriber");
-  }
-
-  SECTION("move") {
-    auto sub = MakeRsGrpcTagSubscriber(
-        TestSubscriber::ToWeak<TestSubscriber>(ptr.Get()));
-    auto moved_sub = std::move(sub);
-  }
-
-  SECTION("OnNext") {
-    int invocations = 0;
-    {
+  SECTION("WeakPtr") {
+    SECTION("type traits") {
       auto sub = MakeRsGrpcTagSubscriber(
           TestSubscriber::ToWeak<TestSubscriber>(ptr.Get()));
-      CHECK(ptr->OnNextInvocations() == 0);
-      sub.OnNext(1337);
+      static_assert(IsSubscriber<decltype(sub)>, "Should be Subscriber");
+    }
+
+    SECTION("move") {
+      auto sub = MakeRsGrpcTagSubscriber(
+          TestSubscriber::ToWeak<TestSubscriber>(ptr.Get()));
+      auto moved_sub = std::move(sub);
+    }
+
+    SECTION("OnNext") {
+      int invocations = 0;
+      {
+        auto sub = MakeRsGrpcTagSubscriber(
+            TestSubscriber::ToWeak<TestSubscriber>(ptr.Get()));
+        CHECK(ptr->OnNextInvocations() == 0);
+        sub.OnNext(1337);
+        CHECK(ptr->OnNextInvocations() == 1);
+      }
       CHECK(ptr->OnNextInvocations() == 1);
     }
-    CHECK(ptr->OnNextInvocations() == 1);
-  }
 
-  SECTION("OnError") {
-    {
-      auto sub = MakeRsGrpcTagSubscriber(
-          TestSubscriber::ToWeak<TestSubscriber>(ptr.Get()));
-      CHECK(ptr->OnErrorInvocations() == 0);
-      sub.OnError(std::make_exception_ptr(std::runtime_error("test_error")));
+    SECTION("OnError") {
+      {
+        auto sub = MakeRsGrpcTagSubscriber(
+            TestSubscriber::ToWeak<TestSubscriber>(ptr.Get()));
+        CHECK(ptr->OnErrorInvocations() == 0);
+        sub.OnError(std::make_exception_ptr(std::runtime_error("test_error")));
+        CHECK(ptr->OnErrorInvocations() == 1);
+      }
       CHECK(ptr->OnErrorInvocations() == 1);
     }
-    CHECK(ptr->OnErrorInvocations() == 1);
-  }
 
-  SECTION("OnComplete") {
-    {
-      auto sub = MakeRsGrpcTagSubscriber(
-          TestSubscriber::ToWeak<TestSubscriber>(ptr.Get()));
-      CHECK(ptr->OnCompleteInvocations() == 0);
-      sub.OnComplete();
+    SECTION("OnComplete") {
+      {
+        auto sub = MakeRsGrpcTagSubscriber(
+            TestSubscriber::ToWeak<TestSubscriber>(ptr.Get()));
+        CHECK(ptr->OnCompleteInvocations() == 0);
+        sub.OnComplete();
+        CHECK(ptr->OnCompleteInvocations() == 1);
+      }
       CHECK(ptr->OnCompleteInvocations() == 1);
     }
-    CHECK(ptr->OnCompleteInvocations() == 1);
+  }
+
+  SECTION("Ptr") {
+    SECTION("type traits") {
+      auto sub = MakeRsGrpcTagSubscriber(ptr);
+      static_assert(IsSubscriber<decltype(sub)>, "Should be Subscriber");
+    }
+
+    SECTION("move") {
+      auto sub = MakeRsGrpcTagSubscriber(ptr);
+      auto moved_sub = std::move(sub);
+    }
+
+    SECTION("OnNext") {
+      int invocations = 0;
+      {
+        auto sub = MakeRsGrpcTagSubscriber(ptr);
+        CHECK(ptr->OnNextInvocations() == 0);
+        sub.OnNext(1337);
+        CHECK(ptr->OnNextInvocations() == 1);
+      }
+      CHECK(ptr->OnNextInvocations() == 1);
+    }
+
+    SECTION("OnError") {
+      {
+        auto sub = MakeRsGrpcTagSubscriber(ptr);
+        CHECK(ptr->OnErrorInvocations() == 0);
+        sub.OnError(std::make_exception_ptr(std::runtime_error("test_error")));
+        CHECK(ptr->OnErrorInvocations() == 1);
+      }
+      CHECK(ptr->OnErrorInvocations() == 1);
+    }
+
+    SECTION("OnComplete") {
+      {
+        auto sub = MakeRsGrpcTagSubscriber(ptr);
+        CHECK(ptr->OnCompleteInvocations() == 0);
+        sub.OnComplete();
+        CHECK(ptr->OnCompleteInvocations() == 1);
+      }
+      CHECK(ptr->OnCompleteInvocations() == 1);
+    }
   }
 }
 

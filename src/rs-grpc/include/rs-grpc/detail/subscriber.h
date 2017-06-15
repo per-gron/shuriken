@@ -51,6 +51,30 @@ class RsGrpcTagWeakPtrSubscriber : public SubscriberBase {
 };
 
 template <typename SubscriberType>
+class RsGrpcTagPtrSubscriber : public SubscriberBase {
+ public:
+  explicit RsGrpcTagPtrSubscriber(
+      const RsGrpcTag::Ptr<SubscriberType> &subscriber)
+      : subscriber_(subscriber) {}
+
+  template <typename T, class = IsRvalue<T>>
+  void OnNext(T &&t) {
+    subscriber_->OnNext(std::forward<T>(t));
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    subscriber_->OnError(std::move(error));
+  }
+
+  void OnComplete() {
+    subscriber_->OnComplete();
+  }
+
+ private:
+  RsGrpcTag::Ptr<SubscriberType> subscriber_;
+};
+
+template <typename SubscriberType>
 auto MakeRsGrpcTagSubscriber(
     const RsGrpcTag::WeakPtr<SubscriberType> &subscription) {
   static_assert(
@@ -58,6 +82,16 @@ auto MakeRsGrpcTagSubscriber(
       "MakeRsGrpcTagSubscriber must be called with a Subscriber");
 
   return detail::RsGrpcTagWeakPtrSubscriber<SubscriberType>(subscription);
+}
+
+template <typename SubscriberType>
+auto MakeRsGrpcTagSubscriber(
+    const RsGrpcTag::Ptr<SubscriberType> &subscription) {
+  static_assert(
+      IsSubscriber<SubscriberType>,
+      "MakeRsGrpcTagSubscriber must be called with a Subscriber");
+
+  return detail::RsGrpcTagPtrSubscriber<SubscriberType>(subscription);
 }
 
 }  // namespace detail
