@@ -20,7 +20,6 @@ namespace shk {
 namespace detail {
 
 // TODO(peck): Move this file to detail dir
-// TODO(peck): Test me
 
 template <typename SubscriberType>
 class RsGrpcTagWeakPtrSubscriber : public SubscriberBase {
