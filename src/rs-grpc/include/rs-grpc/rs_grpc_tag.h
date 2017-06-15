@@ -247,6 +247,7 @@ class RsGrpcTag {
 
   static void ProcessAllEvents(grpc::CompletionQueue *cq);
 
+ protected:
   void *ToTag() {
     Retain();
     return this;
