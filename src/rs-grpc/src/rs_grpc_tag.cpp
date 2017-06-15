@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <rs-grpc/rs_grpc_tag.h>
+#include <rs-grpc/detail/rs_grpc_tag.h>
 
 namespace shk {
 namespace detail {

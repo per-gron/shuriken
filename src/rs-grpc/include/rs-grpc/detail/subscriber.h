@@ -15,7 +15,7 @@
 #pragma once
 
 #include <rs/subscription.h>
-#include <rs-grpc/rs_grpc_tag.h>
+#include <rs-grpc/detail/rs_grpc_tag.h>
 
 namespace shk {
 namespace detail {

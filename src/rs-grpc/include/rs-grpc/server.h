@@ -23,9 +23,9 @@
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
 #include <rs/throw.h>
+#include <rs-grpc/detail/rs_grpc_tag.h>
 #include <rs-grpc/client.h>
 #include <rs-grpc/grpc_error.h>
-#include <rs-grpc/rs_grpc_tag.h>
 
 namespace shk {
 namespace detail {
