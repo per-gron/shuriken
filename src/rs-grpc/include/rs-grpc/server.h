@@ -112,7 +112,7 @@ class RsGrpcServerCall<
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto call = detail::RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
+    auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
         new RsGrpcServerCall(
             error_handler, method, std::move(callback), service, cq));
 
@@ -229,47 +229,28 @@ class RsGrpcServerCall<
       Service, typename ServerCallTraits::Request, Stream>;
 
  public:
-  /**
-   * Do not use this directly. Instead, use Request.
-   *
-   * TODO(peck): Make private
-   */
-  RsGrpcServerCall(
-      GrpcErrorHandler error_handler,
-      Method method,
-      Callback &&callback,
-      Service *service,
-      grpc::ServerCompletionQueue *cq)
-      : error_handler_(error_handler),
-        method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
-        cq_(*cq),
-        stream_(&context_) {}
-
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = std::make_shared<RsGrpcServerCall>(
-        error_handler, method, std::move(callback), service, cq);
-    invocation->self_ = invocation;
+    auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
+        new RsGrpcServerCall(
+            error_handler, method, std::move(callback), service, cq));
 
     (service->*method)(
-        &invocation->context_,
-        &invocation->request_,
-        &invocation->stream_,
+        &call->context_,
+        &call->request_,
+        &call->stream_,
         cq,
         cq,
-        invocation->ToTag());
+        call->ToTag());
   }
 
   void operator()(bool success) {
     if (!success) {
       // This happens when the server is shutting down.
-      self_.reset();  // Delete this
       return;
     }
 
@@ -286,8 +267,11 @@ class RsGrpcServerCall<
         // after which it's not safe to do anything with `this` anymore.
         IssueNewServerRequest(std::move(callback_));
 
-        subscription_ = Subscription(values.Subscribe(MakeSubscriber(
-            std::weak_ptr<RsGrpcServerCall>(self_))));
+        // TODO(peck): I think it's wrong for this Subscriber to hold a weak
+        // reference to this. I think it needs to be a strong ref. But that
+        // would cause a cyclic ref it seems...?
+        subscription_ = Subscription(values.Subscribe(
+            MakeRsGrpcTagSubscriber(ToWeak(this))));
         // TODO(peck): Cancellation
         subscription_.Request(ElementCount(1));
 
@@ -300,7 +284,6 @@ class RsGrpcServerCall<
         break;
       }
       case State::SENT_FINAL_RESPONSE: {
-        self_.reset();  // Delete this
         break;
       }
     }
@@ -337,6 +320,19 @@ class RsGrpcServerCall<
     SENT_FINAL_RESPONSE
   };
 
+  RsGrpcServerCall(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq)
+      : error_handler_(error_handler),
+        method_(method),
+        callback_(std::move(callback)),
+        service_(*service),
+        cq_(*cq),
+        stream_(&context_) {}
+
   void IssueNewServerRequest(Callback &&callback) {
     // Take callback as an rvalue parameter to make it obvious that we steal it.
     Request(
@@ -348,8 +344,6 @@ class RsGrpcServerCall<
   }
 
   void RunEnqueuedOperation() {
-    // TODO(peck): This object should not own itself when it's not given to
-    // gRPC.
     if (state_ != State::AWAITING_RESPONSE) {
       return;
     }
@@ -364,10 +358,6 @@ class RsGrpcServerCall<
       stream_.Finish(enqueued_finish_status_, ToTag());
     }
   }
-
-  // While this object has given itself to a gRPC CompletionQueue, which does
-  // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcServerCall> self_;
 
   State state_ = State::AWAITING_REQUEST;
   bool enqueued_finish_ = false;
