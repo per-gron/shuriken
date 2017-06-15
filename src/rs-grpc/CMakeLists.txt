@@ -3,6 +3,7 @@ add_library(rs-grpc
   include/rs-grpc/grpc_error.h
   include/rs-grpc/rs_grpc_tag.h
   include/rs-grpc/server.h
+  include/rs-grpc/subscriber.h
   src/rs_grpc_tag.cpp)
 target_include_directories(rs PUBLIC include)
 target_link_libraries(rs-grpc rs flatbuffers grpc++)
@@ -23,6 +24,7 @@ add_executable(rs-grpc-test
   test/main.cpp
   test/rs_grpc_tag_test.cpp
   test/server_streaming_test.cpp
+  test/subscriber_test.cpp
   test/test_util.cpp
   test/test_util.h
   test/unary_test.cpp
