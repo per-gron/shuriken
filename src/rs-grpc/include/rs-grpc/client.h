@@ -64,7 +64,7 @@ template <
 class RsGrpcClientCall<
     grpc::ClientAsyncResponseReader<ResponseType>,
     ResponseType,
-    RequestType> : public RsGrpcTag {
+    RequestType> : public RsGrpcTag, SubscriptionBase {
  public:
   RsGrpcClientCall(
       const RequestType &request,
@@ -88,32 +88,34 @@ class RsGrpcClientCall<
           grpc::CompletionQueue *cq),
       Stub *stub,
       grpc::CompletionQueue *cq) {
-    // TODO(peck): Don't use lambdas here, I think they don't help readability.
-    return MakeSubscription(
-        [invoke, stub, cq, self = ToShared(this)](ElementCount count) mutable {
-          if (self) {
-            if (self->cancelled_) {
-              self.Reset();
-            } else if (count > 0) {
-              auto &me = *self;
-              auto stream = (stub->*invoke)(&me.context_, me.request_, cq);
-              stream->Finish(&me.response_, &me.status_, me.ToTag());
+    invoke_ = [this, stub, invoke, cq] {
+      return (stub->*invoke)(&context_, request_, cq);
+    };
+    return MakeRsGrpcTagSubscription(ToShared(this));
+  }
 
-              // Need to reset self after the me.ToTag() call, otherwise there
-              // would be some time where there is no owning ref.
-              self.Reset();
-            }
-          }
-        },
-        [weak_self = ToWeak(this)] {
-          if (auto strong_self = weak_self.Lock()) {
-            strong_self->cancelled_ = true;
-            strong_self->context_.TryCancel();
-          }
-        });
+  void Request(ElementCount count) {
+    if (invoke_) {
+      if (cancelled_) {
+        invoke_ = nullptr;
+      } else if (count > 0) {
+        auto stream = invoke_();
+        stream->Finish(&response_, &status_, ToTag());
+        invoke_ = nullptr;
+      }
+    }
+  }
+
+  void Cancel() {
+    cancelled_ = true;
+    context_.TryCancel();
   }
 
  private:
+  // invoke_ is set on the initial call to Invoke and unset when the actual
+  // request has been made.
+  std::function<std::unique_ptr<
+      grpc::ClientAsyncResponseReader<ResponseType>> ()> invoke_;
   bool cancelled_ = false;
   static_assert(
       !std::is_reference<RequestType>::value,
