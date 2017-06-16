@@ -56,8 +56,6 @@ class MockRsGrpcTag : public RsGrpcTag {
 }  // anonymous namespace
 
 TEST_CASE("RsGrpcTag") {
-  // TODO(peck): Move rs_grpc_tag.h to a detail/ directory
-
   SECTION("refcount") {
     bool destroyed = false;
 
