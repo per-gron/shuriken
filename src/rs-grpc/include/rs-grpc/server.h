@@ -597,7 +597,8 @@ template <
 class RsGrpcServerCall<
     grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
     ServerCallTraits,
-    Callback> : public RsGrpcTag, public SubscriberBase {
+    Callback>
+        : public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
   using Stream = grpc::ServerAsyncReaderWriter<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
 
@@ -765,6 +766,15 @@ class RsGrpcServerCall<
     writer_.OnComplete();
   }
 
+  void Request(ElementCount count) {
+    requested_ += count;
+    MaybeReadNext();
+  }
+
+  void Cancel() {
+    // TODO(peck): Handle cancellation
+  }
+
  private:
   enum class State {
     INIT,
@@ -801,15 +811,7 @@ class RsGrpcServerCall<
           new Subscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
-      // TODO(peck): Get rid of these lambdas
-      return MakeSubscription(
-          [self](ElementCount count) {
-            self->requested_ += count;
-            self->MaybeReadNext();
-          },
-          [] {
-            // TODO(peck): Handle cancellation
-          });
+      return MakeRsGrpcTagSubscription(self);
     })));
 
     static_assert(
