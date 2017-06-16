@@ -42,6 +42,7 @@ RsGrpcTag::Refcount::Refcount(Refcount &&other)
 RsGrpcTag::Refcount &RsGrpcTag::Refcount::operator=(Refcount &&other) {
   this->~Refcount();
   data_ = other.data_;
+  other.data_ = nullptr;
   local_data_ = other.local_data_;
   return *this;
 }
