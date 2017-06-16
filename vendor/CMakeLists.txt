@@ -5,7 +5,16 @@ target_include_directories(catch INTERFACE catch/include)
 
 set(gRPC_USE_PROTO_LITE ON CACHE BOOL "Use the protobuf-lite library")
 set(BENCHMARK_ENABLE_TESTING OFF)
-add_subdirectory(grpc)
+if(CMAKE_GENERATOR STREQUAL Xcode)
+  # The Xcode CMake generator does not properly implement EXCLUDE_FROM_ALL:
+  # EXCLUDE_FROM_ALL should mean that it's not part of the all target, but if
+  # a target depends on it, it should still be built. What Xcode does it to just
+  # not build it, even if a target depends on it. Because there are targets that
+  # depend on targetrs in thie subdirectory, EXCLUDE_FROM_ALL breaks on Xcode.
+  add_subdirectory(grpc)
+else()
+  add_subdirectory(grpc EXCLUDE_FROM_ALL)
+endif()
 foreach(LIBRARY zlib libprotobuf)
   target_compile_definitions(${LIBRARY} PUBLIC z_size_t=size_t)
 endforeach()
