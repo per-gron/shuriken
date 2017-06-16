@@ -32,7 +32,7 @@ class TestSubscription : public RsGrpcTag, public SubscriptionBase {
     cancel_invocations_++;
   }
 
-  void operator()(bool success) override {
+  void TagOperationDone(bool success) override {
   }
 
   using RsGrpcTag::ToShared;

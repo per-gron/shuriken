@@ -37,7 +37,7 @@ class TestSubscriber : public RsGrpcTag, public SubscriberBase {
     on_complete_invocations_++;
   }
 
-  void operator()(bool success) override {
+  void TagOperationDone(bool success) override {
   }
 
   int OnNextInvocations() const {

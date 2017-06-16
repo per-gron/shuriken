@@ -93,9 +93,20 @@ void RsGrpcTag::Refcount::Data::Release() {
   }
 }
 
+void RsGrpcTag::AlternateTagOperationDone(bool success) {
+  throw std::logic_error("Unimplemented");
+}
+
+
 void RsGrpcTag::Invoke(void *got_tag, bool success) {
-  detail::RsGrpcTag *tag = reinterpret_cast<detail::RsGrpcTag *>(got_tag);
-  (*tag)(success);
+  uintptr_t tag_int = reinterpret_cast<uintptr_t>(got_tag);
+  bool alternate = tag_int & 1;
+  detail::RsGrpcTag *tag = reinterpret_cast<detail::RsGrpcTag *>(tag_int & ~1);
+  if (alternate) {
+    tag->AlternateTagOperationDone(success);
+  } else {
+    tag->TagOperationDone(success);
+  }
   // Must release after invoking the tag because this could destroy tag
   tag->Release();
 }

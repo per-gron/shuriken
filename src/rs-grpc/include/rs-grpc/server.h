@@ -125,7 +125,7 @@ class RsGrpcServerCall<
         call->ToTag());
   }
 
-  void operator()(bool success) {
+  void TagOperationDone(bool success) {
     if (!success) {
       // This happens when the server is shutting down.
       return;
@@ -248,7 +248,7 @@ class RsGrpcServerCall<
         call->ToTag());
   }
 
-  void operator()(bool success) {
+  void TagOperationDone(bool success) {
     if (!success) {
       // This happens when the server is shutting down.
       return;
@@ -411,7 +411,7 @@ class RsGrpcServerCall<
         call->ToTag());
   }
 
-  void operator()(bool success) {
+  void TagOperationDone(bool success) {
     switch (state_) {
       case State::INIT: {
         if (!success) {
@@ -502,20 +502,17 @@ class RsGrpcServerCall<
         reader_(&context_) {}
 
   void Init() {
-    // TODO(peck): I think this weak this capture in the lambda seems dangerous
-    // (I think it might be safe because self_ is set even when this object is
-    // not given to gRPC, which is wrong.)
     auto response = callback_(Publisher<RequestType>(MakePublisher(
-        [this](auto &&subscriber) {
-      if (subscriber_) {
+        [self = ToShared(this)](auto &&subscriber) {
+      if (self->subscriber_) {
         throw std::logic_error(
             "Can't subscribe to this observable more than once");
       }
-      subscriber_.reset(
+      self->subscriber_.reset(
           new Subscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
-      return MakeRsGrpcTagSubscription(ToShared(this));
+      return MakeRsGrpcTagSubscription(self);
     })));
 
     static_assert(
@@ -607,17 +604,16 @@ class RsGrpcServerCall<
   using Method = StreamingRequestMethod<Service, Stream>;
 
   /**
-   * Bidi streaming requires separate tags for reading and writing (since they
-   * can happen simultaneously). The purpose of this class is to be the other
-   * tag. It's used for writing.
+   * The purpose of this class is to encapsulate the logic for writing from
+   * the rest of this RsGrpcServerCall template specialization.
    */
-  class Writer : public RsGrpcTag {
+  class Writer {
    public:
     Writer(
-        const std::function<void ()> shutdown,
+        RsGrpcServerCall *parent,
         grpc::ServerContext *context,
         grpc::ServerAsyncReaderWriter<ResponseType, RequestType> *stream)
-        : shutdown_(shutdown),
+        : parent_(*parent),
           context_(*context),
           stream_(*stream) {}
 
@@ -654,17 +650,15 @@ class RsGrpcServerCall<
       RunEnqueuedOperation();
     }
 
-    void operator()(bool success) override {
+    void TagOperationDone(bool success) {
       if (sent_final_request_) {
         // Nothing more to write.
-        shutdown_();
       } else {
         if (success) {
           operation_in_progress_ = false;
           RunEnqueuedOperation();
         } else {
           // This happens when the runloop is shutting down.
-          shutdown_();
         }
       }
     }
@@ -676,7 +670,7 @@ class RsGrpcServerCall<
       }
       if (next_response_) {
         operation_in_progress_ = true;
-        stream_.Write(*next_response_, ToTag());  // TODO(peck): This object is not heap allocated so ToTag() is not the right thing
+        stream_.Write(*next_response_, parent_.ToAlternateTag());
         next_response_.reset();
         subscription_.Request(ElementCount(1));
       } else if (enqueued_finish_ && !sent_final_request_) {
@@ -684,12 +678,12 @@ class RsGrpcServerCall<
         operation_in_progress_ = true;
         sent_final_request_ = true;
 
-        stream_.Finish(status_, ToTag());  // TODO(peck): This object is not heap allocated so ToTag() is not the right thing
+        stream_.Finish(status_, parent_.ToAlternateTag());
       }
     }
 
+    RsGrpcServerCall &parent_;
     Subscription subscription_;
-    std::function<void ()> shutdown_;
     std::unique_ptr<ResponseType> next_response_;
     bool enqueued_finish_ = false;
     bool operation_in_progress_ = false;
@@ -700,51 +694,30 @@ class RsGrpcServerCall<
   };
 
  public:
-  /**
-   * Do not use this directly. Instead, use Request.
-   *
-   * TODO(peck): Make private
-   */
-  RsGrpcServerCall(
-      GrpcErrorHandler error_handler,
-      Method method,
-      Callback &&callback,
-      Service *service,
-      grpc::ServerCompletionQueue *cq)
-      : error_handler_(error_handler),
-        method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
-        cq_(*cq),
-        stream_(&context_),
-        writer_(
-            [this] { write_stream_ended_ = true; TryShutdown(); },
-            &context_,
-            &stream_) {}
-
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
       Callback &&callback,
       Service *service,
       grpc::ServerCompletionQueue *cq) {
-    auto invocation = std::make_shared<RsGrpcServerCall>(
-        error_handler, method, std::move(callback), service, cq);
-    invocation->self_ = invocation;
+    auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
+        new RsGrpcServerCall(
+            error_handler, method, std::move(callback), service, cq));
 
     (service->*method)(
-        &invocation->context_,
-        &invocation->stream_,
+        &call->context_,
+        &call->stream_,
         cq,
         cq,
-        invocation->ToTag());
+        call->ToTag());
   }
 
-  void operator()(bool success) {
+  void TagOperationDone(bool success) {
     switch (state_) {
       case State::INIT: {
         if (!success) {
-          self_.reset();  // Delete this
+          // The runloop was shut down before a request was received. There is
+          // nothing to do here.
         } else {
           // Need to set _state before the call to init, in case it moves on to
           // the State::REQUESTED_DATA state immediately.
@@ -766,7 +739,6 @@ class RsGrpcServerCall<
           // The client has stopped sending requests.
           subscriber_->OnComplete();
           state_ = State::READ_STREAM_ENDED;
-          TryShutdown();
         }
         break;
       }
@@ -775,6 +747,10 @@ class RsGrpcServerCall<
         break;
       }
     }
+  }
+
+  void AlternateTagOperationDone(bool success) {
+    writer_.TagOperationDone(success);
   }
 
   void OnNext(ResponseType &&response) {
@@ -797,18 +773,25 @@ class RsGrpcServerCall<
     READ_STREAM_ENDED
   };
 
-  void TryShutdown() {
-    if (state_ == State::READ_STREAM_ENDED && write_stream_ended_) {
-      // Only delete this when both the read stream and the write stream have
-      // finished.
-      self_.reset();  // Delete this
-    }
-  }
+  RsGrpcServerCall(
+      GrpcErrorHandler error_handler,
+      Method method,
+      Callback &&callback,
+      Service *service,
+      grpc::ServerCompletionQueue *cq)
+      : error_handler_(error_handler),
+        method_(method),
+        callback_(std::move(callback)),
+        service_(*service),
+        cq_(*cq),
+        stream_(&context_),
+        writer_(
+            this,
+            &context_,
+            &stream_) {}
 
   void Init() {
     // TODO(peck): I think this weak this capture in the lambda seems dangerous
-    // (I think it might be safe because self_ is set even when this object is
-    // not given to gRPC, which is wrong.)
     auto response = callback_(Publisher<RequestType>(MakePublisher(
         [this](auto &&subscriber) {
       if (subscriber_) {
@@ -819,8 +802,9 @@ class RsGrpcServerCall<
           new Subscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
+      // TODO(peck): Get rid of these lambdas
       return MakeSubscription(
-          [self = self_](ElementCount count) {
+          [self = ToShared(this)](ElementCount count) {
             self->requested_ += count;
             self->MaybeReadNext();
           },
@@ -832,8 +816,9 @@ class RsGrpcServerCall<
     static_assert(
         IsPublisher<decltype(response)>,
         "Callback return type must be Publisher");
-    writer_.Subscribed(Subscription(response.Subscribe(MakeSubscriber(
-        std::weak_ptr<RsGrpcServerCall>(self_)))));
+    // TODO(peck): Is it right to have this as a weak pointer?
+    writer_.Subscribed(Subscription(response.Subscribe(
+        MakeRsGrpcTagSubscriber(ToWeak(this)))));
 
     Request(
         error_handler_,
@@ -848,15 +833,9 @@ class RsGrpcServerCall<
       --requested_;
       state_ = State::REQUESTED_DATA;
       stream_.Read(&request_, ToTag());
-    } else {
-      // TODO(peck): I think this can leak, if the RPC handler does not Request
-      // all values.
     }
   }
 
-  // While this object has given itself to a gRPC CompletionQueue, which does
-  // not own the object, it owns itself through this shared_ptr.
-  std::shared_ptr<RsGrpcServerCall> self_;
   // The number of elements that have been requested by the subscriber that have
   // not yet been requested to be read from gRPC.
   ElementCount requested_;
@@ -871,7 +850,6 @@ class RsGrpcServerCall<
   grpc::ServerContext context_;
   typename ServerCallTraits::Request request_;
   grpc::ServerAsyncReaderWriter<ResponseType, RequestType> stream_;
-  bool write_stream_ended_ = false;
   Writer writer_;
 
   ResponseType response_;

@@ -324,9 +324,8 @@ TEST_CASE("Bidi streaming RPC") {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
-      RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
-
-      ShutdownAllowOutstandingCall(&server);
+      auto error = RunExpectError(&runloop, publisher);
+      CHECK(ExceptionMessage(error) == "Cancelled");
     }
 
     SECTION("make call that requests one element") {

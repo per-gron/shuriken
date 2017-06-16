@@ -72,7 +72,7 @@ class RsGrpcClientCall<
       : request_(request),
         subscriber_(std::move(subscriber)) {}
 
-  void operator()(bool success) override {
+  void TagOperationDone(bool success) override {
     if (!cancelled_) {
       HandleUnaryResponse(
           success, status_, std::move(response_), &subscriber_);
@@ -144,7 +144,7 @@ class RsGrpcClientCall<
       : request_(request),
         subscriber_(std::move(subscriber)) {}
 
-  void operator()(bool success) override {
+  void TagOperationDone(bool success) override {
     switch (state_) {
       case State::INIT: {
         MaybeReadNext();
@@ -290,7 +290,7 @@ class RsGrpcClientCall<
       : requests_(requests),
         subscriber_(std::move(subscriber)) {}
 
-  void operator()(bool success) override {
+  void TagOperationDone(bool success) override {
     if (sent_final_request_) {
       if (cancelled_) {
         // Do nothing
@@ -452,7 +452,7 @@ class RsGrpcClientCall<
         if (requested_ > 0) {
           --requested_;
           state_ = State::READING_RESPONSE;
-          stream_->Read(&response_, ToTag());
+          stream_->Read(&response_, ToTag());  // TODO(peck): this is not heap allocated so this is wrong
         }
       }
     }
@@ -483,7 +483,7 @@ class RsGrpcClientCall<
       }
     }
 
-    void operator()(bool success) override {
+    void TagOperationDone(bool success) override {
       if (!success || error_) {
         // We have reached the end of the stream.
         state_ = State::END;
@@ -524,7 +524,7 @@ class RsGrpcClientCall<
             std::move(subscriber)),
         requests_(requests) {}
 
-  void operator()(bool success) override {
+  void TagOperationDone(bool success) override {
     if (sent_final_request_) {
       writer_done_ = true;
       TryShutdown();

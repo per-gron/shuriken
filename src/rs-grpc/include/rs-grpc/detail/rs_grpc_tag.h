@@ -217,7 +217,11 @@ class RsGrpcTag {
   RsGrpcTag(const RsGrpcTag &) = delete;
   RsGrpcTag &operator=(const RsGrpcTag &) = delete;
 
-  virtual void operator()(bool success) = 0;
+  // TODO(peck): Make this protected
+  virtual void TagOperationDone(bool success) = 0;
+
+  // TODO(peck): Make this protected
+  virtual void AlternateTagOperationDone(bool success);
 
   static void Invoke(void *got_tag, bool success);
 
@@ -250,7 +254,19 @@ class RsGrpcTag {
  protected:
   void *ToTag() {
     Retain();
+    CheckThisAlignment();
     return this;
+  }
+
+  void *ToAlternateTag() {
+    Retain();
+    return reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(this) + 1);
+  }
+
+  void CheckThisAlignment() {
+    if (reinterpret_cast<uintptr_t>(this) & 1) {
+      throw std::runtime_error("Unaligned this");
+    }
   }
 
   template <typename T>

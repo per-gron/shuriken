@@ -39,7 +39,7 @@ class MockRsGrpcTag : public RsGrpcTag {
     return alive_;
   }
 
-  void operator()(bool success) override {
+  void TagOperationDone(bool success) override {
   }
 
   using RsGrpcTag::Release;
