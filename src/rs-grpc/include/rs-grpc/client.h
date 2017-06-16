@@ -429,16 +429,17 @@ class RsGrpcClientCall<
         : public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
  private:
   /**
-   * Bidi streaming requires separate tags for reading and writing (since they
-   * can happen simultaneously). The purpose of this class is to be the other
-   * tag. It's used for reading.
+   * The purpose of this class is to encapsulate the logic for reading from
+   * the rest of this RsGrpcClientCall template specialization.
    */
-  class Reader : public RsGrpcTag {
+  class Reader {
    public:
     Reader(
+        RsGrpcClientCall *parent,
         const std::function<void ()> &shutdown,
         Subscriber<ResponseType> &&subscriber)
-        : shutdown_(shutdown),
+        : parent_(*parent),
+          shutdown_(shutdown),
           subscriber_(std::move(subscriber)) {}
 
     void Invoke(
@@ -452,7 +453,7 @@ class RsGrpcClientCall<
         if (requested_ > 0) {
           --requested_;
           state_ = State::READING_RESPONSE;
-          stream_->Read(&response_, ToTag());  // TODO(peck): this is not heap allocated so this is wrong
+          stream_->Read(&response_, parent_.ToAlternateTag());
         }
       }
     }
@@ -483,7 +484,7 @@ class RsGrpcClientCall<
       }
     }
 
-    void TagOperationDone(bool success) override {
+    void TagOperationDone(bool success) {
       if (!success || error_) {
         // We have reached the end of the stream.
         state_ = State::END;
@@ -501,6 +502,8 @@ class RsGrpcClientCall<
       READING_RESPONSE,
       END
     };
+
+    RsGrpcClientCall &parent_;
     State state_ = State::AWAITING_REQUEST;
     // The number of elements that have been requested by the subscriber that
     // have not yet been requested to be read from gRPC.
@@ -520,6 +523,7 @@ class RsGrpcClientCall<
       const Publisher<RequestType> &requests,
       Subscriber<ResponseType> &&subscriber)
       : reader_(
+            this,
             [this] { reader_done_ = true; TryShutdown(); },
             std::move(subscriber)),
         requests_(requests) {}
@@ -539,6 +543,10 @@ class RsGrpcClientCall<
         TryShutdown();
       }
     }
+  }
+
+  void AlternateTagOperationDone(bool success) override {
+    reader_.TagOperationDone(success);
   }
 
   template <typename Stub>
