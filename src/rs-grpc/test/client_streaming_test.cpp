@@ -151,19 +151,6 @@ TEST_CASE("Client streaming RPC") {
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });
 
-  SECTION("server streaming") {
-    // TODO(peck): Remove this test, it's duplicated
-    Run(&runloop, Pipe(
-        test_client.Invoke(
-            &TestService::Stub::AsyncRepeat, MakeTestRequest(0)),
-        Map([](Flatbuffer<TestResponse> &&response) {
-          // Should never be called; this should be a stream that ends
-          // without any values
-          CHECK(false);
-          return "ignored";
-        })));
-  }
-
   SECTION("no messages") {
     Run(&runloop, Pipe(
         test_client.Invoke(
