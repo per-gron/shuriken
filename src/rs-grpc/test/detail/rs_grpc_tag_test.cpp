@@ -56,6 +56,8 @@ class MockRsGrpcTag : public RsGrpcTag {
 }  // anonymous namespace
 
 TEST_CASE("RsGrpcTag") {
+  // TODO(peck): Fix asan issues
+
   SECTION("refcount") {
     bool destroyed = false;
 

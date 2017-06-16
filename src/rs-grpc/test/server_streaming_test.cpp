@@ -137,17 +137,17 @@ TEST_CASE("Server streaming RPC") {
             &TestService::Stub::AsyncServerStreamHang,
             MakeTestRequest(0));
 
+        bool cancelled = false;
         auto subscription = call
             .Subscribe(MakeSubscriber(
                 [](auto &&) {
                   CHECK(!"OnNext should not be called");
                 },
-                [](std::exception_ptr error) {
-                  CHECK(!"OnError should not be called");
-                  printf(
-                      "Got exception: %s\n", ExceptionMessage(error).c_str());
+                [&cancelled](std::exception_ptr error) {
+                  CHECK(ExceptionMessage(error) == "Cancelled");
+                  cancelled = true;
                 },
-                []() {
+                [] {
                   CHECK(!"OnComplete should not be called");
                 }));
         subscription.Request(ElementCount::Unbounded());
@@ -158,7 +158,12 @@ TEST_CASE("Server streaming RPC") {
         CHECK(runloop.Next());
         CHECK(runloop.Next());
 
+        CHECK(!cancelled);
+
         ShutdownAllowOutstandingCall(&server);
+
+        runloop.Shutdown();
+        runloop.Run();
       }
 
       SECTION("before Request") {

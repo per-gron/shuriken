@@ -100,9 +100,6 @@ auto ClientStreamTwoResponsesHandler(
 }  // anonymous namespace
 
 TEST_CASE("Client streaming RPC") {
-  // TODO(peck): Fix occasional aborts in these tests:
-  // completion_queue.c:352  assertion failed: !cc->shutdown_called
-
   auto server_address = "unix:rs_grpc_test.socket";
 
   RsGrpcServer::Builder server_builder;
@@ -288,14 +285,14 @@ TEST_CASE("Client streaming RPC") {
   }
 
   SECTION("cancellation") {
+    bool cancelled = false;
     auto null_subscriber = MakeSubscriber(
         [](auto &&) {
           CHECK(!"OnNext should not be called");
         },
-        [](std::exception_ptr error) {
-          CHECK(!"OnError should not be called");
-          printf(
-              "Got exception: %s\n", ExceptionMessage(error).c_str());
+        [&cancelled](std::exception_ptr error) {
+          CHECK(ExceptionMessage(error) == "Cancelled");
+          cancelled = true;
         },
         []() {
           CHECK(!"OnComplete should not be called");
@@ -316,6 +313,8 @@ TEST_CASE("Client streaming RPC") {
         CHECK(runloop.Next());
 
         ShutdownAllowOutstandingCall(&server);
+
+        CHECK(cancelled == false);
       }
 
       SECTION("before Request") {
@@ -331,18 +330,21 @@ TEST_CASE("Client streaming RPC") {
         using namespace std::chrono_literals;
         auto deadline = std::chrono::system_clock::now() + 20ms;
         CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
+
+        CHECK(cancelled == false);
       }
 
       SECTION("cancel input stream") {
-        bool cancelled = false;
+        bool subscription_cancelled = false;
 
-        auto detect_cancel = MakePublisher([&cancelled](auto &&subscriber) {
-          return MakeSubscription(
-              [](ElementCount) {},
-              [&cancelled] {
-                cancelled = true;
-              });
-        });
+        auto detect_cancel = MakePublisher(
+            [&subscription_cancelled](auto &&subscriber) {
+              return MakeSubscription(
+                  [](ElementCount) {},
+                  [&subscription_cancelled] {
+                    subscription_cancelled = true;
+                  });
+            });
 
         auto call = test_client.Invoke(
             &TestService::Stub::AsyncClientStreamRequestZero,
@@ -351,9 +353,14 @@ TEST_CASE("Client streaming RPC") {
         auto subscription = call.Subscribe(null_subscriber);
         subscription.Request(ElementCount::Unbounded());
         subscription.Cancel();
-        CHECK(cancelled);
+        CHECK(subscription_cancelled);
+
+        CHECK(cancelled == false);
 
         ShutdownAllowOutstandingCall(&server);
+
+        runloop.Shutdown();
+        runloop.Run();
       }
     }
   }
