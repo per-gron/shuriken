@@ -791,20 +791,19 @@ class RsGrpcServerCall<
             &stream_) {}
 
   void Init() {
-    // TODO(peck): I think this weak this capture in the lambda seems dangerous
     auto response = callback_(Publisher<RequestType>(MakePublisher(
-        [this](auto &&subscriber) {
-      if (subscriber_) {
+        [self = ToShared(this)](auto &&subscriber) {
+      if (self->subscriber_) {
         throw std::logic_error(
             "Can't subscribe to this Publisher more than once");
       }
-      subscriber_.reset(
+      self->subscriber_.reset(
           new Subscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
       // TODO(peck): Get rid of these lambdas
       return MakeSubscription(
-          [self = ToShared(this)](ElementCount count) {
+          [self](ElementCount count) {
             self->requested_ += count;
             self->MaybeReadNext();
           },
