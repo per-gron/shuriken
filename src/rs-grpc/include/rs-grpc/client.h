@@ -72,13 +72,6 @@ class RsGrpcClientCall<
       : request_(request),
         subscriber_(std::move(subscriber)) {}
 
-  void TagOperationDone(bool success) override {
-    if (!cancelled_) {
-      HandleUnaryResponse(
-          success, status_, std::move(response_), &subscriber_);
-    }
-  }
-
   template <typename Stub>
   auto Invoke(
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
@@ -109,6 +102,14 @@ class RsGrpcClientCall<
   void Cancel() {
     cancelled_ = true;
     context_.TryCancel();
+  }
+
+ protected:
+  void TagOperationDone(bool success) override {
+    if (!cancelled_) {
+      HandleUnaryResponse(
+          success, status_, std::move(response_), &subscriber_);
+    }
   }
 
  private:
@@ -143,43 +144,6 @@ class RsGrpcClientCall<
       Subscriber<ResponseType> &&subscriber)
       : request_(request),
         subscriber_(std::move(subscriber)) {}
-
-  void TagOperationDone(bool success) override {
-    switch (state_) {
-      case State::INIT: {
-        MaybeReadNext();
-        break;
-      }
-      case State::AWAITING_REQUEST: {
-        // This is an internal error: When awaiting request there should be no
-        // outstanding gRPC request.
-        throw std::logic_error("Should not get response when awaiting request");
-        break;
-      }
-      case State::READING_RESPONSE: {
-        if (!success) {
-          // We have reached the end of the stream.
-          state_ = State::FINISHING;
-          stream_->Finish(&status_, ToTag());
-        } else {
-          subscriber_.OnNext(std::move(response_));
-          MaybeReadNext();
-        }
-        break;
-      }
-      case State::FINISHING: {
-        if (status_.ok()) {
-          subscriber_.OnComplete();
-        } else {
-          subscriber_.OnError(std::make_exception_ptr(GrpcError(status_)));
-        }
-        break;
-      }
-      case State::READ_FAILURE: {
-        break;
-      }
-    }
-  }
 
   template <typename Stub>
   auto Invoke(
@@ -218,6 +182,44 @@ class RsGrpcClientCall<
   void Cancel() {
     cancelled_ = true;
     context_.TryCancel();
+  }
+
+ protected:
+  void TagOperationDone(bool success) override {
+    switch (state_) {
+      case State::INIT: {
+        MaybeReadNext();
+        break;
+      }
+      case State::AWAITING_REQUEST: {
+        // This is an internal error: When awaiting request there should be no
+        // outstanding gRPC request.
+        throw std::logic_error("Should not get response when awaiting request");
+        break;
+      }
+      case State::READING_RESPONSE: {
+        if (!success) {
+          // We have reached the end of the stream.
+          state_ = State::FINISHING;
+          stream_->Finish(&status_, ToTag());
+        } else {
+          subscriber_.OnNext(std::move(response_));
+          MaybeReadNext();
+        }
+        break;
+      }
+      case State::FINISHING: {
+        if (status_.ok()) {
+          subscriber_.OnComplete();
+        } else {
+          subscriber_.OnError(std::make_exception_ptr(GrpcError(status_)));
+        }
+        break;
+      }
+      case State::READ_FAILURE: {
+        break;
+      }
+    }
   }
 
  private:
@@ -290,30 +292,6 @@ class RsGrpcClientCall<
       : requests_(requests),
         subscriber_(std::move(subscriber)) {}
 
-  void TagOperationDone(bool success) override {
-    if (sent_final_request_) {
-      if (cancelled_) {
-        // Do nothing
-      } else if (request_stream_error_) {
-        subscriber_.OnError(std::move(request_stream_error_));
-      } else {
-        HandleUnaryResponse(
-            success, status_, std::move(response_), &subscriber_);
-      }
-    } else {
-      if (success) {
-        operation_in_progress_ = false;
-        RunEnqueuedOperation();
-      } else {
-        // This happens when the runloop is shutting down.
-        if (!cancelled_) {
-          HandleUnaryResponse(
-              success, status_, std::move(response_), &subscriber_);
-        }
-      }
-    }
-  }
-
   template <typename Stub>
   auto Invoke(
       std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
@@ -370,6 +348,31 @@ class RsGrpcClientCall<
   void OnComplete() {
     enqueued_writes_done_ = true;
     RunEnqueuedOperation();
+  }
+
+ protected:
+  void TagOperationDone(bool success) override {
+    if (sent_final_request_) {
+      if (cancelled_) {
+        // Do nothing
+      } else if (request_stream_error_) {
+        subscriber_.OnError(std::move(request_stream_error_));
+      } else {
+        HandleUnaryResponse(
+            success, status_, std::move(response_), &subscriber_);
+      }
+    } else {
+      if (success) {
+        operation_in_progress_ = false;
+        RunEnqueuedOperation();
+      } else {
+        // This happens when the runloop is shutting down.
+        if (!cancelled_) {
+          HandleUnaryResponse(
+              success, status_, std::move(response_), &subscriber_);
+        }
+      }
+    }
   }
 
  private:
@@ -528,27 +531,6 @@ class RsGrpcClientCall<
             std::move(subscriber)),
         requests_(requests) {}
 
-  void TagOperationDone(bool success) override {
-    if (sent_final_request_) {
-      writer_done_ = true;
-      TryShutdown();
-    } else {
-      if (success) {
-        operation_in_progress_ = false;
-        RunEnqueuedOperation();
-      } else {
-        // This happens when the runloop is shutting down.
-        writer_done_ = true;
-        cancelled_ = true;
-        TryShutdown();
-      }
-    }
-  }
-
-  void AlternateTagOperationDone(bool success) override {
-    reader_.TagOperationDone(success);
-  }
-
   template <typename Stub>
   auto Invoke(
       std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
@@ -610,6 +592,28 @@ class RsGrpcClientCall<
     cancelled_ = true;
     context_.TryCancel();
     subscription_.Cancel();
+  }
+
+ protected:
+  void TagOperationDone(bool success) override {
+    if (sent_final_request_) {
+      writer_done_ = true;
+      TryShutdown();
+    } else {
+      if (success) {
+        operation_in_progress_ = false;
+        RunEnqueuedOperation();
+      } else {
+        // This happens when the runloop is shutting down.
+        writer_done_ = true;
+        cancelled_ = true;
+        TryShutdown();
+      }
+    }
+  }
+
+  void AlternateTagOperationDone(bool success) override {
+    reader_.TagOperationDone(success);
   }
 
  private:

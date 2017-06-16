@@ -217,12 +217,6 @@ class RsGrpcTag {
   RsGrpcTag(const RsGrpcTag &) = delete;
   RsGrpcTag &operator=(const RsGrpcTag &) = delete;
 
-  // TODO(peck): Make this protected
-  virtual void TagOperationDone(bool success) = 0;
-
-  // TODO(peck): Make this protected
-  virtual void AlternateTagOperationDone(bool success);
-
   static void Invoke(void *got_tag, bool success);
 
   /**
@@ -252,6 +246,10 @@ class RsGrpcTag {
   static void ProcessAllEvents(grpc::CompletionQueue *cq);
 
  protected:
+  virtual void TagOperationDone(bool success) = 0;
+
+  virtual void AlternateTagOperationDone(bool success);
+
   void *ToTag() {
     Retain();
     CheckThisAlignment();

@@ -125,6 +125,28 @@ class RsGrpcServerCall<
         call->ToTag());
   }
 
+  void OnNext(ResponseType &&response) {
+    num_responses_++;
+    response_ = std::move(response);
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    stream_.FinishWithError(ExceptionToStatus(error), ToTag());
+  }
+
+  void OnComplete() {
+    if (num_responses_ == 1) {
+      stream_.Finish(response_, grpc::Status::OK, ToTag());
+    } else {
+      const auto *error_message =
+          num_responses_ == 0 ? "No response" : "Too many responses";
+      stream_.FinishWithError(
+          grpc::Status(grpc::StatusCode::INTERNAL, error_message),
+          ToTag());
+    }
+  }
+
+ protected:
   void TagOperationDone(bool success) {
     if (!success) {
       // This happens when the server is shutting down.
@@ -153,27 +175,6 @@ class RsGrpcServerCall<
       subscription.Request(ElementCount::Unbounded());
     } else {
       // The server has now successfully sent a response.
-    }
-  }
-
-  void OnNext(ResponseType &&response) {
-    num_responses_++;
-    response_ = std::move(response);
-  }
-
-  void OnError(std::exception_ptr &&error) {
-    stream_.FinishWithError(ExceptionToStatus(error), ToTag());
-  }
-
-  void OnComplete() {
-    if (num_responses_ == 1) {
-      stream_.Finish(response_, grpc::Status::OK, ToTag());
-    } else {
-      const auto *error_message =
-          num_responses_ == 0 ? "No response" : "Too many responses";
-      stream_.FinishWithError(
-          grpc::Status(grpc::StatusCode::INTERNAL, error_message),
-          ToTag());
     }
   }
 
@@ -248,6 +249,30 @@ class RsGrpcServerCall<
         call->ToTag());
   }
 
+  void OnNext(ResponseType &&response) {
+    if (next_response_) {
+      next_response_.reset();
+      OnError(std::make_exception_ptr(
+          std::logic_error("Backpressure violation")));
+    } else {
+      next_response_ = std::make_unique<ResponseType>(std::move(response));
+      RunEnqueuedOperation();
+    }
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    enqueued_finish_status_ = ExceptionToStatus(error);
+    enqueued_finish_ = true;
+    RunEnqueuedOperation();
+  }
+
+  void OnComplete() {
+    enqueued_finish_status_ = grpc::Status::OK;
+    enqueued_finish_ = true;
+    RunEnqueuedOperation();
+  }
+
+ protected:
   void TagOperationDone(bool success) {
     if (!success) {
       // This happens when the server is shutting down.
@@ -287,29 +312,6 @@ class RsGrpcServerCall<
         break;
       }
     }
-  }
-
-  void OnNext(ResponseType &&response) {
-    if (next_response_) {
-      next_response_.reset();
-      OnError(std::make_exception_ptr(
-          std::logic_error("Backpressure violation")));
-    } else {
-      next_response_ = std::make_unique<ResponseType>(std::move(response));
-      RunEnqueuedOperation();
-    }
-  }
-
-  void OnError(std::exception_ptr &&error) {
-    enqueued_finish_status_ = ExceptionToStatus(error);
-    enqueued_finish_ = true;
-    RunEnqueuedOperation();
-  }
-
-  void OnComplete() {
-    enqueued_finish_status_ = grpc::Status::OK;
-    enqueued_finish_ = true;
-    RunEnqueuedOperation();
   }
 
  private:
@@ -411,6 +413,32 @@ class RsGrpcServerCall<
         call->ToTag());
   }
 
+  void OnNext(ResponseType &&response) {
+    response_ = std::move(response);
+    num_responses_++;
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    response_error_ = error;
+    finished_ = true;
+    TrySendResponse();
+  }
+
+  void OnComplete() {
+    finished_ = true;
+    TrySendResponse();
+  }
+
+  void Request(ElementCount count) {
+    requested_ += count;
+    MaybeReadNext();
+  }
+
+  void Cancel() {
+    // TODO(peck): Handle cancellation
+  }
+
+ protected:
   void TagOperationDone(bool success) {
     switch (state_) {
       case State::INIT: {
@@ -452,31 +480,6 @@ class RsGrpcServerCall<
         break;
       }
     }
-  }
-
-  void OnNext(ResponseType &&response) {
-    response_ = std::move(response);
-    num_responses_++;
-  }
-
-  void OnError(std::exception_ptr &&error) {
-    response_error_ = error;
-    finished_ = true;
-    TrySendResponse();
-  }
-
-  void OnComplete() {
-    finished_ = true;
-    TrySendResponse();
-  }
-
-  void Request(ElementCount count) {
-    requested_ += count;
-    MaybeReadNext();
-  }
-
-  void Cancel() {
-    // TODO(peck): Handle cancellation
   }
 
  private:
@@ -713,6 +716,28 @@ class RsGrpcServerCall<
         call->ToTag());
   }
 
+  void OnNext(ResponseType &&response) {
+    writer_.OnNext(std::move(response));
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    writer_.OnError(std::move(error));
+  }
+
+  void OnComplete() {
+    writer_.OnComplete();
+  }
+
+  void Request(ElementCount count) {
+    requested_ += count;
+    MaybeReadNext();
+  }
+
+  void Cancel() {
+    // TODO(peck): Handle cancellation
+  }
+
+ protected:
   void TagOperationDone(bool success) {
     switch (state_) {
       case State::INIT: {
@@ -752,27 +777,6 @@ class RsGrpcServerCall<
 
   void AlternateTagOperationDone(bool success) {
     writer_.TagOperationDone(success);
-  }
-
-  void OnNext(ResponseType &&response) {
-    writer_.OnNext(std::move(response));
-  }
-
-  void OnError(std::exception_ptr &&error) {
-    writer_.OnError(std::move(error));
-  }
-
-  void OnComplete() {
-    writer_.OnComplete();
-  }
-
-  void Request(ElementCount count) {
-    requested_ += count;
-    MaybeReadNext();
-  }
-
-  void Cancel() {
-    // TODO(peck): Handle cancellation
   }
 
  private:

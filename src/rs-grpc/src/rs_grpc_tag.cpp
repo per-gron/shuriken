@@ -93,11 +93,6 @@ void RsGrpcTag::Refcount::Data::Release() {
   }
 }
 
-void RsGrpcTag::AlternateTagOperationDone(bool success) {
-  throw std::logic_error("Unimplemented");
-}
-
-
 void RsGrpcTag::Invoke(void *got_tag, bool success) {
   uintptr_t tag_int = reinterpret_cast<uintptr_t>(got_tag);
   bool alternate = tag_int & 1;
@@ -125,6 +120,10 @@ bool RsGrpcTag::ProcessOneEvent(grpc::CompletionQueue *cq) {
 
 void RsGrpcTag::ProcessAllEvents(grpc::CompletionQueue *cq) {
   while (ProcessOneEvent(cq)) {}
+}
+
+void RsGrpcTag::AlternateTagOperationDone(bool success) {
+  throw std::logic_error("Unimplemented");
 }
 
 }  // namespace detail
