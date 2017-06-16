@@ -6,9 +6,10 @@ add_library(rs-grpc
   include/rs-grpc/grpc_error.h
   include/rs-grpc/server.h
   src/rs_grpc_tag.cpp)
-target_include_directories(rs PUBLIC include)
+add_sanitizers(rs-grpc)
+target_include_directories(rs-grpc PUBLIC include)
 target_link_libraries(rs-grpc rs flatbuffers grpc++)
-set_target_properties(rs-grpc PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
+set_property(TARGET rs-grpc APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_property(TARGET rs-grpc PROPERTY CXX_STANDARD 14)
 
 add_custom_command(
@@ -33,9 +34,10 @@ add_executable(rs-grpc-test
   ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.fb.cc
   ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.fb.h
   ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest_generated.h)
+add_sanitizers(rs-grpc-test)
 set_property(TARGET rs-grpc-test PROPERTY CXX_STANDARD 14)
 target_link_libraries(rs-grpc-test rs-grpc catch)
 target_include_directories(rs-grpc-test PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/test/include src)
-set_target_properties(rs-grpc-test PROPERTIES COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
+set_property(TARGET rs-grpc-test APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_test(NAME rs-grpc-unit COMMAND rs-grpc-test)

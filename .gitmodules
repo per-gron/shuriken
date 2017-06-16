@@ -19,3 +19,6 @@
 [submodule "vendor/rxcpp"]
 	path = vendor/rxcpp
 	url = https://github.com/Reactive-Extensions/RxCpp.git
+[submodule "vendor/sanitizers-cmake"]
+	path = vendor/sanitizers-cmake
+	url = https://github.com/arsenm/sanitizers-cmake.git
