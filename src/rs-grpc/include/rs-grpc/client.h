@@ -403,10 +403,12 @@ class RsGrpcClientCall<
   bool cancelled_ = false;
   Publisher<RequestType> requests_;
   ResponseType response_;
+  grpc::ClientContext context_;
+  // stream_ has to be after context_ and response_ because it must be destroyed
+  // after them since it has unsafe weak references to them.
   std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> stream_;
   std::function<
       std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> ()> invoke_;
-  grpc::ClientContext context_;
   Subscriber<ResponseType> subscriber_;
   Subscription subscription_;
 
@@ -664,9 +666,11 @@ class RsGrpcClientCall<
 
   Publisher<RequestType> requests_;
   ResponseType response_;
+  grpc::ClientContext context_;
+  // stream_ has to be after context_ because it must be destroyed after it
+  // since it has unsafe weak references to them.
   std::unique_ptr<
       grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> stream_;
-  grpc::ClientContext context_;
   Subscription subscription_;
 
   bool sent_final_request_ = false;
