@@ -19,35 +19,17 @@ namespace detail {
 
 RsGrpcTag::Refcount::Refcount() : data_(nullptr), local_data_(1L) {}
 
-RsGrpcTag::Refcount::Refcount(const Refcount &other)
-    : data_(other.data_),
-      local_data_(other.local_data_) {
-  if (data_) {
-    data_->Retain();
-  } else {
-    // Copying a Refcount that did not have a heap-allocated data_ means
-    // that we have to allocate.
-    data_ = new Data;
-    data_->Retain();
-    data_->data = local_data_;
-    other.data_ = data_;
-  }
+RsGrpcTag::Refcount::Refcount(const Refcount &other) {
+  other.EnsureDataAllocated();
+  data_ = other.data_;
+  data_->Retain();
 }
 
 RsGrpcTag::Refcount &RsGrpcTag::Refcount::operator=(const Refcount &other) {
   this->~Refcount();
+  other.EnsureDataAllocated();
   data_ = other.data_;
-  local_data_ = other.local_data_;
-  if (data_) {
-    data_->Retain();
-  } else {
-    // Copying a Refcount that did not have a heap-allocated data_ means
-    // that we have to allocate.
-    data_ = new Data;
-    data_->Retain();
-    data_->data = local_data_;
-    other.data_ = data_;
-  }
+  data_->Retain();
   return *this;
 }
 
@@ -90,6 +72,13 @@ void RsGrpcTag::Refcount::Data::Retain() {
 void RsGrpcTag::Refcount::Data::Release() {
   if (internal_refcount_-- == 1L) {
     delete this;
+  }
+}
+
+void RsGrpcTag::Refcount::EnsureDataAllocated() const {
+  if (!data_) {
+    data_ = new Data;
+    data_->data = local_data_;
   }
 }
 

@@ -73,6 +73,8 @@ class RsGrpcTag {
       long internal_refcount_ = 1L;
     };
 
+    void EnsureDataAllocated() const;
+
     // If data_ is non-null, data_->data is the refcount
     mutable Data *data_;
     // If data_ is null, then local_data_ is the refcount
