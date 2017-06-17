@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package shk;
+
+service TestService {
+  rpc Double (TestRequest) returns (TestResponse) {}
+}
+
+message TestRequest {
+  int32 data = 1;
+}
+
+message TestResponse {
+  int32 data = 1;
+}
