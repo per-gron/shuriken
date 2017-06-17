@@ -27,6 +27,19 @@ class RsGrpcTagWeakPtrSubscriber : public SubscriberBase {
       const RsGrpcTag::WeakPtr<SubscriberType> &subscriber)
       : subscriber_(subscriber) {}
 
+  // This class is intentionally not copyable because it is (at least
+  // indirectly) given to the user of the API, who may assume that it is safe
+  // to copy it on any thread. But it's not, because RsGrpcTag's smart pointer
+  // implementation is not thread safe. Allowing only moving enforces that the
+  // refcount is not manipulated by the user except on destruction.
+  RsGrpcTagWeakPtrSubscriber(const RsGrpcTagWeakPtrSubscriber &) = delete;
+  RsGrpcTagWeakPtrSubscriber &operator=(
+      const RsGrpcTagWeakPtrSubscriber &) = delete;
+
+  RsGrpcTagWeakPtrSubscriber(RsGrpcTagWeakPtrSubscriber &&) = default;
+  RsGrpcTagWeakPtrSubscriber &operator=(
+      RsGrpcTagWeakPtrSubscriber &&) = default;
+
   template <typename T, class = IsRvalue<T>>
   void OnNext(T &&t) {
     if (auto sub = subscriber_.Lock()) {
@@ -56,6 +69,17 @@ class RsGrpcTagPtrSubscriber : public SubscriberBase {
   explicit RsGrpcTagPtrSubscriber(
       const RsGrpcTag::Ptr<SubscriberType> &subscriber)
       : subscriber_(subscriber) {}
+
+  // This class is intentionally not copyable because it is (at least
+  // indirectly) given to the user of the API, who may assume that it is safe
+  // to copy it on any thread. But it's not, because RsGrpcTag's smart pointer
+  // implementation is not thread safe. Allowing only moving enforces that the
+  // refcount is not manipulated by the user except on destruction.
+  RsGrpcTagPtrSubscriber(const RsGrpcTagPtrSubscriber &) = delete;
+  RsGrpcTagPtrSubscriber &operator=(const RsGrpcTagPtrSubscriber &) = delete;
+
+  RsGrpcTagPtrSubscriber(RsGrpcTagPtrSubscriber &&) = default;
+  RsGrpcTagPtrSubscriber &operator=(RsGrpcTagPtrSubscriber &&) = default;
 
   template <typename T, class = IsRvalue<T>>
   void OnNext(T &&t) {

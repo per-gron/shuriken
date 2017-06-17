@@ -69,11 +69,9 @@ auto UnaryHangHandler(Flatbuffer<TestRequest> request) {
 }  // anonymous namespace
 
 TEST_CASE("Unary RPC") {
-  // TODO(peck): Add support for cancellation
+  // TODO(peck): Add support for server-side cancellation
   // TODO(peck): Add support for timeouts
-  // TODO(peck): Test
-  //  * finishing bidi and unidirectional streams in different orders
-  //  * what happens if writesdone is not called? Does the server stall then?
+  // TODO(peck): Test finishing bidi and unidirectional streams in different orders
 
   auto server_address = "unix:rs_grpc_test.socket";
 
