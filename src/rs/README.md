@@ -1,6 +1,6 @@
 # `rs`
 
-*rs* is a minimalist unofficial Reactive Streams library that offers types for reactive streams along functions that operate on them.
+*rs* is a minimalist unofficial [Reactive Streams](http://www.reactive-streams.org/) library that offers types for reactive streams along with functions that operate on them.
 
 * It is written in C++14.
 * Like all Reactive Streams based libraries, it offers mandatory non-blocking back-pressure support (at the time of writing, [RxCpp](https://github.com/Reactive-Extensions/RxCpp) does not do this).
@@ -11,9 +11,9 @@
 
 ## Introduction
 
-rs tries not to be an innovative library. It steals most of its ideas and names from Reactive Streams and ReactiveX. It is conceptually very similar to other ReactiveX libraries, for example RxJava. A lot of information about RxJava applies directly to rs. If you are unsure about what the underlying idea of the rs library is, it might help to read tutorials or watch presentations on Reactive Streams and ReactiveX.
+rs tries not to be an innovative library. It steals most of its ideas and names from Reactive Streams and [ReactiveX](http://reactivex.io/). It is conceptually very similar to other ReactiveX libraries, for example [RxJava](https://github.com/ReactiveX/RxJava). A lot of information about RxJava applies directly to rs. If you are unsure about what the underlying idea of the rs library is, it might help to read tutorials or watch presentations on Reactive Streams and ReactiveX.
 
-The main entity that rs library offers is a *Publisher*. Similar to a future or a promise, a Publisher represents an asynchronous computation. An idiomatic use of the rs libray is to make procedures that perform asynchronous operations return a Publisher, for example:
+The main entity that the rs library offers is a *Publisher*. Similar to a future or a promise, a Publisher represents an asynchronous computation. An idiomatic use of the rs libray is to make procedures that perform asynchronous operations return a Publisher, for example:
 
 ```cpp
 Publisher<User> LookupUserById(const std::string &user_id);
@@ -30,7 +30,7 @@ People who are familiar with futures or promises will recognize this pattern. In
 The rs library offers helper functions to create Publisher objects. Here are some of them:
 
 * `Empty()` returns a Publisher that emits no values when subscribed to.
-* `Just(args...)` returns a Publisher that emits just the value 1. `Just()` is equivalent to `Empty()` and `Just(1, 2)` emits 1 and 2.
+* `Just(args...)` returns a Publisher that emits just the given values. `Just()` is equivalent to `Empty()` and `Just(1, 2)` emits 1 and 2.
 * `From(container)` returns a Publisher that emits all the values in the provided STL-style container, for example an `std::vector`.
 * `Range(start, count)` returns a Publisher that counts upwards from `start`. For example, `Range(2, 3)` emits 2, 3 and 4.
 
@@ -108,13 +108,13 @@ auto sum = Pipe(
 
 ### Subscribing to Publishers
 
-Once you have created a Publisher and applied the necessary operations on it, you will most likely want to get the values of the stream.
+Once you have created a Publisher and applied the necessary operations on it, you will most likely want to access the values of the stream.
 
 Most applications do not directly subscribe to Publishers. Instead, they let some library or framework do that for them. In rs-grpc, for example, RPC handler functions return a Publisher, which the rs-grpc library subscribes to.
 
 It is also possible to subscribe directly to Publishers. Here is an example of doing that:
 
-```
+```cpp
 auto subscription = int_publisher.Subscribe(MakeSubscriber(
     [](int value) {
       printf("Got value: %d\n", value);
@@ -128,6 +128,10 @@ auto subscription = int_publisher.Subscribe(MakeSubscriber(
 // It is possible to request only some elements from the stream at a time. This
 // can be useful if there is a risk that the publisher could produce data
 // faster than the subscriber can handle it.
+//
+// No elements are provided to the Subscriber until they are requested. Here,
+// an unbounded number of elements are requested, which effectively gives the
+// Publisher a green light to push elements as quickly as it can.
 subscription.Request(ElementCount::Unbounded());
 ```
 
