@@ -1,12 +1,135 @@
 # `rs`
 
-`rs` is a minimalist unofficial Reactive Streams library that offers types for reactive streams along functions that operate on them.
+*rs* is a minimalist unofficial Reactive Streams library that offers types for reactive streams along functions that operate on them.
 
 * It is written in C++14.
 * Like all Reactive Streams based libraries, it offers mandatory non-blocking back-pressure support (at the time of writing, [RxCpp](https://github.com/Reactive-Extensions/RxCpp) does not do this).
 * It has a trivial threading model: Nothing in this library is thread safe.
 * It attempts to be small, to avoid excessive compile times.
 * It does not (yet?) have the concept of a Scheduler, or time, like Rx libraries do.
+
+
+## Introduction
+
+rs tries not to be an innovative library. It steals most of its ideas and names from Reactive Streams and ReactiveX. It is conceptually very similar to other ReactiveX libraries, for example RxJava. A lot of information about RxJava applies directly to rs. If you are unsure about what the underlying idea of the rs library is, it might help to read tutorials or watch presentations on Reactive Streams and ReactiveX.
+
+The main entity that rs library offers is a *Publisher*. Similar to a future or a promise, a Publisher represents an asynchronous computation. An idiomatic use of the rs libray is to make procedures that perform asynchronous operations return a Publisher, for example:
+
+```cpp
+Publisher<User> LookupUserById(const std::string &user_id);
+Publisher<std::string> UsernameToUserId(const std::string &username);
+```
+
+People who are familiar with futures or promises will recognize this pattern. In many ways a Publisher is used just like a future object.
+
+`LookupUserById` and `UsernameToUserId` above are asynchronous procedures that return immediately. The returned Publisher objects can be used to subscribe to and transform the results.
+
+
+### Creating Publishers
+
+The rs library offers helper functions to create Publisher objects. Here are some of them:
+
+* `Empty()` returns a Publisher that emits no values when subscribed to.
+* `Just(args...)` returns a Publisher that emits just the value 1. `Just()` is equivalent to `Empty()` and `Just(1, 2)` emits 1 and 2.
+* `From(container)` returns a Publisher that emits all the values in the provided STL-style container, for example an `std::vector`.
+* `Range(start, count)` returns a Publisher that counts upwards from `start`. For example, `Range(2, 3)` emits 2, 3 and 4.
+
+These are often handy but none of them are asynchronous sources. This is because rs in itself does not do anything asynchronous. In practice, rs will often be used together with a library that offers asynchronous Publisher sources. For example, the *rs-grpc* library provides Publishers that asynchronously emit the responses of gRPC calls.
+
+It is also possible but not very common in application code to create custom Publishers from scratch. The rs specification provides detailed information about the exact requirements of custom Publisher types.
+
+
+### Manipulating Publishers
+
+rs has a rich library of operators on Publisher objects. For example, the `Map` operator modifies each element in a stream, much like the functional programming map function works for lists:
+
+```cpp
+// reverse_username is a functor that takes a Publisher of User objects and
+// returns a Publisher of User objects.
+auto reverse_username = Map([](User &&user) {
+  auto username = user.username();
+  std::reverse(username.begin(), username.end());
+  user.set_username(username);
+  return user;
+});
+
+Publisher<User> user = LookupUserById("123");
+
+// user_with_reversed_username is a Publisher that emits User
+auto user_with_reversed_username = reverse_username(user);
+```
+
+Because it is very common to plumb several Publisher operators together, rs offers a `Pipe` operator:
+
+```cpp
+// This does the same as the code above
+auto user_with_reversed_username = Pipe(
+    LookupUserById("123"),
+    Map([](User &&user) {
+      auto username = user.username();
+      std::reverse(username.begin(), username.end());
+      user.set_username(username);
+      return user;
+    }));
+```
+
+`Pipe(a, b, c)` is basically the same as writing `c(b(a))`.
+
+Another useful operator is `FlatMap`, which is similar to `Map` but it allows the mapper function to return a Publisher. It is useful for chaining asynchronous operations:
+
+```cpp
+auto user = Pipe(
+    UsernameToUserId("john_doe"),
+    FlatMap([](const std::string &user_id) {
+      return LookupUserById(user_id);
+    }));
+```
+
+Or, more concisely:
+
+```cpp
+auto user = Pipe(
+    UsernameToUserId("john_doe"),
+    FlatMap(&LookupUserById));
+```
+
+One of the best features of the rs library is that operators compose very well:
+
+```cpp
+// sum is a publisher that emits one value: The sum of squares of all even
+// numbers between 1 and 100.
+auto sum = Pipe(
+    Range(1, 100),
+    Filter([](int x) { return (x % 2) == 0; }),
+    Map([](int x) { return x * x; }),
+    Sum());
+```
+
+
+### Subscribing to Publishers
+
+Once you have created a Publisher and applied the necessary operations on it, you will most likely want to get the values of the stream.
+
+Most applications do not directly subscribe to Publishers. Instead, they let some library or framework do that for them. In rs-grpc, for example, RPC handler functions return a Publisher, which the rs-grpc library subscribes to.
+
+It is also possible to subscribe directly to Publishers. Here is an example of doing that:
+
+```
+auto subscription = int_publisher.Subscribe(MakeSubscriber(
+    [](int value) {
+      printf("Got value: %d\n", value);
+    },
+    [](std::exception_ptr &&error) {
+      printf("Something went wrong\n");
+    },
+    [] {
+      printf("The stream completed successfully\n");
+    }));
+// It is possible to request only some elements from the stream at a time. This
+// can be useful if there is a risk that the publisher could produce data
+// faster than the subscriber can handle it.
+subscription.Request(ElementCount::Unbounded());
+```
 
 
 ## Threading model
@@ -36,7 +159,7 @@ The API consists of the following components:
 2. Subscriber
 3. Subscription
 
-In the `rs` library, these are not concrete types; rather, they are concepts: Any type can be a Publisher, a Subscriber or a Subscription as long as they fulfill all the requirements of that concept.
+In the rs library, these are not concrete types; rather, they are concepts: Any type can be a Publisher, a Subscriber or a Subscription as long as they fulfill all the requirements of that concept.
 
 There are type predicates for each concept:
 
