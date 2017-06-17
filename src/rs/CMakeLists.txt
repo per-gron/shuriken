@@ -1,6 +1,7 @@
 add_library(rs
   include/rs/all.h
   include/rs/average.h
+  include/rs/catch.h
   include/rs/concat.h
   include/rs/count.h
   include/rs/default_if_empty.h
@@ -50,6 +51,7 @@ add_executable(rs-test
   test/all_test.cpp
   test/average_test.cpp
   test/backpressure_violator.h
+  test/catch_test.cpp
   test/concat_test.cpp
   test/count_test.cpp
   test/default_if_empty_test.cpp

@@ -67,8 +67,6 @@ class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
   FlatMapSubscriber(
       InnerSubscriberType &&inner_subscriber, const Mapper &mapper)
       : inner_subscriber_(std::move(inner_subscriber)),
-        publishers_subscription_(MakeSubscription()),
-        values_subscription_(MakeSubscription()),
         mapper_(mapper) {}
 
   template <typename Publisher>
