@@ -96,7 +96,7 @@ auto user = Pipe(
 One of the best features of the rs library is that operators compose very well:
 
 ```cpp
-// sum is a publisher that emits one value: The sum of squares of all even
+// sum is a Publisher that emits one value: The sum of squares of all even
 // numbers between 1 and 100.
 auto sum = Pipe(
     Range(1, 100),
@@ -134,6 +134,65 @@ auto subscription = int_publisher.Subscribe(MakeSubscriber(
 // Publisher a green light to push elements as quickly as it can.
 subscription.Request(ElementCount::Unbounded());
 ```
+
+
+### The (absence of a) `Publisher` type
+
+In the Java version of Reactive Streams [`Publisher`](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Publisher.java), [`Subscriber`](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Subscriber.java) and [`Subscription`](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Subscription.java) are Java interfaces. Looking at those interfaces, one might expect to find pure virtual `Publisher`, `Subscriber` and `Subscription` classes in rs, but there are no such classes.
+
+Instead, in rs, Publisher, Subscriber and Subscription are *concepts*, much like iterators in C++. An rs Publisher is any C++ type that fulfills the requirements of the Publisher concept.
+
+This can be a bit counterintuitive at first. For example, the return type of `Just(1)` is not `Publisher<int>`; it is a type that doesn't even have a name (because the type contains the type of a lambda expression). The public API of rs does not give a name for the type of `Just(1)`, it only promises that it conforms to the Publisher concept.
+
+This design allows rs to be very efficient when chaining operators together: The compiler can see and inline chains of operators as it sees fit, since there aren't virtual method calls that hide things.
+
+
+### Eraser types
+
+Although the concept-based (as opposed to pure virtual class-based) design of rs can offer great performance, it can sometimes force code to expose more type information to its callers than desired. As an example, let's look at a function `EvenSquares(int n)` that that computes the sum of squares of even numbers between 1 and `n`:
+
+```cpp
+auto EvenSquares(int n) {
+  return Pipe(
+      Range(1, n),
+      Filter([](int x) { return (x % 2) == 0; }),
+      Map([](int x) { return x * x; }),
+      Sum());
+}
+```
+
+In this code, the return type of `EvenSquares` doesn't have a name. In fact, the easiest way to give a name to it would probably be to write `decltype(... the function body goes here ...))`. If this was to be exposed as a library function the implementation would have to be in the header file, which is not nice.
+
+To solve this type of problem, rs offers *eraser types* for the Publisher, Subscriber and Subscription concepts:
+
+```cpp
+Publisher<int> EvenSquares(int n) {
+  return Publisher<int>(Pipe(
+      Range(1, n),
+      Filter([](int x) { return (x % 2) == 0; }),
+      Map([](int x) { return x * x; }),
+      Sum()));
+}
+```
+
+Unlike the first version of `EvenSquares`, this one can easily live in a `.cpp` implementation file.
+
+`Publisher<int>` is a class that can be constructed with any Publisher and behaves just like the one it was created with. The only difference is that it "hides" the type of the underlying Publisher (using virtual method calls).
+
+In addition to `Publisher`, there are also type erasers for Subscribers and Subscriptions.
+
+It is possible to construct Publishers that can emit more than one type (and correspondingly Subscribers that can receive more than one type). They can also be type erased, for example with `Publisher<int, std::string>`. Publishers that never emit a value and only ever complete or fail can be type erased with `Publisher<>`.
+
+
+### Concept predicates
+
+There are type predicates that can be used to check if a type claims to conform to a specific concept:
+
+* `IsPublisher<T>` is a `constexpr bool` that is true if `T` is a Publisher.
+* `IsSubscriber<T>` is a `constexpr bool` that is true if `T` is a Subscriber.
+* `IsSubscription<T>` is a `constexpr bool` that is true if `T` is a Subscription.
+
+
 
 
 ## Threading model
