@@ -16,7 +16,7 @@
 
 ## Introduction
 
-rs tries not to be an innovative library. It steals most of its ideas and names from Reactive Streams and [ReactiveX](http://reactivex.io/). It is conceptually very similar to other ReactiveX libraries, for example [RxJava](https://github.com/ReactiveX/RxJava). A lot of information about RxJava applies directly to rs. If you are unsure about what the underlying idea of the rs library is, it might help to read tutorials or watch presentations on Reactive Streams and ReactiveX.
+rs tries not to be an innovative library. It steals most of its ideas and names from Reactive Streams and [ReactiveX](http://reactivex.io/). It is conceptually very similar to ReactiveX libraries, for example [RxJava](https://github.com/ReactiveX/RxJava). A lot of information about RxJava applies directly to rs. If you are unsure about what the underlying idea of the rs library is, it might help to read tutorials or watch presentations on Reactive Streams and ReactiveX.
 
 The main entity that the rs library offers is a *Publisher*. Similar to a future or a promise, a Publisher represents an asynchronous computation. An idiomatic use of the rs libray is to make procedures that perform asynchronous operations return a Publisher, for example:
 
@@ -41,12 +41,12 @@ The rs library offers helper functions to create Publisher objects. Here are som
 
 These are often handy but none of them are asynchronous sources. This is because rs in itself does not do anything asynchronous. In practice, rs will often be used together with a library that offers asynchronous Publisher sources. For example, the *rs-grpc* library provides Publishers that asynchronously emit the responses of gRPC calls.
 
-It is also possible but not very common in application code to create custom Publishers from scratch. The [rs specification](doc/specification.md) provides detailed information about the exact requirements of custom Publisher types.
+It is also possible but not very common in application code to create custom Publishers from scratch. The [rs specification](doc/specification.md#1-publisher-code) provides detailed information about the exact requirements of custom Publisher types.
 
 
 ### Manipulating Publishers
 
-rs has a rich library of operators on Publisher objects. For example, the `Map` operator modifies each element in a stream, much like the functional programming map function works for lists:
+rs has a rich library of operators on Publisher objects (functions that take a Publisher and return a Publisher that behaves differently in some way). For example, the `Map` function takes a mapper function and returns an operator that modifies each element in a stream, much like the functional programming map function works for lists:
 
 ```cpp
 // reverse_username is a functor that takes a Publisher of User objects and
@@ -64,7 +64,7 @@ Publisher<User> user = LookupUserById("123");
 auto user_with_reversed_username = reverse_username(user);
 ```
 
-Because it is very common to plumb several Publisher operators together, rs offers a `Pipe` operator:
+Because it is very common to plumb several Publisher operators together, rs has a `Pipe` helper function:
 
 ```cpp
 // This does the same as the code above
@@ -145,7 +145,7 @@ subscription.Request(ElementCount::Unbounded());
 
 In the Java version of Reactive Streams [`Publisher`](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Publisher.java), [`Subscriber`](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Subscriber.java) and [`Subscription`](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Subscription.java) are Java interfaces. Looking at those interfaces, one might expect to find pure virtual `Publisher`, `Subscriber` and `Subscription` classes in rs, but there are no such classes.
 
-Instead, in rs, Publisher, Subscriber and Subscription are *concepts*, much like iterators in C++. An rs Publisher is any C++ type that fulfills the requirements of the Publisher concept.
+Instead, in rs, Publisher, Subscriber and Subscription are *concepts*, much like iterators in C++. An rs Publisher is any C++ type that fulfills [the requirements of the Publisher concept](doc/specification.md#1-publisher-code).
 
 This can be a bit counterintuitive at first. For example, the return type of `Just(1)` is not `Publisher<int>`; it is a type that doesn't even have a name (because the type contains the type of a lambda expression). The public API of rs does not give a name for the type of `Just(1)`, it only promises that it conforms to the Publisher concept.
 
@@ -154,7 +154,7 @@ This design allows rs to be very efficient when chaining operators: The compiler
 
 ### Eraser types
 
-Although the concept-based (as opposed to pure virtual class-based) design of rs can offer great performance, it can sometimes force code to expose more type information to its callers than desired. As an example, let's look at a function `EvenSquares(int n)` that that computes the sum of squares of even numbers between 1 and `n`:
+Although the concept-based (as opposed to pure virtual class-based) design of rs can offer great performance and flexibility, it can sometimes force code to expose more type information to its callers than desired. As an example, let's look at a function `EvenSquares(int n)` that that computes the sum of squares of even numbers between 1 and `n`:
 
 ```cpp
 auto EvenSquares(int n) {
@@ -182,7 +182,7 @@ Publisher<int> EvenSquares(int n) {
 
 Unlike the first version of `EvenSquares`, this one can easily live in a `.cpp` implementation file.
 
-`Publisher<int>` is a class that can be constructed with any Publisher and behaves just like the one it was created with. The only difference is that it "hides" the type of the underlying Publisher (using virtual method calls).
+`Publisher<int>` is a class that can be constructed with any Publisher of `int`s and behaves just like the one it was created with. The only difference is that it "hides" the type of the underlying Publisher (using virtual method calls).
 
 In addition to `Publisher`, there are also type erasers for Subscribers and Subscriptions.
 

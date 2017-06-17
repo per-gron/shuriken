@@ -51,7 +51,7 @@ The specifications below use binding words in capital letters from https://www.i
 | <a name="term_nop">NOP</a> | Execution that has no detectable effect to the calling thread, and can as such safely be called any number of times. |
 
 
-### 1. Publisher ([Code](include/rs/publisher.h))
+### 1. Publisher ([Code](../include/rs/publisher.h))
 
 A *Publisher* is a provider of a potentially unbounded number of sequenced elements, publishing them according to the demand received from its Subscriber(s). Having a Publisher does not in itself mean that any data is being streamed; many Publishers wait with doing anything until the `Subscribe` method is invoked.
 
@@ -94,7 +94,7 @@ This means that the subscriber will receive a possibly unbounded number of `OnNe
 
 
 
-### 2. Subscriber ([Code](include/rs/subscriber.h))
+### 2. Subscriber ([Code](../include/rs/subscriber.h))
 
 A *Subscriber* is a receiver of a potentially unbounded number of sequenced elements. In order to get to the elements of a Publisher, it needs to be given a Subscriber, which it will then notify of its elements.
 
@@ -130,7 +130,7 @@ A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable a
 | [:bulb:](#2.11 "2.11 explained") | *The intent of this rule is to establish the semantics for the methods of Subscriber and what the Publisher is allowed to do in which case this rule is violated. «Raise this error condition in a fashion that is adequate for the runtime environment» could mean logging the error—or otherwise make someone or something aware of the situation—as the error cannot be signalled to the faulty Subscriber.* |
 
 
-### 3. Subscription ([Code](include/rs/subscription.h))
+### 3. Subscription ([Code](../include/rs/subscription.h))
 
 A *Subscription* is a handle that is provided by the Publisher when a subscription is made against it. Calling `Request` signals to the publisher that the Subscriber is ready to receive data. Calling `Cancel` will make the Publisher eventually stop emitting elements to the Subscriber.
 
