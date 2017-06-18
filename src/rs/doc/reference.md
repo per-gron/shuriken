@@ -5,8 +5,6 @@ This document has API documentation for the rs Reactive Streams library.
 Description
 Type
 See also
-RxMarbles
-Header
 
 ### Kinds
 
@@ -22,12 +20,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [RxMarbles](http://rxmarbles.com/#every), [ReactiveX](http://reactivex.io/documentation/operators/all.html)
+
 
 ## `Average()`
 
 **Defined in:** [`rs/average.h`](../include/rs/average.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#average), [ReactiveX](http://reactivex.io/documentation/operators/average.html)
 
 
 ## `BuildPipe(Operator...)`
@@ -43,12 +45,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/catch.html)
+
 
 ## `Concat(Publisher...)`
 
 **Defined in:** [`rs/concat.h`](../include/rs/concat.h)
 
 **Kind:** [Operator](#kind_operator)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#concat), [ReactiveX](http://reactivex.io/documentation/operators/concat.html)
 
 
 ## `Count(Publisher...)`
@@ -57,6 +63,8 @@ Header
 
 **Kind:** [Operator](#kind_operator)
 
+**External documentation:** [RxMarbles](http://rxmarbles.com/#count), [ReactiveX](http://reactivex.io/documentation/operators/count.html)
+
 
 ## `DefaultIfEmpty(Value...)`
 
@@ -64,12 +72,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/defaultifempty.html)
+
 
 ## `ElementAt(size_t)`
 
 **Defined in:** [`rs/element_at.h`](../include/rs/element_at.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#elementAt), [ReactiveX](http://reactivex.io/documentation/operators/elementat.html)
 
 
 ## `ElementCount`
@@ -85,12 +97,16 @@ Header
 
 **Kind:** [Operator](#kind_operator)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/empty-never-throw.html)
+
 
 ## `Filter(Predicate)`
 
 **Defined in:** [`rs/filter.h`](../include/rs/filter.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#filter), [ReactiveX](http://reactivex.io/documentation/operators/filter.html)
 
 
 ## `First()`
@@ -99,12 +115,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [RxMarbles](http://rxmarbles.com/#first), [ReactiveX](http://reactivex.io/documentation/operators/first.html)
+
 
 ## `First(Predicate)`
 
 **Defined in:** [`rs/first.h`](../include/rs/first.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#first), [ReactiveX](http://reactivex.io/documentation/operators/first.html)
 
 
 ## `FlatMap(Mapper)`
@@ -113,12 +133,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/flatmap.html)
+
 
 ## `From(Container)`
 
 **Defined in:** [`rs/from.h`](../include/rs/from.h)
 
 **Kind:** [Operator](#kind_operator)
+
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/from.html)
 
 
 ## `IfEmpty(Publisher)`
@@ -162,12 +186,16 @@ Header
 
 **Kind:** [Operator](#kind_operator)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/just.html)
+
 
 ## `Last()`
 
 **Defined in:** [`rs/last.h`](../include/rs/last.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#last), [ReactiveX](http://reactivex.io/documentation/operators/last.html)
 
 
 ## `MakePublisher(Callback)`
@@ -232,12 +260,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [RxMarbles](http://rxmarbles.com/#map), [ReactiveX](http://reactivex.io/documentation/operators/map.html)
+
 
 ## `Max()`
 
 **Defined in:** [`rs/max.h`](../include/rs/max.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#max), [ReactiveX](http://reactivex.io/documentation/operators/max.html)
 
 
 ## `Merge(Publisher...)`
@@ -246,6 +278,8 @@ Header
 
 **Kind:** [Operator](#kind_operator)
 
+**External documentation:** [RxMarbles](http://rxmarbles.com/#merge), [ReactiveX](http://reactivex.io/documentation/operators/merge.html)
+
 
 ## `Min()`
 
@@ -253,12 +287,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [RxMarbles](http://rxmarbles.com/#min), [ReactiveX](http://reactivex.io/documentation/operators/min.html)
+
 
 ## `Never()`
 
 **Defined in:** [`rs/never.h`](../include/rs/never.h)
 
 **Kind:** [Operator](#kind_operator)
+
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/empty-never-throw.html)
 
 
 ## `Pipe(Value, Operator...)`
@@ -288,12 +326,16 @@ Header
 
 **Kind:** [Operator](#kind_operator)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/range.html)
+
 
 ## `Reduce(Accumulator, Reducer)`
 
 **Defined in:** [`rs/reduce.h`](../include/rs/reduce.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#reduce), [ReactiveX](http://reactivex.io/documentation/operators/reduce.html)
 
 
 ## `ReduceGet(MakeInitial, Reducer)`
@@ -302,12 +344,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [RxMarbles](http://rxmarbles.com/#reduce), [ReactiveX](http://reactivex.io/documentation/operators/reduce.html)
+
 
 ## `ReduceWithoutInitial(Reducer)`
 
 **Defined in:** [`rs/reduce.h`](../include/rs/reduce.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#reduce), [ReactiveX](http://reactivex.io/documentation/operators/reduce.html)
 
 
 ## `Repeat(Value, size_t)`
@@ -316,12 +362,16 @@ Header
 
 **Kind:** [Operator](#kind_operator)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/repeat.html)
+
 
 ## `Scan(Accumulator, Mapper)`
 
 **Defined in:** [`rs/scan.h`](../include/rs/scan.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#scan), [ReactiveX](http://reactivex.io/documentation/operators/scan.html)
 
 
 ## `Skip(size_t)`
@@ -330,6 +380,8 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [RxMarbles](http://rxmarbles.com/#skip), [ReactiveX](http://reactivex.io/documentation/operators/skip.html)
+
 
 ## `SkipWhile(Predicate)`
 
@@ -337,12 +389,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/skipwhile.html)
+
 
 ## `Some(Predicate)`
 
 **Defined in:** [`rs/some.h`](../include/rs/some.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#some)
 
 
 ## `Splat(Callback)`
@@ -358,6 +414,8 @@ Header
 
 **Kind:** [Operator](#kind_operator)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/start.html)
+
 
 ## `StartWith(Value)`
 
@@ -365,12 +423,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [RxMarbles](http://rxmarbles.com/#startWith), [ReactiveX](http://reactivex.io/documentation/operators/startwith.html)
+
 
 ## `StartWithGet(MakeValue...)`
 
 **Defined in:** [`rs/start_with.h`](../include/rs/start_with.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#startWith), [ReactiveX](http://reactivex.io/documentation/operators/startwith.html)
 
 
 ## `Subscriber<>`
@@ -407,12 +469,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [RxMarbles](http://rxmarbles.com/#sum), [ReactiveX](http://reactivex.io/documentation/operators/sum.html)
+
 
 ## `Take(Count)`
 
 **Defined in:** [`rs/take.h`](../include/rs/take.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#take), [ReactiveX](http://reactivex.io/documentation/operators/take.html)
 
 
 ## `TakeWhile(Predicate)`
@@ -421,12 +487,16 @@ Header
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/takewhile.html)
+
 
 ## `Throw(Exception)`
 
 **Defined in:** [`rs/throw.h`](../include/rs/throw.h)
 
 **Kind:** [Operator](#kind_operator)
+
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/empty-never-throw.html)
 
 
 ## `Throw(const std::exception_ptr &)`
@@ -435,9 +505,13 @@ Header
 
 **Kind:** [Operator](#kind_operator)
 
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/empty-never-throw.html)
+
 
 ## `Zip(Publisher...)`
 
 **Defined in:** [`rs/zip.h`](../include/rs/zip.h)
 
 **Kind:** [Operator](#kind_operator)
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#zip), [ReactiveX](http://reactivex.io/documentation/operators/zip.html)
