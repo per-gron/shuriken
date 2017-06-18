@@ -7,10 +7,12 @@
 * It has a trivial threading model: Nothing in this library is thread safe.
 * It attempts to be small, to avoid excessive compile times.
 * It does not (yet?) have the concept of a Scheduler, or time, like Rx libraries do.
+* It comes with [a good test suite](test).
 
 
 ## In depth documentation
 
+* [Reference documentation](doc/reference.md): Documentation for each of the operators, helpers and types in rs.
 * [Reactive Streams specification](doc/specification.md): This document specifies the raw Reactive Streams concepts in C++. It is useful in order to get an in depth understanding of the rs library and required reading in order to be able to write custom Publishers and custom operators on Publishers.
 
 
@@ -18,7 +20,7 @@
 
 rs tries not to be an innovative library. It steals most of its ideas and names from Reactive Streams and [ReactiveX](http://reactivex.io/). It is conceptually very similar to ReactiveX libraries, for example [RxJava](https://github.com/ReactiveX/RxJava). A lot of information about RxJava applies directly to rs. If you are unsure about what the underlying idea of the rs library is, it might help to read tutorials or watch presentations on Reactive Streams and ReactiveX.
 
-The main entity that the rs library offers is a *Publisher*. Similar to a future or a promise, a Publisher represents an asynchronous computation. An idiomatic use of the rs libray is to make procedures that perform asynchronous operations return a Publisher, for example:
+The main entity of the rs library is the *Publisher*. Similar to a future or a promise, a Publisher represents an asynchronous computation. An idiomatic use of the rs libray is to make procedures that perform asynchronous operations return a Publisher, for example:
 
 ```cpp
 Publisher<User> LookupUserById(const std::string &user_id);
@@ -32,7 +34,7 @@ People who are familiar with futures or promises will recognize this pattern. In
 
 ### Creating Publishers
 
-The rs library offers helper functions to create Publisher objects. Here are some of them:
+The rs library has helper functions to create Publisher objects. Here are some of them:
 
 * `Empty()` returns a Publisher that emits no values when subscribed to.
 * `Just(args...)` returns a Publisher that emits just the given values. `Just()` is equivalent to `Empty()` and `Just(1, 2)` emits 1 and 2.
@@ -168,7 +170,7 @@ auto EvenSquares(int n) {
 
 In this code, the return type of `EvenSquares` doesn't have a name. In fact, the easiest way to give a name to it would probably be to write `decltype(... the function body goes here ...))`. If this was to be exposed as a library function the implementation would have to be in the header file, which is not nice.
 
-To solve this type of problem, rs offers *eraser types* for the Publisher, Subscriber and Subscription concepts:
+To solve this type of problem, rs has *eraser types* for the Publisher, Subscriber and Subscription concepts:
 
 ```cpp
 Publisher<int> EvenSquares(int n) {
@@ -202,7 +204,7 @@ There are type predicates that can be used to check if a type claims to conform 
 
 ## Threading model
 
-Unlike most other Rx libraries (and future/promise libraries too, for that matter), `rs` does not do anything at all about threads or concurrency. The only thread safety guarantee that the library offers is that separate objects can be used concurrently on separate threads (because it has no global mutable state).
+Unlike most other Rx libraries (and future/promise libraries too, for that matter), `rs` does not do anything at all about threads or concurrency. The only thread safety guarantee that the library provides is that separate objects can be used concurrently on separate threads (because it has no global mutable state).
 
 The author of this library sees this not as a limitation but as a feature:
 

@@ -12,7 +12,7 @@ Header
 
 * <em><a name="kind_operator">Operator</a></em>: Function that returns a Publisher.
 * <em><a name="kind_operator_builder">Operator Builder</a></em>: Function that returns an Operator.
-* <em><a name="kind_operator_builder_builder">Operator Builder Builder</a></em>: Function that returns an Operator Builder
+* <em><a name="kind_operator_builder_builder">Operator Builder Builder</a></em>: Function that returns an Operator Builder.
 * <em><a name="kind_core_library_api">Core Library API</a></em>: A function or type that is part of the core of rs, not an operator.
 
 
