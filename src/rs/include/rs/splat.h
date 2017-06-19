@@ -60,7 +60,7 @@ class InvokeSplatCallback<0> {
 
 /**
  * Splat is a helper function that can make it easier to access the indivicual
- * elements of a tuple or pair. What it does is similar to std::tie, but it is
+ * elements of a tuple or a pair. What it does is similar to std::tie, but it is
  * meant to be used in a different context. In cases where you would write:
  *
  *     [](std::tuple<int, std::string> t) {
@@ -80,7 +80,7 @@ class InvokeSplatCallback<0> {
  * example because of Zip:
  *
  *     Pipe(
- *         Zip(Just("a", "b"), Just(1, 2))
+ *         Zip(Just(1, 2), Just("a", "b"))
  *         Map(Splat([](int num, std::string str) {
  *           return str + " " + std::to_string(num);
  *         })))

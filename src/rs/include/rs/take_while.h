@@ -39,7 +39,7 @@ class TakeWhileSubscriber : public SubscriberBase, public SubscriptionBase {
     subscription_ = Subscription(std::forward<SubscriptionT>(subscription));
   }
 
-  template <typename T, class = IsRvalue<T>>
+  template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
     if (cancelled_) {
       return;

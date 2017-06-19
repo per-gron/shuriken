@@ -47,7 +47,7 @@ class CatchSubscription : public SubscriberBase, public SubscriptionBase {
     }
   }
 
-  template <typename T, class = IsRvalue<T>>
+  template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
   	--requested_;
   	if (requested_ < 0) {

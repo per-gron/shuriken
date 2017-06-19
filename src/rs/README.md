@@ -2,6 +2,8 @@
 
 *rs* is a minimalist unofficial [Reactive Streams](http://www.reactive-streams.org/) library that offers types for reactive streams along with functions that operate on them.
 
+## Features
+
 * It is written in C++14.
 * Like all Reactive Streams based libraries, it offers mandatory non-blocking back-pressure support (at the time of writing, [RxCpp](https://github.com/Reactive-Extensions/RxCpp) does not do this).
 * It is extensible: Users of the library can create their own stream operators that look and feel exactly like the built-in operators. There is no built-in class that has a member function for each operator that exists like in [RxJava](https://github.com/ReactiveX/RxJava) or RxCpp.

@@ -32,7 +32,7 @@ inline auto First() {
   static const auto range_error = std::make_exception_ptr(std::out_of_range(
       "Cannot take the first element of empty stream"));
 
-  // Use Last to ensure that there is at least one value.
+  // Use IfEmpty to ensure that there is at least one value.
   return BuildPipe(
       Take(1),
       IfEmpty(Throw(range_error)));

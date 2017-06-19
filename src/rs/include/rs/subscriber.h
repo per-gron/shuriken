@@ -41,7 +41,7 @@ template <typename T>
 constexpr bool IsSubscriber = std::is_base_of<SubscriberBase, T>::value;
 
 template <typename T>
-using IsRvalue = typename std::enable_if<
+using RequireRvalue = typename std::enable_if<
     !std::is_lvalue_reference<T>::value &&
     !(std::is_rvalue_reference<T>::value && std::is_const<T>::value)>::type;
 
@@ -97,7 +97,7 @@ class SharedPtrSubscriber : public SubscriberBase {
   explicit SharedPtrSubscriber(std::shared_ptr<SubscriberType> subscriber)
       : subscriber_(subscriber) {}
 
-  template <typename T, class = IsRvalue<T>>
+  template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
     subscriber_->OnNext(std::forward<T>(t));
   }
@@ -120,7 +120,7 @@ class WeakPtrSubscriber : public SubscriberBase {
   explicit WeakPtrSubscriber(std::weak_ptr<SubscriberType> subscriber)
       : subscriber_(subscriber) {}
 
-  template <typename T, class = IsRvalue<T>>
+  template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
     if (auto sub = subscriber_.lock()) {
       sub->OnNext(std::forward<T>(t));

@@ -34,7 +34,7 @@ class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
     /**
      * This is where the operator receives new flattened values.
      */
-    template <typename T, class = IsRvalue<T>>
+    template <typename T, class = RequireRvalue<T>>
     void OnNext(T &&t) {
       if (auto that = that_.lock()) {
         that->OnNextValue(std::forward<T>(t));
@@ -81,7 +81,7 @@ class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
   /**
    * This is where the operator receives new Publishers to be flattened.
    */
-  template <typename T, class = IsRvalue<T>>
+  template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
     if (state_ == State::END) {
       // Allow stray publishers to arrive asynchronously after cancel.

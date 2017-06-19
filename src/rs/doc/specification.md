@@ -100,7 +100,7 @@ A *Subscriber* is a receiver of a potentially unbounded number of sequenced elem
 
 A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable and MUST have the following methods:
 
-* `void OnNext(T &&t);`: One such method for each type that the subscriber accepts. There could potentially be zero `OnNext` methods.
+* `void OnNext(T &&t);`: One such method for each type that the subscriber accepts. The `t` parameter is an rvalue reference; it is not legal to pass lvalue references to `OnNext`. There could potentially be zero `OnNext` methods.
 * `void OnError(std::exception_ptr &&error);`
 * `void OnComplete();`
 

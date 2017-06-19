@@ -40,7 +40,7 @@ class RsGrpcTagWeakPtrSubscriber : public SubscriberBase {
   RsGrpcTagWeakPtrSubscriber &operator=(
       RsGrpcTagWeakPtrSubscriber &&) = default;
 
-  template <typename T, class = IsRvalue<T>>
+  template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
     if (auto sub = subscriber_.Lock()) {
       sub->OnNext(std::forward<T>(t));
@@ -81,7 +81,7 @@ class RsGrpcTagPtrSubscriber : public SubscriberBase {
   RsGrpcTagPtrSubscriber(RsGrpcTagPtrSubscriber &&) = default;
   RsGrpcTagPtrSubscriber &operator=(RsGrpcTagPtrSubscriber &&) = default;
 
-  template <typename T, class = IsRvalue<T>>
+  template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
     subscriber_->OnNext(std::forward<T>(t));
   }
