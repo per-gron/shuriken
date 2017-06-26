@@ -186,6 +186,12 @@ TEST_CASE("ElementCount") {
       CHECK(one.Get() == kMax);
     }
 
+    SECTION("take unbounded from unbounded") {
+      ElementCount one(kMax);
+      CHECK((one += kMin).Get() == kMax);
+      CHECK(one.Get() == kMax);
+    }
+
     SECTION("from min value") {
       ElementCount min(kMin);
       CHECK((min += 2).Get() == kMin + 2);
@@ -237,6 +243,12 @@ TEST_CASE("ElementCount") {
     SECTION("from unbounded") {
       ElementCount one(kMax);
       CHECK((one -= 2).Get() == kMax);
+      CHECK(one.Get() == kMax);
+    }
+
+    SECTION("take unbounded from unbounded") {
+      ElementCount one(kMax);
+      CHECK((one -= kMax).Get() == kMax);
       CHECK(one.Get() == kMax);
     }
 
