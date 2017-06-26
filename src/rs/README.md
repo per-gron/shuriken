@@ -4,6 +4,7 @@
 
 * It is written in C++14.
 * Like all Reactive Streams based libraries, it offers mandatory non-blocking back-pressure support (at the time of writing, [RxCpp](https://github.com/Reactive-Extensions/RxCpp) does not do this).
+* It is extensible: Users of the library can create their own stream operators that look and feel exactly like the built-in operators. There is no built-in class that has a member function for each operator that exists like in [RxJava](https://github.com/ReactiveX/RxJava) or RxCpp.
 * It has a trivial threading model: Nothing in this library is thread safe.
 * It attempts to be small, to avoid excessive compile times.
 * It does not (yet?) have the concept of a Scheduler, or time, like Rx libraries do.
@@ -18,7 +19,7 @@
 
 ## Introduction
 
-rs tries not to be an innovative library. It steals most of its ideas and names from Reactive Streams and [ReactiveX](http://reactivex.io/). It is conceptually very similar to ReactiveX libraries, for example [RxJava](https://github.com/ReactiveX/RxJava). A lot of information about RxJava applies directly to rs. If you are unsure about what the underlying idea of the rs library is, it might help to read tutorials or watch presentations on Reactive Streams and ReactiveX.
+rs tries not to be an innovative library. It steals most of its ideas and names from Reactive Streams and [ReactiveX](http://reactivex.io/). It is conceptually very similar to ReactiveX libraries, for example RxJava. A lot of information about RxJava applies directly to rs. If you are unsure about what the underlying idea of the rs library is, it might help to read tutorials or watch presentations on Reactive Streams and ReactiveX.
 
 The main entity of the rs library is the *Publisher*. Similar to a future or a promise, a Publisher represents an asynchronous computation. An idiomatic use of the rs libray is to make procedures that perform asynchronous operations return a Publisher, for example:
 
