@@ -20,7 +20,7 @@
 namespace shk {
 
 inline auto Empty() {
-  return MakePublisher([](auto subscriber) {
+  return MakePublisher([](auto &&subscriber) {
     subscriber.OnComplete();
     return MakeSubscription();
   });
