@@ -72,7 +72,6 @@ class CatchSubscription : public SubscriberBase, public SubscriptionBase {
   				"Catch callback must return a Publisher");
   		inner_subscription_ = Subscription(catch_publisher.Subscribe(
   				MakeSubscriber(me_.lock())));
-  		printf("ld: %lld\n", requested_.Get());
   		inner_subscription_.Request(requested_);
   	}
   }
