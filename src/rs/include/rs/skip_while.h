@@ -28,8 +28,8 @@ namespace shk {
 template <typename Predicate>
 auto SkipWhile(Predicate &&predicate) {
   return Filter([predicate = std::forward<Predicate>(predicate), match = false](
-      auto &&value) mutable {
-    return match || (match = !predicate(std::forward<decltype(value)>(value)));
+      const auto &value) mutable {
+    return match || (match = !predicate(value));
   });
 }
 
