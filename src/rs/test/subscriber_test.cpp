@@ -196,7 +196,7 @@ TEST_CASE("Subscriber") {
     auto sub = MakeSubscriber();
     static_assert(IsSubscriber<decltype(sub)>, "Should be Subscriber");
     sub.OnNext(1);
-    sub.OnNext("hello");
+    sub.OnNext(std::string("hello"));
     sub.OnError(std::make_exception_ptr(std::runtime_error("hello")));
     sub.OnComplete();
   }

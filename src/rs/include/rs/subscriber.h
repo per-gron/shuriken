@@ -57,7 +57,7 @@ class EmptySubscriber : public SubscriberBase {
   EmptySubscriber(EmptySubscriber &&) = default;
   EmptySubscriber& operator=(EmptySubscriber &&) = default;
 
-  template <typename T>
+  template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {}
   void OnError(std::exception_ptr &&error);
   void OnComplete();
@@ -72,7 +72,7 @@ class CallbackSubscriber : public SubscriberBase {
         on_error_(std::forward<OnErrorCb>(on_error)),
         on_complete_(std::forward<OnCompleteCb>(on_complete)) {}
 
-  template <typename T>
+  template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
     on_next_(std::forward<T>(t));
   }
