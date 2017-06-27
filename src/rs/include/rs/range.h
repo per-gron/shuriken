@@ -32,7 +32,7 @@ struct RangeContainer {
     }
 
     RangeIterator &operator++() {
-      val_++;
+      ++val_;
       return *this;
     }
 
@@ -66,7 +66,7 @@ struct RangeContainer {
 
 /**
  * Range takes a start value and a `count` and returns a Publisher that emits
- * `count` incrementing values. For example, `Range(5,2)` generates [5, 6].
+ * `count` incrementing values. For example, `Range(5,2)` generates 5, 6.
  */
 template <typename Begin>
 auto Range(Begin &&begin, size_t count) {
