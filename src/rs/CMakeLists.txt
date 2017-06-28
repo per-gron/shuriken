@@ -4,6 +4,7 @@ add_library(rs
   include/rs/catch.h
   include/rs/concat.h
   include/rs/concat_map.h
+  include/rs/contains.h
   include/rs/count.h
   include/rs/default_if_empty.h
   include/rs/element_at.h
@@ -54,6 +55,7 @@ add_executable(rs-test
   test/catch_test.cpp
   test/concat_map_test.cpp
   test/concat_test.cpp
+  test/contains_test.cpp
   test/count_test.cpp
   test/default_if_empty_test.cpp
   test/element_at_test.cpp

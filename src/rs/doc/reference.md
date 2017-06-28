@@ -26,6 +26,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`Catch(Publisher)`](#catchpublisher)
 * [`Concat(Publisher...)`](#concatpublisher)
 * [`ConcatMap(Mapper)`](#concatmapmapper)
+* [`Contains(Value)`](#containsvalue)
 * [`Count(Publisher...)`](#countpublisher)
 * [`DefaultIfEmpty(Value...)`](#defaultifemptyvalue)
 * [`ElementAt(size_t)`](#elementatsize_t)
@@ -292,6 +293,29 @@ auto numbers = Pipe(
 ```
 
 **See also:** [`Map(Mapper)`](#mapmapper), [`Concat(Publisher...)`](#concatpublisher)
+
+
+## `Contains(Value)`
+
+**Defined in:** [`rs/contains.h`](../include/rs/contains.h)
+
+**Kind:** [Operator Builder](#kind_operator_builder)
+
+**[Type](#types):** `Value, (Value, Value -> bool)? -> (Publisher[a] -> Publisher[bool])
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#includes), [ReactiveX](http://reactivex.io/documentation/operators/contains.html)
+
+**Description:** Operator that returns a stream that emits exactly one value: `true` if any of the input elements are equal to the given value to search for, `false` otherwise. As soon as an element is encountered that matches the predicate, the boolean is emitted and the input stream is cancelled.
+
+It is possible to pass a custom equality operator function to `Contains`. The default is `std::equal_to`, which uses `operator==`.
+
+**Example usage:**
+
+```cpp
+auto has_five = Pipe(
+    Just(1, 2, 5, 1, -3, 1),
+    Contains(5));
+```
 
 
 ## `Count(Publisher...)`
