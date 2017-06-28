@@ -523,7 +523,7 @@ auto fail = Pipe(
 
 **External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/flatmap.html)
 
-**Description:** Similar to `Map`, but `FlatMap` takes a mapper function that returns a Publisher rather than a value. This makes it possible for the mapper function to perform asynchronous operations or to return zero or more than one value. This is similar to the [`flatMap` method in Java 8 Streams](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html#flatMap-java.util.function.Function-).
+**Description:** Similar to [`Map(Mapper)`](#mapmapper), but `FlatMap` takes a mapper function that returns a Publisher rather than a value. This makes it possible for the mapper function to perform asynchronous operations or to return zero or more than one value. This is similar to the [`flatMap` method in Java 8 Streams](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html#flatMap-java.util.function.Function-).
 
 **Example usage:**
 
@@ -594,7 +594,7 @@ auto numbers = From(std::vector<int>{ 1, 2, 3, 4, 5 });
 
 **[Type](#types):** `Publisher[a] -> (Publisher[b] -> Publisher[a, b])`
 
-**Description:** `IfEmpty` takes a Publisher and returns one that behaves just like it, except that if it finishes without emitting any elements, it emits the values of the provided default stream. Similar to, but more generic, than `DefaultIfEmpty`.
+**Description:** `IfEmpty` takes a Publisher and returns one that behaves just like it, except that if it finishes without emitting any elements, it emits the values of the provided default stream. Similar to, but more generic, than [`DefaultIfEmpty(Value...)`](#defaultifemptyvalue).
 
 **Example usage:**
 
@@ -622,7 +622,7 @@ auto fail = Pipe(
 
 **Kind:** [Core Library API](#kind_core_library_api)
 
-**Description:** `IsPublisher` is a type predicate that checks if a given type claims to conform to the Publisher concept. (It checks if the given type publically inherits `PublisherBase`.)
+**Description:** `IsPublisher` is a type predicate that checks if a given type claims to conform to the Publisher concept. (It checks if the given type publically inherits [`PublisherBase`](#publisherbase).)
 
 **Example usage:**
 
@@ -646,7 +646,7 @@ void TakePublisher(const PublisherT &publisher) {
 
 **Kind:** [Core Library API](#kind_core_library_api)
 
-**Description:** `IsSubscriber` is a type predicate that checks if a given type claims to conform to the Subscriber concept. (It checks if the given type publically inherits `SubscriberBase`.)
+**Description:** `IsSubscriber` is a type predicate that checks if a given type claims to conform to the Subscriber concept. (It checks if the given type publically inherits [`SubscriberBase`](#subscriberbase).)
 
 **Example usage:**
 
@@ -670,7 +670,7 @@ void TakeSubscriber(const SubscriberT &subscriber) {
 
 **Kind:** [Core Library API](#kind_core_library_api)
 
-**Description:** `IsSubscription` is a type predicate that checks if a given type claims to conform to the Subscription concept. (It checks if the given type publically inherits `SubscriptionBase`.)
+**Description:** `IsSubscription` is a type predicate that checks if a given type claims to conform to the Subscription concept. (It checks if the given type publically inherits [`SubscriptionBase`](#subscriptionbase).)
 
 **Example usage:**
 
@@ -700,7 +700,7 @@ void TakeSubscription(const SubscriptionT &subscription) {
 
 **Description:** Constructs a Publisher that emits the given value or values.
 
-The provided values must be copyable. If they are not, `Start` can be used instead.
+The provided values must be copyable. If they are not, [`Start(CreateValue...)`](#startcreatevalue) can be used instead.
 
 **Example usage:**
 
@@ -759,7 +759,7 @@ auto fail = Pipe(
 
 **Description:** Helper function that can be used to create custom Publishers. Please note that creating a custom Publisher is considered an advanced use of the rs library. When doing so, you must ensure that your Publisher object conforms to the rules in the [rs specification](specification.md).
 
-`MakePublisher` takes a functor, for example a lambda, that takes a Subscriber and returns a Subscription and uses that to create a Publisher. It is also possible, but sometimes more verbose, to create a custom Publisher type directly by defining a class that inherits `PublisherBase` and that has a `Subscribe` method.
+`MakePublisher` takes a functor, for example a lambda, that takes a Subscriber and returns a Subscription and uses that to create a Publisher. It is also possible, but sometimes more verbose, to create a custom Publisher type directly by defining a class that inherits [`PublisherBase`](#publisherbase) and that has a `Subscribe` method.
 
 **Example usage:**
 
@@ -802,7 +802,7 @@ my_dummy_subscriber.OnComplete();  // Does nothing
 
 **[Type](#types):** `(a -> void), (std::exception_ptr&& -> void), (void -> void) -> Subscriber[a]`
 
-**Description:** Creates a Subscriber from a set of callback functors. It is always possible to create your own Subscriber class by inheriting `SubscriberBase` and defining the `OnNext`, `OnComplete` and `OnError` methods, but this helper function is often more convenient.
+**Description:** Creates a Subscriber from a set of callback functors. It is always possible to create your own Subscriber class by inheriting [`SubscriberBase`](#subscriberbase) and defining the `OnNext`, `OnComplete` and `OnError` methods, but this helper function is often more convenient.
 
 Most application code requires few or no custom Subscribers. The most common cases where it is necessary to create your own is to terminate a Publisher to get its final result or to create a custom operator that cannot be built by combining operators that already exist.
 
@@ -852,7 +852,7 @@ This is an API for advanced use of the rs library, primarily for making it easie
 
 **[Type](#types):** `std::weak_ptr<Subscriber[a]> -> Subscriber[a]`
 
-**Description:** This is just like the `std::shared_ptr` version of the `MakeSubscriber` function, except that the returned Subscriber holds the inner Subscriber by `std::weak_ptr` rather than an owning `std::shared_ptr`. This can be useful to avoid reference cycles that cause memory leaks.
+**Description:** This is just like [`MakeSubscriber(const std::shared_ptr<SubscriberType> &)`](#makesubscriberconst-stdshared_ptrsubscribertype-), except that the returned Subscriber holds the inner Subscriber by `std::weak_ptr` rather than an owning `std::shared_ptr`. This can be useful to avoid reference cycles that cause memory leaks.
 
 
 ## `MakeSubscription()`
@@ -882,7 +882,7 @@ my_dummy_subscription.Cancel();  // Does nothing
 
 **[Type](#types):** `(ElementCount -> void), (void -> void) -> Subscription[]`
 
-**Description:** Creates a Subscription from a set of callback functors. It is always possible to create your own Subscription class by inheriting `SubscriptionBase` and defining the `Request` and `Cancel` method, but this helper function is often more convenient.
+**Description:** Creates a Subscription from a set of callback functors. It is always possible to create your own Subscription class by inheriting [`SubscriptionBase`](#subscriptionbase) and defining the `Request` and `Cancel` method, but this helper function is often more convenient.
 
 Creating custom Subscription objects is usually needed only for making custom operators that cannot be built by combining operators that already exist.
 
@@ -976,7 +976,7 @@ auto biggest = Pipe(
 
 **External documentation:** [RxMarbles](http://rxmarbles.com/#merge), [ReactiveX](http://reactivex.io/documentation/operators/merge.html)
 
-**Description:** Takes a number of streams and returns a stream that emits all of the values that the input streams emit, with no ordering between the streams (unlike `Concat`, which emits values from the streams one by one).
+**Description:** Takes a number of streams and returns a stream that emits all of the values that the input streams emit, with no ordering between the streams (unlike [`Concat(Publisher...)`](#concatpublisher), which emits values from the streams one by one).
 
 **Example usage:**
 
@@ -1177,7 +1177,7 @@ auto ten_to_twenty = Range(10, 10);
 
 `Reduce` takes an initial accumulator value and a function that takes the accumulator and a value from the stream and combines them into one value. It works with empty streams.
 
-`Reduce` works only with accumulator types that are copyable. For accumulator types that are noncopyable, use `ReduceGet`.
+`Reduce` works only with accumulator types that are copyable. For accumulator types that are noncopyable, use [`ReduceGet(MakeInitial, Reducer)`](#reducegetmakeinitial-reducer).
 
 **Example usage:**
 
@@ -1203,7 +1203,7 @@ auto Sum() {
 
 **External documentation:** [RxMarbles](http://rxmarbles.com/#reduce), [ReactiveX](http://reactivex.io/documentation/operators/reduce.html)
 
-**Description:** `ReduceGet` is like `Reduce`, but it takes a function that creates the initial value rather than the initial value directly. This can be used when the initial value is expensive to create or when it is not copyable.
+**Description:** `ReduceGet` is like [`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer), but it takes a function that creates the initial value rather than the initial value directly. This can be used when the initial value is expensive to create or when it is not copyable.
 
 `ReduceGet` works with empty streams.
 
@@ -1231,11 +1231,11 @@ auto Sum() {
 
 **External documentation:** [RxMarbles](http://rxmarbles.com/#reduce), [ReactiveX](http://reactivex.io/documentation/operators/reduce.html)
 
-**Description:** `ReduceWithoutInitial` is like `Reduce` except that instead of taking an initial accumulator value up-front it uses first value of the input stream.
+**Description:** `ReduceWithoutInitial` is like [`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer) except that instead of taking an initial accumulator value up-front it uses first value of the input stream.
 
 `ReduceWithoutInitial` does not accept empty input streams; if the input stream finishes without emitting a value, the output stream fails with an `std::out_of_range` exception.
 
-`Reduce` and `ReduceGet` allow the accumulator type to be different from the types of the input values, but `ReduceWithoutInitial` requires the accumulator to be of the same type as the input values.
+[`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer) and [`ReduceGet(MakeInitial, Reducer)`](#reducegetmakeinitial-reducer) allow the accumulator type to be different from the types of the input values, but `ReduceWithoutInitial` requires the accumulator to be of the same type as the input values.
 
 **Example usage:**
 
@@ -1348,7 +1348,7 @@ UseRvalue(b);  // NOT valid
 
 **External documentation:** [RxMarbles](http://rxmarbles.com/#scan), [ReactiveX](http://reactivex.io/documentation/operators/scan.html)
 
-**Description:** `Scan` is like `Map`, but the mapper function is given the previously emitted value as well. In order to have something when processing the first value, `Scan` takes the first "previously emitted value" as a parameter.
+**Description:** `Scan` is like [`Map(Mapper)`](#mapmapper), but the mapper function is given the previously emitted value as well. In order to have something when processing the first value, `Scan` takes the first "previously emitted value" as a parameter.
 
 **Example usage:**
 
@@ -1479,7 +1479,7 @@ Splat([](int num, std::string str) {
 
 **Example usage:**
 
-`Splat` is particularly useful when dealing with streams that have tuples, for example because of `Zip`. Instead of writing
+`Splat` is particularly useful when dealing with streams that have tuples, for example because of [`Zip(Publisher...)`](#zippublisher). Instead of writing
 
 ```cpp
 Pipe(
@@ -1514,7 +1514,7 @@ Pipe(
 
 **Description:** Constructs a Publisher that emits one value for each of the provided functors. The provided functors are invoked and their return values are emitted to the output stream.
 
-`Start` is particularly useful if the emitted values are not copyable, for example if they are `std::unique_ptr`s. If they are copyable, consider using `Just` instead; it has a simpler interface.
+`Start` is particularly useful if the emitted values are not copyable, for example if they are `std::unique_ptr`s. If they are copyable, consider using [`Just(Value...)`](#justvalue) instead; it has a simpler interface.
 
 **Example usage:**
 
@@ -1546,7 +1546,7 @@ auto different_types = one_hi = Start(
 
 **Description:** Prepends the provided values to a stream.
 
-The parameters of `StartWith` must be copyable. If they are not, consider using `StartWithGet`.
+The parameters of `StartWith` must be copyable. If they are not, consider using [`StartWithGet(MakeValue...)`](#startwithgetmakevalue).
 
 **Example usage:**
 
@@ -1580,7 +1580,7 @@ auto stream = Pipe(
 
 **External documentation:** [RxMarbles](http://rxmarbles.com/#startWith), [ReactiveX](http://reactivex.io/documentation/operators/startwith.html)
 
-**Description:** `StartWithGet` is like `StartWith`, but it takes functions that create the values to be emitted rather than the values directly. This can be used when the values are expensive to craete or when they are noncopyable.
+**Description:** `StartWithGet` is like [`StartWith(Value...)`](#startwithvalue), but it takes functions that create the values to be emitted rather than the values directly. This can be used when the values are expensive to craete or when they are noncopyable.
 
 **Example usage:***
 
@@ -1613,7 +1613,7 @@ auto stream = Pipe(
 
 The `Subscriber` eraser type is intended for advanced use of the rs library. Storing and passing around `Subscriber` objects is not done much except in custom operators, and most custom operators do not type erase Subscribers.
 
-The `Subscriber` eraser type is used internally in the `Publisher` eraser type implementation.
+The `Subscriber` eraser type is used internally in the [`Publisher`](#publisher) type eraser implementation.
 
 **Example usage:**
 
@@ -1840,7 +1840,7 @@ auto First() {
 auto fail = Throw(std::make_exception_ptr(std::runtime_error("fail")));
 ```
 
-The documentation for the `Throw` operator overload that takes an exception object rather than an `std::exception_ptr` has more examples.
+The documentation for [`Throw(Exception)`](#throwexception) has more examples.
 
 **See also:** [`Empty()`](#empty), [`Just(Value...)`](#justvalue), [`Never()`](#never), [`Throw(Exception)`](#throwexception)
 
@@ -1872,7 +1872,7 @@ auto zipped = Pipe(
     }));
 ```
 
-The example above can be written in a nicer way using `Splat`:
+The example above can be written in a nicer way using [`Splat(Functor)`](#splatfunctor):
 
 ```cpp
 // zipped is a Publisher that emits "a 1", "b 2"
