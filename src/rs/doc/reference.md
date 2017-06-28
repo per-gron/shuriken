@@ -3,7 +3,86 @@
 This document has API documentation for the rs Reactive Streams library.
 
 See also
-Table of contents
+
+## Table of Contents
+
+<!--
+
+To regenerate, run this Javascript in the browser console in the Github render of this markdown:
+
+Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'))
+    .slice(1)  // Skip the ToC
+    .map(function(header) {
+      var name = header.innerText;
+      var link = header.getElementsByTagName('a')[0].href.replace(/.*#/, '#');
+      return '* [`' + name + '`](' + link + ')';
+    })
+    .join('\n');
+
+-->
+
+* [`All(Predicate)`](#allpredicate)
+* [`Average()`](#average)
+* [`BuildPipe(Operator...)`](#buildpipeoperator)
+* [`Catch(Publisher)`](#catchpublisher)
+* [`Concat(Publisher...)`](#concatpublisher)
+* [`Count(Publisher...)`](#countpublisher)
+* [`DefaultIfEmpty(Value...)`](#defaultifemptyvalue)
+* [`ElementAt(size_t)`](#elementatsize_t)
+* [`ElementCount`](#elementcount)
+* [`Empty()`](#empty)
+* [`Filter(Predicate)`](#filterpredicate)
+* [`First()`](#first)
+* [`First(Predicate)`](#firstpredicate)
+* [`FlatMap(Mapper)`](#flatmapmapper)
+* [`From(Container)`](#fromcontainer)
+* [`IfEmpty(Publisher)`](#ifemptypublisher)
+* [`IsPublisher`](#ispublisher)
+* [`IsSubscriber`](#issubscriber)
+* [`IsSubscription`](#issubscription)
+* [`Just(Value...)`](#justvalue)
+* [`Last()`](#last)
+* [`MakePublisher(Callback)`](#makepublishercallback)
+* [`MakeSubscriber()`](#makesubscriber)
+* [`MakeSubscriber(OnNext, OnError, OnComplete)`](#makesubscriberonnext-onerror-oncomplete)
+* [`MakeSubscriber(const std::shared_ptr<SubscriberType> &)`](#makesubscriberconst-stdshared_ptrsubscribertype-)
+* [`MakeSubscriber(const std::weak_ptr<SubscriberType> &)`](#makesubscriberconst-stdweak_ptrsubscribertype-)
+* [`MakeSubscription()`](#makesubscription)
+* [`MakeSubscription(RequestCb, CancelCb)`](#makesubscriptionrequestcb-cancelcb)
+* [`MakeSubscription(const std::shared_ptr<SubscriptionType> &)`](#makesubscriptionconst-stdshared_ptrsubscriptiontype-)
+* [`Map(Mapper)`](#mapmapper)
+* [`Max()`](#max)
+* [`Merge(Publisher...)`](#mergepublisher)
+* [`Min()`](#min)
+* [`Never()`](#never)
+* [`Pipe(Publisher, Operator...)`](#pipepublisher-operator)
+* [`Publisher`](#publisher)
+* [`PublisherBase`](#publisherbase)
+* [`Range(Value, size_t)`](#rangevalue-size_t)
+* [`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer)
+* [`ReduceGet(MakeInitial, Reducer)`](#reducegetmakeinitial-reducer)
+* [`ReduceWithoutInitial<Accumulator>(Reducer)`](#reducewithoutinitialaccumulatorreducer)
+* [`Repeat(Value, size_t)`](#repeatvalue-size_t)
+* [`RequireRvalue`](#requirervalue)
+* [`Scan(Accumulator, Mapper)`](#scanaccumulator-mapper)
+* [`Skip(size_t)`](#skipsize_t)
+* [`SkipWhile(Predicate)`](#skipwhilepredicate)
+* [`Some(Predicate)`](#somepredicate)
+* [`Splat(Functor)`](#splatfunctor)
+* [`Start(CreateValue...)`](#startcreatevalue)
+* [`StartWith(Value...)`](#startwithvalue)
+* [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
+* [`Subscriber`](#subscriber)
+* [`SubscriberBase`](#subscriberbase)
+* [`Subscription`](#subscription)
+* [`SubscriptionBase`](#subscriptionbase)
+* [`Sum()`](#sum)
+* [`Take(Count)`](#takecount)
+* [`TakeWhile(Predicate)`](#takewhilepredicate)
+* [`Throw(Exception)`](#throwexception)
+* [`Throw(const std::exception_ptr &)`](#throwconst-stdexception_ptr-)
+* [`Zip(Publisher...)`](#zippublisher)
+* [`Legend`](#legend)
 
 
 ## `All(Predicate)`
