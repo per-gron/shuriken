@@ -16,7 +16,7 @@
 
 #include <rs/element_count.h>
 #include <rs/empty.h>
-#include <rs/flat_map.h>
+#include <rs/concat_map.h>
 #include <rs/from.h>
 #include <rs/just.h>
 #include <rs/map.h>
@@ -28,27 +28,27 @@
 
 namespace shk {
 
-TEST_CASE("FlatMap") {
+TEST_CASE("ConcatMap") {
   SECTION("construct") {
-    auto stream = FlatMap([](auto &&) { return Empty(); })(Empty());
+    auto stream = ConcatMap([](auto &&) { return Empty(); })(Empty());
     static_assert(
         IsPublisher<decltype(stream)>,
-        "FlatMap stream should be a publisher");
+        "ConcatMap stream should be a publisher");
   }
 
   SECTION("no streams") {
-    auto stream = FlatMap([](auto &&) { return Empty(); })(Empty());
+    auto stream = ConcatMap([](auto &&) { return Empty(); })(Empty());
     CHECK(GetAll<int>(stream) == std::vector<int>({}));
   }
 
   SECTION("one empty stream") {
-    auto stream = FlatMap([](auto &&) { return Empty(); })(Just(1));
+    auto stream = ConcatMap([](auto &&) { return Empty(); })(Just(1));
     CHECK(GetAll<int>(stream) == std::vector<int>({}));
   }
 
   SECTION("one empty stream, request 0") {
-    auto flat_map = FlatMap([](auto &&) { return Empty(); });
-    auto stream = flat_map(Start([] {
+    auto concat_map = ConcatMap([](auto &&) { return Empty(); });
+    auto stream = concat_map(Start([] {
       CHECK(!"Should not be requested");
       return 0;
     }));
@@ -56,42 +56,42 @@ TEST_CASE("FlatMap") {
   }
 
   SECTION("one stream with one value") {
-    auto stream = FlatMap([](auto &&) { return Just(2); })(Just(1));
+    auto stream = ConcatMap([](auto &&) { return Just(2); })(Just(1));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 2 }));
   }
 
   SECTION("one stream with two values") {
-    auto flat_map = FlatMap([](auto &&) {
+    auto concat_map = ConcatMap([](auto &&) {
       return From(std::vector<int>{ 1, 2 });
     });
-    auto stream = flat_map(Just(1));
+    auto stream = concat_map(Just(1));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 1, 2 }));
   }
 
   SECTION("two streams with one value") {
-    auto stream = FlatMap([](auto &&) { return Just(2); })(
+    auto stream = ConcatMap([](auto &&) { return Just(2); })(
         From(std::vector<int>{ 0, 0 }));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 2, 2 }));
   }
 
   SECTION("two streams with two values") {
-    auto flat_map = FlatMap([](auto &&) {
+    auto concat_map = ConcatMap([](auto &&) {
       return From(std::vector<int>{ 1, 2 });
     });
-    auto stream = flat_map(From(std::vector<int>{ 0, 0 }));
+    auto stream = concat_map(From(std::vector<int>{ 0, 0 }));
     CHECK(GetAll<int>(stream) == std::vector<int>({ 1, 2, 1, 2 }));
   }
 
   SECTION("requesting parts of inner stream at a time") {
     for (int i = 1; i <= 2; i++) {
       // Depending on if we're requesting in the last stream or not,
-      // FlatMapSubscriber::Request will be in state_ == HAS_PUBLISHER or
+      // ConcatMapSubscriber::Request will be in state_ == HAS_PUBLISHER or
       // state_ == ON_LAST_PUBLISHER. With this loop we test both.
 
-      auto flat_map = FlatMap([](auto &&) {
+      auto concat_map = ConcatMap([](auto &&) {
         return From(std::vector<int>{ 1, 2, 3, 4 });
       });
-      auto stream = flat_map(From(std::vector<int>(i, 0)));
+      auto stream = concat_map(From(std::vector<int>(i, 0)));
 
       std::vector<int> result;
       bool is_done = false;
@@ -135,11 +135,11 @@ TEST_CASE("FlatMap") {
       return MakeSubscription();
     });
 
-    auto flat_map = FlatMap([inner_stream = std::move(inner_stream)](auto x) {
+    auto concat_map = ConcatMap([inner_stream = std::move(inner_stream)](auto x) {
       return inner_stream;
     });
 
-    auto stream = flat_map(Just(0));
+    auto stream = concat_map(Just(0));
     bool next_called = false;
     bool complete_called = false;
     auto sub = stream.Subscribe(MakeSubscriber(
@@ -180,9 +180,9 @@ TEST_CASE("FlatMap") {
         [] { /* cancel */ });
     });
 
-    auto flat_map = FlatMap([](auto x) { return Never(); });
+    auto concat_map = ConcatMap([](auto x) { return Never(); });
 
-    auto stream = flat_map(inner_stream);
+    auto stream = concat_map(inner_stream);
     std::exception_ptr got_error;
     auto sub = stream.Subscribe(MakeSubscriber(
         [](auto) { CHECK(!"OnNext should not be called"); },
@@ -200,14 +200,14 @@ TEST_CASE("FlatMap") {
   SECTION("backpressure violation") {
     SECTION("outer stream") {
       auto violator = BackpressureViolator(1, [] { return Empty(); });
-      auto stream = FlatMap([](auto &&) { return Empty(); })(violator);
+      auto stream = ConcatMap([](auto &&) { return Empty(); })(violator);
       auto error = GetError(stream);
       CHECK(GetErrorWhat(error) == "Got value that was not Request-ed");
     }
 
     SECTION("inner stream") {
       auto violator = BackpressureViolator(2, [] { return 0; });
-      auto stream = FlatMap([&violator](auto &&) { return violator; })(Just(1));
+      auto stream = ConcatMap([&violator](auto &&) { return violator; })(Just(1));
       auto error = GetError(stream, ElementCount(1));
       CHECK(GetErrorWhat(error) == "Got value that was not Request-ed");
     }
@@ -227,9 +227,9 @@ TEST_CASE("FlatMap") {
           });
       });
 
-      auto flat_map = FlatMap([](auto x) { return Never(); });
+      auto concat_map = ConcatMap([](auto x) { return Never(); });
 
-      auto stream = flat_map(inner_stream);
+      auto stream = concat_map(inner_stream);
       auto sub = stream.Subscribe(MakeSubscriber(
           [](auto) { CHECK(!"OnNext should not be called"); },
           [](std::exception_ptr &&error) {
@@ -255,9 +255,9 @@ TEST_CASE("FlatMap") {
           });
       });
 
-      auto flat_map = FlatMap([&inner_stream](auto x) { return inner_stream; });
+      auto concat_map = ConcatMap([&inner_stream](auto x) { return inner_stream; });
 
-      auto stream = flat_map(Just(0));
+      auto stream = concat_map(Just(0));
       auto sub = stream.Subscribe(MakeSubscriber(
           [](auto) { CHECK(!"OnNext should not be called"); },
           [](std::exception_ptr &&error) {
@@ -274,7 +274,7 @@ TEST_CASE("FlatMap") {
 
   SECTION("exceptions in input stream") {
     auto fail_on = [](int error_val) {
-      return FlatMap([error_val](int x) {
+      return ConcatMap([error_val](int x) {
         if (x == error_val) {
           throw std::runtime_error("fail_on");
         } else {
@@ -350,7 +350,7 @@ TEST_CASE("FlatMap") {
     };
 
     auto fail_on_inner = [&fail_after]() {
-      return FlatMap([&fail_after](int x) {
+      return ConcatMap([&fail_after](int x) {
         return fail_after(x);
       });
     };

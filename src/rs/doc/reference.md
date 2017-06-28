@@ -25,6 +25,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`BuildPipe(Operator...)`](#buildpipeoperator)
 * [`Catch(Publisher)`](#catchpublisher)
 * [`Concat(Publisher...)`](#concatpublisher)
+* [`ConcatMap(Mapper)`](#concatmapmapper)
 * [`Count(Publisher...)`](#countpublisher)
 * [`DefaultIfEmpty(Value...)`](#defaultifemptyvalue)
 * [`ElementAt(size_t)`](#elementatsize_t)
@@ -33,7 +34,6 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`Filter(Predicate)`](#filterpredicate)
 * [`First()`](#first)
 * [`First(Predicate)`](#firstpredicate)
-* [`FlatMap(Mapper)`](#flatmapmapper)
 * [`From(Container)`](#fromcontainer)
 * [`IfEmpty(Publisher)`](#ifemptypublisher)
 * [`IsPublisher`](#ispublisher)
@@ -240,6 +240,58 @@ auto empty = Concat();
 ```
 
 **See also:** [`Empty()`](#empty)
+
+
+## `ConcatMap(Mapper)`
+
+**Defined in:** [`rs/concat_map.h`](../include/rs/concat_map.h)
+
+**Kind:** [Operator Builder](#kind_operator_builder)
+
+**[Type](#types):** `(a -> Publisher[b]) -> (Publisher[a] -> Publisher[b])`
+
+**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/flatmap.html)
+
+**Description:** Similar to [`Map(Mapper)`](#mapmapper), but `ConcatMap` takes a mapper function that returns a Publisher rather than a value. This makes it possible for the mapper function to perform asynchronous operations or to return zero or more than one value. This is similar to the [`flatMap` method in Java 8 Streams](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html#flatMap-java.util.function.Function-).
+
+**Example usage:**
+
+```cpp
+auto user_ids = std::vector<std::string>{ "1", "2", "3" };
+
+// ConcatMap can be used when the mapper function needs to perform asynchronous
+// operations
+auto users = Pipe(
+    From(user_ids),
+    ConcatMap([user_database](const std::string &user_id) {
+      return user_database->Lookup(user_id);
+    }));
+```
+
+```cpp
+// ConcatMap can be used to implement the Filter operator
+auto only_even = Pipe(
+    Just(1, 2, 3, 4, 5),
+    ConcatMap([](int x) {
+      if ((x % 2) == 0) {
+        return Publisher<int>(Just(x));
+      } else {
+        return Publisher<int>(Empty());
+      }
+    }));
+```
+
+```cpp
+// zero zeroes, one one, two twos, three threes etc. This stream emits:
+// 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5
+auto numbers = Pipe(
+    Range(0, 5),
+    ConcatMap([](int x) {
+      return Repeat(x, x);
+    }));
+```
+
+**See also:** [`Map(Mapper)`](#mapmapper), [`Concat(Publisher...)`](#concatpublisher)
 
 
 ## `Count(Publisher...)`
@@ -511,58 +563,6 @@ auto fail = Pipe(
 ```
 
 **See also:** [`ElementAt(size_t)`](#elementatsize_t), [`Take(Count)`](#takecount)
-
-
-## `FlatMap(Mapper)`
-
-**Defined in:** [`rs/flat_map.h`](../include/rs/flat_map.h)
-
-**Kind:** [Operator Builder](#kind_operator_builder)
-
-**[Type](#types):** `(a -> Publisher[b]) -> (Publisher[a] -> Publisher[b])`
-
-**External documentation:** [ReactiveX](http://reactivex.io/documentation/operators/flatmap.html)
-
-**Description:** Similar to [`Map(Mapper)`](#mapmapper), but `FlatMap` takes a mapper function that returns a Publisher rather than a value. This makes it possible for the mapper function to perform asynchronous operations or to return zero or more than one value. This is similar to the [`flatMap` method in Java 8 Streams](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html#flatMap-java.util.function.Function-).
-
-**Example usage:**
-
-```cpp
-auto user_ids = std::vector<std::string>{ "1", "2", "3" };
-
-// FlatMap can be used when the mapper function needs to perform asynchronous
-// operations
-auto users = Pipe(
-    From(user_ids),
-    FlatMap([user_database](const std::string &user_id) {
-      return user_database->Lookup(user_id);
-    }));
-```
-
-```cpp
-// FlatMap can be used to implement the Filter operator
-auto only_even = Pipe(
-    Just(1, 2, 3, 4, 5),
-    FlatMap([](int x) {
-      if ((x % 2) == 0) {
-        return Publisher<int>(Just(x));
-      } else {
-        return Publisher<int>(Empty());
-      }
-    }));
-```
-
-```cpp
-// zero zeroes, one one, two twos, three threes etc. This stream emits:
-// 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5
-auto numbers = Pipe(
-    Range(0, 5),
-    FlatMap([](int x) {
-      return Repeat(x, x);
-    }));
-```
-
-**See also:** [`Map(Mapper)`](#mapmapper), [`Concat(Publisher...)`](#concatpublisher)
 
 
 ## `From(Container)`
@@ -940,7 +940,7 @@ auto one_to_hundred_strings = Pipe(
     }));
 ```
 
-**See also:** [`FlatMap(Mapper)`](#flatmapmapper), [`Scan(Accumulator, Mapper)`](#scanaccumulator-mapper)
+**See also:** [`ConcatMap(Mapper)`](#concatmapmapper), [`Scan(Accumulator, Mapper)`](#scanaccumulator-mapper)
 
 
 ## `Max()`
@@ -1115,7 +1115,7 @@ In the example below, `Publisher<int>` is used to get one type for two different
 ```cpp
 auto only_even = Pipe(
     Just(1, 2, 3, 4, 5),
-    FlatMap([](int x) {
+    ConcatMap([](int x) {
       if ((x % 2) == 0) {
         return Publisher<int>(Just(x));
       } else {

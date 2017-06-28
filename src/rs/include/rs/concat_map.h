@@ -25,10 +25,10 @@ namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename Mapper>
-class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
-  class FlatMapValuesSubscriber : public SubscriberBase {
+class ConcatMapSubscriber : public SubscriberBase, public SubscriptionBase {
+  class ConcatMapValuesSubscriber : public SubscriberBase {
    public:
-    FlatMapValuesSubscriber(const std::weak_ptr<FlatMapSubscriber> &that)
+    ConcatMapValuesSubscriber(const std::weak_ptr<ConcatMapSubscriber> &that)
         : that_(that) {}
 
     /**
@@ -60,18 +60,18 @@ class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
     }
 
    private:
-    std::weak_ptr<FlatMapSubscriber> that_;
+    std::weak_ptr<ConcatMapSubscriber> that_;
   };
 
  public:
-  FlatMapSubscriber(
+  ConcatMapSubscriber(
       InnerSubscriberType &&inner_subscriber, const Mapper &mapper)
       : inner_subscriber_(std::move(inner_subscriber)),
         mapper_(mapper) {}
 
   template <typename Publisher>
   void Subscribe(
-      std::shared_ptr<FlatMapSubscriber> me,
+      std::shared_ptr<ConcatMapSubscriber> me,
       Publisher &&publisher) {
     me_ = me;
     publishers_subscription_ = Subscription(
@@ -98,14 +98,14 @@ class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
       auto publisher = mapper_(std::forward<T>(t));
       static_assert(
           IsPublisher<decltype(publisher)>,
-          "FlatMap mapper function must return Publisher");
+          "ConcatMap mapper function must return Publisher");
 
       state_ = State::HAS_PUBLISHER;
       // We're only interested in catching the exception from mapper_ here, not
       // OnNext. But the specification requires that Subscribe and Request do
       // not throw, and here we rely on that.
       values_subscription_ = Subscription(
-          publisher.Subscribe(FlatMapValuesSubscriber(me_.lock())));
+          publisher.Subscribe(ConcatMapValuesSubscriber(me_.lock())));
       values_subscription_.Request(requested_);
     } catch (...) {
       OnError(std::current_exception());
@@ -221,7 +221,7 @@ class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
     }
   }
 
-  std::weak_ptr<FlatMapSubscriber> me_;
+  std::weak_ptr<ConcatMapSubscriber> me_;
   ElementCount requested_ = ElementCount(0);
   InnerSubscriberType inner_subscriber_;
   State state_ = State::INIT;
@@ -233,27 +233,27 @@ class FlatMapSubscriber : public SubscriberBase, public SubscriptionBase {
 }  // namespace detail
 
 /**
- * Map is like the functional flatMap operator that operates on a Publisher: The
- * mapper function returns a Publisher, which may emit zero or more values. All
- * of the Publishers returned by the mapper are concatenated, or "flattened",
- * into a single Publisher.
+ * ConcatMap is like the functional flatMap operator that operates on a
+ * Publisher: The mapper function returns a Publisher, which may emit zero or
+ * more values. All of the Publishers returned by the mapper are concatenated,
+ * or "flattened", into a single Publisher.
  */
 template <typename Mapper>
-auto FlatMap(Mapper &&mapper) {
+auto ConcatMap(Mapper &&mapper) {
   // Return an operator (it takes a Publisher and returns a Publisher)
   return [mapper = std::forward<Mapper>(mapper)](auto source) {
     // Return a Publisher
     return MakePublisher([mapper, source = std::move(source)](
         auto &&subscriber) {
-      auto flat_map_subscriber = std::make_shared<detail::FlatMapSubscriber<
+      auto concat_map_subscriber = std::make_shared<detail::ConcatMapSubscriber<
           typename std::decay<decltype(subscriber)>::type,
           typename std::decay<Mapper>::type>>(
               std::forward<decltype(subscriber)>(subscriber),
               mapper);
 
-      flat_map_subscriber->Subscribe(flat_map_subscriber, source);
+      concat_map_subscriber->Subscribe(concat_map_subscriber, source);
 
-      return MakeSubscription(flat_map_subscriber);
+      return MakeSubscription(concat_map_subscriber);
     });
   };
 }

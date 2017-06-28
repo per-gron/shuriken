@@ -3,6 +3,7 @@ add_library(rs
   include/rs/average.h
   include/rs/catch.h
   include/rs/concat.h
+  include/rs/concat_map.h
   include/rs/count.h
   include/rs/default_if_empty.h
   include/rs/element_at.h
@@ -10,7 +11,6 @@ add_library(rs
   include/rs/empty.h
   include/rs/filter.h
   include/rs/first.h
-  include/rs/flat_map.h
   include/rs/from.h
   include/rs/if_empty.h
   include/rs/is_empty.h
@@ -52,6 +52,7 @@ add_executable(rs-test
   test/average_test.cpp
   test/backpressure_violator.h
   test/catch_test.cpp
+  test/concat_map_test.cpp
   test/concat_test.cpp
   test/count_test.cpp
   test/default_if_empty_test.cpp
@@ -60,7 +61,6 @@ add_executable(rs-test
   test/empty_test.cpp
   test/filter_test.cpp
   test/first_test.cpp
-  test/flat_map_test.cpp
   test/from_test.cpp
   test/if_empty_test.cpp
   test/is_empty_test.cpp

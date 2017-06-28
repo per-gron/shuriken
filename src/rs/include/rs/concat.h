@@ -14,15 +14,15 @@
 
 #pragma once
 
-#include <rs/flat_map.h>
+#include <rs/concat_map.h>
 #include <rs/just.h>
 
 namespace shk {
 
 template <typename ...Streams>
 auto Concat(Streams &&...streams) {
-  auto flat_map = FlatMap([](auto &&publisher) { return publisher; });
-  return flat_map(Just(std::forward<Streams>(streams)...));
+  auto concat_map = ConcatMap([](auto &&publisher) { return publisher; });
+  return concat_map(Just(std::forward<Streams>(streams)...));
 }
 
 }  // namespace shk

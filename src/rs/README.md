@@ -85,12 +85,12 @@ auto user_with_reversed_username = Pipe(
 
 `Pipe(a, b, c)` is basically the same as writing `c(b(a))`.
 
-Another useful operator is `FlatMap`, which is similar to `Map` but it allows the mapper function to return a Publisher. It is useful for chaining asynchronous operations:
+Another useful operator is `ConcatMap`, which is similar to `Map` but it allows the mapper function to return a Publisher. It is useful for chaining asynchronous operations:
 
 ```cpp
 auto user = Pipe(
     UsernameToUserId("john_doe"),
-    FlatMap([](const std::string &user_id) {
+    ConcatMap([](const std::string &user_id) {
       return LookupUserById(user_id);
     }));
 ```
@@ -100,7 +100,7 @@ Or, more concisely:
 ```cpp
 auto user = Pipe(
     UsernameToUserId("john_doe"),
-    FlatMap(&LookupUserById));
+    ConcatMap(&LookupUserById));
 ```
 
 One of the best features of the rs library is that operators compose very well:
