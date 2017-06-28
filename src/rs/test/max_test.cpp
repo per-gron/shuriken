@@ -39,18 +39,34 @@ TEST_CASE("Max") {
         "ReduceWithoutInitial invoked with empty stream");
   }
 
-  SECTION("single value") {
-    CHECK(GetOne<int>(max(Just(4))) == 4);
+  SECTION("default compare function") {
+    SECTION("single value") {
+      CHECK(GetOne<int>(max(Just(4))) == 4);
+    }
+
+    SECTION("multiple values, biggest last") {
+      auto values = From(std::vector<int>({ 1, 2 }));
+      CHECK(GetOne<int>(max(values)) == 2);
+    }
+
+    SECTION("multiple values, biggest first") {
+      auto values = From(std::vector<int>({ 2, 1 }));
+      CHECK(GetOne<int>(max(values)) == 2);
+    }
   }
 
-  SECTION("multiple values, biggest last") {
-    auto values = From(std::vector<int>({ 1, 2 }));
-    CHECK(GetOne<int>(max(values)) == 2);
-  }
+  SECTION("custom compare function") {
+    auto min = Max<int>(std::greater<int>());
 
-  SECTION("multiple values, biggest first") {
-    auto values = From(std::vector<int>({ 2, 1 }));
-    CHECK(GetOne<int>(max(values)) == 2);
+    SECTION("multiple values, biggest last") {
+      auto values = From(std::vector<int>({ 1, 2 }));
+      CHECK(GetOne<int>(min(values)) == 1);
+    }
+
+    SECTION("multiple values, biggest first") {
+      auto values = From(std::vector<int>({ 2, 1 }));
+      CHECK(GetOne<int>(min(values)) == 1);
+    }
   }
 
   SECTION("failing input stream") {

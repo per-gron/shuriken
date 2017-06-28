@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <algorithm>
+#include <functional>
 #include <stdexcept>
 
 #include <rs/reduce.h>
@@ -24,12 +26,13 @@ namespace shk {
  * Takes a stream of values and returns the biggest one. If there is no value,
  * the operator fails with an std::out_of_range exception.
  */
-template <typename T>
-auto Max() {
-  return ReduceWithoutInitial<T>([](auto &&accum, auto &&value) {
+template <typename T, typename Compare = std::less<T>>
+auto Max(const Compare &compare = Compare()) {
+  return ReduceWithoutInitial<T>([compare](auto &&accum, auto &&value) {
     return std::max(
         std::forward<decltype(accum)>(accum),
-        std::forward<decltype(value)>(value));
+        std::forward<decltype(value)>(value),
+        compare);
   });
 }
 

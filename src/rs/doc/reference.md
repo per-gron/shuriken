@@ -50,9 +50,9 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`MakeSubscription(RequestCb, CancelCb)`](#makesubscriptionrequestcb-cancelcb)
 * [`MakeSubscription(const std::shared_ptr<SubscriptionType> &)`](#makesubscriptionconst-stdshared_ptrsubscriptiontype-)
 * [`Map(Mapper)`](#mapmapper)
-* [`Max()`](#max)
+* [`Max(Compare?)`](#maxcompare)
 * [`Merge(Publisher...)`](#mergepublisher)
-* [`Min()`](#min)
+* [`Min(Compare?)`](#mincompare)
 * [`Never()`](#never)
 * [`Pipe(Publisher, Operator...)`](#pipepublisher-operator)
 * [`Publisher`](#publisher)
@@ -943,17 +943,17 @@ auto one_to_hundred_strings = Pipe(
 **See also:** [`ConcatMap(Mapper)`](#concatmapmapper), [`Scan(Accumulator, Mapper)`](#scanaccumulator-mapper)
 
 
-## `Max()`
+## `Max(Compare?)`
 
 **Defined in:** [`rs/max.h`](../include/rs/max.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
-**[Type](#types):** `void -> (Publisher[a] -> Publisher[a])`
+**[Type](#types):** `(a, a -> bool)? -> (Publisher[a] -> Publisher[a])`
 
 **External documentation:** [RxMarbles](http://rxmarbles.com/#max), [ReactiveX](http://reactivex.io/documentation/operators/max.html)
 
-**Description:** Takes a stream and returns a stream that emits only the biggest value in the input stream. `operator<` is used for comparison.
+**Description:** Takes a stream and returns a stream that emits only the biggest value in the input stream. It is possible to pass a custom comparator function to `Max`. The default is `std::less`, which uses `operator<`.
 
 **Example usage:**
 
@@ -963,7 +963,7 @@ auto biggest = Pipe(
     Max());
 ```
 
-**See also:** [`Min()`](#min), [`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer), [`ReduceWithoutInitial<Accumulator>(Reducer)`](#reducewithoutinitialaccumulatorreducer)
+**See also:** [`Min(Compare?)`](#mincompare), [`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer), [`ReduceWithoutInitial<Accumulator>(Reducer)`](#reducewithoutinitialaccumulatorreducer)
 
 
 ## `Merge(Publisher...)`
@@ -989,17 +989,17 @@ auto six = Pipe(
 **See also:** [`Concat(Publisher...)`](#concatpublisher), [`Zip(Publisher...)`](#zippublisher)
 
 
-## `Min()`
+## `Min(Compare?)`
 
 **Defined in:** [`rs/min.h`](../include/rs/min.h)
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
-**[Type](#types):** `void -> (Publisher[a] -> Publisher[a])`
+**[Type](#types):** `(a, a -> bool)? -> (Publisher[a] -> Publisher[a])`
 
 **External documentation:** [RxMarbles](http://rxmarbles.com/#min), [ReactiveX](http://reactivex.io/documentation/operators/min.html)
 
-**Description:** Takes a stream and returns a stream that emits only the smallest value in the input stream. `operator<` is used for comparison.
+**Description:** Takes a stream and returns a stream that emits only the smallest value in the input stream. It is possible to pass a custom comparator function to `Min`. The default is `std::less`, which uses `operator<`.
 
 **Example usage:**
 
@@ -1009,7 +1009,7 @@ auto smallest = Pipe(
     Min());
 ```
 
-**See also:** [`Max()`](#max), [`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer), [`ReduceWithoutInitial<Accumulator>(Reducer)`](#reducewithoutinitialaccumulatorreducer)
+**See also:** [`Max(Compare?)`](#maxcompare), [`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer), [`ReduceWithoutInitial<Accumulator>(Reducer)`](#reducewithoutinitialaccumulatorreducer)
 
 
 ## `Never()`
@@ -1240,7 +1240,7 @@ auto Sum() {
 **Example usage:**
 
 ```cpp
-// An implementation of the Max operator that works with ints
+// An simplified implementation of the Max operator that works with ints
 auto Max() {
   return ReduceWithoutInitial<int>([](int accum, int value) {
     return std::max(accum, value);
@@ -1928,6 +1928,7 @@ Each operator described here has a section that describes its type. Because C++ 
 * `Subscription[]` is a C++ type that fulfills the requirements of the Subscription concept.
 * `x -> y` is a function that takes `x` as a parameter and returns `y`.
 * `x, y -> z` is a function with two parameters of type `x` and `y` and returns `z`.
+* `x? -> y` is a function that takes `x` as an optional parameter (it's also allowed to pass no parameters to it) and returns `y`.
 * `bool`, `size_t` and `std::exception_ptr&&` refer to the C++ types with the same name.
 * `void` is the C++ `void` type. It is also used here to denote functions that take no parameters: for example, `void -> bool` a function that takes no parameters and returns a `bool`.
 * Letters such as `a`, `b` and `c` can represent any type. If a letter occurs more than once in a type declaration, all occurences refer to the same type.
