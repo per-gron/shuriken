@@ -1881,6 +1881,8 @@ The documentation for [`Throw(Exception)`](#throwexception) has more examples.
 
 **Description:** Takes a number of input Publishers and returns a Publisher that emits tuples of values from all the input streams. For example, zipping `[1, 2, 3]` with `[a, b, c]` emits `[(1, a), (2, b), (3, c)]`.
 
+If the input streams emit different numbers of elements, the resulting stream emits as many values as the smallest input stream. The other values are dropped.
+
 In code that performs server/client style RPC/REST communication, `Zip` is very handy when making two or more requests in parallel and then continue when all of the requests have finished.
 
 Many functional programming languages and libraries has a version of this function that operates on lists that is also called `zip`, for example [Haskell](http://hackage.haskell.org/package/base-4.9.1.0/docs/Prelude.html#v:zip).

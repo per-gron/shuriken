@@ -20,9 +20,11 @@
 #include <rs/concat.h>
 #include <rs/empty.h>
 #include <rs/just.h>
+#include <rs/never.h>
 #include <rs/throw.h>
 #include <rs/zip.h>
 
+#include "backpressure_violator.h"
 #include "infinite_range.h"
 #include "test_util.h"
 
@@ -156,6 +158,14 @@ TEST_CASE("Zip") {
         (std::vector<std::tuple<int, int>>{}));
   }
 
+  SECTION("one never stream, the other infinite") {
+    // This test attempts to trigger an infinite loop / crash that can happen if
+    // Zip has an unbounded buffer.
+    auto stream = Zip<std::tuple<int, int>>(Never(), InfiniteRange(0));
+    auto sub = stream.Subscribe(MakeSubscriber());
+    sub.Request(ElementCount::Unbounded());
+  }
+
   SECTION("two streams with two values, request one") {
     auto stream = Zip<std::tuple<int, int>>(Just(1, 2), Just(3, 4));
     CHECK(
@@ -174,38 +184,59 @@ TEST_CASE("Zip") {
   }
 
   SECTION("requesting parts of stream at a time") {
-    for (int i = 1; i <= 2; i++) {
-      auto stream = Zip<std::tuple<int, int>>(
-          Just(1, 2, 3, 4, 5),
-          Just(6, 7, 8, 9, 10));
+    SECTION("input streams that synchronously emit values") {
+      for (int i = 1; i <= 2; i++) {
+        auto stream = Zip<std::tuple<int, int>>(
+            Just(1, 2, 3, 4, 5),
+            Just(6, 7, 8, 9, 10));
 
-      std::vector<std::tuple<int, int>> result;
-      bool is_done = false;
-      auto sub = stream.Subscribe(MakeSubscriber(
-          [&is_done, &result](auto &&val) {
-            CHECK(!is_done);
-            result.emplace_back(std::forward<decltype(val)>(val));
-          },
-          [](std::exception_ptr &&error) {
-            CHECK(!"OnError should not be called");
-          },
-          [&is_done] {
-            CHECK(!is_done);
-            is_done = true;
-          }));
+        std::vector<std::tuple<int, int>> result;
+        bool is_done = false;
+        auto sub = stream.Subscribe(MakeSubscriber(
+            [&is_done, &result](auto &&val) {
+              CHECK(!is_done);
+              result.emplace_back(std::forward<decltype(val)>(val));
+            },
+            [](std::exception_ptr &&error) {
+              CHECK(!"OnError should not be called");
+            },
+            [&is_done] {
+              CHECK(!is_done);
+              is_done = true;
+            }));
 
-      for (int j = 0; !is_done && j < 200; j++) {
-        sub.Request(ElementCount(i));
+        for (int j = 0; !is_done && j < 200; j++) {
+          sub.Request(ElementCount(i));
+        }
+        CHECK(is_done);
+        CHECK(
+            result ==
+            (std::vector<std::tuple<int, int>>{
+                std::make_tuple(1, 6),
+                std::make_tuple(2, 7),
+                std::make_tuple(3, 8),
+                std::make_tuple(4, 9),
+                std::make_tuple(5, 10) }));
       }
-      CHECK(is_done);
-      CHECK(
-          result ==
-          (std::vector<std::tuple<int, int>>{
-              std::make_tuple(1, 6),
-              std::make_tuple(2, 7),
-              std::make_tuple(3, 8),
-              std::make_tuple(4, 9),
-              std::make_tuple(5, 10) }));
+    }
+
+    SECTION("input streams that asynchronously emit values") {
+      // This test tries to make sure that the Request method never Requests
+      // more elements than it has buffer for.
+      auto sub = Zip<std::tuple<int, int>>(Just(1, 2), Never())
+          .Subscribe(MakeSubscriber(
+              [](std::tuple<int, int> value) {
+                CHECK(!"stream should not emit any value");
+              },
+              [](std::exception_ptr &&error) {
+                CHECK(!"stream should not fail");
+              },
+              [] {
+                CHECK(!"stream should not finish");
+              }));
+
+      sub.Request(ElementCount(1));
+      sub.Request(ElementCount(1));
     }
   }
 
@@ -372,6 +403,22 @@ TEST_CASE("Zip") {
       auto stream = Zip<std::tuple<int, int>>(Throw(fail), Throw(fail));
       auto error = GetError(stream);
       CHECK(GetErrorWhat(error) == "test_fail");
+    }
+  }
+
+  SECTION("backpressure violation") {
+    SECTION("one too much") {
+      auto stream = Zip<std::tuple<int>>(
+          BackpressureViolator(1, [] { return 0; }));
+      auto error = GetError(stream);
+      CHECK(GetErrorWhat(error) == "Backpressure violation");
+    }
+
+    SECTION("two too much") {
+      auto stream = Zip<std::tuple<int>>(
+          BackpressureViolator(2, [] { return 0; }));
+      auto error = GetError(stream);
+      CHECK(GetErrorWhat(error) == "Backpressure violation");
     }
   }
 }

@@ -14,7 +14,8 @@
 
 #pragma once
 
-#include <deque>
+#include <bitset>
+#include <memory>
 #include <type_traits>
 
 #include <rs/element_count.h>
@@ -85,12 +86,12 @@ using TupleTypeMap = typename TupleTypeMapHelper<
     std::tuple_size<Tuple>::value, Tuple, Map>::Type;
 
 template <typename T>
-using WrapInDeque = std::deque<T>;
+using WrapInUniquePtr = std::unique_ptr<T>;
 
 template <typename Tuple, typename InnerSubscriberType, typename ...Publishers>
 class ZipSubscription : public SubscriptionBase {
   // The buffer is a tuple of deques, one for each input stream.
-  using Buffer = TupleTypeMap<Tuple, WrapInDeque>;
+  using Buffer = TupleTypeMap<Tuple, WrapInUniquePtr>;
   using FinishedSubscriptions = std::bitset<sizeof...(Publishers)>;
 
   template <size_t Idx>
@@ -170,7 +171,6 @@ class ZipSubscription : public SubscriptionBase {
   void Subscribe(
       const std::shared_ptr<ZipSubscription> &me,
       const std::tuple<Publishers...> &publishers) {
-    values_pending_ = sizeof...(Publishers);
     subscriptions_ = ZipSubscriptionBuilder<0, Publishers...>::Subscribe(
         me, publishers);
     if (finished_) {
@@ -184,9 +184,14 @@ class ZipSubscription : public SubscriptionBase {
 
   void Request(ElementCount count) {
     if (!finished_) {
-      TupleMap(*subscriptions_, [count](auto &&subscription) {
-        subscription.Request(count);
-      });
+      requested_ += count;
+
+      if (values_pending_.count() == 0 && requested_ > 0) {
+        values_pending_.set();
+        TupleMap(*subscriptions_, [](auto &&subscription) {
+          subscription.Request(ElementCount(1));
+        });
+      }
     }
   }
 
@@ -206,14 +211,18 @@ class ZipSubscription : public SubscriptionBase {
       return;
     }
 
-    auto &deque = std::get<Idx>(buffer_);
-    if (deque.empty()) {
-      values_pending_--;
-    }
-    deque.emplace_back(std::move(element));
+    auto &buffered_element = std::get<Idx>(buffer_);
+    if (buffered_element || !values_pending_[Idx]) {
+      OnInnerSubscriptionError(std::make_exception_ptr(std::logic_error(
+          "Backpressure violation")));
+    } else {
+      values_pending_[Idx] = false;
+      buffered_element.reset(
+          new std::tuple_element_t<Idx, Tuple>(std::move(element)));
 
-    if (values_pending_ == 0) {
-      Emit();
+      if (values_pending_.count() == 0) {
+        Emit();
+      }
     }
   }
 
@@ -227,7 +236,7 @@ class ZipSubscription : public SubscriptionBase {
   template <size_t Idx>
   void OnInnerSubscriptionComplete() {
     finished_subscriptions_.set(Idx);
-    if (std::get<Idx>(buffer_).empty()) {
+    if (!std::get<Idx>(buffer_)) {
       // Only if the buffer for this stream is empty is it safe to send
       // OnComplete here. If the buffer is non-empty there is a chance that
       // elements will arrive on the other streams and then the buffer should
@@ -252,25 +261,22 @@ class ZipSubscription : public SubscriptionBase {
     static Tuple Build(
         const FinishedSubscriptions &finished_subscriptions,
         bool *should_finish,
-        size_t *values_pending,
         Buffer *buffer,
         AccumulatedElements &...accumulated_elements) {
-      auto &deque = std::get<Idx>(*buffer);
-      auto element = std::move(deque.front());
-      deque.pop_front();
-      if (deque.empty()) {
-        (*values_pending)++;
-        if (finished_subscriptions[Idx]) {
-          // We have encountered a finish stream that has an empty buffer. This
-          // means that this Zip stream will never emit any more elements. It's
-          // time to cancel the others.
-          *should_finish = true;  // TODO(peck): Test this
-        }
+      auto &buffered_element = std::get<Idx>(*buffer);
+      auto element = std::move(*buffered_element);
+      buffered_element.reset();
+
+      if (finished_subscriptions[Idx]) {
+        // We have encountered a finish stream that has an empty buffer. This
+        // means that this Zip stream will never emit any more elements. It's
+        // time to cancel the others.
+        *should_finish = true;
       }
+
       return EmittedElementBuilder<Idx + 1, Dummy>::Build(
           finished_subscriptions,
           should_finish,
-          values_pending,
           buffer,
           accumulated_elements...,
           element);
@@ -286,7 +292,6 @@ class ZipSubscription : public SubscriptionBase {
     static Tuple Build(
         const FinishedSubscriptions &finished_subscriptions,
         bool *should_finish,
-        size_t *values_pending,
         Buffer *buffer,
         AccumulatedElements &...accumulated_elements) {
       return Tuple(std::move(accumulated_elements)...);
@@ -296,18 +301,22 @@ class ZipSubscription : public SubscriptionBase {
   void Emit() {
     bool should_finish = false;
     inner_subscriber_.OnNext(EmittedElementBuilder<0, int>::Build(
-        finished_subscriptions_, &should_finish, &values_pending_, &buffer_));
+        finished_subscriptions_, &should_finish, &buffer_));
     if (should_finish) {
       SendOnComplete();
+    } else {
+      --requested_;
+      Request(ElementCount(0));
     }
   }
 
   std::unique_ptr<Subscriptions> subscriptions_;
   FinishedSubscriptions finished_subscriptions_{};
-  size_t values_pending_ = 0;
+  std::bitset<sizeof...(Publishers)> values_pending_{};
   bool finished_ = false;
   InnerSubscriberType inner_subscriber_;
   Buffer buffer_;
+  ElementCount requested_;
 };
 
 }  // namespace detail
@@ -319,11 +328,6 @@ class ZipSubscription : public SubscriptionBase {
  * If the input streams emit different numbers of elements, the resulting stream
  * emits as many values as the smallest input stream. The other values are
  * dropped.
- *
- * Zip does internal buffering. The buffer size can be up to
- * [number of input streams - 1] * [outstanding requested elements] elements.
- * If an infinite number of elements are requested, the buffer size is
- * unbounded.
  */
 template <typename Tuple, typename ...Publishers>
 auto Zip(Publishers &&...publishers) {
