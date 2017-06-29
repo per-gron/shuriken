@@ -58,7 +58,7 @@ class TakeSubscriber : public SubscriberBase, public SubscriptionBase {
   }
 
   void OnError(std::exception_ptr &&error) {
-    if (!cancelled_) {  // TODO(peck): Test this
+    if (!cancelled_) {
       inner_subscriber_.OnError(std::move(error));
     }
   }

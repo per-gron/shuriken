@@ -195,13 +195,20 @@ TEST_CASE("Take") {
     }
 
     SECTION("after cancel") {
+      std::function<void ()> fail;
+      auto input = MakePublisher([&fail](auto subscriber) {
+        fail = [subscriber = std::move(subscriber)]() mutable {
+          subscriber.OnError(
+              std::make_exception_ptr(std::runtime_error("test")));
+        };
+        return MakeSubscription();
+      });
       auto stream = Pipe(
-          Throw(std::runtime_error("test")),
-          StartWith(0),
+          input,
           Take(2));
       auto sub = stream.Subscribe(std::move(null_subscriber));
       sub.Cancel();
-      sub.Request(ElementCount::Unbounded());
+      fail();
     }
   }
 }
