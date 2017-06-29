@@ -1,6 +1,6 @@
 # `rs`
 
-*rs* is a minimalist unofficial [Reactive Streams](http://www.reactive-streams.org/) library that offers types for reactive streams along with functions that operate on them.
+*rs* is an unofficial [Reactive Streams](http://www.reactive-streams.org/) library that offers types for reactive streams along with functions that operate on them.
 
 ## Features
 
