@@ -16,6 +16,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 #include <flatbuffers/grpc.h>
@@ -43,6 +45,33 @@ using namespace RsGrpcTest;
 
 namespace shk {
 namespace {
+
+class AsyncResponder {
+ public:
+  void SetCallback(const std::function<void ()> &callback) {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      CHECK(!callback_);
+      callback_ = callback;
+    }
+    cv_.notify_one();
+  }
+
+  void Respond() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [this] { return !!callback_; });
+    callback_();
+  }
+
+  explicit operator bool() const {
+    return !!callback_;
+  }
+
+ private:
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  std::function<void ()> callback_;
+};
 
 auto RepeatHandler(Flatbuffer<TestRequest> request) {
   int count = request->data();
@@ -79,6 +108,22 @@ auto ServerStreamBackpressureViolationHandler(Flatbuffer<TestRequest> request) {
   });
 }
 
+auto ServerStreamAsyncResponseHandler(AsyncResponder *responder) {
+  return [responder](Flatbuffer<TestRequest> request) {
+    return MakePublisher([responder](auto subscriber) {
+      auto shared_sub = std::make_shared<decltype(subscriber)>(
+          decltype(subscriber)(std::move(subscriber)));
+
+      responder->SetCallback([shared_sub] {
+        shared_sub->OnNext(MakeTestResponse(1));
+        shared_sub->OnComplete();
+      });
+
+      return MakeSubscription();
+    });
+  };
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Server streaming RPC") {
@@ -89,6 +134,8 @@ TEST_CASE("Server streaming RPC") {
       .AddListeningPort(server_address, grpc::InsecureServerCredentials());
 
   std::atomic<int> hang_on_seen_elements(0);
+
+  AsyncResponder async_responder;
 
   server_builder.RegisterService<TestService::AsyncService>()
       .RegisterMethod(
@@ -105,7 +152,10 @@ TEST_CASE("Server streaming RPC") {
           &InfiniteRepeatHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestServerStreamBackpressureViolation,
-          &ServerStreamBackpressureViolationHandler);
+          &ServerStreamBackpressureViolationHandler)
+      .RegisterMethod(
+          &TestService::AsyncService::RequestServerStreamAsyncResponse,
+          ServerStreamAsyncResponseHandler(&async_responder));
 
   RsGrpcClient runloop;
 
@@ -381,6 +431,43 @@ TEST_CASE("Server streaming RPC") {
 
     Run(&runloop, Merge<const char *>(responses_1, responses_2));
   }
+
+#if 0
+  SECTION("asynchronous response") {
+    auto stream = Pipe(
+        test_client.Invoke(
+            &TestService::Stub::AsyncServerStreamAsyncResponse,
+            MakeTestRequest(1)),
+        Map([](Flatbuffer<TestResponse> response) {
+          CHECK(response->data() == 1);
+          return "ignored";
+        }),
+        Count(),
+        Map([](int count) {
+          CHECK(count == 1);
+          return "ignored";
+        }));
+
+    auto sub = stream.Subscribe(MakeSubscriber(
+        [](auto &&) {
+          // Ignore OnNext
+        },
+        [&runloop](std::exception_ptr error) {
+          runloop.Shutdown();
+          CHECK(!"request should not fail");
+          printf("Got exception: %s\n", ExceptionMessage(error).c_str());
+        },
+        [&runloop]() {
+          runloop.Shutdown();
+        }));
+    sub.Request(ElementCount::Unbounded());
+
+    CHECK(!async_responder);
+    runloop.Next();
+    async_responder.Respond();
+    runloop.Run();
+  }
+#endif
 
   {
     using namespace std::chrono_literals;

@@ -276,6 +276,8 @@ class RsGrpcServerCall<
   void TagOperationDone(bool success) {
     if (!success) {
       // This happens when the server is shutting down.
+      subscription_ = Subscription();
+      retained_self_.Reset();
       return;
     }
 
@@ -292,9 +294,18 @@ class RsGrpcServerCall<
         // after which it's not safe to do anything with `this` anymore.
         IssueNewServerRequest(std::move(callback_));
 
-        // TODO(peck): I think it's wrong for this Subscriber to hold a weak
-        // reference to this. I think it needs to be a strong ref. But that
-        // would cause a cyclic ref it seems...?
+        // Subscribe to the values Publisher. In doing so, we keep the returned
+        // Subscription. Because the Subscription can own the Subscriber that
+        // we give to Subscribe, the Subscriber cannot have an owning reference
+        // to this, becuase then we get a reference cycle.
+        //
+        // However, we can't just give a Subscriber with a weak reference to
+        // this, because then if a value is emitted asynchronously, this object
+        // might have been destroyed.
+        //
+        // In order to solve this, this object retains itself until the stream
+        // finishes or the request is cancelled.
+        retained_self_ = ToShared(this);
         subscription_ = Subscription(values.Subscribe(
             MakeRsGrpcTagSubscriber(ToWeak(this))));
         // TODO(peck): Cancellation
@@ -309,6 +320,8 @@ class RsGrpcServerCall<
         break;
       }
       case State::SENT_FINAL_RESPONSE: {
+        subscription_ = Subscription();
+        retained_self_.Reset();
         break;
       }
     }
@@ -367,6 +380,7 @@ class RsGrpcServerCall<
   Subscription subscription_;
   std::unique_ptr<ResponseType> next_response_;
 
+  Ptr<RsGrpcServerCall> retained_self_;
   GrpcErrorHandler error_handler_;
   Method method_;
   Callback callback_;
