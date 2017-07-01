@@ -26,18 +26,21 @@ class TakeSubscriber : public SubscriberBase, public SubscriptionBase {
       InnerSubscriberType &&inner_subscriber,
       const CountType &count)
       : inner_subscriber_(std::move(inner_subscriber)),
-        subscription_(MakeSubscription()),
         count_(count) {}
 
   template <typename PublisherT>
-  void TakeSubscription(
+  SharedSubscription TakeSubscription(
       const std::shared_ptr<TakeSubscriber> &me,
       PublisherT *source) {
     if (count_ == 0) {
       cancelled_ = true;
       inner_subscriber_.OnComplete();
+
+      return SharedSubscription();
     } else {
-      subscription_ = Subscription(source->Subscribe(MakeSubscriber(me)));
+      auto sub = SharedSubscription(source->Subscribe(MakeSubscriber(me)));
+      subscription_ = WeakSubscription(sub);
+      return sub;
     }
   }
 
@@ -53,7 +56,8 @@ class TakeSubscriber : public SubscriberBase, public SubscriptionBase {
     --count_;
     if (count_ <= 0) {
       inner_subscriber_.OnComplete();
-      Cancel();
+      subscription_.Cancel();
+      cancelled_ = true;
     }
   }
 
@@ -75,13 +79,12 @@ class TakeSubscriber : public SubscriberBase, public SubscriptionBase {
 
   void Cancel() {
     subscription_.Cancel();
-    cancelled_ = true;
   }
 
  private:
   bool cancelled_ = false;
   InnerSubscriberType inner_subscriber_;
-  Subscription subscription_;
+  WeakSubscription subscription_;
   CountType count_;
 };
 
@@ -100,9 +103,7 @@ auto Take(CountType &&count) {
               std::forward<decltype(subscriber)>(subscriber),
               count);
 
-      take_subscriber->TakeSubscription(take_subscriber, &source);
-
-      return MakeSubscription(take_subscriber);
+      return take_subscriber->TakeSubscription(take_subscriber, &source);
     });
   };
 }

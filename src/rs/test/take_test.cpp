@@ -166,6 +166,23 @@ TEST_CASE("Take") {
     CHECK(GetAll<int>(stream) == (std::vector<int>{ 1, 2 }));
   }
 
+  SECTION("don't leak the subscriber") {
+    bool destroyed = false;
+    auto lifetime_tracer = std::shared_ptr<void>(nullptr, [&destroyed](void *) {
+      destroyed = true;
+    });
+    auto null_subscriber = MakeSubscriber(
+        [lifetime_tracer = std::move(lifetime_tracer)](int next) {
+          CHECK(!"should not happen");
+        },
+        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+        [] {});
+
+    Take(1)(Just(1, 2)).Subscribe(std::move(null_subscriber));
+
+    CHECK(destroyed);
+  }
+
   SECTION("cancel") {
     auto sub = Pipe(InfiniteRange(0), Take(1))
         .Subscribe(std::move(null_subscriber));
@@ -192,23 +209,6 @@ TEST_CASE("Take") {
           Take(1));
 
       CHECK(GetAll<int>(stream) == (std::vector<int>{ 0 }));
-    }
-
-    SECTION("after cancel") {
-      std::function<void ()> fail;
-      auto input = MakePublisher([&fail](auto subscriber) {
-        fail = [subscriber = std::move(subscriber)]() mutable {
-          subscriber.OnError(
-              std::make_exception_ptr(std::runtime_error("test")));
-        };
-        return MakeSubscription();
-      });
-      auto stream = Pipe(
-          input,
-          Take(2));
-      auto sub = stream.Subscribe(std::move(null_subscriber));
-      sub.Cancel();
-      fail();
     }
   }
 }
