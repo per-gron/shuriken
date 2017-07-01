@@ -25,20 +25,19 @@ namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename Mapper>
-class MapSubscriber : public SubscriberBase, public SubscriptionBase {
+class MapSubscriber : public SubscriberBase {
  public:
   MapSubscriber(InnerSubscriberType &&inner_subscriber, const Mapper &mapper)
       : inner_subscriber_(std::move(inner_subscriber)),
         mapper_(mapper) {}
 
-  template <typename SubscriptionT>
-  void TakeSubscription(SubscriptionT &&subscription) {
-    subscription_ = Subscription(std::forward<SubscriptionT>(subscription));
+  void TakeSubscription(const SharedSubscription &subscription) {
+    subscription_ = WeakSubscription(subscription);
   }
 
   template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
-    if (cancelled_) {
+    if (failed_) {
       return;
     }
 
@@ -48,36 +47,28 @@ class MapSubscriber : public SubscriberBase, public SubscriptionBase {
       // here we rely on that.
       inner_subscriber_.OnNext(mapper_(std::forward<T>(t)));
     } catch (...) {
-      Cancel();
+      subscription_.Cancel();
+      failed_ = true;
       inner_subscriber_.OnError(std::current_exception());
     }
   }
 
   void OnError(std::exception_ptr &&error) {
-    if (!cancelled_) {
+    if (!failed_) {
       inner_subscriber_.OnError(std::move(error));
     }
   }
 
   void OnComplete() {
-    if (!cancelled_) {
+    if (!failed_) {
       inner_subscriber_.OnComplete();
     }
   }
 
-  void Request(ElementCount count) {
-    subscription_.Request(count);
-  }
-
-  void Cancel() {
-    subscription_.Cancel();
-    cancelled_ = true;
-  }
-
  private:
-  bool cancelled_ = false;
+  bool failed_ = false;
   InnerSubscriberType inner_subscriber_;
-  Subscription subscription_;
+  WeakSubscription subscription_;
   Mapper mapper_;
 };
 
@@ -99,10 +90,12 @@ auto Map(Mapper &&mapper) {
               std::forward<decltype(subscriber)>(subscriber),
               mapper);
 
-      map_subscriber->TakeSubscription(
-          source.Subscribe(MakeSubscriber(map_subscriber)));
+      auto sub =
+          SharedSubscription(source.Subscribe(MakeSubscriber(map_subscriber)));
 
-      return MakeSubscription(map_subscriber);
+      map_subscriber->TakeSubscription(sub);
+
+      return sub;
     });
   };
 }
