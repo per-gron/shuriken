@@ -105,8 +105,8 @@ template <typename Publisher>
 void Run(
     RsGrpcClient *runloop,
     const Publisher &publisher,
-    std::function<void (Subscription &)> subscribe = nullptr) {
-  auto subscription = Subscription(publisher
+    std::function<void (Subscription &&)> subscribe = nullptr) {
+  auto subscription = publisher
       .Subscribe(MakeSubscriber(
           [](auto &&) {
             // Ignore OnNext
@@ -118,9 +118,9 @@ void Run(
           },
           [runloop]() {
             runloop->Shutdown();
-          })));
+          }));
   if (subscribe) {
-    subscribe(subscription);
+    subscribe(Subscription(std::move(subscription)));
   } else {
     subscription.Request(ElementCount::Unbounded());
   }
@@ -134,7 +134,7 @@ inline auto RequestZeroHandler(
   // it doesn't get more than that pushed to it. This endpoint never responds
   // so tests have to suceed by timing out.
 
-  Subscription subscription = Subscription(requests.Subscribe(MakeSubscriber(
+  auto subscription = requests.Subscribe(MakeSubscriber(
       [](auto &&) {
         CHECK(!"no elements should be published");
       },
@@ -143,7 +143,7 @@ inline auto RequestZeroHandler(
       },
       []() {
         CHECK(!"request should not complete");
-      })));
+      }));
   subscription.Request(ElementCount(0));
 
   return Never();
