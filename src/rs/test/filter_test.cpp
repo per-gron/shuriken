@@ -122,20 +122,7 @@ TEST_CASE("Filter") {
   }
 
   SECTION("don't leak the subscriber") {
-    bool destroyed = false;
-    auto lifetime_tracer = std::shared_ptr<void>(nullptr, [&destroyed](void *) {
-      destroyed = true;
-    });
-    auto null_subscriber = MakeSubscriber(
-        [lifetime_tracer = std::move(lifetime_tracer)](int next) {
-          CHECK(!"should not happen");
-        },
-        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
-        [] {});
-
-    divisible_by_3(Just(3)).Subscribe(std::move(null_subscriber));
-
-    CHECK(destroyed);
+    CheckLeak(divisible_by_3(Just(3)));
   }
 
   SECTION("cancel") {

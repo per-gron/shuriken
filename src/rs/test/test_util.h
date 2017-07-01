@@ -108,4 +108,22 @@ inline std::string GetErrorWhat(const std::exception_ptr &error) {
   }
 }
 
+template <typename Publisher>
+void CheckLeak(Publisher &&publisher) {
+  bool destroyed = false;
+  auto lifetime_tracer = std::shared_ptr<void>(nullptr, [&destroyed](void *) {
+    destroyed = true;
+  });
+  auto null_subscriber = MakeSubscriber(
+      [lifetime_tracer = std::move(lifetime_tracer)](int next) {
+        CHECK(!"should not happen");
+      },
+      [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
+      [] {});
+
+  publisher.Subscribe(std::move(null_subscriber));
+
+  CHECK(destroyed);
+}
+
 }  // namespace shk

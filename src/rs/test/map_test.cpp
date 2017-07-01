@@ -77,19 +77,7 @@ TEST_CASE("Map") {
   }
 
   SECTION("don't leak the subscriber") {
-    bool destroyed = false;
-    auto lifetime_tracer = std::shared_ptr<void>(nullptr, [&destroyed](void *) {
-      destroyed = true;
-    });
-    auto null_subscriber = MakeSubscriber(
-        [lifetime_tracer = std::move(lifetime_tracer)](int next) {
-          CHECK(!"should not happen");
-        },
-        [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
-        [] {});
-
-    add_self(From(std::vector<int>{})).Subscribe(std::move(null_subscriber));
-    CHECK(destroyed == true);
+    CheckLeak(add_self(From(std::vector<int>{})));
   }
 
   SECTION("cancel") {
