@@ -41,6 +41,7 @@ add_library(rs
   include/rs/take_while.h
   include/rs/throw.h
   include/rs/zip.h
+  src/catch.cpp
   src/subscriber.cpp
   src/subscription.cpp)
 add_sanitizers(rs)

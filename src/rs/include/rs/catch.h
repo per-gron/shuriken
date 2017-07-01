@@ -31,6 +31,11 @@ namespace detail {
  * other (in either direction) because that would cause reference cycles.)
  */
 struct CatchData {
+  CatchData();
+  ~CatchData();
+
+  static std::shared_ptr<CatchData> Build();
+
   // The number of elements that have been requested but not yet emitted.
   ElementCount requested;
   // If the subscription has been cancelled. This is important to keep track of
@@ -41,18 +46,14 @@ struct CatchData {
 
 class CatchSubscription : public SubscriptionBase {
  public:
-  CatchSubscription(const std::shared_ptr<CatchData> &data)
-      : data_(data) {}
+  CatchSubscription(const std::shared_ptr<CatchData> &data);
+  ~CatchSubscription();
 
-  void Request(ElementCount count) {
-    data_->requested += count;
-    inner_subscription_.Request(count);
-  }
+  static std::shared_ptr<CatchSubscription> Build(
+      const std::shared_ptr<CatchData> &data);
 
-  void Cancel() {
-    data_->cancelled = true;
-    inner_subscription_.Cancel();
-  }
+  void Request(ElementCount count);
+  void Cancel();
 
  private:
   template <typename, typename> friend class CatchSubscriber;
@@ -158,8 +159,8 @@ auto Catch(Callback &&callback) {
           typename std::decay<decltype(subscriber)>::type,
           typename std::decay<Callback>::type>;
 
-      auto data = std::make_shared<detail::CatchData>();
-      auto subscription = std::make_shared<detail::CatchSubscription>(data);
+      auto data = detail::CatchData::Build();
+      auto subscription = detail::CatchSubscription::Build(data);
 
       auto catch_subscriber = std::make_shared<CatchSubscriberT>(
           data,
