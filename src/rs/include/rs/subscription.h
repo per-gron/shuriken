@@ -174,6 +174,52 @@ class Subscription : public SubscriptionBase {
   std::unique_ptr<detail::SubscriptionEraser> eraser_;
 };
 
+/**
+ * Type erasure wrapper for Subscription objects that owns the erased´
+ * subscription via shared_ptr. Unless you need the shared_ptr aspect, it's
+ * usually a good idea to use Subscription (which uses unique_ptr)
+ */
+class SharedSubscription : public SubscriptionBase {
+ public:
+  SharedSubscription();
+
+  /**
+   * S should implement the Subscription concept.
+   */
+  template <
+      typename S,
+      class = typename std::enable_if<IsSubscription<
+          typename std::remove_reference<S>::type>>::type>
+  explicit SharedSubscription(S &&s)
+      : eraser_(std::make_shared<detail::AnySubscriptionEraser<
+            typename std::decay<S>::type>>(std::forward<S>(s))) {}
+
+  void Request(ElementCount count);
+  void Cancel();
+
+ private:
+  friend class WeakSubscription;
+
+  std::shared_ptr<detail::SubscriptionEraser> eraser_;
+};
+
+/**
+ * Type erasure wrapper for Subscription objects that owns the erased´
+ * subscription via shared_ptr. Unless you need the shared_ptr aspect, it's
+ * usually a good idea to use Subscription (which uses unique_ptr)
+ */
+class WeakSubscription : public SubscriptionBase {
+ public:
+  WeakSubscription();
+  explicit WeakSubscription(const SharedSubscription &s);
+
+  void Request(ElementCount count);
+  void Cancel();
+
+ private:
+  std::weak_ptr<detail::SubscriptionEraser> eraser_;
+};
+
 detail::EmptySubscription MakeSubscription();
 
 template <typename RequestCb, typename CancelCb>
