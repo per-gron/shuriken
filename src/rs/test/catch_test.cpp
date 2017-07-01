@@ -126,6 +126,11 @@ TEST_CASE("Catch") {
     }
   }
 
+  SECTION("don't leak the subscriber") {
+    CheckLeak(empty_catch(Just(1)));
+    CheckLeak(empty_catch(failing));
+  }
+
   SECTION("cancellation") {
     SECTION("cancel before failing") {
       bool cancelled = false;
