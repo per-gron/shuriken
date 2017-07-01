@@ -25,23 +25,21 @@ namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename Predicate>
-class FilterSubscriber : public SubscriberBase, public SubscriptionBase {
+class FilterSubscriber : public SubscriberBase {
  public:
   FilterSubscriber(
       InnerSubscriberType &&inner_subscriber,
       const Predicate &predicate)
       : inner_subscriber_(std::move(inner_subscriber)),
-        subscription_(MakeSubscription()),
         predicate_(predicate) {}
 
-  template <typename SubscriptionT>
-  void TakeSubscription(SubscriptionT &&subscription) {
-    subscription_ = Subscription(std::forward<SubscriptionT>(subscription));
+  void TakeSubscription(const SharedSubscription &subscription) {
+    subscription_ = WeakSubscription(subscription);
   }
 
   template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
-    if (cancelled_) {
+    if (failed_) {
       return;
     }
 
@@ -49,43 +47,35 @@ class FilterSubscriber : public SubscriberBase, public SubscriptionBase {
     try {
       predicate_match = predicate_(static_cast<const T &>(t));
     } catch (...) {
-      Cancel();
+      subscription_.Cancel();
+      failed_ = true;
       inner_subscriber_.OnError(std::current_exception());
     }
-    if (!cancelled_) { // If predicate_ threw, cancelled_ could be true here
+    if (!failed_) { // If predicate_ threw, failed_ could be true here
       if (predicate_match) {
         inner_subscriber_.OnNext(std::forward<T>(t));
       } else {
-        Request(ElementCount(1));
+        subscription_.Request(ElementCount(1));
       }
     }
   }
 
   void OnError(std::exception_ptr &&error) {
-    if (!cancelled_) {
+    if (!failed_) {
       inner_subscriber_.OnError(std::move(error));
     }
   }
 
   void OnComplete() {
-    if (!cancelled_) {
+    if (!failed_) {
       inner_subscriber_.OnComplete();
     }
   }
 
-  void Request(ElementCount count) {
-    subscription_.Request(count);
-  }
-
-  void Cancel() {
-    subscription_.Cancel();
-    cancelled_ = true;
-  }
-
  private:
-  bool cancelled_ = false;
+  bool failed_ = false;
   InnerSubscriberType inner_subscriber_;
-  Subscription subscription_;
+  WeakSubscription subscription_;
   Predicate predicate_;
 };
 
@@ -107,10 +97,12 @@ auto Filter(Predicate &&predicate) {
               std::forward<decltype(subscriber)>(subscriber),
               predicate);
 
-      filter_subscriber->TakeSubscription(
+      auto sub = SharedSubscription(
           source.Subscribe(MakeSubscriber(filter_subscriber)));
 
-      return MakeSubscription(filter_subscriber);
+      filter_subscriber->TakeSubscription(sub);
+
+      return sub;
     });
   };
 }

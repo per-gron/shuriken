@@ -88,9 +88,7 @@ TEST_CASE("Map") {
         [](std::exception_ptr &&error) { CHECK(!"should not happen"); },
         [] {});
 
-    {
-      add_self(From(std::vector<int>{})).Subscribe(std::move(null_subscriber));
-    }
+    add_self(From(std::vector<int>{})).Subscribe(std::move(null_subscriber));
     CHECK(destroyed == true);
   }
 
