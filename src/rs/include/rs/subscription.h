@@ -106,13 +106,45 @@ class SharedPtrSubscription : public SubscriptionBase {
   std::shared_ptr<SubscriptionType> subscription_;
 };
 
+class SubscriptionEraser {
+ public:
+  virtual ~SubscriptionEraser();
+  virtual void Request(ElementCount count) = 0;
+  virtual void Cancel() = 0;
+};
+
+template <typename S>
+class AnySubscriptionEraser : public detail::SubscriptionEraser {
+ public:
+  template <typename SType>
+  AnySubscriptionEraser(SType &&subscription)
+      : subscription_(std::forward<SType>(subscription)) {}
+
+  void Request(ElementCount count) override {
+    subscription_.Request(count);
+  }
+
+  void Cancel() override {
+    subscription_.Cancel();
+  }
+
+ private:
+  // Sanity check... it's really bad if the user of this class forgets to
+  // std::decay the template parameter if necessary.
+  static_assert(
+      !std::is_reference<S>::value,
+      "Subscription type must be held by value");
+  S subscription_;
+};
+
 }  // namespace detail
 
 template <typename T>
 constexpr bool IsSubscription = std::is_base_of<SubscriptionBase, T>::value;
 
 /**
- * Type erasure wrapper for Subscription objects.
+ * Type erasure wrapper for Subscription objects that owns the erased
+ * Subscription via unique_ptr.
  */
 class Subscription : public SubscriptionBase {
  public:
@@ -126,7 +158,7 @@ class Subscription : public SubscriptionBase {
       class = typename std::enable_if<IsSubscription<
           typename std::remove_reference<S>::type>>::type>
   explicit Subscription(S &&s)
-      : eraser_(std::make_unique<SubscriptionEraser<
+      : eraser_(std::make_unique<detail::AnySubscriptionEraser<
             typename std::decay<S>::type>>(std::forward<S>(s))) {}
 
   Subscription(const Subscription &) = delete;
@@ -136,42 +168,10 @@ class Subscription : public SubscriptionBase {
   Subscription &operator=(Subscription &&) = default;
 
   void Request(ElementCount count);
-
   void Cancel();
 
  private:
-  class Eraser {
-   public:
-    virtual ~Eraser();
-    virtual void Request(ElementCount count) = 0;
-    virtual void Cancel() = 0;
-  };
-
-  template <typename S>
-  class SubscriptionEraser : public Eraser {
-   public:
-    template <typename SType>
-    SubscriptionEraser(SType &&subscription)
-        : subscription_(std::forward<SType>(subscription)) {}
-
-    void Request(ElementCount count) override {
-      subscription_.Request(count);
-    }
-
-    void Cancel() override {
-      subscription_.Cancel();
-    }
-
-   private:
-    // Sanity check... it's really bad if the user of this class forgets to
-    // std::decay the template parameter if necessary.
-    static_assert(
-        !std::is_reference<S>::value,
-        "Subscription type must be held by value");
-    S subscription_;
-  };
-
-  std::unique_ptr<Eraser> eraser_;
+  std::unique_ptr<detail::SubscriptionEraser> eraser_;
 };
 
 detail::EmptySubscription MakeSubscription();

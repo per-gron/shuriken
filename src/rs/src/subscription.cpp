@@ -21,9 +21,9 @@ void EmptySubscription::Request(ElementCount count) {}
 
 void EmptySubscription::Cancel() {}
 
-}  // namespace detail
+SubscriptionEraser::~SubscriptionEraser() {}
 
-Subscription::Eraser::~Eraser() {}
+}  // namespace detail
 
 Subscription::Subscription() {}
 
