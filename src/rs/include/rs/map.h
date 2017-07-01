@@ -29,7 +29,6 @@ class MapSubscriber : public SubscriberBase, public SubscriptionBase {
  public:
   MapSubscriber(InnerSubscriberType &&inner_subscriber, const Mapper &mapper)
       : inner_subscriber_(std::move(inner_subscriber)),
-        subscription_(MakeSubscription()),
         mapper_(mapper) {}
 
   template <typename SubscriptionT>

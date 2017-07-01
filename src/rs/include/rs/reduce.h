@@ -35,7 +35,6 @@ class StreamReducer : public SubscriberBase, public SubscriptionBase {
       const Reducer &reducer)
       : accumulator_(std::move(accumulator)),
         subscriber_(std::move(subscriber)),
-        subscription_(MakeSubscription()),
         reducer_(reducer) {}
 
   template <typename SubscriptionT>
