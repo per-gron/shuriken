@@ -25,18 +25,16 @@ namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename Predicate>
-class TakeWhileSubscriber : public SubscriberBase, public SubscriptionBase {
+class TakeWhileSubscriber : public SubscriberBase {
  public:
   TakeWhileSubscriber(
       InnerSubscriberType &&inner_subscriber,
       const Predicate &predicate)
       : inner_subscriber_(std::move(inner_subscriber)),
-        subscription_(MakeSubscription()),
         predicate_(predicate) {}
 
-  template <typename SubscriptionT>
-  void TakeSubscription(SubscriptionT &&subscription) {
-    subscription_ = Subscription(std::forward<SubscriptionT>(subscription));
+  void TakeSubscription(const SharedSubscription &subscription) {
+    subscription_ = WeakSubscription(subscription);
   }
 
   template <typename T, class = RequireRvalue<T>>
@@ -74,10 +72,6 @@ class TakeWhileSubscriber : public SubscriberBase, public SubscriptionBase {
     }
   }
 
-  void Request(ElementCount count) {
-    subscription_.Request(count);
-  }
-
   void Cancel() {
     subscription_.Cancel();
     cancelled_ = true;
@@ -86,7 +80,7 @@ class TakeWhileSubscriber : public SubscriberBase, public SubscriptionBase {
  private:
   bool cancelled_ = false;
   InnerSubscriberType inner_subscriber_;
-  Subscription subscription_;
+  WeakSubscription subscription_;
   Predicate predicate_;
 };
 
@@ -105,10 +99,12 @@ auto TakeWhile(Predicate &&predicate) {
               std::forward<decltype(subscriber)>(subscriber),
               predicate);
 
-      take_while_subscriber->TakeSubscription(
+      auto sub = SharedSubscription(
           source.Subscribe(MakeSubscriber(take_while_subscriber)));
 
-      return MakeSubscription(take_while_subscriber);
+      take_while_subscriber->TakeSubscription(sub);
+
+      return sub;
     });
   };
 }
