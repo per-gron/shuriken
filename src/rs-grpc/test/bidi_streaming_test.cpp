@@ -45,13 +45,6 @@ using namespace RsGrpcTest;
 namespace shk {
 namespace {
 
-auto RepeatHandler(Flatbuffer<TestRequest> request) {
-  int count = request->data();
-  return Pipe(
-      Range(1, count),
-      Map(&MakeTestResponse));
-}
-
 auto CumulativeSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
   return Pipe(
     requests,
@@ -116,9 +109,6 @@ TEST_CASE("Bidi streaming RPC") {
   std::atomic<int> hang_on_seen_elements(0);
 
   server_builder.RegisterService<TestService::AsyncService>()
-      .RegisterMethod(
-          &TestService::AsyncService::RequestRepeat,
-          &RepeatHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestCumulativeSum,
           &CumulativeSumHandler)
