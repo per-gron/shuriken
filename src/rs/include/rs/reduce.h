@@ -27,9 +27,9 @@ namespace shk {
 namespace detail {
 
 template <typename Accumulator, typename Subscriber, typename Reducer>
-class StreamReducer : public SubscriberBase, public SubscriptionBase {
+class ReduceSubscriber : public SubscriberBase, public SubscriptionBase {
  public:
-  StreamReducer(
+  ReduceSubscriber(
       Accumulator &&accumulator,
       Subscriber &&subscriber,
       const Reducer &reducer)
@@ -37,9 +37,8 @@ class StreamReducer : public SubscriberBase, public SubscriptionBase {
         subscriber_(std::move(subscriber)),
         reducer_(reducer) {}
 
-  template <typename SubscriptionT>
-  void TakeSubscription(SubscriptionT &&subscription) {
-    subscription_ = Subscription(std::forward<SubscriptionT>(subscription));
+  void TakeSubscription(const SharedSubscription &inner_subscription) {
+    inner_subscription_ = WeakSubscription(inner_subscription);
   }
 
   template <typename T, class = RequireRvalue<T>>
@@ -51,13 +50,14 @@ class StreamReducer : public SubscriberBase, public SubscriptionBase {
     try {
       accumulator_ = reducer_(std::move(accumulator_), std::forward<T>(t));
     } catch (...) {
-      Cancel();
+      Cancelled();
+      inner_subscription_.Cancel();
       subscriber_.OnError(std::current_exception());
     }
   }
 
   void OnError(std::exception_ptr &&error) {
-    Cancel();
+    Cancelled();
     subscriber_.OnError(std::move(error));
   }
 
@@ -68,20 +68,20 @@ class StreamReducer : public SubscriberBase, public SubscriptionBase {
     }
   }
 
-  void Request(ElementCount count) {
-    if (count > 0) {
-      subscription_.Request(ElementCount::Unbounded());
-      requested_ = true;
-      RequestedResult();
-    }
-  }
-
-  void Cancel() {
-    cancelled_ = true;
-    subscription_.Cancel();
-  }
-
  private:
+  template <typename> friend class ReduceSubscription;
+
+  // To be called from ReduceSubscription
+  void Requested() {
+    requested_ = true;
+    RequestedResult();
+  }
+
+  // To be called from ReduceSubscription
+  void Cancelled() {
+    cancelled_ = true;
+  }
+
   void RequestedResult() {
     if (complete_ && requested_) {
       subscriber_.OnNext(std::move(accumulator_));
@@ -95,8 +95,34 @@ class StreamReducer : public SubscriberBase, public SubscriptionBase {
   bool cancelled_ = false;
   Accumulator accumulator_;
   Subscriber subscriber_;
-  Subscription subscription_;
   Reducer reducer_;
+  WeakSubscription inner_subscription_;
+};
+
+template <typename Subscriber>
+class ReduceSubscription : public SubscriptionBase {
+ public:
+  ReduceSubscription(
+      const std::shared_ptr<Subscriber> &subscriber,
+      const SharedSubscription &inner_subscription)
+      : subscriber_(subscriber),
+        inner_subscription_(inner_subscription) {}
+
+  void Request(ElementCount count) {
+    if (count > 0) {
+      subscriber_->Requested();
+      inner_subscription_.Request(ElementCount::Unbounded());
+    }
+  }
+
+  void Cancel() {
+    subscriber_->Cancelled();
+    inner_subscription_.Cancel();
+  }
+
+ private:
+  std::shared_ptr<Subscriber> subscriber_;
+  SharedSubscription inner_subscription_;
 };
 
 }  // namespace detail
@@ -115,18 +141,24 @@ auto ReduceGet(MakeInitial &&make_initial, Reducer &&reducer) {
     // Return a Publisher
     return MakePublisher([make_initial, reducer, source = std::move(source)](
         auto &&subscriber) {
-      auto stream_reducer = std::make_shared<
-          detail::StreamReducer<
-              typename std::decay<decltype(make_initial())>::type,
-              typename std::decay<decltype(subscriber)>::type,
-              Reducer>>(
-                  make_initial(),
-                  std::forward<decltype(subscriber)>(subscriber),
-                  reducer);
-      stream_reducer->TakeSubscription(
-          source.Subscribe(MakeSubscriber(stream_reducer)));
+      using ReduceSubscriberT = detail::ReduceSubscriber<
+          typename std::decay<decltype(make_initial())>::type,
+          typename std::decay<decltype(subscriber)>::type,
+          Reducer>;
 
-      return MakeSubscription(stream_reducer);
+      auto reduce_subscriber = std::make_shared<ReduceSubscriberT>(
+          make_initial(),
+          std::forward<decltype(subscriber)>(subscriber),
+          reducer);
+
+      auto sub = SharedSubscription(
+          source.Subscribe(MakeSubscriber(reduce_subscriber)));
+
+      reduce_subscriber->TakeSubscription(sub);
+
+      return detail::ReduceSubscription<ReduceSubscriberT>(
+          reduce_subscriber,
+          std::move(sub));
     });
   };
 }

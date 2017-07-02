@@ -95,6 +95,11 @@ TEST_CASE("Reduce") {
       CHECK(GetErrorWhat(error) == "fail_on");
     }
 
+    SECTION("don't leak the subscriber") {
+      CheckLeak(sum(From(std::vector<int>{ 1 })));
+      CheckLeak(fail_on(0, 1)(From(std::vector<int>{ 0 })));
+    }
+
     SECTION("cancel") {
       auto null_subscriber = MakeSubscriber(
           [](int next) { CHECK(!"should not happen"); },
