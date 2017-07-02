@@ -24,61 +24,44 @@
 namespace shk {
 namespace detail {
 
-/**
- * Data that is both CatchSubscription and CatchSubscriber share.
- *
- * (CatchSubscription and CatchSubscriber can't be one object and can't own each
- * other (in either direction) because that would cause reference cycles.)
- */
-struct CatchData {
-  CatchData();
-  ~CatchData();
-
-  static std::shared_ptr<CatchData> Build();
-
-  // The number of elements that have been requested but not yet emitted.
-  ElementCount requested;
-  // If the subscription has been cancelled. This is important to keep track of
-  // because a cancelled subscription may fail, and in that case we don't want
-  // to subscribe to the catch Publisher since that would undo the cancellation.
-  bool cancelled = false;
-};
-
+template <typename Subscriber>
 class CatchSubscription : public SubscriptionBase {
  public:
-  CatchSubscription(const std::shared_ptr<CatchData> &data);
-  ~CatchSubscription();
+  CatchSubscription(const std::shared_ptr<Subscriber> &subscriber)
+      : subscriber_(subscriber) {}
 
-  static std::shared_ptr<CatchSubscription> Build(
-      const std::shared_ptr<CatchData> &data);
+  void Request(ElementCount count) {
+    subscriber_->requested_ += count;
+    inner_subscription_.Request(count);
+  }
 
-  void Request(ElementCount count);
-  void Cancel();
+  void Cancel() {
+    subscriber_->cancelled_ = true;
+    inner_subscription_.Cancel();
+  }
 
  private:
   template <typename, typename> friend class CatchSubscriber;
 
   Subscription inner_subscription_;
-  std::shared_ptr<CatchData> data_;
+  std::shared_ptr<Subscriber> subscriber_;
 };
 
 template <typename InnerSubscriberType, typename Callback>
 class CatchSubscriber : public SubscriberBase {
  public:
   CatchSubscriber(
-      const std::shared_ptr<CatchData> &data,
-      const std::shared_ptr<CatchSubscription> &subscription,
       InnerSubscriberType &&inner_subscriber,
       const Callback &callback)
-      : data_(data),
-        subscription_(subscription),
-        inner_subscriber_(std::move(inner_subscriber)),
+      : inner_subscriber_(std::move(inner_subscriber)),
         callback_(callback) {}
 
   template <typename Publisher>
   void Subscribe(
-      std::shared_ptr<CatchSubscriber> me,
+      const std::shared_ptr<CatchSubscription<CatchSubscriber>> &subscription,
+      const std::shared_ptr<CatchSubscriber> &me,
       Publisher &&publisher) {
+    subscription_ = subscription;
     me_ = me;
     auto sub = publisher.Subscribe(MakeSubscriber(me));
     if (!has_failed_) {
@@ -94,9 +77,9 @@ class CatchSubscriber : public SubscriberBase {
 
   template <typename T, class = RequireRvalue<T>>
   void OnNext(T &&t) {
-    --data_->requested;
-    if (data_->requested < 0) {
-      data_->cancelled = true;
+    --requested_;
+    if (requested_ < 0) {
+      cancelled_ = true;
       inner_subscriber_.OnError(std::make_exception_ptr(
           std::logic_error("Got value that was not Request-ed")));
     } else {
@@ -105,7 +88,7 @@ class CatchSubscriber : public SubscriberBase {
   }
 
   void OnError(std::exception_ptr &&error) {
-    if (data_->cancelled) {
+    if (cancelled_) {
       // Do nothing
     } else if (has_failed_) {
       inner_subscriber_.OnError(std::move(error));
@@ -117,7 +100,7 @@ class CatchSubscriber : public SubscriberBase {
           "Catch callback must return a Publisher");
 
       auto sub = catch_publisher.Subscribe(MakeSubscriber(me_.lock()));
-      sub.Request(data_->requested);
+      sub.Request(requested_);
       if (auto subscription = subscription_.lock()) {
         subscription->inner_subscription_ = Subscription(std::move(sub));
       }
@@ -125,14 +108,22 @@ class CatchSubscriber : public SubscriberBase {
   }
 
   void OnComplete() {
-    if (!data_->cancelled) {
+    if (!cancelled_) {
       inner_subscriber_.OnComplete();
     }
   }
 
  public:
-  std::shared_ptr<CatchData> data_;
-  std::weak_ptr<CatchSubscription> subscription_;
+  template <typename> friend class CatchSubscription;
+
+  // The number of elements that have been requested but not yet emitted.
+  ElementCount requested_;
+  // If the subscription has been cancelled. This is important to keep track of
+  // because a cancelled subscription may fail, and in that case we don't want
+  // to subscribe to the catch Publisher since that would undo the cancellation.
+  bool cancelled_ = false;
+
+  std::weak_ptr<CatchSubscription<CatchSubscriber>> subscription_;
   std::weak_ptr<CatchSubscriber> me_;
   InnerSubscriberType inner_subscriber_;
   Callback callback_;
@@ -159,16 +150,14 @@ auto Catch(Callback &&callback) {
           typename std::decay<decltype(subscriber)>::type,
           typename std::decay<Callback>::type>;
 
-      auto data = detail::CatchData::Build();
-      auto subscription = detail::CatchSubscription::Build(data);
-
       auto catch_subscriber = std::make_shared<CatchSubscriberT>(
-          data,
-          subscription,
           std::forward<decltype(subscriber)>(subscriber),
           callback);
 
-      catch_subscriber->Subscribe(catch_subscriber, source);
+      auto subscription = std::make_shared<
+          detail::CatchSubscription<CatchSubscriberT>>(catch_subscriber);
+
+      catch_subscriber->Subscribe(subscription, catch_subscriber, source);
 
       return MakeSubscription(subscription);
     });
