@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/backreference.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
@@ -31,8 +32,8 @@ class MapSubscriber : public SubscriberBase {
       : inner_subscriber_(std::move(inner_subscriber)),
         mapper_(mapper) {}
 
-  void TakeSubscription(const SharedSubscription &subscription) {
-    subscription_ = WeakSubscription(subscription);
+  void TakeSubscription(Backreference<Subscription> &&subscription) {
+    subscription_ = std::move(subscription);
   }
 
   template <typename T, class = RequireRvalue<T>>
@@ -47,7 +48,14 @@ class MapSubscriber : public SubscriberBase {
       // here we rely on that.
       inner_subscriber_.OnNext(mapper_(std::forward<T>(t)));
     } catch (...) {
-      subscription_.Cancel();
+      if (subscription_) {
+        // TODO(peck): It's wrong that subscription_ can be null here; when that
+        // happens we still actually need to be able to cancel the subscription.
+        //
+        // I think one approach to fix this is to change so that destroying the
+        // Subscription implies cancellation.
+        subscription_->Cancel();
+      }
       failed_ = true;
       inner_subscriber_.OnError(std::current_exception());
     }
@@ -68,7 +76,7 @@ class MapSubscriber : public SubscriberBase {
  private:
   bool failed_ = false;
   InnerSubscriberType inner_subscriber_;
-  WeakSubscription subscription_;
+  Backreference<Subscription> subscription_;
   Mapper mapper_;
 };
 
@@ -84,17 +92,25 @@ auto Map(Mapper &&mapper) {
     // Return a Publisher
     return MakePublisher([mapper, source = std::move(source)](
         auto &&subscriber) {
-      auto map_subscriber = std::make_shared<detail::MapSubscriber<
+      using MapSubscriberT = detail::MapSubscriber<
           typename std::decay<decltype(subscriber)>::type,
-          typename std::decay<Mapper>::type>>(
+          typename std::decay<Mapper>::type>;
+
+      Backreference<MapSubscriberT> map_ref;
+      auto map_subscriber = WithBackreference(
+          MapSubscriberT(
               std::forward<decltype(subscriber)>(subscriber),
-              mapper);
+              mapper),
+          &map_ref);
 
-      auto sub =
-          SharedSubscription(source.Subscribe(MakeSubscriber(map_subscriber)));
+      Backreference<Subscription> sub_ref;
+      auto sub = WithBackreference(
+          Subscription(source.Subscribe(std::move(map_subscriber))),
+          &sub_ref);
 
-      map_subscriber->TakeSubscription(sub);
-
+      if (map_ref) {
+        map_ref->TakeSubscription(std::move(sub_ref));
+      }
       return sub;
     });
   };
