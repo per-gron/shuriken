@@ -24,6 +24,11 @@ class Backreference;
 template <typename T>
 class Backreferee : public T {
  public:
+  ~Backreferee() {
+    if (backref_) {
+      backref_->val_ = nullptr;
+    }
+  }
   using T::operator=;
 
   Backreferee(const Backreferee &) = delete;
@@ -68,6 +73,12 @@ template <typename T>
 class Backreference {
  public:
   Backreference() : val_(nullptr) {}
+
+  ~Backreference() {
+    if (val_) {
+      val_->backref_ = nullptr;
+    }
+  }
 
   Backreference(const Backreference &) = delete;
   Backreference &operator=(const Backreference &) = delete;

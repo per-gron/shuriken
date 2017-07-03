@@ -36,6 +36,29 @@ class WithGenericConstructor {
 
 TEST_CASE("Backreference") {
   SECTION("Backreferee") {
+    SECTION("destructor") {
+      SECTION("with backreference") {
+        Backreference<std::string> ref;
+        {
+          Backreferee<std::string> str = WithBackreference(
+              std::string("hey"), &ref);
+        }
+
+        CHECK(!ref);
+      }
+
+      SECTION("without backreference") {
+        Backreference<std::string> ref;
+        {
+          Backreferee<std::string> str = WithBackreference(
+              std::string("hey"), &ref);
+          ref.Reset();
+        }
+
+        CHECK(!ref);
+      }
+    }
+
     SECTION("base operator=") {
       Backreference<std::string> ref;
       Backreferee<std::string> str = WithBackreference(
@@ -151,6 +174,31 @@ TEST_CASE("Backreference") {
     SECTION("default constructor") {
       Backreference<std::string> backref;
       CHECK(!backref);
+    }
+
+    SECTION("destructor") {
+      SECTION("with backreferee") {
+        Backreference<std::string> ref_a;
+        Backreferee<std::string> str_a = WithBackreference(
+            std::string("str_a"), &ref_a);
+
+        Backreference<std::string> ref_b;
+        Backreferee<std::string> str_b = WithBackreference(
+            std::string("str_b"), &ref_b);
+
+        std::make_unique<Backreference<std::string>>(std::move(ref_a));
+
+        // Now, str_a should have no backreference pointer. If it does, it will
+        // point to freed memory, which asan will catch here:
+        str_b = std::move(str_a);
+
+        CHECK(!ref_a);
+        CHECK(!ref_b);
+      }
+
+      SECTION("without backreference") {
+        Backreference<std::string> ref;
+      }
     }
 
     SECTION("move constructor") {
