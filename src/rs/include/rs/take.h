@@ -14,33 +14,45 @@
 
 #pragma once
 
+#include <rs/backreference.h>
 #include <rs/element_count.h>
 
 namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename CountType>
-class TakeSubscriber : public SubscriberBase, public SubscriptionBase {
+class TakeSubscriber : public SubscriberBase {
  public:
+  template <typename InnerSubscriberT>
   TakeSubscriber(
-      InnerSubscriberType &&inner_subscriber,
+      InnerSubscriberT &&inner_subscriber,
       const CountType &count)
-      : inner_subscriber_(std::move(inner_subscriber)),
+      : inner_subscriber_(std::forward<InnerSubscriberT>(inner_subscriber)),
         count_(count) {}
 
-  template <typename PublisherT>
-  SharedSubscription TakeSubscription(
-      const std::shared_ptr<TakeSubscriber> &me,
+  template <typename InnerSubscriberT, typename PublisherT>
+  static Backreferee<Subscription> Build(
+      const CountType &count,
+      InnerSubscriberT &&inner_subscriber,
       PublisherT *source) {
-    if (count_ == 0) {
-      cancelled_ = true;
-      inner_subscriber_.OnComplete();
+    if (count == 0) {
+      inner_subscriber.OnComplete();
 
-      return SharedSubscription();
+      Backreference<Subscription> ref;
+      return WithBackreference(Subscription(), &ref);
     } else {
-      auto sub = SharedSubscription(source->Subscribe(MakeSubscriber(me)));
-      subscription_ = WeakSubscription(sub);
-      return sub;
+      TakeSubscriber self(
+          std::forward<InnerSubscriberT>(inner_subscriber),
+          count);
+
+      Backreference<TakeSubscriber> take_ref;
+      auto backreferred_self = WithBackreference(std::move(self), &take_ref);
+
+      auto sub = Subscription(source->Subscribe(std::move(backreferred_self)));
+
+      return WithBackreference(
+          std::move(sub),
+          &take_ref->subscription_);
     }
   }
 
@@ -56,7 +68,14 @@ class TakeSubscriber : public SubscriberBase, public SubscriptionBase {
     --count_;
     if (count_ <= 0) {
       inner_subscriber_.OnComplete();
-      subscription_.Cancel();
+      if (subscription_) {
+        // TODO(peck): It's wrong that subscription_ can be null here; when that
+        // happens we still actually need to be able to cancel the subscription.
+        //
+        // I think one approach to fix this is to change so that destroying the
+        // Subscription implies cancellation.
+        subscription_->Cancel();
+      }
       cancelled_ = true;
     }
   }
@@ -73,18 +92,10 @@ class TakeSubscriber : public SubscriberBase, public SubscriptionBase {
     }
   }
 
-  void Request(ElementCount count) {
-    subscription_.Request(count);
-  }
-
-  void Cancel() {
-    subscription_.Cancel();
-  }
-
  private:
   bool cancelled_ = false;
   InnerSubscriberType inner_subscriber_;
-  WeakSubscription subscription_;
+  Backreference<Subscription> subscription_;
   CountType count_;
 };
 
@@ -97,13 +108,14 @@ auto Take(CountType &&count) {
     // Return a Publisher
     return MakePublisher([count, source = std::move(source)](
         auto &&subscriber) {
-      auto take_subscriber = std::make_shared<detail::TakeSubscriber<
+      using TakeSubscriberT = detail::TakeSubscriber<
           typename std::decay<decltype(subscriber)>::type,
-          typename std::decay<CountType>::type>>(
-              std::forward<decltype(subscriber)>(subscriber),
-              count);
+          typename std::decay<CountType>::type>;
 
-      return take_subscriber->TakeSubscription(take_subscriber, &source);
+      return TakeSubscriberT::Build(
+              count,
+              std::forward<decltype(subscriber)>(subscriber),
+              &source);
     });
   };
 }
