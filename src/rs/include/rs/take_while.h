@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/backreference.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
@@ -33,8 +34,8 @@ class TakeWhileSubscriber : public SubscriberBase {
       : inner_subscriber_(std::move(inner_subscriber)),
         predicate_(predicate) {}
 
-  void TakeSubscription(const SharedSubscription &subscription) {
-    subscription_ = WeakSubscription(subscription);
+  void TakeSubscription(Backreference<Subscription> &&subscription) {
+    subscription_ = std::move(subscription);
   }
 
   template <typename T, class = RequireRvalue<T>>
@@ -73,14 +74,21 @@ class TakeWhileSubscriber : public SubscriberBase {
   }
 
   void Cancel() {
-    subscription_.Cancel();
+    if (subscription_) {
+      // TODO(peck): It's wrong that subscription_ can be null here; when that
+      // happens we still actually need to be able to cancel the subscription.
+      //
+      // I think one approach to fix this is to change so that destroying the
+      // Subscription implies cancellation.
+      subscription_->Cancel();
+    }
     cancelled_ = true;
   }
 
  private:
   bool cancelled_ = false;
   InnerSubscriberType inner_subscriber_;
-  WeakSubscription subscription_;
+  Backreference<Subscription> subscription_;
   Predicate predicate_;
 };
 
@@ -93,16 +101,25 @@ auto TakeWhile(Predicate &&predicate) {
     // Return a Publisher
     return MakePublisher([predicate, source = std::move(source)](
         auto &&subscriber) {
-      auto take_while_subscriber = std::make_shared<detail::TakeWhileSubscriber<
+      using TakeWhileSubscriberT = detail::TakeWhileSubscriber<
           typename std::decay<decltype(subscriber)>::type,
-          typename std::decay<Predicate>::type>>(
+          typename std::decay<Predicate>::type>;
+
+      Backreference<TakeWhileSubscriberT> take_while_ref;
+      auto take_while_subscriber = WithBackreference(
+          TakeWhileSubscriberT(
               std::forward<decltype(subscriber)>(subscriber),
-              predicate);
+              predicate),
+          &take_while_ref);
 
-      auto sub = SharedSubscription(
-          source.Subscribe(MakeSubscriber(take_while_subscriber)));
+      Backreference<Subscription> sub_ref;
+      auto sub = WithBackreference(
+          Subscription(source.Subscribe(std::move(take_while_subscriber))),
+          &sub_ref);
 
-      take_while_subscriber->TakeSubscription(sub);
+      if (take_while_ref) {  // TODO(peck): Test what happens if it's is empty
+        take_while_ref->TakeSubscription(std::move(sub_ref));
+      }
 
       return sub;
     });
