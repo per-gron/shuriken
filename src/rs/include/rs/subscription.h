@@ -117,7 +117,7 @@ template <typename S>
 class AnySubscriptionEraser : public detail::SubscriptionEraser {
  public:
   template <typename SType>
-  AnySubscriptionEraser(SType &&subscription)
+  explicit AnySubscriptionEraser(SType &&subscription)
       : subscription_(std::forward<SType>(subscription)) {}
 
   void Request(ElementCount count) override {
