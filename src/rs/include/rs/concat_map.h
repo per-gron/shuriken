@@ -24,8 +24,26 @@
 namespace shk {
 namespace detail {
 
+template <typename Subscriber>
+class ConcatMapSubscription : public SubscriptionBase {
+ public:
+  ConcatMapSubscription(const std::shared_ptr<Subscriber> &subscriber)
+      : subscriber_(subscriber) {}
+
+  void Request(ElementCount count) {
+    subscriber_->Request(count);
+  }
+
+  void Cancel() {
+    subscriber_->Cancel();
+  }
+
+ private:
+  std::shared_ptr<Subscriber> subscriber_;
+};
+
 template <typename InnerSubscriberType, typename Mapper>
-class ConcatMapSubscriber : public SubscriberBase, public SubscriptionBase {
+class ConcatMapSubscriber : public SubscriberBase {
   class ConcatMapValuesSubscriber : public SubscriberBase {
    public:
     ConcatMapValuesSubscriber(const std::weak_ptr<ConcatMapSubscriber> &that)
@@ -245,15 +263,21 @@ auto ConcatMap(Mapper &&mapper) {
     // Return a Publisher
     return MakePublisher([mapper, source = std::move(source)](
         auto &&subscriber) {
-      auto concat_map_subscriber = std::make_shared<detail::ConcatMapSubscriber<
+      using ConcatMapSubscriberT = detail::ConcatMapSubscriber<
           typename std::decay<decltype(subscriber)>::type,
-          typename std::decay<Mapper>::type>>(
+          typename std::decay<Mapper>::type>;
+
+      auto concat_map_subscriber = std::make_shared<ConcatMapSubscriberT>(
               std::forward<decltype(subscriber)>(subscriber),
               mapper);
 
+      auto sub = std::make_shared<
+          detail::ConcatMapSubscription<ConcatMapSubscriberT>>(
+              concat_map_subscriber);
+
       concat_map_subscriber->Subscribe(concat_map_subscriber, source);
 
-      return MakeSubscription(concat_map_subscriber);
+      return MakeSubscription(sub);
     });
   };
 }
