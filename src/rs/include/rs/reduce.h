@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/backreference.h>
 #include <rs/element_count.h>
 #include <rs/map.h>
 #include <rs/pipe.h>
@@ -37,8 +38,8 @@ class ReduceSubscriber : public SubscriberBase {
         subscriber_(std::move(subscriber)),
         reducer_(reducer) {}
 
-  void TakeSubscription(const SharedSubscription &inner_subscription) {
-    inner_subscription_ = WeakSubscription(inner_subscription);
+  void TakeSubscription(Backreference<Subscription> &&inner_subscription) {
+    inner_subscription_ = std::move(inner_subscription);
   }
 
   template <typename T, class = RequireRvalue<T>>
@@ -51,7 +52,14 @@ class ReduceSubscriber : public SubscriberBase {
       accumulator_ = reducer_(std::move(accumulator_), std::forward<T>(t));
     } catch (...) {
       cancelled_ = true;
-      inner_subscription_.Cancel();
+      if (inner_subscription_) {
+        // TODO(peck): It's wrong that subscription_ can be null here; when that
+        // happens we still actually need to be able to cancel the subscription.
+        //
+        // I think one approach to fix this is to change so that destroying the
+        // Subscription implies cancellation.
+        inner_subscription_->Cancel();
+      }
       subscriber_.OnError(std::current_exception());
     }
   }
@@ -91,7 +99,7 @@ class ReduceSubscriber : public SubscriberBase {
   Accumulator accumulator_;
   Subscriber subscriber_;
   Reducer reducer_;
-  WeakSubscription inner_subscription_;
+  Backreference<Subscription> inner_subscription_;
 };
 
 template <typename Subscriber>
@@ -99,9 +107,9 @@ class ReduceSubscription : public SubscriptionBase {
  public:
   ReduceSubscription(
       const std::shared_ptr<Subscriber> &subscriber,
-      const SharedSubscription &inner_subscription)
+      Backreferee<Subscription> &&inner_subscription)
       : subscriber_(subscriber),
-        inner_subscription_(inner_subscription) {}
+        inner_subscription_(std::move(inner_subscription)) {}
 
   void Request(ElementCount count) {
     if (count > 0) {
@@ -116,7 +124,7 @@ class ReduceSubscription : public SubscriptionBase {
 
  private:
   std::shared_ptr<Subscriber> subscriber_;
-  SharedSubscription inner_subscription_;
+  Backreferee<Subscription> inner_subscription_;
 };
 
 }  // namespace detail
@@ -145,10 +153,12 @@ auto ReduceGet(MakeInitial &&make_initial, Reducer &&reducer) {
           std::forward<decltype(subscriber)>(subscriber),
           reducer);
 
-      auto sub = SharedSubscription(
-          source.Subscribe(MakeSubscriber(reduce_subscriber)));
+      Backreference<Subscription> sub_ref;
+      auto sub = WithBackreference(
+          Subscription(source.Subscribe(MakeSubscriber(reduce_subscriber))),
+          &sub_ref);
 
-      reduce_subscriber->TakeSubscription(sub);
+      reduce_subscriber->TakeSubscription(std::move(sub_ref));
 
       return detail::ReduceSubscription<ReduceSubscriberT>(
           reduce_subscriber,
