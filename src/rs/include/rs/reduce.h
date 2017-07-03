@@ -27,7 +27,7 @@ namespace shk {
 namespace detail {
 
 template <typename Accumulator, typename Subscriber, typename Reducer>
-class ReduceSubscriber : public SubscriberBase, public SubscriptionBase {
+class ReduceSubscriber : public SubscriberBase {
  public:
   ReduceSubscriber(
       Accumulator &&accumulator,
@@ -50,14 +50,14 @@ class ReduceSubscriber : public SubscriberBase, public SubscriptionBase {
     try {
       accumulator_ = reducer_(std::move(accumulator_), std::forward<T>(t));
     } catch (...) {
-      Cancelled();
+      cancelled_ = true;
       inner_subscription_.Cancel();
       subscriber_.OnError(std::current_exception());
     }
   }
 
   void OnError(std::exception_ptr &&error) {
-    Cancelled();
+    cancelled_ = true;
     subscriber_.OnError(std::move(error));
   }
 
@@ -75,11 +75,6 @@ class ReduceSubscriber : public SubscriberBase, public SubscriptionBase {
   void Requested() {
     requested_ = true;
     RequestedResult();
-  }
-
-  // To be called from ReduceSubscription
-  void Cancelled() {
-    cancelled_ = true;
   }
 
   void RequestedResult() {
@@ -116,7 +111,6 @@ class ReduceSubscription : public SubscriptionBase {
   }
 
   void Cancel() {
-    subscriber_->Cancelled();
     inner_subscription_.Cancel();
   }
 
