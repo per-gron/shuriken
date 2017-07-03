@@ -100,6 +100,42 @@ TEST_CASE("Reduce") {
       CheckLeak(fail_on(0, 1)(From(std::vector<int>{ 0 })));
     }
 
+    SECTION("complete asynchronously before Request") {
+      // This tests AskSubscriptionToEmitAccumulatedValue when called from
+      // OnComplete
+
+      Subscriber<> erased_subscriber(MakeSubscriber());
+
+      auto one_hundred = sum(MakePublisher([&erased_subscriber](
+          auto subscriber) {
+        erased_subscriber = Subscriber<>(std::move(subscriber));
+        return MakeSubscription();
+      }));
+
+      bool done = false;
+      bool got_next = false;
+
+      auto sub = one_hundred.Subscribe(MakeSubscriber(
+          [&done, &got_next](int v) {
+            CHECK(!done);
+            CHECK(!got_next);
+            CHECK(v == 100);
+            got_next = true;
+          },
+          [](std::exception_ptr &&) { CHECK(!"should not be called"); },
+          [&done, &got_next] {
+            CHECK(got_next);
+            CHECK(!done);
+            done = true;
+          }));
+
+      CHECK(!done);
+      erased_subscriber.OnComplete();
+      CHECK(!done);
+      sub.Request(ElementCount(1));
+      CHECK(done);
+    }
+
     SECTION("cancel") {
       auto null_subscriber = MakeSubscriber(
           [](int next) { CHECK(!"should not happen"); },

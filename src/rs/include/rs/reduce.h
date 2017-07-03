@@ -27,104 +27,157 @@
 namespace shk {
 namespace detail {
 
+/**
+ * The Reduce class serves as a namespace with a shared set of template
+ * parameters. It's there to avoid the verbosity of having to have several
+ * classes with the same template parameters referring to each other.
+ */
 template <typename Accumulator, typename Subscriber, typename Reducer>
-class ReduceSubscriber : public SubscriberBase {
+class Reduce {
  public:
-  ReduceSubscriber(
-      Accumulator &&accumulator,
-      Subscriber &&subscriber,
-      const Reducer &reducer)
-      : accumulator_(std::move(accumulator)),
-        subscriber_(std::move(subscriber)),
-        reducer_(reducer) {}
+  class Emitter {
+   public:
+    Emitter(Accumulator &&accumulator, Subscriber &&subscriber)
+        : accumulator_(std::move(accumulator)),
+          subscriber_(std::move(subscriber)) {}
 
-  void TakeSubscription(Backreference<Subscription> &&inner_subscription) {
-    inner_subscription_ = std::move(inner_subscription);
-  }
-
-  template <typename T, class = RequireRvalue<T>>
-  void OnNext(T &&t) {
-    if (cancelled_) {
-      return;
-    }
-
-    try {
-      accumulator_ = reducer_(std::move(accumulator_), std::forward<T>(t));
-    } catch (...) {
-      cancelled_ = true;
-      if (inner_subscription_) {
-        // TODO(peck): It's wrong that subscription_ can be null here; when that
-        // happens we still actually need to be able to cancel the subscription.
-        //
-        // I think one approach to fix this is to change so that destroying the
-        // Subscription implies cancellation.
-        inner_subscription_->Cancel();
-      }
-      subscriber_.OnError(std::current_exception());
-    }
-  }
-
-  void OnError(std::exception_ptr &&error) {
-    cancelled_ = true;
-    subscriber_.OnError(std::move(error));
-  }
-
-  void OnComplete() {
-    if (!cancelled_) {
-      complete_ = true;
-      RequestedResult();
-    }
-  }
-
- private:
-  template <typename> friend class ReduceSubscription;
-
-  // To be called from ReduceSubscription
-  void Requested() {
-    requested_ = true;
-    RequestedResult();
-  }
-
-  void RequestedResult() {
-    if (complete_ && requested_) {
+    void Emit() {
       subscriber_.OnNext(std::move(accumulator_));
       subscriber_.OnComplete();
     }
-  }
 
-  bool complete_ = false;
-  bool requested_ = false;
+   private:
+    Accumulator accumulator_;
+    Subscriber subscriber_;
+  };
 
-  bool cancelled_ = false;
-  Accumulator accumulator_;
-  Subscriber subscriber_;
-  Reducer reducer_;
-  Backreference<Subscription> inner_subscription_;
-};
+  class ReduceSubscriber;
 
-template <typename Subscriber>
-class ReduceSubscription : public SubscriptionBase {
- public:
-  ReduceSubscription(
-      const std::shared_ptr<Subscriber> &subscriber,
-      Backreferee<Subscription> &&inner_subscription)
-      : subscriber_(subscriber),
-        inner_subscription_(std::move(inner_subscription)) {}
+  class ReduceSubscription : public SubscriptionBase {
+   public:
+    ReduceSubscription(Subscription &&inner_subscription)
+        : inner_subscription_(std::move(inner_subscription)) {}
 
-  void Request(ElementCount count) {
-    if (count > 0) {
-      subscriber_->Requested();
-      inner_subscription_.Request(ElementCount::Unbounded());
+    void Request(ElementCount count) {
+      if (emit_accumulated_value_) {
+        emit_accumulated_value_->Emit();
+        emit_accumulated_value_.reset();
+      } else if (count > 0) {
+        if (subscriber_) {
+          subscriber_->requested_ = true;
+        }
+        inner_subscription_.Request(ElementCount::Unbounded());
+      }
     }
-  }
 
-  void Cancel() {
-    inner_subscription_.Cancel();
-  }
+    void Cancel() {
+      inner_subscription_.Cancel();
+    }
 
- private:
-  std::shared_ptr<Subscriber> subscriber_;
-  Backreferee<Subscription> inner_subscription_;
+   private:
+    friend class ReduceSubscriber;
+
+    void TakeSubscriber(Backreference<ReduceSubscriber> &&subscriber) {
+      subscriber_ = std::move(subscriber);
+    }
+
+    // If the input stream finishes without any value emitted (this can happen
+    // immediately or asynchronously),  then ReduceSubscriber gives the
+    // accumulated value back to the ReduceSubscription, so that it can provide
+    // a value when requested.
+    std::unique_ptr<Emitter> emit_accumulated_value_;
+
+    Backreference<ReduceSubscriber> subscriber_;
+    Subscription inner_subscription_;
+  };
+
+  class ReduceSubscriber : public SubscriberBase {
+   public:
+    ReduceSubscriber(
+        Accumulator &&accumulator,
+        Subscriber &&subscriber,
+        const Reducer &reducer)
+        : accumulator_(std::move(accumulator)),
+          subscriber_(std::move(subscriber)),
+          reducer_(reducer) {}
+
+    static void TakeSubscription(
+        Backreference<ReduceSubscriber> &&subscriber,
+        Backreference<ReduceSubscription> &&subscription) {
+      subscriber->subscription_ = std::move(subscription);
+
+      if (subscriber->complete_) {
+        subscriber->AskSubscriptionToEmitAccumulatedValue();
+      }
+
+      subscriber->subscription_->TakeSubscriber(std::move(subscriber));
+    }
+
+    template <typename T, class = RequireRvalue<T>>
+    void OnNext(T &&t) {
+      if (failed_) {
+        // Avoid calling the reducer more than necessary.
+        return;
+      }
+
+      try {
+        accumulator_ = reducer_(std::move(accumulator_), std::forward<T>(t));
+      } catch (...) {
+        failed_ = true;
+        if (subscription_) {
+          // TODO(peck): It's wrong that subscription_ can be null here; when that
+          // happens we still actually need to be able to cancel the subscription.
+          //
+          // I think one approach to fix this is to change so that destroying the
+          // Subscription implies cancellation.
+          subscription_->Cancel();
+        }
+        subscriber_.OnError(std::current_exception());
+      }
+    }
+
+    void OnError(std::exception_ptr &&error) {
+      subscriber_.OnError(std::move(error));
+    }
+
+    void OnComplete() {
+      if (failed_) {
+        // subscriber_.OnError has already been called; don't do anything else
+        // with subscriber_.
+      } else if (requested_) {
+        subscriber_.OnNext(std::move(accumulator_));
+        subscriber_.OnComplete();
+      } else if (subscription_) {
+        AskSubscriptionToEmitAccumulatedValue();
+      } else {
+        // This is reached if no value has been requested and if subscription_
+        // is one of:
+        //
+        // 1) gone. In that case, no value will ever be requested so it's safe
+        //    to do nothing here.
+        // 2) not even given to TakeSubscription yet. In that case, a value
+        //    might need to be emitted later.
+        complete_ = true;
+      }
+    }
+
+   private:
+    friend class ReduceSubscription;
+
+    void AskSubscriptionToEmitAccumulatedValue() {
+      subscription_->emit_accumulated_value_.reset(
+          new Emitter(std::move(accumulator_), std::move(subscriber_)));
+    }
+
+    bool complete_ = false;
+    bool requested_ = false;
+
+    bool failed_ = false;
+    Accumulator accumulator_;
+    Subscriber subscriber_;
+    Reducer reducer_;
+    Backreference<ReduceSubscription> subscription_;
+  };
 };
 
 }  // namespace detail
@@ -134,35 +187,43 @@ class ReduceSubscription : public SubscriptionBase {
  * the initial value directly. This is useful if the initial value is not
  * copyable.
  */
-template <typename MakeInitial, typename Reducer>
-auto ReduceGet(MakeInitial &&make_initial, Reducer &&reducer) {
+template <typename MakeInitial, typename ReducerT>
+auto ReduceGet(MakeInitial &&make_initial, ReducerT &&reducer) {
   // Return an operator (it takes a Publisher and returns a Publisher)
   return [
       make_initial = std::forward<MakeInitial>(make_initial),
-      reducer = std::forward<Reducer>(reducer)](auto source) {
+      reducer = std::forward<ReducerT>(reducer)](auto source) {
     // Return a Publisher
     return MakePublisher([make_initial, reducer, source = std::move(source)](
         auto &&subscriber) {
-      using ReduceSubscriberT = detail::ReduceSubscriber<
-          typename std::decay<decltype(make_initial())>::type,
-          typename std::decay<decltype(subscriber)>::type,
-          Reducer>;
+      using Accumulator = typename std::decay<decltype(make_initial())>::type;
+      using Subscriber = typename std::decay<decltype(subscriber)>::type;
+      using Reducer = typename std::decay<ReducerT>::type;
+      using ReduceSubscriberT = typename detail::Reduce<
+          Accumulator, Subscriber, Reducer>::ReduceSubscriber;
+      using ReduceSubscriptionT = typename detail::Reduce<
+          Accumulator, Subscriber, Reducer>::ReduceSubscription;
 
-      auto reduce_subscriber = std::make_shared<ReduceSubscriberT>(
-          make_initial(),
-          std::forward<decltype(subscriber)>(subscriber),
-          reducer);
+      Backreference<ReduceSubscriberT> reduce_ref;
+      auto reduce_subscriber = WithBackreference(
+          ReduceSubscriberT(
+              make_initial(),
+              std::forward<decltype(subscriber)>(subscriber),
+              reducer),
+          &reduce_ref);
 
-      Backreference<Subscription> sub_ref;
+      Backreference<ReduceSubscriptionT> sub_ref;
       auto sub = WithBackreference(
-          Subscription(source.Subscribe(MakeSubscriber(reduce_subscriber))),
+          ReduceSubscriptionT(
+              Subscription(source.Subscribe(std::move(reduce_subscriber)))),
           &sub_ref);
 
-      reduce_subscriber->TakeSubscription(std::move(sub_ref));
+      if (reduce_ref) {  // TODO(peck): Test what happens if it's is empty
+        ReduceSubscriberT::TakeSubscription(
+            std::move(reduce_ref), std::move(sub_ref));
+      }
 
-      return detail::ReduceSubscription<ReduceSubscriberT>(
-          reduce_subscriber,
-          std::move(sub));
+      return sub;
     });
   };
 }
