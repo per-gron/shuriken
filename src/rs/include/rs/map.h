@@ -108,7 +108,7 @@ auto Map(Mapper &&mapper) {
           Subscription(source.Subscribe(std::move(map_subscriber))),
           &sub_ref);
 
-      if (map_ref) {
+      if (map_ref) {  // TODO(peck): Test what happens if it's is empty
         map_ref->TakeSubscription(std::move(sub_ref));
       }
       return sub;

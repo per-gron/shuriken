@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/backreference.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
@@ -33,8 +34,8 @@ class FilterSubscriber : public SubscriberBase {
       : inner_subscriber_(std::move(inner_subscriber)),
         predicate_(predicate) {}
 
-  void TakeSubscription(const SharedSubscription &subscription) {
-    subscription_ = WeakSubscription(subscription);
+  void TakeSubscription(Backreference<Subscription> &&subscription) {
+    subscription_ = std::move(subscription);
   }
 
   template <typename T, class = RequireRvalue<T>>
@@ -47,7 +48,14 @@ class FilterSubscriber : public SubscriberBase {
     try {
       predicate_match = predicate_(static_cast<const T &>(t));
     } catch (...) {
-      subscription_.Cancel();
+      if (subscription_) {
+        // TODO(peck): It's wrong that subscription_ can be null here; when that
+        // happens we still actually need to be able to cancel the subscription.
+        //
+        // I think one approach to fix this is to change so that destroying the
+        // Subscription implies cancellation.
+        subscription_->Cancel();
+      }
       failed_ = true;
       inner_subscriber_.OnError(std::current_exception());
     }
@@ -55,7 +63,14 @@ class FilterSubscriber : public SubscriberBase {
       if (predicate_match) {
         inner_subscriber_.OnNext(std::forward<T>(t));
       } else {
-        subscription_.Request(ElementCount(1));
+        if (subscription_) {
+          // TODO(peck): It's wrong that subscription_ can be null here; when that
+          // happens we still actually need to be able to cancel the subscription.
+          //
+          // I think one approach to fix this is to change so that destroying the
+          // Subscription implies cancellation.
+          subscription_->Request(ElementCount(1));
+        }
       }
     }
   }
@@ -75,7 +90,7 @@ class FilterSubscriber : public SubscriberBase {
  private:
   bool failed_ = false;
   InnerSubscriberType inner_subscriber_;
-  WeakSubscription subscription_;
+  Backreference<Subscription> subscription_;
   Predicate predicate_;
 };
 
@@ -91,16 +106,25 @@ auto Filter(Predicate &&predicate) {
     // Return a Publisher
     return MakePublisher([predicate, source = std::move(source)](
         auto &&subscriber) {
-      auto filter_subscriber = std::make_shared<detail::FilterSubscriber<
+      using FilterSubscriberT = detail::FilterSubscriber<
           typename std::decay<decltype(subscriber)>::type,
-          typename std::decay<Predicate>::type>>(
+          typename std::decay<Predicate>::type>;
+
+      Backreference<FilterSubscriberT> filter_ref;
+      auto filter_subscriber = WithBackreference(
+          FilterSubscriberT(
               std::forward<decltype(subscriber)>(subscriber),
-              predicate);
+              predicate),
+          &filter_ref);
 
-      auto sub = SharedSubscription(
-          source.Subscribe(MakeSubscriber(filter_subscriber)));
+      Backreference<Subscription> sub_ref;
+      auto sub = WithBackreference(
+          Subscription(source.Subscribe(std::move(filter_subscriber))),
+          &sub_ref);
 
-      filter_subscriber->TakeSubscription(sub);
+      if (filter_ref) {  // TODO(peck): Test what happens if it's is empty
+        filter_ref->TakeSubscription(std::move(sub_ref));
+      }
 
       return sub;
     });
