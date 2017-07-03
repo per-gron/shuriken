@@ -1,6 +1,7 @@
 add_library(rs
   include/rs/all.h
   include/rs/average.h
+  include/rs/backreference.h
   include/rs/catch.h
   include/rs/concat.h
   include/rs/concat_map.h
@@ -52,6 +53,7 @@ add_executable(rs-test
   test/all_test.cpp
   test/average_test.cpp
   test/backpressure_violator.h
+  test/backreference_test.cpp
   test/catch_test.cpp
   test/concat_map_test.cpp
   test/concat_test.cpp
