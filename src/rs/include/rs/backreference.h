@@ -30,7 +30,7 @@ class Backreferee : public T {
   Backreferee &operator=(const Backreferee &) = delete;
 
   Backreferee(Backreferee &&other)
-      : T(std::move(other)),
+      : T(std::move(static_cast<T &>(other))),
         backref_(other.backref_) {
     other.backref_ = nullptr;
     if (backref_) {

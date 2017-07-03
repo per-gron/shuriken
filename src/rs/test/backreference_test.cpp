@@ -19,6 +19,20 @@
 #include <rs/backreference.h>
 
 namespace shk {
+namespace {
+
+template <typename T>
+class WithGenericConstructor {
+ public:
+  template <typename U>
+  explicit WithGenericConstructor(U &&v)
+      : t_(std::forward<U>(v)) {}
+
+ private:
+  T t_;
+};
+
+}  // anonymous namespace
 
 TEST_CASE("Backreference") {
   SECTION("Backreferee") {
@@ -56,6 +70,18 @@ TEST_CASE("Backreference") {
         CHECK(str.empty());
         CHECK(!ref);
         CHECK(moved == "hey");
+      }
+
+      SECTION("inner type with generic constructor") {
+        Backreference<WithGenericConstructor<int>> ref_a;
+        Backreferee<WithGenericConstructor<int>> str_a = WithBackreference(
+            WithGenericConstructor<int>(5), &ref_a);
+
+        Backreference<WithGenericConstructor<int>> ref_b;
+        Backreferee<WithGenericConstructor<int>> str_b = WithBackreference(
+            WithGenericConstructor<int>(6), &ref_b);
+
+        str_a = std::move(str_b);
       }
     }
 
