@@ -246,6 +246,10 @@ TEST_CASE("Zip") {
     CHECK(GetAll<std::tuple<int>>(stream) == (std::vector<std::tuple<int>>{}));
   }
 
+  SECTION("don't leak the subscriber") {
+    CheckLeak(Zip<std::tuple<int>>(Just(1)));
+  }
+
   SECTION("cancellation") {
     auto fail = std::make_exception_ptr(std::runtime_error("test_fail"));
 

@@ -115,7 +115,7 @@ void CheckLeak(Publisher &&publisher) {
     destroyed = true;
   });
   auto null_subscriber = MakeSubscriber(
-      [lifetime_tracer = std::move(lifetime_tracer)](int next) {
+      [lifetime_tracer = std::move(lifetime_tracer)](auto &&) {
         CHECK(!"should not happen");
       },
       [](std::exception_ptr &&error) { CHECK(!"should not happen"); },

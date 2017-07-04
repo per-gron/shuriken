@@ -121,6 +121,9 @@ class ZipSubscription : public SubscriptionBase {
     }
 
    private:
+    // TODO(peck): But what if the ZipSubscription goes away before the
+    // ZipSubscriber? Then things just won't arrive anymore. This is wrong.
+    // Suggested solution: Make subscription destruction imply cancellation.
     std::weak_ptr<ZipSubscription> zip_subscription_;
   };
 
