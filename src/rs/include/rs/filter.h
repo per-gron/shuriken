@@ -112,15 +112,15 @@ auto Filter(Predicate &&predicate) {
 
       Backreference<FilterSubscriberT> filter_ref;
       auto filter_subscriber = WithBackreference(
+          &filter_ref,
           FilterSubscriberT(
               std::forward<decltype(subscriber)>(subscriber),
-              predicate),
-          &filter_ref);
+              predicate));
 
       Backreference<Subscription> sub_ref;
       auto sub = WithBackreference(
-          Subscription(source.Subscribe(std::move(filter_subscriber))),
-          &sub_ref);
+          &sub_ref,
+          Subscription(source.Subscribe(std::move(filter_subscriber))));
 
       if (filter_ref) {  // TODO(peck): Test what happens if it's is empty
         filter_ref->TakeSubscription(std::move(sub_ref));

@@ -61,7 +61,7 @@ class Backreferee : public T {
   friend class Backreference<T>;
   template <typename U>
   friend Backreferee<typename std::decay<U>::type> WithBackreference(
-      U &&, Backreference<typename std::decay<U>::type> *);
+      Backreference<typename std::decay<U>::type> *, U &&);
 
   template <typename U>
   explicit Backreferee(U &&value) : T(std::forward<U>(value)) {}
@@ -134,7 +134,7 @@ class Backreference {
   friend class Backreferee<T>;
   template <typename U>
   friend Backreferee<typename std::decay<U>::type> WithBackreference(
-      U &&, Backreference<typename std::decay<U>::type> *);
+      Backreference<typename std::decay<U>::type> *, U &&);
 
   explicit Backreference(Backreferee<T> *val) : val_(val) {}
 
@@ -143,7 +143,7 @@ class Backreference {
 
 template <typename T>
 Backreferee<typename std::decay<T>::type> WithBackreference(
-    T &&t, Backreference<typename std::decay<T>::type> *backref) {
+    Backreference<typename std::decay<T>::type> *backref, T &&t) {
   Backreferee<typename std::decay<T>::type> backreferee(std::forward<T>(t));
   *backref = Backreference<typename std::decay<T>::type>(&backreferee);
   return backreferee;

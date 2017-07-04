@@ -98,15 +98,15 @@ auto Map(Mapper &&mapper) {
 
       Backreference<MapSubscriberT> map_ref;
       auto map_subscriber = WithBackreference(
+          &map_ref,
           MapSubscriberT(
               std::forward<decltype(subscriber)>(subscriber),
-              mapper),
-          &map_ref);
+              mapper));
 
       Backreference<Subscription> sub_ref;
       auto sub = WithBackreference(
-          Subscription(source.Subscribe(std::move(map_subscriber))),
-          &sub_ref);
+          &sub_ref,
+          Subscription(source.Subscribe(std::move(map_subscriber))));
 
       if (map_ref) {  // TODO(peck): Test what happens if it's is empty
         map_ref->TakeSubscription(std::move(sub_ref));

@@ -41,7 +41,7 @@ TEST_CASE("Backreference") {
         Backreference<std::string> ref;
         {
           Backreferee<std::string> str = WithBackreference(
-              std::string("hey"), &ref);
+              &ref, std::string("hey"));
         }
 
         CHECK(!ref);
@@ -51,7 +51,7 @@ TEST_CASE("Backreference") {
         Backreference<std::string> ref;
         {
           Backreferee<std::string> str = WithBackreference(
-              std::string("hey"), &ref);
+              &ref, std::string("hey"));
           ref.Reset();
         }
 
@@ -62,7 +62,7 @@ TEST_CASE("Backreference") {
     SECTION("base operator=") {
       Backreference<std::string> ref;
       Backreferee<std::string> str = WithBackreference(
-          std::string("hey"), &ref);
+          &ref, std::string("hey"));
 
       str = "new";
 
@@ -73,7 +73,7 @@ TEST_CASE("Backreference") {
       SECTION("parameter has backref") {
         Backreference<std::string> ref;
         Backreferee<std::string> str = WithBackreference(
-            std::string("hey"), &ref);
+            &ref, std::string("hey"));
 
         Backreferee<std::string> moved(std::move(str));
 
@@ -85,7 +85,7 @@ TEST_CASE("Backreference") {
       SECTION("parameter has no backref") {
         Backreference<std::string> ref;
         Backreferee<std::string> str = WithBackreference(
-            std::string("hey"), &ref);
+            &ref, std::string("hey"));
         ref.Reset();
 
         Backreferee<std::string> moved(std::move(str));
@@ -98,11 +98,11 @@ TEST_CASE("Backreference") {
       SECTION("inner type with generic constructor") {
         Backreference<WithGenericConstructor<int>> ref_a;
         Backreferee<WithGenericConstructor<int>> str_a = WithBackreference(
-            WithGenericConstructor<int>(5), &ref_a);
+            &ref_a, WithGenericConstructor<int>(5));
 
         Backreference<WithGenericConstructor<int>> ref_b;
         Backreferee<WithGenericConstructor<int>> str_b = WithBackreference(
-            WithGenericConstructor<int>(6), &ref_b);
+            &ref_b, WithGenericConstructor<int>(6));
 
         str_a = std::move(str_b);
       }
@@ -112,15 +112,15 @@ TEST_CASE("Backreference") {
       SECTION("lhs with backref, rhs with backref") {
         Backreference<std::string> ref_a;
         Backreferee<std::string> str_a = WithBackreference(
-            std::string("str_a"), &ref_a);
+            &ref_a, std::string("str_a"));
 
         Backreference<std::string> ref_b;
         Backreferee<std::string> str_b = WithBackreference(
-            std::string("str_b"), &ref_b);
+            &ref_b, std::string("str_b"));
 
         Backreference<std::string> ref_c;
         Backreferee<std::string> str_c = WithBackreference(
-            std::string("str_c"), &ref_c);
+            &ref_c, std::string("str_c"));
 
         str_a = std::move(str_b);
 
@@ -135,12 +135,12 @@ TEST_CASE("Backreference") {
       SECTION("lhs without backref, rhs with backref") {
         Backreference<std::string> ref_a;
         Backreferee<std::string> str_a = WithBackreference(
-            std::string("str_a"), &ref_a);
+            &ref_a, std::string("str_a"));
         ref_a.Reset();
 
         Backreference<std::string> ref_b;
         Backreferee<std::string> str_b = WithBackreference(
-            std::string("str_b"), &ref_b);
+            &ref_b, std::string("str_b"));
 
         str_a = std::move(str_b);
 
@@ -153,11 +153,11 @@ TEST_CASE("Backreference") {
       SECTION("lhs with backref, rhs without backref") {
         Backreference<std::string> ref_a;
         Backreferee<std::string> str_a = WithBackreference(
-            std::string("str_a"), &ref_a);
+            &ref_a, std::string("str_a"));
 
         Backreference<std::string> ref_b;
         Backreferee<std::string> str_b = WithBackreference(
-            std::string("str_b"), &ref_b);
+            &ref_b, std::string("str_b"));
         ref_b.Reset();
 
         str_a = std::move(str_b);
@@ -180,11 +180,11 @@ TEST_CASE("Backreference") {
       SECTION("with backreferee") {
         Backreference<std::string> ref_a;
         Backreferee<std::string> str_a = WithBackreference(
-            std::string("str_a"), &ref_a);
+            &ref_a, std::string("str_a"));
 
         Backreference<std::string> ref_b;
         Backreferee<std::string> str_b = WithBackreference(
-            std::string("str_b"), &ref_b);
+            &ref_b, std::string("str_b"));
 
         std::make_unique<Backreference<std::string>>(std::move(ref_a));
 
@@ -212,7 +212,7 @@ TEST_CASE("Backreference") {
       SECTION("nonempty parameter") {
         Backreference<std::string> a;
         Backreferee<std::string> str = WithBackreference(
-            std::string("hey"), &a);
+            &a, std::string("hey"));
         Backreference<std::string> b(std::move(a));
 
         CHECK(!a);
@@ -237,7 +237,7 @@ TEST_CASE("Backreference") {
       SECTION("empty lhs, nonempty rhs") {
         Backreference<std::string> a;
         Backreferee<std::string> str = WithBackreference(
-            std::string("hey"), &a);
+            &a, std::string("hey"));
         Backreference<std::string> b;
 
         b = std::move(a);
@@ -252,15 +252,15 @@ TEST_CASE("Backreference") {
       SECTION("nonempty lhs, nonempty rhs") {
         Backreference<std::string> a;
         Backreferee<std::string> str_a = WithBackreference(
-            std::string("str_a"), &a);
+            &a, std::string("str_a"));
 
         Backreference<std::string> b;
         Backreferee<std::string> str_b = WithBackreference(
-            std::string("str_b"), &b);
+            &b, std::string("str_b"));
 
         Backreference<std::string> c;
         Backreferee<std::string> str_c = WithBackreference(
-            std::string("str_c"), &c);
+            &c, std::string("str_c"));
 
         b = std::move(a);
 
@@ -276,11 +276,11 @@ TEST_CASE("Backreference") {
       SECTION("nonempty") {
         Backreference<std::string> a;
         Backreferee<std::string> str_a = WithBackreference(
-            std::string("str_a"), &a);
+            &a, std::string("str_a"));
 
         Backreference<std::string> b;
         Backreferee<std::string> str_b = WithBackreference(
-            std::string("str_b"), &b);
+            &b, std::string("str_b"));
 
         a.Reset();
         CHECK(!a);
@@ -303,7 +303,7 @@ TEST_CASE("Backreference") {
     SECTION("operator*") {
       Backreference<std::string> a;
       Backreferee<std::string> str_a = WithBackreference(
-          std::string("str_a"), &a);
+          &a, std::string("str_a"));
 
       *a = "new";  // non-const
       const auto &const_a = a;
@@ -313,7 +313,7 @@ TEST_CASE("Backreference") {
     SECTION("operator->") {
       Backreference<std::string> a;
       Backreferee<std::string> str_a = WithBackreference(
-          std::string("str_a"), &a);
+          &a, std::string("str_a"));
 
       a->append("_hey");  // non-const
       const auto &const_a = a;
@@ -325,7 +325,7 @@ TEST_CASE("Backreference") {
     SECTION("reference first") {
       struct Together {
         Together(const std::string &str)
-            : str(WithBackreference(str, &ref)) {}
+            : str(WithBackreference(&ref, str)) {}
 
         Backreference<std::string> ref;
         Backreferee<std::string> str;
@@ -351,8 +351,8 @@ TEST_CASE("Backreference") {
 
       struct Together {
         Together(const std::string &s)
-            : str(WithBackreference(std::string("tmp"), &tmp)) {
-          str = WithBackreference(s, &ref);
+            : str(WithBackreference(&tmp, std::string("tmp"))) {
+          str = WithBackreference(&ref, s);
         }
 
         Backreferee<std::string> str;

@@ -206,17 +206,17 @@ auto ReduceGet(MakeInitial &&make_initial, ReducerT &&reducer) {
 
       Backreference<ReduceSubscriberT> reduce_ref;
       auto reduce_subscriber = WithBackreference(
+          &reduce_ref,
           ReduceSubscriberT(
               make_initial(),
               std::forward<decltype(subscriber)>(subscriber),
-              reducer),
-          &reduce_ref);
+              reducer));
 
       Backreference<ReduceSubscriptionT> sub_ref;
       auto sub = WithBackreference(
+          &sub_ref,
           ReduceSubscriptionT(
-              Subscription(source.Subscribe(std::move(reduce_subscriber)))),
-          &sub_ref);
+              Subscription(source.Subscribe(std::move(reduce_subscriber)))));
 
       if (reduce_ref) {  // TODO(peck): Test what happens if it's is empty
         ReduceSubscriberT::TakeSubscription(
