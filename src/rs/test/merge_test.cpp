@@ -164,6 +164,10 @@ TEST_CASE("Merge") {
     CHECK(finished);
   }
 
+  SECTION("don't leak the subscriber") {
+    CheckLeak(Merge<int>(Just(1), Just(2)));
+  }
+
   SECTION("cancellation") {
     auto fail = std::make_exception_ptr(std::runtime_error("test_fail"));
 
