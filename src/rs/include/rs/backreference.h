@@ -58,10 +58,10 @@ class Backreferee : public T {
   }
 
  private:
-  friend class Backreference<T>;
-  template <typename U>
+  template <typename> friend class Backreference;
+  template <typename U, typename V>
   friend Backreferee<typename std::decay<U>::type> WithBackreference(
-      Backreference<typename std::decay<U>::type> *, U &&);
+      Backreference<V> *, U &&);
 
   template <typename U>
   explicit Backreferee(U &&value) : T(std::forward<U>(value)) {}
@@ -69,14 +69,18 @@ class Backreferee : public T {
   Backreference<T> *backref_ = nullptr;
 };
 
+// This class is final because I'm not sure the reinterpret_cast below works
+// otherwise.
 template <typename T>
-class Backreference {
+class Backreference final {
  public:
-  Backreference() : val_(nullptr) {}
+  Backreference()
+      : val_(nullptr),
+        set_backref_(nullptr) {}
 
   ~Backreference() {
     if (val_) {
-      val_->backref_ = nullptr;
+      set_backref_(val_, nullptr);
     }
   }
 
@@ -84,30 +88,35 @@ class Backreference {
   Backreference &operator=(const Backreference &) = delete;
 
   Backreference(Backreference &&other)
-      : val_(other.val_) {
+      : val_(other.val_),
+        set_backref_(other.set_backref_) {
     other.val_ = nullptr;
+    other.set_backref_ = nullptr;
     if (val_) {
-      val_->backref_ = this;
+      set_backref_(val_, this);
     }
   }
 
   Backreference &operator=(Backreference &&other) {
     if (val_) {
-      val_->backref_ = nullptr;
+      set_backref_(val_, nullptr);
     }
     val_ = other.val_;
+    set_backref_ = other.set_backref_;
     other.val_ = nullptr;
+    other.set_backref_ = nullptr;
     if (val_) {
-      val_->backref_ = this;
+      set_backref_(val_, this);
     }
     return *this;
   }
 
   void Reset() {
     if (val_) {
-      val_->backref_ = nullptr;
+      set_backref_(val_, nullptr);
     }
     val_ = nullptr;
+    set_backref_ = nullptr;
   }
 
   explicit operator bool() const {
@@ -131,21 +140,31 @@ class Backreference {
   }
 
  private:
-  friend class Backreferee<T>;
-  template <typename U>
+  template <typename> friend class Backreferee;
+  template <typename U, typename V>
   friend Backreferee<typename std::decay<U>::type> WithBackreference(
-      Backreference<typename std::decay<U>::type> *, U &&);
+      Backreference<V> *, U &&);
 
-  explicit Backreference(Backreferee<T> *val) : val_(val) {}
+  template <typename SubType, typename SuperType>
+  static void SetBackref(SuperType *val, Backreference *ptr) {
+    static_cast<Backreferee<SubType> *>(val)->backref_ =
+        reinterpret_cast<Backreference<SubType> *>(ptr);
+  }
 
-  Backreferee<T> *val_;
+  template <typename U>
+  explicit Backreference(Backreferee<U> *val)
+      : val_(val),
+        set_backref_(&SetBackref<U, T>) {}
+
+  T *val_;
+  void (*set_backref_)(T *val, Backreference *ptr);
 };
 
-template <typename T>
+template <typename T, typename U>
 Backreferee<typename std::decay<T>::type> WithBackreference(
-    Backreference<typename std::decay<T>::type> *backref, T &&t) {
+    Backreference<U> *backref, T &&t) {
   Backreferee<typename std::decay<T>::type> backreferee(std::forward<T>(t));
-  *backref = Backreference<typename std::decay<T>::type>(&backreferee);
+  *backref = Backreference<U>(&backreferee);
   return backreferee;
 }
 

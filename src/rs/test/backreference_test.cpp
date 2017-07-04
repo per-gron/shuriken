@@ -32,6 +32,20 @@ class WithGenericConstructor {
   T t_;
 };
 
+class Supertype {
+ public:
+  virtual ~Supertype() = default;
+
+  virtual int GetValue() = 0;
+};
+
+class Subtype : public Supertype {
+ public:
+  int GetValue() override {
+    return 1337;
+  }
+};
+
 }  // anonymous namespace
 
 TEST_CASE("Backreference") {
@@ -319,6 +333,15 @@ TEST_CASE("Backreference") {
       const auto &const_a = a;
       CHECK(const_a->find("_hey") == 5);  // const
     }
+  }
+
+  SECTION("Backreference to supertype of Backreferee") {
+    Backreference<Supertype> a_ref;
+    Backreferee<Subtype> a = WithBackreference(
+        &a_ref, Subtype());
+
+    CHECK(a.GetValue() == 1337);
+    CHECK(a_ref->GetValue() == 1337);
   }
 
   SECTION("moving Backreferee and Backreference together") {
