@@ -58,6 +58,10 @@ TEST_CASE("StartWith") {
           GetAll<int>(start_with_two(Just(42))) ==
           std::vector<int>({ 1, 2, 42 }));
     }
+
+    SECTION("don't leak the subscriber") {
+      CheckLeak(start_with_one(Just(42)));
+    }
   }
 
   SECTION("StartWithGet") {
@@ -103,6 +107,10 @@ TEST_CASE("StartWith") {
       CHECK(
           GetAll<int>(start_with_two(Just(42))) ==
           std::vector<int>({ 1, 2, 42 }));
+    }
+
+    SECTION("don't leak the subscriber") {
+      CheckLeak(start_with_one(Just(42)));
     }
   }
 }

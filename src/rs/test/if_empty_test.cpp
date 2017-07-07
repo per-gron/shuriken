@@ -57,6 +57,10 @@ TEST_CASE("IfEmpty") {
       REQUIRE(result[0]);
       CHECK(*result[0] == 2);
     }
+
+    SECTION("don't leak the subscriber") {
+      CheckLeak(IfEmpty(Just(1))(Just(2)));
+    }
   }
 
   SECTION("empty stream") {
@@ -68,6 +72,10 @@ TEST_CASE("IfEmpty") {
     SECTION("several values") {
       auto stream = IfEmpty(Just(1, 2, 3))(Just());
       CHECK(GetAll<int>(stream) == (std::vector<int>{ 1, 2, 3 }));
+    }
+
+    SECTION("don't leak the subscriber") {
+      CheckLeak(IfEmpty(Just(1))(Just()));
     }
   }
 }

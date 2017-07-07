@@ -49,6 +49,9 @@ TEST_CASE("Concat") {
     CHECK(GetAll<int>(stream) == std::vector<int>({ 1, 2 }));
   }
 
+  SECTION("don't leak the subscriber") {
+    CheckLeak(Concat(Just(1), Just(2)));
+  }
 
   SECTION("make infinite stream by concatenating with self") {
     Publisher<int> infinite =
