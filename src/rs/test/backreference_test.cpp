@@ -50,6 +50,11 @@ class Subtype : public Supertype {
 
 TEST_CASE("Backreference") {
   SECTION("Backreferee") {
+    SECTION("default constructor") {
+      Backreferee<std::string> str;
+      CHECK(str == "");
+    }
+
     SECTION("destructor") {
       SECTION("with backreference") {
         Backreference<std::string> ref;

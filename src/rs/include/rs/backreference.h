@@ -39,6 +39,10 @@ Backreferee<typename std::decay<T>::type> WithSingleBackreference(
 template <typename T>
 class Backreferee : public T {
  public:
+  Backreferee()
+      : T(),
+        backref_(nullptr) {}
+
   ~Backreferee() {
     if (backref_) {
       backref_->val_ = nullptr;
