@@ -292,10 +292,9 @@ auto ConcatMap(MapperT &&mapper) {
       Backreference<ConcatMapSubscriptionT> sub_ref_a;
       Backreference<ConcatMapSubscriptionT> sub_ref_b;
       auto sub = WithBackreference(
-          WithBackreference(
-              ConcatMapSubscriptionT(
-                  std::forward<decltype(subscriber)>(subscriber)),
-              &sub_ref_b),
+          ConcatMapSubscriptionT(
+              std::forward<decltype(subscriber)>(subscriber)),
+          &sub_ref_b,
           &sub_ref_a);
 
       sub.SubscribeForPublishers(
