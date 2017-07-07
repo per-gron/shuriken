@@ -39,20 +39,20 @@ class TakeSubscriber : public SubscriberBase {
       inner_subscriber.OnComplete();
 
       Backreference<Subscription> ref;
-      return WithBackreference(&ref, Subscription());
+      return WithBackreference(Subscription(), &ref);
     } else {
       TakeSubscriber self(
           std::forward<InnerSubscriberT>(inner_subscriber),
           count);
 
       Backreference<TakeSubscriber> take_ref;
-      auto backreferred_self = WithBackreference(&take_ref, std::move(self));
+      auto backreferred_self = WithBackreference(std::move(self), &take_ref);
 
       auto sub = Subscription(source->Subscribe(std::move(backreferred_self)));
 
       return WithBackreference(
-          &take_ref->subscription_,
-          std::move(sub));
+          std::move(sub),
+          &take_ref->subscription_);
     }
   }
 

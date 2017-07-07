@@ -107,15 +107,15 @@ auto TakeWhile(Predicate &&predicate) {
 
       Backreference<TakeWhileSubscriberT> take_while_ref;
       auto take_while_subscriber = WithBackreference(
-          &take_while_ref,
           TakeWhileSubscriberT(
               std::forward<decltype(subscriber)>(subscriber),
-              predicate));
+              predicate),
+          &take_while_ref);
 
       Backreference<Subscription> sub_ref;
       auto sub = WithBackreference(
-          &sub_ref,
-          Subscription(source.Subscribe(std::move(take_while_subscriber))));
+          Subscription(source.Subscribe(std::move(take_while_subscriber))),
+          &sub_ref);
 
       if (take_while_ref) {  // TODO(peck): Test what happens if it's is empty
         take_while_ref->TakeSubscription(std::move(sub_ref));
