@@ -39,7 +39,7 @@ class TakeSubscriber : public SubscriberBase {
       inner_subscriber.OnComplete();
 
       Backreference<Subscription> ref;
-      return WithBackreference(Subscription(), &ref);
+      return Backreferee<Subscription>();
     } else {
       TakeSubscriber self(
           std::forward<InnerSubscriberT>(inner_subscriber),
