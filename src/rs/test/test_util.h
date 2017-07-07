@@ -20,6 +20,17 @@
 
 namespace shk {
 
+inline std::string GetErrorWhat(const std::exception_ptr &error) {
+  if (!error) {
+    return "[null error]";
+  }
+  try {
+    std::rethrow_exception(error);
+  } catch (const std::exception &error) {
+    return error.what();
+  }
+}
+
 template <typename T, typename Publisher>
 T GetOne(
     const Publisher &publisher,
@@ -62,6 +73,7 @@ std::vector<T> GetAll(
         result.emplace_back(std::forward<decltype(val)>(val));
       },
       [](std::exception_ptr &&error) {
+        printf("Error what: %s\n", GetErrorWhat(error).c_str());
         CHECK(!"OnError should not be called");
       },
       [&is_done] {
@@ -95,17 +107,6 @@ std::exception_ptr GetError(
       received_error :
       std::make_exception_ptr(
           std::logic_error("[no error when one was expected]"));
-}
-
-inline std::string GetErrorWhat(const std::exception_ptr &error) {
-  if (!error) {
-    return "[null error]";
-  }
-  try {
-    std::rethrow_exception(error);
-  } catch (const std::exception &error) {
-    return error.what();
-  }
 }
 
 template <typename Publisher>

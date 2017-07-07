@@ -256,7 +256,7 @@ TEST_CASE("Zip") {
     SECTION("request elements after cancellation") {
       auto stream = Zip<std::tuple<int, int>>(
           Concat(Just(1), Just(3), Throw(fail)),
-          Concat(Just(2), Throw(fail)));
+          Concat(Just(2, 4), Throw(fail)));
 
       std::vector<std::tuple<int, int>> result;
       bool is_done = false;
@@ -358,7 +358,7 @@ TEST_CASE("Zip") {
     }
 
     SECTION("one failing stream but don't request to the error") {
-      auto stream = Zip<std::tuple<int>>(Concat(Just(1), Throw(fail)));
+      auto stream = Zip<std::tuple<int>>(Concat(Just(1, 2), Throw(fail)));
       CHECK(
           GetAll<std::tuple<int>>(stream, ElementCount(1), false) ==
           (std::vector<std::tuple<int>>{ 1 }));
@@ -367,7 +367,7 @@ TEST_CASE("Zip") {
     SECTION("two failing streams but don't request to the error") {
       auto stream = Zip<std::tuple<int, int>>(
           Concat(Just(1), Just(3), Throw(fail)),
-          Concat(Just(2), Throw(fail)));
+          Concat(Just(2, 4), Throw(fail)));
 
       std::vector<std::tuple<int, int>> result;
       bool is_done = false;

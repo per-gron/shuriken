@@ -21,6 +21,7 @@
 #include <rs/just.h>
 #include <rs/map.h>
 #include <rs/never.h>
+#include <rs/pipe.h>
 
 #include "backpressure_violator.h"
 #include "infinite_range.h"
@@ -47,9 +48,8 @@ TEST_CASE("ConcatMap") {
   }
 
   SECTION("one empty stream, request 0") {
-    auto concat_map = ConcatMap([](auto &&) { return Empty(); });
+    auto concat_map = ConcatMap([](auto &&) { return Just(1); });
     auto stream = concat_map(Start([] {
-      CHECK(!"Should not be requested");
       return 0;
     }));
     CHECK(GetAll<int>(stream, ElementCount(0), false) == std::vector<int>({}));
@@ -127,15 +127,19 @@ TEST_CASE("ConcatMap") {
         auto subscriber) {
       CHECK(!subscribed);
       subscribed = true;
-      on_next = [subscriber = std::move(subscriber)](int value) mutable {
-        subscriber.OnNext(int(value));
-        subscriber.OnComplete();
+
+      auto shared_subscriber = std::make_shared<decltype(subscriber)>(
+          std::move(subscriber));
+      on_next = [shared_subscriber](int value) mutable {
+        shared_subscriber->OnNext(int(value));
+        shared_subscriber->OnComplete();
       };
 
       return MakeSubscription();
     });
 
-    auto concat_map = ConcatMap([inner_stream = std::move(inner_stream)](auto x) {
+    auto concat_map = ConcatMap([inner_stream = std::move(inner_stream)](
+        auto x) {
       return inner_stream;
     });
 
@@ -156,7 +160,7 @@ TEST_CASE("ConcatMap") {
           complete_called = true;
         }));
 
-    CHECK(!subscribed);
+    CHECK(subscribed);
     sub.Request(ElementCount(1));
     CHECK(subscribed);
     CHECK(!next_called);
@@ -168,46 +172,74 @@ TEST_CASE("ConcatMap") {
     CHECK(complete_called);
   }
 
-  SECTION("two OnComplete signals on input stream") {
-    auto inner_stream = MakePublisher([](auto subscriber) {
-      return MakeSubscription(
-        [subscriber = std::move(subscriber)](ElementCount count) mutable {
-          CHECK(count == 1);
-          subscriber.OnNext(0);
-          subscriber.OnComplete();
-          subscriber.OnComplete();
-        },
-        [] { /* cancel */ });
-    });
-
-    auto concat_map = ConcatMap([](auto x) { return Never(); });
-
-    auto stream = concat_map(inner_stream);
-    std::exception_ptr got_error;
-    auto sub = stream.Subscribe(MakeSubscriber(
-        [](auto) { CHECK(!"OnNext should not be called"); },
-        [&got_error](std::exception_ptr &&error) {
-          CHECK(!got_error);
-          got_error = error;
-        },
-        [] { CHECK(!"OnComplete should not be called"); }));
-
-    CHECK(!got_error);
-    sub.Request(ElementCount(1));
-    CHECK(GetErrorWhat(got_error) == "Got more than one OnComplete signal");
+  SECTION("don't leak the subscriber") {
+    auto stream = Pipe(
+        Just(1),
+        ConcatMap([](auto &&) {
+          return From(std::vector<int>{ 1, 2 });
+        }));
+    CheckLeak(stream);
   }
 
   SECTION("backpressure violation") {
     SECTION("outer stream") {
-      auto violator = BackpressureViolator(1, [] { return Empty(); });
-      auto stream = ConcatMap([](auto &&) { return Empty(); })(violator);
+      auto violator = BackpressureViolator(2, [] { return 0; });
+      auto stream = ConcatMap([](auto &&) { return Just(1); })(violator);
       auto error = GetError(stream);
       CHECK(GetErrorWhat(error) == "Got value that was not Request-ed");
     }
 
+    SECTION("outer stream multiple violations") {
+      // Should still only fail once
+
+      auto violator = BackpressureViolator(3, [] { return 0; });
+      auto stream = ConcatMap([](auto &&) { return Just(1); })(violator);
+      auto error = GetError(stream);
+      CHECK(GetErrorWhat(error) == "Got value that was not Request-ed");
+    }
+
+    SECTION("should not subscribe to publisher after backpressure violation") {
+      std::exception_ptr error;
+
+      auto stream = Pipe(
+          BackpressureViolator(3, [] { return 0; }),
+          ConcatMap([&error](auto &&) {
+            return MakePublisher([&error](auto &&subscriber) {
+              CHECK(!error);
+              return MakeSubscription();
+            });
+          }));
+
+      auto sub = stream.Subscribe(MakeSubscriber(
+          [&error](auto &&next) {
+            CHECK(!error);
+          },
+          [&error](std::exception_ptr &&received_error) {
+            CHECK(!error);
+            error = received_error;
+          },
+          [] { CHECK(!"OnComplete should not be called"); }));
+      sub.Request(ElementCount::Unbounded());
+      CHECK(error);
+      CHECK(GetErrorWhat(error) == "Got value that was not Request-ed");
+    }
+
     SECTION("inner stream") {
-      auto violator = BackpressureViolator(2, [] { return 0; });
-      auto stream = ConcatMap([&violator](auto &&) { return violator; })(Just(1));
+      auto violator = BackpressureViolator(1, [] { return 0; });
+      auto stream =
+          ConcatMap([&violator](auto &&) { return violator; })(Just(1));
+      auto error = GetError(stream, ElementCount(1));
+      CHECK(GetErrorWhat(error) == "Got value that was not Request-ed");
+    }
+
+    SECTION("two inner streams") {
+      auto violator = BackpressureViolator(1, [] { return 0; });
+      auto stream = Pipe(
+          Just(1),
+          ConcatMap([&violator](int value) {
+            CHECK(value != 2);
+            return violator;
+          }));
       auto error = GetError(stream, ElementCount(1));
       CHECK(GetErrorWhat(error) == "Got value that was not Request-ed");
     }
@@ -218,8 +250,10 @@ TEST_CASE("ConcatMap") {
       bool cancelled = false;
       auto inner_stream = MakePublisher([&cancelled](auto subscriber) {
         return MakeSubscription(
-          [](ElementCount count) {
-            CHECK(!"should not be called");
+          [called = false](ElementCount count) mutable {
+            CHECK(!called);
+            called = true;
+            CHECK(count == 1);
           },
           [&cancelled] {
             CHECK(!cancelled);
@@ -255,7 +289,8 @@ TEST_CASE("ConcatMap") {
           });
       });
 
-      auto concat_map = ConcatMap([&inner_stream](auto x) { return inner_stream; });
+      auto concat_map =
+          ConcatMap([&inner_stream](auto x) { return inner_stream; });
 
       auto stream = concat_map(Just(0));
       auto sub = stream.Subscribe(MakeSubscriber(
@@ -305,9 +340,16 @@ TEST_CASE("ConcatMap") {
     }
 
     SECTION("error on second only one requested") {
+      auto error = GetError(
+          fail_on(0)(From(std::vector<int>{ 0, 0 })),
+          ElementCount(1));
+      CHECK(GetErrorWhat(error) == "fail_on");
+    }
+
+    SECTION("error on third only one requested") {
       CHECK(
           GetAll<int>(
-              fail_on(0)(From(std::vector<int>{ 1, 0 })),
+              fail_on(0)(From(std::vector<int>{ 1, 1, 0 })),
               ElementCount(1),
               false) ==
           (std::vector<int>{ 42 }));

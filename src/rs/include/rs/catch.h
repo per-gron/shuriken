@@ -32,18 +32,28 @@ class CatchSubscription : public SubscriptionBase {
 
   void Request(ElementCount count) {
     subscriber_->requested_ += count;
-    inner_subscription_.Request(count);
+    if (has_failed_) {
+      catch_subscription_.Request(count);
+    } else {
+      inner_subscription_.Request(count);
+    }
   }
 
   void Cancel() {
     subscriber_->cancelled_ = true;
     inner_subscription_.Cancel();
+    catch_subscription_.Cancel();
   }
 
  private:
   template <typename, typename> friend class CatchSubscriber;
 
+  // The subscription to the non-catch-clause Publisher. Set only once, to avoid
+  // the risk of destroying a Subscription object that is this of a current
+  // stack frame, causing memory corruption.
   Subscription inner_subscription_;
+  Subscription catch_subscription_;
+  bool has_failed_ = false;  // Set to true when catch_subscription_ is set.
   std::shared_ptr<Subscriber> subscriber_;
 };
 
@@ -80,6 +90,7 @@ class CatchSubscriber : public SubscriberBase {
     --requested_;
     if (requested_ < 0) {
       cancelled_ = true;
+      // TODO(peck): This should cancel the underlying subscriptions too.
       inner_subscriber_.OnError(std::make_exception_ptr(
           std::logic_error("Got value that was not Request-ed")));
     } else {
@@ -102,7 +113,8 @@ class CatchSubscriber : public SubscriberBase {
       auto sub = catch_publisher.Subscribe(MakeSubscriber(me_.lock()));
       sub.Request(requested_);
       if (auto subscription = subscription_.lock()) {
-        subscription->inner_subscription_ = Subscription(std::move(sub));
+        subscription->has_failed_ = true;
+        subscription->catch_subscription_ = Subscription(std::move(sub));
       }
     }
   }

@@ -174,7 +174,7 @@ TEST_CASE("Merge") {
     SECTION("request elements after cancellation") {
       auto stream = Merge<int>(
           Concat(Just(1), Just(3), Throw(fail)),
-          Concat(Just(2), Throw(fail)));
+          Concat(Just(2), Just(4), Throw(fail)));
 
       std::vector<int> result;
       bool is_done = false;
@@ -344,7 +344,7 @@ TEST_CASE("Merge") {
     }
 
     SECTION("one failing stream but don't request to the error") {
-      auto stream = Merge<int>(Concat(Just(1), Throw(fail)));
+      auto stream = Merge<int>(Concat(Just(1, 2), Throw(fail)));
       CHECK(
           GetAll<int>(stream, ElementCount(1), false) ==
           (std::vector<int>{ 1 }));
@@ -353,7 +353,7 @@ TEST_CASE("Merge") {
     SECTION("two failing streams but don't request to the error") {
       auto stream = Merge<int>(
           Concat(Just(1), Just(3), Throw(fail)),
-          Concat(Just(2), Throw(fail)));
+          Concat(Just(2, 4), Throw(fail)));
 
       std::vector<int> result;
       bool is_done = false;

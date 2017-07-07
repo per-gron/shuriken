@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/backreference.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
@@ -24,228 +25,243 @@
 namespace shk {
 namespace detail {
 
-template <typename Subscriber>
-class ConcatMapSubscription : public SubscriptionBase {
+/**
+ * The ConcatMap class serves as a namespace with a shared set of template
+ * parameters. It's there to avoid the verbosity of having to have several
+ * classes with the same template parameters referring to each other.
+ */
+template <
+    typename InnerSubscriberType,
+    typename Mapper,
+    typename SourcePublisher>
+class ConcatMap {
  public:
-  ConcatMapSubscription(const std::shared_ptr<Subscriber> &subscriber)
-      : subscriber_(subscriber) {}
+  class ConcatMapValuesSubscriber;
+  class ConcatMapPublishersSubscriber;
 
-  void Request(ElementCount count) {
-    subscriber_->Request(count);
-  }
-
-  void Cancel() {
-    subscriber_->Cancel();
-  }
-
- private:
-  std::shared_ptr<Subscriber> subscriber_;
-};
-
-template <typename InnerSubscriberType, typename Mapper>
-class ConcatMapSubscriber : public SubscriberBase {
-  class ConcatMapValuesSubscriber : public SubscriberBase {
+  class ConcatMapSubscription : public SubscriptionBase {
    public:
-    ConcatMapValuesSubscriber(const std::weak_ptr<ConcatMapSubscriber> &that)
-        : that_(that) {}
+    ConcatMapSubscription(InnerSubscriberType &&inner_subscriber)
+        : inner_subscriber_(std::move(inner_subscriber)) {}
 
-    /**
-     * This is where the operator receives new flattened values.
-     */
-    template <typename T, class = RequireRvalue<T>>
-    void OnNext(T &&t) {
-      if (auto that = that_.lock()) {
-        that->OnNextValue(std::forward<T>(t));
-      }
+    void Request(ElementCount count) {
+      requested_ += count;
+      subscription_.Request(count);
     }
 
-    /**
-     * Called on failures on the stream of flattened values.
-     */
+    void Cancel() {
+      subscription_.Cancel();
+      publishers_subscription_.Cancel();
+    }
+
+    void SubscribeForPublishers(
+        const Mapper &mapper,
+        const SourcePublisher &source,
+        Backreference<ConcatMapSubscription> &&self_ref_a,
+        Backreference<ConcatMapSubscription> &&self_ref_b) {
+      self_ref_ = std::move(self_ref_a);
+      publishers_subscription_ = Subscription(source.Subscribe(
+          ConcatMapPublishersSubscriber(
+              mapper,
+              std::move(self_ref_b))));
+      publishers_subscription_.Request(ElementCount(1));
+    }
+
+   private:
+    friend class ConcatMapValuesSubscriber;
+    friend class ConcatMapPublishersSubscriber;
+
+    template <typename T>
+    void OnValuesNext(T &&t) {
+      if (failed_) {
+        // This avoids calling OnError multiple times on backpressure
+        // violations.
+        return;
+      }
+
+      if (requested_ == 0) {
+        OnError(std::make_exception_ptr(
+            std::logic_error("Got value that was not Request-ed")));
+        return;
+      }
+      --requested_;
+      inner_subscriber_.OnNext(std::forward<T>(t));
+    }
+
     void OnError(std::exception_ptr &&error) {
-      if (auto that = that_.lock()) {
-        that->OnError(std::move(error));
+      failed_ = true;
+      Cancel();
+      inner_subscriber_.OnError(std::move(error));
+    }
+
+    void OnValuesComplete(Backreference<ConcatMapSubscription> &&self_ref) {
+      if (failed_) {
+        return;
+      }
+
+      if (publishers_complete_) {
+        inner_subscriber_.OnComplete();
+      } else {
+        self_ref_ = std::move(self_ref);
+        publishers_subscription_.Request(ElementCount(1));
       }
     }
 
-    /**
-     * Called on complete events for the stream of flattened values.
-     */
+    template <typename T>
+    void OnPublishersNext(T &&publisher) {
+      if (failed_) {
+        return;
+      }
+
+      if (!self_ref_) {
+        OnError(std::make_exception_ptr(
+            std::logic_error("Got value that was not Request-ed")));
+        return;
+      }
+      last_subscription_ = std::move(subscription_);
+      subscription_ = Subscription(
+          publisher.Subscribe(ConcatMapValuesSubscriber(std::move(self_ref_))));
+      subscription_.Request(requested_);
+    }
+
+    void OnPublishersComplete() {
+      if (failed_) {
+        return;
+      }
+
+      publishers_complete_ = true;
+      if (self_ref_) {
+        // This happens when the Publishers subscription completes when there is
+        // no current values Publisher.
+        inner_subscriber_.OnComplete();
+      }
+    }
+
+    bool failed_ = false;
+    bool publishers_complete_ = false;
+    ElementCount requested_;
+    // The subscription to the current values Publisher. This is re-set whenever
+    // a new values Publisher is received. But beware! There is a risk that the
+    // time that this class wants to set subscription_ is when the subscription_
+    // object itself is this of current stack frames. In those cases, it is not
+    // safe to set (and consequently destroy the previous) subscription_.
+    Subscription subscription_;
+    // The subscription (if any) to the latest values Publisher. This is not
+    // actually read; the only reason it's there is to avoid having to destroy
+    // the current subscription_ from within OnValuesComplete, which because it
+    // is called from the subscription_ will destroy a this pointer on the stack
+    // under its feet.
+    Subscription last_subscription_;
+    // During times when there is no current Publisher that is being flattened,
+    // the ConcatMapSubscription holds a Backreference to itself.
+    Backreference<ConcatMapSubscription> self_ref_;
+    // Set once and then never set again.
+    Subscription publishers_subscription_;
+    // Set once (at construction) and then never set again.
+    InnerSubscriberType inner_subscriber_;
+  };
+
+  class ConcatMapPublishersSubscriber : public SubscriberBase {
+   public:
+    ConcatMapPublishersSubscriber(
+        const Mapper &mapper,
+        Backreference<ConcatMapSubscription> &&subscription)
+        : mapper_(mapper),
+          subscription_(std::move(subscription)) {}
+
+    template <typename T>
+    void OnNext(T &&t) {
+      if (!subscription_) {
+        // TODO(peck): It is wrong that we don't continue here if subscription_
+        // is unset. Potential fix: Make destroying the Subscription imply
+        // cancellation.
+        return;
+      }
+
+      try {
+        auto publisher = mapper_(std::forward<T>(t));
+        static_assert(
+            IsPublisher<decltype(publisher)>,
+            "ConcatMap mapper function must return Publisher");
+
+        if (/*TODO(peck):Test this*/subscription_) {
+          // TODO(peck): It is wrong that we don't continue here if
+          // subscription_ is unset. Potential fix: Make destroying the
+          // Subscription imply cancellation.
+
+          // It is possible that calling the mapper cancels the subscription,
+          // which might make subscription_ invalid. So it's good to double
+          // check.
+          subscription_->OnPublishersNext(std::move(publisher));
+        }
+      } catch (...) {
+        OnError(std::current_exception());
+      }
+    }
+
+    void OnError(std::exception_ptr &&error) {
+      if (subscription_) {
+        subscription_->OnError(std::move(error));
+      }
+    }
+
     void OnComplete() {
-      if (auto that = that_.lock()) {
-        that->RequestNewPublisher();
+      if (subscription_) {
+        // TODO(peck): It is wrong that we don't continue here if subscription_
+        // is unset. Potential fix: Make destroying the Subscription imply
+        // cancellation.
+
+        subscription_->OnPublishersComplete();
       }
     }
 
    private:
-    std::weak_ptr<ConcatMapSubscriber> that_;
+    Mapper mapper_;
+    Backreference<ConcatMapSubscription> subscription_;
   };
 
- public:
-  ConcatMapSubscriber(
-      InnerSubscriberType &&inner_subscriber, const Mapper &mapper)
-      : inner_subscriber_(std::move(inner_subscriber)),
-        mapper_(mapper) {}
+  class ConcatMapValuesSubscriber : public SubscriberBase {
+   public:
+    ConcatMapValuesSubscriber(
+        Backreference<ConcatMapSubscription> &&subscription)
+        : subscription_(std::move(subscription)) {}
 
-  template <typename Publisher>
-  void Subscribe(
-      std::shared_ptr<ConcatMapSubscriber> me,
-      Publisher &&publisher) {
-    me_ = me;
-    publishers_subscription_ = Subscription(
-        publisher.Subscribe(MakeSubscriber(me)));
-  }
+    template <typename T>
+    void OnNext(T &&t) {
+      if (subscription_) {
+        // TODO(peck): It is wrong that we don't continue here if subscription_
+        // is unset. Potential fix: Make destroying the Subscription imply
+        // cancellation.
 
-  /**
-   * This is where the operator receives new Publishers to be flattened.
-   */
-  template <typename T, class = RequireRvalue<T>>
-  void OnNext(T &&t) {
-    if (state_ == State::END) {
-      // Allow stray publishers to arrive asynchronously after cancel.
-      return;
-    }
-
-    if (state_ != State::REQUESTED_PUBLISHER) {
-      OnError(std::make_exception_ptr(
-          std::logic_error("Got value that was not Request-ed")));
-      return;
-    }
-
-    try {
-      auto publisher = mapper_(std::forward<T>(t));
-      static_assert(
-          IsPublisher<decltype(publisher)>,
-          "ConcatMap mapper function must return Publisher");
-
-      state_ = State::HAS_PUBLISHER;
-      // We're only interested in catching the exception from mapper_ here, not
-      // OnNext. But the specification requires that Subscribe and Request do
-      // not throw, and here we rely on that.
-      values_subscription_ = Subscription(
-          publisher.Subscribe(ConcatMapValuesSubscriber(me_.lock())));
-      values_subscription_.Request(requested_);
-    } catch (...) {
-      OnError(std::current_exception());
-    }
-  }
-
-  /**
-   * Called on failures on the stream of Publishers to be flattened.
-   */
-  void OnError(std::exception_ptr &&error) {
-    if (state_ != State::END) {
-      // This cancel is needed because OnError may be called by the flattened
-      // values OnError as well, and in that case cancellation is needed.
-      Cancel();
-      inner_subscriber_.OnError(std::move(error));
-    }
-  }
-
-  /**
-   * Called on complete events for the stream of Publishers to be flattened.
-   */
-  void OnComplete() {
-    switch (state_) {
-      case State::END: {
-        // Already cancelled. Nothing to do
-        break;
-      }
-      case State::INIT:  // There were no elements in the stream
-      case State::REQUESTED_PUBLISHER: /* No active stream */ {
-        // Needed only for sanity and to prevent sending multiple OnComplete
-        // signals if the upstream sends multiple OnComplete signals.
-        state_ = State::END;
-
-        inner_subscriber_.OnComplete();
-        break;
-      }
-      case State::HAS_PUBLISHER: {
-        // There will be no more Publishers, but since there is an active one
-        // we can't just finish the stream, we need to wait it out.
-        state_ = State::ON_LAST_PUBLISHER;
-        break;
-      }
-      case State::ON_LAST_PUBLISHER: {
-        OnError(std::make_exception_ptr(
-            std::logic_error("Got more than one OnComplete signal")));
-        break;
+        subscription_->OnValuesNext(std::forward<T>(t));
       }
     }
-  }
 
-  void Request(ElementCount count) {
-    requested_ += count;
+    void OnError(std::exception_ptr &&error) {
+      if (subscription_) {
+        // TODO(peck): It is wrong that we don't continue here if subscription_
+        // is unset. Potential fix: Make destroying the Subscription imply
+        // cancellation.
 
-    switch (state_) {
-      case State::END: {
-        // Already finished or cancelled. Nothing to do.
-        break;
-      }
-      case State::REQUESTED_PUBLISHER: {
-        // Waiting for the next publisher. Nothing to do.
-        break;
-      }
-      case State::HAS_PUBLISHER:
-      case State::ON_LAST_PUBLISHER: {
-        values_subscription_.Request(count);
-        break;
-      }
-      case State::INIT: {
-        RequestNewPublisher();
-        break;
+        subscription_->OnError(std::move(error));
       }
     }
-  }
 
-  void Cancel() {
-    publishers_subscription_.Cancel();
-    values_subscription_.Cancel();
-    state_ = State::END;
-  }
+    void OnComplete() {
+      if (subscription_) {
+        // TODO(peck): It is wrong that we don't continue here if subscription_
+        // is unset. Potential fix: Make destroying the Subscription imply
+        // cancellation.
 
- private:
-  enum class State {
-    INIT,
-    REQUESTED_PUBLISHER,
-    HAS_PUBLISHER,
-    ON_LAST_PUBLISHER,
-    END
+        subscription_->OnValuesComplete(std::move(subscription_));
+      }
+    }
+
+   private:
+    friend class ConcatMapSubscription;
+
+    Backreference<ConcatMapSubscription> subscription_;
   };
-
-  template <typename T>
-  void OnNextValue(T &&t) {
-    if (requested_ == 0) {
-      OnError(std::make_exception_ptr(
-          std::logic_error("Got value that was not Request-ed")));
-      return;
-    }
-
-    requested_--;
-    inner_subscriber_.OnNext(std::forward<T>(t));
-  }
-
-  void RequestNewPublisher() {
-    if (state_ == State::ON_LAST_PUBLISHER) {
-      state_ = State::END;
-      inner_subscriber_.OnComplete();
-    } else if (requested_ != 0) {
-      state_ = State::REQUESTED_PUBLISHER;
-      publishers_subscription_.Request(ElementCount(1));
-    } else if (state_ != State::END) {
-      // There are no requested elements. Go back to the INIT state and wait
-      // for more Requests.
-      state_ = State::INIT;
-    }
-  }
-
-  std::weak_ptr<ConcatMapSubscriber> me_;
-  ElementCount requested_ = ElementCount(0);
-  InnerSubscriberType inner_subscriber_;
-  State state_ = State::INIT;
-  Subscription publishers_subscription_;
-  Subscription values_subscription_;
-  Mapper mapper_;
 };
 
 }  // namespace detail
@@ -256,28 +272,39 @@ class ConcatMapSubscriber : public SubscriberBase {
  * more values. All of the Publishers returned by the mapper are concatenated,
  * or "flattened", into a single Publisher.
  */
-template <typename Mapper>
-auto ConcatMap(Mapper &&mapper) {
+template <typename MapperT>
+auto ConcatMap(MapperT &&mapper) {
   // Return an operator (it takes a Publisher and returns a Publisher)
-  return [mapper = std::forward<Mapper>(mapper)](auto source) {
+  return [mapper = std::forward<MapperT>(mapper)](auto source) {
     // Return a Publisher
     return MakePublisher([mapper, source = std::move(source)](
         auto &&subscriber) {
-      using ConcatMapSubscriberT = detail::ConcatMapSubscriber<
-          typename std::decay<decltype(subscriber)>::type,
-          typename std::decay<Mapper>::type>;
+      using InnerSubscriberType =
+          typename std::decay<decltype(subscriber)>::type;
+      using Mapper = typename std::decay<MapperT>::type;
 
-      auto concat_map_subscriber = std::make_shared<ConcatMapSubscriberT>(
-              std::forward<decltype(subscriber)>(subscriber),
-              mapper);
+      using ConcatMapT = detail::ConcatMap<
+          InnerSubscriberType, Mapper, decltype(source)>;
 
-      auto sub = std::make_shared<
-          detail::ConcatMapSubscription<ConcatMapSubscriberT>>(
-              concat_map_subscriber);
+      using ConcatMapSubscriptionT =
+          typename ConcatMapT::ConcatMapSubscription;
 
-      concat_map_subscriber->Subscribe(concat_map_subscriber, source);
+      Backreference<ConcatMapSubscriptionT> sub_ref_a;
+      Backreference<ConcatMapSubscriptionT> sub_ref_b;
+      auto sub = WithBackreference(
+          &sub_ref_a,
+          WithBackreference(
+              &sub_ref_b,
+              ConcatMapSubscriptionT(
+                  std::forward<decltype(subscriber)>(subscriber))));
 
-      return MakeSubscription(sub);
+      sub.SubscribeForPublishers(
+          mapper,
+          source,
+          std::move(sub_ref_a),
+          std::move(sub_ref_b));
+
+      return sub;
     });
   };
 }
