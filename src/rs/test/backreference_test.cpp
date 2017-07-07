@@ -335,6 +335,34 @@ TEST_CASE("Backreference") {
     }
   }
 
+  SECTION("variadric WithBackreference function") {
+    SECTION("no backreferences") {
+      std::string value = "hello there!";
+      auto value_backreferee = WithBackreference(value);
+      CHECK(value == value_backreferee);
+
+      static_assert(
+          std::is_same<std::string, decltype(value_backreferee)>::value,
+          "WithBackreference with no backreference should not wrap");
+    }
+
+    SECTION("multiple backreferences") {
+      Backreference<std::string> ref_a;
+      Backreference<std::string> ref_b;
+      auto str = WithBackreference(std::string("str"), &ref_a, &ref_b);
+
+      CHECK(str == "str");
+      CHECK(*ref_a == "str");
+      CHECK(*ref_b == "str");
+
+      auto str_2 = std::move(str);
+
+      CHECK(str_2 == "str");
+      CHECK(*ref_a == "str");
+      CHECK(*ref_b == "str");
+    }
+  }
+
   SECTION("Backreference to supertype of Backreferee") {
     Backreference<Supertype> a_ref;
     Backreferee<Subtype> a = WithBackreference(

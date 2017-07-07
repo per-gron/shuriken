@@ -22,6 +22,21 @@ template <typename T>
 class Backreference;
 
 template <typename T>
+class Backreferee;
+
+namespace detail {
+
+template <typename T, typename U>
+Backreferee<typename std::decay<T>::type> WithSingleBackreference(
+    T &&t, Backreference<U> *backref) {
+  Backreferee<typename std::decay<T>::type> backreferee(std::forward<T>(t));
+  *backref = Backreference<U>(&backreferee);
+  return backreferee;
+}
+
+}  // namespace detail
+
+template <typename T>
 class Backreferee : public T {
  public:
   ~Backreferee() {
@@ -33,6 +48,19 @@ class Backreferee : public T {
 
   Backreferee(const Backreferee &) = delete;
   Backreferee &operator=(const Backreferee &) = delete;
+
+  /**
+   * For safety, disallow unwrapping Backreferees. This deleted constructor
+   * disallows things such as
+   *
+   *     Backreferee<Backreferee<std::string>> blah = ...;
+   *     Backreferee<std::string> bleh = std::move(blah);
+   */
+  template <
+      typename U,
+      class = typename std::enable_if<
+          std::is_same<T, U>::value>::type>
+  Backreferee(Backreferee<Backreferee<U>> &&other) = delete;
 
   Backreferee(Backreferee &&other)
       : T(std::move(static_cast<T &>(other))),
@@ -60,8 +88,8 @@ class Backreferee : public T {
  private:
   template <typename> friend class Backreference;
   template <typename U, typename V>
-  friend Backreferee<typename std::decay<U>::type> WithBackreference(
-      U &&, Backreference<V> *);
+  friend Backreferee<typename std::decay<U>::type>
+  detail::WithSingleBackreference(U &&, Backreference<V> *);
 
   template <typename U>
   explicit Backreferee(U &&value) : T(std::forward<U>(value)) {}
@@ -142,8 +170,8 @@ class Backreference final {
  private:
   template <typename> friend class Backreferee;
   template <typename U, typename V>
-  friend Backreferee<typename std::decay<U>::type> WithBackreference(
-      U &&, Backreference<V> *);
+  friend Backreferee<typename std::decay<U>::type>
+  detail::WithSingleBackreference(U &&, Backreference<V> *);
 
   template <typename SubType, typename SuperType>
   static void SetBackref(SuperType *val, Backreference *ptr) {
@@ -160,12 +188,17 @@ class Backreference final {
   void (*set_backref_)(T *val, Backreference *ptr);
 };
 
-template <typename T, typename U>
-Backreferee<typename std::decay<T>::type> WithBackreference(
-    T &&t, Backreference<U> *backref) {
-  Backreferee<typename std::decay<T>::type> backreferee(std::forward<T>(t));
-  *backref = Backreference<U>(&backreferee);
-  return backreferee;
+template <typename T>
+auto WithBackreference(T &&t) {
+  return std::forward<T>(t);
+}
+
+template <typename T, typename U, typename ...V>
+auto WithBackreference(
+    T &&t, Backreference<U> *backref, Backreference<V> *...backrefs) {
+  return detail::WithSingleBackreference(
+      WithBackreference(std::forward<T>(t), backrefs...),
+      backref);
 }
 
 }  // namespace shk
