@@ -113,7 +113,7 @@ class CatchSubscriber : public SubscriberBase {
     }
   }
 
- public:
+ private:
   template <typename> friend class CatchSubscription;
 
   // The number of elements that have been requested but not yet emitted.
