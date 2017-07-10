@@ -30,18 +30,18 @@ namespace shk {
  * conforms to the Subscriber concept by rvalue reference and that returns an
  * object that conforms to the Subscription concept.
  */
-class PublisherBase {
+class Publisher {
  protected:
-  ~PublisherBase() = default;
+  ~Publisher() = default;
 };
 
 template <typename T>
-constexpr bool IsPublisher = std::is_base_of<PublisherBase, T>::value;
+constexpr bool IsPublisher = std::is_base_of<Publisher, T>::value;
 
 namespace detail {
 
 template <typename InnerPublisher>
-class CallbackPublisher : public PublisherBase {
+class CallbackPublisher : public Publisher {
  public:
   struct FunctorTag {};
   /**
@@ -74,7 +74,7 @@ class CallbackPublisher : public PublisherBase {
  * Type erasure wrapper for Publisher objects.
  */
 template <typename ...Ts>
-class AnyPublisher : public PublisherBase {
+class AnyPublisher : public Publisher {
  public:
   template <typename PublisherType>
   explicit AnyPublisher(PublisherType &&publisher)

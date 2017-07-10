@@ -55,7 +55,7 @@ The specifications below use binding words in capital letters from https://www.i
 
 A *Publisher* is a provider of a potentially unbounded number of sequenced elements, publishing them according to the demand received from its Subscriber(s). Having a Publisher does not in itself mean that any data is being streamed; many Publishers wait with doing anything until the `Subscribe` method is invoked.
 
-A Publisher MUST publicly inherit the `PublisherBase` class and MUST offer a `Subscribe` method for subscribing to the stream that takes an rvalue reference to a Subscriber and returns a Subscription. Because there is no concrete for all Subscribers, this method must be a template.
+A Publisher MUST publicly inherit the `Publisher` class and MUST offer a `Subscribe` method for subscribing to the stream that takes an rvalue reference to a Subscriber and returns a Subscription. Because there is no concrete for all Subscribers, this method must be a template.
 
 That `Subscribe` takes an rvalue reference to a Subscription implies that the Publisher takes over ownership of the Subscriber when it is subscribed to.
 

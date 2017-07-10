@@ -59,7 +59,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`Min(Compare?)`](#mincompare)
 * [`Never()`](#never)
 * [`Pipe(Publisher, Operator...)`](#pipepublisher-operator)
-* [`PublisherBase`](#publisherbase)
+* [`Publisher`](#publisher)
 * [`Range(Value, size_t)`](#rangevalue-size_t)
 * [`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer)
 * [`ReduceGet(MakeInitial, Reducer)`](#reducegetmakeinitial-reducer)
@@ -763,7 +763,7 @@ auto fail = Pipe(
 
 **Kind:** [Core Library API](#kind_core_library_api)
 
-**Description:** `IsPublisher` is a type predicate that checks if a given type claims to conform to the Publisher concept. (It checks if the given type publically inherits [`PublisherBase`](#publisherbase).)
+**Description:** `IsPublisher` is a type predicate that checks if a given type claims to conform to the Publisher concept. (It checks if the given type publically inherits [`Publisher`](#publisher).)
 
 **Example usage:**
 
@@ -900,7 +900,7 @@ auto fail = Pipe(
 
 **Description:** Helper function that can be used to create custom Publishers. Please note that creating a custom Publisher is considered an advanced use of the rs library. When doing so, you must ensure that your Publisher object conforms to the rules in the [rs specification](specification.md).
 
-`MakePublisher` takes a functor, for example a lambda, that takes a Subscriber and returns a Subscription and uses that to create a Publisher. It is also possible, but sometimes more verbose, to create a custom Publisher type directly by defining a class that inherits [`PublisherBase`](#publisherbase) and that has a `Subscribe` method.
+`MakePublisher` takes a functor, for example a lambda, that takes a Subscriber and returns a Subscription and uses that to create a Publisher. It is also possible, but sometimes more verbose, to create a custom Publisher type directly by defining a class that inherits [`Publisher`](#publisher) and that has a `Subscribe` method.
 
 **Example usage:**
 
@@ -1220,17 +1220,17 @@ This allows third-party code to add custom operators on Publishers that can be u
 **See also:** [`BuildPipe(Operator...)`](#buildpipeoperator)
 
 
-## `PublisherBase`
+## `Publisher`
 
 **Defined in:** [`rs/publisher.h`](../include/rs/publisher.h)
 
 **Kind:** [Core Library API](#kind_core_library_api)
 
-**Description:** One of the [requirements for Publisher types](specification.md#1-publisher-code) is that they must inherit `PublisherBase` to signify the intent of being a Publisher.
+**Description:** One of the [requirements for Publisher types](specification.md#1-publisher-code) is that they must inherit `Publisher` to signify the intent of being a Publisher.
 
-`PublisherBase` itself is a class that does not do anything at all; its sole purpose is to make it so that Publisher types have to declare that they want to be Publishers.
+`Publisher` itself is a class that does not do anything at all; its sole purpose is to make it so that Publisher types have to declare that they want to be Publishers.
 
-`PublisherBase` has a `protected` constructor. This makes it impossible to construct `PublisherBase` objects directly; only subclasses of it can be instantiated.
+`Publisher` has a `protected` constructor. This makes it impossible to construct `Publisher` objects directly; only subclasses of it can be instantiated.
 
 **See also:** [`SubscriberBase`](#subscriberbase), [`SubscriptionBase`](#subscriptionbase)
 
@@ -1699,7 +1699,7 @@ auto stream = Pipe(
 
 `SubscriberBase` has a `protected` constructor. This makes it impossible to construct `SubscriberBase` objects directly; only subclasses of it can be instantiated.
 
-**See also:** [`PublisherBase`](#publisherbase), [`SubscriptionBase`](#subscriptionbase)
+**See also:** [`Publisher`](#publisher), [`SubscriptionBase`](#subscriptionbase)
 
 
 ## `SubscriptionBase`
@@ -1714,7 +1714,7 @@ auto stream = Pipe(
 
 `SubscriptionBase` has a `protected` constructor. This makes it impossible to construct `SubscriptionBase` objects directly; only subclasses of it can be instantiated.
 
-**See also:** [`PublisherBase`](#publisherbase), [`SubscriberBase`](#subscriberbase)
+**See also:** [`Publisher`](#publisher), [`SubscriberBase`](#subscriberbase)
 
 
 ## `Sum()`
