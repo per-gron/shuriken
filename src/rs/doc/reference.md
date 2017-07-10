@@ -75,7 +75,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`StartWith(Value...)`](#startwithvalue)
 * [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
 * [`SubscriberBase`](#subscriberbase)
-* [`SubscriptionBase`](#subscriptionbase)
+* [`Subscription`](#subscription)
 * [`Sum()`](#sum)
 * [`Take(Count)`](#takecount)
 * [`TakeWhile(Predicate)`](#takewhilepredicate)
@@ -811,7 +811,7 @@ void TakeSubscriber(const SubscriberT &subscriber) {
 
 **Kind:** [Core Library API](#kind_core_library_api)
 
-**Description:** `IsSubscription` is a type predicate that checks if a given type claims to conform to the Subscription concept. (It checks if the given type publically inherits [`SubscriptionBase`](#subscriptionbase).)
+**Description:** `IsSubscription` is a type predicate that checks if a given type claims to conform to the Subscription concept. (It checks if the given type publically inherits [`Subscription`](#subscription).)
 
 **Example usage:**
 
@@ -1023,7 +1023,7 @@ my_dummy_subscription.Cancel();  // Does nothing
 
 **[Type](#types):** `(ElementCount -> void), (void -> void) -> Subscription[]`
 
-**Description:** Creates a Subscription from a set of callback functors. It is always possible to create your own Subscription class by inheriting [`SubscriptionBase`](#subscriptionbase) and defining the `Request` and `Cancel` method, but this helper function is often more convenient.
+**Description:** Creates a Subscription from a set of callback functors. It is always possible to create your own Subscription class by inheriting [`Subscription`](#subscription) and defining the `Request` and `Cancel` method, but this helper function is often more convenient.
 
 Creating custom Subscription objects is usually needed only for making custom operators that cannot be built by combining operators that already exist.
 
@@ -1232,7 +1232,7 @@ This allows third-party code to add custom operators on Publishers that can be u
 
 `Publisher` has a `protected` constructor. This makes it impossible to construct `Publisher` objects directly; only subclasses of it can be instantiated.
 
-**See also:** [`SubscriberBase`](#subscriberbase), [`SubscriptionBase`](#subscriptionbase)
+**See also:** [`SubscriberBase`](#subscriberbase), [`Subscription`](#subscription)
 
 
 ## `Range(Value, size_t)`
@@ -1699,20 +1699,20 @@ auto stream = Pipe(
 
 `SubscriberBase` has a `protected` constructor. This makes it impossible to construct `SubscriberBase` objects directly; only subclasses of it can be instantiated.
 
-**See also:** [`Publisher`](#publisher), [`SubscriptionBase`](#subscriptionbase)
+**See also:** [`Publisher`](#publisher), [`Subscription`](#subscription)
 
 
-## `SubscriptionBase`
+## `Subscription`
 
 **Defined in:** [`rs/subscription.h`](../include/rs/subscription.h)
 
 **Kind:** [Core Library API](#kind_core_library_api)
 
-**Description:** One of the [requirements for Subscription types](specification.md#3-subscription-code) is that they must inherit `SubscriptionBase` to signify the intent of being a Subscription.
+**Description:** One of the [requirements for Subscription types](specification.md#3-subscription-code) is that they must inherit `Subscription` to signify the intent of being a Subscription.
 
-`SubscriptionBase` itself is a class that does not do anything at all; its sole purpose is to make it so that Subscription types have to declare that they want to be Subscriptions.
+`Subscription` itself is a class that does not do anything at all; its sole purpose is to make it so that Subscription types have to declare that they want to be Subscriptions.
 
-`SubscriptionBase` has a `protected` constructor. This makes it impossible to construct `SubscriptionBase` objects directly; only subclasses of it can be instantiated.
+`Subscription` has a `protected` constructor. This makes it impossible to construct `Subscription` objects directly; only subclasses of it can be instantiated.
 
 **See also:** [`Publisher`](#publisher), [`SubscriberBase`](#subscriberbase)
 

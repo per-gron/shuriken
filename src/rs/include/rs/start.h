@@ -51,7 +51,7 @@ struct InvokeOnNext<0, CreateValue...> {
 };
 
 template <typename Subscriber, typename ...CreateValue>
-class StartSubscription : public SubscriptionBase {
+class StartSubscription : public Subscription {
  public:
   StartSubscription() = default;
 

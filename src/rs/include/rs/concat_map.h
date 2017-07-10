@@ -39,7 +39,7 @@ class ConcatMap {
   class ConcatMapValuesSubscriber;
   class ConcatMapPublishersSubscriber;
 
-  class ConcatMapSubscription : public SubscriptionBase {
+  class ConcatMapSubscription : public Subscription {
    public:
     ConcatMapSubscription() = default;
 

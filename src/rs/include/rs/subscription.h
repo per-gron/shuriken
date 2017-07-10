@@ -33,14 +33,14 @@ namespace shk {
  *
  * Destroying a Subscription object implicitly cancels the subscription.
  */
-class SubscriptionBase {
+class Subscription {
  protected:
-  ~SubscriptionBase() = default;
+  ~Subscription() = default;
 };
 
 namespace detail {
 
-class EmptySubscription : public SubscriptionBase {
+class EmptySubscription : public Subscription {
  public:
   EmptySubscription() = default;
 
@@ -56,7 +56,7 @@ class EmptySubscription : public SubscriptionBase {
 
 
 template <typename RequestCb, typename CancelCb>
-class CallbackSubscription : public SubscriptionBase {
+class CallbackSubscription : public Subscription {
  public:
   template <typename RequestCbT, typename CancelCbT>
   CallbackSubscription(RequestCbT &&request, CancelCbT &&cancel)
@@ -83,7 +83,7 @@ class CallbackSubscription : public SubscriptionBase {
 };
 
 template <typename SubscriptionType>
-class SharedPtrSubscription : public SubscriptionBase {
+class SharedPtrSubscription : public Subscription {
  public:
   SharedPtrSubscription() = default;
 
@@ -146,13 +146,13 @@ class AnySubscriptionEraser : public detail::SubscriptionEraser {
 }  // namespace detail
 
 template <typename T>
-constexpr bool IsSubscription = std::is_base_of<SubscriptionBase, T>::value;
+constexpr bool IsSubscription = std::is_base_of<Subscription, T>::value;
 
 /**
  * Type erasure wrapper for Subscription objects that owns the erased
  * Subscription via unique_ptr.
  */
-class AnySubscription : public SubscriptionBase {
+class AnySubscription : public Subscription {
  public:
   AnySubscription();
 
@@ -185,7 +185,7 @@ class AnySubscription : public SubscriptionBase {
  * subscription via shared_ptr. Unless you need the shared_ptr aspect, it's
  * usually a good idea to use Subscription (which uses unique_ptr)
  */
-class SharedSubscription : public SubscriptionBase {
+class SharedSubscription : public Subscription {
  public:
   SharedSubscription();
 
@@ -214,7 +214,7 @@ class SharedSubscription : public SubscriptionBase {
  * subscription via shared_ptr. Unless you need the shared_ptr aspect, it's
  * usually a good idea to use Subscription (which uses unique_ptr)
  */
-class WeakSubscription : public SubscriptionBase {
+class WeakSubscription : public Subscription {
  public:
   WeakSubscription();
   explicit WeakSubscription(const SharedSubscription &s);

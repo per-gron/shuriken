@@ -19,7 +19,7 @@
 namespace shk {
 namespace {
 
-class DummySubscription : public SubscriptionBase {
+class DummySubscription : public Subscription {
  public:
   DummySubscription(DummySubscription **last_called)
       : last_called_(last_called) {}

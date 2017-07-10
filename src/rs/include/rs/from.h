@@ -24,7 +24,7 @@ namespace shk {
 namespace detail {
 
 template <typename Container, typename Subscriber>
-class FromSubscription : public SubscriptionBase {
+class FromSubscription : public Subscription {
  public:
   FromSubscription() = default;
 

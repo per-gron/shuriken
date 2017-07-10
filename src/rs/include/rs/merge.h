@@ -26,7 +26,7 @@ namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename Element>
-class MergeSubscription : public SubscriptionBase {
+class MergeSubscription : public Subscription {
   class MergeSubscriber : public SubscriberBase {
    public:
     MergeSubscriber(

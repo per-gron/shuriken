@@ -53,7 +53,7 @@ class Reduce {
 
   class ReduceSubscriber;
 
-  class ReduceSubscription : public SubscriptionBase {
+  class ReduceSubscription : public Subscription {
    public:
     ReduceSubscription() = default;
 

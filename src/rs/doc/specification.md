@@ -136,7 +136,7 @@ A *Subscription* is a handle that is provided by the Publisher when a subscripti
 
 A Subscription:
 
-* MUST publicly inherit the `SubscriptionBase` class,
+* MUST publicly inherit the `Subscription` class,
 * MUST be default constructible,
 * MUST be move assignable and move constructible,
 * MUST have a `void Request(ElementCount count);` method, and

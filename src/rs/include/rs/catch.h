@@ -25,7 +25,7 @@ namespace shk {
 namespace detail {
 
 template <typename Subscriber>
-class CatchSubscription : public SubscriptionBase {
+class CatchSubscription : public Subscription {
  public:
   CatchSubscription() = default;
 

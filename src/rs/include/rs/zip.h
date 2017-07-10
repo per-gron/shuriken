@@ -89,7 +89,7 @@ template <typename T>
 using WrapInUniquePtr = std::unique_ptr<T>;
 
 template <typename Tuple, typename InnerSubscriberType, typename ...Publishers>
-class ZipSubscription : public SubscriptionBase {
+class ZipSubscription : public Subscription {
   // The buffer is a tuple of deques, one for each input stream.
   using Buffer = TupleTypeMap<Tuple, WrapInUniquePtr>;
   using FinishedSubscriptions = std::bitset<sizeof...(Publishers)>;
