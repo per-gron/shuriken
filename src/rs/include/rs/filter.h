@@ -34,7 +34,7 @@ class FilterSubscriber : public Subscriber {
       : inner_subscriber_(std::move(inner_subscriber)),
         predicate_(predicate) {}
 
-  void TakeSubscription(Backreference<AnySubscription> &&subscription) {
+  void TakeSubscription(Backreference<PureVirtualSubscription> &&subscription) {
     subscription_ = std::move(subscription);
   }
 
@@ -90,7 +90,7 @@ class FilterSubscriber : public Subscriber {
  private:
   bool failed_ = false;
   InnerSubscriberType inner_subscriber_;
-  Backreference<AnySubscription> subscription_;
+  Backreference<PureVirtualSubscription> subscription_;
   Predicate predicate_;
 };
 
@@ -117,9 +117,10 @@ auto Filter(Predicate &&predicate) {
               predicate),
           &filter_ref);
 
-      Backreference<AnySubscription> sub_ref;
+      Backreference<PureVirtualSubscription> sub_ref;
       auto sub = WithBackreference(
-          AnySubscription(source.Subscribe(std::move(filter_subscriber))),
+          MakeVirtualSubscription(
+              source.Subscribe(std::move(filter_subscriber))),
           &sub_ref);
 
       if (filter_ref) {  // TODO(peck): Test what happens if it's is empty
