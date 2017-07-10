@@ -41,8 +41,11 @@ class ConcatMap {
 
   class ConcatMapSubscription : public SubscriptionBase {
    public:
-    ConcatMapSubscription(InnerSubscriberType &&inner_subscriber)
-        : inner_subscriber_(std::move(inner_subscriber)) {}
+    ConcatMapSubscription() = default;
+
+    explicit ConcatMapSubscription(InnerSubscriberType &&inner_subscriber)
+        : inner_subscriber_(std::make_unique<InnerSubscriberType>(
+              std::move(inner_subscriber))) {}
 
     void Request(ElementCount count) {
       requested_ += count;
@@ -85,13 +88,13 @@ class ConcatMap {
         return;
       }
       --requested_;
-      inner_subscriber_.OnNext(std::forward<T>(t));
+      inner_subscriber_->OnNext(std::forward<T>(t));
     }
 
     void OnError(std::exception_ptr &&error) {
       failed_ = true;
       Cancel();
-      inner_subscriber_.OnError(std::move(error));
+      inner_subscriber_->OnError(std::move(error));
     }
 
     void OnValuesComplete(Backreference<ConcatMapSubscription> &&self_ref) {
@@ -100,7 +103,7 @@ class ConcatMap {
       }
 
       if (publishers_complete_) {
-        inner_subscriber_.OnComplete();
+        inner_subscriber_->OnComplete();
       } else {
         self_ref_ = std::move(self_ref);
         publishers_subscription_.Request(ElementCount(1));
@@ -133,7 +136,7 @@ class ConcatMap {
       if (self_ref_) {
         // This happens when the Publishers subscription completes when there is
         // no current values Publisher.
-        inner_subscriber_.OnComplete();
+        inner_subscriber_->OnComplete();
       }
     }
 
@@ -158,7 +161,10 @@ class ConcatMap {
     // Set once and then never set again.
     Subscription publishers_subscription_;
     // Set once (at construction) and then never set again.
-    InnerSubscriberType inner_subscriber_;
+    //
+    // TODO(peck): It would be nice to make this an optional instead of
+    // unique_ptr; there is no need for this heap allocation.
+    std::unique_ptr<InnerSubscriberType> inner_subscriber_;
   };
 
   class ConcatMapPublishersSubscriber : public SubscriberBase {

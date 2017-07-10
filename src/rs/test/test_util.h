@@ -127,4 +127,11 @@ void CheckLeak(Publisher &&publisher) {
   CHECK(destroyed);
 }
 
+inline auto MakeNonDefaultConstructibleSubscriber() {
+  return MakeSubscriber(
+      [a = std::unique_ptr<int>()](auto &&) {},
+      [](std::exception_ptr &&error) {},
+      [] {});
+}
+
 }  // namespace shk

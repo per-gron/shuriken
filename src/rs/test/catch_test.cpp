@@ -46,6 +46,26 @@ TEST_CASE("Catch") {
       IsPublisher<decltype(empty_catch(Just()))>,
       "Catch stream should be a publisher");
 
+  SECTION("subscription is default constructible") {
+    SECTION("as returned from Catch") {
+      auto stream = null_catch(Just());
+      decltype(stream.Subscribe(MakeNonDefaultConstructibleSubscriber())) sub;
+      sub.Request(ElementCount(1));
+      sub.Cancel();
+    }
+
+    SECTION("CatchSubscription") {
+      auto subscriber = MakeNonDefaultConstructibleSubscriber();
+      auto callback = [](auto) { return Empty(); };
+      using Subscriber =
+          detail::CatchSubscriber<decltype(subscriber), decltype(callback)>;
+
+      detail::CatchSubscription<Subscriber> sub;
+      sub.Request(ElementCount(1));
+      sub.Cancel();
+    }
+  }
+
   SECTION("succeeding input") {
     SECTION("empty") {
       CHECK(GetAll<int>(null_catch(Just())) == std::vector<int>({}));

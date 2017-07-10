@@ -27,10 +27,16 @@ namespace detail {
 template <typename Subscriber>
 class CatchSubscription : public SubscriptionBase {
  public:
-  CatchSubscription(const std::shared_ptr<Subscriber> &subscriber)
+  CatchSubscription() = default;
+
+  explicit CatchSubscription(const std::shared_ptr<Subscriber> &subscriber)
       : subscriber_(subscriber) {}
 
   void Request(ElementCount count) {
+    if (!subscriber_) {
+      return;
+    }
+
     subscriber_->requested_ += count;
     if (has_failed_) {
       catch_subscription_.Request(count);
@@ -40,6 +46,10 @@ class CatchSubscription : public SubscriptionBase {
   }
 
   void Cancel() {
+    if (!subscriber_) {
+      return;
+    }
+
     subscriber_->cancelled_ = true;
     inner_subscription_.Cancel();
     catch_subscription_.Cancel();

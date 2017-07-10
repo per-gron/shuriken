@@ -85,6 +85,8 @@ class CallbackSubscription : public SubscriptionBase {
 template <typename SubscriptionType>
 class SharedPtrSubscription : public SubscriptionBase {
  public:
+  SharedPtrSubscription() = default;
+
   explicit SharedPtrSubscription(std::shared_ptr<SubscriptionType> subscription)
       : subscription_(subscription) {}
 
@@ -95,11 +97,15 @@ class SharedPtrSubscription : public SubscriptionBase {
   SharedPtrSubscription& operator=(SharedPtrSubscription &&) = default;
 
   void Request(ElementCount count) {
-    subscription_->Request(count);
+    if (subscription_) {
+      subscription_->Request(count);
+    }
   }
 
   void Cancel() {
-    subscription_->Cancel();
+    if (subscription_) {
+      subscription_->Cancel();
+    }
   }
 
  private:

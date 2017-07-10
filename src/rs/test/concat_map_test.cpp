@@ -37,6 +37,13 @@ TEST_CASE("ConcatMap") {
         "ConcatMap stream should be a publisher");
   }
 
+  SECTION("subscription is default constructible") {
+    auto stream = ConcatMap([](auto &&) { return Empty(); })(Empty());
+    decltype(stream.Subscribe(MakeNonDefaultConstructibleSubscriber())) sub;
+    sub.Request(ElementCount(1));
+    sub.Cancel();
+  }
+
   SECTION("no streams") {
     auto stream = ConcatMap([](auto &&) { return Empty(); })(Empty());
     CHECK(GetAll<int>(stream) == std::vector<int>({}));

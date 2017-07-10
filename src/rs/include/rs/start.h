@@ -53,18 +53,27 @@ struct InvokeOnNext<0, CreateValue...> {
 template <typename Subscriber, typename ...CreateValue>
 class StartSubscription : public SubscriptionBase {
  public:
+  StartSubscription() = default;
+
   template <typename SubscriberT>
   StartSubscription(
       const std::tuple<CreateValue...> &create_values,
       SubscriberT &&subscriber)
-      : create_values_(create_values),
-        subscriber_(std::forward<SubscriberT>(subscriber)) {
+      : create_values_(
+            new std::tuple<CreateValue...>(std::move(create_values))),
+        subscriber_(
+            new Subscriber(std::forward<SubscriberT>(subscriber))) {
     if (sizeof...(CreateValue) == 0) {
-      subscriber_.OnComplete();
+      subscriber_->OnComplete();
     }
   }
 
   void Request(ElementCount count) {
+    if (!subscriber_) {
+      // This is a default constructed (ie cancelled) subscription
+      return;
+    }
+
     bool has_outstanding_request_count = outstanding_request_count_ != 0;
     outstanding_request_count_ += count;
     if (has_outstanding_request_count) {
@@ -75,10 +84,10 @@ class StartSubscription : public SubscriptionBase {
 
     while (at_ < sizeof...(CreateValue) && outstanding_request_count_ != 0) {
       InvokeOnNext<sizeof...(CreateValue), CreateValue...>::Invoke(
-          at_++, subscriber_, create_values_);
+          at_++, *subscriber_, *create_values_);
 
       if (at_ == sizeof...(CreateValue)) {
-        subscriber_.OnComplete();
+        subscriber_->OnComplete();
       }
 
       // Need to decrement this after calling OnNext/OnComplete, to ensure that
@@ -92,8 +101,12 @@ class StartSubscription : public SubscriptionBase {
   }
 
  private:
-  std::tuple<CreateValue...> create_values_;
-  Subscriber subscriber_;
+  // TODO(peck): It would be nice to make this an optional instead of
+  // unique_ptr; there is no need for this heap allocation.
+  std::unique_ptr<std::tuple<CreateValue...>> create_values_;
+  // TODO(peck): It would be nice to make this an optional instead of
+  // unique_ptr; there is no need for this heap allocation.
+  std::unique_ptr<Subscriber> subscriber_;
   size_t at_ = 0;
   ElementCount outstanding_request_count_ = ElementCount(0);
 };

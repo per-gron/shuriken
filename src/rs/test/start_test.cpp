@@ -62,6 +62,13 @@ TEST_CASE("Start") {
         "Start stream should be a publisher");
   }
 
+  SECTION("subscription is default constructible") {
+    auto stream = Start([] { return 1; });
+    decltype(stream.Subscribe(MakeNonDefaultConstructibleSubscriber())) sub;
+    sub.Request(ElementCount(1));
+    sub.Cancel();
+  }
+
   SECTION("just subscribe") {
     auto stream = Start([] { return 1; });
 

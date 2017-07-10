@@ -20,6 +20,7 @@
 #include <rs/subscriber.h>
 
 #include "infinite_range.h"
+#include "test_util.h"
 
 namespace shk {
 
@@ -29,6 +30,13 @@ TEST_CASE("From") {
     static_assert(
         IsPublisher<decltype(stream)>,
         "From should be a publisher");
+  }
+
+  SECTION("subscription is default constructible") {
+    auto stream = From(std::vector<int>{});
+    decltype(stream.Subscribe(MakeNonDefaultConstructibleSubscriber())) sub;
+    sub.Request(ElementCount(1));
+    sub.Cancel();
   }
 
   SECTION("empty container") {

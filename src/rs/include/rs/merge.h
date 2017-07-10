@@ -100,8 +100,11 @@ class MergeSubscription : public SubscriptionBase {
   };
 
  public:
-  MergeSubscription(InnerSubscriberType &&inner_subscriber)
-      : inner_subscriber_(std::move(inner_subscriber)) {}
+  MergeSubscription() = default;
+
+  explicit MergeSubscription(InnerSubscriberType &&inner_subscriber)
+      : inner_subscriber_(std::make_unique<InnerSubscriberType>(
+            std::move(inner_subscriber))) {}
 
   template <typename ...Publishers>
   void Subscribe(
@@ -118,7 +121,7 @@ class MergeSubscription : public SubscriptionBase {
   }
 
   void Request(ElementCount count) {
-    if (finished_) {
+    if (!inner_subscriber_ || finished_) {
       return;
     }
 
@@ -132,7 +135,7 @@ class MergeSubscription : public SubscriptionBase {
     outstanding_ += requested_elements_being_processed_;
 
     while (requested_elements_being_processed_ > 0 && !buffer_.empty()) {
-      inner_subscriber_.OnNext(std::move(buffer_.front()));
+      inner_subscriber_->OnNext(std::move(buffer_.front()));
 
       // Need to decrement this after calling OnNext, to ensure that re-entrant
       // Request calls always see that they are re-entrant.
@@ -189,7 +192,7 @@ class MergeSubscription : public SubscriptionBase {
 
     if (outstanding_ > 0) {
       --outstanding_;
-      inner_subscriber_.OnNext(std::move(element));
+      inner_subscriber_->OnNext(std::move(element));
     } else {
       buffer_.emplace_back(std::move(element));
     }
@@ -198,7 +201,7 @@ class MergeSubscription : public SubscriptionBase {
   void OnInnerSubscriptionError(std::exception_ptr &&error) {
     if (!finished_) {
       Cancel();
-      inner_subscriber_.OnError(std::move(error));
+      inner_subscriber_->OnError(std::move(error));
     }
   }
 
@@ -215,7 +218,7 @@ class MergeSubscription : public SubscriptionBase {
 
   void SendOnComplete() {
     finished_ = true;
-    inner_subscriber_.OnComplete();
+    inner_subscriber_->OnComplete();
   }
 
   std::deque<Element> buffer_;
@@ -231,7 +234,9 @@ class MergeSubscription : public SubscriptionBase {
 
   size_t remaining_subscriptions_ = 0;
   bool finished_ = false;
-  InnerSubscriberType inner_subscriber_;
+  // TODO(peck): It would be nice to make this an optional instead of
+  // unique_ptr; there is no need for this heap allocation.
+  std::unique_ptr<InnerSubscriberType> inner_subscriber_;
   // With each subscription, also keep track of how many requested elements are
   // outstanding. This is used to make sure that for any given subscription, we
   // don't have more elements Requested than what has been requested for the

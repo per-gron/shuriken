@@ -134,10 +134,15 @@ A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable a
 
 A *Subscription* is a handle that is provided by the Publisher when a subscription is made against it. Calling `Request` signals to the publisher that the Subscriber is ready to receive data. Calling `Cancel` will make the Publisher eventually stop emitting elements to the Subscriber.
 
-A Subscriber MUST publicly inherit the `SubscriberBase` class, MUST be movable and MUST have the following methods:
+A Subscription:
 
-* `void Request(ElementCount count);`
-* `void Cancel();`
+* MUST publicly inherit the `SubscriptionBase` class,
+* MUST be default constructible,
+* MUST be move assignable and move constructible,
+* MUST have a `void Request(ElementCount count);` method, and
+* MUST have a `void Cancel();` method.
+
+On default constructed Subscription objects, calls to `Request` and `Cancel` MUST be [NOPs](#term_nop).
 
 | ID                        | Rule                                                                                                   |
 | ------------------------- | ------------------------------------------------------------------------------------------------------ |

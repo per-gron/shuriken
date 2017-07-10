@@ -36,6 +36,22 @@ TEST_CASE("Merge") {
         "Merge stream should be a publisher");
   }
 
+  SECTION("subscription is default constructible") {
+    SECTION("as returned from Merge") {
+      auto stream = Merge<int>(Just());
+      decltype(stream.Subscribe(MakeNonDefaultConstructibleSubscriber())) sub;
+      sub.Request(ElementCount(1));
+      sub.Cancel();
+    }
+
+    SECTION("MergeSubscription") {
+      auto subscriber = MakeNonDefaultConstructibleSubscriber();
+      detail::MergeSubscription<decltype(subscriber), int> sub;
+      sub.Request(ElementCount(1));
+      sub.Cancel();
+    }
+  }
+
   SECTION("stream passed by lvalue") {
     auto inner_stream = Just();
     auto stream = Merge<int>(inner_stream);

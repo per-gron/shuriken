@@ -55,7 +55,9 @@ class Reduce {
 
   class ReduceSubscription : public SubscriptionBase {
    public:
-    ReduceSubscription(Subscription &&inner_subscription)
+    ReduceSubscription() = default;
+
+    explicit ReduceSubscription(Subscription &&inner_subscription)
         : inner_subscription_(std::move(inner_subscription)) {}
 
     void Request(ElementCount count) {

@@ -179,6 +179,19 @@ TEST_CASE("Reduce") {
           *GetOne<std::unique_ptr<int>>(
               wrap_in_unique_ptr(From(std::vector<int>{ 1, 2 }))) == 2);
     }
+
+    SECTION("subscription is default constructible") {
+      auto stream = Pipe(
+          Just(1, 2, 3),
+          ReduceGet(
+              [] { return 0; },
+              [](int accum, int val) {
+                return accum + val;
+              }));
+      decltype(stream.Subscribe(MakeNonDefaultConstructibleSubscriber())) sub;
+      sub.Request(ElementCount(1));
+      sub.Cancel();
+    }
   }
 
   SECTION("ReduceWithoutInitial") {

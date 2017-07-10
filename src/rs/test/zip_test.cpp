@@ -37,6 +37,13 @@ TEST_CASE("Zip") {
         "Zip stream should be a publisher");
   }
 
+  SECTION("subscription is default constructible") {
+    auto stream = Zip<std::tuple<int>>(Just(1));
+    decltype(stream.Subscribe(MakeNonDefaultConstructibleSubscriber())) sub;
+    sub.Request(ElementCount(1));
+    sub.Cancel();
+  }
+
   SECTION("no streams") {
     SECTION("output") {
       auto stream = Zip<std::tuple<>>();
