@@ -21,9 +21,9 @@ namespace shk {
 TEST_CASE("Publisher") {
   static_assert(!IsPublisher<int>, "int is not a Publisher");
 
-  SECTION("Publisher type eraser") {
+  SECTION("AnyPublisher") {
     SECTION("type traits") {
-      auto pub = Publisher<>(MakePublisher([](auto &&) {
+      auto pub = AnyPublisher<>(MakePublisher([](auto &&) {
         return MakeSubscription();
       }));
 
@@ -36,11 +36,11 @@ TEST_CASE("Publisher") {
       auto inner_publisher = MakePublisher([](auto &&) {
         return MakeSubscription();
       });
-      auto pub = Publisher<>(inner_publisher);
+      auto pub = AnyPublisher<>(inner_publisher);
     }
 
     SECTION("copyable") {
-      auto pub = Publisher<>(MakePublisher([](auto &&) {
+      auto pub = AnyPublisher<>(MakePublisher([](auto &&) {
         return MakeSubscription();
       }));
       auto pub_copy = pub;
@@ -54,7 +54,7 @@ TEST_CASE("Publisher") {
             [](ElementCount) {},
             [&cancelled] { cancelled++; });
       });
-      const auto pub = Publisher<int, std::string>(std::move(callback_pub));
+      const auto pub = AnyPublisher<int, std::string>(std::move(callback_pub));
 
       int completed = 0;
       auto sub = pub.Subscribe(MakeSubscriber(

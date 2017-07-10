@@ -21,6 +21,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 -->
 
 * [`All(Predicate)`](#allpredicate)
+* [`AnyPublisher`](#anypublisher)
 * [`AnySubscriber`](#anysubscriber)
 * [`AnySubscription`](#anysubscription)
 * [`Average()`](#average)
@@ -58,7 +59,6 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`Min(Compare?)`](#mincompare)
 * [`Never()`](#never)
 * [`Pipe(Publisher, Operator...)`](#pipepublisher-operator)
-* [`Publisher`](#publisher)
 * [`PublisherBase`](#publisherbase)
 * [`Range(Value, size_t)`](#rangevalue-size_t)
 * [`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer)
@@ -109,6 +109,54 @@ auto all_positive = Pipe(
 **See also:** [`Some(Predicate)`](#somepredicate)
 
 
+## `AnyPublisher`
+
+**Defined in:** [`rs/publisher.h`](../include/rs/publisher.h)
+
+**Kind:** [Core Library API](#kind_core_library_api)
+
+**Description:** As [described in the README](../README.md#the-absence-of-a-publisher-type), an rs Publisher is a C++ *concept* – like iterators in C++ – rather than a single concrete class. This permits aggressive compiler optimizations and some interesting API convenience features. However, it is sometimes useful to be able to give a name to any Publisher.
+
+`AnyPublisher` is an [*eraser type*](../README.md#eraser-types) that uses virtual method calls to be able to give a name to the Publisher type.
+
+`AnyPublisher` is a variadric template:
+
+* `AnyPublisher<>` can encapsulate any Publisher that emits no values (it can only finish or fail).
+* `AnyPublisher<T>` can encapsulate any Publisher that emits values of type `T`.
+* `AnyPublisher<T, U>` can encapsulate any Publisher that emits values of type `T` and `U`.
+* and so on.
+
+**Example usage:**
+
+In the example below, `AnyPublisher<int>` is used to be able to name the return type of `EvenSquares`, which makes it possible to place its definition in a `.cpp` implementation file, which would otherwise have been tricky:
+
+```cpp
+AnyPublisher<int> EvenSquares(int n) {
+  return AnyPublisher<int>(Pipe(
+      Range(1, n),
+      Filter([](int x) { return (x % 2) == 0; }),
+      Map([](int x) { return x * x; }),
+      Sum()));
+}
+```
+
+In the example below, `AnyPublisher<int>` is used to get one type for two different Publisher types. Without `AnyPublisher<int>` it would have been tricky to write the lambda in the example since it has to have only one return type:
+
+```cpp
+auto only_even = Pipe(
+    Just(1, 2, 3, 4, 5),
+    ConcatMap([](int x) {
+      if ((x % 2) == 0) {
+        return AnyPublisher<int>(Just(x));
+      } else {
+        return AnyPublisher<int>(Empty());
+      }
+    }));
+```
+
+**See also:** [`AnySubscriber`](#anysubscriber), [`AnySubscription`](#anysubscription)
+
+
 ## `AnySubscriber`
 
 **Defined in:** [`rs/subscriber.h`](../include/rs/subscriber.h)
@@ -128,7 +176,7 @@ auto all_positive = Pipe(
 
 The `AnySubscriber` eraser type is intended for advanced use of the rs library. Storing and passing around `AnySubscriber` objects is not done much except in custom operators, and most custom operators do not type erase Subscribers.
 
-The `AnySubscriber` eraser type is used internally in the [`Publisher`](#publisher) type eraser implementation.
+The `AnySubscriber` eraser type is used internally in the [`AnyPublisher`](#anypublisher) type eraser implementation.
 
 **Example usage:**
 
@@ -148,7 +196,7 @@ subscriber.OnNext(42);
 subscriber.OnComplete();
 ```
 
-**See also:** [`AnySubscription`](#anysubscription), [`Publisher`](#publisher)
+**See also:** [`AnyPublisher`](#anypublisher), [`AnySubscription`](#anysubscription)
 
 
 ## `AnySubscription`
@@ -175,7 +223,7 @@ AnySubscription sub = AnySubscription(MakeSubscription(
     }));
 ```
 
-**See also:** [`AnySubscriber`](#anysubscriber), [`Publisher`](#publisher)
+**See also:** [`AnyPublisher`](#anypublisher), [`AnySubscriber`](#anysubscriber)
 
 
 ## `Average()`
@@ -1170,54 +1218,6 @@ auto sum_of_even_squares = Pipe(
 This allows third-party code to add custom operators on Publishers that can be used exactly like the built-in operators. The rs built-ins receive no special treatment.
 
 **See also:** [`BuildPipe(Operator...)`](#buildpipeoperator)
-
-
-## `Publisher`
-
-**Defined in:** [`rs/publisher.h`](../include/rs/publisher.h)
-
-**Kind:** [Core Library API](#kind_core_library_api)
-
-**Description:** As [described in the README](../README.md#the-absence-of-a-publisher-type), an rs Publisher is a C++ *concept* – like iterators in C++ – rather than a single concrete class. This permits aggressive compiler optimizations and some interesting API convenience features. However, it is sometimes useful to be able to give a name to any Publisher.
-
-`Publisher` is an [*eraser type*](../README.md#eraser-types) that uses virtual method calls to be able to give a name to the Publisher type.
-
-`Publisher` is a variadric template:
-
-* `Publisher<>` can encapsulate any Publisher that emits no values (it can only finish or fail).
-* `Publisher<T>` can encapsulate any Publisher that emits values of type `T`.
-* `Publisher<T, U>` can encapsulate any Publisher that emits values of type `T` and `U`.
-* and so on.
-
-**Example usage:**
-
-In the example below, `Publisher<int>` is used to be able to name the return type of `EvenSquares`, which makes it possible to place its definition in a `.cpp` implementation file, which would otherwise have been tricky:
-
-```cpp
-Publisher<int> EvenSquares(int n) {
-  return Publisher<int>(Pipe(
-      Range(1, n),
-      Filter([](int x) { return (x % 2) == 0; }),
-      Map([](int x) { return x * x; }),
-      Sum()));
-}
-```
-
-In the example below, `Publisher<int>` is used to get one type for two different Publisher types. Without `Publisher<int>` it would have been tricky to write the lambda in the example since it has to have only one return type:
-
-```cpp
-auto only_even = Pipe(
-    Just(1, 2, 3, 4, 5),
-    ConcatMap([](int x) {
-      if ((x % 2) == 0) {
-        return Publisher<int>(Just(x));
-      } else {
-        return Publisher<int>(Empty());
-      }
-    }));
-```
-
-**See also:** [`AnySubscriber`](#anysubscriber), [`AnySubscription`](#anysubscription)
 
 
 ## `PublisherBase`

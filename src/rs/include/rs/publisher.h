@@ -74,10 +74,10 @@ class CallbackPublisher : public PublisherBase {
  * Type erasure wrapper for Publisher objects.
  */
 template <typename ...Ts>
-class Publisher : public PublisherBase {
+class AnyPublisher : public PublisherBase {
  public:
   template <typename PublisherType>
-  explicit Publisher(PublisherType &&publisher)
+  explicit AnyPublisher(PublisherType &&publisher)
       : eraser_(std::make_shared<
             PublisherEraser<typename std::decay<PublisherType>::type>>(
                 std::forward<PublisherType>(publisher))) {}
@@ -86,7 +86,7 @@ class Publisher : public PublisherBase {
   AnySubscription Subscribe(SubscriberType &&subscriber) const {
     static_assert(
         IsSubscriber<SubscriberType>,
-        "Publisher was invoked with a non-subscriber parameter");
+        "AnyPublisher was invoked with a non-subscriber parameter");
     return eraser_->Subscribe(AnySubscriber<Ts...>(
         std::forward<SubscriberType>(subscriber)));
   }

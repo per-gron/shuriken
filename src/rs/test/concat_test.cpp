@@ -54,8 +54,8 @@ TEST_CASE("Concat") {
   }
 
   SECTION("make infinite stream by concatenating with self") {
-    Publisher<int> infinite =
-        Publisher<int>(Concat(
+    AnyPublisher<int> infinite =
+        AnyPublisher<int>(Concat(
             Just(1),
             MakePublisher([&infinite](auto &&subscriber) {
               return infinite.Subscribe(
