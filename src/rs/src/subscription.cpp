@@ -25,15 +25,15 @@ SubscriptionEraser::~SubscriptionEraser() {}
 
 }  // namespace detail
 
-Subscription::Subscription() {}
+AnySubscription::AnySubscription() {}
 
-void Subscription::Request(ElementCount count) {
+void AnySubscription::Request(ElementCount count) {
   if (eraser_) {
     eraser_->Request(count);
   }
 }
 
-void Subscription::Cancel() {
+void AnySubscription::Cancel() {
   if (eraser_) {
     eraser_->Cancel();
   }

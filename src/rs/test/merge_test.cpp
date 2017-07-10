@@ -156,7 +156,7 @@ TEST_CASE("Merge") {
     bool finished = false;
     bool in_on_next = false;
     bool request_more = false;
-    Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
+    AnySubscription sub = AnySubscription(stream.Subscribe(MakeSubscriber(
         [&in_on_next, &request_more, &sub](int next) {
           CHECK(!in_on_next);
           in_on_next = true;

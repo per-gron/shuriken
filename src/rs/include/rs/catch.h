@@ -61,8 +61,8 @@ class CatchSubscription : public SubscriptionBase {
   // The subscription to the non-catch-clause Publisher. Set only once, to avoid
   // the risk of destroying a Subscription object that is this of a current
   // stack frame, causing memory corruption.
-  Subscription inner_subscription_;
-  Subscription catch_subscription_;
+  AnySubscription inner_subscription_;
+  AnySubscription catch_subscription_;
   bool has_failed_ = false;  // Set to true when catch_subscription_ is set.
   std::shared_ptr<Subscriber> subscriber_;
 };
@@ -90,7 +90,7 @@ class CatchSubscriber : public SubscriberBase {
       // the catch subscription before Subscribe returns, and then we must not
       // overwrite inner_subscription_
       if (auto subscription = subscription_.lock()) {
-        subscription->inner_subscription_ = Subscription(std::move(sub));
+        subscription->inner_subscription_ = AnySubscription(std::move(sub));
       }
     }
   }
@@ -124,7 +124,7 @@ class CatchSubscriber : public SubscriberBase {
       sub.Request(requested_);
       if (auto subscription = subscription_.lock()) {
         subscription->has_failed_ = true;
-        subscription->catch_subscription_ = Subscription(std::move(sub));
+        subscription->catch_subscription_ = AnySubscription(std::move(sub));
       }
     }
   }

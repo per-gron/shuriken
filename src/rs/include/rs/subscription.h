@@ -152,9 +152,9 @@ constexpr bool IsSubscription = std::is_base_of<SubscriptionBase, T>::value;
  * Type erasure wrapper for Subscription objects that owns the erased
  * Subscription via unique_ptr.
  */
-class Subscription : public SubscriptionBase {
+class AnySubscription : public SubscriptionBase {
  public:
-  Subscription();
+  AnySubscription();
 
   /**
    * S should implement the Subscription concept.
@@ -163,15 +163,15 @@ class Subscription : public SubscriptionBase {
       typename S,
       class = typename std::enable_if<IsSubscription<
           typename std::remove_reference<S>::type>>::type>
-  explicit Subscription(S &&s)
+  explicit AnySubscription(S &&s)
       : eraser_(std::make_unique<detail::AnySubscriptionEraser<
             typename std::decay<S>::type>>(std::forward<S>(s))) {}
 
-  Subscription(const Subscription &) = delete;
-  Subscription &operator=(const Subscription &) = delete;
+  AnySubscription(const AnySubscription &) = delete;
+  AnySubscription &operator=(const AnySubscription &) = delete;
 
-  Subscription(Subscription &&) = default;
-  Subscription &operator=(Subscription &&) = default;
+  AnySubscription(AnySubscription &&) = default;
+  AnySubscription &operator=(AnySubscription &&) = default;
 
   void Request(ElementCount count);
   void Cancel();

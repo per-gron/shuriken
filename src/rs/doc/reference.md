@@ -21,6 +21,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 -->
 
 * [`All(Predicate)`](#allpredicate)
+* [`AnySubscription`](#anysubscription)
 * [`Average()`](#average)
 * [`BuildPipe(Operator...)`](#buildpipeoperator)
 * [`Catch(Publisher)`](#catchpublisher)
@@ -74,7 +75,6 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
 * [`Subscriber`](#subscriber)
 * [`SubscriberBase`](#subscriberbase)
-* [`Subscription`](#subscription)
 * [`SubscriptionBase`](#subscriptionbase)
 * [`Sum()`](#sum)
 * [`Take(Count)`](#takecount)
@@ -107,6 +107,33 @@ auto all_positive = Pipe(
 ```
 
 **See also:** [`Some(Predicate)`](#somepredicate)
+
+
+## `AnySubscription`
+
+**Defined in:** [`rs/subscription.h`](../include/rs/subscription.h)
+
+**Kind:** [Core Library API](#kind_core_library_api)
+
+**Description:** As [described in the README](../README.md#the-absence-of-a-publisher-type), an rs Subscription is a C++ *concept* – like iterators in C++ – rather than a single concrete class. This permits aggressive compiler optimizations and some interesting API convenience features. However, it is sometimes useful to be able to give a name to any Subscription.
+
+`AnySubscription` is an [*eraser type*](../README.md#eraser-types) that uses virtual method calls to be able to have one concrete type that can wrap any Subscription.
+
+The `AnySubscription` eraser type is intended for advanced use of the rs library. It can be useful for classes that need to store Subscription objects as member variables: Type erasing the Subscription allows the header file with the class declaration to not leak information about exactly what is subscribed to.
+
+**Example usage:**
+
+```cpp
+AnySubscription sub = AnySubscription(MakeSubscription(
+    [](ElementCount count) {
+      printf("%lld values requested\n", count.Get());
+    },
+    []() {
+      printf("The Subscription was cancelled\n");
+    }));
+```
+
+**See also:** [`Publisher`](#publisher), [`Subscriber`](#subscriber)
 
 
 ## `Average()`
@@ -1673,33 +1700,6 @@ subscriber.OnComplete();
 `SubscriberBase` has a `protected` constructor. This makes it impossible to construct `SubscriberBase` objects directly; only subclasses of it can be instantiated.
 
 **See also:** [`PublisherBase`](#publisherbase), [`SubscriptionBase`](#subscriptionbase)
-
-
-## `Subscription`
-
-**Defined in:** [`rs/subscription.h`](../include/rs/subscription.h)
-
-**Kind:** [Core Library API](#kind_core_library_api)
-
-**Description:** As [described in the README](../README.md#the-absence-of-a-publisher-type), an rs Subscription is a C++ *concept* – like iterators in C++ – rather than a single concrete class. This permits aggressive compiler optimizations and some interesting API convenience features. However, it is sometimes useful to be able to give a name to any Subscription.
-
-`Subscription` is an [*eraser type*](../README.md#eraser-types) that uses virtual method calls to be able to have one concrete type that can wrap any Subscription.
-
-The `Subscription` eraser type is intended for advanced use of the rs library. It can be useful for classes that need to store Subscription objects as member variables: Type erasing the Subscription allows the header file with the class declaration to not leak information about exactly what is subscribed to.
-
-**Example usage:**
-
-```cpp
-Subscription sub = Subscription(MakeSubscription(
-    [](ElementCount count) {
-      printf("%lld values requested\n", count.Get());
-    },
-    []() {
-      printf("The Subscription was cancelled\n");
-    }));
-```
-
-**See also:** [`Publisher`](#publisher), [`Subscriber`](#subscriber)
 
 
 ## `SubscriptionBase`

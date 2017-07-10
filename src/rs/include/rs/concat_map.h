@@ -63,7 +63,7 @@ class ConcatMap {
         Backreference<ConcatMapSubscription> &&self_ref_a,
         Backreference<ConcatMapSubscription> &&self_ref_b) {
       self_ref_ = std::move(self_ref_a);
-      publishers_subscription_ = Subscription(source.Subscribe(
+      publishers_subscription_ = AnySubscription(source.Subscribe(
           ConcatMapPublishersSubscriber(
               mapper,
               std::move(self_ref_b))));
@@ -122,7 +122,7 @@ class ConcatMap {
         return;
       }
       last_subscription_ = std::move(subscription_);
-      subscription_ = Subscription(
+      subscription_ = AnySubscription(
           publisher.Subscribe(ConcatMapValuesSubscriber(std::move(self_ref_))));
       subscription_.Request(requested_);
     }
@@ -148,18 +148,18 @@ class ConcatMap {
     // time that this class wants to set subscription_ is when the subscription_
     // object itself is this of current stack frames. In those cases, it is not
     // safe to set (and consequently destroy the previous) subscription_.
-    Subscription subscription_;
+    AnySubscription subscription_;
     // The subscription (if any) to the latest values Publisher. This is not
     // actually read; the only reason it's there is to avoid having to destroy
     // the current subscription_ from within OnValuesComplete, which because it
     // is called from the subscription_ will destroy a this pointer on the stack
     // under its feet.
-    Subscription last_subscription_;
+    AnySubscription last_subscription_;
     // During times when there is no current Publisher that is being flattened,
     // the ConcatMapSubscription holds a Backreference to itself.
     Backreference<ConcatMapSubscription> self_ref_;
     // Set once and then never set again.
-    Subscription publishers_subscription_;
+    AnySubscription publishers_subscription_;
     // Set once (at construction) and then never set again.
     //
     // TODO(peck): It would be nice to make this an optional instead of

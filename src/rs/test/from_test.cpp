@@ -258,7 +258,7 @@ TEST_CASE("From") {
 
       auto stream = From(std::vector<int>{ 1 });
 
-      Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
+      AnySubscription sub = AnySubscription(stream.Subscribe(MakeSubscriber(
           [&sub, &nexts](int next) {
             CHECK(nexts == 0);
             CHECK(next == 1);
@@ -285,7 +285,7 @@ TEST_CASE("From") {
 
       auto stream = From(std::vector<int>{ 1, 2 });
 
-      Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
+      AnySubscription sub = AnySubscription(stream.Subscribe(MakeSubscriber(
           [&sub, &nexts](int next) {
             CHECK(nexts < 2);
             nexts++;
@@ -312,7 +312,7 @@ TEST_CASE("From") {
     auto stream = InfiniteRange(0);
 
     bool next_called = false;
-    Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
+    AnySubscription sub = AnySubscription(stream.Subscribe(MakeSubscriber(
         [&next_called, &sub](int val) {
           CHECK(!next_called);
           next_called = true;

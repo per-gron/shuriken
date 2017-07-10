@@ -57,7 +57,7 @@ class Reduce {
    public:
     ReduceSubscription() = default;
 
-    explicit ReduceSubscription(Subscription &&inner_subscription)
+    explicit ReduceSubscription(AnySubscription &&inner_subscription)
         : inner_subscription_(std::move(inner_subscription)) {}
 
     void Request(ElementCount count) {
@@ -90,7 +90,7 @@ class Reduce {
     std::unique_ptr<Emitter> emit_accumulated_value_;
 
     Backreference<ReduceSubscriber> subscriber_;
-    Subscription inner_subscription_;
+    AnySubscription inner_subscription_;
   };
 
   class ReduceSubscriber : public SubscriberBase {
@@ -217,7 +217,7 @@ auto ReduceGet(MakeInitial &&make_initial, ReducerT &&reducer) {
       Backreference<ReduceSubscriptionT> sub_ref;
       auto sub = WithBackreference(
           ReduceSubscriptionT(
-              Subscription(source.Subscribe(std::move(reduce_subscriber)))),
+              AnySubscription(source.Subscribe(std::move(reduce_subscriber)))),
           &sub_ref);
 
       if (reduce_ref) {  // TODO(peck): Test what happens if it's is empty

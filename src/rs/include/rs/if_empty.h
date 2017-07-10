@@ -46,10 +46,10 @@ auto IfEmpty(Publisher &&publisher) {
     auto publisher_if_empty = MakePublisher([
         publisher, empty](auto &&subscriber) {
       if (*empty) {
-        return Subscription(publisher.Subscribe(
+        return AnySubscription(publisher.Subscribe(
             std::forward<decltype(subscriber)>(subscriber)));
       } else {
-        return Subscription(Empty().Subscribe(
+        return AnySubscription(Empty().Subscribe(
             std::forward<decltype(subscriber)>(subscriber)));
       }
     });

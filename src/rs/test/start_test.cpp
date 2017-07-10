@@ -124,7 +124,7 @@ TEST_CASE("Start") {
 
       auto stream = Start([] { return 1; });
 
-      Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
+      AnySubscription sub = AnySubscription(stream.Subscribe(MakeSubscriber(
           [&sub, &nexts](int next) {
             nexts++;
             // If Start does this wrong, it will blow the stack
@@ -149,7 +149,7 @@ TEST_CASE("Start") {
 
       auto stream = Start([] { return 1; }, [] { return 2; }, [] { return 3; });
 
-      Subscription sub = Subscription(stream.Subscribe(MakeSubscriber(
+      AnySubscription sub = AnySubscription(stream.Subscribe(MakeSubscriber(
           [&sub, &nexts](int next) {
             nexts++;
             // If Start does this wrong, it will blow the stack

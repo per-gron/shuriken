@@ -31,15 +31,15 @@ class TakeSubscriber : public SubscriberBase {
         count_(count) {}
 
   template <typename InnerSubscriberT, typename PublisherT>
-  static Backreferee<Subscription> Build(
+  static Backreferee<AnySubscription> Build(
       const CountType &count,
       InnerSubscriberT &&inner_subscriber,
       PublisherT *source) {
     if (count == 0) {
       inner_subscriber.OnComplete();
 
-      Backreference<Subscription> ref;
-      return Backreferee<Subscription>();
+      Backreference<AnySubscription> ref;
+      return Backreferee<AnySubscription>();
     } else {
       TakeSubscriber self(
           std::forward<InnerSubscriberT>(inner_subscriber),
@@ -48,7 +48,8 @@ class TakeSubscriber : public SubscriberBase {
       Backreference<TakeSubscriber> take_ref;
       auto backreferred_self = WithBackreference(std::move(self), &take_ref);
 
-      auto sub = Subscription(source->Subscribe(std::move(backreferred_self)));
+      auto sub = AnySubscription(
+          source->Subscribe(std::move(backreferred_self)));
 
       return WithBackreference(
           std::move(sub),
@@ -95,7 +96,7 @@ class TakeSubscriber : public SubscriberBase {
  private:
   bool cancelled_ = false;
   InnerSubscriberType inner_subscriber_;
-  Backreference<Subscription> subscription_;
+  Backreference<AnySubscription> subscription_;
   CountType count_;
 };
 

@@ -32,7 +32,7 @@ class MapSubscriber : public SubscriberBase {
       : inner_subscriber_(std::move(inner_subscriber)),
         mapper_(mapper) {}
 
-  void TakeSubscription(Backreference<Subscription> &&subscription) {
+  void TakeSubscription(Backreference<AnySubscription> &&subscription) {
     subscription_ = std::move(subscription);
   }
 
@@ -76,7 +76,7 @@ class MapSubscriber : public SubscriberBase {
  private:
   bool failed_ = false;
   InnerSubscriberType inner_subscriber_;
-  Backreference<Subscription> subscription_;
+  Backreference<AnySubscription> subscription_;
   Mapper mapper_;
 };
 
@@ -103,9 +103,9 @@ auto Map(Mapper &&mapper) {
               mapper),
           &map_ref);
 
-      Backreference<Subscription> sub_ref;
+      Backreference<AnySubscription> sub_ref;
       auto sub = WithBackreference(
-          Subscription(source.Subscribe(std::move(map_subscriber))),
+          AnySubscription(source.Subscribe(std::move(map_subscriber))),
           &sub_ref);
 
       if (map_ref) {  // TODO(peck): Test what happens if it's is empty

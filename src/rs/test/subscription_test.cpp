@@ -39,21 +39,21 @@ class DummySubscription : public SubscriptionBase {
 }  // anonymous namespace
 
 TEST_CASE("Subscription") {
-  SECTION("Subscription the unique_ptr type eraser") {
+  SECTION("AnySubscription") {
     SECTION("type traits") {
       static_assert(
-          IsSubscription<Subscription>,
-          "Subscription must be a Subscription");
+          IsSubscription<AnySubscription>,
+          "AnySubscription must be a Subscription");
     }
 
     SECTION("default constructed") {
-      Subscription sub;
+      AnySubscription sub;
       sub.Request(ElementCount(0));
       sub.Cancel();
     }
 
     SECTION("move") {
-      auto sub = Subscription(MakeSubscription(
+      auto sub = AnySubscription(MakeSubscription(
           [](ElementCount) {}, [] {}));
       auto moved_sub = std::move(sub);
     }
@@ -62,7 +62,7 @@ TEST_CASE("Subscription") {
       DummySubscription *last_called;
       auto dummy = DummySubscription(&last_called);
 
-      auto sub = Subscription(dummy);
+      auto sub = AnySubscription(dummy);
 
       sub.Request(ElementCount(0));
       CHECK(last_called != &dummy);  // dummy should be copied not held by ref
@@ -73,7 +73,7 @@ TEST_CASE("Subscription") {
     SECTION("Request") {
       ElementCount requested;
       {
-        auto sub = Subscription(MakeSubscription(
+        auto sub = AnySubscription(MakeSubscription(
             [&requested](ElementCount count) { requested += count; },
             [] { CHECK(!"Cancel should not be invoked"); }));
         CHECK(requested == 0);
@@ -85,7 +85,7 @@ TEST_CASE("Subscription") {
 
     SECTION("Cancel") {
       bool cancelled = false;
-      auto sub = Subscription(MakeSubscription(
+      auto sub = AnySubscription(MakeSubscription(
           [](ElementCount) { CHECK(!"Request should not be invoked"); },
           [&cancelled] { CHECK(!cancelled); cancelled = true; }));
       CHECK(!cancelled);

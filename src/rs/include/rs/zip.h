@@ -128,7 +128,7 @@ class ZipSubscription : public SubscriptionBase {
   };
 
   template <typename>
-  using ToSubscription = Subscription;
+  using ToSubscription = AnySubscription;
   using Subscriptions = TupleTypeMap<Tuple, ToSubscription>;
 
   template <size_t Idx, typename ...InnerPublishers>
@@ -143,8 +143,9 @@ class ZipSubscription : public SubscriptionBase {
           IsPublisher<std::tuple_element_t<Idx, std::tuple<Publishers...>>>,
           "Zip must be given a Publisher");
 
-      auto new_subscription = Subscription(std::get<Idx>(publishers).Subscribe(
-          ZipSubscriber<Idx>(zip_subscription)));
+      auto new_subscription = AnySubscription(
+          std::get<Idx>(publishers).Subscribe(
+              ZipSubscriber<Idx>(zip_subscription)));
       return ZipSubscriptionBuilder<Idx + 1, InnerPublishers...>::Subscribe(
           zip_subscription,
           publishers,

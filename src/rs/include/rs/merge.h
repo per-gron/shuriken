@@ -61,10 +61,10 @@ class MergeSubscription : public SubscriptionBase {
   struct MergeSubscriptionData {
     template <typename SubscriptionT>
     explicit MergeSubscriptionData(SubscriptionT &&subscription)
-        : subscription(Subscription(
+        : subscription(AnySubscription(
               std::forward<SubscriptionT>(subscription))) {}
 
-    Subscription subscription;
+    AnySubscription subscription;
     ElementCount outstanding;
   };
 
