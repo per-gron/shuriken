@@ -21,9 +21,9 @@ void EmptySubscription::Request(ElementCount count) {}
 
 void EmptySubscription::Cancel() {}
 
-PureVirtualSubscription::~PureVirtualSubscription() {}
-
 }  // namespace detail
+
+PureVirtualSubscription::~PureVirtualSubscription() {}
 
 AnySubscription::AnySubscription() {}
 

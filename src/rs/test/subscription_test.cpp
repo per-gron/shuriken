@@ -21,15 +21,21 @@ namespace {
 
 class DummySubscription : public Subscription {
  public:
-  DummySubscription(DummySubscription **last_called)
+  DummySubscription() : last_called_(nullptr) {}
+
+  explicit DummySubscription(DummySubscription **last_called)
       : last_called_(last_called) {}
 
   void Request(ElementCount count) {
-    *last_called_ = this;
+    if (last_called_) {
+      *last_called_ = this;
+    }
   }
 
   void Cancel() {
-    *last_called_ = this;
+    if (last_called_) {
+      *last_called_ = this;
+    }
   }
 
  private:
@@ -86,6 +92,61 @@ TEST_CASE("Subscription") {
     SECTION("Cancel") {
       bool cancelled = false;
       auto sub = AnySubscription(MakeSubscription(
+          [](ElementCount) { CHECK(!"Request should not be invoked"); },
+          [&cancelled] { CHECK(!cancelled); cancelled = true; }));
+      CHECK(!cancelled);
+      sub.Cancel();
+      CHECK(cancelled);
+    }
+  }
+
+  SECTION("VirtualSubscription") {
+    SECTION("type traits") {
+      static_assert(
+          IsSubscription<VirtualSubscription<DummySubscription>>,
+          "VirtualSubscription must be a Subscription");
+    }
+
+    SECTION("default constructed") {
+      VirtualSubscription<DummySubscription> sub;
+      sub.Request(ElementCount(0));
+      sub.Cancel();
+    }
+
+    SECTION("move") {
+      auto sub = MakeVirtualSubscription(MakeSubscription(
+          [](ElementCount) {}, [] {}));
+      auto moved_sub = std::move(sub);
+    }
+
+    SECTION("create from lvalue") {
+      DummySubscription *last_called;
+      auto dummy = DummySubscription(&last_called);
+
+      auto sub = MakeVirtualSubscription(dummy);
+
+      sub.Request(ElementCount(0));
+      CHECK(last_called != &dummy);  // dummy should be copied not held by ref
+      sub.Cancel();
+      CHECK(last_called != &dummy);  // dummy should be copied not held by ref
+    }
+
+    SECTION("Request") {
+      ElementCount requested;
+      {
+        auto sub = MakeVirtualSubscription(MakeSubscription(
+            [&requested](ElementCount count) { requested += count; },
+            [] { CHECK(!"Cancel should not be invoked"); }));
+        CHECK(requested == 0);
+        sub.Request(ElementCount(13));
+        CHECK(requested == 13);
+      }
+      CHECK(requested == 13);
+    }
+
+    SECTION("Cancel") {
+      bool cancelled = false;
+      auto sub = MakeVirtualSubscription(MakeSubscription(
           [](ElementCount) { CHECK(!"Request should not be invoked"); },
           [&cancelled] { CHECK(!cancelled); cancelled = true; }));
       CHECK(!cancelled);

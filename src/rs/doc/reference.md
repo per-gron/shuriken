@@ -60,6 +60,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`Never()`](#never)
 * [`Pipe(Publisher, Operator...)`](#pipepublisher-operator)
 * [`Publisher`](#publisher)
+* [`PureVirtualSubscription`](#purevirtualsubscription)
 * [`Range(Value, size_t)`](#rangevalue-size_t)
 * [`Reduce(Accumulator, Reducer)`](#reduceaccumulator-reducer)
 * [`ReduceGet(MakeInitial, Reducer)`](#reducegetmakeinitial-reducer)
@@ -81,6 +82,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`TakeWhile(Predicate)`](#takewhilepredicate)
 * [`Throw(Exception)`](#throwexception)
 * [`Throw(const std::exception_ptr &)`](#throwconst-stdexception_ptr-)
+* [`VirtualSubscription`](#virtualsubscription)
 * [`Zip(Publisher...)`](#zippublisher)
 * [`Legend`](#legend)
 
@@ -1235,6 +1237,31 @@ This allows third-party code to add custom operators on Publishers that can be u
 **See also:** [`Subscriber`](#subscriber), [`Subscription`](#subscription)
 
 
+## `PureVirtualSubscription`
+
+**Defined in:** [`rs/subscription.h`](../include/rs/subscription.h)
+
+**Kind:** [Core Library API](#kind_core_library_api)
+
+**Description:**
+
+`PureVirtualSubscription` is a pure virtual class version of the Subscription concept. It is only useful in some very specific use cases; this is not the main Subscription interface.
+
+Any Subscription object can be turned into a PureVirtualSubscription with the
+help of the [`VirtualSubscription`](#virtualsubscription) wrapper class.
+
+```cpp
+class PureVirtualSubscription : public Subscription {
+ public:
+  virtual ~PureVirtualSubscription();
+  virtual void Request(ElementCount count) = 0;
+  virtual void Cancel() = 0;
+};
+```
+
+**See also:** [`AnySubscription`](#anysubscription), [`Subscription`](#subscription), [`VirtualSubscription`](#virtualsubscription)
+
+
 ## `Range(Value, size_t)`
 
 **Defined in:** [`rs/range.h`](../include/rs/range.h)
@@ -1867,6 +1894,19 @@ auto fail = Throw(std::make_exception_ptr(std::runtime_error("fail")));
 The documentation for [`Throw(Exception)`](#throwexception) has more examples.
 
 **See also:** [`Empty()`](#empty), [`Just(Value...)`](#justvalue), [`Never()`](#never), [`Throw(Exception)`](#throwexception)
+
+
+## `VirtualSubscription`
+
+**Defined in:** [`rs/subscription.h`](../include/rs/subscription.h)
+
+**Kind:** [Core Library API](#kind_core_library_api)
+
+**Description:**
+
+`VirtualSubscription` is a helper class that wraps any Subscription object without changing its behavior. What it adds is that it implements the [`PureVirtualSubscription`](#purevirtualsubscription) interface, which is useful for example when implementing [`AnySubscription`](#anysubscription) but it can also be useful to operator implementations: It is possible to have a `PureVirtualSubscription`](#purevirtualsubscription) pointer or reference to it in situations where the full type cannot be used due to circular references. See for example [`Map`](#map) and [`Filter`](#filter).
+
+**See also:** [`AnySubscription`](#anysubscription), [`Subscription`](#subscription), [`VirtualSubscription`](#virtualsubscription)
 
 
 ## `Zip(Publisher...)`

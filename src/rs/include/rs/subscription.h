@@ -112,16 +112,35 @@ class SharedPtrSubscription : public Subscription {
   std::shared_ptr<SubscriptionType> subscription_;
 };
 
-class PureVirtualSubscription {
+}  // namespace detail
+
+/**
+ * This class is a pure virtual class version of the Subscription concept. It is
+ * only useful in some very specific use cases; this is not the main
+ * Subscription interface.
+ *
+ * Any Subscription object can be turned into a PureVirtualSubscription with the
+ * help of the VirtualSubscription wrapper class.
+ */
+class PureVirtualSubscription : public Subscription {
  public:
   virtual ~PureVirtualSubscription();
   virtual void Request(ElementCount count) = 0;
   virtual void Cancel() = 0;
 };
 
+/**
+ * Helper class that wraps any Subscription object without changing its
+ * behavior. What it adds is that it implements the PureVirtualSubscription
+ * interface, which is useful for example when implementing AnySubscription but
+ * it can also be useful to operator implementations. See for example Map and
+ * Filter.
+ */
 template <typename S>
 class VirtualSubscription : public PureVirtualSubscription {
  public:
+  VirtualSubscription() = default;
+
   template <typename SType>
   explicit VirtualSubscription(SType &&subscription)
       : subscription_(std::forward<SType>(subscription)) {}
@@ -143,7 +162,12 @@ class VirtualSubscription : public PureVirtualSubscription {
   S subscription_;
 };
 
-}  // namespace detail
+template <typename T>
+VirtualSubscription<typename std::decay<T>::type>
+MakeVirtualSubscription(T &&t) {
+  return VirtualSubscription<typename std::decay<T>::type>(
+      std::forward<T>(t));
+}
 
 template <typename T>
 constexpr bool IsSubscription = std::is_base_of<Subscription, T>::value;
@@ -164,7 +188,7 @@ class AnySubscription : public Subscription {
       class = typename std::enable_if<IsSubscription<
           typename std::remove_reference<S>::type>>::type>
   explicit AnySubscription(S &&s)
-      : eraser_(std::make_unique<detail::VirtualSubscription<
+      : eraser_(std::make_unique<VirtualSubscription<
             typename std::decay<S>::type>>(std::forward<S>(s))) {}
 
   AnySubscription(const AnySubscription &) = delete;
@@ -177,7 +201,7 @@ class AnySubscription : public Subscription {
   void Cancel();
 
  private:
-  std::unique_ptr<detail::PureVirtualSubscription> eraser_;
+  std::unique_ptr<PureVirtualSubscription> eraser_;
 };
 
 /**
@@ -197,7 +221,7 @@ class SharedSubscription : public Subscription {
       class = typename std::enable_if<IsSubscription<
           typename std::remove_reference<S>::type>>::type>
   explicit SharedSubscription(S &&s)
-      : eraser_(std::make_shared<detail::VirtualSubscription<
+      : eraser_(std::make_shared<VirtualSubscription<
             typename std::decay<S>::type>>(std::forward<S>(s))) {}
 
   void Request(ElementCount count);
@@ -206,7 +230,7 @@ class SharedSubscription : public Subscription {
  private:
   friend class WeakSubscription;
 
-  std::shared_ptr<detail::PureVirtualSubscription> eraser_;
+  std::shared_ptr<PureVirtualSubscription> eraser_;
 };
 
 /**
@@ -223,7 +247,7 @@ class WeakSubscription : public Subscription {
   void Cancel();
 
  private:
-  std::weak_ptr<detail::PureVirtualSubscription> eraser_;
+  std::weak_ptr<PureVirtualSubscription> eraser_;
 };
 
 detail::EmptySubscription MakeSubscription();
