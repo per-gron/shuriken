@@ -112,18 +112,18 @@ class SharedPtrSubscription : public Subscription {
   std::shared_ptr<SubscriptionType> subscription_;
 };
 
-class SubscriptionEraser {
+class PureVirtualSubscription {
  public:
-  virtual ~SubscriptionEraser();
+  virtual ~PureVirtualSubscription();
   virtual void Request(ElementCount count) = 0;
   virtual void Cancel() = 0;
 };
 
 template <typename S>
-class AnySubscriptionEraser : public detail::SubscriptionEraser {
+class VirtualSubscription : public PureVirtualSubscription {
  public:
   template <typename SType>
-  explicit AnySubscriptionEraser(SType &&subscription)
+  explicit VirtualSubscription(SType &&subscription)
       : subscription_(std::forward<SType>(subscription)) {}
 
   void Request(ElementCount count) override {
@@ -164,7 +164,7 @@ class AnySubscription : public Subscription {
       class = typename std::enable_if<IsSubscription<
           typename std::remove_reference<S>::type>>::type>
   explicit AnySubscription(S &&s)
-      : eraser_(std::make_unique<detail::AnySubscriptionEraser<
+      : eraser_(std::make_unique<detail::VirtualSubscription<
             typename std::decay<S>::type>>(std::forward<S>(s))) {}
 
   AnySubscription(const AnySubscription &) = delete;
@@ -177,7 +177,7 @@ class AnySubscription : public Subscription {
   void Cancel();
 
  private:
-  std::unique_ptr<detail::SubscriptionEraser> eraser_;
+  std::unique_ptr<detail::PureVirtualSubscription> eraser_;
 };
 
 /**
@@ -197,7 +197,7 @@ class SharedSubscription : public Subscription {
       class = typename std::enable_if<IsSubscription<
           typename std::remove_reference<S>::type>>::type>
   explicit SharedSubscription(S &&s)
-      : eraser_(std::make_shared<detail::AnySubscriptionEraser<
+      : eraser_(std::make_shared<detail::VirtualSubscription<
             typename std::decay<S>::type>>(std::forward<S>(s))) {}
 
   void Request(ElementCount count);
@@ -206,7 +206,7 @@ class SharedSubscription : public Subscription {
  private:
   friend class WeakSubscription;
 
-  std::shared_ptr<detail::SubscriptionEraser> eraser_;
+  std::shared_ptr<detail::PureVirtualSubscription> eraser_;
 };
 
 /**
@@ -223,7 +223,7 @@ class WeakSubscription : public Subscription {
   void Cancel();
 
  private:
-  std::weak_ptr<detail::SubscriptionEraser> eraser_;
+  std::weak_ptr<detail::PureVirtualSubscription> eraser_;
 };
 
 detail::EmptySubscription MakeSubscription();
