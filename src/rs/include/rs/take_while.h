@@ -34,7 +34,7 @@ class TakeWhileSubscriber : public Subscriber {
       : inner_subscriber_(std::move(inner_subscriber)),
         predicate_(predicate) {}
 
-  void TakeSubscription(Backreference<AnySubscription> &&subscription) {
+  void TakeSubscription(Backreference<PureVirtualSubscription> &&subscription) {
     subscription_ = std::move(subscription);
   }
 
@@ -88,7 +88,7 @@ class TakeWhileSubscriber : public Subscriber {
  private:
   bool cancelled_ = false;
   InnerSubscriberType inner_subscriber_;
-  Backreference<AnySubscription> subscription_;
+  Backreference<PureVirtualSubscription> subscription_;
   Predicate predicate_;
 };
 
@@ -112,9 +112,10 @@ auto TakeWhile(Predicate &&predicate) {
               predicate),
           &take_while_ref);
 
-      Backreference<AnySubscription> sub_ref;
+      Backreference<PureVirtualSubscription> sub_ref;
       auto sub = WithBackreference(
-          AnySubscription(source.Subscribe(std::move(take_while_subscriber))),
+          MakeVirtualSubscription(
+              source.Subscribe(std::move(take_while_subscriber))),
           &sub_ref);
 
       if (take_while_ref) {  // TODO(peck): Test what happens if it's is empty
