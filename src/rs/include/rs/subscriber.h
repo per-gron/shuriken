@@ -315,14 +315,14 @@ class ErasedSubscriber<Idx, Base> : public Base {
  * Type erasure wrapper for Subscriber objects.
  */
 template <typename ...Ts>
-class Subscriber : public detail::ErasedSubscriber<
+class AnySubscriber : public detail::ErasedSubscriber<
     0, detail::ErasedSubscriberBase<Ts...>, Ts...> {
  public:
   template <
       typename S,
       class = typename std::enable_if<IsSubscriber<
           typename std::remove_reference<S>::type>>::type>
-  explicit Subscriber(S &&s)
+  explicit AnySubscriber(S &&s)
       : detail::ErasedSubscriber<0, detail::ErasedSubscriberBase<Ts...>, Ts...>(
             std::forward<S>(s)) {}
 };
@@ -332,13 +332,13 @@ class Subscriber : public detail::ErasedSubscriber<
  * and compilation speed.
  */
 template <typename T>
-class Subscriber<T> : public SubscriberBase {
+class AnySubscriber<T> : public SubscriberBase {
  public:
   template <
       typename S,
       class = typename std::enable_if<IsSubscriber<
           typename std::remove_reference<S>::type>>::type>
-  explicit Subscriber(S &&s)
+  explicit AnySubscriber(S &&s)
       : eraser_(std::make_unique<SubscriberEraser<
             typename std::decay<S>::type>>(std::forward<S>(s))) {}
 

@@ -104,11 +104,11 @@ TEST_CASE("Reduce") {
       // This tests AskSubscriptionToEmitAccumulatedValue when called from
       // OnComplete
 
-      Subscriber<> erased_subscriber(MakeSubscriber());
+      AnySubscriber<> erased_subscriber(MakeSubscriber());
 
       auto one_hundred = sum(MakePublisher([&erased_subscriber](
           auto subscriber) {
-        erased_subscriber = Subscriber<>(std::move(subscriber));
+        erased_subscriber = AnySubscriber<>(std::move(subscriber));
         return MakeSubscription();
       }));
 

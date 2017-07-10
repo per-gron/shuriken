@@ -21,6 +21,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 -->
 
 * [`All(Predicate)`](#allpredicate)
+* [`AnySubscriber`](#anysubscriber)
 * [`AnySubscription`](#anysubscription)
 * [`Average()`](#average)
 * [`BuildPipe(Operator...)`](#buildpipeoperator)
@@ -73,7 +74,6 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`Start(CreateValue...)`](#startcreatevalue)
 * [`StartWith(Value...)`](#startwithvalue)
 * [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
-* [`Subscriber`](#subscriber)
 * [`SubscriberBase`](#subscriberbase)
 * [`SubscriptionBase`](#subscriptionbase)
 * [`Sum()`](#sum)
@@ -109,6 +109,48 @@ auto all_positive = Pipe(
 **See also:** [`Some(Predicate)`](#somepredicate)
 
 
+## `AnySubscriber`
+
+**Defined in:** [`rs/subscriber.h`](../include/rs/subscriber.h)
+
+**Kind:** [Core Library API](#kind_core_library_api)
+
+**Description:** As [described in the README](../README.md#the-absence-of-a-publisher-type), an rs Subscriber is a C++ *concept* – like iterators in C++ – rather than a single concrete class. This permits aggressive compiler optimizations and some interesting API convenience features. However, it is sometimes useful to be able to give a name to any Subscriber.
+
+`AnySubscriber` is an [*eraser type*](../README.md#eraser-types) that uses virtual method calls to be able to give a name to the Subscriber type.
+
+`AnySubscriber` is a variadric template:
+
+* `AnySubscriber<>` can encapsulate any Subscriber that can't receive any values (it can only finish or fail).
+* `AnySubscriber<T>` can encapsulate any Subscriber that can receive values of type `T`.
+* `AnySubscriber<T, U>` can encapsulate any Subscriber that can receive values of type `T` and `U`.
+* and so on.
+
+The `AnySubscriber` eraser type is intended for advanced use of the rs library. Storing and passing around `AnySubscriber` objects is not done much except in custom operators, and most custom operators do not type erase Subscribers.
+
+The `AnySubscriber` eraser type is used internally in the [`Publisher`](#publisher) type eraser implementation.
+
+**Example usage:**
+
+```cpp
+AnySubscriber<int> subscriber = AnySubscriber<int>(MakeSubscriber(
+    [](int value) {
+      printf("Got value: %d\n", value);
+    },
+    [](std::exception_ptr &&error) {
+      printf("Something went wrong\n");
+    },
+    [] {
+      printf("The stream completed successfully\n");
+    }));
+
+subscriber.OnNext(42);
+subscriber.OnComplete();
+```
+
+**See also:** [`AnySubscription`](#anysubscription), [`Publisher`](#publisher)
+
+
 ## `AnySubscription`
 
 **Defined in:** [`rs/subscription.h`](../include/rs/subscription.h)
@@ -133,7 +175,7 @@ AnySubscription sub = AnySubscription(MakeSubscription(
     }));
 ```
 
-**See also:** [`Publisher`](#publisher), [`Subscriber`](#subscriber)
+**See also:** [`AnySubscriber`](#anysubscriber), [`Publisher`](#publisher)
 
 
 ## `Average()`
@@ -1175,7 +1217,7 @@ auto only_even = Pipe(
     }));
 ```
 
-**See also:** [`Subscriber`](#subscriber), [`Subscription`](#subscription)
+**See also:** [`AnySubscriber`](#anysubscriber), [`AnySubscription`](#anysubscription)
 
 
 ## `PublisherBase`
@@ -1643,48 +1685,6 @@ auto stream = Pipe(
 ```
 
 **See also:** [`Concat(Publisher...)`](#concatpublisher), [`StartWith(Value...)`](#startwithvalue)
-
-
-## `Subscriber`
-
-**Defined in:** [`rs/subscriber.h`](../include/rs/subscriber.h)
-
-**Kind:** [Core Library API](#kind_core_library_api)
-
-**Description:** As [described in the README](../README.md#the-absence-of-a-publisher-type), an rs Subscriber is a C++ *concept* – like iterators in C++ – rather than a single concrete class. This permits aggressive compiler optimizations and some interesting API convenience features. However, it is sometimes useful to be able to give a name to any Subscriber.
-
-`Subscriber` is an [*eraser type*](../README.md#eraser-types) that uses virtual method calls to be able to give a name to the Subscriber type.
-
-`Subscriber` is a variadric template:
-
-* `Subscriber<>` can encapsulate any Subscriber that can't receive any values (it can only finish or fail).
-* `Subscriber<T>` can encapsulate any Subscriber that can receive values of type `T`.
-* `Subscriber<T, U>` can encapsulate any Subscriber that can receive values of type `T` and `U`.
-* and so on.
-
-The `Subscriber` eraser type is intended for advanced use of the rs library. Storing and passing around `Subscriber` objects is not done much except in custom operators, and most custom operators do not type erase Subscribers.
-
-The `Subscriber` eraser type is used internally in the [`Publisher`](#publisher) type eraser implementation.
-
-**Example usage:**
-
-```cpp
-Subscriber<int> subscriber = Subscriber<int>(MakeSubscriber(
-    [](int value) {
-      printf("Got value: %d\n", value);
-    },
-    [](std::exception_ptr &&error) {
-      printf("Something went wrong\n");
-    },
-    [] {
-      printf("The stream completed successfully\n");
-    }));
-
-subscriber.OnNext(42);
-subscriber.OnComplete();
-```
-
-**See also:** [`Publisher`](#publisher), [`Subscription`](#subscription)
 
 
 ## `SubscriberBase`

@@ -21,16 +21,16 @@
 namespace shk {
 
 TEST_CASE("Subscriber") {
-  SECTION("Subscriber the type eraser") {
+  SECTION("AnySubscriber") {
     SECTION("single type") {
       SECTION("type traits") {
-        auto sub = Subscriber<int>(MakeSubscriber(
+        auto sub = AnySubscriber<int>(MakeSubscriber(
             [](auto &&) {}, [](std::exception_ptr &&) {}, [] {}));
         static_assert(IsSubscriber<decltype(sub)>, "Should be Subscriber");
       }
 
       SECTION("move") {
-        auto sub = Subscriber<int>(MakeSubscriber(
+        auto sub = AnySubscriber<int>(MakeSubscriber(
             [](auto &&) {}, [](std::exception_ptr &&) {}, [] {}));
         auto moved_sub = std::move(sub);
       }
@@ -38,13 +38,13 @@ TEST_CASE("Subscriber") {
       SECTION("create from lvalue ref") {
         auto inner_sub = MakeSubscriber(
             [](auto &&) {}, [](std::exception_ptr &&) {}, [] {});
-        auto sub = Subscriber<int>(inner_sub);
+        auto sub = AnySubscriber<int>(inner_sub);
       }
 
       SECTION("OnNext") {
         int invocations = 0;
         {
-          auto sub = Subscriber<int>(MakeSubscriber(
+          auto sub = AnySubscriber<int>(MakeSubscriber(
               [&invocations](int val) {
                 CHECK(val == 1337);
                 invocations++;
@@ -65,7 +65,7 @@ TEST_CASE("Subscriber") {
       SECTION("OnError") {
         int invocations = 0;
         {
-          auto sub = Subscriber<int>(MakeSubscriber(
+          auto sub = AnySubscriber<int>(MakeSubscriber(
               [](int val) {
                 CHECK(!"OnNext should not be called");
               },
@@ -87,7 +87,7 @@ TEST_CASE("Subscriber") {
       SECTION("OnComplete") {
         int invocations = 0;
         {
-          auto sub = Subscriber<int>(MakeSubscriber(
+          auto sub = AnySubscriber<int>(MakeSubscriber(
               [](int val) {
                 CHECK(!"OnNext should not be called");
               },
@@ -107,13 +107,13 @@ TEST_CASE("Subscriber") {
 
     SECTION("two types") {
       SECTION("type traits") {
-        auto sub = Subscriber<int, std::string>(MakeSubscriber(
+        auto sub = AnySubscriber<int, std::string>(MakeSubscriber(
             [](auto &&) {}, [](std::exception_ptr &&) {}, [] {}));
         static_assert(IsSubscriber<decltype(sub)>, "Should be Subscriber");
       }
 
       SECTION("move") {
-        auto sub = Subscriber<int, std::string>(MakeSubscriber(
+        auto sub = AnySubscriber<int, std::string>(MakeSubscriber(
             [](auto &&) {}, [](std::exception_ptr &&) {}, [] {}));
         auto moved_sub = std::move(sub);
       }
@@ -121,13 +121,13 @@ TEST_CASE("Subscriber") {
       SECTION("create from lvalue ref") {
         auto inner_sub = MakeSubscriber(
             [](auto &&) {}, [](std::exception_ptr &&) {}, [] {});
-        auto sub = Subscriber<int, std::string>(inner_sub);
+        auto sub = AnySubscriber<int, std::string>(inner_sub);
       }
 
       SECTION("OnNext") {
         int invocations = 0;
         {
-          auto sub = Subscriber<int, std::string>(MakeSubscriber(
+          auto sub = AnySubscriber<int, std::string>(MakeSubscriber(
               [&invocations](auto &&val) {
                 invocations++;
               },
@@ -151,7 +151,7 @@ TEST_CASE("Subscriber") {
       SECTION("OnError") {
         int invocations = 0;
         {
-          auto sub = Subscriber<int, std::string>(MakeSubscriber(
+          auto sub = AnySubscriber<int, std::string>(MakeSubscriber(
               [](auto &&val) {
                 CHECK(!"OnNext should not be called");
               },
@@ -173,7 +173,7 @@ TEST_CASE("Subscriber") {
       SECTION("OnComplete") {
         int invocations = 0;
         {
-          auto sub = Subscriber<int, std::string>(MakeSubscriber(
+          auto sub = AnySubscriber<int, std::string>(MakeSubscriber(
               [](auto &&val) {
                 CHECK(!"OnNext should not be called");
               },
