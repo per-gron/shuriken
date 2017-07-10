@@ -68,7 +68,7 @@ class CatchSubscription : public Subscription {
 };
 
 template <typename InnerSubscriberType, typename Callback>
-class CatchSubscriber : public SubscriberBase {
+class CatchSubscriber : public Subscriber {
  public:
   CatchSubscriber(
       InnerSubscriberType &&inner_subscriber,

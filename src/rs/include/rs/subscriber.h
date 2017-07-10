@@ -32,13 +32,13 @@ namespace shk {
  * * void OnError(std::exception_ptr &&error);
  * * void OnComplete();
  */
-class SubscriberBase {
+class Subscriber {
  protected:
-  ~SubscriberBase() = default;
+  ~Subscriber() = default;
 };
 
 template <typename T>
-constexpr bool IsSubscriber = std::is_base_of<SubscriberBase, T>::value;
+constexpr bool IsSubscriber = std::is_base_of<Subscriber, T>::value;
 
 template <typename T>
 using RequireRvalue = typename std::enable_if<
@@ -47,7 +47,7 @@ using RequireRvalue = typename std::enable_if<
 
 namespace detail {
 
-class EmptySubscriber : public SubscriberBase {
+class EmptySubscriber : public Subscriber {
  public:
   EmptySubscriber() = default;
 
@@ -64,7 +64,7 @@ class EmptySubscriber : public SubscriberBase {
 };
 
 template <typename OnNextCb, typename OnErrorCb, typename OnCompleteCb>
-class CallbackSubscriber : public SubscriberBase {
+class CallbackSubscriber : public Subscriber {
  public:
   CallbackSubscriber(
       OnNextCb &&on_next, OnErrorCb &&on_error, OnCompleteCb &&on_complete)
@@ -92,7 +92,7 @@ class CallbackSubscriber : public SubscriberBase {
 };
 
 template <typename SubscriberType>
-class SharedPtrSubscriber : public SubscriberBase {
+class SharedPtrSubscriber : public Subscriber {
  public:
   explicit SharedPtrSubscriber(std::shared_ptr<SubscriberType> subscriber)
       : subscriber_(subscriber) {}
@@ -115,7 +115,7 @@ class SharedPtrSubscriber : public SubscriberBase {
 };
 
 template <typename SubscriberType>
-class WeakPtrSubscriber : public SubscriberBase {
+class WeakPtrSubscriber : public Subscriber {
  public:
   explicit WeakPtrSubscriber(std::weak_ptr<SubscriberType> subscriber)
       : subscriber_(subscriber) {}
@@ -144,7 +144,7 @@ class WeakPtrSubscriber : public SubscriberBase {
 };
 
 template <typename ...Ts>
-class ErasedSubscriberBase : public SubscriberBase {
+class ErasedSubscriberBase : public Subscriber {
  public:
   template <
       typename S,
@@ -332,7 +332,7 @@ class AnySubscriber : public detail::ErasedSubscriber<
  * and compilation speed.
  */
 template <typename T>
-class AnySubscriber<T> : public SubscriberBase {
+class AnySubscriber<T> : public Subscriber {
  public:
   template <
       typename S,

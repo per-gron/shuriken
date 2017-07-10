@@ -167,7 +167,7 @@ class ConcatMap {
     std::unique_ptr<InnerSubscriberType> inner_subscriber_;
   };
 
-  class ConcatMapPublishersSubscriber : public SubscriberBase {
+  class ConcatMapPublishersSubscriber : public Subscriber {
    public:
     ConcatMapPublishersSubscriber(
         const Mapper &mapper,
@@ -226,7 +226,7 @@ class ConcatMap {
     Backreference<ConcatMapSubscription> subscription_;
   };
 
-  class ConcatMapValuesSubscriber : public SubscriberBase {
+  class ConcatMapValuesSubscriber : public Subscriber {
    public:
     ConcatMapValuesSubscriber(
         Backreference<ConcatMapSubscription> &&subscription)

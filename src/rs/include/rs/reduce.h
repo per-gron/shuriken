@@ -32,12 +32,12 @@ namespace detail {
  * parameters. It's there to avoid the verbosity of having to have several
  * classes with the same template parameters referring to each other.
  */
-template <typename Accumulator, typename Subscriber, typename Reducer>
+template <typename Accumulator, typename InnerSubscriber, typename Reducer>
 class Reduce {
  public:
   class Emitter {
    public:
-    Emitter(Accumulator &&accumulator, Subscriber &&subscriber)
+    Emitter(Accumulator &&accumulator, InnerSubscriber &&subscriber)
         : accumulator_(std::move(accumulator)),
           subscriber_(std::move(subscriber)) {}
 
@@ -48,7 +48,7 @@ class Reduce {
 
    private:
     Accumulator accumulator_;
-    Subscriber subscriber_;
+    InnerSubscriber subscriber_;
   };
 
   class ReduceSubscriber;
@@ -93,11 +93,11 @@ class Reduce {
     AnySubscription inner_subscription_;
   };
 
-  class ReduceSubscriber : public SubscriberBase {
+  class ReduceSubscriber : public Subscriber {
    public:
     ReduceSubscriber(
         Accumulator &&accumulator,
-        Subscriber &&subscriber,
+        InnerSubscriber &&subscriber,
         const Reducer &reducer)
         : accumulator_(std::move(accumulator)),
           subscriber_(std::move(subscriber)),
@@ -176,7 +176,7 @@ class Reduce {
 
     bool failed_ = false;
     Accumulator accumulator_;
-    Subscriber subscriber_;
+    InnerSubscriber subscriber_;
     Reducer reducer_;
     Backreference<ReduceSubscription> subscription_;
   };
@@ -199,12 +199,12 @@ auto ReduceGet(MakeInitial &&make_initial, ReducerT &&reducer) {
     return MakePublisher([make_initial, reducer, source = std::move(source)](
         auto &&subscriber) {
       using Accumulator = typename std::decay<decltype(make_initial())>::type;
-      using Subscriber = typename std::decay<decltype(subscriber)>::type;
+      using InnerSubscriber = typename std::decay<decltype(subscriber)>::type;
       using Reducer = typename std::decay<ReducerT>::type;
       using ReduceSubscriberT = typename detail::Reduce<
-          Accumulator, Subscriber, Reducer>::ReduceSubscriber;
+          Accumulator, InnerSubscriber, Reducer>::ReduceSubscriber;
       using ReduceSubscriptionT = typename detail::Reduce<
-          Accumulator, Subscriber, Reducer>::ReduceSubscription;
+          Accumulator, InnerSubscriber, Reducer>::ReduceSubscription;
 
       Backreference<ReduceSubscriberT> reduce_ref;
       auto reduce_subscriber = WithBackreference(

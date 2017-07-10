@@ -27,7 +27,7 @@ namespace detail {
 
 template <typename InnerSubscriberType, typename Element>
 class MergeSubscription : public Subscription {
-  class MergeSubscriber : public SubscriberBase {
+  class MergeSubscriber : public Subscriber {
    public:
     MergeSubscriber(
         size_t idx,

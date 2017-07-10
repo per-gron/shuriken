@@ -74,7 +74,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`Start(CreateValue...)`](#startcreatevalue)
 * [`StartWith(Value...)`](#startwithvalue)
 * [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
-* [`SubscriberBase`](#subscriberbase)
+* [`Subscriber`](#subscriber)
 * [`Subscription`](#subscription)
 * [`Sum()`](#sum)
 * [`Take(Count)`](#takecount)
@@ -787,7 +787,7 @@ void TakePublisher(const PublisherT &publisher) {
 
 **Kind:** [Core Library API](#kind_core_library_api)
 
-**Description:** `IsSubscriber` is a type predicate that checks if a given type claims to conform to the Subscriber concept. (It checks if the given type publically inherits [`SubscriberBase`](#subscriberbase).)
+**Description:** `IsSubscriber` is a type predicate that checks if a given type claims to conform to the Subscriber concept. (It checks if the given type publically inherits [`Subscriber`](#subscriber).)
 
 **Example usage:**
 
@@ -943,7 +943,7 @@ my_dummy_subscriber.OnComplete();  // Does nothing
 
 **[Type](#types):** `(a -> void), (std::exception_ptr&& -> void), (void -> void) -> Subscriber[a]`
 
-**Description:** Creates a Subscriber from a set of callback functors. It is always possible to create your own Subscriber class by inheriting [`SubscriberBase`](#subscriberbase) and defining the `OnNext`, `OnComplete` and `OnError` methods, but this helper function is often more convenient.
+**Description:** Creates a Subscriber from a set of callback functors. It is always possible to create your own Subscriber class by inheriting [`Subscriber`](#subscriber) and defining the `OnNext`, `OnComplete` and `OnError` methods, but this helper function is often more convenient.
 
 Most application code requires few or no custom Subscribers. The most common cases where it is necessary to create your own is to terminate a Publisher to get its final result or to create a custom operator that cannot be built by combining operators that already exist.
 
@@ -1232,7 +1232,7 @@ This allows third-party code to add custom operators on Publishers that can be u
 
 `Publisher` has a `protected` constructor. This makes it impossible to construct `Publisher` objects directly; only subclasses of it can be instantiated.
 
-**See also:** [`SubscriberBase`](#subscriberbase), [`Subscription`](#subscription)
+**See also:** [`Subscriber`](#subscriber), [`Subscription`](#subscription)
 
 
 ## `Range(Value, size_t)`
@@ -1687,17 +1687,17 @@ auto stream = Pipe(
 **See also:** [`Concat(Publisher...)`](#concatpublisher), [`StartWith(Value...)`](#startwithvalue)
 
 
-## `SubscriberBase`
+## `Subscriber`
 
 **Defined in:** [`rs/subscriber.h`](../include/rs/subscriber.h)
 
 **Kind:** [Core Library API](#kind_core_library_api)
 
-**Description:** One of the [requirements for Subscriber types](specification.md#2-subscriber-code) is that they must inherit `SubscriberBase` to signify the intent of being a Subscriber.
+**Description:** One of the [requirements for Subscriber types](specification.md#2-subscriber-code) is that they must inherit `Subscriber` to signify the intent of being a Subscriber.
 
-`SubscriberBase` itself is a class that does not do anything at all; its sole purpose is to make it so that Subscriber types have to declare that they want to be Subscribers.
+`Subscriber` itself is a class that does not do anything at all; its sole purpose is to make it so that Subscriber types have to declare that they want to be Subscribers.
 
-`SubscriberBase` has a `protected` constructor. This makes it impossible to construct `SubscriberBase` objects directly; only subclasses of it can be instantiated.
+`Subscriber` has a `protected` constructor. This makes it impossible to construct `Subscriber` objects directly; only subclasses of it can be instantiated.
 
 **See also:** [`Publisher`](#publisher), [`Subscription`](#subscription)
 
@@ -1714,7 +1714,7 @@ auto stream = Pipe(
 
 `Subscription` has a `protected` constructor. This makes it impossible to construct `Subscription` objects directly; only subclasses of it can be instantiated.
 
-**See also:** [`Publisher`](#publisher), [`SubscriberBase`](#subscriberbase)
+**See also:** [`Publisher`](#publisher), [`Subscriber`](#subscriber)
 
 
 ## `Sum()`

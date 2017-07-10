@@ -26,7 +26,7 @@ namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename Predicate>
-class FilterSubscriber : public SubscriberBase {
+class FilterSubscriber : public Subscriber {
  public:
   FilterSubscriber(
       InnerSubscriberType &&inner_subscriber,

@@ -21,7 +21,7 @@ namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename CountType>
-class TakeSubscriber : public SubscriberBase {
+class TakeSubscriber : public Subscriber {
  public:
   template <typename InnerSubscriberT>
   TakeSubscriber(

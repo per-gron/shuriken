@@ -26,7 +26,7 @@ namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename Mapper>
-class MapSubscriber : public SubscriberBase {
+class MapSubscriber : public Subscriber {
  public:
   MapSubscriber(InnerSubscriberType &&inner_subscriber, const Mapper &mapper)
       : inner_subscriber_(std::move(inner_subscriber)),

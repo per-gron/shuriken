@@ -95,7 +95,7 @@ class ZipSubscription : public Subscription {
   using FinishedSubscriptions = std::bitset<sizeof...(Publishers)>;
 
   template <size_t Idx>
-  class ZipSubscriber : public SubscriberBase {
+  class ZipSubscriber : public Subscriber {
    public:
     ZipSubscriber(
         const std::shared_ptr<ZipSubscription> &zip_subscription)

@@ -26,7 +26,7 @@ namespace shk {
 namespace detail {
 
 template <typename InnerSubscriberType, typename Predicate>
-class TakeWhileSubscriber : public SubscriberBase {
+class TakeWhileSubscriber : public Subscriber {
  public:
   TakeWhileSubscriber(
       InnerSubscriberType &&inner_subscriber,
