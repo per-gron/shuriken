@@ -26,8 +26,8 @@ rs tries not to be an innovative library. It steals most of its ideas and names 
 The main entity of the rs library is the *Publisher*. Similar to a future or a promise, a Publisher represents an asynchronous computation. An idiomatic use of the rs libray is to make procedures that perform asynchronous operations return a Publisher, for example:
 
 ```cpp
-Publisher<User> LookupUserById(const std::string &user_id);
-Publisher<std::string> UsernameToUserId(const std::string &username);
+AnyPublisher<User> LookupUserById(const std::string &user_id);
+AnyPublisher<std::string> UsernameToUserId(const std::string &username);
 ```
 
 People who are familiar with futures or promises will recognize this pattern. In many ways a Publisher is used just like a future object.
@@ -63,7 +63,7 @@ auto reverse_username = Map([](User &&user) {
   return user;
 });
 
-Publisher<User> user = LookupUserById("123");
+AnyPublisher<User> user = LookupUserById("123");
 
 // user_with_reversed_username is a Publisher that emits User
 auto user_with_reversed_username = reverse_username(user);
@@ -152,7 +152,7 @@ In the Java version of Reactive Streams [`Publisher`](https://github.com/reactiv
 
 Instead, in rs, Publisher, Subscriber and Subscription are *concepts*, much like iterators in C++. An rs Publisher is any C++ type that fulfills [the requirements of the Publisher concept](doc/specification.md#1-publisher-code).
 
-This can be a bit counterintuitive at first. For example, the return type of `Just(1)` is not `Publisher<int>`; it is a type that doesn't even have a name (because the type contains the type of a lambda expression). The public API of rs does not give a name for the type of `Just(1)`, it only promises that it conforms to the Publisher concept.
+This can be a bit counterintuitive at first. For example, the return type of `Just(1)` is not `AnyPublisher<int>`; it is a type that doesn't even have a name (because the type contains the type of a lambda expression). The public API of rs does not give a name for the type of `Just(1)`, it only promises that it conforms to the Publisher concept.
 
 This design allows rs to be very efficient when chaining operators: The compiler can see and inline chains of operators as it sees fit, since there aren't virtual method calls that hide things.
 
@@ -176,8 +176,8 @@ In this code, the return type of `EvenSquares` doesn't have a name. In fact, the
 To solve this type of problem, rs has *eraser types* for the Publisher, Subscriber and Subscription concepts:
 
 ```cpp
-Publisher<int> EvenSquares(int n) {
-  return Publisher<int>(Pipe(
+AnyPublisher<int> EvenSquares(int n) {
+  return AnyPublisher<int>(Pipe(
       Range(1, n),
       Filter([](int x) { return (x % 2) == 0; }),
       Map([](int x) { return x * x; }),
@@ -187,11 +187,11 @@ Publisher<int> EvenSquares(int n) {
 
 Unlike the first version of `EvenSquares`, this one can easily live in a `.cpp` implementation file.
 
-`Publisher<int>` is a class that can be constructed with any Publisher of `int`s and behaves just like the one it was created with. The only difference is that it "hides" the type of the underlying Publisher (using virtual method calls).
+`AnyPublisher<int>` is a class that can be constructed with any Publisher of `int`s and behaves just like the one it was created with. The only difference is that it "hides" the type of the underlying Publisher (using virtual method calls).
 
 In addition to `Publisher`, there are also type erasers for Subscribers and Subscriptions.
 
-It is possible to construct Publishers that can emit more than one type (and correspondingly Subscribers that can receive more than one type). They can also be type erased, for example with `Publisher<int, std::string>`. Publishers that never emit a value and only ever complete or fail can be type erased with `Publisher<>`.
+It is possible to construct Publishers that can emit more than one type (and correspondingly Subscribers that can receive more than one type). They can also be type erased, for example with `AnyPublisher<int, std::string>`. Publishers that never emit a value and only ever complete or fail can be type erased with `AnyPublisher<>`.
 
 
 ### Concept predicates
