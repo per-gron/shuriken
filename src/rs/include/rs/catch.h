@@ -20,6 +20,7 @@
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
+#include <rs/weak_reference.h>
 
 namespace shk {
 namespace detail {
@@ -78,10 +79,10 @@ class CatchSubscriber : public Subscriber {
 
   template <typename Publisher>
   void Subscribe(
-      const std::shared_ptr<CatchSubscription<CatchSubscriber>> &subscription,
+      WeakReference<CatchSubscription<CatchSubscriber>> &&subscription,
       const std::shared_ptr<CatchSubscriber> &me,
       Publisher &&publisher) {
-    subscription_ = subscription;
+    subscription_ = std::move(subscription);
     me_ = me;
     auto sub = publisher.Subscribe(MakeSubscriber(me));
     if (!has_failed_) {
@@ -89,8 +90,8 @@ class CatchSubscriber : public Subscriber {
       // even returns. In that case, inner_subscription_ will have been set to
       // the catch subscription before Subscribe returns, and then we must not
       // overwrite inner_subscription_
-      if (auto subscription = subscription_.lock()) {
-        subscription->inner_subscription_ = AnySubscription(std::move(sub));
+      if (subscription_) {
+        subscription_->inner_subscription_ = AnySubscription(std::move(sub));
       }
     }
   }
@@ -122,9 +123,9 @@ class CatchSubscriber : public Subscriber {
 
       auto sub = catch_publisher.Subscribe(MakeSubscriber(me_.lock()));
       sub.Request(requested_);
-      if (auto subscription = subscription_.lock()) {
-        subscription->has_failed_ = true;
-        subscription->catch_subscription_ = AnySubscription(std::move(sub));
+      if (subscription_) {
+        subscription_->has_failed_ = true;
+        subscription_->catch_subscription_ = AnySubscription(std::move(sub));
       }
     }
   }
@@ -145,7 +146,7 @@ class CatchSubscriber : public Subscriber {
   // to subscribe to the catch Publisher since that would undo the cancellation.
   bool cancelled_ = false;
 
-  std::weak_ptr<CatchSubscription<CatchSubscriber>> subscription_;
+  WeakReference<CatchSubscription<CatchSubscriber>> subscription_;
   std::weak_ptr<CatchSubscriber> me_;
   InnerSubscriberType inner_subscriber_;
   Callback callback_;
@@ -171,17 +172,20 @@ auto Catch(Callback &&callback) {
       using CatchSubscriberT = detail::CatchSubscriber<
           typename std::decay<decltype(subscriber)>::type,
           typename std::decay<Callback>::type>;
+      using CatchSubscriptionT = detail::CatchSubscription<CatchSubscriberT>;
 
       auto catch_subscriber = std::make_shared<CatchSubscriberT>(
           std::forward<decltype(subscriber)>(subscriber),
           callback);
 
-      auto subscription = std::make_shared<
-          detail::CatchSubscription<CatchSubscriberT>>(catch_subscriber);
+      WeakReference<CatchSubscriptionT> sub_ref;
+      auto subscription = WithWeakReference(
+          CatchSubscriptionT(catch_subscriber),
+          &sub_ref);
 
-      catch_subscriber->Subscribe(subscription, catch_subscriber, source);
+      catch_subscriber->Subscribe(std::move(sub_ref), catch_subscriber, source);
 
-      return MakeSubscription(subscription);
+      return subscription;
     });
   };
 }
