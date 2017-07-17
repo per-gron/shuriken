@@ -16,11 +16,11 @@
 
 #include <type_traits>
 
-#include <rs/backreference.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
+#include <rs/weak_reference.h>
 
 namespace shk {
 namespace detail {
@@ -34,7 +34,7 @@ class FilterSubscriber : public Subscriber {
       : inner_subscriber_(std::move(inner_subscriber)),
         predicate_(predicate) {}
 
-  void TakeSubscription(Backreference<PureVirtualSubscription> &&subscription) {
+  void TakeSubscription(WeakReference<PureVirtualSubscription> &&subscription) {
     subscription_ = std::move(subscription);
   }
 
@@ -90,7 +90,7 @@ class FilterSubscriber : public Subscriber {
  private:
   bool failed_ = false;
   InnerSubscriberType inner_subscriber_;
-  Backreference<PureVirtualSubscription> subscription_;
+  WeakReference<PureVirtualSubscription> subscription_;
   Predicate predicate_;
 };
 
@@ -110,15 +110,15 @@ auto Filter(Predicate &&predicate) {
           typename std::decay<decltype(subscriber)>::type,
           typename std::decay<Predicate>::type>;
 
-      Backreference<FilterSubscriberT> filter_ref;
-      auto filter_subscriber = WithBackreference(
+      WeakReference<FilterSubscriberT> filter_ref;
+      auto filter_subscriber = WithWeakReference(
           FilterSubscriberT(
               std::forward<decltype(subscriber)>(subscriber),
               predicate),
           &filter_ref);
 
-      Backreference<PureVirtualSubscription> sub_ref;
-      auto sub = WithBackreference(
+      WeakReference<PureVirtualSubscription> sub_ref;
+      auto sub = WithWeakReference(
           MakeVirtualSubscription(
               source.Subscribe(std::move(filter_subscriber))),
           &sub_ref);

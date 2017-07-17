@@ -16,11 +16,11 @@
 
 #include <type_traits>
 
-#include <rs/backreference.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
+#include <rs/weak_reference.h>
 
 namespace shk {
 namespace detail {
@@ -60,8 +60,8 @@ class ConcatMap {
     void SubscribeForPublishers(
         const Mapper &mapper,
         const SourcePublisher &source,
-        Backreference<ConcatMapSubscription> &&self_ref_a,
-        Backreference<ConcatMapSubscription> &&self_ref_b) {
+        WeakReference<ConcatMapSubscription> &&self_ref_a,
+        WeakReference<ConcatMapSubscription> &&self_ref_b) {
       self_ref_ = std::move(self_ref_a);
       publishers_subscription_ = AnySubscription(source.Subscribe(
           ConcatMapPublishersSubscriber(
@@ -97,7 +97,7 @@ class ConcatMap {
       inner_subscriber_->OnError(std::move(error));
     }
 
-    void OnValuesComplete(Backreference<ConcatMapSubscription> &&self_ref) {
+    void OnValuesComplete(WeakReference<ConcatMapSubscription> &&self_ref) {
       if (failed_) {
         return;
       }
@@ -156,8 +156,8 @@ class ConcatMap {
     // under its feet.
     AnySubscription last_subscription_;
     // During times when there is no current Publisher that is being flattened,
-    // the ConcatMapSubscription holds a Backreference to itself.
-    Backreference<ConcatMapSubscription> self_ref_;
+    // the ConcatMapSubscription holds a WeakReference to itself.
+    WeakReference<ConcatMapSubscription> self_ref_;
     // Set once and then never set again.
     AnySubscription publishers_subscription_;
     // Set once (at construction) and then never set again.
@@ -171,7 +171,7 @@ class ConcatMap {
    public:
     ConcatMapPublishersSubscriber(
         const Mapper &mapper,
-        Backreference<ConcatMapSubscription> &&subscription)
+        WeakReference<ConcatMapSubscription> &&subscription)
         : mapper_(mapper),
           subscription_(std::move(subscription)) {}
 
@@ -223,13 +223,13 @@ class ConcatMap {
 
    private:
     Mapper mapper_;
-    Backreference<ConcatMapSubscription> subscription_;
+    WeakReference<ConcatMapSubscription> subscription_;
   };
 
   class ConcatMapValuesSubscriber : public Subscriber {
    public:
     ConcatMapValuesSubscriber(
-        Backreference<ConcatMapSubscription> &&subscription)
+        WeakReference<ConcatMapSubscription> &&subscription)
         : subscription_(std::move(subscription)) {}
 
     template <typename T>
@@ -266,7 +266,7 @@ class ConcatMap {
    private:
     friend class ConcatMapSubscription;
 
-    Backreference<ConcatMapSubscription> subscription_;
+    WeakReference<ConcatMapSubscription> subscription_;
   };
 };
 
@@ -295,9 +295,9 @@ auto ConcatMap(MapperT &&mapper) {
       using ConcatMapSubscriptionT =
           typename ConcatMapT::ConcatMapSubscription;
 
-      Backreference<ConcatMapSubscriptionT> sub_ref_a;
-      Backreference<ConcatMapSubscriptionT> sub_ref_b;
-      auto sub = WithBackreference(
+      WeakReference<ConcatMapSubscriptionT> sub_ref_a;
+      WeakReference<ConcatMapSubscriptionT> sub_ref_b;
+      auto sub = WithWeakReference(
           ConcatMapSubscriptionT(
               std::forward<decltype(subscriber)>(subscriber)),
           &sub_ref_b,

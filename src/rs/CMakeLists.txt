@@ -1,7 +1,6 @@
 add_library(rs
   include/rs/all.h
   include/rs/average.h
-  include/rs/backreference.h
   include/rs/catch.h
   include/rs/concat.h
   include/rs/concat_map.h
@@ -41,6 +40,7 @@ add_library(rs
   include/rs/take.h
   include/rs/take_while.h
   include/rs/throw.h
+  include/rs/weak_reference.h
   include/rs/zip.h
   src/subscriber.cpp
   src/subscription.cpp)
@@ -53,7 +53,6 @@ add_executable(rs-test
   test/all_test.cpp
   test/average_test.cpp
   test/backpressure_violator.h
-  test/backreference_test.cpp
   test/catch_test.cpp
   test/concat_map_test.cpp
   test/concat_test.cpp
@@ -95,6 +94,7 @@ add_executable(rs-test
   test/sum_test.cpp
   test/test_util.h
   test/throw_test.cpp
+  test/weak_reference_test.cpp
   test/zip_test.cpp)
 add_sanitizers(rs-test)
 set_property(TARGET rs-test PROPERTY CXX_STANDARD 14)

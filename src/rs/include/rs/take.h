@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include <rs/backreference.h>
 #include <rs/element_count.h>
+#include <rs/weak_reference.h>
 
 namespace shk {
 namespace detail {
@@ -39,21 +39,21 @@ class TakeSubscriber : public Subscriber {
       inner_subscriber.OnComplete();
 
       using SubscriptionT = decltype(MakeVirtualSubscription(
-          source->Subscribe(std::declval<Backreferee<TakeSubscriber>>())));
+          source->Subscribe(std::declval<WeakReferee<TakeSubscriber>>())));
 
-      return Backreferee<SubscriptionT>();
+      return WeakReferee<SubscriptionT>();
     } else {
       TakeSubscriber self(
           std::forward<InnerSubscriberT>(inner_subscriber),
           count);
 
-      Backreference<TakeSubscriber> take_ref;
-      auto backreferred_self = WithBackreference(std::move(self), &take_ref);
+      WeakReference<TakeSubscriber> take_ref;
+      auto backreferred_self = WithWeakReference(std::move(self), &take_ref);
 
       auto sub = MakeVirtualSubscription(
           source->Subscribe(std::move(backreferred_self)));
 
-      return WithBackreference(
+      return WithWeakReference(
           std::move(sub),
           &take_ref->subscription_);
     }
@@ -98,7 +98,7 @@ class TakeSubscriber : public Subscriber {
  private:
   bool cancelled_ = false;
   InnerSubscriberType inner_subscriber_;
-  Backreference<PureVirtualSubscription> subscription_;
+  WeakReference<PureVirtualSubscription> subscription_;
   CountType count_;
 };
 

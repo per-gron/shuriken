@@ -16,11 +16,11 @@
 
 #include <type_traits>
 
-#include <rs/backreference.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
+#include <rs/weak_reference.h>
 
 namespace shk {
 namespace detail {
@@ -32,7 +32,7 @@ class MapSubscriber : public Subscriber {
       : inner_subscriber_(std::move(inner_subscriber)),
         mapper_(mapper) {}
 
-  void TakeSubscription(Backreference<PureVirtualSubscription> &&subscription) {
+  void TakeSubscription(WeakReference<PureVirtualSubscription> &&subscription) {
     subscription_ = std::move(subscription);
   }
 
@@ -76,7 +76,7 @@ class MapSubscriber : public Subscriber {
  private:
   bool failed_ = false;
   InnerSubscriberType inner_subscriber_;
-  Backreference<PureVirtualSubscription> subscription_;
+  WeakReference<PureVirtualSubscription> subscription_;
   Mapper mapper_;
 };
 
@@ -96,15 +96,15 @@ auto Map(Mapper &&mapper) {
           typename std::decay<decltype(subscriber)>::type,
           typename std::decay<Mapper>::type>;
 
-      Backreference<MapSubscriberT> map_ref;
-      auto map_subscriber = WithBackreference(
+      WeakReference<MapSubscriberT> map_ref;
+      auto map_subscriber = WithWeakReference(
           MapSubscriberT(
               std::forward<decltype(subscriber)>(subscriber),
               mapper),
           &map_ref);
 
-      Backreference<PureVirtualSubscription> sub_ref;
-      auto sub = WithBackreference(
+      WeakReference<PureVirtualSubscription> sub_ref;
+      auto sub = WithWeakReference(
           MakeVirtualSubscription(source.Subscribe(std::move(map_subscriber))),
           &sub_ref);
 

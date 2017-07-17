@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include <rs/backreference.h>
+#include <rs/weak_reference.h>
 
 namespace shk {
 namespace {
@@ -48,28 +48,28 @@ class Subtype : public Supertype {
 
 }  // anonymous namespace
 
-TEST_CASE("Backreference") {
-  SECTION("Backreferee") {
+TEST_CASE("WeakReference") {
+  SECTION("WeakReferee") {
     SECTION("default constructor") {
-      Backreferee<std::string> str;
+      WeakReferee<std::string> str;
       CHECK(str == "");
     }
 
     SECTION("destructor") {
-      SECTION("with backreference") {
-        Backreference<std::string> ref;
+      SECTION("with weak reference") {
+        WeakReference<std::string> ref;
         {
-          Backreferee<std::string> str = WithBackreference(
+          WeakReferee<std::string> str = WithWeakReference(
               std::string("hey"), &ref);
         }
 
         CHECK(!ref);
       }
 
-      SECTION("without backreference") {
-        Backreference<std::string> ref;
+      SECTION("without weak reference") {
+        WeakReference<std::string> ref;
         {
-          Backreferee<std::string> str = WithBackreference(
+          WeakReferee<std::string> str = WithWeakReference(
               std::string("hey"), &ref);
           ref.Reset();
         }
@@ -79,8 +79,8 @@ TEST_CASE("Backreference") {
     }
 
     SECTION("base operator=") {
-      Backreference<std::string> ref;
-      Backreferee<std::string> str = WithBackreference(
+      WeakReference<std::string> ref;
+      WeakReferee<std::string> str = WithWeakReference(
           std::string("hey"), &ref);
 
       str = "new";
@@ -90,11 +90,11 @@ TEST_CASE("Backreference") {
 
     SECTION("move constructor") {
       SECTION("parameter has backref") {
-        Backreference<std::string> ref;
-        Backreferee<std::string> str = WithBackreference(
+        WeakReference<std::string> ref;
+        WeakReferee<std::string> str = WithWeakReference(
             std::string("hey"), &ref);
 
-        Backreferee<std::string> moved(std::move(str));
+        WeakReferee<std::string> moved(std::move(str));
 
         CHECK(str.empty());
         CHECK(*ref == "hey");
@@ -102,12 +102,12 @@ TEST_CASE("Backreference") {
       }
 
       SECTION("parameter has no backref") {
-        Backreference<std::string> ref;
-        Backreferee<std::string> str = WithBackreference(
+        WeakReference<std::string> ref;
+        WeakReferee<std::string> str = WithWeakReference(
             std::string("hey"), &ref);
         ref.Reset();
 
-        Backreferee<std::string> moved(std::move(str));
+        WeakReferee<std::string> moved(std::move(str));
 
         CHECK(str.empty());
         CHECK(!ref);
@@ -115,12 +115,12 @@ TEST_CASE("Backreference") {
       }
 
       SECTION("inner type with generic constructor") {
-        Backreference<WithGenericConstructor<int>> ref_a;
-        Backreferee<WithGenericConstructor<int>> str_a = WithBackreference(
+        WeakReference<WithGenericConstructor<int>> ref_a;
+        WeakReferee<WithGenericConstructor<int>> str_a = WithWeakReference(
             WithGenericConstructor<int>(5), &ref_a);
 
-        Backreference<WithGenericConstructor<int>> ref_b;
-        Backreferee<WithGenericConstructor<int>> str_b = WithBackreference(
+        WeakReference<WithGenericConstructor<int>> ref_b;
+        WeakReferee<WithGenericConstructor<int>> str_b = WithWeakReference(
             WithGenericConstructor<int>(6), &ref_b);
 
         str_a = std::move(str_b);
@@ -129,16 +129,16 @@ TEST_CASE("Backreference") {
 
     SECTION("move assignment operator") {
       SECTION("lhs with backref, rhs with backref") {
-        Backreference<std::string> ref_a;
-        Backreferee<std::string> str_a = WithBackreference(
+        WeakReference<std::string> ref_a;
+        WeakReferee<std::string> str_a = WithWeakReference(
             std::string("str_a"), &ref_a);
 
-        Backreference<std::string> ref_b;
-        Backreferee<std::string> str_b = WithBackreference(
+        WeakReference<std::string> ref_b;
+        WeakReferee<std::string> str_b = WithWeakReference(
             std::string("str_b"), &ref_b);
 
-        Backreference<std::string> ref_c;
-        Backreferee<std::string> str_c = WithBackreference(
+        WeakReference<std::string> ref_c;
+        WeakReferee<std::string> str_c = WithWeakReference(
             std::string("str_c"), &ref_c);
 
         str_a = std::move(str_b);
@@ -152,13 +152,13 @@ TEST_CASE("Backreference") {
       }
 
       SECTION("lhs without backref, rhs with backref") {
-        Backreference<std::string> ref_a;
-        Backreferee<std::string> str_a = WithBackreference(
+        WeakReference<std::string> ref_a;
+        WeakReferee<std::string> str_a = WithWeakReference(
             std::string("str_a"), &ref_a);
         ref_a.Reset();
 
-        Backreference<std::string> ref_b;
-        Backreferee<std::string> str_b = WithBackreference(
+        WeakReference<std::string> ref_b;
+        WeakReferee<std::string> str_b = WithWeakReference(
             std::string("str_b"), &ref_b);
 
         str_a = std::move(str_b);
@@ -170,12 +170,12 @@ TEST_CASE("Backreference") {
       }
 
       SECTION("lhs with backref, rhs without backref") {
-        Backreference<std::string> ref_a;
-        Backreferee<std::string> str_a = WithBackreference(
+        WeakReference<std::string> ref_a;
+        WeakReferee<std::string> str_a = WithWeakReference(
             std::string("str_a"), &ref_a);
 
-        Backreference<std::string> ref_b;
-        Backreferee<std::string> str_b = WithBackreference(
+        WeakReference<std::string> ref_b;
+        WeakReferee<std::string> str_b = WithWeakReference(
             std::string("str_b"), &ref_b);
         ref_b.Reset();
 
@@ -189,25 +189,25 @@ TEST_CASE("Backreference") {
     }
   }
 
-  SECTION("Backreference") {
+  SECTION("WeakReference") {
     SECTION("default constructor") {
-      Backreference<std::string> backref;
+      WeakReference<std::string> backref;
       CHECK(!backref);
     }
 
     SECTION("destructor") {
-      SECTION("with backreferee") {
-        Backreference<std::string> ref_a;
-        Backreferee<std::string> str_a = WithBackreference(
+      SECTION("with weak referee") {
+        WeakReference<std::string> ref_a;
+        WeakReferee<std::string> str_a = WithWeakReference(
             std::string("str_a"), &ref_a);
 
-        Backreference<std::string> ref_b;
-        Backreferee<std::string> str_b = WithBackreference(
+        WeakReference<std::string> ref_b;
+        WeakReferee<std::string> str_b = WithWeakReference(
             std::string("str_b"), &ref_b);
 
-        std::make_unique<Backreference<std::string>>(std::move(ref_a));
+        std::make_unique<WeakReference<std::string>>(std::move(ref_a));
 
-        // Now, str_a should have no backreference pointer. If it does, it will
+        // Now, str_a should have no weak reference pointer. If it does, it will
         // point to freed memory, which asan will catch here:
         str_b = std::move(str_a);
 
@@ -215,37 +215,37 @@ TEST_CASE("Backreference") {
         CHECK(!ref_b);
       }
 
-      SECTION("without backreference") {
-        Backreference<std::string> ref;
+      SECTION("without weak reference") {
+        WeakReference<std::string> ref;
       }
     }
 
     SECTION("move constructor") {
       SECTION("empty parameter") {
-        Backreference<std::string> a;
-        Backreference<std::string> b(std::move(a));
+        WeakReference<std::string> a;
+        WeakReference<std::string> b(std::move(a));
         CHECK(!a);
         CHECK(!b);
       }
 
       SECTION("nonempty parameter") {
-        Backreference<std::string> a;
-        Backreferee<std::string> str = WithBackreference(
+        WeakReference<std::string> a;
+        WeakReferee<std::string> str = WithWeakReference(
             std::string("hey"), &a);
-        Backreference<std::string> b(std::move(a));
+        WeakReference<std::string> b(std::move(a));
 
         CHECK(!a);
         CHECK(*b == "hey");
 
-        Backreferee<std::string> moved_str(std::move(str));
+        WeakReferee<std::string> moved_str(std::move(str));
         CHECK(*b == "hey");
       }
     }
 
     SECTION("move assignment operator") {
       SECTION("empty lhs and rhs") {
-        Backreference<std::string> a;
-        Backreference<std::string> b;
+        WeakReference<std::string> a;
+        WeakReference<std::string> b;
 
         b = std::move(a);
 
@@ -254,31 +254,31 @@ TEST_CASE("Backreference") {
       }
 
       SECTION("empty lhs, nonempty rhs") {
-        Backreference<std::string> a;
-        Backreferee<std::string> str = WithBackreference(
+        WeakReference<std::string> a;
+        WeakReferee<std::string> str = WithWeakReference(
             std::string("hey"), &a);
-        Backreference<std::string> b;
+        WeakReference<std::string> b;
 
         b = std::move(a);
 
         CHECK(!a);
         CHECK(*b == "hey");
 
-        Backreferee<std::string> moved_str(std::move(str));
+        WeakReferee<std::string> moved_str(std::move(str));
         CHECK(*b == "hey");
       }
 
       SECTION("nonempty lhs, nonempty rhs") {
-        Backreference<std::string> a;
-        Backreferee<std::string> str_a = WithBackreference(
+        WeakReference<std::string> a;
+        WeakReferee<std::string> str_a = WithWeakReference(
             std::string("str_a"), &a);
 
-        Backreference<std::string> b;
-        Backreferee<std::string> str_b = WithBackreference(
+        WeakReference<std::string> b;
+        WeakReferee<std::string> str_b = WithWeakReference(
             std::string("str_b"), &b);
 
-        Backreference<std::string> c;
-        Backreferee<std::string> str_c = WithBackreference(
+        WeakReference<std::string> c;
+        WeakReferee<std::string> str_c = WithWeakReference(
             std::string("str_c"), &c);
 
         b = std::move(a);
@@ -293,12 +293,12 @@ TEST_CASE("Backreference") {
 
     SECTION("Reset") {
       SECTION("nonempty") {
-        Backreference<std::string> a;
-        Backreferee<std::string> str_a = WithBackreference(
+        WeakReference<std::string> a;
+        WeakReferee<std::string> str_a = WithWeakReference(
             std::string("str_a"), &a);
 
-        Backreference<std::string> b;
-        Backreferee<std::string> str_b = WithBackreference(
+        WeakReference<std::string> b;
+        WeakReferee<std::string> str_b = WithWeakReference(
             std::string("str_b"), &b);
 
         a.Reset();
@@ -310,7 +310,7 @@ TEST_CASE("Backreference") {
       }
 
       SECTION("empty") {
-        Backreference<std::string> a;
+        WeakReference<std::string> a;
         a.Reset();
       }
     }
@@ -320,8 +320,8 @@ TEST_CASE("Backreference") {
     }
 
     SECTION("operator*") {
-      Backreference<std::string> a;
-      Backreferee<std::string> str_a = WithBackreference(
+      WeakReference<std::string> a;
+      WeakReferee<std::string> str_a = WithWeakReference(
           std::string("str_a"), &a);
 
       *a = "new";  // non-const
@@ -330,8 +330,8 @@ TEST_CASE("Backreference") {
     }
 
     SECTION("operator->") {
-      Backreference<std::string> a;
-      Backreferee<std::string> str_a = WithBackreference(
+      WeakReference<std::string> a;
+      WeakReferee<std::string> str_a = WithWeakReference(
           std::string("str_a"), &a);
 
       a->append("_hey");  // non-const
@@ -340,21 +340,21 @@ TEST_CASE("Backreference") {
     }
   }
 
-  SECTION("variadric WithBackreference function") {
-    SECTION("no backreferences") {
+  SECTION("variadric WithWeakReference function") {
+    SECTION("no weak references") {
       std::string value = "hello there!";
-      auto value_backreferee = WithBackreference(value);
-      CHECK(value == value_backreferee);
+      auto value_weak_referee = WithWeakReference(value);
+      CHECK(value == value_weak_referee);
 
       static_assert(
-          std::is_same<std::string, decltype(value_backreferee)>::value,
-          "WithBackreference with no backreference should not wrap");
+          std::is_same<std::string, decltype(value_weak_referee)>::value,
+          "WithWeakReference with no weak reference should not wrap");
     }
 
-    SECTION("multiple backreferences") {
-      Backreference<std::string> ref_a;
-      Backreference<std::string> ref_b;
-      auto str = WithBackreference(std::string("str"), &ref_a, &ref_b);
+    SECTION("multiple weak references") {
+      WeakReference<std::string> ref_a;
+      WeakReference<std::string> ref_b;
+      auto str = WithWeakReference(std::string("str"), &ref_a, &ref_b);
 
       CHECK(str == "str");
       CHECK(*ref_a == "str");
@@ -368,23 +368,23 @@ TEST_CASE("Backreference") {
     }
   }
 
-  SECTION("Backreference to supertype of Backreferee") {
-    Backreference<Supertype> a_ref;
-    Backreferee<Subtype> a = WithBackreference(
+  SECTION("WeakReference to supertype of WeakReferee") {
+    WeakReference<Supertype> a_ref;
+    WeakReferee<Subtype> a = WithWeakReference(
         Subtype(), &a_ref);
 
     CHECK(a.GetValue() == 1337);
     CHECK(a_ref->GetValue() == 1337);
   }
 
-  SECTION("moving Backreferee and Backreference together") {
+  SECTION("moving WeakReferee and WeakReference together") {
     SECTION("reference first") {
       struct Together {
         Together(const std::string &str)
-            : str(WithBackreference(str, &ref)) {}
+            : str(WithWeakReference(str, &ref)) {}
 
-        Backreference<std::string> ref;
-        Backreferee<std::string> str;
+        WeakReference<std::string> ref;
+        WeakReferee<std::string> str;
       };
 
       Together a("a");
@@ -403,16 +403,16 @@ TEST_CASE("Backreference") {
     }
 
     SECTION("referee first") {
-      static Backreference<std::string> tmp;
+      static WeakReference<std::string> tmp;
 
       struct Together {
         Together(const std::string &s)
-            : str(WithBackreference(std::string("tmp"), &tmp)) {
-          str = WithBackreference(s, &ref);
+            : str(WithWeakReference(std::string("tmp"), &tmp)) {
+          str = WithWeakReference(s, &ref);
         }
 
-        Backreferee<std::string> str;
-        Backreference<std::string> ref;
+        WeakReferee<std::string> str;
+        WeakReference<std::string> ref;
       };
 
       Together a("a");

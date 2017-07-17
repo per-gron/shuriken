@@ -16,13 +16,13 @@
 
 #include <type_traits>
 
-#include <rs/backreference.h>
 #include <rs/element_count.h>
 #include <rs/map.h>
 #include <rs/pipe.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
+#include <rs/weak_reference.h>
 
 namespace shk {
 namespace detail {
@@ -79,7 +79,7 @@ class Reduce {
    private:
     friend class ReduceSubscriber;
 
-    void TakeSubscriber(Backreference<ReduceSubscriber> &&subscriber) {
+    void TakeSubscriber(WeakReference<ReduceSubscriber> &&subscriber) {
       subscriber_ = std::move(subscriber);
     }
 
@@ -89,7 +89,7 @@ class Reduce {
     // a value when requested.
     std::unique_ptr<Emitter> emit_accumulated_value_;
 
-    Backreference<ReduceSubscriber> subscriber_;
+    WeakReference<ReduceSubscriber> subscriber_;
     AnySubscription inner_subscription_;
   };
 
@@ -104,8 +104,8 @@ class Reduce {
           reducer_(reducer) {}
 
     static void TakeSubscription(
-        Backreference<ReduceSubscriber> &&subscriber,
-        Backreference<ReduceSubscription> &&subscription) {
+        WeakReference<ReduceSubscriber> &&subscriber,
+        WeakReference<ReduceSubscription> &&subscription) {
       subscriber->subscription_ = std::move(subscription);
 
       if (subscriber->complete_) {
@@ -178,7 +178,7 @@ class Reduce {
     Accumulator accumulator_;
     InnerSubscriber subscriber_;
     Reducer reducer_;
-    Backreference<ReduceSubscription> subscription_;
+    WeakReference<ReduceSubscription> subscription_;
   };
 };
 
@@ -206,16 +206,16 @@ auto ReduceGet(MakeInitial &&make_initial, ReducerT &&reducer) {
       using ReduceSubscriptionT = typename detail::Reduce<
           Accumulator, InnerSubscriber, Reducer>::ReduceSubscription;
 
-      Backreference<ReduceSubscriberT> reduce_ref;
-      auto reduce_subscriber = WithBackreference(
+      WeakReference<ReduceSubscriberT> reduce_ref;
+      auto reduce_subscriber = WithWeakReference(
           ReduceSubscriberT(
               make_initial(),
               std::forward<decltype(subscriber)>(subscriber),
               reducer),
           &reduce_ref);
 
-      Backreference<ReduceSubscriptionT> sub_ref;
-      auto sub = WithBackreference(
+      WeakReference<ReduceSubscriptionT> sub_ref;
+      auto sub = WithWeakReference(
           ReduceSubscriptionT(
               AnySubscription(source.Subscribe(std::move(reduce_subscriber)))),
           &sub_ref);

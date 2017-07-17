@@ -19,54 +19,54 @@
 namespace shk {
 
 template <typename T>
-class Backreference;
+class WeakReference;
 
 template <typename T>
-class Backreferee;
+class WeakReferee;
 
 namespace detail {
 
 template <typename T, typename U>
-Backreferee<typename std::decay<T>::type> WithSingleBackreference(
-    T &&t, Backreference<U> *backref) {
-  Backreferee<typename std::decay<T>::type> backreferee(std::forward<T>(t));
-  *backref = Backreference<U>(&backreferee);
-  return backreferee;
+WeakReferee<typename std::decay<T>::type> WithSingleWeakReference(
+    T &&t, WeakReference<U> *backref) {
+  WeakReferee<typename std::decay<T>::type> weak_referee(std::forward<T>(t));
+  *backref = WeakReference<U>(&weak_referee);
+  return weak_referee;
 }
 
 }  // namespace detail
 
 template <typename T>
-class Backreferee : public T {
+class WeakReferee : public T {
  public:
-  Backreferee()
+  WeakReferee()
       : T(),
         backref_(nullptr) {}
 
-  ~Backreferee() {
+  ~WeakReferee() {
     if (backref_) {
       backref_->val_ = nullptr;
     }
   }
   using T::operator=;
 
-  Backreferee(const Backreferee &) = delete;
-  Backreferee &operator=(const Backreferee &) = delete;
+  WeakReferee(const WeakReferee &) = delete;
+  WeakReferee &operator=(const WeakReferee &) = delete;
 
   /**
-   * For safety, disallow unwrapping Backreferees. This deleted constructor
+   * For safety, disallow unwrapping WeakReferees. This deleted constructor
    * disallows things such as
    *
-   *     Backreferee<Backreferee<std::string>> blah = ...;
-   *     Backreferee<std::string> bleh = std::move(blah);
+   *     WeakReferee<WeakReferee<std::string>> blah = ...;
+   *     WeakReferee<std::string> bleh = std::move(blah);
    */
   template <
       typename U,
       class = typename std::enable_if<
           std::is_same<T, U>::value>::type>
-  Backreferee(Backreferee<Backreferee<U>> &&other) = delete;
+  WeakReferee(WeakReferee<WeakReferee<U>> &&other) = delete;
 
-  Backreferee(Backreferee &&other)
+  WeakReferee(WeakReferee &&other)
       : T(std::move(static_cast<T &>(other))),
         backref_(other.backref_) {
     other.backref_ = nullptr;
@@ -75,7 +75,7 @@ class Backreferee : public T {
     }
   }
 
-  Backreferee &operator=(Backreferee &&other) {
+  WeakReferee &operator=(WeakReferee &&other) {
     if (backref_) {
       backref_->val_ = nullptr;
     }
@@ -90,36 +90,36 @@ class Backreferee : public T {
   }
 
  private:
-  template <typename> friend class Backreference;
+  template <typename> friend class WeakReference;
   template <typename U, typename V>
-  friend Backreferee<typename std::decay<U>::type>
-  detail::WithSingleBackreference(U &&, Backreference<V> *);
+  friend WeakReferee<typename std::decay<U>::type>
+  detail::WithSingleWeakReference(U &&, WeakReference<V> *);
 
   template <typename U>
-  explicit Backreferee(U &&value) : T(std::forward<U>(value)) {}
+  explicit WeakReferee(U &&value) : T(std::forward<U>(value)) {}
 
-  Backreference<T> *backref_ = nullptr;
+  WeakReference<T> *backref_ = nullptr;
 };
 
 // This class is final because I'm not sure the reinterpret_cast below works
 // otherwise.
 template <typename T>
-class Backreference final {
+class WeakReference final {
  public:
-  Backreference()
+  WeakReference()
       : val_(nullptr),
         set_backref_(nullptr) {}
 
-  ~Backreference() {
+  ~WeakReference() {
     if (val_) {
       set_backref_(val_, nullptr);
     }
   }
 
-  Backreference(const Backreference &) = delete;
-  Backreference &operator=(const Backreference &) = delete;
+  WeakReference(const WeakReference &) = delete;
+  WeakReference &operator=(const WeakReference &) = delete;
 
-  Backreference(Backreference &&other)
+  WeakReference(WeakReference &&other)
       : val_(other.val_),
         set_backref_(other.set_backref_) {
     other.val_ = nullptr;
@@ -129,7 +129,7 @@ class Backreference final {
     }
   }
 
-  Backreference &operator=(Backreference &&other) {
+  WeakReference &operator=(WeakReference &&other) {
     if (val_) {
       set_backref_(val_, nullptr);
     }
@@ -172,36 +172,36 @@ class Backreference final {
   }
 
  private:
-  template <typename> friend class Backreferee;
+  template <typename> friend class WeakReferee;
   template <typename U, typename V>
-  friend Backreferee<typename std::decay<U>::type>
-  detail::WithSingleBackreference(U &&, Backreference<V> *);
+  friend WeakReferee<typename std::decay<U>::type>
+  detail::WithSingleWeakReference(U &&, WeakReference<V> *);
 
   template <typename SubType, typename SuperType>
-  static void SetBackref(SuperType *val, Backreference *ptr) {
-    static_cast<Backreferee<SubType> *>(val)->backref_ =
-        reinterpret_cast<Backreference<SubType> *>(ptr);
+  static void SetBackref(SuperType *val, WeakReference *ptr) {
+    static_cast<WeakReferee<SubType> *>(val)->backref_ =
+        reinterpret_cast<WeakReference<SubType> *>(ptr);
   }
 
   template <typename U>
-  explicit Backreference(Backreferee<U> *val)
+  explicit WeakReference(WeakReferee<U> *val)
       : val_(val),
         set_backref_(&SetBackref<U, T>) {}
 
   T *val_;
-  void (*set_backref_)(T *val, Backreference *ptr);
+  void (*set_backref_)(T *val, WeakReference *ptr);
 };
 
 template <typename T>
-auto WithBackreference(T &&t) {
+auto WithWeakReference(T &&t) {
   return std::forward<T>(t);
 }
 
 template <typename T, typename U, typename ...V>
-auto WithBackreference(
-    T &&t, Backreference<U> *backref, Backreference<V> *...backrefs) {
-  return detail::WithSingleBackreference(
-      WithBackreference(std::forward<T>(t), backrefs...),
+auto WithWeakReference(
+    T &&t, WeakReference<U> *backref, WeakReference<V> *...backrefs) {
+  return detail::WithSingleWeakReference(
+      WithWeakReference(std::forward<T>(t), backrefs...),
       backref);
 }
 
