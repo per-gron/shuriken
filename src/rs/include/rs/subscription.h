@@ -58,10 +58,14 @@ class EmptySubscription : public Subscription {
 template <typename RequestCb, typename CancelCb>
 class CallbackSubscription : public Subscription {
  public:
+  CallbackSubscription() = default;
+
   template <typename RequestCbT, typename CancelCbT>
   CallbackSubscription(RequestCbT &&request, CancelCbT &&cancel)
-      : request_(std::forward<RequestCbT>(request)),
-        cancel_(std::forward<CancelCbT>(cancel)) {}
+      : request_(std::make_unique<RequestCb>(
+            std::forward<RequestCbT>(request))),
+        cancel_(std::make_unique<CancelCb>(
+            std::forward<CancelCbT>(cancel))) {}
 
   CallbackSubscription(const CallbackSubscription &) = delete;
   CallbackSubscription &operator=(const CallbackSubscription &) = delete;
@@ -70,16 +74,24 @@ class CallbackSubscription : public Subscription {
   CallbackSubscription &operator=(CallbackSubscription &&) = default;
 
   void Request(ElementCount count) {
-    request_(count);
+    if (request_) {
+      (*request_)(count);
+    }
   }
 
   void Cancel() {
-    cancel_();
+    if (cancel_) {
+      (*cancel_)();
+    }
   }
 
  private:
-  RequestCb request_;
-  CancelCb cancel_;
+  // TODO(peck): It would be nice to make this an optional instead, to avoid an
+  // unnecessary heap allocation.
+  std::unique_ptr<RequestCb> request_;
+  // TODO(peck): It would be nice to make this an optional instead, to avoid an
+  // unnecessary heap allocation.
+  std::unique_ptr<CancelCb> cancel_;
 };
 
 template <typename SubscriptionType>

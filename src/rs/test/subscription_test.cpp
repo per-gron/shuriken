@@ -178,6 +178,14 @@ TEST_CASE("Subscription") {
       auto moved_sub = std::move(sub);
     }
 
+    SECTION("default constructor") {
+      auto sub = MakeSubscription(
+          [a = std::make_unique<int>(0)](ElementCount) {}, [] {});
+      decltype(sub) default_constructed_sub;
+      default_constructed_sub.Request(ElementCount(13));
+      default_constructed_sub.Cancel();
+    }
+
     SECTION("Request") {
       ElementCount requested;
       {
