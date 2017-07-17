@@ -38,11 +38,8 @@ class CatchSubscription : public Subscription {
       subscriber_->requested_ += count;
     }
 
-    if (has_failed_) {
-      catch_subscription_.Request(count);
-    } else {
-      inner_subscription_.Request(count);
-    }
+    catch_subscription_.Request(count);
+    inner_subscription_.Request(count);
   }
 
   void Cancel() {
@@ -62,7 +59,6 @@ class CatchSubscription : public Subscription {
   // stack frame, causing memory corruption.
   AnySubscription inner_subscription_;
   AnySubscription catch_subscription_;
-  bool has_failed_ = false;  // Set to true when catch_subscription_ is set.
   WeakReference<Subscriber> subscriber_;
 };
 
@@ -122,7 +118,6 @@ class CatchSubscriber : public Subscriber {
       auto sub = catch_publisher.Subscribe(MakeSubscriber(me_.lock()));
       sub.Request(requested_);
       if (subscription_) {
-        subscription_->has_failed_ = true;
         subscription_->catch_subscription_ = AnySubscription(std::move(sub));
       }
     }
