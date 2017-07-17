@@ -49,11 +49,9 @@ class MapSubscriber : public Subscriber {
       inner_subscriber_.OnNext(mapper_(std::forward<T>(t)));
     } catch (...) {
       if (subscription_) {
-        // TODO(peck): It's wrong that subscription_ can be null here; when that
-        // happens we still actually need to be able to cancel the subscription.
-        //
-        // I think one approach to fix this is to change so that destroying the
-        // Subscription implies cancellation.
+        // If !subscription_, then the underlying subscription has been
+        // destroyed and is by definition already cancelled so there is nothing
+        // to do.
         subscription_->Cancel();
       }
       failed_ = true;

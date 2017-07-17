@@ -178,9 +178,6 @@ class ConcatMap {
     template <typename T>
     void OnNext(T &&t) {
       if (!subscription_) {
-        // TODO(peck): It is wrong that we don't continue here if subscription_
-        // is unset. Potential fix: Make destroying the Subscription imply
-        // cancellation.
         return;
       }
 
@@ -191,10 +188,6 @@ class ConcatMap {
             "ConcatMap mapper function must return Publisher");
 
         if (/*TODO(peck):Test this*/subscription_) {
-          // TODO(peck): It is wrong that we don't continue here if
-          // subscription_ is unset. Potential fix: Make destroying the
-          // Subscription imply cancellation.
-
           // It is possible that calling the mapper cancels the subscription,
           // which might make subscription_ invalid. So it's good to double
           // check.
@@ -213,10 +206,6 @@ class ConcatMap {
 
     void OnComplete() {
       if (subscription_) {
-        // TODO(peck): It is wrong that we don't continue here if subscription_
-        // is unset. Potential fix: Make destroying the Subscription imply
-        // cancellation.
-
         subscription_->OnPublishersComplete();
       }
     }
@@ -235,30 +224,18 @@ class ConcatMap {
     template <typename T>
     void OnNext(T &&t) {
       if (subscription_) {
-        // TODO(peck): It is wrong that we don't continue here if subscription_
-        // is unset. Potential fix: Make destroying the Subscription imply
-        // cancellation.
-
         subscription_->OnValuesNext(std::forward<T>(t));
       }
     }
 
     void OnError(std::exception_ptr &&error) {
       if (subscription_) {
-        // TODO(peck): It is wrong that we don't continue here if subscription_
-        // is unset. Potential fix: Make destroying the Subscription imply
-        // cancellation.
-
         subscription_->OnError(std::move(error));
       }
     }
 
     void OnComplete() {
       if (subscription_) {
-        // TODO(peck): It is wrong that we don't continue here if subscription_
-        // is unset. Potential fix: Make destroying the Subscription imply
-        // cancellation.
-
         subscription_->OnValuesComplete(std::move(subscription_));
       }
     }

@@ -121,9 +121,9 @@ class ZipSubscription : public Subscription {
     }
 
    private:
-    // TODO(peck): But what if the ZipSubscription goes away before the
-    // ZipSubscriber? Then things just won't arrive anymore. This is wrong.
-    // Suggested solution: Make subscription destruction imply cancellation.
+    // This can be a weak pointer because if the ZipSubscription is destroyed,
+    // then the subscription is cancelled by definition and it's okay to not
+    // deliver signals.
     std::weak_ptr<ZipSubscription> zip_subscription_;
   };
 
