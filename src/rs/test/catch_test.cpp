@@ -192,12 +192,12 @@ TEST_CASE("Catch") {
 
     SECTION("do not invoke catch if fail after cancel") {
       std::function<void ()> fail;
-      auto fail_on_demand = MakePublisher([&fail](
-          auto &&subscriber) {
-        fail = [
-            subscriber =
-                std::forward<decltype(subscriber)>(subscriber)]() mutable {
-          subscriber.OnError(
+      auto fail_on_demand = MakePublisher([&fail](auto subscriber) {
+        auto subscriber_ptr = std::make_shared<decltype(subscriber)>(
+            std::move(subscriber));
+
+        fail = [subscriber_ptr]() mutable {
+          subscriber_ptr->OnError(
               std::make_exception_ptr(std::runtime_error("test")));
         };
         return MakeSubscription();

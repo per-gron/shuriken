@@ -72,20 +72,21 @@ class CatchSubscriber : public Subscriber {
         callback_(callback) {}
 
   template <typename Publisher>
-  void Subscribe(
+  static void Subscribe(
+      WeakReferee<WeakReferee<CatchSubscriber>> &&me,
+      WeakReference<CatchSubscriber> &&me_ref,
       WeakReference<CatchSubscription<CatchSubscriber>> &&subscription,
-      const std::shared_ptr<WeakReferee<CatchSubscriber>> &me,
       Publisher &&publisher) {
-    subscription_ = std::move(subscription);
-    me_ = me;
-    auto sub = publisher.Subscribe(MakeSubscriber(me));
-    if (!has_failed_) {
+    me.subscription_ = std::move(subscription);
+    auto sub = publisher.Subscribe(std::move(me));
+    if (me_ref && !me_ref->has_failed_) {
       // It is possible that Subscribe causes OnError to be called before it
       // even returns. In that case, inner_subscription_ will have been set to
       // the catch subscription before Subscribe returns, and then we must not
       // overwrite inner_subscription_
-      if (subscription_) {
-        subscription_->inner_subscription_ = AnySubscription(std::move(sub));
+      if (me_ref->subscription_) {
+        me_ref->subscription_->inner_subscription_ =
+            AnySubscription(std::move(sub));
       }
     }
   }
@@ -115,7 +116,7 @@ class CatchSubscriber : public Subscriber {
           IsPublisher<decltype(catch_publisher)>,
           "Catch callback must return a Publisher");
 
-      auto sub = catch_publisher.Subscribe(MakeSubscriber(me_.lock()));
+      auto sub = catch_publisher.Subscribe(std::move(inner_subscriber_));
       sub.Request(requested_);
       if (subscription_) {
         subscription_->catch_subscription_ = AnySubscription(std::move(sub));
@@ -140,7 +141,6 @@ class CatchSubscriber : public Subscriber {
   bool cancelled_ = false;
 
   WeakReference<CatchSubscription<CatchSubscriber>> subscription_;
-  std::weak_ptr<WeakReferee<CatchSubscriber>> me_;
   InnerSubscriberType inner_subscriber_;
   Callback callback_;
   // The number of elements that have been requested but not yet emitted.
@@ -168,19 +168,23 @@ auto Catch(Callback &&callback) {
       using CatchSubscriptionT = detail::CatchSubscription<CatchSubscriberT>;
 
       WeakReference<CatchSubscriberT> subscriber_ref;
-      auto catch_subscriber = std::make_shared<WeakReferee<CatchSubscriberT>>(
-          WithWeakReference(
-              CatchSubscriberT(
-                  std::forward<decltype(subscriber)>(subscriber),
-                  callback),
-              &subscriber_ref));
+      WeakReference<CatchSubscriberT> subscriber_ref_2;
+      auto catch_subscriber = WithWeakReference(
+          CatchSubscriberT(
+              std::forward<decltype(subscriber)>(subscriber),
+              callback),
+          &subscriber_ref,
+          &subscriber_ref_2);
 
       WeakReference<CatchSubscriptionT> sub_ref;
       auto subscription = WithWeakReference(
           CatchSubscriptionT(std::move(subscriber_ref)),
           &sub_ref);
 
-      catch_subscriber->Subscribe(std::move(sub_ref), catch_subscriber, source);
+      CatchSubscriberT::Subscribe(
+          std::move(catch_subscriber),
+          std::move(subscriber_ref_2),
+          std::move(sub_ref), source);
 
       return subscription;
     });
