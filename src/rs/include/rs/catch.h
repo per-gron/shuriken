@@ -61,9 +61,9 @@ class Catch {
    private:
     friend class CatchSubscriber;
 
-    // The subscription to the non-catch-clause Publisher. Set only once, to avoid
-    // the risk of destroying a Subscription object that is this of a current
-    // stack frame, causing memory corruption.
+    // The subscription to the non-catch-clause Publisher. Set only once, to
+    // avoid the risk of destroying a Subscription object that is this of a
+    // current stack frame, causing memory corruption.
     AnySubscription inner_subscription_;
     ErrorSubscription catch_subscription_;
     WeakReference<CatchSubscriber> subscriber_;
@@ -133,9 +133,10 @@ class Catch {
 
     // The number of elements that have been requested but not yet emitted.
     ElementCount requested_;
-    // If the subscription has been cancelled. This is important to keep track of
-    // because a cancelled subscription may fail, and in that case we don't want
-    // to subscribe to the catch Publisher since that would undo the cancellation.
+    // If the subscription has been cancelled. This is important to keep track
+    // of because a cancelled subscription may fail, and in that case we don't
+    // want to subscribe to the catch Publisher since that would undo the
+    // cancellation.
     bool cancelled_ = false;
 
     WeakReference<CatchSubscription> subscription_;
