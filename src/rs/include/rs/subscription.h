@@ -228,26 +228,7 @@ class SharedSubscription : public Subscription {
   void Cancel();
 
  private:
-  friend class WeakSubscription;
-
   std::shared_ptr<PureVirtualSubscription> eraser_;
-};
-
-/**
- * Type erasure wrapper for Subscription objects that owns the erased´
- * subscription via shared_ptr. Unless you need the shared_ptr aspect, it's
- * usually a good idea to use Subscription (which uses unique_ptr)
- */
-class WeakSubscription : public Subscription {
- public:
-  WeakSubscription();
-  explicit WeakSubscription(const SharedSubscription &s);
-
-  void Request(ElementCount count);
-  void Cancel();
-
- private:
-  std::weak_ptr<PureVirtualSubscription> eraser_;
 };
 
 detail::EmptySubscription MakeSubscription();

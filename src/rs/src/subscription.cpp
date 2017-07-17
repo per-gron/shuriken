@@ -53,23 +53,6 @@ void SharedSubscription::Cancel() {
   }
 }
 
-WeakSubscription::WeakSubscription() {}
-
-WeakSubscription::WeakSubscription(const SharedSubscription &s)
-		: eraser_(s.eraser_) {}
-
-void WeakSubscription::Request(ElementCount count) {
-  if (auto eraser = eraser_.lock()) {
-    eraser->Request(count);
-  }
-}
-
-void WeakSubscription::Cancel() {
-  if (auto eraser = eraser_.lock()) {
-    eraser->Cancel();
-  }
-}
-
 detail::EmptySubscription MakeSubscription() {
   return detail::EmptySubscription();
 }
