@@ -24,7 +24,9 @@ struct InfiniteRangeContainer {
  public:
   class Iterator {
    public:
-    Iterator(const Value &value)
+    Iterator() = default;
+
+    explicit Iterator(const Value &value)
         : value_(value) {}
 
     Value operator*() {
