@@ -171,67 +171,6 @@ TEST_CASE("Subscription") {
     }
   }
 
-  SECTION("SharedSubscription the shared_ptr type eraser") {
-    SECTION("type traits") {
-      static_assert(
-          IsSubscription<SharedSubscription>,
-          "SharedSubscription must be a Subscription");
-    }
-
-    SECTION("default constructed") {
-      SharedSubscription sub;
-      sub.Request(ElementCount(0));
-      sub.Cancel();
-    }
-
-    SECTION("move") {
-      auto sub = SharedSubscription(MakeSubscription(
-          [](ElementCount) {}, [] {}));
-      auto moved_sub = std::move(sub);
-    }
-
-    SECTION("copy") {
-      auto sub = SharedSubscription(MakeSubscription(
-          [](ElementCount) {}, [] {}));
-      auto copied_sub = sub;
-    }
-
-    SECTION("create from lvalue") {
-      DummySubscription *last_called;
-      auto dummy = DummySubscription(&last_called);
-
-      auto sub = SharedSubscription(dummy);
-
-      sub.Request(ElementCount(0));
-      CHECK(last_called != &dummy);  // dummy should be copied not held by ref
-      sub.Cancel();
-      CHECK(last_called != &dummy);  // dummy should be copied not held by ref
-    }
-
-    SECTION("Request") {
-      ElementCount requested;
-      {
-        auto sub = SharedSubscription(MakeSubscription(
-            [&requested](ElementCount count) { requested += count; },
-            [] { CHECK(!"Cancel should not be invoked"); }));
-        CHECK(requested == 0);
-        sub.Request(ElementCount(13));
-        CHECK(requested == 13);
-      }
-      CHECK(requested == 13);
-    }
-
-    SECTION("Cancel") {
-      bool cancelled = false;
-      auto sub = SharedSubscription(MakeSubscription(
-          [](ElementCount) { CHECK(!"Request should not be invoked"); },
-          [&cancelled] { CHECK(!cancelled); cancelled = true; }));
-      CHECK(!cancelled);
-      sub.Cancel();
-      CHECK(cancelled);
-    }
-  }
-
   SECTION("Callback MakeSubscription") {
     SECTION("Move") {
       auto sub = MakeSubscription(

@@ -39,20 +39,6 @@ void AnySubscription::Cancel() {
   }
 }
 
-SharedSubscription::SharedSubscription() {}
-
-void SharedSubscription::Request(ElementCount count) {
-  if (eraser_) {
-    eraser_->Request(count);
-  }
-}
-
-void SharedSubscription::Cancel() {
-  if (eraser_) {
-    eraser_->Cancel();
-  }
-}
-
 detail::EmptySubscription MakeSubscription() {
   return detail::EmptySubscription();
 }
