@@ -25,7 +25,10 @@
 namespace shk {
 namespace detail {
 
-template <typename InnerSubscriberType, typename Callback>
+template <
+    typename InnerSubscriberType,
+    typename Callback,
+    typename ErrorSubscription>
 class Catch {
  public:
   class CatchSubscriber;
@@ -62,7 +65,7 @@ class Catch {
     // the risk of destroying a Subscription object that is this of a current
     // stack frame, causing memory corruption.
     AnySubscription inner_subscription_;
-    AnySubscription catch_subscription_;
+    ErrorSubscription catch_subscription_;
     WeakReference<CatchSubscriber> subscriber_;
   };
 
@@ -114,7 +117,7 @@ class Catch {
         auto sub = catch_publisher.Subscribe(std::move(inner_subscriber_));
         sub.Request(requested_);
         if (subscription_) {
-          subscription_->catch_subscription_ = AnySubscription(std::move(sub));
+          subscription_->catch_subscription_ = std::move(sub);
         }
       }
     }
@@ -158,9 +161,13 @@ auto Catch(Callback &&callback) {
     // Return a Publisher
     return MakePublisher([callback, source = std::move(source)](
         auto &&subscriber) {
+      using ErrorSubscription =
+          decltype(callback(std::declval<std::exception_ptr>())
+              .Subscribe(std::move(subscriber)));
       using CatchT = detail::Catch<
           typename std::decay<decltype(subscriber)>::type,
-          typename std::decay<Callback>::type>;
+          typename std::decay<Callback>::type,
+          ErrorSubscription>;
       using CatchSubscriberT = typename CatchT::CatchSubscriber;
       using CatchSubscriptionT = typename CatchT::CatchSubscription;
 

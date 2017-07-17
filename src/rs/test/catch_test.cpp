@@ -57,7 +57,10 @@ TEST_CASE("Catch") {
     SECTION("CatchSubscription") {
       auto subscriber = MakeNonDefaultConstructibleSubscriber();
       auto callback = [](auto) { return Empty(); };
-      using CatchT = detail::Catch<decltype(subscriber), decltype(callback)>;
+      using CatchT = detail::Catch<
+          decltype(subscriber),
+          decltype(callback),
+          AnySubscription>;
 
       typename CatchT::CatchSubscription sub;
       sub.Request(ElementCount(1));
