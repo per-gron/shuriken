@@ -30,15 +30,14 @@ class CatchSubscription : public Subscription {
  public:
   CatchSubscription() = default;
 
-  explicit CatchSubscription(const std::shared_ptr<Subscriber> &subscriber)
-      : subscriber_(subscriber) {}
+  explicit CatchSubscription(WeakReference<Subscriber> &&subscriber)
+      : subscriber_(std::move(subscriber)) {}
 
   void Request(ElementCount count) {
-    if (!subscriber_) {
-      return;
+    if (subscriber_) {
+      subscriber_->requested_ += count;
     }
 
-    subscriber_->requested_ += count;
     if (has_failed_) {
       catch_subscription_.Request(count);
     } else {
@@ -47,11 +46,10 @@ class CatchSubscription : public Subscription {
   }
 
   void Cancel() {
-    if (!subscriber_) {
-      return;
+    if (subscriber_) {
+      subscriber_->cancelled_ = true;
     }
 
-    subscriber_->cancelled_ = true;
     inner_subscription_.Cancel();
     catch_subscription_.Cancel();
   }
@@ -65,7 +63,7 @@ class CatchSubscription : public Subscription {
   AnySubscription inner_subscription_;
   AnySubscription catch_subscription_;
   bool has_failed_ = false;  // Set to true when catch_subscription_ is set.
-  std::shared_ptr<Subscriber> subscriber_;
+  WeakReference<Subscriber> subscriber_;
 };
 
 template <typename InnerSubscriberType, typename Callback>
@@ -80,7 +78,7 @@ class CatchSubscriber : public Subscriber {
   template <typename Publisher>
   void Subscribe(
       WeakReference<CatchSubscription<CatchSubscriber>> &&subscription,
-      const std::shared_ptr<CatchSubscriber> &me,
+      const std::shared_ptr<WeakReferee<CatchSubscriber>> &me,
       Publisher &&publisher) {
     subscription_ = std::move(subscription);
     me_ = me;
@@ -147,7 +145,7 @@ class CatchSubscriber : public Subscriber {
   bool cancelled_ = false;
 
   WeakReference<CatchSubscription<CatchSubscriber>> subscription_;
-  std::weak_ptr<CatchSubscriber> me_;
+  std::weak_ptr<WeakReferee<CatchSubscriber>> me_;
   InnerSubscriberType inner_subscriber_;
   Callback callback_;
   // The number of elements that have been requested but not yet emitted.
@@ -174,13 +172,17 @@ auto Catch(Callback &&callback) {
           typename std::decay<Callback>::type>;
       using CatchSubscriptionT = detail::CatchSubscription<CatchSubscriberT>;
 
-      auto catch_subscriber = std::make_shared<CatchSubscriberT>(
-          std::forward<decltype(subscriber)>(subscriber),
-          callback);
+      WeakReference<CatchSubscriberT> subscriber_ref;
+      auto catch_subscriber = std::make_shared<WeakReferee<CatchSubscriberT>>(
+          WithWeakReference(
+              CatchSubscriberT(
+                  std::forward<decltype(subscriber)>(subscriber),
+                  callback),
+              &subscriber_ref));
 
       WeakReference<CatchSubscriptionT> sub_ref;
       auto subscription = WithWeakReference(
-          CatchSubscriptionT(catch_subscriber),
+          CatchSubscriptionT(std::move(subscriber_ref)),
           &sub_ref);
 
       catch_subscriber->Subscribe(std::move(sub_ref), catch_subscriber, source);
