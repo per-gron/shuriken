@@ -79,15 +79,9 @@ class CatchSubscriber : public Subscriber {
       Publisher &&publisher) {
     me.subscription_ = std::move(subscription);
     auto sub = publisher.Subscribe(std::move(me));
-    if (me_ref && !me_ref->has_failed_) {
-      // It is possible that Subscribe causes OnError to be called before it
-      // even returns. In that case, inner_subscription_ will have been set to
-      // the catch subscription before Subscribe returns, and then we must not
-      // overwrite inner_subscription_
-      if (me_ref->subscription_) {
-        me_ref->subscription_->inner_subscription_ =
-            AnySubscription(std::move(sub));
-      }
+    if (me_ref && me_ref->subscription_) {
+      me_ref->subscription_->inner_subscription_ =
+          AnySubscription(std::move(sub));
     }
   }
 
@@ -107,8 +101,6 @@ class CatchSubscriber : public Subscriber {
   void OnError(std::exception_ptr &&error) {
     if (cancelled_) {
       // Do nothing
-    } else if (has_failed_) {
-      inner_subscriber_.OnError(std::move(error));
     } else {
       has_failed_ = true;
       auto catch_publisher = callback_(std::move(error));
@@ -184,7 +176,8 @@ auto Catch(Callback &&callback) {
       CatchSubscriberT::Subscribe(
           std::move(catch_subscriber),
           std::move(subscriber_ref_2),
-          std::move(sub_ref), source);
+          std::move(sub_ref),
+          source);
 
       return subscription;
     });

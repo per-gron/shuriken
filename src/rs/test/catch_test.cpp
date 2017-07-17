@@ -167,13 +167,6 @@ TEST_CASE("Catch") {
     }
 
     SECTION("cancel after failing") {
-      auto do_not_cancel_stream = MakePublisher([](
-          auto &&subscriber) {
-        subscriber.OnError(std::make_exception_ptr(std::runtime_error("test")));
-        return MakeSubscription(
-            [](ElementCount count) {},
-            [] { CHECK(!"should not be called"); });
-      });
       bool cancelled = false;
       auto check_catch = Catch([&cancelled](std::exception_ptr &&) {
         return MakePublisher([&cancelled](auto &&subscriber) {
@@ -182,7 +175,7 @@ TEST_CASE("Catch") {
               [&cancelled] { CHECK(!cancelled); cancelled = true; });
         });
       });
-      auto stream = check_catch(do_not_cancel_stream);
+      auto stream = check_catch(Throw(std::runtime_error("test")));
 
       auto sub = stream.Subscribe(MakeSubscriber());
       CHECK(!cancelled);
