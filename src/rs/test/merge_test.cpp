@@ -93,8 +93,11 @@ TEST_CASE("Merge") {
     SECTION("after Subscribe call") {
       std::function<void ()> emit;
       auto stream = Merge<int>(MakePublisher([&emit](auto subscriber) {
-        emit = [subscriber = std::move(subscriber)]() mutable {
-          subscriber.OnNext(1);
+        auto subscriber_ptr = std::make_shared<decltype(subscriber)>(
+            std::move(subscriber));
+
+        emit = [subscriber_ptr] {
+          subscriber_ptr->OnNext(1);
         };
         return MakeSubscription();
       }));
@@ -217,8 +220,11 @@ TEST_CASE("Merge") {
     SECTION("emit elements after cancellation") {
       std::function<void ()> emit;
       auto stream = Merge<int>(MakePublisher([&emit](auto subscriber) {
-        emit = [subscriber = std::move(subscriber)]() mutable {
-          subscriber.OnNext(1);
+        auto subscriber_ptr = std::make_shared<decltype(subscriber)>(
+            std::move(subscriber));
+
+        emit = [subscriber_ptr] {
+          subscriber_ptr->OnNext(1);
         };
         return MakeSubscription();
       }));

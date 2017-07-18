@@ -21,6 +21,7 @@
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
+#include <rs/weak_reference.h>
 
 namespace shk {
 namespace detail {
@@ -31,31 +32,31 @@ class MergeSubscription : public Subscription {
    public:
     MergeSubscriber(
         size_t idx,
-        const std::shared_ptr<MergeSubscription> &merge_subscription)
+        WeakReference<MergeSubscription> &&merge_subscription)
         : idx_(idx),
-          merge_subscription_(merge_subscription) {}
+          merge_subscription_(std::move(merge_subscription)) {}
 
     void OnNext(Element &&elm) {
-      if (auto merge_subscription = merge_subscription_.lock()) {
-        merge_subscription->OnInnerSubscriptionNext(idx_, std::move(elm));
+      if (merge_subscription_) {
+        merge_subscription_->OnInnerSubscriptionNext(idx_, std::move(elm));
       }
     }
 
     void OnError(std::exception_ptr &&error) {
-      if (auto merge_subscription = merge_subscription_.lock()) {
-        merge_subscription->OnInnerSubscriptionError(std::move(error));
+      if (merge_subscription_) {
+        merge_subscription_->OnInnerSubscriptionError(std::move(error));
       }
     }
 
     void OnComplete() {
-      if (auto merge_subscription = merge_subscription_.lock()) {
-        merge_subscription->OnInnerSubscriptionComplete();
+      if (merge_subscription_) {
+        merge_subscription_->OnInnerSubscriptionComplete();
       }
     }
 
    private:
     size_t idx_;
-    std::weak_ptr<MergeSubscription> merge_subscription_;
+    WeakReference<MergeSubscription> merge_subscription_;
   };
 
   struct MergeSubscriptionData {
@@ -70,32 +71,36 @@ class MergeSubscription : public Subscription {
 
   template <size_t Idx, typename ...Publishers>
   struct MergeSubscriptionBuilder {
-    static void Subscribe(
-        const std::shared_ptr<MergeSubscription> &merge_subscription,
-        std::vector<MergeSubscriptionData> &subscriptions,
+    template <typename SubscriptionReferee>
+    static auto Subscribe(
+        SubscriptionReferee &&merge_subscription,
         const std::tuple<Publishers...> &publishers) {
-      if (merge_subscription->finished_) {
-        // A previous Publisher has already on Subscribe failed. We should not
-        // continue.
-        return;
+      WeakReference<MergeSubscription> subscription_ref;
+      auto wrapped_merge_subscription = WithWeakReference(
+          std::move(merge_subscription),
+          &subscription_ref);
+
+      if (!merge_subscription.finished_) {
+        // Only subscribe if no previous Publisher has failed on Subscribe.
+        wrapped_merge_subscription.subscriptions_.emplace_back(
+            std::get<Idx>(publishers).Subscribe(
+                MergeSubscriber(Idx, std::move(subscription_ref))));
       }
-      subscriptions.emplace_back(
-          std::get<Idx>(publishers).Subscribe(
-              MergeSubscriber(Idx, merge_subscription)));
-      MergeSubscriptionBuilder<Idx + 1, Publishers...>::Subscribe(
-          merge_subscription,
-          subscriptions,
+
+      return MergeSubscriptionBuilder<Idx + 1, Publishers...>::Subscribe(
+          std::move(wrapped_merge_subscription),
           publishers);
     }
   };
 
   template <typename ...Publishers>
   struct MergeSubscriptionBuilder<sizeof...(Publishers), Publishers...> {
-    static void Subscribe(
-        const std::shared_ptr<MergeSubscription> &merge_subscription,
-        std::vector<MergeSubscriptionData> &subscriptions,
+    template <typename SubscriptionReferee>
+    static SubscriptionReferee Subscribe(
+        SubscriptionReferee &&merge_subscription,
         const std::tuple<Publishers...> &publishers) {
       // Terminate the template recursion
+      return std::move(merge_subscription);
     }
   };
 
@@ -106,18 +111,22 @@ class MergeSubscription : public Subscription {
       : inner_subscriber_(std::make_unique<InnerSubscriberType>(
             std::move(inner_subscriber))) {}
 
-  template <typename ...Publishers>
-  void Subscribe(
-      const std::shared_ptr<MergeSubscription> &me,
+  template <typename Subscriber, typename ...Publishers>
+  static auto Subscribe(
+      Subscriber &&subscriber,
       const std::tuple<Publishers...> &publishers) {
-    remaining_subscriptions_ = sizeof...(Publishers);
-    subscriptions_.reserve(sizeof...(Publishers));
-    MergeSubscriptionBuilder<0, Publishers...>::Subscribe(
-        me, subscriptions_, publishers);
+    MergeSubscription me(std::forward<Subscriber>(subscriber));
+
+    me.remaining_subscriptions_ = sizeof...(Publishers);
+    me.subscriptions_.reserve(sizeof...(Publishers));
+    auto wrapped_me = MergeSubscriptionBuilder<0, Publishers...>::Subscribe(
+        std::move(me), publishers);
 
     if (sizeof...(Publishers) == 0) {
-      SendOnComplete();
+      wrapped_me.SendOnComplete();
     }
+
+    return wrapped_me;
   }
 
   void Request(ElementCount count) {
@@ -263,14 +272,13 @@ template <typename Element, typename ...Publishers>
 auto Merge(Publishers &&...publishers) {
   return MakePublisher([publishers = std::make_tuple(
       std::forward<Publishers>(publishers)...)](auto &&subscriber) {
-    auto merge_subscription = std::make_shared<detail::MergeSubscription<
+    using MergeSubscriptionT = detail::MergeSubscription<
         typename std::decay<decltype(subscriber)>::type,
-        Element>>(
-            std::forward<decltype(subscriber)>(subscriber));
+        Element>;
 
-    merge_subscription->Subscribe(merge_subscription, publishers);
-
-    return MakeSubscription(merge_subscription);
+    return MergeSubscriptionT::Subscribe(
+        std::forward<decltype(subscriber)>(subscriber),
+        publishers);
   });
 }
 
