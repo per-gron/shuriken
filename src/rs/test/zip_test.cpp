@@ -295,8 +295,10 @@ TEST_CASE("Zip") {
       std::function<void ()> emit;
       auto stream = Zip<std::tuple<int>>(MakePublisher([&emit](
           auto subscriber) {
-        emit = [subscriber = std::move(subscriber)]() mutable {
-          subscriber.OnNext(1);
+        auto subscriber_ptr = std::make_shared<decltype(subscriber)>(
+            std::move(subscriber));
+        emit = [subscriber_ptr] {
+          subscriber_ptr->OnNext(1);
         };
         return MakeSubscription();
       }));

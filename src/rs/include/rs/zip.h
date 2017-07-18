@@ -22,6 +22,7 @@
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
+#include <rs/weak_reference.h>
 
 namespace shk {
 namespace detail {
@@ -97,34 +98,34 @@ class ZipSubscription : public Subscription {
   template <size_t Idx>
   class ZipSubscriber : public Subscriber {
    public:
-    ZipSubscriber(
-        const std::shared_ptr<ZipSubscription> &zip_subscription)
-        : zip_subscription_(zip_subscription) {}
+    explicit ZipSubscriber(
+        WeakReference<ZipSubscription> &&zip_subscription)
+        : zip_subscription_(std::move(zip_subscription)) {}
 
     void OnNext(std::tuple_element_t<Idx, Tuple> &&elm) {
-      if (auto zip_subscription = zip_subscription_.lock()) {
-        (*zip_subscription).template OnInnerSubscriptionNext<Idx>(
+      if (zip_subscription_) {
+        (*zip_subscription_).template OnInnerSubscriptionNext<Idx>(
             std::move(elm));
       }
     }
 
     void OnError(std::exception_ptr &&error) {
-      if (auto zip_subscription = zip_subscription_.lock()) {
-        zip_subscription->OnInnerSubscriptionError(std::move(error));
+      if (zip_subscription_) {
+        zip_subscription_->OnInnerSubscriptionError(std::move(error));
       }
     }
 
     void OnComplete() {
-      if (auto zip_subscription = zip_subscription_.lock()) {
-        zip_subscription->template OnInnerSubscriptionComplete<Idx>();
+      if (zip_subscription_) {
+        zip_subscription_->template OnInnerSubscriptionComplete<Idx>();
       }
     }
 
    private:
-    // This can be a weak pointer because if the ZipSubscription is destroyed,
+    // This can be a weak reference because if the ZipSubscription is destroyed,
     // then the subscription is cancelled by definition and it's okay to not
     // deliver signals.
-    std::weak_ptr<ZipSubscription> zip_subscription_;
+    WeakReference<ZipSubscription> zip_subscription_;
   };
 
   template <typename>
@@ -134,20 +135,27 @@ class ZipSubscription : public Subscription {
   template <size_t Idx, typename ...InnerPublishers>
   class ZipSubscriptionBuilder {
    public:
-    template <typename ...AccumulatedSubscriptions>
-    static std::unique_ptr<Subscriptions> Subscribe(
-        const std::shared_ptr<ZipSubscription> &zip_subscription,
+    template <
+        typename SubscriptionReferee,
+        typename ...AccumulatedSubscriptions>
+    static auto Subscribe(
+        SubscriptionReferee &&zip_subscription,
         const std::tuple<Publishers...> &publishers,
         AccumulatedSubscriptions &...accumulated_subscriptions) {
       static_assert(
           IsPublisher<std::tuple_element_t<Idx, std::tuple<Publishers...>>>,
           "Zip must be given a Publisher");
 
+      WeakReference<ZipSubscription> subscription_ref;
+      auto wrapped_zip_subscription = WithWeakReference(
+          std::move(zip_subscription),
+          &subscription_ref);
+
       auto new_subscription = AnySubscription(
           std::get<Idx>(publishers).Subscribe(
-              ZipSubscriber<Idx>(zip_subscription)));
+              ZipSubscriber<Idx>(std::move(subscription_ref))));
       return ZipSubscriptionBuilder<Idx + 1, InnerPublishers...>::Subscribe(
-          zip_subscription,
+          std::move(wrapped_zip_subscription),
           publishers,
           accumulated_subscriptions...,
           new_subscription);
@@ -158,36 +166,47 @@ class ZipSubscription : public Subscription {
   class ZipSubscriptionBuilder<
       sizeof...(InnerPublishers), InnerPublishers...> {
    public:
-    template <typename ...AccumulatedSubscriptions>
-    static std::unique_ptr<Subscriptions> Subscribe(
-        const std::shared_ptr<ZipSubscription> &zip_subscription,
+    template <
+        typename SubscriptionReferee,
+        typename ...AccumulatedSubscriptions>
+    static auto Subscribe(
+        SubscriptionReferee &&zip_subscription,
         const std::tuple<Publishers...> &publishers,
         AccumulatedSubscriptions &...accumulated_subscriptions) {
-      return std::make_unique<Subscriptions>(
-          std::move(accumulated_subscriptions)...);
+      zip_subscription.subscriptions_ = std::make_unique<Subscriptions>(
+              std::move(accumulated_subscriptions)...);
+      return std::move(zip_subscription);
     }
   };
 
  public:
-  ZipSubscription(InnerSubscriberType &&inner_subscriber)
-      : inner_subscriber_(std::move(inner_subscriber)) {}
+  ZipSubscription() = default;
 
-  void Subscribe(
-      const std::shared_ptr<ZipSubscription> &me,
+  explicit ZipSubscription(InnerSubscriberType &&inner_subscriber)
+      : inner_subscriber_(std::make_unique<InnerSubscriberType>(
+            std::move(inner_subscriber))) {}
+
+  template <typename Subscriber>
+  static auto Subscribe(
+      Subscriber &&subscriber,
       const std::tuple<Publishers...> &publishers) {
-    subscriptions_ = ZipSubscriptionBuilder<0, Publishers...>::Subscribe(
+    ZipSubscription me(std::forward<Subscriber>(subscriber));
+
+    auto wrapped_me = ZipSubscriptionBuilder<0, Publishers...>::Subscribe(
         me, publishers);
-    if (finished_) {
-      subscriptions_.reset();
+    if (wrapped_me.finished_) {
+      wrapped_me.subscriptions_.reset();
     }
 
     if (sizeof...(Publishers) == 0) {
-      SendOnComplete();
+      wrapped_me.SendOnComplete();
     }
+
+    return std::move(wrapped_me);
   }
 
   void Request(ElementCount count) {
-    if (!finished_) {
+    if (!finished_ && inner_subscriber_) {
       requested_ += count;
 
       if (values_pending_.count() == 0 && requested_ > 0) {
@@ -233,7 +252,7 @@ class ZipSubscription : public Subscription {
   void OnInnerSubscriptionError(std::exception_ptr &&error) {
     if (!finished_) {
       Cancel();
-      inner_subscriber_.OnError(std::move(error));
+      inner_subscriber_->OnError(std::move(error));
     }
   }
 
@@ -252,7 +271,7 @@ class ZipSubscription : public Subscription {
   void SendOnComplete() {
     if (!finished_) {
       finished_ = true;
-      inner_subscriber_.OnComplete();
+      inner_subscriber_->OnComplete();
     }
   }
 
@@ -304,7 +323,7 @@ class ZipSubscription : public Subscription {
 
   void Emit() {
     bool should_finish = false;
-    inner_subscriber_.OnNext(EmittedElementBuilder<0, int>::Build(
+    inner_subscriber_->OnNext(EmittedElementBuilder<0, int>::Build(
         finished_subscriptions_, &should_finish, &buffer_));
     if (should_finish) {
       SendOnComplete();
@@ -318,7 +337,9 @@ class ZipSubscription : public Subscription {
   FinishedSubscriptions finished_subscriptions_{};
   std::bitset<sizeof...(Publishers)> values_pending_{};
   bool finished_ = false;
-  InnerSubscriberType inner_subscriber_;
+  // TODO(peck): Would be nicer if this was optional, to avoid unnecessary heap
+  // allocation.
+  std::unique_ptr<InnerSubscriberType> inner_subscriber_;
   Buffer buffer_;
   ElementCount requested_;
 };
@@ -342,15 +363,14 @@ auto Zip(Publishers &&...publishers) {
   return MakePublisher([
       publishers = std::make_tuple(std::forward<Publishers>(publishers)...)](
           auto &&subscriber) {
-    auto zip_subscription = std::make_shared<detail::ZipSubscription<
+    using ZipSubscriptionT = detail::ZipSubscription<
         Tuple,
         typename std::decay<decltype(subscriber)>::type,
-        typename std::decay<Publishers>::type...>>(
-            std::forward<decltype(subscriber)>(subscriber));
+        typename std::decay<Publishers>::type...>;
 
-    zip_subscription->Subscribe(zip_subscription, publishers);
-
-    return MakeSubscription(zip_subscription);
+    return ZipSubscriptionT::Subscribe(
+        std::forward<decltype(subscriber)>(subscriber),
+        publishers);
   });
 }
 
