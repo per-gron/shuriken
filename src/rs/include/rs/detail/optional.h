@@ -136,7 +136,7 @@ class Optional {
    * Returns non-zero iff the object stores a value.
    */
   bool IsSet() const {
-    return _data[sizeof(storage_type)];
+    return data_[sizeof(storage_type)];
   }
 
   /**
@@ -245,38 +245,38 @@ class Optional {
   template<typename U = T>
   typename std::enable_if<std::is_reference<U>::value, pointer_type>::type
   Memory() {
-    return *reinterpret_cast<value_type**>(_data);
+    return *reinterpret_cast<value_type**>(data_);
   }
 
   template<typename U = T>
   typename std::enable_if<!std::is_reference<U>::value,
                           pointer_type>::type
   Memory() {
-    return reinterpret_cast<pointer_type>(&_data);
+    return reinterpret_cast<pointer_type>(&data_);
   }
 
   template<typename U = T>
   typename std::enable_if<std::is_reference<U>::value,
                           pointer_const_type>::type
   Memory() const {
-    return *reinterpret_cast<value_type* const*>(_data);
+    return *reinterpret_cast<value_type* const*>(data_);
   }
 
   template<typename U = T>
   typename std::enable_if<!std::is_reference<U>::value,
                           pointer_const_type>::type
   Memory() const {
-    return reinterpret_cast<pointer_const_type>(&_data);
+    return reinterpret_cast<pointer_const_type>(&data_);
   }
 
   void SetSet(bool set) {
-    _data[sizeof(storage_type)] = set;
+    data_[sizeof(storage_type)] = set;
   }
 
   template<typename U = T>
   typename std::enable_if<std::is_reference<U>::value>::type
   CopyConstruct(argument_type val) {
-    *reinterpret_cast<value_type**>(_data) = &val;
+    *reinterpret_cast<value_type**>(data_) = &val;
   }
 
   template<typename U = T>
@@ -288,7 +288,7 @@ class Optional {
   template<typename U = T>
   typename std::enable_if<std::is_reference<U>::value>::type
   MoveConstruct(value_type&& val) {
-    *reinterpret_cast<value_type**>(_data) = &val;
+    *reinterpret_cast<value_type**>(data_) = &val;
   }
 
   template<typename U = T>
@@ -367,9 +367,9 @@ class Optional {
 
   /**
    * The last byte of this char array is non-zero if
-   * _data contains an initialized value.
+   * data_ contains an initialized value.
    */
-  alignas(T) char _data[sizeof(storage_type)+1];
+  alignas(T) char data_[sizeof(storage_type)+1];
 };
 
 
