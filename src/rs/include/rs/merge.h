@@ -17,6 +17,7 @@
 #include <deque>
 #include <type_traits>
 
+#include <rs/detail/optional.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
@@ -108,8 +109,7 @@ class MergeSubscription : public Subscription {
   MergeSubscription() = default;
 
   explicit MergeSubscription(InnerSubscriberType &&inner_subscriber)
-      : inner_subscriber_(std::make_unique<InnerSubscriberType>(
-            std::move(inner_subscriber))) {}
+      : inner_subscriber_(std::move(inner_subscriber)) {}
 
   template <typename Subscriber, typename ...Publishers>
   static auto Subscribe(
@@ -243,9 +243,7 @@ class MergeSubscription : public Subscription {
 
   size_t remaining_subscriptions_ = 0;
   bool finished_ = false;
-  // TODO(peck): It would be nice to make this an optional instead of
-  // unique_ptr; there is no need for this heap allocation.
-  std::unique_ptr<InnerSubscriberType> inner_subscriber_;
+  detail::Optional<InnerSubscriberType> inner_subscriber_;
   // With each subscription, also keep track of how many requested elements are
   // outstanding. This is used to make sure that for any given subscription, we
   // don't have more elements Requested than what has been requested for the
