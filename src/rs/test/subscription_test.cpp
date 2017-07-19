@@ -209,56 +209,6 @@ TEST_CASE("Subscription") {
       CHECK(cancelled);
     }
   }
-
-  SECTION("shared_ptr MakeSubscription") {
-    SECTION("default constructible") {
-      auto callback_sub = MakeSubscription(
-          [](ElementCount) {}, [] {});
-      auto sub = MakeSubscription(
-          std::make_shared<decltype(callback_sub)>(std::move(callback_sub)));
-
-      decltype(sub) default_constructed_sub;
-      default_constructed_sub.Request(ElementCount(1));
-      default_constructed_sub.Cancel();
-    }
-
-    SECTION("Move") {
-      auto callback_sub = MakeSubscription(
-          [](ElementCount) {}, [] {});
-      auto sub = MakeSubscription(
-          std::make_shared<decltype(callback_sub)>(std::move(callback_sub)));
-      auto moved_sub = std::move(sub);
-    }
-
-    SECTION("Request") {
-      ElementCount requested;
-      {
-        auto callback_sub = MakeSubscription(
-            [&requested](ElementCount count) { requested += count; },
-            [] { CHECK(!"Cancel should not be invoked"); });
-        auto sub = MakeSubscription(
-            std::make_shared<decltype(callback_sub)>(std::move(callback_sub)));
-
-        CHECK(requested == 0);
-        sub.Request(ElementCount(13));
-        CHECK(requested == 13);
-      }
-      CHECK(requested == 13);
-    }
-
-    SECTION("Cancel") {
-      bool cancelled = false;
-      auto callback_sub = MakeSubscription(
-          [](ElementCount) { CHECK(!"Request should not be invoked"); },
-          [&cancelled] { CHECK(!cancelled); cancelled = true; });
-      auto sub = MakeSubscription(
-          std::make_shared<decltype(callback_sub)>(std::move(callback_sub)));
-
-      CHECK(!cancelled);
-      sub.Cancel();
-      CHECK(cancelled);
-    }
-  }
 }
 
 }  // namespace shk

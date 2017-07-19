@@ -94,36 +94,6 @@ class CallbackSubscription : public Subscription {
   std::unique_ptr<CancelCb> cancel_;
 };
 
-template <typename SubscriptionType>
-class SharedPtrSubscription : public Subscription {
- public:
-  SharedPtrSubscription() = default;
-
-  explicit SharedPtrSubscription(std::shared_ptr<SubscriptionType> subscription)
-      : subscription_(subscription) {}
-
-  SharedPtrSubscription(const SharedPtrSubscription &) = delete;
-  SharedPtrSubscription& operator=(const SharedPtrSubscription &) = delete;
-
-  SharedPtrSubscription(SharedPtrSubscription &&) = default;
-  SharedPtrSubscription& operator=(SharedPtrSubscription &&) = default;
-
-  void Request(ElementCount count) {
-    if (subscription_) {
-      subscription_->Request(count);
-    }
-  }
-
-  void Cancel() {
-    if (subscription_) {
-      subscription_->Cancel();
-    }
-  }
-
- private:
-  std::shared_ptr<SubscriptionType> subscription_;
-};
-
 }  // namespace detail
 
 /**
@@ -225,15 +195,6 @@ auto MakeSubscription(RequestCb &&request, CancelCb &&cancel) {
       typename std::decay<CancelCb>::type>(
           std::forward<RequestCb>(request),
           std::forward<CancelCb>(cancel));
-}
-
-template <typename SubscriptionType>
-auto MakeSubscription(const std::shared_ptr<SubscriptionType> &subscription) {
-  static_assert(
-      IsSubscription<SubscriptionType>,
-      "MakeSubscription must be called with a Subscription");
-
-  return detail::SharedPtrSubscription<SubscriptionType>(subscription);
 }
 
 }  // namespace shk
