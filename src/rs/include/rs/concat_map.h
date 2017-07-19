@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/detail/optional.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
@@ -44,8 +45,7 @@ class ConcatMap {
     ConcatMapSubscription() = default;
 
     explicit ConcatMapSubscription(InnerSubscriberType &&inner_subscriber)
-        : inner_subscriber_(std::make_unique<InnerSubscriberType>(
-              std::move(inner_subscriber))) {}
+        : inner_subscriber_(std::move(inner_subscriber)) {}
 
     void Request(ElementCount count) {
       requested_ += count;
@@ -161,10 +161,7 @@ class ConcatMap {
     // Set once and then never set again.
     AnySubscription publishers_subscription_;
     // Set once (at construction) and then never set again.
-    //
-    // TODO(peck): It would be nice to make this an optional instead of
-    // unique_ptr; there is no need for this heap allocation.
-    std::unique_ptr<InnerSubscriberType> inner_subscriber_;
+    detail::Optional<InnerSubscriberType> inner_subscriber_;
   };
 
   class ConcatMapPublishersSubscriber : public Subscriber {
