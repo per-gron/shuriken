@@ -7,7 +7,7 @@ When using this library you might run into situations where the built-in operato
 
 ## Try to combine existing operators first
 
-Do you *really* need a custom operator? In many cases it's possible to create a custom operator simply by combining operators that already exist. Doing so is usually far simpler than writing a custom operator from scratch. Before writing a custom operator, have a look at [the reference documentation](reference.md) and see if you can think of ways to combine operators.
+Do you *really* need a custom operator? In many cases it's possible to create an operator simply by combining operators that already exist. Doing so is usually far simpler than writing a custom operator from scratch. Before writing a custom operator, have a look at [the reference documentation](reference.md) and see if you can think of ways to combine operators.
 
 In fact, a lot of the operators that are provided by rs library are actually simply combinations of other more primitive operators:
 
@@ -27,11 +27,11 @@ In fact, a lot of the operators that are provided by rs library are actually sim
 * [`Average`](../include/rs/average.h) uses `Reduce` and `Map`.
 * [`All`](../include/rs/all.h) uses `Filter`, `Take` and `Reduce`.
 
-As you can see, a lot of things can be accomplished simply by combining other operators. Feel free to browse the code base and see how the built-in operators are built.
+As you can see, a lot of things can be accomplished simply by combining other operators. Feel free to browse the code base and see how the built-in operators are written.
 
 If you need to combine more than one operator to achieve what you need to do, `BuildPipe` can be quite useful; [`Some`](../include/rs/some.h) uses it, for example.
 
-Another useful technique which can avoid the need for a fully custom operator is to to use stateful mapper and predicate functions. [`Skip`](../include/skip.h), [`SkipWhile`](../include/skip_while.h) and [`Scan`](../include/scan.h) are examples of that.
+Another useful technique which can avoid the need for a fully custom operator is to to use stateful mapper and predicate functions. [`Skip`](../include/rs/skip.h), [`SkipWhile`](../include/rs/skip_while.h) and [`Scan`](../include/rs/scan.h) are examples of that.
 
 If you find that it is impossible to do what you want with existing operators, or that combining existing operators does not perform well enough, it makes sense to start looking at writing a custom operator.
 
