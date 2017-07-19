@@ -16,6 +16,7 @@
 
 #include <type_traits>
 
+#include <rs/detail/optional.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscription.h>
@@ -59,8 +60,7 @@ class StartSubscription : public Subscription {
   StartSubscription(
       const std::tuple<CreateValue...> &create_values,
       SubscriberT &&subscriber)
-      : create_values_(
-            new std::tuple<CreateValue...>(std::move(create_values))),
+      : create_values_(std::tuple<CreateValue...>(std::move(create_values))),
         subscriber_(
             new Subscriber(std::forward<SubscriberT>(subscriber))) {
     if (sizeof...(CreateValue) == 0) {
@@ -101,9 +101,7 @@ class StartSubscription : public Subscription {
   }
 
  private:
-  // TODO(peck): It would be nice to make this an optional instead of
-  // unique_ptr; there is no need for this heap allocation.
-  std::unique_ptr<std::tuple<CreateValue...>> create_values_;
+  detail::Optional<std::tuple<CreateValue...>> create_values_;
   // TODO(peck): It would be nice to make this an optional instead of
   // unique_ptr; there is no need for this heap allocation.
   std::unique_ptr<Subscriber> subscriber_;
