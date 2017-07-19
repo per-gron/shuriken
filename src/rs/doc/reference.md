@@ -49,7 +49,6 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`MakeSubscriber()`](#makesubscriber)
 * [`MakeSubscriber(OnNext, OnError, OnComplete)`](#makesubscriberonnext-onerror-oncomplete)
 * [`MakeSubscriber(const std::shared_ptr<SubscriberType> &)`](#makesubscriberconst-stdshared_ptrsubscribertype-)
-* [`MakeSubscriber(const std::weak_ptr<SubscriberType> &)`](#makesubscriberconst-stdweak_ptrsubscribertype-)
 * [`MakeSubscription()`](#makesubscription)
 * [`MakeSubscription(RequestCb, CancelCb)`](#makesubscriptionrequestcb-cancelcb)
 * [`MakeSubscription(const std::shared_ptr<SubscriptionType> &)`](#makesubscriptionconst-stdshared_ptrsubscriptiontype-)
@@ -982,20 +981,9 @@ subscription.Request(ElementCount::Unbounded());
 
 To work around that limitation, it's possible to create a proxy Subscriber that has a `std::shared_ptr` to the actual Subscriber object. This allows giving away an owning reference to both the Subscriber and the Subscription.
 
-When using this, be careful with reference cycles that would cause memory leaks. There is also a `std::weak_ptr` variant of this class that can be used to avoid this issue.
+When using this, be careful with reference cycles that would cause memory leaks.
 
 This is an API for advanced use of the rs library, primarily for making it easier to write custom operators. Most applications will have no use for this function.
-
-
-## `MakeSubscriber(const std::weak_ptr<SubscriberType> &)`
-
-**Defined in:** [`rs/subscriber.h`](../include/rs/subscriber.h)
-
-**Kind:** [Core Library API](#kind_core_library_api)
-
-**[Type](#types):** `std::weak_ptr<Subscriber[a]> -> Subscriber[a]`
-
-**Description:** This is just like [`MakeSubscriber(const std::shared_ptr<SubscriberType> &)`](#makesubscriberconst-stdshared_ptrsubscribertype-), except that the returned Subscriber holds the inner Subscriber by `std::weak_ptr` rather than an owning `std::shared_ptr`. This can be useful to avoid reference cycles that cause memory leaks.
 
 
 ## `MakeSubscription()`

@@ -114,35 +114,6 @@ class SharedPtrSubscriber : public Subscriber {
   std::shared_ptr<SubscriberType> subscriber_;
 };
 
-template <typename SubscriberType>
-class WeakPtrSubscriber : public Subscriber {
- public:
-  explicit WeakPtrSubscriber(std::weak_ptr<SubscriberType> subscriber)
-      : subscriber_(subscriber) {}
-
-  template <typename T, class = RequireRvalue<T>>
-  void OnNext(T &&t) {
-    if (auto sub = subscriber_.lock()) {
-      sub->OnNext(std::forward<T>(t));
-    }
-  }
-
-  void OnError(std::exception_ptr &&error) {
-    if (auto sub = subscriber_.lock()) {
-      sub->OnError(std::move(error));
-    }
-  }
-
-  void OnComplete() {
-    if (auto sub = subscriber_.lock()) {
-      sub->OnComplete();
-    }
-  }
-
- private:
-  std::weak_ptr<SubscriberType> subscriber_;
-};
-
 template <typename ...Ts>
 class ErasedSubscriberBase : public Subscriber {
  public:
@@ -415,15 +386,6 @@ auto MakeSubscriber(const std::shared_ptr<SubscriberType> &subscriber) {
       "MakeSubscriber must be called with a Subscriber");
 
   return detail::SharedPtrSubscriber<SubscriberType>(subscriber);
-}
-
-template <typename SubscriberType>
-auto MakeSubscriber(const std::weak_ptr<SubscriberType> &subscriber) {
-  static_assert(
-      IsSubscriber<SubscriberType>,
-      "MakeSubscriber must be called with a Subscriber");
-
-  return detail::WeakPtrSubscriber<SubscriberType>(subscriber);
 }
 
 }  // namespace shk
