@@ -218,7 +218,7 @@ auto ReduceGet(MakeInitial &&make_initial, ReducerT &&reducer) {
               AnySubscription(source.Subscribe(std::move(reduce_subscriber)))),
           &sub_ref);
 
-      if (reduce_ref) {  // TODO(peck): Test what happens if it's is empty
+      if (reduce_ref) {
         ReduceSubscriberT::TakeSubscription(
             std::move(reduce_ref), std::move(sub_ref));
       }

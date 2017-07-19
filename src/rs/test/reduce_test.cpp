@@ -54,6 +54,12 @@ TEST_CASE("Reduce") {
       CHECK(GetOne<int>(sum(Empty())) == 100);
     }
 
+    SECTION("never") {
+      CHECK(
+          GetAll<int>(sum(Never()), ElementCount::Unbounded(), false) ==
+          (std::vector<int>{}));
+    }
+
     SECTION("one value") {
       CHECK(GetOne<int>(sum(Just(1))) == 101);
     }
