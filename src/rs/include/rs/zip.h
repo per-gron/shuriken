@@ -18,6 +18,7 @@
 #include <memory>
 #include <type_traits>
 
+#include <rs/detail/optional.h>
 #include <rs/element_count.h>
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
@@ -183,8 +184,7 @@ class ZipSubscription : public Subscription {
   ZipSubscription() = default;
 
   explicit ZipSubscription(InnerSubscriberType &&inner_subscriber)
-      : inner_subscriber_(std::make_unique<InnerSubscriberType>(
-            std::move(inner_subscriber))) {}
+      : inner_subscriber_(std::move(inner_subscriber)) {}
 
   template <typename Subscriber>
   static auto Subscribe(
@@ -337,9 +337,7 @@ class ZipSubscription : public Subscription {
   FinishedSubscriptions finished_subscriptions_{};
   std::bitset<sizeof...(Publishers)> values_pending_{};
   bool finished_ = false;
-  // TODO(peck): Would be nicer if this was optional, to avoid unnecessary heap
-  // allocation.
-  std::unique_ptr<InnerSubscriberType> inner_subscriber_;
+  detail::Optional<InnerSubscriberType> inner_subscriber_;
   Buffer buffer_;
   ElementCount requested_;
 };
