@@ -78,9 +78,20 @@ class AnyPublisher : public Publisher {
  public:
   template <typename PublisherType>
   explicit AnyPublisher(PublisherType &&publisher)
-      : eraser_(std::make_shared<
+      : eraser_(std::make_unique<
             PublisherEraser<typename std::decay<PublisherType>::type>>(
                 std::forward<PublisherType>(publisher))) {}
+
+  AnyPublisher(const AnyPublisher &other)
+      : eraser_(other.eraser_->Copy()) {}
+
+  AnyPublisher &operator=(const AnyPublisher &other) {
+    eraser_ = other.eraser_->Copy();
+    return *this;
+  }
+
+  AnyPublisher(AnyPublisher &&) = default;
+  AnyPublisher &operator=(AnyPublisher &&) = default;
 
   template <typename SubscriberType>
   AnySubscription Subscribe(SubscriberType &&subscriber) const {
@@ -98,6 +109,8 @@ class AnyPublisher : public Publisher {
 
     virtual AnySubscription Subscribe(
         AnySubscriber<Ts...> &&subscriber) const = 0;
+
+    virtual std::unique_ptr<Eraser> Copy() const = 0;
   };
 
   template <typename PublisherType>
@@ -114,11 +127,15 @@ class AnyPublisher : public Publisher {
       return AnySubscription(publisher_.Subscribe(std::move(subscriber)));
     }
 
+    std::unique_ptr<Eraser> Copy() const override {
+      return std::unique_ptr<Eraser>(new PublisherEraser(*this));
+    }
+
    private:
     PublisherType publisher_;
   };
 
-  std::shared_ptr<Eraser> eraser_;
+  std::unique_ptr<Eraser> eraser_;
 };
 
 /**

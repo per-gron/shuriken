@@ -43,7 +43,26 @@ TEST_CASE("Publisher") {
       auto pub = AnyPublisher<>(MakePublisher([](auto &&) {
         return MakeSubscription();
       }));
-      auto pub_copy = pub;
+      AnyPublisher<> pub_copy(pub);
+    }
+
+    SECTION("assignable") {
+      int original_pub_invoked = 0;
+      auto pub = AnyPublisher<>(MakePublisher([&original_pub_invoked](auto &&) {
+        original_pub_invoked++;
+        return MakeSubscription();
+      }));
+      auto other_pub = AnyPublisher<>(MakePublisher([](auto &&) {
+        CHECK(!"should not be invoked");
+        return MakeSubscription();
+      }));
+      CHECK(&(other_pub = pub) == &other_pub);
+
+      other_pub.Subscribe(MakeSubscriber());
+      CHECK(original_pub_invoked == 1);
+
+      pub.Subscribe(MakeSubscriber());
+      CHECK(original_pub_invoked == 2);
     }
 
     SECTION("Subscribe") {
