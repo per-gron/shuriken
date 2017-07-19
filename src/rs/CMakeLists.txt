@@ -7,6 +7,7 @@ add_library(rs
   include/rs/contains.h
   include/rs/count.h
   include/rs/default_if_empty.h
+  include/rs/detail/optional.h
   include/rs/element_at.h
   include/rs/element_count.h
   include/rs/empty.h
@@ -59,6 +60,7 @@ add_executable(rs-test
   test/contains_test.cpp
   test/count_test.cpp
   test/default_if_empty_test.cpp
+  test/detail/optional_test.cpp
   test/element_at_test.cpp
   test/element_count_test.cpp
   test/empty_test.cpp
