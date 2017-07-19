@@ -117,7 +117,7 @@ auto Filter(Predicate &&predicate) {
               source.Subscribe(std::move(filter_subscriber))),
           &sub_ref);
 
-      if (filter_ref) {  // TODO(peck): Test what happens if it's is empty
+      if (filter_ref) {
         filter_ref->TakeSubscription(std::move(sub_ref));
       }
 

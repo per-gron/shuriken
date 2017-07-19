@@ -19,6 +19,7 @@
 
 #include <rs/just.h>
 #include <rs/filter.h>
+#include <rs/never.h>
 
 #include "infinite_range.h"
 #include "test_util.h"
@@ -29,11 +30,20 @@ TEST_CASE("Filter") {
   auto divisible_by_3 = Filter([](int x) { return (x % 3) == 0; });
 
   SECTION("empty") {
-    auto stream = divisible_by_3(Just());
-    CHECK(GetAll<int>(stream) == (std::vector<int>{}));
-    static_assert(
-        IsPublisher<decltype(stream)>,
-        "Filter stream should be a publisher");
+    SECTION("subscriber is kept") {
+      auto stream = divisible_by_3(Just());
+      CHECK(GetAll<int>(stream) == (std::vector<int>{}));
+      static_assert(
+          IsPublisher<decltype(stream)>,
+          "Filter stream should be a publisher");
+    }
+
+    SECTION("subscriber is discarded") {
+      auto stream = divisible_by_3(Never());
+      CHECK(
+          GetAll<int>(stream, ElementCount::Unbounded(), false) ==
+          (std::vector<int>{}));
+    }
   }
 
   SECTION("one int") {
