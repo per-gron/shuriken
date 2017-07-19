@@ -76,25 +76,29 @@ class Optional {
 
   Optional() { SetSet(false); }
   Optional(const Optional<T> &other) {
-    SetSet(false);
     if (other) {
-      Assign(*other.Memory());
+      CopyConstruct(*other.Memory());
+      SetSet(true);
+    } else {
+      SetSet(false);
     }
   }
   Optional(Optional<T> &&other) {
-    SetSet(false);
     if (other) {
-      Assign(std::move(*other.Memory()));
+      MoveConstruct(std::move(*other.Memory()));
+      SetSet(true);
       other.Clear();
+    } else {
+      SetSet(false);
     }
   }
   explicit Optional(argument_type other) {
-    SetSet(false);
-    Assign(other);
+    CopyConstruct(other);
+    SetSet(true);
   }
   explicit Optional(value_type &&other) {
-    SetSet(false);
-    Assign(std::move(other));
+    MoveConstruct(std::move(other));
+    SetSet(true);
   }
 
   ~Optional() { Clear(); }

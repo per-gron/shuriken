@@ -118,6 +118,31 @@ TEST_CASE("Optional") {
     }
   }
 
+  SECTION("Construct") {
+    int requested;
+    auto req = [&requested]() {};  // req is copyable but not assignable
+
+    SECTION("MoveConstructNonAssignable") {
+      detail::Optional<std::tuple<decltype(req)>> opt;
+      auto opt2 = std::move(opt);
+    }
+
+    SECTION("CopyConstructNonAssignable") {
+      detail::Optional<std::tuple<decltype(req)>> opt;
+      auto opt2 = opt;
+    }
+
+    SECTION("CopyConstructNonAssignableByValue") {
+      std::tuple<decltype(req)> tuple(req);
+      detail::Optional<std::tuple<decltype(req)>> opt(tuple);
+    }
+
+    SECTION("MoveConstructNonAssignableByValue") {
+      detail::Optional<std::tuple<decltype(req)>> opt((
+          std::tuple<decltype(req)>(req)));
+    }
+  }
+
   SECTION("IsSet") {
     SECTION("Uninitialized") {
       Optional<int> m;
