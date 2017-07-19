@@ -18,6 +18,7 @@
 #include <memory>
 #include <type_traits>
 
+#include <rs/detail/optional.h>
 #include <rs/element_count.h>
 
 namespace shk {
@@ -62,10 +63,8 @@ class CallbackSubscription : public Subscription {
 
   template <typename RequestCbT, typename CancelCbT>
   CallbackSubscription(RequestCbT &&request, CancelCbT &&cancel)
-      : request_(std::make_unique<RequestCb>(
-            std::forward<RequestCbT>(request))),
-        cancel_(std::make_unique<CancelCb>(
-            std::forward<CancelCbT>(cancel))) {}
+      : request_(std::forward<RequestCbT>(request)),
+        cancel_(std::forward<CancelCbT>(cancel)) {}
 
   CallbackSubscription(const CallbackSubscription &) = delete;
   CallbackSubscription &operator=(const CallbackSubscription &) = delete;
@@ -86,12 +85,8 @@ class CallbackSubscription : public Subscription {
   }
 
  private:
-  // TODO(peck): It would be nice to make this an optional instead, to avoid an
-  // unnecessary heap allocation.
-  std::unique_ptr<RequestCb> request_;
-  // TODO(peck): It would be nice to make this an optional instead, to avoid an
-  // unnecessary heap allocation.
-  std::unique_ptr<CancelCb> cancel_;
+  detail::Optional<RequestCb> request_;
+  detail::Optional<CancelCb> cancel_;
 };
 
 }  // namespace detail
