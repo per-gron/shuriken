@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <rs/detail/optional.h>
+
 #include "build_error.h"
 #include "fs/file_system.h"
 #include "fs/path.h"
@@ -123,7 +125,8 @@ struct CompiledManifest {
    *
    * If validation fails, returns an empty optional and sets *err.
    */
-  static Optional<CompiledManifest> load(string_view data, std::string *err);
+  static detail::Optional<CompiledManifest> load(
+      string_view data, std::string *err);
 
   /**
    * Takes a RawManifest and the path to the original manifest file and compiles
@@ -183,11 +186,11 @@ struct CompiledManifest {
   /**
    * Index of the build step that rebuilds the manifest file (if there is one).
    */
-  Optional<StepIndex> manifestStep() const {
+  detail::Optional<StepIndex> manifestStep() const {
     StepIndex step = _manifest->manifest_step();
     return step == -1 ?
-        Optional<StepIndex>() :
-        Optional<StepIndex>(_manifest->manifest_step());
+        detail::Optional<StepIndex>() :
+        detail::Optional<StepIndex>(_manifest->manifest_step());
   }
 
   /**
@@ -206,7 +209,8 @@ struct CompiledManifest {
    * were used to generate the build.ninja file) when determining if the
    * compiled manifest is clean.
    */
-  static Optional<time_t> maxMtime(FileSystem &file_system, StringsView files);
+  static detail::Optional<time_t> maxMtime(
+      FileSystem &file_system, StringsView files);
 
   /**
    * Stat all the files and return the minimum mtime. If some file is missing or
@@ -215,7 +219,8 @@ struct CompiledManifest {
    * This method is useful to use with manifestFiles (the build.ninja files)
    * when determining if they need to be regenerated.
    */
-  static Optional<time_t> minMtime(FileSystem &file_system, StringsView files);
+  static detail::Optional<time_t> minMtime(
+      FileSystem &file_system, StringsView files);
 
   /**
    * Parses and compiles a manifest file and returns a pair of CompiledManifest
@@ -229,7 +234,7 @@ struct CompiledManifest {
    * If parsing or compiling fails, no CompiledManifest is returned and *err is
    * set.
    */
-  static std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
+  static std::pair<detail::Optional<CompiledManifest>, std::shared_ptr<void>>
       parseAndCompile(
           FileSystem &file_system,
           const std::string &manifest_path,

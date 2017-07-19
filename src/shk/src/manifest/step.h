@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "hash.h"
-#include "optional.h"
 #include "manifest/manifest_generated.h"
 #include "manifest/raw_step.h"
 #include "manifest/wrapper_view.h"

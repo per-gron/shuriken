@@ -170,12 +170,12 @@ bool Path::exists() const {
   return _canonicalized_path->path.empty();
 }
 
-Optional<FileId> Path::fileId() const {
+detail::Optional<FileId> Path::fileId() const {
   if (exists()) {
-    return Optional<FileId>(
+    return detail::Optional<FileId>(
         FileId(_canonicalized_path->ino, _canonicalized_path->dev));
   } else {
-    return Optional<FileId>();
+    return detail::Optional<FileId>();
   }
 }
 

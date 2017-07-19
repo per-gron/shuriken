@@ -387,12 +387,12 @@ std::string getDependencyCycle(
  * true.
  */
 template <typename Predicate>
-Optional<StepIndex> searchStepDependenciesHelper(
+detail::Optional<StepIndex> searchStepDependenciesHelper(
     StepsView steps,
     const Predicate &predicate,
     StepIndex idx,
     std::vector<bool> &already_visited,
-    std::vector<Optional<StepIndex>> &result) {
+    std::vector<detail::Optional<StepIndex>> &result) {
   if (already_visited[idx]) {
     // The step has already been processed. Avoid unnecessary duplicate
     // computation for when the build graph forms a non-tree DAG and just quit.
@@ -408,7 +408,7 @@ Optional<StepIndex> searchStepDependenciesHelper(
 
   const auto step = steps[idx];
   if (predicate(step)) {
-    return result[idx] = Optional<StepIndex>(idx);
+    return result[idx] = detail::Optional<StepIndex>(idx);
   }
   for (const auto dependency_idx : step.dependencies()) {
     if (const auto result_index = searchStepDependenciesHelper(
@@ -416,7 +416,7 @@ Optional<StepIndex> searchStepDependenciesHelper(
       return result[idx] = result_index;
     }
   }
-  return Optional<StepIndex>();
+  return detail::Optional<StepIndex>();
 }
 
 /**
@@ -425,11 +425,11 @@ Optional<StepIndex> searchStepDependenciesHelper(
  * true.
  */
 template <typename Predicate>
-std::vector<Optional<StepIndex>> searchStepDependencies(
+std::vector<detail::Optional<StepIndex>> searchStepDependencies(
     StepsView steps,
     const Predicate &predicate) {
   std::vector<bool> already_visited(steps.size());
-  std::vector<Optional<StepIndex>> result(steps.size());
+  std::vector<detail::Optional<StepIndex>> result(steps.size());
 
   for (StepIndex idx = 0; idx < steps.size(); idx++) {
     searchStepDependenciesHelper(
@@ -534,14 +534,14 @@ StepIndex getManifestStep(
 CompiledManifest::CompiledManifest(const ShkManifest::Manifest &manifest)
     : _manifest(&manifest) {}
 
-Optional<CompiledManifest> CompiledManifest::load(
+detail::Optional<CompiledManifest> CompiledManifest::load(
     string_view data, std::string *err) {
   flatbuffers::Verifier verifier(
       reinterpret_cast<const uint8_t *>(data.data()),
       data.size());
   if (!ShkManifest::VerifyManifestBuffer(verifier)) {
     *err = "Manifest file did not pass Flatbuffer validation";
-    return Optional<CompiledManifest>();
+    return detail::Optional<CompiledManifest>();
   }
 
   const auto &manifest = *ShkManifest::GetManifest(data.data());
@@ -550,7 +550,7 @@ Optional<CompiledManifest> CompiledManifest::load(
 
   const auto fail_validation = [err]() {
     *err = "Encountered invalid step index";
-    return Optional<CompiledManifest>();
+    return detail::Optional<CompiledManifest>();
   };
 
   const auto is_valid_index = [num_steps](StepIndex index) {
@@ -592,7 +592,7 @@ Optional<CompiledManifest> CompiledManifest::load(
   for (auto pool : compiled_manifest.pools()) {
     if (pool.second < 0) {
       *err = "Encountered invalid pool depth";
-      return Optional<CompiledManifest>();
+      return detail::Optional<CompiledManifest>();
     }
   }
 
@@ -601,7 +601,7 @@ Optional<CompiledManifest> CompiledManifest::load(
     return fail_validation();
   }
 
-  return Optional<CompiledManifest>(compiled_manifest);
+  return detail::Optional<CompiledManifest>(compiled_manifest);
 }
 
 bool CompiledManifest::compile(
@@ -711,27 +711,27 @@ bool CompiledManifest::compile(
 }
 
 template <typename Callback>
-Optional<time_t> foldMtime(
+detail::Optional<time_t> foldMtime(
     FileSystem &file_system, StringsView files, Callback &&cb) {
-  Optional<time_t> ans;
+  detail::Optional<time_t> ans;
   for (auto file : files) {
     auto stat = file_system.stat(file);
     if (stat.result != 0) {
-      return Optional<time_t>();
+      return detail::Optional<time_t>();
     }
     ans = ans ? cb(*ans, stat.mtime) : stat.mtime;
   }
   return ans;
 }
 
-Optional<time_t> CompiledManifest::maxMtime(
+detail::Optional<time_t> CompiledManifest::maxMtime(
     FileSystem &file_system, StringsView files) {
   return foldMtime(file_system, files, [](time_t a, time_t b) {
     return std::max(a, b);
   });
 }
 
-Optional<time_t> CompiledManifest::minMtime(
+detail::Optional<time_t> CompiledManifest::minMtime(
     FileSystem &file_system, StringsView files) {
   return foldMtime(file_system, files, [](time_t a, time_t b) {
     return std::min(a, b);
@@ -742,14 +742,14 @@ namespace {
 
 constexpr uint64_t kCompiledManifestVersion = 3;
 
-std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
+std::pair<detail::Optional<CompiledManifest>, std::shared_ptr<void>>
     loadPrecompiledManifest(
         FileSystem &file_system,
         const std::string &compiled_manifest_path,
         std::string *err) {
   const auto compiled_stat = file_system.stat(compiled_manifest_path);
   if (compiled_stat.result == ENOENT) {
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   auto buffer = std::make_shared<std::string>();
@@ -758,18 +758,18 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
   if (error) {
     // A more severe error than just a missing file is treated as an error,
     // for example if the path points to a directory.
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   if (buffer->size() < sizeof(kCompiledManifestVersion)) {
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
   const auto version =
       flatbuffers::EndianScalar(
           *reinterpret_cast<const decltype(kCompiledManifestVersion) *>(
               buffer->data()));
   if (version != kCompiledManifestVersion) {
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   std::string discard_err;
@@ -779,7 +779,7 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
           buffer->size() - sizeof(version)),
       &discard_err);
   if (!manifest) {
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   auto input_mtime = CompiledManifest::maxMtime(
@@ -788,15 +788,15 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
   if (!input_mtime || *input_mtime >= compiled_stat.mtime) {
     // The compiled manifest is out of date or has equal timestamps, which means
     // we don't know if it's out of date or not. Recompile just to be sure.
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
-  return std::make_pair(Optional<CompiledManifest>(manifest), buffer);
+  return std::make_pair(detail::Optional<CompiledManifest>(manifest), buffer);
 }
 
 }  // anonymous namespace
 
-std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
+std::pair<detail::Optional<CompiledManifest>, std::shared_ptr<void>>
     CompiledManifest::parseAndCompile(
         FileSystem &file_system,
         const std::string &manifest_path,
@@ -807,7 +807,7 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
   if (precompiled.first) {
     return precompiled;
   } else if (!err->empty()) {
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   Paths paths(file_system);
@@ -816,16 +816,16 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
     raw_manifest = parseManifest(paths, file_system, manifest_path);
   } catch (const IoError &io_error) {
     *err = std::string("failed to read manifest: ") + io_error.what();
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   } catch (const ParseError &parse_error) {
     *err = std::string("failed to parse manifest: ") + parse_error.what();
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   flatbuffers::FlatBufferBuilder fb_builder(128 * 1024);
   if (!CompiledManifest::compile(
           fb_builder, paths.get(manifest_path), raw_manifest, err)) {
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   auto buffer = std::make_shared<std::vector<char>>(
@@ -839,7 +839,7 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
   std::tie(stream, error) = file_system.open(compiled_manifest_path, "wb");
   if (error) {
     *err = std::string("failed to write compiled manifest: ") + error.what();
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   const auto version = flatbuffers::EndianScalar(kCompiledManifestVersion);
@@ -848,7 +848,7 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
           1,
           sizeof(version))) {
     *err = std::string("failed to write compiled manifest: ") + error.what();
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   if (auto error = stream->write(
@@ -856,12 +856,12 @@ std::pair<Optional<CompiledManifest>, std::shared_ptr<void>>
           1,
           buffer_view.size())) {
     *err = std::string("failed to write compiled manifest: ") + error.what();
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   const auto maybe_manifest = CompiledManifest::load(buffer_view, err);
   if (!maybe_manifest) {
-    return std::make_pair(Optional<CompiledManifest>(), nullptr);
+    return std::make_pair(detail::Optional<CompiledManifest>(), nullptr);
   }
 
   return std::make_pair(maybe_manifest, buffer);

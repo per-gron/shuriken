@@ -19,7 +19,6 @@
 
 #include <util/assert.h>
 
-#include "optional.h"
 #include "util.h"
 
 namespace shk {

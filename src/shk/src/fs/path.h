@@ -19,12 +19,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <rs/detail/optional.h>
 #include <util/path_error.h>
 #include <util/string_view.h>
 
 #include "fs/file_id.h"
 #include "fs/file_system.h"
-#include "optional.h"
 
 namespace shk {
 namespace detail {
@@ -113,7 +113,7 @@ class Path {
    * was created, this returns the FileId for that file. Otherwise return an
    * empty optional.
    */
-  Optional<FileId> fileId() const;
+  detail::Optional<FileId> fileId() const;
 
   /**
    * The original, non-canonicalized path. Always absolute or relative to the

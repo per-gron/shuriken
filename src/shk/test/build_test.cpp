@@ -1016,7 +1016,7 @@ TEST_CASE("Build") {
       CHECK(
           memo ==
           FingerprintMatchesMemo({
-              Optional<MatchesResult>() }));
+              detail::Optional<MatchesResult>() }));
     }
 
     SECTION("used dirty fingerprint") {
@@ -1029,7 +1029,7 @@ TEST_CASE("Build") {
       CHECK(
           memo ==
           FingerprintMatchesMemo({
-              Optional<MatchesResult>(MatchesResult()) }));
+              detail::Optional<MatchesResult>(MatchesResult()) }));
     }
 
     SECTION("used clean fingerprint") {
@@ -1047,7 +1047,7 @@ TEST_CASE("Build") {
       CHECK(
           memo ==
           FingerprintMatchesMemo({
-              Optional<MatchesResult>(expected_result) }));
+              detail::Optional<MatchesResult>(expected_result) }));
     }
 
     SECTION("used racily clean fingerprint") {
@@ -1065,7 +1065,7 @@ TEST_CASE("Build") {
       CHECK(
           memo ==
           FingerprintMatchesMemo({
-              Optional<MatchesResult>(expected_result) }));
+              detail::Optional<MatchesResult>(expected_result) }));
     }
 
     SECTION("one used of several fingerprints") {
@@ -1087,10 +1087,10 @@ TEST_CASE("Build") {
       CHECK(
           memo ==
           FingerprintMatchesMemo({
-              Optional<MatchesResult>(),
-              Optional<MatchesResult>(),
-              Optional<MatchesResult>(expected_result),
-              Optional<MatchesResult>() }));
+              detail::Optional<MatchesResult>(),
+              detail::Optional<MatchesResult>(),
+              detail::Optional<MatchesResult>(expected_result),
+              detail::Optional<MatchesResult>() }));
     }
   }
 
@@ -1687,7 +1687,7 @@ TEST_CASE("Build") {
     }
 
     SECTION("all clean") {
-      auto clean = Optional<MatchesResult>(MatchesResult());
+      auto clean = detail::Optional<MatchesResult>(MatchesResult());
       clean->clean = true;
       auto memo = FingerprintMatchesMemo{ clean, clean };
 

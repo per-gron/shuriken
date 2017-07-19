@@ -17,6 +17,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <rs/detail/optional.h>
+
 #include "build_error.h"
 #include "clock.h"
 #include "cmd/command_runner.h"
@@ -25,7 +27,6 @@
 #include "log/invocations.h"
 #include "manifest/compiled_manifest.h"
 #include "manifest/step.h"
-#include "optional.h"
 #include "status/build_status.h"
 
 namespace shk {

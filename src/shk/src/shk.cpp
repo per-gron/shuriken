@@ -32,6 +32,7 @@
 #include <unistd.h>
 #endif
 
+#include <rs/detail/optional.h>
 #include <util/assert.h>
 #include <util/path_operations.h>
 
@@ -223,7 +224,7 @@ struct ShurikenMain {
   std::unique_ptr<FileLock> _invocation_log_lock;
   std::unique_ptr<InvocationLog> _invocation_log;
   std::shared_ptr<void> _manifest_buffer;
-  Optional<CompiledManifest> _compiled_manifest;
+  detail::Optional<CompiledManifest> _compiled_manifest;
   std::shared_ptr<TraceServerHandle> &_trace_server_handle;
 };
 

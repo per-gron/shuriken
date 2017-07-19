@@ -78,7 +78,6 @@ add_library(shklib
   src/log/persistent_invocation_log.cpp
   src/log/persistent_invocation_log.h
   src/nullterminated_string.h
-  src/optional.h
   src/parse_error.h
   src/status/build_status.h
   src/status/dummy_build_status.h
@@ -108,7 +107,7 @@ add_library(shklib
   ${CMAKE_CURRENT_BINARY_DIR}/include/manifest/manifest_generated.h)
 set_property(TARGET shklib PROPERTY CXX_STANDARD 14)
 target_include_directories(shklib PUBLIC src ${CMAKE_CURRENT_BINARY_DIR}/include)
-target_link_libraries(shklib blake2 shk-util)
+target_link_libraries(shklib blake2 rs shk-util)
 set_property(TARGET shklib APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk
@@ -167,7 +166,6 @@ add_executable(shk-test
   test/manifest/step_test.cpp
   test/manifest/wrapper_view_test.cpp
   test/nullterminated_string_test.cpp
-  test/optional_test.cpp
   test/status/line_printer_test.cpp
   test/status/stopwatch_test.cpp
   test/util_test.cpp)
