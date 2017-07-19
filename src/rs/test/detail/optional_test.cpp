@@ -122,13 +122,13 @@ TEST_CASE("Optional") {
     SECTION("Uninitialized") {
       Optional<int> m;
       CHECK(!m);
-      CHECK(!m.isSet());
+      CHECK(!m.IsSet());
     }
 
     SECTION("Initialized") {
       Optional<int> m(0);
       CHECK(!!m);
-      CHECK(m.isSet());
+      CHECK(m.IsSet());
     }
   }
 
@@ -195,16 +195,16 @@ TEST_CASE("Optional") {
   SECTION("Clear") {
     SECTION("Uninitialized") {
       Optional<int> m;
-      CHECK(!m.isSet());
-      m.clear();
-      CHECK(!m.isSet());
+      CHECK(!m.IsSet());
+      m.Clear();
+      CHECK(!m.IsSet());
     }
 
     SECTION("Initialized") {
       Optional<int> m(0);
-      CHECK(m.isSet());
-      m.clear();
-      CHECK(!m.isSet());
+      CHECK(m.IsSet());
+      m.Clear();
+      CHECK(!m.IsSet());
     }
   }
 
@@ -213,15 +213,15 @@ TEST_CASE("Optional") {
       Optional<int> m1;
       Optional<int> m2;
       std::swap(m1, m2);
-      CHECK(!m1.isSet());
-      CHECK(!m2.isSet());
+      CHECK(!m1.IsSet());
+      CHECK(!m2.IsSet());
     }
 
     SECTION("FirstInitialized") {
       Optional<int> m1(1);
       Optional<int> m2;
       std::swap(m1, m2);
-      CHECK(!m1.isSet());
+      CHECK(!m1.IsSet());
       CHECK(1 == m2);
     }
 
@@ -230,7 +230,7 @@ TEST_CASE("Optional") {
       Optional<int> m2(1);
       std::swap(m1, m2);
       CHECK(1 == m1);
-      CHECK(!m2.isSet());
+      CHECK(!m2.IsSet());
     }
 
     SECTION("BothInitialized") {
@@ -327,19 +327,19 @@ TEST_CASE("Optional") {
   SECTION("Functional") {
     SECTION("UninitializedMap") {
       Optional<int> m1;
-      Optional<int> m2 = m1.map([] (int a) -> int { return a; });
+      Optional<int> m2 = m1.Map([] (int a) -> int { return a; });
       CHECK(!m2);
     }
 
     SECTION("InitializedMap") {
       Optional<int> m1(1);
-      Optional<int> m2 = m1.map([] (int a) -> int { return a; });
+      Optional<int> m2 = m1.Map([] (int a) -> int { return a; });
       CHECK(1 == m1);
     }
 
     SECTION("UninitializedIfElse") {
       Optional<int> m1;
-      int m2 = m1.ifElse([] (int a) -> int {
+      int m2 = m1.IfElse([] (int a) -> int {
         return 0;
       }, [] () -> int {
         return 1;
@@ -349,7 +349,7 @@ TEST_CASE("Optional") {
 
     SECTION("InitializedIfElse") {
       Optional<int> m1(1);
-      int m2 = m1.ifElse([] (int a) -> int {
+      int m2 = m1.IfElse([] (int a) -> int {
         return 0;
       }, [] () -> int {
         return 1;
@@ -361,7 +361,7 @@ TEST_CASE("Optional") {
       bool flag1 = false;
       bool flag2 = false;
       Optional<int> m1(1);
-      m1.ifElse([&] (int a) {
+      m1.IfElse([&] (int a) {
         flag1 = true;
       }, [&] () {
         flag2 = true;
@@ -374,7 +374,7 @@ TEST_CASE("Optional") {
       bool flag1 = false;
       bool flag2 = false;
       Optional<int> m1;
-      m1.ifElse([&] (int a) {
+      m1.IfElse([&] (int a) {
         flag1 = true;
       }, [&] () {
         flag2 = true;
@@ -386,7 +386,7 @@ TEST_CASE("Optional") {
     SECTION("UninitializedEach") {
       bool flag = false;
       Optional<int> m1;
-      m1.each([&] (int a) {
+      m1.Each([&] (int a) {
         flag = true;
       });
       CHECK(!flag);
@@ -395,7 +395,7 @@ TEST_CASE("Optional") {
     SECTION("InitializedEach") {
       bool flag = false;
       Optional<int> m1(1);
-      m1.each([&] (int a) {
+      m1.Each([&] (int a) {
         flag = true;
       });
       CHECK(flag);
@@ -404,7 +404,7 @@ TEST_CASE("Optional") {
     SECTION("UninitializedConstEach") {
       bool flag = false;
       const Optional<int> m1;
-      m1.each([&] (int a) {
+      m1.Each([&] (int a) {
         flag = true;
       });
       CHECK(!flag);
@@ -413,7 +413,7 @@ TEST_CASE("Optional") {
     SECTION("InitializedConstEach") {
       bool flag = false;
       const Optional<int> m1(1);
-      m1.each([&] (int a) {
+      m1.Each([&] (int a) {
         flag = true;
       });
       CHECK(flag);

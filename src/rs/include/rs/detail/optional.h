@@ -20,7 +20,6 @@
 
 namespace shk {
 namespace detail {
-
 namespace internal {
 
 template<typename T, bool IsReference>
@@ -62,9 +61,6 @@ struct OptionalTypes<T, true> {
  *
  * It also has a couple of higher-level functional-like constructs for dealing
  * with the fact that the value might not be set: See map, each and ifelse.
- *
- * Once the code base starts using C++17, this class should be removed in favor
- * of std::optional
  */
 template<typename T>
 class Optional {
@@ -78,64 +74,64 @@ class Optional {
   typedef typename types::pointer_type pointer_type;
   typedef typename types::argument_type argument_type;
 
-  Optional() { setSet(false); }
+  Optional() { SetSet(false); }
   Optional(const Optional<T> &other) {
-    setSet(false);
+    SetSet(false);
     if (other) {
-      assign(*other.memory());
+      Assign(*other.Memory());
     }
   }
   Optional(Optional<T> &&other) {
-    setSet(false);
+    SetSet(false);
     if (other) {
-      assign(std::move(*other.memory()));
-      other.clear();
+      Assign(std::move(*other.Memory()));
+      other.Clear();
     }
   }
   explicit Optional(argument_type other) {
-    setSet(false);
-    assign(other);
+    SetSet(false);
+    Assign(other);
   }
   explicit Optional(value_type &&other) {
-    setSet(false);
-    assign(std::move(other));
+    SetSet(false);
+    Assign(std::move(other));
   }
 
-  ~Optional() { clear(); }
+  ~Optional() { Clear(); }
 
   Optional<T>& operator=(const Optional<T> &other) {
     if (other) {
-      assign(*other.memory());
+      Assign(*other.Memory());
     } else {
-      clear();
+      Clear();
     }
     return *this;
   }
 
   Optional<T>& operator=(Optional<T> &&other) {
     if (other) {
-      assign(std::move(*other.memory()));
-      other.clear();
+      Assign(std::move(*other.Memory()));
+      other.Clear();
     } else {
-      clear();
+      Clear();
     }
     return *this;
   }
 
   Optional<T>& operator=(argument_type other) {
-    assign(other);
+    Assign(other);
     return *this;
   }
 
   Optional<T>& operator=(value_type &&other) {
-    assign(std::move(other));
+    Assign(std::move(other));
     return *this;
   }
 
   /**
    * Returns non-zero iff the object stores a value.
    */
-  bool isSet() const {
+  bool IsSet() const {
     return _data[sizeof(storage_type)];
   }
 
@@ -144,38 +140,38 @@ class Optional {
    * This is an alias for isSet.
    */
   explicit operator bool() const {
-    return isSet();
+    return IsSet();
   }
 
   /**
    * Returns a pointer to the object stored, or nullptr if not set.
    */
-  pointer_type get() { return isSet() ? memory() : nullptr; }
-  pointer_const_type get() const { return isSet() ? memory() : nullptr; }
+  pointer_type Get() { return IsSet() ? Memory() : nullptr; }
+  pointer_const_type Get() const { return IsSet() ? Memory() : nullptr; }
 
   /**
    * This is a convenience operator in order to be able to use the
    * object as you would a smart pointer. Returns nullptr if not set.
    */
-  pointer_type operator->() { return get(); }
-  pointer_const_type operator->() const { return get(); }
+  pointer_type operator->() { return Get(); }
+  pointer_const_type operator->() const { return Get(); }
 
   /**
    * This is a convenience operator in order to be able to use the
    * object as you would a smart pointer. Return value is undefined
    * if not set.
    */
-  reference_type operator*() { return *get(); }
-  reference_const_type operator*() const { return *get(); }
+  reference_type operator*() { return *Get(); }
+  reference_const_type operator*() const { return *Get(); }
 
   /**
    * If the object stores a value, clear it. If the
    * object is not set, this is a no-op.
    */
-  void clear() {
-    if (isSet()) {
-      invokeDestructor();
-      setSet(false);
+  void Clear() {
+    if (IsSet()) {
+      InvokeDestructor();
+      SetSet(false);
     }
   }
 
@@ -185,11 +181,11 @@ class Optional {
    * optional of the functor's return type.
    */
   template<typename Functor>
-  auto map(Functor functor)
+  auto Map(Functor &&functor)
   -> Optional<decltype(functor(*static_cast<pointer_type>(nullptr)))> {
     typedef decltype(functor(*static_cast<pointer_type>(nullptr))) ReturnType;
-    if (isSet()) {
-      return Optional<ReturnType>(functor(*get()));
+    if (IsSet()) {
+      return Optional<ReturnType>(functor(*Get()));
     } else {
       return Optional<ReturnType>();
     }
@@ -200,9 +196,9 @@ class Optional {
    * is a no-op.
    */
   template<typename Functor>
-  void each(Functor functor) {
-    if (isSet()) {
-      functor(*get());
+  void Each(Functor &&functor) {
+    if (IsSet()) {
+      functor(*Get());
     }
   }
 
@@ -211,9 +207,9 @@ class Optional {
    * is a no-op.
    */
   template<typename Functor>
-  void each(Functor functor) const {
-    if (isSet()) {
-      functor(*get());
+  void Each(Functor &&functor) const {
+    if (IsSet()) {
+      functor(*Get());
     }
   }
 
@@ -222,10 +218,10 @@ class Optional {
    * second one if it isn't. It returns what the invoked functor returns.
    */
   template<typename FunctorIf, typename FunctorElse>
-  auto ifElse(FunctorIf functorIf, FunctorElse functorElse)
+  auto IfElse(FunctorIf &&functorIf, FunctorElse &&functorElse)
   -> decltype(functorIf(*static_cast<pointer_type>(nullptr))) {
-    if (isSet()) {
-      return functorIf(*get());
+    if (IsSet()) {
+      return functorIf(*Get());
     } else {
       return functorElse();
     }
@@ -234,135 +230,135 @@ class Optional {
  private:
   template<typename U = T>
   typename std::enable_if<std::is_reference<U>::value>::type
-  invokeDestructor() {}
+  InvokeDestructor() {}
 
   template<typename U = T>
   typename std::enable_if<!std::is_reference<U>::value>::type
-  invokeDestructor() {
-    memory()->~T();
+  InvokeDestructor() {
+    Memory()->~T();
   }
 
   template<typename U = T>
   typename std::enable_if<std::is_reference<U>::value, pointer_type>::type
-  memory() {
+  Memory() {
     return *reinterpret_cast<value_type**>(_data);
   }
 
   template<typename U = T>
   typename std::enable_if<!std::is_reference<U>::value,
                           pointer_type>::type
-  memory() {
+  Memory() {
     return reinterpret_cast<pointer_type>(&_data);
   }
 
   template<typename U = T>
   typename std::enable_if<std::is_reference<U>::value,
                           pointer_const_type>::type
-  memory() const {
+  Memory() const {
     return *reinterpret_cast<value_type* const*>(_data);
   }
 
   template<typename U = T>
   typename std::enable_if<!std::is_reference<U>::value,
                           pointer_const_type>::type
-  memory() const {
+  Memory() const {
     return reinterpret_cast<pointer_const_type>(&_data);
   }
 
-  void setSet(bool set) {
+  void SetSet(bool set) {
     _data[sizeof(storage_type)] = set;
   }
 
   template<typename U = T>
   typename std::enable_if<std::is_reference<U>::value>::type
-  copyConstruct(argument_type val) {
+  CopyConstruct(argument_type val) {
     *reinterpret_cast<value_type**>(_data) = &val;
   }
 
   template<typename U = T>
   typename std::enable_if<!std::is_reference<U>::value>::type
-  copyConstruct(argument_type val) {
-    ::new(memory()) T(val);
+  CopyConstruct(argument_type val) {
+    ::new(Memory()) T(val);
   }
 
   template<typename U = T>
   typename std::enable_if<std::is_reference<U>::value>::type
-  moveConstruct(value_type&& val) {
+  MoveConstruct(value_type&& val) {
     *reinterpret_cast<value_type**>(_data) = &val;
   }
 
   template<typename U = T>
   typename std::enable_if<!std::is_reference<U>::value>::type
-  moveConstruct(value_type&& val) {
-    ::new(memory()) T(std::move(val));
+  MoveConstruct(value_type&& val) {
+    ::new(Memory()) T(std::move(val));
   }
 
   template<typename U = T>
   typename std::enable_if<std::is_copy_constructible<U>::value &&
                           std::is_copy_assignable<U>::value>::type
-  assign(argument_type by_copy) {
-    if (isSet()) {
-      *memory() = by_copy;
+  Assign(argument_type by_copy) {
+    if (IsSet()) {
+      *Memory() = by_copy;
     } else {
-      copyConstruct(by_copy);
-      setSet(true);
+      CopyConstruct(by_copy);
+      SetSet(true);
     }
   }
 
   template<typename U = T>
   typename std::enable_if<std::is_copy_constructible<U>::value &&
                           !std::is_copy_assignable<U>::value>::type
-  assign(argument_type by_copy) {
-    if (isSet()) {
-      clear();
+  Assign(argument_type by_copy) {
+    if (IsSet()) {
+      Clear();
     }
-    copyConstruct(by_copy);
-    setSet(true);
+    CopyConstruct(by_copy);
+    SetSet(true);
   }
 
   template<typename U = T>
   typename std::enable_if<!std::is_copy_constructible<U>::value &&
                           std::is_copy_assignable<U>::value>::type
-  assign(argument_type by_copy) {
-    if (!isSet()) {
-      ::new(memory()) T;
-      setSet(true);
+  Assign(argument_type by_copy) {
+    if (!IsSet()) {
+      ::new(Memory()) T;
+      SetSet(true);
     }
-    *memory() = by_copy;
+    *Memory() = by_copy;
   }
 
   template<typename U = T>
   typename std::enable_if<std::is_move_constructible<U>::value &&
                           std::is_move_assignable<U>::value>::type
-  assign(value_type &&by_move) {
-    if (isSet()) {
-      *memory() = std::move(by_move);
+  Assign(value_type &&by_move) {
+    if (IsSet()) {
+      *Memory() = std::move(by_move);
     } else {
-      moveConstruct(std::move(by_move));
-      setSet(true);
+      MoveConstruct(std::move(by_move));
+      SetSet(true);
     }
   }
 
   template<typename U = T>
   typename std::enable_if<std::is_move_constructible<U>::value &&
                           !std::is_move_assignable<U>::value>::type
-  assign(value_type &&by_move) {
-    if (isSet()) {
-      clear();
+  Assign(value_type &&by_move) {
+    if (IsSet()) {
+      Clear();
     }
-    moveConstruct(std::move(by_move));
-    setSet(true);
+    MoveConstruct(std::move(by_move));
+    SetSet(true);
   }
 
   template<typename U = T>
   typename std::enable_if<!std::is_move_constructible<U>::value &&
                           std::is_move_assignable<U>::value>::type
-  assign(value_type &&by_move) {
-    if (!isSet()) {
-      ::new(memory()) T;
-      setSet(true);
+  Assign(value_type &&by_move) {
+    if (!IsSet()) {
+      ::new(Memory()) T;
+      SetSet(true);
     }
-    *memory() = std::move(by_move);
+    *Memory() = std::move(by_move);
   }
 
   /**
