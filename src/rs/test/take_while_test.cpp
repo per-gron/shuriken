@@ -19,6 +19,7 @@
 
 #include <rs/concat.h>
 #include <rs/just.h>
+#include <rs/never.h>
 #include <rs/take_while.h>
 
 #include "infinite_range.h"
@@ -35,6 +36,13 @@ TEST_CASE("TakeWhile") {
     static_assert(
         IsPublisher<decltype(stream)>,
         "TakeWhile stream should be a publisher");
+  }
+
+  SECTION("never") {
+    auto stream = take_while_positive(Never());
+    CHECK(
+        GetAll<int>(stream, ElementCount::Unbounded(), false) ==
+        (std::vector<int>{}));
   }
 
   SECTION("one positive") {

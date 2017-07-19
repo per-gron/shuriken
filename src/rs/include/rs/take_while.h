@@ -116,7 +116,7 @@ auto TakeWhile(Predicate &&predicate) {
               source.Subscribe(std::move(take_while_subscriber))),
           &sub_ref);
 
-      if (take_while_ref) {  // TODO(peck): Test what happens if it's is empty
+      if (take_while_ref) {
         take_while_ref->TakeSubscription(std::move(sub_ref));
       }
 
