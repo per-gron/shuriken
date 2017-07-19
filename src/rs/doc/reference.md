@@ -48,7 +48,6 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`MakePublisher(Callback)`](#makepublishercallback)
 * [`MakeSubscriber()`](#makesubscriber)
 * [`MakeSubscriber(OnNext, OnError, OnComplete)`](#makesubscriberonnext-onerror-oncomplete)
-* [`MakeSubscriber(const std::shared_ptr<SubscriberType> &)`](#makesubscriberconst-stdshared_ptrsubscribertype-)
 * [`MakeSubscription()`](#makesubscription)
 * [`MakeSubscription(RequestCb, CancelCb)`](#makesubscriptionrequestcb-cancelcb)
 * [`MakeSubscription(const std::shared_ptr<SubscriptionType> &)`](#makesubscriptionconst-stdshared_ptrsubscriptiontype-)
@@ -967,23 +966,6 @@ auto subscription = fib.Subscribe(MakeSubscriber(
     }));
 subscription.Request(ElementCount::Unbounded());
 ```
-
-
-## `MakeSubscriber(const std::shared_ptr<SubscriberType> &)`
-
-**Defined in:** [`rs/subscriber.h`](../include/rs/subscriber.h)
-
-**Kind:** [Core Library API](#kind_core_library_api)
-
-**[Type](#types):** `std::shared_ptr<Subscriber[a]> -> Subscriber[a]`
-
-**Description:** When writing custom operators it is sometimes helpful to have one object that is both a Subscription and a Subscriber at the same time. Doing that directly is sometimes not possible because both the Subscriber and the Subscription has to be given/`std::move`d away, and you can't do that twice.
-
-To work around that limitation, it's possible to create a proxy Subscriber that has a `std::shared_ptr` to the actual Subscriber object. This allows giving away an owning reference to both the Subscriber and the Subscription.
-
-When using this, be careful with reference cycles that would cause memory leaks.
-
-This is an API for advanced use of the rs library, primarily for making it easier to write custom operators. Most applications will have no use for this function.
 
 
 ## `MakeSubscription()`
