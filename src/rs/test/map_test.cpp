@@ -19,6 +19,7 @@
 
 #include <rs/from.h>
 #include <rs/map.h>
+#include <rs/never.h>
 
 #include "infinite_range.h"
 #include "test_util.h"
@@ -29,13 +30,22 @@ TEST_CASE("Map") {
   auto add_self = Map([](auto x) { return x + x; });
 
   SECTION("empty") {
-    auto stream = add_self(From(std::vector<int>{}));
-    CHECK(
-        GetAll<int>(stream) ==
-        (std::vector<int>{}));
-    static_assert(
-        IsPublisher<decltype(stream)>,
-        "Mapped stream should be a publisher");
+    SECTION("subscriber is kept") {
+      auto stream = add_self(From(std::vector<int>{}));
+      CHECK(
+          GetAll<int>(stream) ==
+          (std::vector<int>{}));
+      static_assert(
+          IsPublisher<decltype(stream)>,
+          "Mapped stream should be a publisher");
+    }
+
+    SECTION("subscriber is discarded") {
+      auto stream = add_self(Never());
+      CHECK(
+          GetAll<int>(stream, ElementCount::Unbounded(), false) ==
+          (std::vector<int>{}));
+    }
   }
 
   SECTION("one int") {
