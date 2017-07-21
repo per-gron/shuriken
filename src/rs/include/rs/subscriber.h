@@ -45,6 +45,9 @@ using RequireRvalue = typename std::enable_if<
     !std::is_lvalue_reference<T>::value &&
     !(std::is_rvalue_reference<T>::value && std::is_const<T>::value)>::type;
 
+template <typename T>
+using RequireSubscriber = typename std::enable_if<IsSubscriber<T>>::type;
+
 namespace detail {
 
 class EmptySubscriber : public Subscriber {

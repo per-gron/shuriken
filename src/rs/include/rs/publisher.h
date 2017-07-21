@@ -54,12 +54,18 @@ class CallbackPublisher : public Publisher {
       FunctorTag, InnerPublisherType &&inner_publisher)
       : inner_publisher_(std::forward<InnerPublisherType>(inner_publisher)) {}
 
-  template <typename T, class = RequireRvalue<T>>
+  template <
+      typename T,
+      class = RequireRvalue<T>,
+      class = RequireSubscriber<T>>
   auto Subscribe(T &&t) {
     return inner_publisher_(std::forward<T>(t));
   }
 
-  template <typename T, class = RequireRvalue<T>>
+  template <
+      typename T,
+      class = RequireRvalue<T>,
+      class = RequireSubscriber<T>>
   auto Subscribe(T &&t) const {
     return inner_publisher_(std::forward<T>(t));
   }
@@ -93,7 +99,10 @@ class AnyPublisher : public Publisher {
   AnyPublisher(AnyPublisher &&) = default;
   AnyPublisher &operator=(AnyPublisher &&) = default;
 
-  template <typename SubscriberType, class = RequireRvalue<SubscriberType>>
+  template <
+      typename SubscriberType,
+      class = RequireRvalue<SubscriberType>,
+      class = RequireSubscriber<SubscriberType>>
   AnySubscription Subscribe(SubscriberType &&subscriber) const {
     static_assert(
         IsSubscriber<SubscriberType>,
