@@ -42,13 +42,15 @@ If you find that it is impossible to do what you want with existing operators, o
 
 An "operator" in rs is a quite loosely defined concept. The only thing all operators have in common is that they create streams (objects that conform to the [Publisher concept](specification.md#1-publisher-code)).
 
-In order to get a feeling for what operators can and must do, let's go through some progressively more complex examples.
+A Publisher in rs is similar to a future or a promise: It represents a possibly asynchronous computation. In most future libraries, a future either finishes successfully with a value, or it fails. An rs Publisher emits zero or more values, and after that it may complete or fail. For more detail, see the [specification](specification.md#1-publisher-code).
+
+In order to get a feeling for what Publishers can and must do, let's go through some progressively more complex examples.
 
 * A trivial stream / Publisher
 * An empty stream
 * A failing stream
+* Making an operator
 * A synchronous stream with a single element
-* Making an operator out of it
 * A map operator
 * A sum operator
 * Continuing from here
@@ -122,15 +124,22 @@ auto empty_stream = MakePublisher([](auto &&subscriber) {
 
 ### A failing stream
 
+The code for a stream that fails is a similar to a stream that succeeds, the difference is that `OnError` is called on the Subscriber instead of `OnComplete`:
+
+```cpp
+auto failing_stream = MakePublisher([](auto &&subscriber) {
+  subscriber.OnError(std::make_exception_ptr(std::runtime_error("fail")));
+  return MakeSubscription();
+});
+```
+
+
+### Making an operator
+
 TODO(peck): Write this section
 
 
 ### A synchronous stream with a single element
-
-TODO(peck): Write this section
-
-
-### Making an operator out of it
 
 TODO(peck): Write this section
 
