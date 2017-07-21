@@ -5,7 +5,7 @@ The *rs* library is designed with a strong focus on making it easy to manipulate
 When using this library you might run into situations where the built-in operators are – or at least seem – insufficient. In such cases you might have to write your own custom operator. Doing so can unfortunately be quite tricky. This document attempts to explain the basics of writing custom operators as well as some gotchas that are important to know about.
 
 
-## Try to combine existing operators first
+## First, try to combine existing operators
 
 Do you *really* need a custom operator? In many cases it's possible to create an operator simply by combining operators that already exist. Doing so is usually far simpler than writing a custom operator from scratch. Before writing a custom operator, have a look at [the reference documentation](reference.md) and see if you can think of ways to combine operators.
 
@@ -36,7 +36,71 @@ Another useful technique which can avoid the need for a fully custom operator is
 If you find that it is impossible to do what you want with existing operators, or that combining existing operators does not perform well enough, it makes sense to start looking at writing a custom operator.
 
 
-## The absence of a `Processor` concept
+## Custom rs operators
+
+**TL;DR:** When writing a custom rs operator, just make sure that the Publisher, Subscriber and Subscription objects that you create conform to [the specifiction](specification.md). However, it is not necessarily easy to understand what to do in practice from just reading the spec. For more detail, keep reading.
+
+An "operator" in rs is a quite loosely defined concept. The only thing all operators have in common is that they create streams (objects that conform to the [Publisher concept](specification.md#1-publisher-code)).
+
+In order to get a feeling for what operators can and must do, let's go through some progressively more complex examples.
+
+* A trivial stream / Publisher
+* An empty stream
+* A failing stream
+* A synchronous stream with a single element
+* Making an operator out of it
+* A map operator
+* A sum operator
+* Continuing from here
+
+
+### A trivial stream / Publisher
+
+The simplest possible stream in rs is a stream that never emits any elements and that never finishes. If you want a stream like this, you should use the built-in [`Never`](../include/rs/never.h) operator, but here we are interested in how to make our own.
+
+One way to do it is like this:
+
+```cpp
+class DummySubscription : public Subscription {
+ public:
+  void Request(ElementCount count) {}
+  void Cancel() {}
+};
+
+class NeverStream : public Publisher {
+ public:
+  template <typename Subscriber>
+  auto Subscribe(Subscriber &&subscriber) const {
+    static_assert(
+        IsRvalue<SubscriberType>,
+        "NeverStream was invoked with a non-rvalue parameter");
+    static_assert(
+        IsSubscriber<SubscriberType>,
+        "NeverStream was invoked with a non-subscriber parameter");
+
+    return DummySubscription();
+  }
+};
+
+NeverStream never_stream;
+```
+
+Breaking it down:
+
+* `never_stream` in the code snippet above is an object of type `NeverStream`, which is a type that conforms to the Publisher concept. This means that it is  a stream.
+* `NeverStream` inherits `Publisher`. `Publisher` is an empty non-instantiable type: The only thing it does is that it states the intent of being a Publisher. This helps catching type errors earlier, simplifying compile time error messages.
+* `NeverStream` has a `Subscribe` method that will be invoked each time someone starts to listen to the stream.
+* The `Subscribe` method must be a template because it must accept any type that conforms to the Subscriber concept, and there is no one type that can be used for that.
+* `NeverStream::Subscribe` uses `static_assert` statements to ensure that it is always invoked with an rvalue Subscriber. These are not strictly necessary but help provide easier to understand error messages if the method is used incorrectly.
+* The `Subscribe` method returns a Subscription object that allows the entity that wants the data from the stream to request elements and to cancel it.
+
+
+## Things to think about when writing custom operators
+
+This section contains various tips and tricks and other things that are good to think about when writing custom operators.
+
+
+### The absence of a `Processor` concept
 
 The Java version of the Reactive Streams specification has a `Processor` interface. A `Processor` is simply a `Subscription` and a `Subscriber` in one object. `Processor` is a useful interface because lots of operators can be implemented as a class that conforms to the `Processor` interface.
 
@@ -47,7 +111,7 @@ Early versions of the rs library had operator classes that were both a Subscribe
 It is good to know why rs lacks a Processor concept because when writing custom rs operators you need to think *very* carefully about object ownership and lifetime. C++ is much less forgiving than Java in this regard, and it really shows here.
 
 
-## Unit tests are your friend
+### Unit tests are your friend
 
 rs operators tend to be quite low level constructs. If they have bugs, even bugs that only occur in rare corner cases, you will suffer. In order for rs to be any fun to use, the operators have to Just Work, and this applies to your own custom rs operators too.
 
@@ -56,14 +120,14 @@ One of the very best ways to make sure that an rs operator actually works is to 
 It is painful to have such thorough coverage, but there are so many subtle ways an rs operator can fail that I think the effort is worth it.
 
 
-## Address Sanitizer is your friend
+### Address Sanitizer is your friend
 
 Even more so than in most C++ code, it is easy to write code that causes memory corruption. In particular, it is easy to write bugs that happen because an object is mutably borrowed out multiple times. The Rust programming language automatically detects and rejects such programs but C++ does not, and these bugs are often quite difficult to spot.
 
 Address Sanitizer, in particular in combination with a good unit test suite, is quite good at detecting these issues. So if you do write custom rs operators, use it! It will save you lots of time.
 
 
-## The dangers of borrowing
+### The dangers of borrowing
 
 This section is about a particularly painful type of bug that can happen in C++ programs that is extra easy to run into while writing rs operators. Consider the following (buggy) code snippet:
 
@@ -113,7 +177,7 @@ Unfortunately, I don't have very good advice for how to avoid this type of issue
 * If Address Sanitizer complains about an access to freed memory, where the freed memory in question is the `this` pointer in a method, this might be what's going on.
 
 
-## Different ways of having a C++ object
+### Different ways of having a C++ object
 
 When writing rs operators, one has to pay extra attention to how different objects own and refer to each other. Unlike Java, which has one type of reference that is used for almost everything, C++ has multiple ways of having an object, each with different abilities and drawbacks.
 
