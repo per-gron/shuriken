@@ -94,6 +94,62 @@ Breaking it down:
 * `NeverStream::Subscribe` uses `static_assert` statements to ensure that it is always invoked with an rvalue Subscriber. These are not strictly necessary but help provide easier to understand error messages if the method is used incorrectly.
 * The `Subscribe` method returns a Subscription object that allows the entity that wants the data from the stream to request elements and to cancel it.
 
+The example above can be written more concisely:
+
+```cpp
+auto never_stream = MakePublisher([](auto &&subscriber) {
+  return MakeSubscription();
+});
+```
+
+`MakeSubscription()` creates a no-op Subscription just like `DummySubscription` and `MakePublisher` avoids the rest of the boilerplate. All rs built-in operators are written using this shorter form; this inherits `Publisher`, does the proper `static_assert`s and also makes it easier to capture state in the publisher with the lambda expression.
+
+
+### An empty stream
+
+Now, let's look at something slightly more useful: how to create an empty stream (if you want a stream like this in your code, you should use the built-in [`Empty`](../include/rs/empty.h) operator):
+
+```cpp
+auto empty_stream = MakePublisher([](auto &&subscriber) {
+  subscriber.OnComplete();
+  return MakeSubscription();
+});
+```
+
+* This is similar to the `never_stream` example above.
+* When the stream is subscribed to, `empty_stream` immediately reports to the `subscriber` that the stream is complete.
+
+
+### A failing stream
+
+TODO(peck): Write this section
+
+
+### A synchronous stream with a single element
+
+TODO(peck): Write this section
+
+
+### Making an operator out of it
+
+TODO(peck): Write this section
+
+
+### A map operator
+
+TODO(peck): Write this section
+
+
+### A sum operator
+
+TODO(peck): Write this section
+
+
+### Continuing from here
+
+TODO(peck): Write this section
+
+
 
 ## Things to think about when writing custom operators
 
