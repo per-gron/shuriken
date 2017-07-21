@@ -41,12 +41,12 @@ template <typename T>
 constexpr bool IsSubscriber = std::is_base_of<Subscriber, T>::value;
 
 template <typename T>
-using RequireRvalue = typename std::enable_if<
+constexpr bool IsRvalue =
     !std::is_lvalue_reference<T>::value &&
-    !(std::is_rvalue_reference<T>::value && std::is_const<T>::value)>::type;
+    !(std::is_rvalue_reference<T>::value && std::is_const<T>::value);
 
 template <typename T>
-using RequireSubscriber = typename std::enable_if<IsSubscriber<T>>::type;
+using RequireRvalue = typename std::enable_if<IsRvalue<T>>::type;
 
 namespace detail {
 

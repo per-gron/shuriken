@@ -54,19 +54,27 @@ class CallbackPublisher : public Publisher {
       FunctorTag, InnerPublisherType &&inner_publisher)
       : inner_publisher_(std::forward<InnerPublisherType>(inner_publisher)) {}
 
-  template <
-      typename T,
-      class = RequireRvalue<T>,
-      class = RequireSubscriber<T>>
+  template <typename T>
   auto Subscribe(T &&t) {
+    static_assert(
+        IsRvalue<T>,
+        "CallbackPublisher was invoked with a non-rvalue parameter");
+    static_assert(
+        IsSubscriber<T>,
+        "CallbackPublisher was invoked with a non-subscriber parameter");
+
     return inner_publisher_(std::forward<T>(t));
   }
 
-  template <
-      typename T,
-      class = RequireRvalue<T>,
-      class = RequireSubscriber<T>>
+  template <typename T>
   auto Subscribe(T &&t) const {
+    static_assert(
+        IsRvalue<T>,
+        "CallbackPublisher was invoked with a non-rvalue parameter");
+    static_assert(
+        IsSubscriber<T>,
+        "CallbackPublisher was invoked with a non-subscriber parameter");
+
     return inner_publisher_(std::forward<T>(t));
   }
 
@@ -99,11 +107,11 @@ class AnyPublisher : public Publisher {
   AnyPublisher(AnyPublisher &&) = default;
   AnyPublisher &operator=(AnyPublisher &&) = default;
 
-  template <
-      typename SubscriberType,
-      class = RequireRvalue<SubscriberType>,
-      class = RequireSubscriber<SubscriberType>>
+  template <typename SubscriberType>
   AnySubscription Subscribe(SubscriberType &&subscriber) const {
+    static_assert(
+        IsRvalue<SubscriberType>,
+        "AnyPublisher was invoked with a non-rvalue parameter");
     static_assert(
         IsSubscriber<SubscriberType>,
         "AnyPublisher was invoked with a non-subscriber parameter");
