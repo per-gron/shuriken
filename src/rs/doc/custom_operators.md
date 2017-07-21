@@ -49,7 +49,7 @@ In order to get a feeling for what Publishers can and must do, let's go through 
 * A trivial stream / Publisher
 * An empty stream
 * A failing stream
-* Making an operator
+* Writing an operator
 * A synchronous stream with a single element
 * A map operator
 * A sum operator
@@ -124,7 +124,7 @@ auto empty_stream = MakePublisher([](auto &&subscriber) {
 
 ### A failing stream
 
-The code for a stream that fails is a similar to a stream that succeeds, the difference is that `OnError` is called on the Subscriber instead of `OnComplete`:
+The code for a stream that fails is a similar to a stream that succeeds, the difference is that `OnError` is called on the Subscriber instead of `OnComplete` (if you want a stream like this in your code, you should use the built-in [`Throw`](../include/rs/throw.h) operator):
 
 ```cpp
 auto failing_stream = MakePublisher([](auto &&subscriber) {
@@ -134,9 +134,31 @@ auto failing_stream = MakePublisher([](auto &&subscriber) {
 ```
 
 
-### Making an operator
+### Writing an operator
 
-TODO(peck): Write this section
+An rs operator is simply a function that returns a Publisher. For example, here is the `Empty` operator:
+
+```cpp
+auto Empty() {
+  return MakePublisher([](auto &&subscriber) {
+    subscriber.OnComplete();
+    return MakeSubscription();
+  });
+}
+```
+
+Being a function, an operator can take parameters:
+
+```cpp
+auto Throw(const std::exception_ptr &error) {
+  return MakePublisher([error](auto &&subscriber) {
+    subscriber.OnError(std::exception_ptr(error));
+    return MakeSubscription();
+  });
+}
+```
+
+As you can see, there is nothing special with these functions: What makes them operators is that they return Publishers.
 
 
 ### A synchronous stream with a single element
