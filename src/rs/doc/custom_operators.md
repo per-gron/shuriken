@@ -53,6 +53,7 @@ In order to get a feeling for what Publishers can and must do, let's go through 
 * A synchronous stream with a single element
 * A map operator
 * A sum operator
+* Streams that emit multiple values
 * Continuing from here
 
 
@@ -163,7 +164,160 @@ As you can see, there is nothing special with these functions: What makes them o
 
 ### A synchronous stream with a single element
 
-TODO(peck): Write this section
+Let's write a stream that emits a single value. (If you want a stream like this in your code, you should use the built-in [`Just`](../include/rs/just.h) or [`Start`](../include/rs/start.h) operators.) Here's a first attempt:
+
+```cpp
+// This is WRONG! See below
+auto one = MakePublisher([](auto &&subscriber) {
+  subscriber.OnNext(1);
+  subscriber.OnComplete();
+  return MakeSubscription();
+});
+```
+
+The code above is *almost* right: It is right that the elements should be sent to the Subscriber with `OnNext`, and it is right that when there are no more elements in the stream, the Subscriber should be notified with a call to `OnComplete`. The problem with the code above is that it violates *backpressure*.
+
+An rs Publisher must not deliver elements to the Subscriber until it has been requested to do so, and it must only deliver as many elements as have been requested. (Failing and completing a stream does not count as emitting an element and are exempt from this requirement.) In Reactive Streams, this property is called backpressure and it allows writing systems that behave well even when a stream spans several different machines, even when some parts of the chain are slower than others.
+
+Backpressure is pretty awesome. Unfortunately, supporting backpressure also makes it harder to write Publishers. Let's look at how to make it work.
+
+When a Publisher is subscribed to, it provides a Subscription object that can be used by the subscriber to request elements from the stream and to cancel it. A convenient way to create a Subscription object is with `MakeSubscription`:
+
+```cpp
+MakeSubscription(
+  [](ElementCount count) {
+    // count elements have been requested.
+  },
+  [] {
+    // The stream is being cancelled.
+  });
+```
+
+Trying to fix the example above:
+
+```cpp
+// This is better, but still WRONG! See below
+auto one = MakePublisher([](auto &&subscriber) {
+  return MakeSubscription(
+      [subscriber = std::forward<decltype(subscriber)>(subscriber)](
+          ElementCount count) {
+        subscriber.OnNext(1);
+        subscriber.OnComplete();
+      },
+      [] {
+        // Ignore cancel for now
+      });
+});
+```
+
+This works better, but it is possible for a subscriber to request 0 elements, and in that case nothing should be emitted:
+
+```cpp
+// This is better, but still WRONG! See below
+auto one = MakePublisher([](auto &&subscriber) {
+  return MakeSubscription(
+      [subscriber = std::forward<decltype(subscriber)>(subscriber)](
+          ElementCount count) {
+        if (count > 0) {
+          subscriber.OnNext(1);
+          subscriber.OnComplete();
+        }
+      },
+      [] {
+        // Ignore cancel for now
+      });
+});
+```
+
+Again, this is better. However, a subscriber is allowed to request elements even after a stream has finished. That must be a no-op:
+
+```cpp
+// This is better, but still WRONG! See below
+auto one = MakePublisher([](auto &&subscriber) {
+  return MakeSubscription(
+      [
+          subscriber = std::forward<decltype(subscriber)>(subscriber),
+          finished = false](
+              ElementCount count) mutable {
+        if (!finished && count > 0) {
+          finished = true;
+          subscriber.OnNext(1);
+          subscriber.OnComplete();
+        }
+      },
+      [] {
+        // Ignore cancel for now
+      });
+});
+```
+
+The thing that remains now is to suppport cancellation:
+
+```cpp
+// Finally a working version:
+auto one = MakePublisher([](auto &&subscriber) {
+  auto finished = std::make_shared<bool>(false);
+
+  return MakeSubscription(
+      [
+          subscriber = std::forward<decltype(subscriber)>(subscriber),
+          finished](
+              ElementCount count) {
+        if (!*finished && count > 0) {
+          *finished = true;
+          subscriber.OnNext(1);
+          subscriber.OnComplete();
+        }
+      },
+      [finished] {
+        *finished = true;
+      });
+});
+```
+
+This is a working implementation of a stream that emits `1`. In order to make sure it actually is right, I recommend going through [the specification](specification.md) and verifying that all of the requirements are fulfilled. Production code also needs unit tests.
+
+Using a `std::shared_ptr` like above results in concise code but it's inefficient and not necessarily easy to understand. In this case it might be better to not use the `MakeSubscription` helper despite the extra code:
+
+```cpp
+template <typename InnerSubscriber>
+class OneSubscription : public Subscription {
+ public:
+  explicit OneSubscription(InnerSubscriber &&inner_subscriber)
+      : inner_subscriber_(std::move(inner_subscriber)) {}
+
+  void Request(ElementCount count) {
+    if (!finished_ && count > 0) {
+      finished_ = true;
+      inner_subscriber_.OnNext(1);
+      inner_subscriber_.OnComplete();
+    }
+  }
+
+  void Cancel() {
+    finished_ = true;
+  }
+
+ private:
+  InnerSubscriber inner_subscriber_;
+  bool finished_ = false;
+};
+
+auto one = MakePublisher([](auto &&subscriber) {
+  return OneSubscription<
+      typename std::decay<decltype(subscriber)>::type>(
+          std::forward<decltype(subscriber)>(subscriber));
+});
+```
+
+Let's unpack this a bit:
+
+* Instead of using the `MakeSubscription` helper, the code above creates a custom type that conforms to the Subscription concept.
+* The previous versions that used `MakeSubscription` moved the `subscriber` parameter into the lambda object. Because this code doesn't use lambda expressions, it has to do so manually, which requires some paperwork with `std::decay`, a manually written `explicit` constructor and so on.
+* Having a custom Subscription class allows the `Cancel` and `Request` methods to share state (in this case `finished_`).
+* In theory, it would be safe to not use `std::decay` and to use `std::move` instead of `std::forward` in this example because `MakePublisher` makes sure that `subscriber` is never an lvalue reference, but this is not obvious so it's better to stick to conventions that are always safe.
+
+In practice, almost all custom rs operators end up having their own Subscription class.
 
 
 ### A map operator
@@ -172,6 +326,11 @@ TODO(peck): Write this section
 
 
 ### A sum operator
+
+TODO(peck): Write this section
+
+
+### Streams that emit multiple values
 
 TODO(peck): Write this section
 
