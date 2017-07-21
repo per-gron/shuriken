@@ -51,8 +51,9 @@ In order to get a feeling for what Publishers can and must do, let's go through 
 * A failing stream
 * Writing an operator
 * A synchronous stream with a single element
-* A map operator
-* A sum operator
+* A `Double` operator
+* A `Sum` operator
+* A `Map` operator
 * Streams that emit multiple values
 * Continuing from here
 
@@ -320,12 +321,110 @@ Let's unpack this a bit:
 In practice, almost all custom rs operators end up having their own Subscription class.
 
 
-### A map operator
+### A `Double` operator
+
+All examples so far have been uselessly trivial. In this section we are going to write an rs operator that does something almost useful: Doubling the values in a stream! (If you want to do this this in your code, you should use the built-in [`Map`](../include/rs/map.h) operator.)
+
+The signature of this operator is as follows:
+
+```cpp
+template <typename InputPublisher>
+auto Double(InputPublisher input) {
+  // Helps with detecting type errors as early as possible.
+  static_assert(
+      IsPublisher<InputPublisher>,
+      "Double was invoked with a non-publisher parameter");
+
+  ...
+}
+```
+
+`Double` returns a Publisher:
+
+```cpp
+template <typename InputPublisher>
+auto Double(InputPublisher input) {
+  // Helps with detecting type errors as early as possible.
+  static_assert(
+      IsPublisher<InputPublisher>,
+      "Double was invoked with a non-publisher parameter");
+
+  return MakePublisher([input = std::move(input)](auto &&subscriber) {
+    // ...
+  });
+}
+```
+
+When the doubling Publisher is subscribed to, it has to subscribe to the input stream to do its job:
+
+```cpp
+template <typename InputPublisher>
+auto Double(InputPublisher input) {
+  // Helps with detecting type errors as early as possible.
+  static_assert(
+      IsPublisher<InputPublisher>,
+      "Double was invoked with a non-publisher parameter");
+
+  return MakePublisher([input = std::move(input)](auto &&subscriber) {
+    auto sub = input.Subscribe(???);
+
+    // ...
+  });
+}
+```
+
+The Subscriber that is passed to `input` will be given values that `Double` needs to do something with. So we need to create a custom Subscriber. It has to forward calls to the inner subscriber, except in `OnNext`, where it changes the value before passing it on.
+
+This gives us:
+
+```cpp
+template <typename InnerSubscriber>
+class DoubleSubscriber : public Subscriber {
+ public:
+  explicit DoubleSubscriber(InnerSubscriber &&inner_subscriber)
+      : inner_subscriber_(std::move(inner_subscriber)) {}
+
+  template <typename T, class = RequireRvalue<T>>
+  void OnNext(T &&t) {
+    inner_subscriber_.OnNext(t + t);
+  }
+
+  void OnError(std::exception_ptr &&error) {
+    inner_subscriber_.OnError(std::move(error));
+  }
+
+  void OnComplete() {
+    inner_subscriber_.OnComplete();
+  }
+
+ private:
+  InnerSubscriber inner_subscriber_;
+};
+
+template <typename InputPublisher>
+auto Double(InputPublisher input) {
+  // Helps with detecting type errors as early as possible.
+  static_assert(
+      IsPublisher<InputPublisher>,
+      "Double was invoked with a non-publisher parameter");
+
+  return MakePublisher([input = std::move(input)](auto &&subscriber) {
+    return input.Subscribe(DoubleSubscriber<
+          typename std::decay<decltype(subscriber)>>::type(
+              std::forward<decltype(subscriber)>(subscriber)));
+  });
+}
+```
+
+`Double` does not change the number of elements in the stream, so it can delegate the backpressure logic to the input stream by returning the Subscription from `input.Subscribe` directly. If it had to be able to manipulate the requested number of elements or cancellation it would need its own Subscription class too.
+
+
+### A `Sum` operator
 
 TODO(peck): Write this section
 
 
-### A sum operator
+### A `Map` operator
 
 TODO(peck): Write this section
 
