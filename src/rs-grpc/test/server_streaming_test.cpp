@@ -264,7 +264,7 @@ TEST_CASE("Server streaming RPC") {
     }
 
     SECTION("Request one element at a time") {
-      Subscription subscription = Subscription(publisher
+      AnySubscription subscription = AnySubscription(publisher
           .Subscribe(MakeSubscriber(
               [&subscription](auto &&) {
                 subscription.Request(ElementCount(1));
@@ -282,7 +282,7 @@ TEST_CASE("Server streaming RPC") {
     }
 
     SECTION("Request after stream end") {
-      Subscription subscription = Subscription(publisher
+      AnySubscription subscription = AnySubscription(publisher
           .Subscribe(MakeSubscriber(
               [&subscription](auto &&) {
                 // Ignore

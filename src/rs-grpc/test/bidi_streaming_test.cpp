@@ -45,7 +45,7 @@ using namespace RsGrpcTest;
 namespace shk {
 namespace {
 
-auto CumulativeSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
+auto CumulativeSumHandler(AnyPublisher<Flatbuffer<TestRequest>> requests) {
   return Pipe(
     requests,
     Map([](Flatbuffer<TestRequest> request) {
@@ -56,7 +56,7 @@ auto CumulativeSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
 }
 
 auto ImmediatelyFailingCumulativeSumHandler(
-    Publisher<Flatbuffer<TestRequest>> requests) {
+    AnyPublisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -65,8 +65,8 @@ auto ImmediatelyFailingCumulativeSumHandler(
 }
 
 auto FailingCumulativeSumHandler(
-    Publisher<Flatbuffer<TestRequest>> requests) {
-  return CumulativeSumHandler(Publisher<Flatbuffer<TestRequest>>(Pipe(
+    AnyPublisher<Flatbuffer<TestRequest>> requests) {
+  return CumulativeSumHandler(AnyPublisher<Flatbuffer<TestRequest>>(Pipe(
       requests,
       Map([](Flatbuffer<TestRequest> request) {
         if (request->data() == -1) {
@@ -77,7 +77,7 @@ auto FailingCumulativeSumHandler(
 }
 
 auto BidiStreamInfiniteResponseHandler(
-    Publisher<Flatbuffer<TestRequest>> requests) {
+    AnyPublisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -86,7 +86,7 @@ auto BidiStreamInfiniteResponseHandler(
 }
 
 auto BidiStreamBackpressureViolationHandler(
-    Publisher<Flatbuffer<TestRequest>> request) {
+    AnyPublisher<Flatbuffer<TestRequest>> request) {
   return MakePublisher([](auto &&subscriber) {
     // Emit element before it was asked for: streams should not do
     // this.
@@ -180,7 +180,7 @@ TEST_CASE("Bidi streaming RPC") {
             &TestService::Stub::AsyncBidiStreamRequestZero,
             Empty());
 
-        auto subscription = call.Subscribe(null_subscriber);
+        auto subscription = call.Subscribe(std::move(null_subscriber));
         subscription.Request(ElementCount::Unbounded());
 
         CHECK(runloop.Next());
@@ -201,7 +201,7 @@ TEST_CASE("Bidi streaming RPC") {
             &TestService::Stub::AsyncCumulativeSum,
             Never());
 
-        auto subscription = call.Subscribe(null_subscriber);
+        auto subscription = call.Subscribe(std::move(null_subscriber));
         subscription.Cancel();
         subscription.Request(ElementCount::Unbounded());
 
@@ -229,7 +229,7 @@ TEST_CASE("Bidi streaming RPC") {
             &TestService::Stub::AsyncBidiStreamRequestZero,
             detect_cancel);
 
-        auto subscription = call.Subscribe(null_subscriber);
+        auto subscription = call.Subscribe(std::move(null_subscriber));
         subscription.Request(ElementCount::Unbounded());
         subscription.Cancel();
         CHECK(subscription_cancelled);
@@ -266,7 +266,7 @@ TEST_CASE("Bidi streaming RPC") {
     }
 
     SECTION("Request one element at a time") {
-      Subscription subscription = Subscription(publisher
+      AnySubscription subscription = AnySubscription(publisher
           .Subscribe(MakeSubscriber(
               [&subscription](auto &&) {
                 subscription.Request(ElementCount(1));
@@ -284,7 +284,7 @@ TEST_CASE("Bidi streaming RPC") {
     }
 
     SECTION("Request after stream end") {
-      Subscription subscription = Subscription(publisher
+      AnySubscription subscription = AnySubscription(publisher
           .Subscribe(MakeSubscriber(
               [&subscription](auto &&) {
                 // Ignore

@@ -98,7 +98,7 @@ template <typename ResponseType, typename ServerCallTraits, typename Callback>
 class RsGrpcServerCall<
     grpc::ServerAsyncResponseWriter<ResponseType>,
     ServerCallTraits,
-    Callback> : public RsGrpcTag, public SubscriberBase {
+    Callback> : public RsGrpcTag, public Subscriber {
   using Stream = grpc::ServerAsyncResponseWriter<ResponseType>;
   using Service = typename ServerCallTraits::Service;
 
@@ -222,7 +222,7 @@ template <typename ResponseType, typename ServerCallTraits, typename Callback>
 class RsGrpcServerCall<
     grpc::ServerAsyncWriter<ResponseType>,
     ServerCallTraits,
-    Callback> : public RsGrpcTag, public SubscriberBase {
+    Callback> : public RsGrpcTag, public Subscriber {
   using Stream = grpc::ServerAsyncWriter<ResponseType>;
   using Service = typename ServerCallTraits::Service;
 
@@ -276,7 +276,7 @@ class RsGrpcServerCall<
   void TagOperationDone(bool success) {
     if (!success) {
       // This happens when the server is shutting down.
-      subscription_ = Subscription();
+      subscription_ = AnySubscription();
       retained_self_.Reset();
       return;
     }
@@ -306,7 +306,7 @@ class RsGrpcServerCall<
         // In order to solve this, this object retains itself until the stream
         // finishes or the request is cancelled.
         retained_self_ = ToShared(this);
-        subscription_ = Subscription(values.Subscribe(
+        subscription_ = AnySubscription(values.Subscribe(
             MakeRsGrpcTagSubscriber(ToWeak(this))));
         // TODO(peck): Cancellation
         subscription_.Request(ElementCount(1));
@@ -320,7 +320,7 @@ class RsGrpcServerCall<
         break;
       }
       case State::SENT_FINAL_RESPONSE: {
-        subscription_ = Subscription();
+        subscription_ = AnySubscription();
         retained_self_.Reset();
         break;
       }
@@ -377,7 +377,7 @@ class RsGrpcServerCall<
   State state_ = State::AWAITING_REQUEST;
   bool enqueued_finish_ = false;
   grpc::Status enqueued_finish_status_;
-  Subscription subscription_;
+  AnySubscription subscription_;
   std::unique_ptr<ResponseType> next_response_;
 
   Ptr<RsGrpcServerCall> retained_self_;
@@ -403,7 +403,7 @@ class RsGrpcServerCall<
     grpc::ServerAsyncReader<ResponseType, RequestType>,
     ServerCallTraits,
     Callback>
-        : public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
+        : public RsGrpcTag, public Subscriber, public Subscription {
   using Stream = grpc::ServerAsyncReader<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
   using Method = StreamingRequestMethod<Service, Stream>;
@@ -519,14 +519,14 @@ class RsGrpcServerCall<
         reader_(&context_) {}
 
   void Init() {
-    auto response = callback_(Publisher<RequestType>(MakePublisher(
+    auto response = callback_(AnyPublisher<RequestType>(MakePublisher(
         [self = ToShared(this)](auto &&subscriber) {
       if (self->subscriber_) {
         throw std::logic_error(
             "Can't subscribe to this observable more than once");
       }
       self->subscriber_.reset(
-          new Subscriber<RequestType>(
+          new AnySubscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
       return MakeRsGrpcTagSubscription(self);
@@ -539,7 +539,7 @@ class RsGrpcServerCall<
     // TODO(peck): I think it's wrong for this Subscriber to hold a weak
     // reference to this. I think it needs to be a strong ref. But that
     // would cause a cyclic ref it seems...?
-    auto subscription = Subscription(response.Subscribe(
+    auto subscription = AnySubscription(response.Subscribe(
         MakeRsGrpcTagSubscriber(ToWeak(this))));
     // Because this class only uses the first response (and fails if there are
     // more), it's fine to Request an unbounded number of elements from this
@@ -585,7 +585,7 @@ class RsGrpcServerCall<
   // not yet been requested to be read from gRPC.
   ElementCount requested_;
 
-  std::unique_ptr<Subscriber<RequestType>> subscriber_;
+  std::unique_ptr<AnySubscriber<RequestType>> subscriber_;
   State state_ = State::INIT;
   GrpcErrorHandler error_handler_;
   Method method_;
@@ -615,7 +615,7 @@ class RsGrpcServerCall<
     grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
     ServerCallTraits,
     Callback>
-        : public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
+        : public RsGrpcTag, public Subscriber, public Subscription {
   using Stream = grpc::ServerAsyncReaderWriter<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
 
@@ -635,7 +635,7 @@ class RsGrpcServerCall<
           context_(*context),
           stream_(*stream) {}
 
-    void Subscribed(Subscription &&subscription) {
+    void Subscribed(AnySubscription &&subscription) {
       subscription_ = std::move(subscription);
       // TODO(peck): Cancellation
       subscription_.Request(ElementCount(1));
@@ -701,7 +701,7 @@ class RsGrpcServerCall<
     }
 
     RsGrpcServerCall &parent_;
-    Subscription subscription_;
+    AnySubscription subscription_;
     std::unique_ptr<ResponseType> next_response_;
     bool enqueued_finish_ = false;
     bool operation_in_progress_ = false;
@@ -819,14 +819,14 @@ class RsGrpcServerCall<
             &stream_) {}
 
   void Init() {
-    auto response = callback_(Publisher<RequestType>(MakePublisher(
+    auto response = callback_(AnyPublisher<RequestType>(MakePublisher(
         [self = ToShared(this)](auto &&subscriber) {
       if (self->subscriber_) {
         throw std::logic_error(
             "Can't subscribe to this Publisher more than once");
       }
       self->subscriber_.reset(
-          new Subscriber<RequestType>(
+          new AnySubscriber<RequestType>(
               std::forward<decltype(subscriber)>(subscriber)));
 
       return MakeRsGrpcTagSubscription(self);
@@ -836,7 +836,7 @@ class RsGrpcServerCall<
         IsPublisher<decltype(response)>,
         "Callback return type must be Publisher");
     // TODO(peck): Is it right to have this as a weak pointer?
-    writer_.Subscribed(Subscription(response.Subscribe(
+    writer_.Subscribed(AnySubscription(response.Subscribe(
         MakeRsGrpcTagSubscriber(ToWeak(this)))));
 
     Request(
@@ -859,7 +859,7 @@ class RsGrpcServerCall<
   // not yet been requested to be read from gRPC.
   ElementCount requested_;
 
-  std::unique_ptr<Subscriber<RequestType>> subscriber_;
+  std::unique_ptr<AnySubscriber<RequestType>> subscriber_;
   State state_ = State::INIT;
   GrpcErrorHandler error_handler_;
   Method method_;

@@ -21,7 +21,7 @@ namespace shk {
 namespace detail {
 
 template <typename SubscriptionType>
-class RsGrpcTagPtrSubscription : public SubscriptionBase {
+class RsGrpcTagPtrSubscription : public Subscription {
  public:
   explicit RsGrpcTagPtrSubscription(
       const RsGrpcTag::Ptr<SubscriptionType> &subscription)

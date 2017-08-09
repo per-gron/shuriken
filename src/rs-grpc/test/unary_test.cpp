@@ -143,7 +143,7 @@ TEST_CASE("Unary RPC") {
           CHECK(response->data() == 123 * 2);
           return "ignored";
         }));
-    Run(&runloop, request, [](Subscription &&sub) {
+    Run(&runloop, request, [](AnySubscription &&sub) {
       sub.Request(ElementCount(1));
       sub.Request(ElementCount(1));
     });

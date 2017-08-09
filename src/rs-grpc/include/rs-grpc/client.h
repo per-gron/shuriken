@@ -64,11 +64,11 @@ template <
 class RsGrpcClientCall<
     grpc::ClientAsyncResponseReader<ResponseType>,
     ResponseType,
-    RequestType> : public RsGrpcTag, SubscriptionBase {
+    RequestType> : public RsGrpcTag, Subscription {
  public:
   RsGrpcClientCall(
       const RequestType &request,
-      Subscriber<ResponseType> &&subscriber)
+      AnySubscriber<ResponseType> &&subscriber)
       : request_(request),
         subscriber_(std::move(subscriber)) {}
 
@@ -124,7 +124,7 @@ class RsGrpcClientCall<
   RequestType request_;
   grpc::ClientContext context_;
   ResponseType response_;
-  Subscriber<ResponseType> subscriber_;
+  AnySubscriber<ResponseType> subscriber_;
   grpc::Status status_;
 };
 
@@ -137,11 +137,11 @@ template <
 class RsGrpcClientCall<
     grpc::ClientAsyncReader<ResponseType>,
     ResponseType,
-    RequestType> : public RsGrpcTag, public SubscriptionBase {
+    RequestType> : public RsGrpcTag, public Subscription {
  public:
   RsGrpcClientCall(
       const RequestType &request,
-      Subscriber<ResponseType> &&subscriber)
+      AnySubscriber<ResponseType> &&subscriber)
       : request_(request),
         subscriber_(std::move(subscriber)) {}
 
@@ -258,7 +258,7 @@ class RsGrpcClientCall<
 
   State state_ = State::INIT;
   ResponseType response_;
-  Subscriber<ResponseType> subscriber_;
+  AnySubscriber<ResponseType> subscriber_;
   grpc::Status status_;
   std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> stream_;
 
@@ -284,11 +284,11 @@ class RsGrpcClientCall<
     grpc::ClientAsyncWriter<RequestType>,
     ResponseType,
     RequestType> :
-        public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
+        public RsGrpcTag, public Subscriber, public Subscription {
  public:
   RsGrpcClientCall(
-      const Publisher<RequestType> &requests,
-      Subscriber<ResponseType> &&subscriber)
+      const AnyPublisher<RequestType> &requests,
+      AnySubscriber<ResponseType> &&subscriber)
       : requests_(requests),
         subscriber_(std::move(subscriber)) {}
 
@@ -316,7 +316,7 @@ class RsGrpcClientCall<
     if (!stream_ && count > 0) {
       operation_in_progress_ = true;
       stream_ = invoke_();
-      subscription_ = Subscription(requests_.Subscribe(
+      subscription_ = AnySubscription(requests_.Subscribe(
           MakeRsGrpcTagSubscriber(ToWeak(this))));
       subscription_.Request(ElementCount(1));
     }
@@ -401,7 +401,7 @@ class RsGrpcClientCall<
 
   bool operation_in_progress_ = false;
   bool cancelled_ = false;
-  Publisher<RequestType> requests_;
+  AnyPublisher<RequestType> requests_;
   ResponseType response_;
   grpc::ClientContext context_;
   // stream_ has to be after context_ and response_ because it must be destroyed
@@ -409,8 +409,8 @@ class RsGrpcClientCall<
   std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> stream_;
   std::function<
       std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> ()> invoke_;
-  Subscriber<ResponseType> subscriber_;
-  Subscription subscription_;
+  AnySubscriber<ResponseType> subscriber_;
+  AnySubscription subscription_;
 
   std::exception_ptr request_stream_error_;
   bool sent_final_request_ = false;
@@ -431,7 +431,7 @@ class RsGrpcClientCall<
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
     ResponseType,
     RequestType>
-        : public RsGrpcTag, public SubscriberBase, public SubscriptionBase {
+        : public RsGrpcTag, public Subscriber, public Subscription {
  private:
   /**
    * The purpose of this class is to encapsulate the logic for reading from
@@ -442,7 +442,7 @@ class RsGrpcClientCall<
     Reader(
         RsGrpcClientCall *parent,
         const std::function<void ()> &shutdown,
-        Subscriber<ResponseType> &&subscriber)
+        AnySubscriber<ResponseType> &&subscriber)
         : parent_(*parent),
           shutdown_(shutdown),
           subscriber_(std::move(subscriber)) {}
@@ -519,14 +519,14 @@ class RsGrpcClientCall<
     // that this is not called when there is an outstanding async operation.
     std::function<void ()> shutdown_;
     grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream_ = nullptr;
-    Subscriber<ResponseType> subscriber_;
+    AnySubscriber<ResponseType> subscriber_;
     ResponseType response_;
   };
 
  public:
   RsGrpcClientCall(
-      const Publisher<RequestType> &requests,
-      Subscriber<ResponseType> &&subscriber)
+      const AnyPublisher<RequestType> &requests,
+      AnySubscriber<ResponseType> &&subscriber)
       : reader_(
             this,
             [this] { reader_done_ = true; TryShutdown(); },
@@ -581,7 +581,7 @@ class RsGrpcClientCall<
         reader_.Invoke(stream_.get());
         reader_.Request(count);
 
-        subscription_ = Subscription(requests_.Subscribe(
+        subscription_ = AnySubscription(requests_.Subscribe(
             MakeRsGrpcTagSubscriber(ToWeak(this))));
         subscription_.Request(ElementCount(1));
       }
@@ -664,14 +664,14 @@ class RsGrpcClientCall<
   Reader reader_;
   bool reader_done_ = false;
 
-  Publisher<RequestType> requests_;
+  AnyPublisher<RequestType> requests_;
   ResponseType response_;
   grpc::ClientContext context_;
   // stream_ has to be after context_ because it must be destroyed after it
   // since it has unsafe weak references to them.
   std::unique_ptr<
       grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> stream_;
-  Subscription subscription_;
+  AnySubscription subscription_;
 
   bool sent_final_request_ = false;
   bool writer_done_ = false;
@@ -751,7 +751,7 @@ class RsGrpcServiceClient {
         ResponseType,
         RequestType>(
             invoke,
-            Publisher<RequestType>(std::forward<PublisherType>(requests)),
+            AnyPublisher<RequestType>(std::forward<PublisherType>(requests)),
             std::move(context));
   }
 
@@ -772,7 +772,7 @@ class RsGrpcServiceClient {
         ResponseType,
         RequestType>(
             invoke,
-            Publisher<RequestType>(std::forward<PublisherType>(requests)),
+            AnyPublisher<RequestType>(std::forward<PublisherType>(requests)),
             std::move(context));
   }
 
@@ -802,7 +802,7 @@ class RsGrpcServiceClient {
       auto call = detail::RsGrpcTag::Ptr<ClientInvocation>::TakeOver(
           new ClientInvocation(
               request_or_publisher,
-              Subscriber<ResponseType>(
+              AnySubscriber<ResponseType>(
                   std::forward<decltype(subscriber)>(subscriber))));
       return call->Invoke(invoke, stub_.get(), &cq_);
     });

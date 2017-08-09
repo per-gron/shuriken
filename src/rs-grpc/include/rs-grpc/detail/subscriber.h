@@ -21,7 +21,7 @@ namespace shk {
 namespace detail {
 
 template <typename SubscriberType>
-class RsGrpcTagWeakPtrSubscriber : public SubscriberBase {
+class RsGrpcTagWeakPtrSubscriber : public Subscriber {
  public:
   explicit RsGrpcTagWeakPtrSubscriber(
       const RsGrpcTag::WeakPtr<SubscriberType> &subscriber)
@@ -64,7 +64,7 @@ class RsGrpcTagWeakPtrSubscriber : public SubscriberBase {
 };
 
 template <typename SubscriberType>
-class RsGrpcTagPtrSubscriber : public SubscriberBase {
+class RsGrpcTagPtrSubscriber : public Subscriber {
  public:
   explicit RsGrpcTagPtrSubscriber(
       const RsGrpcTag::Ptr<SubscriberType> &subscriber)

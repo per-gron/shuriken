@@ -22,7 +22,7 @@ namespace shk {
 namespace detail {
 namespace {
 
-class TestSubscription : public RsGrpcTag, public SubscriptionBase {
+class TestSubscription : public RsGrpcTag, public Subscription {
  public:
   void Request(ElementCount count) {
     request_invocations_++;

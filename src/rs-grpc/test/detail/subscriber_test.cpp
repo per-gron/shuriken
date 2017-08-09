@@ -22,7 +22,7 @@ namespace shk {
 namespace detail {
 namespace {
 
-class TestSubscriber : public RsGrpcTag, public SubscriberBase {
+class TestSubscriber : public RsGrpcTag, public Subscriber {
  public:
   template <typename T>
   void OnNext(T &&t) {

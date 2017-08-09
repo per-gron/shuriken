@@ -39,9 +39,9 @@ Flatbuffer<TestResponse> MakeTestResponse(int data);
 
 void ShutdownAllowOutstandingCall(RsGrpcServer *server);
 
-Publisher<Flatbuffer<TestRequest>> MakeInfiniteRequest();
+AnyPublisher<Flatbuffer<TestRequest>> MakeInfiniteRequest();
 
-Publisher<Flatbuffer<TestResponse>> MakeInfiniteResponse();
+AnyPublisher<Flatbuffer<TestResponse>> MakeInfiniteResponse();
 
 template <typename Publisher>
 std::exception_ptr RunExpectError(
@@ -49,7 +49,7 @@ std::exception_ptr RunExpectError(
     const Publisher &publisher,
     std::function<void (Subscription &)> subscribe = nullptr) {
   std::exception_ptr captured_error;
-  auto subscription = Subscription(publisher
+  auto subscription = AnySubscription(publisher
       .Subscribe(MakeSubscriber(
           [](auto &&) {
             // Ignore OnNext
@@ -79,7 +79,7 @@ void RunExpectTimeout(
     RsGrpcClient *runloop,
     const Publisher &publisher,
     ElementCount count = ElementCount(0)) {
-  auto subscription = Subscription(publisher
+  auto subscription = AnySubscription(publisher
       .Subscribe(MakeSubscriber(
           [](auto &&) {
             // Ignore OnNext
@@ -105,7 +105,7 @@ template <typename Publisher>
 void Run(
     RsGrpcClient *runloop,
     const Publisher &publisher,
-    std::function<void (Subscription &&)> subscribe = nullptr) {
+    std::function<void (AnySubscription &&)> subscribe = nullptr) {
   auto subscription = publisher
       .Subscribe(MakeSubscriber(
           [](auto &&) {
@@ -120,7 +120,7 @@ void Run(
             runloop->Shutdown();
           }));
   if (subscribe) {
-    subscribe(Subscription(std::move(subscription)));
+    subscribe(AnySubscription(std::move(subscription)));
   } else {
     subscription.Request(ElementCount::Unbounded());
   }
@@ -129,7 +129,7 @@ void Run(
 }
 
 inline auto RequestZeroHandler(
-    Publisher<Flatbuffer<TestRequest>> requests) {
+    AnyPublisher<Flatbuffer<TestRequest>> requests) {
   // The point of this test endpoint is to request some inputs, and verify that
   // it doesn't get more than that pushed to it. This endpoint never responds
   // so tests have to suceed by timing out.
@@ -151,15 +151,15 @@ inline auto RequestZeroHandler(
 
 inline auto MakeHangOnZeroHandler(
     std::atomic<int> *hang_on_seen_elements) {
-  return [hang_on_seen_elements](Publisher<Flatbuffer<TestRequest>> requests) {
+  return [hang_on_seen_elements](AnyPublisher<Flatbuffer<TestRequest>> requests) {
     // The point of this test endpoint is to request some inputs, and verify that
     // it doesn't get more than that pushed to it. This endpoint never responds
     // so tests have to suceed by timing out.
 
     bool seen_zero = false;
-    std::shared_ptr<Subscription> sub =
-        std::make_shared<Subscription>(MakeSubscription());
-    *sub = Subscription(requests.Subscribe(MakeSubscriber(
+    std::shared_ptr<AnySubscription> sub =
+        std::make_shared<AnySubscription>(MakeSubscription());
+    *sub = AnySubscription(requests.Subscribe(MakeSubscriber(
         [&seen_zero, sub, hang_on_seen_elements](
             Flatbuffer<TestRequest> &&request) {
           (*hang_on_seen_elements)++;

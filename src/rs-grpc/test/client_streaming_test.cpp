@@ -41,7 +41,7 @@ using namespace RsGrpcTest;
 namespace shk {
 namespace {
 
-auto SumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
+auto SumHandler(AnyPublisher<Flatbuffer<TestRequest>> requests) {
   return Pipe(
       requests,
       Map([](Flatbuffer<TestRequest> request) {
@@ -51,7 +51,7 @@ auto SumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
       Map(MakeTestResponse));
 }
 
-auto ImmediatelyFailingSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
+auto ImmediatelyFailingSumHandler(AnyPublisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -59,8 +59,8 @@ auto ImmediatelyFailingSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
   return Throw(std::runtime_error("sum_fail"));
 }
 
-auto FailingSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
-  return SumHandler(Publisher<Flatbuffer<TestRequest>>(Pipe(
+auto FailingSumHandler(AnyPublisher<Flatbuffer<TestRequest>> requests) {
+  return SumHandler(AnyPublisher<Flatbuffer<TestRequest>>(Pipe(
       requests,
       Map([](Flatbuffer<TestRequest> request) {
         if (request->data() == -1) {
@@ -71,7 +71,7 @@ auto FailingSumHandler(Publisher<Flatbuffer<TestRequest>> requests) {
 }
 
 auto ClientStreamNoResponseHandler(
-    Publisher<Flatbuffer<TestRequest>> requests) {
+    AnyPublisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -80,7 +80,7 @@ auto ClientStreamNoResponseHandler(
 }
 
 auto ClientStreamTwoResponsesHandler(
-    Publisher<Flatbuffer<TestRequest>> requests) {
+    AnyPublisher<Flatbuffer<TestRequest>> requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this. TODO(peck): Try to this unnecessary
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -281,7 +281,7 @@ TEST_CASE("Client streaming RPC") {
             &TestService::Stub::AsyncClientStreamRequestZero,
             Empty());
 
-        auto subscription = call.Subscribe(null_subscriber);
+        auto subscription = call.Subscribe(std::move(null_subscriber));
         subscription.Request(ElementCount::Unbounded());
 
         CHECK(runloop.Next());
@@ -299,7 +299,7 @@ TEST_CASE("Client streaming RPC") {
             &TestService::Stub::AsyncSum,
             Never());
 
-        auto subscription = call.Subscribe(null_subscriber);
+        auto subscription = call.Subscribe(std::move(null_subscriber));
         subscription.Cancel();
         subscription.Request(ElementCount::Unbounded());
 
@@ -327,7 +327,7 @@ TEST_CASE("Client streaming RPC") {
             &TestService::Stub::AsyncClientStreamRequestZero,
             detect_cancel);
 
-        auto subscription = call.Subscribe(null_subscriber);
+        auto subscription = call.Subscribe(std::move(null_subscriber));
         subscription.Request(ElementCount::Unbounded());
         subscription.Cancel();
         CHECK(subscription_cancelled);

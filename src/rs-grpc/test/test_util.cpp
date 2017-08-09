@@ -41,8 +41,8 @@ void ShutdownAllowOutstandingCall(RsGrpcServer *server) {
 namespace {
 
 template <typename Make>
-auto MakeInfinite(const Make &make) -> Publisher<decltype(make(1))> {
-  return Publisher<decltype(make(1))>(Concat(
+auto MakeInfinite(const Make &make) -> AnyPublisher<decltype(make(1))> {
+  return AnyPublisher<decltype(make(1))>(Concat(
       Just(make(1)),
       MakePublisher([make](auto &&subscriber) {
         return MakeInfinite(make).Subscribe(
@@ -52,11 +52,11 @@ auto MakeInfinite(const Make &make) -> Publisher<decltype(make(1))> {
 
 }  // anonymous namespace
 
-Publisher<Flatbuffer<TestRequest>> MakeInfiniteRequest() {
+AnyPublisher<Flatbuffer<TestRequest>> MakeInfiniteRequest() {
   return MakeInfinite(&MakeTestRequest);
 }
 
-Publisher<Flatbuffer<TestResponse>> MakeInfiniteResponse() {
+AnyPublisher<Flatbuffer<TestResponse>> MakeInfiniteResponse() {
   return MakeInfinite(&MakeTestResponse);
 }
 
