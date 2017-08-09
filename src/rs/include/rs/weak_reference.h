@@ -192,6 +192,7 @@ class WeakReference final {
   void (*set_backref_)(T *val, WeakReference *ptr);
 };
 
+// TODO(peck): Document this
 template <typename T>
 auto WithWeakReference(T &&t) {
   return std::forward<T>(t);

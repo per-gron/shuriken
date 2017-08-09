@@ -17,6 +17,7 @@
 
 * [Reference documentation](doc/reference.md): Documentation for each of the operators, helpers and types in rs.
 * [Reactive Streams specification](doc/specification.md): This document specifies the raw Reactive Streams concepts in C++. It is useful in order to get an in depth understanding of the rs library and required reading in order to be able to write custom Publishers and custom operators on Publishers.
+* [Guide to writing custom operators](doc/custom_operators.md)
 
 
 ## Introduction

@@ -40,6 +40,7 @@ class Subscriber {
 template <typename T>
 constexpr bool IsSubscriber = std::is_base_of<Subscriber, T>::value;
 
+// TODO(peck): Document this
 template <typename T>
 constexpr bool IsRvalue =
     !std::is_lvalue_reference<T>::value &&
