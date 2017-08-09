@@ -41,6 +41,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`From(Container)`](#fromcontainer)
 * [`IfEmpty(Publisher)`](#ifemptypublisher)
 * [`IsPublisher`](#ispublisher)
+* [`IsRvalue`](#isrvalue)
 * [`IsSubscriber`](#issubscriber)
 * [`IsSubscription`](#issubscription)
 * [`Just(Value...)`](#justvalue)
@@ -778,6 +779,36 @@ void TakePublisher(const PublisherT &publisher) {
 ```
 
 **See also:** [`IsSubscriber`](#issubscriber), [`IsSubscription`](#issubscription)
+
+
+## `IsRvalue`
+
+**Defined in:** [`rs/subscriber.h`](../include/rs/subscriber.h)
+
+**Kind:** [Core Library API](#kind_core_library_api)
+
+**Description:** `IsRvalue` is a type predicate that checks if a given type is a value or a mutable rvalue. It can be used in template functions with a generic parameter to check that it did not receive an lvalue reference. This can be useful to catch type errors earlier than they otherwise would have been found, improving error messages.
+
+**Example usage:**
+
+The Subscriber concept defines that its `OnNext` method takes an rvalue reference. The code below enforces that the parameter to `OnNext` is not an lvalue reference (which might mean that the calling code expects to still own the passed object afterwards).
+
+```cpp
+class MySubscriber : public Subscriber {
+ public:
+  template <typename T>
+  void OnNext(T &&t) {
+    static_assert(
+        IsRvalue<T>,
+        "MySubscriber::OnNext was invoked with a non-rvalue parameter");
+
+    // ...
+  }
+
+  void OnError(std::exception_ptr &&error) {}
+  void OnComplete() {}
+};
+```
 
 
 ## `IsSubscriber`
