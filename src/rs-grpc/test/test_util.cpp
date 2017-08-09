@@ -14,8 +14,8 @@
 
 #include "test_util.h"
 
-#include <rs/concat.h>
 #include <rs/just.h>
+#include <rs/repeat.h>
 
 namespace shk {
 
@@ -40,12 +40,9 @@ namespace {
 
 template <typename Make>
 auto MakeInfinite(const Make &make) -> AnyPublisher<decltype(make(1))> {
-  return AnyPublisher<decltype(make(1))>(Concat(
-      Just(make(1)),
-      MakePublisher([make](auto &&subscriber) {
-        return MakeInfinite(make).Subscribe(
-            std::forward<decltype(subscriber)>(subscriber));
-      })));
+  // Not really infinite but close enough
+  return AnyPublisher<decltype(make(1))>(
+      Repeat(make(1), std::numeric_limits<size_t>::max()));
 }
 
 }  // anonymous namespace
