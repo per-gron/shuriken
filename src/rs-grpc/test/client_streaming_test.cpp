@@ -18,7 +18,6 @@
 #include <chrono>
 #include <thread>
 
-#include <flatbuffers/grpc.h>
 #include <grpc++/resource_quota.h>
 #include <rs/concat.h>
 #include <rs/count.h>
@@ -33,25 +32,23 @@
 #include <rs/throw.h>
 #include <rs-grpc/server.h>
 
-#include "rsgrpctest.grpc.fb.h"
+#include "rsgrpctest.grpc.pb.h"
 #include "test_util.h"
-
-using namespace RsGrpcTest;
 
 namespace shk {
 namespace {
 
-auto SumHandler(AnyPublisher<Flatbuffer<TestRequest>> requests) {
+auto SumHandler(AnyPublisher<TestRequest> &&requests) {
   return Pipe(
       requests,
-      Map([](Flatbuffer<TestRequest> request) {
-        return request->data();
+      Map([](TestRequest &&request) {
+        return request.data();
       }),
       Sum(),
       Map(MakeTestResponse));
 }
 
-auto ImmediatelyFailingSumHandler(AnyPublisher<Flatbuffer<TestRequest>> requests) {
+auto ImmediatelyFailingSumHandler(AnyPublisher<TestRequest> &&requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -59,19 +56,18 @@ auto ImmediatelyFailingSumHandler(AnyPublisher<Flatbuffer<TestRequest>> requests
   return Throw(std::runtime_error("sum_fail"));
 }
 
-auto FailingSumHandler(AnyPublisher<Flatbuffer<TestRequest>> requests) {
-  return SumHandler(AnyPublisher<Flatbuffer<TestRequest>>(Pipe(
+auto FailingSumHandler(AnyPublisher<TestRequest> &&requests) {
+  return SumHandler(AnyPublisher<TestRequest>(Pipe(
       requests,
-      Map([](Flatbuffer<TestRequest> request) {
-        if (request->data() == -1) {
+      Map([](TestRequest &&request) {
+        if (request.data() == -1) {
           throw std::runtime_error("sum_fail");
         }
         return request;
       }))));
 }
 
-auto ClientStreamNoResponseHandler(
-    AnyPublisher<Flatbuffer<TestRequest>> requests) {
+auto ClientStreamNoResponseHandler(AnyPublisher<TestRequest> &&requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -79,8 +75,7 @@ auto ClientStreamNoResponseHandler(
   return Empty();
 }
 
-auto ClientStreamTwoResponsesHandler(
-    AnyPublisher<Flatbuffer<TestRequest>> requests) {
+auto ClientStreamTwoResponsesHandler(AnyPublisher<TestRequest> &&requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this. TODO(peck): Try to this unnecessary
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -146,8 +141,8 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncSum,
             Empty()),
-        Map([](Flatbuffer<TestResponse> &&response) {
-          CHECK(response->data() == 0);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 0);
           return "ignored";
         }),
         Count(),
@@ -162,7 +157,7 @@ TEST_CASE("Client streaming RPC") {
       auto publisher = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncSum, Empty()),
-          Map([](Flatbuffer<TestResponse> response) {
+          Map([](TestResponse response) {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
@@ -174,7 +169,7 @@ TEST_CASE("Client streaming RPC") {
           test_client.Invoke(
               &TestService::Stub::AsyncClientStreamRequestZero,
               Just(MakeTestRequest(432))),
-          Map([](Flatbuffer<TestResponse> response) {
+          Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
@@ -190,7 +185,7 @@ TEST_CASE("Client streaming RPC") {
                   MakeTestRequest(1),
                   MakeTestRequest(0),  // Hang on this one
                   MakeTestRequest(1))),
-          Map([](Flatbuffer<TestResponse> response) {
+          Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
@@ -210,7 +205,7 @@ TEST_CASE("Client streaming RPC") {
                   MakeTestRequest(2),
                   MakeTestRequest(0),  // Hang on this one
                   MakeTestRequest(1))),
-          Map([](Flatbuffer<TestResponse> response) {
+          Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
@@ -236,7 +231,7 @@ TEST_CASE("Client streaming RPC") {
           test_client.Invoke(
               &TestService::Stub::AsyncClientStreamRequestZero,
               MakeInfiniteRequest()),
-          Map([](Flatbuffer<TestResponse> response) {
+          Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
@@ -347,8 +342,8 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncSum,
             Just(MakeTestRequest(1337))),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 1337);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 1337);
           return "ignored";
         }),
         Count(),
@@ -381,8 +376,8 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncSum,
             Just(MakeTestRequest(13), MakeTestRequest(7))),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 20);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 20);
           return "ignored";
         }),
         Count(),
@@ -397,7 +392,7 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncImmediatelyFailingSum,
             Empty()),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -409,7 +404,7 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncImmediatelyFailingSum,
             Just(MakeTestRequest(1337))),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -421,7 +416,7 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncFailingSum,
             Just(MakeTestRequest(-1))),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -433,7 +428,7 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncFailingSum,
             Just(MakeTestRequest(0), MakeTestRequest(-1))),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -445,7 +440,7 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncClientStreamNoResponse,
             Just(MakeTestRequest(0))),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -457,7 +452,7 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncClientStreamTwoResponses,
             Just(MakeTestRequest(0))),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -469,8 +464,8 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncSum,
             Just(MakeTestRequest(13), MakeTestRequest(7))),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 20);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 20);
           return "ignored";
         }),
         Count(),
@@ -483,8 +478,8 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncSum,
             Just(MakeTestRequest(10), MakeTestRequest(2))),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 12);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 12);
           return "ignored";
         }),
         Count(),
@@ -501,8 +496,8 @@ TEST_CASE("Client streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncSum,
             Just(MakeTestRequest(13), MakeTestRequest(7))),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 20);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 20);
           return "ignored";
         }),
         Count(),

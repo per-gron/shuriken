@@ -19,18 +19,16 @@
 
 namespace shk {
 
-Flatbuffer<TestRequest> MakeTestRequest(int data) {
-  flatbuffers::grpc::MessageBuilder fbb;
-  auto test_request = CreateTestRequest(fbb, data);
-  fbb.Finish(test_request);
-  return fbb.GetMessage<TestRequest>();
+TestRequest MakeTestRequest(int data) {
+  ::shk::TestRequest req;
+  req.set_data(data);
+  return req;
 }
 
-Flatbuffer<TestResponse> MakeTestResponse(int data) {
-  flatbuffers::grpc::MessageBuilder fbb;
-  auto test_response = CreateTestResponse(fbb, data);
-  fbb.Finish(test_response);
-  return fbb.GetMessage<TestResponse>();
+TestResponse MakeTestResponse(int data) {
+  ::shk::TestResponse res;
+  res.set_data(data);
+  return res;
 }
 
 void ShutdownAllowOutstandingCall(RsGrpcServer *server) {
@@ -52,11 +50,11 @@ auto MakeInfinite(const Make &make) -> AnyPublisher<decltype(make(1))> {
 
 }  // anonymous namespace
 
-AnyPublisher<Flatbuffer<TestRequest>> MakeInfiniteRequest() {
+AnyPublisher<TestRequest> MakeInfiniteRequest() {
   return MakeInfinite(&MakeTestRequest);
 }
 
-AnyPublisher<Flatbuffer<TestResponse>> MakeInfiniteResponse() {
+AnyPublisher<TestResponse> MakeInfiniteResponse() {
   return MakeInfinite(&MakeTestResponse);
 }
 

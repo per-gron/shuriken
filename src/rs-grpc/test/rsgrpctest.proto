@@ -4,6 +4,38 @@ package shk;
 
 service TestService {
   rpc Double (TestRequest) returns (TestResponse) {}
+  rpc UnaryFail (TestRequest) returns (TestResponse) {}
+  rpc UnaryNoResponse (TestRequest) returns (TestResponse) {}
+  rpc UnaryTwoResponses (TestRequest) returns (TestResponse) {}
+  rpc UnaryHang (TestRequest) returns (TestResponse) {}
+
+  rpc Repeat (TestRequest) returns (stream TestResponse) {}
+  rpc RepeatThenFail (TestRequest) returns (stream TestResponse) {}
+  rpc ServerStreamHang (TestRequest) returns (stream TestResponse) {}
+  rpc InfiniteRepeat (TestRequest) returns (stream TestResponse) {}
+  rpc ServerStreamBackpressureViolation (TestRequest)
+      returns (stream TestResponse) {}
+  rpc ServerStreamAsyncResponse (TestRequest) returns (stream TestResponse) {}
+
+  rpc Sum (stream TestRequest) returns (TestResponse) {}
+  rpc ImmediatelyFailingSum (stream TestRequest) returns (TestResponse) {}
+  rpc FailingSum (stream TestRequest) returns (TestResponse) {}
+  rpc ClientStreamNoResponse (stream TestRequest) returns (TestResponse) {}
+  rpc ClientStreamTwoResponses (stream TestRequest) returns (TestResponse) {}
+  rpc ClientStreamRequestZero (stream TestRequest) returns (TestResponse) {}
+  rpc ClientStreamHangOnZero (stream TestRequest) returns (TestResponse) {}
+
+  rpc CumulativeSum(stream TestRequest) returns (stream TestResponse) {}
+  rpc ImmediatelyFailingCumulativeSum (stream TestRequest)
+      returns (stream TestResponse) {}
+  rpc FailingCumulativeSum (stream TestRequest) returns (stream TestResponse) {}
+  rpc BidiStreamRequestZero (stream TestRequest)
+      returns (stream TestResponse) {}
+  rpc BidiStreamHangOnZero (stream TestRequest) returns (stream TestResponse) {}
+  rpc BidiStreamInfiniteResponse (stream TestRequest)
+      returns (stream TestResponse) {}
+  rpc BidiStreamBackpressureViolation (stream TestRequest)
+      returns (stream TestResponse) {}
 }
 
 message TestRequest {

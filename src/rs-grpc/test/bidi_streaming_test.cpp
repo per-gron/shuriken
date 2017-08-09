@@ -18,7 +18,6 @@
 #include <chrono>
 #include <thread>
 
-#include <flatbuffers/grpc.h>
 #include <grpc++/resource_quota.h>
 #include <rs/concat.h>
 #include <rs/count.h>
@@ -37,26 +36,24 @@
 #include <rs/zip.h>
 #include <rs-grpc/server.h>
 
-#include "rsgrpctest.grpc.fb.h"
+#include "rsgrpctest.grpc.pb.h"
 #include "test_util.h"
-
-using namespace RsGrpcTest;
 
 namespace shk {
 namespace {
 
-auto CumulativeSumHandler(AnyPublisher<Flatbuffer<TestRequest>> requests) {
+auto CumulativeSumHandler(AnyPublisher<TestRequest> &&requests) {
   return Pipe(
     requests,
-    Map([](Flatbuffer<TestRequest> request) {
-      return request->data();
+    Map([](TestRequest &&request) {
+      return request.data();
     }),
     Scan(0, [](int x, int y) { return x + y; }),
     Map(MakeTestResponse));
 }
 
 auto ImmediatelyFailingCumulativeSumHandler(
-    AnyPublisher<Flatbuffer<TestRequest>> requests) {
+    AnyPublisher<TestRequest> &&requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -64,20 +61,18 @@ auto ImmediatelyFailingCumulativeSumHandler(
   return Throw(std::runtime_error("cumulative_sum_fail"));
 }
 
-auto FailingCumulativeSumHandler(
-    AnyPublisher<Flatbuffer<TestRequest>> requests) {
-  return CumulativeSumHandler(AnyPublisher<Flatbuffer<TestRequest>>(Pipe(
+auto FailingCumulativeSumHandler(AnyPublisher<TestRequest> &&requests) {
+  return CumulativeSumHandler(AnyPublisher<TestRequest>(Pipe(
       requests,
-      Map([](Flatbuffer<TestRequest> request) {
-        if (request->data() == -1) {
+      Map([](TestRequest &&request) {
+        if (request.data() == -1) {
           throw std::runtime_error("cumulative_sum_fail");
         }
         return request;
       }))));
 }
 
-auto BidiStreamInfiniteResponseHandler(
-    AnyPublisher<Flatbuffer<TestRequest>> requests) {
+auto BidiStreamInfiniteResponseHandler(AnyPublisher<TestRequest> &&requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -86,7 +81,7 @@ auto BidiStreamInfiniteResponseHandler(
 }
 
 auto BidiStreamBackpressureViolationHandler(
-    AnyPublisher<Flatbuffer<TestRequest>> request) {
+    AnyPublisher<TestRequest> &&request) {
   return MakePublisher([](auto &&subscriber) {
     // Emit element before it was asked for: streams should not do
     // this.
@@ -250,8 +245,8 @@ TEST_CASE("Bidi streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncCumulativeSum,
             Repeat(MakeTestRequest(1), 10)),
-        Map([&latest_seen_response](Flatbuffer<TestResponse> response) {
-          CHECK(++latest_seen_response == response->data());
+        Map([&latest_seen_response](TestResponse &&response) {
+          CHECK(++latest_seen_response == response.data());
           return "ignored";
         }));
 
@@ -310,7 +305,7 @@ TEST_CASE("Bidi streaming RPC") {
           test_client.Invoke(
               &TestService::Stub::AsyncBidiStreamRequestZero,
               Just(MakeTestRequest(432))),
-          Map([](Flatbuffer<TestResponse> response) {
+          Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
@@ -326,7 +321,7 @@ TEST_CASE("Bidi streaming RPC") {
                   MakeTestRequest(1),
                   MakeTestRequest(0),  // Hang on this one
                   MakeTestRequest(1))),
-          Map([](Flatbuffer<TestResponse> response) {
+          Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
@@ -346,7 +341,7 @@ TEST_CASE("Bidi streaming RPC") {
                   MakeTestRequest(2),
                   MakeTestRequest(0),  // Hang on this one
                   MakeTestRequest(1))),
-          Map([](Flatbuffer<TestResponse> response) {
+          Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
@@ -372,7 +367,7 @@ TEST_CASE("Bidi streaming RPC") {
           test_client.Invoke(
               &TestService::Stub::AsyncBidiStreamRequestZero,
               MakeInfiniteRequest()),
-          Map([](Flatbuffer<TestResponse> response) {
+          Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
@@ -426,8 +421,8 @@ TEST_CASE("Bidi streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncCumulativeSum,
             Just(MakeTestRequest(1337))),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 1337);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 1337);
           return "ignored";
         }),
         Count(),
@@ -460,8 +455,8 @@ TEST_CASE("Bidi streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncCumulativeSum,
             Just(MakeTestRequest(10), MakeTestRequest(20))),
-        Map([](Flatbuffer<TestResponse> response) {
-          return response->data();
+        Map([](TestResponse &&response) {
+          return response.data();
         }),
         Sum(),
         Map([](int sum) {
@@ -475,7 +470,7 @@ TEST_CASE("Bidi streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
             Empty()),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -487,7 +482,7 @@ TEST_CASE("Bidi streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
             Just(MakeTestRequest(1337))),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -499,7 +494,7 @@ TEST_CASE("Bidi streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncFailingCumulativeSum,
             Just(MakeTestRequest(-1))),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -512,8 +507,8 @@ TEST_CASE("Bidi streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncFailingCumulativeSum,
             Just(MakeTestRequest(321), MakeTestRequest(-1))),
-        Map([&count](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 321);
+        Map([&count](TestResponse &&response) {
+          CHECK(response.data() == 321);
           count++;
           return "unused";
         })));
@@ -526,8 +521,8 @@ TEST_CASE("Bidi streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncCumulativeSum,
             Just(MakeTestRequest(10), MakeTestRequest(20))),
-        Map([](Flatbuffer<TestResponse> response) {
-          return response->data();
+        Map([](TestResponse &&response) {
+          return response.data();
         }),
         Sum(),
         Map([](int sum) {
@@ -539,8 +534,8 @@ TEST_CASE("Bidi streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncCumulativeSum,
             Just(MakeTestRequest(1), MakeTestRequest(2))),
-        Map([](Flatbuffer<TestResponse> response) {
-          return response->data();
+        Map([](TestResponse &&response) {
+          return response.data();
         }),
         Sum(),
         Map([](int sum) {
@@ -556,8 +551,8 @@ TEST_CASE("Bidi streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncCumulativeSum,
             Just(MakeTestRequest(10), MakeTestRequest(20))),
-        Map([](Flatbuffer<TestResponse> response) {
-          return response->data();
+        Map([](TestResponse &&response) {
+          return response.data();
         }),
         Sum(),
         Map([](int sum) {

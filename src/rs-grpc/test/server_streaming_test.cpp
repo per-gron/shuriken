@@ -20,7 +20,6 @@
 #include <mutex>
 #include <thread>
 
-#include <flatbuffers/grpc.h>
 #include <rs/concat.h>
 #include <rs/count.h>
 #include <rs/empty.h>
@@ -38,10 +37,8 @@
 #include <rs/zip.h>
 #include <rs-grpc/server.h>
 
-#include "rsgrpctest.grpc.fb.h"
+#include "rsgrpctest.grpc.pb.h"
 #include "test_util.h"
-
-using namespace RsGrpcTest;
 
 namespace shk {
 namespace {
@@ -73,31 +70,31 @@ class AsyncResponder {
   std::function<void ()> callback_;
 };
 
-auto RepeatHandler(Flatbuffer<TestRequest> request) {
-  int count = request->data();
+auto RepeatHandler(TestRequest &&request) {
+  int count = request.data();
   return Pipe(
       Range(1, count),
       Map(&MakeTestResponse));
 }
 
-auto RepeatThenFailHandler(Flatbuffer<TestRequest> request) {
+auto RepeatThenFailHandler(TestRequest &&request) {
   return Concat(
       RepeatHandler(std::move(request)),
       Throw(std::runtime_error("repeat_fail")));
 }
 
-auto ServerStreamHangHandler(Flatbuffer<TestRequest> request) {
+auto ServerStreamHangHandler(TestRequest &&request) {
   return Never();
 }
 
-auto InfiniteRepeatHandler(Flatbuffer<TestRequest> request) {
+auto InfiniteRepeatHandler(TestRequest &&request) {
   // If client-side rs-grpc violates backpressure requirements by requesting
   // an unbounded number of elements from this infinite stream, then this will
   // smash the stack or run out of memory.
   return MakeInfiniteResponse();
 }
 
-auto ServerStreamBackpressureViolationHandler(Flatbuffer<TestRequest> request) {
+auto ServerStreamBackpressureViolationHandler(TestRequest &&request) {
   return MakePublisher([](auto &&subscriber) {
     // Emit element before it was asked for: streams should not do
     // this.
@@ -109,7 +106,7 @@ auto ServerStreamBackpressureViolationHandler(Flatbuffer<TestRequest> request) {
 }
 
 auto ServerStreamAsyncResponseHandler(AsyncResponder *responder) {
-  return [responder](Flatbuffer<TestRequest> request) {
+  return [responder](TestRequest &&request) {
     return MakePublisher([responder](auto subscriber) {
       auto shared_sub = std::make_shared<decltype(subscriber)>(
           decltype(subscriber)(std::move(subscriber)));
@@ -172,7 +169,7 @@ TEST_CASE("Server streaming RPC") {
     Run(&runloop, Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncRepeat, MakeTestRequest(0)),
-        Map([](Flatbuffer<TestResponse> &&response) {
+        Map([](TestResponse &&response) {
           // Should never be called; this should be a stream that ends
           // without any values
           CHECK(false);
@@ -250,8 +247,8 @@ TEST_CASE("Server streaming RPC") {
     auto publisher = Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncRepeat, MakeTestRequest(10)),
-        Map([&latest_seen_response](Flatbuffer<TestResponse> response) {
-          CHECK(++latest_seen_response == response->data());
+        Map([&latest_seen_response](TestResponse &&response) {
+          CHECK(++latest_seen_response == response.data());
           return "ignored";
         }));
 
@@ -330,8 +327,8 @@ TEST_CASE("Server streaming RPC") {
     Run(&runloop, Pipe(
         test_client
             .Invoke(&TestService::Stub::AsyncRepeat, MakeTestRequest(1)),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 1);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 1);
           return "ignored";
         }),
         Count(),
@@ -355,8 +352,8 @@ TEST_CASE("Server streaming RPC") {
 
     auto check_sum = Pipe(
         responses,
-        Map([](Flatbuffer<TestResponse> response) {
-          return response->data();
+        Map([](TestResponse &&response) {
+          return response.data();
         }),
         Sum(),
         Map([](int sum) {
@@ -371,7 +368,7 @@ TEST_CASE("Server streaming RPC") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(0)),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -383,7 +380,7 @@ TEST_CASE("Server streaming RPC") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(1)),
-        Map([&count](Flatbuffer<TestResponse> response) {
+        Map([&count](TestResponse &&response) {
           count++;
           return "unused";
         })));
@@ -396,7 +393,7 @@ TEST_CASE("Server streaming RPC") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(2)),
-        Map([&count](Flatbuffer<TestResponse> response) {
+        Map([&count](TestResponse &&response) {
           count++;
           return "unused";
         })));
@@ -408,8 +405,8 @@ TEST_CASE("Server streaming RPC") {
     auto responses_1 = Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncRepeat, MakeTestRequest(2)),
-        Map([](Flatbuffer<TestResponse> response) {
-          return response->data();
+        Map([](TestResponse &&response) {
+          return response.data();
         }),
         Sum(),
         Map([](int sum) {
@@ -420,8 +417,8 @@ TEST_CASE("Server streaming RPC") {
     auto responses_2 = Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncRepeat, MakeTestRequest(3)),
-        Map([](Flatbuffer<TestResponse> response) {
-          return response->data();
+        Map([](TestResponse &&response) {
+          return response.data();
         }),
         Sum(),
         Map([](int sum) {
@@ -438,8 +435,8 @@ TEST_CASE("Server streaming RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncServerStreamAsyncResponse,
             MakeTestRequest(1)),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 1);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 1);
           return "ignored";
         }),
         Count(),

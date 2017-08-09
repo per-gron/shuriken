@@ -21,27 +21,25 @@
 #include <rs/publisher.h>
 #include <rs/subscriber.h>
 #include <rs/subscription.h>
-#include <flatbuffers/grpc.h>
 #include <rs-grpc/server.h>
 
-#include "rsgrpctest.grpc.fb.h"
+#include "rsgrpctest.grpc.pb.h"
 
 namespace shk {
 
-using namespace RsGrpcTest;
+TestRequest MakeTestRequest(int data);
 
-template <typename T>
-using Flatbuffer = flatbuffers::grpc::Message<T>;
+TestResponse MakeTestResponse(int data);
 
-Flatbuffer<TestRequest> MakeTestRequest(int data);
+TestRequest MakeTestRequest(int data);
 
-Flatbuffer<TestResponse> MakeTestResponse(int data);
+TestResponse MakeTestResponse(int data);
 
 void ShutdownAllowOutstandingCall(RsGrpcServer *server);
 
-AnyPublisher<Flatbuffer<TestRequest>> MakeInfiniteRequest();
+AnyPublisher<TestRequest> MakeInfiniteRequest();
 
-AnyPublisher<Flatbuffer<TestResponse>> MakeInfiniteResponse();
+AnyPublisher<TestResponse> MakeInfiniteResponse();
 
 template <typename Publisher>
 std::exception_ptr RunExpectError(
@@ -129,7 +127,7 @@ void Run(
 }
 
 inline auto RequestZeroHandler(
-    AnyPublisher<Flatbuffer<TestRequest>> requests) {
+    AnyPublisher<TestRequest> &&requests) {
   // The point of this test endpoint is to request some inputs, and verify that
   // it doesn't get more than that pushed to it. This endpoint never responds
   // so tests have to suceed by timing out.
@@ -151,7 +149,7 @@ inline auto RequestZeroHandler(
 
 inline auto MakeHangOnZeroHandler(
     std::atomic<int> *hang_on_seen_elements) {
-  return [hang_on_seen_elements](AnyPublisher<Flatbuffer<TestRequest>> requests) {
+  return [hang_on_seen_elements](AnyPublisher<TestRequest> requests) {
     // The point of this test endpoint is to request some inputs, and verify that
     // it doesn't get more than that pushed to it. This endpoint never responds
     // so tests have to suceed by timing out.
@@ -160,11 +158,10 @@ inline auto MakeHangOnZeroHandler(
     std::shared_ptr<AnySubscription> sub =
         std::make_shared<AnySubscription>(MakeSubscription());
     *sub = AnySubscription(requests.Subscribe(MakeSubscriber(
-        [&seen_zero, sub, hang_on_seen_elements](
-            Flatbuffer<TestRequest> &&request) {
+        [&seen_zero, sub, hang_on_seen_elements](TestRequest &&request) {
           (*hang_on_seen_elements)++;
           CHECK(!seen_zero);
-          if (request->data() == 0) {
+          if (request.data() == 0) {
             seen_zero = true;
           } else {
             sub->Request(ElementCount(1));

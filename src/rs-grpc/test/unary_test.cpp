@@ -36,33 +36,31 @@
 #include <rs/zip.h>
 #include <rs-grpc/server.h>
 
-#include "rsgrpctest.grpc.fb.h"
+#include "rsgrpctest.grpc.pb.h"
 #include "test_util.h"
-
-using namespace RsGrpcTest;
 
 namespace shk {
 namespace {
 
-auto DoubleHandler(Flatbuffer<TestRequest> request) {
-  return Just(MakeTestResponse(request->data() * 2));
+auto DoubleHandler(TestRequest &&request) {
+  return Just(MakeTestResponse(request.data() * 2));
 }
 
-auto UnaryFailHandler(Flatbuffer<TestRequest> request) {
+auto UnaryFailHandler(TestRequest &&request) {
   return Throw(std::runtime_error("unary_fail"));
 }
 
-auto UnaryNoResponseHandler(Flatbuffer<TestRequest> request) {
+auto UnaryNoResponseHandler(TestRequest &&request) {
   return Empty();
 }
 
-auto UnaryTwoResponsesHandler(Flatbuffer<TestRequest> request) {
+auto UnaryTwoResponsesHandler(TestRequest &&request) {
   return Just(
       MakeTestResponse(1),
       MakeTestResponse(2));
 }
 
-auto UnaryHangHandler(Flatbuffer<TestRequest> request) {
+auto UnaryHangHandler(TestRequest &&request) {
   return Never();
 }
 
@@ -116,8 +114,8 @@ TEST_CASE("Unary RPC") {
     Run(&runloop, Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 123 * 2);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 123 * 2);
           return "ignored";
         })));
   }
@@ -127,7 +125,7 @@ TEST_CASE("Unary RPC") {
       auto publisher = Pipe(
           test_client.Invoke(
               &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-          Map([](Flatbuffer<TestResponse> response) {
+          Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
@@ -139,8 +137,8 @@ TEST_CASE("Unary RPC") {
     auto request = Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 123 * 2);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 123 * 2);
           return "ignored";
         }));
     Run(&runloop, request, [](AnySubscription &&sub) {
@@ -153,7 +151,7 @@ TEST_CASE("Unary RPC") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client
             .Invoke(&TestService::Stub::AsyncUnaryFail, MakeTestRequest(0)),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -164,7 +162,7 @@ TEST_CASE("Unary RPC") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncUnaryNoResponse, MakeTestRequest(0)),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -176,7 +174,7 @@ TEST_CASE("Unary RPC") {
         test_client.Invoke(
             &TestService::Stub::AsyncUnaryTwoResponses,
             MakeTestRequest(0)),
-        Map([](Flatbuffer<TestResponse> response) {
+        Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
         })));
@@ -254,8 +252,8 @@ TEST_CASE("Unary RPC") {
     auto call = Pipe(
         test_client.Invoke(
             &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
-        Map([](Flatbuffer<TestResponse> response) {
-          CHECK(response->data() == 123 * 2);
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 123 * 2);
           return "ignored";
         }));
     Run(&runloop, call);
@@ -267,13 +265,10 @@ TEST_CASE("Unary RPC") {
     auto call_b = test_client.Invoke(
         &TestService::Stub::AsyncDouble, MakeTestRequest(321));
     Run(&runloop, Pipe(
-        Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
-            call_a, call_b),
-        Map(Splat([](
-            Flatbuffer<TestResponse> a,
-            Flatbuffer<TestResponse> b) {
-          CHECK(a->data() == 123 * 2);
-          CHECK(b->data() == 321 * 2);
+        Zip<std::tuple<TestResponse, TestResponse>>(call_a, call_b),
+        Map(Splat([](TestResponse &&a, TestResponse &&b) {
+          CHECK(a.data() == 123 * 2);
+          CHECK(b.data() == 321 * 2);
           return "ignored";
         }))));
   }
@@ -282,13 +277,10 @@ TEST_CASE("Unary RPC") {
     auto call = test_client.Invoke(
         &TestService::Stub::AsyncDouble, MakeTestRequest(123));
     Run(&runloop, Pipe(
-        Zip<std::tuple<Flatbuffer<TestResponse>, Flatbuffer<TestResponse>>>(
-            call, call),
-        Map(Splat([](
-            Flatbuffer<TestResponse> a,
-            Flatbuffer<TestResponse> b) {
-          CHECK(a->data() == 123 * 2);
-          CHECK(b->data() == 123 * 2);
+        Zip<std::tuple<TestResponse, TestResponse>>(call, call),
+        Map(Splat([](TestResponse &&a, TestResponse &&b) {
+          CHECK(a.data() == 123 * 2);
+          CHECK(b.data() == 123 * 2);
           return "ignored";
         }))));
   }

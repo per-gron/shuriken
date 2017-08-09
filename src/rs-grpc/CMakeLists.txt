@@ -14,14 +14,6 @@ set_property(TARGET rs-grpc PROPERTY CXX_STANDARD 14)
 
 add_custom_command(
   OUTPUT
-      ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.fb.cc
-      ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.fb.h
-      ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest_generated.h
-  COMMAND flatc --cpp --grpc --scoped-enums -o test/include ${CMAKE_CURRENT_LIST_DIR}/test/rsgrpctest.fbs
-  DEPENDS test/rsgrpctest.fbs flatc)
-
-add_custom_command(
-  OUTPUT
       ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.pb.cc
       ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.pb.h
   COMMAND protoc --cpp_out=test/include --proto_path=${CMAKE_CURRENT_LIST_DIR}/test ${CMAKE_CURRENT_LIST_DIR}/test/rsgrpctest.proto
@@ -41,14 +33,10 @@ add_executable(rs-grpc-test
   test/bidi_streaming_test.cpp
   test/client_streaming_test.cpp
   test/main.cpp
-  test/proto_test.cpp
   test/server_streaming_test.cpp
   test/test_util.cpp
   test/test_util.h
   test/unary_test.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.fb.cc
-  ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.fb.h
-  ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest_generated.h
   ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.pb.cc
   ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.pb.h
   ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.pb.cc
