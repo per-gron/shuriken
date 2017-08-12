@@ -250,36 +250,6 @@ TEST_CASE("Bidi streaming RPC") {
           return "ignored";
         }));
 
-    SECTION("call Invoke, request only some elements") {
-      auto invoke_request_n = [&](ElementCount n) {
-        {
-          std::shared_ptr<void> tag =
-              RunExpectTimeout(&runloop, publisher, n);
-          CHECK(latest_seen_response == n.Get());
-
-          ShutdownAllowOutstandingCall(&server);
-        }
-
-        CHECK(latest_seen_response == n.Get());
-      };
-
-      SECTION("0") {
-        invoke_request_n(ElementCount(0));
-      }
-
-      SECTION("1") {
-        invoke_request_n(ElementCount(1));
-      }
-
-      SECTION("2") {
-        invoke_request_n(ElementCount(2));
-      }
-
-      SECTION("3") {
-        invoke_request_n(ElementCount(3));
-      }
-    }
-
     SECTION("Request one element at a time") {
       AnySubscription subscription = AnySubscription(publisher
           .Subscribe(MakeSubscriber(

@@ -121,13 +121,7 @@ RS_GPRC_USE_RESULT std::shared_ptr<void> RunExpectTimeout(
   return std::shared_ptr<int>(nullptr, [shutting_down, runloop](void *ptr) {
     *shutting_down = true;
     runloop->Shutdown();
-    for (;;) {
-      using namespace std::chrono_literals;
-      auto deadline = std::chrono::system_clock::now() + 20ms;
-      if (runloop->Next(deadline) != grpc::CompletionQueue::GOT_EVENT) {
-        break;
-      }
-    }
+    runloop->Run();
   });
 }
 
