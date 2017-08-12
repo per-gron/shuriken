@@ -412,6 +412,9 @@ TEST_CASE("Bidi streaming RPC") {
       CHECK(runloop.Next());
 
       ShutdownAllowOutstandingCall(&server);
+
+      runloop.Shutdown();
+      runloop.Run();
     }
 
     SECTION("violate backpressure in provided publisher (client side)") {
