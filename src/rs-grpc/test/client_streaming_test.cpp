@@ -161,7 +161,7 @@ TEST_CASE("Client streaming RPC") {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
-      RunExpectTimeout(&runloop, publisher);
+      std::shared_ptr<void> tag = RunExpectTimeout(&runloop, publisher);
     }
 
     SECTION("make call that never requests elements") {
@@ -189,7 +189,8 @@ TEST_CASE("Client streaming RPC") {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
-      RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
+      std::shared_ptr<void> tag =
+          RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
       CHECK(hang_on_seen_elements == 2);
 
@@ -209,7 +210,8 @@ TEST_CASE("Client streaming RPC") {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
-      RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
+      std::shared_ptr<void> tag =
+          RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
       CHECK(hang_on_seen_elements == 3);
 
@@ -235,7 +237,8 @@ TEST_CASE("Client streaming RPC") {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
-      RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
+      std::shared_ptr<void> tag =
+          RunExpectTimeout(&runloop, publisher, ElementCount::Unbounded());
 
       ShutdownAllowOutstandingCall(&server);
     }

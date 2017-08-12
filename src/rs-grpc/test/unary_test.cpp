@@ -128,7 +128,7 @@ TEST_CASE("Unary RPC") {
             CHECK(!"should not be invoked");
             return "ignored";
           }));
-      RunExpectTimeout(&runloop, publisher);
+      std::shared_ptr<void> tag = RunExpectTimeout(&runloop, publisher);
     }
   }
 

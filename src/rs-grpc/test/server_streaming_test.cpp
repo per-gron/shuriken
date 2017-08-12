@@ -253,10 +253,32 @@ TEST_CASE("Server streaming RPC") {
         }));
 
     SECTION("call Invoke, request only some elements") {
-      for (int i = 0; i < 4; i++) {
-        latest_seen_response = 0;
-        RunExpectTimeout(&runloop, publisher, ElementCount(i));
-        CHECK(latest_seen_response == i);
+      auto invoke_request_n = [&](ElementCount n) {
+        {
+          std::shared_ptr<void> tag =
+              RunExpectTimeout(&runloop, publisher, n);
+          CHECK(latest_seen_response == n.Get());
+
+          ShutdownAllowOutstandingCall(&server);
+        }
+
+        CHECK(latest_seen_response == n.Get());
+      };
+
+      SECTION("0") {
+        invoke_request_n(ElementCount(0));
+      }
+
+      SECTION("1") {
+        invoke_request_n(ElementCount(1));
+      }
+
+      SECTION("2") {
+        invoke_request_n(ElementCount(2));
+      }
+
+      SECTION("3") {
+        invoke_request_n(ElementCount(3));
       }
     }
 

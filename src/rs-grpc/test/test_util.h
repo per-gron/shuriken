@@ -25,6 +25,14 @@
 
 #include "rsgrpctest.grpc.pb.h"
 
+#if defined(__GNUC__) && (__GNUC__ >= 4)
+#define RS_GPRC_USE_RESULT __attribute__ ((warn_unused_result))
+#elif defined(_MSC_VER) && (_MSC_VER >= 1700)
+#define RS_GPRC_USE_RESULT _Check_return_
+#else
+#define RS_GPRC_USE_RESULT
+#endif
+
 namespace shk {
 
 TestRequest MakeTestRequest(int data);
@@ -52,7 +60,7 @@ std::exception_ptr RunExpectError(
           [](auto &&) {
             // Ignore OnNext
           },
-          [runloop, &captured_error](std::exception_ptr error) {
+          [runloop, &captured_error](std::exception_ptr &&error) {
             runloop->Shutdown();
             captured_error = error;
           },
@@ -72,18 +80,30 @@ std::exception_ptr RunExpectError(
   return captured_error;
 }
 
+/**
+ * Returns a "tag" object that, when destroyed, pumps the remaining events on
+ * the client runloop. Without it, tests may leak memory.
+ */
 template <typename Publisher>
-void RunExpectTimeout(
+RS_GPRC_USE_RESULT std::shared_ptr<void> RunExpectTimeout(
     RsGrpcClient *runloop,
     const Publisher &publisher,
     ElementCount count = ElementCount(0)) {
+  auto shutting_down = std::make_shared<bool>(false);
+
   auto subscription = AnySubscription(publisher
       .Subscribe(MakeSubscriber(
           [](auto &&) {
             // Ignore OnNext
           },
-          [](std::exception_ptr error) {
-            CHECK(!"request should not fail");
+          [shutting_down](std::exception_ptr &&error) {
+            if (!*shutting_down) {
+              CHECK(!"request should not fail");
+            } else {
+              CHECK(
+                  ExceptionToStatus(error).error_code() ==
+                  GRPC_STATUS_INTERNAL);
+            }
           },
           []() {
             CHECK(!"request should not finish");
@@ -97,6 +117,18 @@ void RunExpectTimeout(
       break;
     }
   }
+
+  return std::shared_ptr<int>(nullptr, [shutting_down, runloop](void *ptr) {
+    *shutting_down = true;
+    runloop->Shutdown();
+    for (;;) {
+      using namespace std::chrono_literals;
+      auto deadline = std::chrono::system_clock::now() + 20ms;
+      if (runloop->Next(deadline) != grpc::CompletionQueue::GOT_EVENT) {
+        break;
+      }
+    }
+  });
 }
 
 template <typename Publisher>
@@ -109,7 +141,7 @@ void Run(
           [](auto &&) {
             // Ignore OnNext
           },
-          [runloop](std::exception_ptr error) {
+          [runloop](std::exception_ptr &&error) {
             runloop->Shutdown();
             CHECK(!"request should not fail");
             printf("Got exception: %s\n", ExceptionMessage(error).c_str());
