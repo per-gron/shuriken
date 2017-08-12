@@ -451,7 +451,6 @@ TEST_CASE("Server streaming RPC") {
     Run(&runloop, Merge<const char *>(responses_1, responses_2));
   }
 
-#if 0
   SECTION("asynchronous response") {
     auto stream = Pipe(
         test_client.Invoke(
@@ -486,7 +485,6 @@ TEST_CASE("Server streaming RPC") {
     async_responder.Respond();
     runloop.Run();
   }
-#endif
 
   {
     using namespace std::chrono_literals;
