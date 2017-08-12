@@ -151,7 +151,7 @@ subscription.Request(ElementCount::Unbounded());
 
 In the Java version of Reactive Streams [`Publisher`](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Publisher.java), [`Subscriber`](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Subscriber.java) and [`Subscription`](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Subscription.java) are Java interfaces. Looking at those interfaces, one might expect to find pure virtual `Publisher`, `Subscriber` and `Subscription` classes in rs, but there are no such classes.
 
-Instead, in rs, Publisher, Subscriber and Subscription are *concepts*, much like iterators in C++. An rs Publisher is any C++ type that fulfills [the requirements of the Publisher concept](doc/specification.md#1-publisher-code).
+Instead, in rs, Publisher, Subscriber and Subscription are *concepts*, much like iterators in C++. An rs Publisher is any C++ object of a type that fulfills [the requirements of the Publisher concept](doc/specification.md#1-publisher-code).
 
 This can be a bit counterintuitive at first. For example, the return type of `Just(1)` is not `AnyPublisher<int>`; it is a type that doesn't even have a name (because the type contains the type of a lambda expression). The public API of rs does not give a name for the type of `Just(1)`, it only promises that it conforms to the Publisher concept.
 
@@ -190,7 +190,7 @@ Unlike the first version of `EvenSquares`, this one can easily live in a `.cpp` 
 
 `AnyPublisher<int>` is a class that can be constructed with any Publisher of `int`s and behaves just like the one it was created with. The only difference is that it "hides" the type of the underlying Publisher (using virtual method calls).
 
-In addition to `Publisher`, there are also type erasers for Subscribers and Subscriptions.
+In addition to `AnyPublisher`, there are also type erasers for Subscribers and Subscriptions.
 
 It is possible to construct Publishers that can emit more than one type (and correspondingly Subscribers that can receive more than one type). They can also be type erased, for example with `AnyPublisher<int, std::string>`. Publishers that never emit a value and only ever complete or fail can be type erased with `AnyPublisher<>`.
 
