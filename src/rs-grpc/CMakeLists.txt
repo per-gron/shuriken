@@ -43,7 +43,7 @@ add_executable(rs-grpc-test
   ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.pb.h)
 add_sanitizers(rs-grpc-test)
 set_property(TARGET rs-grpc-test PROPERTY CXX_STANDARD 14)
-target_link_libraries(rs-grpc-test rs-grpc catch flatbuffers libprotobuf)
+target_link_libraries(rs-grpc-test rs-grpc catch libprotobuf)
 target_include_directories(rs-grpc-test PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/test/include src)
 set_property(TARGET rs-grpc-test APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 

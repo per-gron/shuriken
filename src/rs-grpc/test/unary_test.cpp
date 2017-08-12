@@ -18,7 +18,6 @@
 #include <chrono>
 #include <thread>
 
-#include <flatbuffers/grpc.h>
 #include <rs/concat.h>
 #include <rs/count.h>
 #include <rs/empty.h>
