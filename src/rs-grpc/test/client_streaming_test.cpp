@@ -95,6 +95,7 @@ TEST_CASE("Client streaming RPC") {
       .AddListeningPort(server_address, grpc::InsecureServerCredentials());
 
   std::atomic<int> hang_on_seen_elements(0);
+  std::shared_ptr<AnySubscription> hung_subscription;
 
   server_builder.RegisterService<TestService::AsyncService>()
       .RegisterMethod(
@@ -117,7 +118,7 @@ TEST_CASE("Client streaming RPC") {
           &RequestZeroHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestClientStreamHangOnZero,
-          MakeHangOnZeroHandler(&hang_on_seen_elements));
+          MakeHangOnZeroHandler(&hang_on_seen_elements, &hung_subscription));
 
   RsGrpcClient runloop;
 
@@ -194,7 +195,8 @@ TEST_CASE("Client streaming RPC") {
 
       CHECK(hang_on_seen_elements == 2);
 
-      ShutdownAllowOutstandingCall(&server);
+      CHECK(hung_subscription);
+      hung_subscription.reset();
     }
 
     SECTION("make call that requests two elements") {
@@ -215,7 +217,8 @@ TEST_CASE("Client streaming RPC") {
 
       CHECK(hang_on_seen_elements == 3);
 
-      ShutdownAllowOutstandingCall(&server);
+      CHECK(hung_subscription);
+      hung_subscription.reset();
     }
 
     SECTION("make call with unlimited stream") {

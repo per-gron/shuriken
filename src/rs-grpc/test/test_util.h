@@ -174,8 +174,10 @@ inline auto RequestZeroHandler(
 }
 
 inline auto MakeHangOnZeroHandler(
-    std::atomic<int> *hang_on_seen_elements) {
-  return [hang_on_seen_elements](AnyPublisher<TestRequest> requests) {
+    std::atomic<int> *hang_on_seen_elements,
+    std::shared_ptr<AnySubscription> *hung_subscription) {
+  return [hang_on_seen_elements, hung_subscription](
+      AnyPublisher<TestRequest> requests) {
     // The point of this test endpoint is to request some inputs, and verify that
     // it doesn't get more than that pushed to it. This endpoint never responds
     // so tests have to suceed by timing out.
@@ -184,11 +186,14 @@ inline auto MakeHangOnZeroHandler(
     std::shared_ptr<AnySubscription> sub =
         std::make_shared<AnySubscription>(MakeSubscription());
     *sub = AnySubscription(requests.Subscribe(MakeSubscriber(
-        [&seen_zero, sub, hang_on_seen_elements](TestRequest &&request) {
+        [&seen_zero, sub, hang_on_seen_elements, hung_subscription](
+            TestRequest &&request) mutable {
           (*hang_on_seen_elements)++;
           CHECK(!seen_zero);
+          REQUIRE(sub);
           if (request.data() == 0) {
             seen_zero = true;
+            *hung_subscription = std::move(sub);
           } else {
             sub->Request(ElementCount(1));
           }

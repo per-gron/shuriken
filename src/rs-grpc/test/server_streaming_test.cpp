@@ -130,8 +130,6 @@ TEST_CASE("Server streaming RPC") {
   server_builder.GrpcServerBuilder()
       .AddListeningPort(server_address, grpc::InsecureServerCredentials());
 
-  std::atomic<int> hang_on_seen_elements(0);
-
   AsyncResponder async_responder;
 
   server_builder.RegisterService<TestService::AsyncService>()
