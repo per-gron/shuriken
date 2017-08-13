@@ -202,10 +202,9 @@ TEST_CASE("Server streaming RPC") {
         // happen.
         CHECK(runloop.Next());
         CHECK(runloop.Next());
-
         CHECK(!cancelled);
-
-        ShutdownAllowOutstandingCall(&server);
+        CHECK(runloop.Next());
+        CHECK(cancelled);
 
         runloop.Shutdown();
         runloop.Run();
