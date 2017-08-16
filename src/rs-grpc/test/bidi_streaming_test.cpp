@@ -352,7 +352,7 @@ TEST_CASE("Bidi streaming RPC") {
       // get full. The default buffer size in gRPC is so big that the test takes
       // a lot of time to complete. This reduces the buffer size so that this
       // test completes reasonably quickly.
-      quota.Resize(1024);
+      quota.Resize(4096);
 
       // If client-side rs-grpc violates backpressure requirements by requesting
       // an unbounded number of elements from this infinite stream (which the
