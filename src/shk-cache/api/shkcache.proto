@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-// TODO(peck): Make this work: import "shk-index/api/shkindex.proto";
+import "shk-index/api/shkindex.proto";
 
 message Root {
   string name = 1;
@@ -14,7 +14,7 @@ message CacheLookupRequest {
 
 message CacheLookupResponse {
   bytes step_hash = 1;  // 20 byte hash
-  // TODO(peck): Refer to shkindex.proto repeated IndexFileReference files = 2;
+  repeated IndexFileReference files = 2;
   repeated uint32 ignored_dependencies = 3;
   repeated bytes additional_dependencies = 4;  // 20 byte hashes
 }

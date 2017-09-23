@@ -1,4 +1,6 @@
-shk_proto(shk-store-proto api api/shkstore.proto)
+shk_proto(
+  LIB_NAME shk-store-proto
+  PROTO_FILE shk-store/api/shkstore.proto)
 
 add_library(libshk-store
   src/dummy.cpp)

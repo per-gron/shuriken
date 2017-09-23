@@ -13,24 +13,30 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 set(PROTO_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/src")
+set(PROTO_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cpp_proto")
 
-function(shk_proto LIB_NAME INCLUDE_DIR PROTO_FILE)
-  get_filename_component(PROTO_NAME ${PROTO_FILE} NAME_WE)
-  get_filename_component(PROTO_DIR ${PROTO_FILE} DIRECTORY)
+function(shk_proto)
+  set(OPTIONS)
+  set(ONE_VALUE_ARGS LIB_NAME PROTO_FILE)
+  set(MULTI_VALUE_ARGS DEPENDENCIES)
+  cmake_parse_arguments(shk_proto "${OPTIONS}" "${ONE_VALUE_ARGS}" "${MULTI_VALUE_ARGS}" ${ARGN})
+
+  get_filename_component(PROTO_NAME ${shk_proto_PROTO_FILE} NAME_WE)
+  get_filename_component(PROTO_DIR ${shk_proto_PROTO_FILE} DIRECTORY)
   add_custom_command(
     OUTPUT
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR}/${PROTO_NAME}.pb.cc
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR}/${PROTO_NAME}.pb.h
-    COMMAND protoc --cpp_out="${PROTO_DIR}" --proto_path="${CMAKE_CURRENT_LIST_DIR}/${PROTO_DIR}" "${CMAKE_CURRENT_LIST_DIR}/${PROTO_FILE}"
-    DEPENDS ${PROTO_FILE} protoc)
+        ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.cc
+        ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.h
+    COMMAND protoc --cpp_out="${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --proto_path="${PROTO_ROOT_DIR}" "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}"
+    DEPENDS ${shk_proto_PROTO_FILE} protoc)
 
-  add_library(${LIB_NAME}
-    ${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR}/${PROTO_NAME}.pb.cc
-    ${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR}/${PROTO_NAME}.pb.h)
-  set_property(TARGET ${LIB_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-  set_property(TARGET ${LIB_NAME} PROPERTY CXX_STANDARD 14)
-  target_include_directories(${LIB_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/${INCLUDE_DIR})
-  target_link_libraries(${LIB_NAME} libprotobuf)
+  add_library(${shk_proto_LIB_NAME}
+    ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.cc
+    ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.h)
+  set_property(TARGET ${shk_proto_LIB_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
+  set_property(TARGET ${shk_proto_LIB_NAME} PROPERTY CXX_STANDARD 14)
+  target_include_directories(${shk_proto_LIB_NAME} PUBLIC ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME})
+  target_link_libraries(${shk_proto_LIB_NAME} libprotobuf ${shk_proto_DEPENDENCIES})
 endfunction()
 
 add_subdirectory(vendor)

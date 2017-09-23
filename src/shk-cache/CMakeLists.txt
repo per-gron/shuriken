@@ -1,4 +1,7 @@
-shk_proto(shk-cache-proto api api/shkcache.proto)
+shk_proto(
+  LIB_NAME shk-cache-proto
+  PROTO_FILE shk-cache/api/shkcache.proto
+  DEPENDENCIES shk-index-proto)
 
 add_library(libshk-cache
   src/dummy.cpp)
@@ -19,7 +22,7 @@ add_executable(shk-cache-test
   test/main.cpp)
 set_property(TARGET shk-cache-test PROPERTY CXX_STANDARD 14)
 target_link_libraries(shk-cache-test catch libshk-cache)
-target_include_directories(shk-cache-test PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/test/include src)
+target_include_directories(shk-cache-test PRIVATE src)
 set_property(TARGET shk-cache-test APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_test(NAME shk-cache-unit COMMAND shk-cache-test)
