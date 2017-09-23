@@ -70,31 +70,32 @@ class AsyncResponder {
   std::function<void ()> callback_;
 };
 
-auto RepeatHandler(TestRequest &&request) {
+auto RepeatHandler(const CallContext &ctx, TestRequest &&request) {
   int count = request.data();
   return Pipe(
       Range(1, count),
       Map(&MakeTestResponse));
 }
 
-auto RepeatThenFailHandler(TestRequest &&request) {
+auto RepeatThenFailHandler(const CallContext &ctx, TestRequest &&request) {
   return Concat(
-      RepeatHandler(std::move(request)),
+      RepeatHandler(ctx, std::move(request)),
       Throw(std::runtime_error("repeat_fail")));
 }
 
-auto ServerStreamHangHandler(TestRequest &&request) {
+auto ServerStreamHangHandler(const CallContext &ctx, TestRequest &&request) {
   return Never();
 }
 
-auto InfiniteRepeatHandler(TestRequest &&request) {
+auto InfiniteRepeatHandler(const CallContext &ctx, TestRequest &&request) {
   // If client-side rs-grpc violates backpressure requirements by requesting
   // an unbounded number of elements from this infinite stream, then this will
   // smash the stack or run out of memory.
   return MakeInfiniteResponse();
 }
 
-auto ServerStreamBackpressureViolationHandler(TestRequest &&request) {
+auto ServerStreamBackpressureViolationHandler(
+    const CallContext &ctx, TestRequest &&request) {
   return MakePublisher([](auto &&subscriber) {
     // Emit element before it was asked for: streams should not do
     // this.
@@ -106,7 +107,7 @@ auto ServerStreamBackpressureViolationHandler(TestRequest &&request) {
 }
 
 auto ServerStreamAsyncResponseHandler(AsyncResponder *responder) {
-  return [responder](TestRequest &&request) {
+  return [responder](const CallContext &ctx, TestRequest &&request) {
     return MakePublisher([responder](auto subscriber) {
       auto shared_sub = std::make_shared<decltype(subscriber)>(
           decltype(subscriber)(std::move(subscriber)));

@@ -38,7 +38,7 @@
 namespace shk {
 namespace {
 
-auto SumHandler(AnyPublisher<TestRequest> &&requests) {
+auto SumHandler(const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
   return Pipe(
       requests,
       Map([](TestRequest &&request) {
@@ -48,7 +48,8 @@ auto SumHandler(AnyPublisher<TestRequest> &&requests) {
       Map(MakeTestResponse));
 }
 
-auto ImmediatelyFailingSumHandler(AnyPublisher<TestRequest> &&requests) {
+auto ImmediatelyFailingSumHandler(
+    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -56,8 +57,9 @@ auto ImmediatelyFailingSumHandler(AnyPublisher<TestRequest> &&requests) {
   return Throw(std::runtime_error("sum_fail"));
 }
 
-auto FailingSumHandler(AnyPublisher<TestRequest> &&requests) {
-  return SumHandler(AnyPublisher<TestRequest>(Pipe(
+auto FailingSumHandler(
+    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
+  return SumHandler(ctx, AnyPublisher<TestRequest>(Pipe(
       requests,
       Map([](TestRequest &&request) {
         if (request.data() == -1) {
@@ -67,7 +69,8 @@ auto FailingSumHandler(AnyPublisher<TestRequest> &&requests) {
       }))));
 }
 
-auto ClientStreamNoResponseHandler(AnyPublisher<TestRequest> &&requests) {
+auto ClientStreamNoResponseHandler(
+    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -75,7 +78,8 @@ auto ClientStreamNoResponseHandler(AnyPublisher<TestRequest> &&requests) {
   return Empty();
 }
 
-auto ClientStreamTwoResponsesHandler(AnyPublisher<TestRequest> &&requests) {
+auto ClientStreamTwoResponsesHandler(
+    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this. TODO(peck): Try to this unnecessary
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -85,7 +89,8 @@ auto ClientStreamTwoResponsesHandler(AnyPublisher<TestRequest> &&requests) {
       MakeTestResponse(2));
 }
 
-auto ClientStreamEchoAllHandler(AnyPublisher<TestRequest> &&requests) {
+auto ClientStreamEchoAllHandler(
+    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
   return Pipe(
       requests,
       Map([](TestRequest &&request) {

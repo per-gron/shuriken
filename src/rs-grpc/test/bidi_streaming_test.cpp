@@ -42,7 +42,8 @@
 namespace shk {
 namespace {
 
-auto CumulativeSumHandler(AnyPublisher<TestRequest> &&requests) {
+auto CumulativeSumHandler(
+    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
   return Pipe(
     requests,
     Map([](TestRequest &&request) {
@@ -53,7 +54,7 @@ auto CumulativeSumHandler(AnyPublisher<TestRequest> &&requests) {
 }
 
 auto ImmediatelyFailingCumulativeSumHandler(
-    AnyPublisher<TestRequest> &&requests) {
+    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -61,8 +62,9 @@ auto ImmediatelyFailingCumulativeSumHandler(
   return Throw(std::runtime_error("cumulative_sum_fail"));
 }
 
-auto FailingCumulativeSumHandler(AnyPublisher<TestRequest> &&requests) {
-  return CumulativeSumHandler(AnyPublisher<TestRequest>(Pipe(
+auto FailingCumulativeSumHandler(
+    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
+  return CumulativeSumHandler(ctx, AnyPublisher<TestRequest>(Pipe(
       requests,
       Map([](TestRequest &&request) {
         if (request.data() == -1) {
@@ -72,7 +74,8 @@ auto FailingCumulativeSumHandler(AnyPublisher<TestRequest> &&requests) {
       }))));
 }
 
-auto BidiStreamInfiniteResponseHandler(AnyPublisher<TestRequest> &&requests) {
+auto BidiStreamInfiniteResponseHandler(
+    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
   // Hack: unless requests is subscribed to, nothing happens. Would be nice to
   // fix this.
   requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
@@ -81,7 +84,7 @@ auto BidiStreamInfiniteResponseHandler(AnyPublisher<TestRequest> &&requests) {
 }
 
 auto BidiStreamBackpressureViolationHandler(
-    AnyPublisher<TestRequest> &&request) {
+    const CallContext &ctx, AnyPublisher<TestRequest> &&request) {
   return MakePublisher([](auto &&subscriber) {
     // Emit element before it was asked for: streams should not do
     // this.

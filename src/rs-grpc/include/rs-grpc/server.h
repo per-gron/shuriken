@@ -26,6 +26,7 @@
 #include <rs-grpc/detail/rs_grpc_tag.h>
 #include <rs-grpc/detail/subscriber.h>
 #include <rs-grpc/detail/subscription.h>
+#include <rs-grpc/call_context.h>
 #include <rs-grpc/client.h>
 #include <rs-grpc/grpc_error.h>
 
@@ -156,7 +157,7 @@ class RsGrpcServerCall<
     if (awaiting_request_) {
       // The server has just received a request. Handle it.
 
-      auto values = callback_(std::move(request_));
+      auto values = callback_(CallContext(), std::move(request_));
 
       // Request the a new request, so that the server is always waiting for
       // one. This is done after the callback (because this steals it) but
@@ -286,7 +287,7 @@ class RsGrpcServerCall<
         // The server has just received a request. Handle it.
         state_ = State::AWAITING_RESPONSE;
 
-        auto values = callback_(std::move(request_));
+        auto values = callback_(CallContext(), std::move(request_));
 
         // Request the a new request, so that the server is always waiting for
         // one. This is done after the callback (because this steals it) but
@@ -519,18 +520,20 @@ class RsGrpcServerCall<
         reader_(&context_) {}
 
   void Init() {
-    auto response = callback_(AnyPublisher<RequestType>(MakePublisher(
-        [self = ToShared(this)](auto &&subscriber) {
-      if (self->subscriber_) {
-        throw std::logic_error(
-            "Can't subscribe to this observable more than once");
-      }
-      self->subscriber_.reset(
-          new AnySubscriber<RequestType>(
-              std::forward<decltype(subscriber)>(subscriber)));
+    auto response = callback_(
+        CallContext(),
+        AnyPublisher<RequestType>(MakePublisher(
+            [self = ToShared(this)](auto &&subscriber) {
+          if (self->subscriber_) {
+            throw std::logic_error(
+                "Can't subscribe to this observable more than once");
+          }
+          self->subscriber_.reset(
+              new AnySubscriber<RequestType>(
+                  std::forward<decltype(subscriber)>(subscriber)));
 
-      return MakeRsGrpcTagSubscription(self);
-    })));
+          return MakeRsGrpcTagSubscription(self);
+        })));
 
     static_assert(
         IsPublisher<decltype(response)>,
@@ -862,18 +865,20 @@ class RsGrpcServerCall<
             &stream_) {}
 
   void Init() {
-    auto response = callback_(AnyPublisher<RequestType>(MakePublisher(
-        [self = ToShared(this)](auto &&subscriber) {
-      if (self->subscriber_) {
-        throw std::logic_error(
-            "Can't subscribe to this Publisher more than once");
-      }
-      self->subscriber_.reset(
-          new AnySubscriber<RequestType>(
-              std::forward<decltype(subscriber)>(subscriber)));
+    auto response = callback_(
+        CallContext(),
+        AnyPublisher<RequestType>(MakePublisher(
+          [self = ToShared(this)](auto &&subscriber) {
+        if (self->subscriber_) {
+          throw std::logic_error(
+              "Can't subscribe to this Publisher more than once");
+        }
+        self->subscriber_.reset(
+            new AnySubscriber<RequestType>(
+                std::forward<decltype(subscriber)>(subscriber)));
 
-      return MakeRsGrpcTagSubscription(self);
-    })));
+        return MakeRsGrpcTagSubscription(self);
+      })));
 
     static_assert(
         IsPublisher<decltype(response)>,

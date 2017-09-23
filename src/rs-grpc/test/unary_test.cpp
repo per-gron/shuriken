@@ -41,25 +41,25 @@
 namespace shk {
 namespace {
 
-auto DoubleHandler(TestRequest &&request) {
+auto DoubleHandler(const CallContext &ctx, TestRequest &&request) {
   return Just(MakeTestResponse(request.data() * 2));
 }
 
-auto UnaryFailHandler(TestRequest &&request) {
+auto UnaryFailHandler(const CallContext &ctx, TestRequest &&request) {
   return Throw(std::runtime_error("unary_fail"));
 }
 
-auto UnaryNoResponseHandler(TestRequest &&request) {
+auto UnaryNoResponseHandler(const CallContext &ctx, TestRequest &&request) {
   return Empty();
 }
 
-auto UnaryTwoResponsesHandler(TestRequest &&request) {
+auto UnaryTwoResponsesHandler(const CallContext &ctx, TestRequest &&request) {
   return Just(
       MakeTestResponse(1),
       MakeTestResponse(2));
 }
 
-auto UnaryHangHandler(TestRequest &&request) {
+auto UnaryHangHandler(const CallContext &ctx, TestRequest &&request) {
   return Never();
 }
 

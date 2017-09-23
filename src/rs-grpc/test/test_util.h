@@ -151,7 +151,7 @@ void Run(
 }
 
 inline auto RequestZeroHandler(
-    AnyPublisher<TestRequest> &&requests) {
+    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
   // The point of this test endpoint is to request some inputs, and verify that
   // it doesn't get more than that pushed to it. This endpoint never responds
   // so tests have to suceed by timing out.
@@ -175,7 +175,7 @@ inline auto MakeHangOnZeroHandler(
     std::atomic<int> *hang_on_seen_elements,
     std::shared_ptr<AnySubscription> *hung_subscription) {
   return [hang_on_seen_elements, hung_subscription](
-      AnyPublisher<TestRequest> requests) {
+      const CallContext &ctx, AnyPublisher<TestRequest> requests) {
     // The point of this test endpoint is to request some inputs, and verify that
     // it doesn't get more than that pushed to it. This endpoint never responds
     // so tests have to suceed by timing out.
