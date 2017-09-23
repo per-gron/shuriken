@@ -15,10 +15,6 @@
 #include <stdio.h>
 #include <thread>
 
-#include <shk-cache/shkcache_generated.h>
-#include <shk-cache/shkcache.grpc.fb.h>
-#include <util/assert.h>
-
 namespace shk {
 
 int main(int /*argc*/, const char * /*argv*/[]) {

@@ -12,6 +12,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> -no_warning_for_no_symbols -c <TARGET>")
 endif()
 
+set(PROTO_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/src")
+
 function(shk_proto LIB_NAME INCLUDE_DIR PROTO_FILE)
   get_filename_component(PROTO_NAME ${PROTO_FILE} NAME_WE)
   get_filename_component(PROTO_DIR ${PROTO_FILE} DIRECTORY)
