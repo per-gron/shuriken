@@ -139,7 +139,8 @@ TEST_CASE("Client streaming RPC") {
           &TestService::AsyncService::RequestClientStreamEchoAll,
           &ClientStreamEchoAllHandler);
 
-  RsGrpcClient runloop;
+  RsGrpcClientRunloop runloop;
+  CallContext ctx = runloop.CallContext();
 
   grpc::ResourceQuota quota;
   grpc::ChannelArguments channel_args;
@@ -150,8 +151,7 @@ TEST_CASE("Client streaming RPC") {
       grpc::InsecureChannelCredentials(),
       channel_args);
 
-  auto test_client = runloop.MakeClient(
-      TestService::NewStub(channel));
+  auto test_client = MakeRsGrpcClient(TestService::NewStub(channel));
 
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });
@@ -159,6 +159,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("no messages") {
     Run(&runloop, Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncSum,
             Empty()),
         Map([](TestResponse &&response) {
@@ -176,7 +177,7 @@ TEST_CASE("Client streaming RPC") {
     SECTION("call Invoke but don't request a value") {
       auto publisher = Pipe(
           test_client.Invoke(
-              &TestService::Stub::AsyncSum, Empty()),
+              ctx, &TestService::Stub::AsyncSum, Empty()),
           Map([](TestResponse response) {
             CHECK(!"should not be invoked");
             return "ignored";
@@ -187,6 +188,7 @@ TEST_CASE("Client streaming RPC") {
     SECTION("make call that never requests elements") {
       auto publisher = Pipe(
           test_client.Invoke(
+              ctx,
               &TestService::Stub::AsyncClientStreamRequestZero,
               Just(MakeTestRequest(432))),
           Map([](TestResponse &&response) {
@@ -200,6 +202,7 @@ TEST_CASE("Client streaming RPC") {
     SECTION("make call that requests one element") {
       auto publisher = Pipe(
           test_client.Invoke(
+              ctx,
               &TestService::Stub::AsyncClientStreamHangOnZero,
               Just(
                   MakeTestRequest(1),
@@ -221,6 +224,7 @@ TEST_CASE("Client streaming RPC") {
     SECTION("make call that requests two elements") {
       auto publisher = Pipe(
           test_client.Invoke(
+              ctx,
               &TestService::Stub::AsyncClientStreamHangOnZero,
               Just(
                   MakeTestRequest(1),
@@ -253,6 +257,7 @@ TEST_CASE("Client streaming RPC") {
       // memory.
       auto publisher = Pipe(
           test_client.Invoke(
+              ctx,
               &TestService::Stub::AsyncClientStreamRequestZero,
               MakeInfiniteRequest()),
           Map([](TestResponse &&response) {
@@ -268,6 +273,7 @@ TEST_CASE("Client streaming RPC") {
     SECTION("violate backpressure in provided publisher") {
       auto publisher = Pipe(
           test_client.Invoke(
+              ctx,
               &TestService::Stub::AsyncSum,
               MakePublisher([](auto &&subscriber) {
                 // Emit element before it was asked for: streams should not do
@@ -298,6 +304,7 @@ TEST_CASE("Client streaming RPC") {
     SECTION("from client side") {
       SECTION("after Request") {
         auto call = test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncClientStreamRequestZero,
             Empty());
 
@@ -316,6 +323,7 @@ TEST_CASE("Client streaming RPC") {
 
       SECTION("before Request") {
         auto call = test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncSum,
             Never());
 
@@ -344,6 +352,7 @@ TEST_CASE("Client streaming RPC") {
             });
 
         auto call = test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncClientStreamRequestZero,
             detect_cancel);
 
@@ -365,6 +374,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("one message") {
     Run(&runloop, Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncSum,
             Just(MakeTestRequest(1337))),
         Map([](TestResponse &&response) {
@@ -381,6 +391,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("immediately failed stream") {
     auto error = RunExpectError(&runloop, test_client
         .Invoke(
+            ctx,
             &TestService::Stub::AsyncSum,
             Throw(std::runtime_error("test_error"))));
     CHECK(ExceptionMessage(error) == "test_error");
@@ -389,6 +400,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("stream failed after one message") {
     auto error = RunExpectError(&runloop, test_client
         .Invoke(
+            ctx,
             &TestService::Stub::AsyncSum,
             Concat(
                 Just(MakeTestRequest(0)),
@@ -400,6 +412,7 @@ TEST_CASE("Client streaming RPC") {
     // This test is there to try to trigger a reference cycle memory leak.
     Run(&runloop, Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncClientStreamEchoAll,
             Just(MakeTestRequest(13))),
         Map([](TestResponse &&response) {
@@ -416,6 +429,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("two messages") {
     Run(&runloop, Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncSum,
             Just(MakeTestRequest(13), MakeTestRequest(7))),
         Map([](TestResponse &&response) {
@@ -432,6 +446,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("no messages then fail") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncImmediatelyFailingSum,
             Empty()),
         Map([](TestResponse &&response) {
@@ -444,6 +459,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("message then immediately fail") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncImmediatelyFailingSum,
             Just(MakeTestRequest(1337))),
         Map([](TestResponse &&response) {
@@ -456,6 +472,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("fail on first message") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncFailingSum,
             Just(MakeTestRequest(-1))),
         Map([](TestResponse &&response) {
@@ -468,6 +485,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("fail on second message") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncFailingSum,
             Just(MakeTestRequest(0), MakeTestRequest(-1))),
         Map([](TestResponse &&response) {
@@ -480,6 +498,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("fail because of no response") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncClientStreamNoResponse,
             Just(MakeTestRequest(0))),
         Map([](TestResponse &&response) {
@@ -492,6 +511,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("fail because of two responses") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncClientStreamTwoResponses,
             Just(MakeTestRequest(0))),
         Map([](TestResponse &&response) {
@@ -504,6 +524,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("two calls") {
     auto call_0 = Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncSum,
             Just(MakeTestRequest(13), MakeTestRequest(7))),
         Map([](TestResponse &&response) {
@@ -518,6 +539,7 @@ TEST_CASE("Client streaming RPC") {
 
     auto call_1 = Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncSum,
             Just(MakeTestRequest(10), MakeTestRequest(2))),
         Map([](TestResponse &&response) {
@@ -536,6 +558,7 @@ TEST_CASE("Client streaming RPC") {
   SECTION("same call twice") {
     auto call = Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncSum,
             Just(MakeTestRequest(13), MakeTestRequest(7))),
         Map([](TestResponse &&response) {

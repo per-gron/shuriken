@@ -155,13 +155,13 @@ TEST_CASE("Server streaming RPC") {
           &TestService::AsyncService::RequestServerStreamAsyncResponse,
           ServerStreamAsyncResponseHandler(&async_responder));
 
-  RsGrpcClient runloop;
+  RsGrpcClientRunloop runloop;
+  CallContext ctx = runloop.CallContext();
 
   auto channel = grpc::CreateChannel(
       server_address, grpc::InsecureChannelCredentials());
 
-  auto test_client = runloop.MakeClient(
-      TestService::NewStub(channel));
+  auto test_client = MakeRsGrpcClient(TestService::NewStub(channel));
 
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });
@@ -169,7 +169,7 @@ TEST_CASE("Server streaming RPC") {
   SECTION("no responses") {
     Run(&runloop, Pipe(
         test_client.Invoke(
-            &TestService::Stub::AsyncRepeat, MakeTestRequest(0)),
+            ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(0)),
         Map([](TestResponse &&response) {
           // Should never be called; this should be a stream that ends
           // without any values
@@ -183,6 +183,7 @@ TEST_CASE("Server streaming RPC") {
 #if 0  // TODO(peck): This test is racy, it sometimes leaks memory
       SECTION("after Request") {
         auto call = test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncServerStreamHang,
             MakeTestRequest(0));
 
@@ -217,6 +218,7 @@ TEST_CASE("Server streaming RPC") {
 
       SECTION("before Request") {
         auto call = test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncRepeat,
             MakeTestRequest(1));
 
@@ -248,7 +250,7 @@ TEST_CASE("Server streaming RPC") {
     int latest_seen_response = 0;
     auto publisher = Pipe(
         test_client.Invoke(
-            &TestService::Stub::AsyncRepeat, MakeTestRequest(10)),
+            ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(10)),
         Map([&latest_seen_response](TestResponse &&response) {
           CHECK(++latest_seen_response == response.data());
           return "ignored";
@@ -326,7 +328,7 @@ TEST_CASE("Server streaming RPC") {
 
     SECTION("Request one element from infinite stream") {
       auto request = test_client.Invoke(
-          &TestService::Stub::AsyncInfiniteRepeat, MakeTestRequest(0));
+          ctx, &TestService::Stub::AsyncInfiniteRepeat, MakeTestRequest(0));
 
       auto subscription = request.Subscribe(MakeSubscriber());
       subscription.Request(ElementCount(1));
@@ -340,6 +342,7 @@ TEST_CASE("Server streaming RPC") {
     SECTION("violate backpressure in provided publisher (server side)") {
       auto publisher = Pipe(
           test_client.Invoke(
+              ctx,
               &TestService::Stub::AsyncServerStreamBackpressureViolation,
               MakeTestRequest(0)));
       auto error = RunExpectError(&runloop, publisher);
@@ -350,7 +353,7 @@ TEST_CASE("Server streaming RPC") {
   SECTION("one response") {
     Run(&runloop, Pipe(
         test_client
-            .Invoke(&TestService::Stub::AsyncRepeat, MakeTestRequest(1)),
+            .Invoke(ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(1)),
         Map([](TestResponse &&response) {
           CHECK(response.data() == 1);
           return "ignored";
@@ -364,7 +367,7 @@ TEST_CASE("Server streaming RPC") {
 
   SECTION("two responses") {
     auto responses = test_client.Invoke(
-        &TestService::Stub::AsyncRepeat, MakeTestRequest(2));
+        ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(2));
 
     auto check_count = Pipe(
         responses,
@@ -391,7 +394,7 @@ TEST_CASE("Server streaming RPC") {
   SECTION("no responses then fail") {
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
-            &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(0)),
+            ctx, &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(0)),
         Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
@@ -403,7 +406,7 @@ TEST_CASE("Server streaming RPC") {
     int count = 0;
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
-            &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(1)),
+            ctx, &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(1)),
         Map([&count](TestResponse &&response) {
           count++;
           return "unused";
@@ -416,7 +419,7 @@ TEST_CASE("Server streaming RPC") {
     int count = 0;
     auto error = RunExpectError(&runloop, Pipe(
         test_client.Invoke(
-            &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(2)),
+            ctx, &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(2)),
         Map([&count](TestResponse &&response) {
           count++;
           return "unused";
@@ -428,7 +431,7 @@ TEST_CASE("Server streaming RPC") {
   SECTION("two calls") {
     auto responses_1 = Pipe(
         test_client.Invoke(
-            &TestService::Stub::AsyncRepeat, MakeTestRequest(2)),
+            ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(2)),
         Map([](TestResponse &&response) {
           return response.data();
         }),
@@ -440,7 +443,7 @@ TEST_CASE("Server streaming RPC") {
 
     auto responses_2 = Pipe(
         test_client.Invoke(
-            &TestService::Stub::AsyncRepeat, MakeTestRequest(3)),
+            ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(3)),
         Map([](TestResponse &&response) {
           return response.data();
         }),
@@ -456,6 +459,7 @@ TEST_CASE("Server streaming RPC") {
   SECTION("asynchronous response") {
     auto stream = Pipe(
         test_client.Invoke(
+            ctx,
             &TestService::Stub::AsyncServerStreamAsyncResponse,
             MakeTestRequest(1)),
         Map([](TestResponse &&response) {

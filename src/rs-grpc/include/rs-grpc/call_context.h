@@ -23,6 +23,9 @@ class CallContextBuilder;
 
 }  // namespace detail
 
+template <typename>
+class RsGrpcClient;
+
 /**
  * A CallContext is an opaque object that represents a context in which an RPC
  * can be made: RPCs can be done as part of handling RPCs in a server, or they
@@ -34,9 +37,13 @@ class CallContext {
  public:
  private:
   friend class detail::CallContextBuilder;
+  template <typename>
+  friend class RsGrpcClient;
 
   // cq must not be null
-  explicit CallContext(grpc::CompletionQueue *cq) {}
+  explicit CallContext(grpc::CompletionQueue *cq) : cq_(cq) {}
+
+  grpc::CompletionQueue *cq_;
 };
 
 namespace detail {

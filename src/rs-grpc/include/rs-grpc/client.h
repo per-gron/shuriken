@@ -685,17 +685,21 @@ class RsGrpcClientCall<
 
 }  // namespace detail
 
+/**
+ * An RsGrpcClient provides methods to make RPCs to a specific service.
+ */
 template <typename Stub>
-class RsGrpcServiceClient {
+class RsGrpcClient {
  public:
-  RsGrpcServiceClient(std::unique_ptr<Stub> &&stub, grpc::CompletionQueue *cq)
-      : stub_(std::move(stub)), cq_(*cq) {}
+  explicit RsGrpcClient(std::unique_ptr<Stub> &&stub)
+      : stub_(std::move(stub)) {}
 
   /**
    * Unary rpc.
    */
   template <typename ResponseType, typename RequestType>
   auto Invoke(
+      const CallContext &ctx,
       std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -707,6 +711,7 @@ class RsGrpcServiceClient {
         grpc::ClientAsyncResponseReader<ResponseType>,
         ResponseType,
         RequestType>(
+            ctx,
             invoke,
             request,
             std::move(context));
@@ -717,6 +722,7 @@ class RsGrpcServiceClient {
    */
   template <typename ResponseType, typename RequestType>
   auto Invoke(
+      const CallContext &ctx,
       std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -729,6 +735,7 @@ class RsGrpcServiceClient {
         grpc::ClientAsyncReader<ResponseType>,
         ResponseType,
         RequestType>(
+            ctx,
             invoke,
             request,
             std::move(context));
@@ -739,6 +746,7 @@ class RsGrpcServiceClient {
    */
   template <typename RequestType, typename ResponseType, typename PublisherType>
   auto Invoke(
+      const CallContext &ctx,
       std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -751,6 +759,7 @@ class RsGrpcServiceClient {
         grpc::ClientAsyncWriter<RequestType>,
         ResponseType,
         RequestType>(
+            ctx,
             invoke,
             AnyPublisher<RequestType>(std::forward<PublisherType>(requests)),
             std::move(context));
@@ -761,6 +770,7 @@ class RsGrpcServiceClient {
    */
   template <typename RequestType, typename ResponseType, typename PublisherType>
   auto Invoke(
+      const CallContext &ctx,
       std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
       (Stub::*invoke)(
           grpc::ClientContext *context,
@@ -772,6 +782,7 @@ class RsGrpcServiceClient {
         grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
         ResponseType,
         RequestType>(
+            ctx,
             invoke,
             AnyPublisher<RequestType>(std::forward<PublisherType>(requests)),
             std::move(context));
@@ -785,15 +796,17 @@ class RsGrpcServiceClient {
       typename RequestOrPublisher,
       typename Invoke>
   auto InvokeImpl(
+      const CallContext &ctx,
       Invoke invoke,
       RequestOrPublisher &&request_or_publisher,
       grpc::ClientContext &&context = grpc::ClientContext()) {
 
     return MakePublisher([
         this,
+        ctx,
+        invoke,
         request_or_publisher =
-            std::forward<RequestOrPublisher>(request_or_publisher),
-        invoke](auto &&subscriber) {
+            std::forward<RequestOrPublisher>(request_or_publisher)](auto &&subscriber) {
       using ClientInvocation =
           detail::RsGrpcClientCall<
               Reader,
@@ -805,26 +818,26 @@ class RsGrpcServiceClient {
               request_or_publisher,
               AnySubscriber<ResponseType>(
                   std::forward<decltype(subscriber)>(subscriber))));
-      return call->Invoke(invoke, stub_.get(), &cq_);
+      return call->Invoke(invoke, stub_.get(), ctx.cq_);
     });
   }
 
   std::unique_ptr<Stub> stub_;
-  grpc::CompletionQueue &cq_;
 };
 
-class RsGrpcClient {
+template <typename Stub>
+RsGrpcClient<Stub> MakeRsGrpcClient(std::unique_ptr<Stub> &&stub) {
+  return RsGrpcClient<Stub>(std::move(stub));
+}
+
+
+class RsGrpcClientRunloop {
  public:
-  RsGrpcClient()
+  RsGrpcClientRunloop()
       : ctx_(detail::CallContextBuilder::Build(&cq_)) {}
 
-  ~RsGrpcClient() {
+  ~RsGrpcClientRunloop() {
     Shutdown();
-  }
-
-  template <typename Stub>
-  RsGrpcServiceClient<Stub> MakeClient(std::unique_ptr<Stub> &&stub) {
-    return RsGrpcServiceClient<Stub>(std::move(stub), &cq_);
   }
 
   /**

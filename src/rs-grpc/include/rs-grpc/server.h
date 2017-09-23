@@ -1160,12 +1160,6 @@ class RsGrpcServer {
     grpc::ServerBuilder builder_;
   };
 
-  template <typename Stub>
-  RsGrpcServiceClient<Stub> MakeClient(
-      std::unique_ptr<Stub> &&stub) {
-    return RsGrpcServiceClient<Stub>(std::move(stub), cq_.get());
-  }
-
   /**
    * Block and process asynchronous events until the server is shut down.
    */

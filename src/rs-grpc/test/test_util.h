@@ -49,7 +49,7 @@ AnyPublisher<TestResponse> MakeInfiniteResponse();
 
 template <typename Publisher>
 std::exception_ptr RunExpectError(
-    RsGrpcClient *runloop,
+    RsGrpcClientRunloop *runloop,
     const Publisher &publisher,
     std::function<void (Subscription &)> subscribe = nullptr) {
   std::exception_ptr captured_error;
@@ -84,7 +84,7 @@ std::exception_ptr RunExpectError(
  */
 template <typename Publisher>
 RS_GPRC_USE_RESULT std::shared_ptr<void> RunExpectTimeout(
-    RsGrpcClient *runloop,
+    RsGrpcClientRunloop *runloop,
     const Publisher &publisher,
     ElementCount count = ElementCount(0)) {
   auto shutting_down = std::make_shared<bool>(false);
@@ -125,7 +125,7 @@ RS_GPRC_USE_RESULT std::shared_ptr<void> RunExpectTimeout(
 
 template <typename Publisher>
 void Run(
-    RsGrpcClient *runloop,
+    RsGrpcClientRunloop *runloop,
     const Publisher &publisher,
     std::function<void (AnySubscription &&)> subscribe = nullptr) {
   auto subscription = publisher
