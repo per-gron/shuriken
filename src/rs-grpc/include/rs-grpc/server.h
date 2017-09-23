@@ -157,7 +157,8 @@ class RsGrpcServerCall<
     if (awaiting_request_) {
       // The server has just received a request. Handle it.
 
-      auto values = callback_(CallContext(), std::move(request_));
+      auto values = callback_(
+          CallContextBuilder::Build(&cq_), std::move(request_));
 
       // Request the a new request, so that the server is always waiting for
       // one. This is done after the callback (because this steals it) but
@@ -287,7 +288,8 @@ class RsGrpcServerCall<
         // The server has just received a request. Handle it.
         state_ = State::AWAITING_RESPONSE;
 
-        auto values = callback_(CallContext(), std::move(request_));
+        auto values = callback_(
+            CallContextBuilder::Build(&cq_), std::move(request_));
 
         // Request the a new request, so that the server is always waiting for
         // one. This is done after the callback (because this steals it) but
@@ -521,7 +523,7 @@ class RsGrpcServerCall<
 
   void Init() {
     auto response = callback_(
-        CallContext(),
+        CallContextBuilder::Build(&cq_),
         AnyPublisher<RequestType>(MakePublisher(
             [self = ToShared(this)](auto &&subscriber) {
           if (self->subscriber_) {
@@ -866,7 +868,7 @@ class RsGrpcServerCall<
 
   void Init() {
     auto response = callback_(
-        CallContext(),
+        CallContextBuilder::Build(&cq_),
         AnyPublisher<RequestType>(MakePublisher(
           [self = ToShared(this)](auto &&subscriber) {
         if (self->subscriber_) {

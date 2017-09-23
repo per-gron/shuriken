@@ -14,7 +14,14 @@
 
 #pragma once
 
+#include <grpc++/grpc++.h>
+
 namespace shk {
+namespace detail {
+
+class CallContextBuilder;
+
+}  // namespace detail
 
 /**
  * A CallContext is an opaque object that represents a context in which an RPC
@@ -25,6 +32,21 @@ namespace shk {
  */
 class CallContext {
  public:
+ private:
+  friend class detail::CallContextBuilder;
+
+  // cq must not be null
+  explicit CallContext(grpc::CompletionQueue *cq) {}
 };
 
+namespace detail {
+
+class CallContextBuilder {
+ public:
+  static CallContext Build(grpc::CompletionQueue *cq) {
+    return CallContext(cq);
+  }
+};
+
+}  // namespace detail
 }  // namespace shk

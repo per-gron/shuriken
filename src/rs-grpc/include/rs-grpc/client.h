@@ -25,6 +25,7 @@
 #include <rs-grpc/detail/rs_grpc_tag.h>
 #include <rs-grpc/detail/subscriber.h>
 #include <rs-grpc/detail/subscription.h>
+#include <rs-grpc/call_context.h>
 #include <rs-grpc/grpc_error.h>
 
 namespace shk {
@@ -814,6 +815,9 @@ class RsGrpcServiceClient {
 
 class RsGrpcClient {
  public:
+  RsGrpcClient()
+      : ctx_(detail::CallContextBuilder::Build(&cq_)) {}
+
   ~RsGrpcClient() {
     Shutdown();
   }
@@ -851,8 +855,13 @@ class RsGrpcClient {
     cq_.Shutdown();
   }
 
+  const CallContext &CallContext() {
+    return ctx_;
+  }
+
  private:
   grpc::CompletionQueue cq_;
+  ::shk::CallContext ctx_;
 };
 
 }  // namespace shk
