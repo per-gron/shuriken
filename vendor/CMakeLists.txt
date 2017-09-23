@@ -37,8 +37,5 @@ add_subdirectory(lz4/contrib/cmake_unofficial EXCLUDE_FROM_ALL)
 
 add_subdirectory(re2c_cmake)
 
-add_library(rxcpp INTERFACE)
-target_include_directories(rxcpp INTERFACE rxcpp/Rx/v2/src)
-
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/sanitizers-cmake/cmake" ${CMAKE_MODULE_PATH})
 find_package(Sanitizers)
