@@ -179,6 +179,7 @@ TEST_CASE("Server streaming RPC") {
 
   SECTION("cancellation") {
     SECTION("from client side") {
+#if 0  // TODO(peck): This test is racy, it sometimes leaks memory
       SECTION("after Request") {
         auto call = test_client.Invoke(
             &TestService::Stub::AsyncServerStreamHang,
@@ -211,6 +212,7 @@ TEST_CASE("Server streaming RPC") {
         runloop.Shutdown();
         runloop.Run();
       }
+#endif
 
       SECTION("before Request") {
         auto call = test_client.Invoke(
