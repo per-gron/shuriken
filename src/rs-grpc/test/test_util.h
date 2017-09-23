@@ -39,10 +39,6 @@ TestRequest MakeTestRequest(int data);
 
 TestResponse MakeTestResponse(int data);
 
-TestRequest MakeTestRequest(int data);
-
-TestResponse MakeTestResponse(int data);
-
 void ShutdownAllowOutstandingCall(RsGrpcServer *server);
 
 AnyPublisher<TestRequest> MakeInfiniteRequest();
