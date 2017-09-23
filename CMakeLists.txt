@@ -39,6 +39,11 @@ function(shk_proto)
   target_link_libraries(${shk_proto_LIB_NAME} libprotobuf ${shk_proto_DEPENDENCIES})
 endfunction()
 
+function(shk_cpp_target NAME)
+  set_property(TARGET ${NAME} APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
+  set_property(TARGET ${NAME} PROPERTY CXX_STANDARD 14)
+endfunction()
+
 add_subdirectory(vendor)
 add_subdirectory(src/benchmark)
 add_subdirectory(src/rs)

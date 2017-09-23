@@ -47,13 +47,12 @@ add_library(libshk-trace
   src/tracing_server.cpp
   src/tracing_server.h
   ${CMAKE_CURRENT_BINARY_DIR}/include/shk-trace/debug_capture_log_generated.h)
+shk_cpp_target(libshk-trace)
 target_compile_definitions(libshk-trace PUBLIC KERNEL_PRIVATE PRIVATE=)
 target_include_directories(libshk-trace PUBLIC
     src
     ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_link_libraries(libshk-trace util bsm shk-util)
-set_property(TARGET libshk-trace APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-set_property(TARGET libshk-trace PROPERTY CXX_STANDARD 14)
 
 add_executable(shk-trace-nosuid
   src/main.cpp)
@@ -79,9 +78,8 @@ add_executable(shk-trace-test
   test/trace_writer_test.cpp
   test/tracer_test.cpp
   test/tracing_server_test.cpp)
+shk_cpp_target(shk-trace-test)
 target_link_libraries(shk-trace-test pthread catch libshk-trace)
-set_property(TARGET shk-trace-test APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-set_property(TARGET shk-trace-test PROPERTY CXX_STANDARD 14)
 
 add_executable(shktrace-integrationtest-helper
   integrationtest/test.cpp)

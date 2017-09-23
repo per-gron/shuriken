@@ -105,22 +105,19 @@ add_library(shklib
   src/version.h
   lexer.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/include/manifest/manifest_generated.h)
-set_property(TARGET shklib PROPERTY CXX_STANDARD 14)
+shk_cpp_target(shklib)
 target_include_directories(shklib PUBLIC src ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_link_libraries(shklib blake2 rs shk-util)
-set_property(TARGET shklib APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 
 add_executable(shk
   src/shk.cpp)
-set_property(TARGET shk PROPERTY CXX_STANDARD 14)
+shk_cpp_target(shk)
 target_link_libraries(shk shklib)
-set_property(TARGET shk APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 set_target_properties(shk PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 add_executable(shk-trace-dummy
   test/cmd/shk_trace_dummy.cpp)
-set_property(TARGET shk-trace-dummy PROPERTY CXX_STANDARD 14)
-set_property(TARGET shk-trace-dummy APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
+shk_cpp_target(shk-trace-dummy)
 
 add_executable(shk-test
   test/build_test.cpp
@@ -169,9 +166,8 @@ add_executable(shk-test
   test/status/line_printer_test.cpp
   test/status/stopwatch_test.cpp
   test/util_test.cpp)
-set_property(TARGET shk-test PROPERTY CXX_STANDARD 14)
+shk_cpp_target(shk-test)
 target_link_libraries(shk-test shklib catch)
-set_property(TARGET shk-test APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 add_dependencies(shk-test shk-trace-dummy)
 add_test(NAME shk-unit COMMAND shk-test)
 add_test(
