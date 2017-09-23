@@ -1,4 +1,4 @@
-shk_proto(shk-index-proto include include/shk-index/shkindex.proto)
+shk_proto(shk-index-proto api api/shkindex.proto)
 
 add_library(libshk-index
   src/dummy.cpp)
