@@ -671,17 +671,24 @@ class RsGrpcServerCall<
     void TagOperationDone(bool success) {
       if (sent_final_request_) {
         // Nothing more to write.
+        Shutdown();
       } else {
         if (success) {
           operation_in_progress_ = false;
           RunEnqueuedOperation();
         } else {
           // This happens when the runloop is shutting down.
+          Shutdown();
         }
       }
     }
 
    private:
+    void Shutdown() {
+      // Kill the likely reference cycle. More at subscription_'s declaration.
+      subscription_ = AnySubscription();
+    }
+
     void RunEnqueuedOperation() {
       if (operation_in_progress_) {
         return;
@@ -701,6 +708,42 @@ class RsGrpcServerCall<
     }
 
     RsGrpcServerCall &parent_;
+    // WARNING! subscription_ is likely to be part of a reference cycle that
+    // goes like this:
+    //
+    // * RsGrpcServerCall has by-value ownership of
+    // * RsGrpcServerCall::Writer, which (via subscription_) has a strong ref to
+    // * The Subscription for RPC messages to the client, which is likely to
+    //   have a strong reference to (depending on RPC handler code)
+    // * The Subscription for RPC messages from the client, which has a strong
+    //   reference to
+    // * RsGrpcServerCall
+    //
+    // See Shutdown()
+    //
+    // Usually reference cycles should be seen as bugs and never be allowed to
+    // happen. However, in this case, it's tricky to say which part of the
+    // cycle should be eliminated.
+    //
+    // In a bidirectional streaming scenario, it is okay for either side of
+    // the streams to end before the other. Because of this, it's not good to
+    // make the reference that the RPC handler code has to the Subscription
+    // for RPC messages from the client weak, because that would kill the whole
+    // RPC as soon as the server was done writing, it could tear down the RPC.
+    //
+    // The same issue goes the other way if subscription_ would be made weak.
+    //
+    // Instead, this code allows the cycle to happen, but as soon as the stream
+    // of messages to be sent to the client has finished, the subscription for
+    // it is torn down, which terminates the reference cycle.
+    //
+    // This means that a server will leak memory if it has handlers that keep an
+    // owning reference to the Subscription for messages from the client and
+    // respond with streams that never complete.
+    //
+    // I think this is a reasonable compromise. What else could be done? How can
+    // this library know that it is okay to tear down the RPC other than the
+    // handling code completing its output stream?
     AnySubscription subscription_;
     std::unique_ptr<ResponseType> next_response_;
     bool enqueued_finish_ = false;

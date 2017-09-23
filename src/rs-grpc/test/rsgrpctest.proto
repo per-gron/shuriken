@@ -24,6 +24,7 @@ service TestService {
   rpc ClientStreamTwoResponses (stream TestRequest) returns (TestResponse) {}
   rpc ClientStreamRequestZero (stream TestRequest) returns (TestResponse) {}
   rpc ClientStreamHangOnZero (stream TestRequest) returns (TestResponse) {}
+  rpc ClientStreamEchoAll (stream TestRequest) returns (TestResponse) {}
 
   rpc CumulativeSum(stream TestRequest) returns (stream TestResponse) {}
   rpc ImmediatelyFailingCumulativeSum (stream TestRequest)

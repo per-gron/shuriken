@@ -85,6 +85,15 @@ auto ClientStreamTwoResponsesHandler(AnyPublisher<TestRequest> &&requests) {
       MakeTestResponse(2));
 }
 
+auto ClientStreamEchoAllHandler(AnyPublisher<TestRequest> &&requests) {
+  return Pipe(
+      requests,
+      Map([](TestRequest &&request) {
+        return request.data();
+      }),
+      Map(MakeTestResponse));
+}
+
 }  // anonymous namespace
 
 TEST_CASE("Client streaming RPC") {
@@ -118,7 +127,10 @@ TEST_CASE("Client streaming RPC") {
           &RequestZeroHandler)
       .RegisterMethod(
           &TestService::AsyncService::RequestClientStreamHangOnZero,
-          MakeHangOnZeroHandler(&hang_on_seen_elements, &hung_subscription));
+          MakeHangOnZeroHandler(&hang_on_seen_elements, &hung_subscription))
+      .RegisterMethod(
+          &TestService::AsyncService::RequestClientStreamEchoAll,
+          &ClientStreamEchoAllHandler);
 
   RsGrpcClient runloop;
 
@@ -375,6 +387,23 @@ TEST_CASE("Client streaming RPC") {
                 Just(MakeTestRequest(0)),
                 Throw(std::runtime_error("test_error")))));
     CHECK(ExceptionMessage(error) == "test_error");
+  }
+
+  SECTION("one message (echo all)") {
+    // This test is there to try to trigger a reference cycle memory leak.
+    Run(&runloop, Pipe(
+        test_client.Invoke(
+            &TestService::Stub::AsyncClientStreamEchoAll,
+            Just(MakeTestRequest(13))),
+        Map([](TestResponse &&response) {
+          CHECK(response.data() == 13);
+          return "ignored";
+        }),
+        Count(),
+        Map([](int count) {
+          CHECK(count == 1);
+          return "ignored";
+        })));
   }
 
   SECTION("two messages") {
