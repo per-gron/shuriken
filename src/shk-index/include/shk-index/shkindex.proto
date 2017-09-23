@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+// An IndexFileReference points to an output file of a build step.
+message IndexFileReference {
+  enum Type {
+    File = 0;
+    Symlink = 1;
+  }
+
+  string path = 1;
+  // The file mode. Valid values are 0755 and 0644.
+  uint32 mode = 2;
+  Type type = 3;
+  bytes store_key = 4;  // 20 byte hash
+}
+
+message Path {
+  string root_name = 1;
+  string path = 2;
+}
+
+// A SecondaryIndexKey identifies an undeclared (not in the manifest) input file
+// that a build command used: It has its path and a hash that identifies the
+// file contents.
+message SecondaryIndexKey {
+  Path path = 1;
+  bytes fingerprint = 2;  // 20 byte hash
+}
+
+// An IndexEntry represents the inputs and outputs of one invocation of a build
+// step. When saving an invocation to the cache, this is the thing that is
+// eventually written (after the actual output files have been uploaded).
+message IndexEntry {
+  bytes step_hash = 1;  // 20 byte hash
+  repeated SecondaryIndexKey secondary_keys = 2;
+  int64 expiry_time = 3;  // Unix time in seconds
+  repeated uint32 ignored_dependencies = 4;
+  repeated bytes additional_dependencies = 5;  // 20 byte hashes
+  repeated IndexFileReference output_files = 6;
+}
+
+// A LookupSecondaryIndexKey is like a SecondaryIndexKey but it has indices to a
+// path and fingerprints instead of the data directly, to allow for
+// deduplicating those across IndexLookupResponses.
+message LookupSecondaryIndexKey {
+  uint32 path_index = 1;
+  uint32 fingerprint_index = 2;
+}
+
+message IndexInsertRequest {
+  repeated IndexEntry entries = 1;
+}
+
+message IndexInsertResponse {
+}
+
+message IndexLookupRequest {
+  bytes entry_id = 1;
+}
+
+message IndexLookupResponse {
+  repeated Path paths = 1;
+  repeated bytes fingerprints = 2;  // 20 byte hashes
+
+  bytes entry_id = 3;
+  repeated LookupSecondaryIndexKey secondary_keys = 4;
+}
+
+message IndexGetEntryRequest {
+  bytes entry_id = 1;
+}
+
+message IndexGetEntryResponse {
+  int64 expiry_time = 1;  // Unix time in seconds
+  repeated uint32 ignored_dependencies = 2;
+  repeated bytes additional_dependencies = 3;  // 20 byte hashes
+  repeated IndexFileReference files = 4;
+}
+
+service Index {
+  rpc Insert (IndexInsertRequest) returns (IndexInsertResponse);
+  rpc Lookup (IndexLookupRequest) returns (stream IndexLookupResponse);
+  rpc GetEntry (IndexGetEntryRequest) returns (IndexGetEntryResponse);
+}
