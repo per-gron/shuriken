@@ -13,11 +13,31 @@
 // limitations under the License.
 
 #include <stdio.h>
+#include <string>
+
+#include <rs-grpc/server.h>
 
 namespace shk {
 
 int main(int /*argc*/, const char * /*argv*/[]) {
-  printf("Hello!\n");
+  setenv("GRPC_VERBOSITY", "DEBUG", /*overwrite:*/0);
+  setenv("GRPC_ABORT_ON_LEAKS", "YES", /*overwrite:*/0);
+
+  std::string server_address = "unix:shk_store_test.socket";
+
+  RsGrpcServer::Builder server_builder;
+  server_builder.GrpcServerBuilder()
+      .AddListeningPort(server_address, grpc::InsecureServerCredentials());
+
+  // TODO(peck): Register service
+
+  auto channel = grpc::CreateChannel(
+      server_address, grpc::InsecureChannelCredentials());
+
+  auto server = server_builder.BuildAndStart();
+
+  printf("\nshk-store listening to %s\n\n", server_address.c_str());
+  server.Run();
 
   return 0;
 }

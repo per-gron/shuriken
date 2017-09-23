@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+message StoreInsertRequest {
+  int64 expiry_time = 1;  // Unix time in seconds
+  bytes contents = 2;
+}
+
+message StoreInsertResponse {
+  bytes key = 1;  // 20 byte hash
+  int64 expiry_time = 2;  // Unix time in seconds
+}
+
+message StoreGetRequest {
+  bytes key = 1;  // 20 byte hash
+}
+
+message StoreGetResponse {
+  int64 expiry_time = 1;  // Unix time in seconds
+  bytes contents = 2;
+}
+
+message StoreTouchRequest {
+  bytes key = 1;  // 20 byte hash
+  int64 expiry_time = 2;  // Unix time in seconds
+}
+
+message StoreTouchResponse {
+}
+
+service Store {
+  // Insert an entry into the Store.
+  rpc Insert (StoreInsertRequest) returns (StoreInsertResponse);
+
+  // Bump an already present entry's expiry time in the store. If it does not
+  // exist, fails with a not found error.Check if an entry is already present in
+  // the store. (This is used prior to making an Insert call, to avoid having to
+  // upload things that are already there.)
+  rpc Touch (StoreTouchRequest) returns (StoreTouchResponse);
+
+  // Download an entry from the Store.
+  rpc Get (StoreGetRequest) returns (StoreGetResponse);
+}
