@@ -66,6 +66,8 @@ auto UnaryHangHandler(TestRequest &&request) {
 }  // anonymous namespace
 
 TEST_CASE("Unary RPC") {
+  InitTests();
+
   // TODO(peck): Add support for server-side cancellation
   // TODO(peck): Add support for timeouts
   // TODO(peck): Test finishing bidi and unidirectional streams in different orders

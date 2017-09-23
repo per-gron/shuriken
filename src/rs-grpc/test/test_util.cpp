@@ -14,10 +14,17 @@
 
 #include "test_util.h"
 
+#include <stdlib.h>
+
 #include <rs/just.h>
 #include <rs/repeat.h>
 
 namespace shk {
+
+void InitTests() {
+  setenv("GRPC_VERBOSITY", "DEBUG", /*overwrite:*/0);
+  setenv("GRPC_ABORT_ON_LEAKS", "YES", /*overwrite:*/0);
+}
 
 TestRequest MakeTestRequest(int data) {
   ::shk::TestRequest req;

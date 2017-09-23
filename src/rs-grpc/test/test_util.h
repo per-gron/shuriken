@@ -35,6 +35,8 @@
 
 namespace shk {
 
+void InitTests();
+
 TestRequest MakeTestRequest(int data);
 
 TestResponse MakeTestResponse(int data);

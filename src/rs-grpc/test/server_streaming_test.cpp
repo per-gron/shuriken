@@ -124,6 +124,8 @@ auto ServerStreamAsyncResponseHandler(AsyncResponder *responder) {
 }  // anonymous namespace
 
 TEST_CASE("Server streaming RPC") {
+  InitTests();
+
   auto server_address = "unix:rs_grpc_test.socket";
 
   RsGrpcServer::Builder server_builder;

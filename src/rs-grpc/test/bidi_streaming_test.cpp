@@ -95,6 +95,8 @@ auto BidiStreamBackpressureViolationHandler(
 }  // anonymous namespace
 
 TEST_CASE("Bidi streaming RPC") {
+  InitTests();
+
   auto server_address = "unix:rs_grpc_test.socket";
 
   RsGrpcServer::Builder server_builder;
