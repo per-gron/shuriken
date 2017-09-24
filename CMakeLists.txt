@@ -30,7 +30,7 @@ function(shk_proto)
   add_custom_command(
     OUTPUT ${PROTO_SRCS}
     COMMAND protoc --cpp_out="${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --proto_path="${PROTO_ROOT_DIR}" "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}"
-    DEPENDS ${shk_proto_PROTO_FILE} protoc)
+    DEPENDS "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}" protoc)
 
   if(${shk_proto_GRPC})
     set(PROTO_GRPC_SRCS
@@ -41,7 +41,7 @@ function(shk_proto)
     add_custom_command(
       OUTPUT ${PROTO_GRPC_SRCS}
       COMMAND protoc --grpc_out="${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --plugin=protoc-gen-grpc="$<TARGET_FILE:grpc_cpp_plugin>" --proto_path="${PROTO_ROOT_DIR}" "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}"
-      DEPENDS ${shk_proto_PROTO_FILE} protoc)
+      DEPENDS "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}" protoc)
   endif()
 
   add_library(${shk_proto_LIB_NAME} ${PROTO_SRCS})
