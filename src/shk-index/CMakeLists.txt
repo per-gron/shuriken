@@ -2,11 +2,12 @@ shk_proto(
   LIB_NAME shk-index-proto
   PROTO_FILE shk-index/api/shkindex.proto)
 
-add_library(libshk-index
-  src/dummy.cpp)
-shk_cpp_target(libshk-index)
-target_include_directories(libshk-index PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
-target_link_libraries(libshk-index shk-index-proto)
+shk_library(
+  NAME libshk-index
+  SOURCES
+    src/dummy.cpp
+  DEPENDENCIES
+    shk-index-proto)
 
 add_executable(shk-index
   src/shk-index.cpp)

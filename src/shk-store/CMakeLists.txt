@@ -2,11 +2,12 @@ shk_proto(
   LIB_NAME shk-store-proto
   PROTO_FILE shk-store/api/shkstore.proto)
 
-add_library(libshk-store
-  src/dummy.cpp)
-shk_cpp_target(libshk-store)
-target_include_directories(libshk-store PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
-target_link_libraries(libshk-store shk-store-proto)
+shk_library(
+  NAME libshk-store
+  SOURCES
+    src/dummy.cpp
+  DEPENDENCIES
+    shk-store-proto)
 
 add_executable(shk-store
   src/shk-store.cpp)

@@ -3,11 +3,12 @@ shk_proto(
   PROTO_FILE shk-cache/api/shkcache.proto
   DEPENDENCIES shk-index-proto)
 
-add_library(libshk-cache
-  src/dummy.cpp)
-shk_cpp_target(libshk-cache)
-target_include_directories(libshk-cache PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
-target_link_libraries(libshk-cache shk-cache-proto)
+shk_library(
+  NAME libshk-cache
+  SOURCES
+    src/dummy.cpp
+  DEPENDENCIES
+    shk-cache-proto)
 
 add_executable(shk-cache
   src/shk-cache.cpp)

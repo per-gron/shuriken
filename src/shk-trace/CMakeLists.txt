@@ -3,59 +3,62 @@ add_custom_command(
   COMMAND flatc --binary --cpp --scoped-enums -o include/shk-trace ${CMAKE_CURRENT_LIST_DIR}/src/debug_capture_log.fbs
   DEPENDS src/debug_capture_log.fbs flatc)
 
-add_library(libshk-trace
-  src/apsl_code.cpp
-  src/apsl_code.h
-  src/cmdline_options.cpp
-  src/cmdline_options.h
-  src/cwd_memo.cpp
-  src/cwd_memo.h
-  src/daemon.cpp
-  src/daemon.h
-  src/debug_capture_log.cpp
-  src/debug_capture_log.h
-  src/dispatch.h
-  src/event_consolidator.cpp
-  src/event_consolidator.h
-  src/event_info_map.cpp
-  src/event_info_map.h
-  src/event_type.h
-  src/file_descriptor_memo.cpp
-  src/file_descriptor_memo.h
-  src/fileport.h
-  src/kdebug.h
-  src/kdebug_controller.cpp
-  src/kdebug_controller.h
-  src/kdebug_pump.cpp
-  src/kdebug_pump.h
-  src/mach_port.cpp
-  src/mach_port.h
-  src/named_mach_port.cpp
-  src/named_mach_port.h
-  src/path_resolver.cpp
-  src/path_resolver.h
-  src/process_tracer.cpp
-  src/process_tracer.h
-  src/syscall_constants.h
-  src/syscall_tables.h
-  src/to_json.cpp
-  src/to_json.h
-  src/trace_writer.cpp
-  src/trace_writer.h
-  src/tracer.cpp
-  src/tracer.h
-  src/tracing_server.cpp
-  src/tracing_server.h
-  ${CMAKE_CURRENT_BINARY_DIR}/include/shk-trace/debug_capture_log_generated.h)
-shk_cpp_target(libshk-trace)
-target_compile_definitions(libshk-trace PUBLIC KERNEL_PRIVATE PRIVATE=)
-target_include_directories(libshk-trace PUBLIC
+shk_library(
+  NAME libshk-trace
+  SOURCES
+    src/apsl_code.cpp
+    src/apsl_code.h
+    src/cmdline_options.cpp
+    src/cmdline_options.h
+    src/cwd_memo.cpp
+    src/cwd_memo.h
+    src/daemon.cpp
+    src/daemon.h
+    src/debug_capture_log.cpp
+    src/debug_capture_log.h
+    src/dispatch.h
+    src/event_consolidator.cpp
+    src/event_consolidator.h
+    src/event_info_map.cpp
+    src/event_info_map.h
+    src/event_type.h
+    src/file_descriptor_memo.cpp
+    src/file_descriptor_memo.h
+    src/fileport.h
+    src/kdebug.h
+    src/kdebug_controller.cpp
+    src/kdebug_controller.h
+    src/kdebug_pump.cpp
+    src/kdebug_pump.h
+    src/mach_port.cpp
+    src/mach_port.h
+    src/named_mach_port.cpp
+    src/named_mach_port.h
+    src/path_resolver.cpp
+    src/path_resolver.h
+    src/process_tracer.cpp
+    src/process_tracer.h
+    src/syscall_constants.h
+    src/syscall_tables.h
+    src/to_json.cpp
+    src/to_json.h
+    src/trace_writer.cpp
+    src/trace_writer.h
+    src/tracer.cpp
+    src/tracer.h
+    src/tracing_server.cpp
+    src/tracing_server.h
+    ${CMAKE_CURRENT_BINARY_DIR}/include/shk-trace/debug_capture_log_generated.h
+  DEPENDENCIES
+    util bsm shk-util
+  PUBLIC_INCLUDES
     src
     ${CMAKE_CURRENT_BINARY_DIR}/include)
-target_link_libraries(libshk-trace util bsm shk-util)
+target_compile_definitions(libshk-trace PUBLIC KERNEL_PRIVATE PRIVATE=)
 
 add_executable(shk-trace-nosuid
   src/main.cpp)
+add_sanitizers(shk-trace-nosuid)
 target_link_libraries(shk-trace-nosuid libshk-trace)
 set_target_properties(shk-trace-nosuid PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
@@ -83,6 +86,7 @@ target_link_libraries(shk-trace-test pthread catch libshk-trace)
 
 add_executable(shktrace-integrationtest-helper
   integrationtest/test.cpp)
+add_sanitizers(shktrace-integrationtest-helper)
 target_link_libraries(shktrace-integrationtest-helper shk-util pthread)
 set_property(TARGET shktrace-integrationtest-helper APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 # For some reason, calls to __guarded_open_dprotected_np and __guarded_open_np

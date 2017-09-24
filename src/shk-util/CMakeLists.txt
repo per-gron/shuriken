@@ -3,22 +3,25 @@ add_custom_command(
   COMMAND flatc --binary --cpp --python --scoped-enums -o include/util ${CMAKE_CURRENT_LIST_DIR}/src/shktrace.fbs
   DEPENDS src/shktrace.fbs flatc)
 
-add_library(shk-util
-  include/util/assert.h
-  include/util/file_descriptor.h
-  include/util/intrinsics.h
-  include/util/path_error.h
-  include/util/path_operations.h
-  include/util/raii_helper.h
-  include/util/shktrace.h
-  include/util/string_view.h
-  src/assert.cpp
-  src/file_descriptor.cpp
-  src/path_operations.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/include/util/shktrace_generated.h)
-shk_cpp_target(shk-util)
-target_include_directories(shk-util PUBLIC include ${CMAKE_CURRENT_BINARY_DIR}/include)
-target_link_libraries(shk-util flatbuffers)
+shk_library(
+  NAME shk-util
+  SOURCES
+    include/util/assert.h
+    include/util/file_descriptor.h
+    include/util/intrinsics.h
+    include/util/path_error.h
+    include/util/path_operations.h
+    include/util/raii_helper.h
+    include/util/shktrace.h
+    include/util/string_view.h
+    src/assert.cpp
+    src/file_descriptor.cpp
+    src/path_operations.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/include/util/shktrace_generated.h
+  DEPENDENCIES
+    flatbuffers
+  PUBLIC_INCLUDES
+    include ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 add_executable(shk-util-test
   test/assert_test.cpp

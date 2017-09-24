@@ -1,54 +1,55 @@
-add_library(rs
-  include/rs/all.h
-  include/rs/average.h
-  include/rs/catch.h
-  include/rs/concat.h
-  include/rs/concat_map.h
-  include/rs/contains.h
-  include/rs/count.h
-  include/rs/default_if_empty.h
-  include/rs/detail/optional.h
-  include/rs/element_at.h
-  include/rs/element_count.h
-  include/rs/empty.h
-  include/rs/filter.h
-  include/rs/first.h
-  include/rs/from.h
-  include/rs/if_empty.h
-  include/rs/is_empty.h
-  include/rs/just.h
-  include/rs/last.h
-  include/rs/map.h
-  include/rs/max.h
-  include/rs/merge.h
-  include/rs/min.h
-  include/rs/never.h
-  include/rs/pipe.h
-  include/rs/publisher.h
-  include/rs/range.h
-  include/rs/reduce.h
-  include/rs/repeat.h
-  include/rs/scan.h
-  include/rs/skip.h
-  include/rs/skip_while.h
-  include/rs/some.h
-  include/rs/splat.h
-  include/rs/start.h
-  include/rs/start_with.h
-  include/rs/subscriber.h
-  include/rs/subscription.h
-  include/rs/sum.h
-  include/rs/take.h
-  include/rs/take_while.h
-  include/rs/throw.h
-  include/rs/weak_reference.h
-  include/rs/zip.h
-  src/subscriber.cpp
-  src/subscription.cpp)
-add_sanitizers(rs)
+shk_library(
+  NAME rs
+  SOURCES
+    include/rs/all.h
+    include/rs/average.h
+    include/rs/catch.h
+    include/rs/concat.h
+    include/rs/concat_map.h
+    include/rs/contains.h
+    include/rs/count.h
+    include/rs/default_if_empty.h
+    include/rs/detail/optional.h
+    include/rs/element_at.h
+    include/rs/element_count.h
+    include/rs/empty.h
+    include/rs/filter.h
+    include/rs/first.h
+    include/rs/from.h
+    include/rs/if_empty.h
+    include/rs/is_empty.h
+    include/rs/just.h
+    include/rs/last.h
+    include/rs/map.h
+    include/rs/max.h
+    include/rs/merge.h
+    include/rs/min.h
+    include/rs/never.h
+    include/rs/pipe.h
+    include/rs/publisher.h
+    include/rs/range.h
+    include/rs/reduce.h
+    include/rs/repeat.h
+    include/rs/scan.h
+    include/rs/skip.h
+    include/rs/skip_while.h
+    include/rs/some.h
+    include/rs/splat.h
+    include/rs/start.h
+    include/rs/start_with.h
+    include/rs/subscriber.h
+    include/rs/subscription.h
+    include/rs/sum.h
+    include/rs/take.h
+    include/rs/take_while.h
+    include/rs/throw.h
+    include/rs/weak_reference.h
+    include/rs/zip.h
+    src/subscriber.cpp
+    src/subscription.cpp
+  DEPENDENCIES
+    shk-cache-proto)
 target_include_directories(rs PUBLIC include)
-set_property(TARGET rs APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-set_property(TARGET rs PROPERTY CXX_STANDARD 14)
 
 add_executable(rs-test
   test/all_test.cpp

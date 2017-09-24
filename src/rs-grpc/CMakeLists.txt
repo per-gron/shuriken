@@ -1,17 +1,17 @@
-add_library(rs-grpc
-  include/rs-grpc/detail/rs_grpc_tag.h
-  include/rs-grpc/detail/subscriber.h
-  include/rs-grpc/detail/subscription.h
-  include/rs-grpc/call_context.h
-  include/rs-grpc/client.h
-  include/rs-grpc/grpc_error.h
-  include/rs-grpc/server.h
-  src/rs_grpc_tag.cpp)
-add_sanitizers(rs-grpc)
-target_include_directories(rs-grpc PUBLIC include)
-target_link_libraries(rs-grpc rs grpc++)
-set_property(TARGET rs-grpc APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-set_property(TARGET rs-grpc PROPERTY CXX_STANDARD 14)
+shk_library(
+  NAME rs-grpc
+  SOURCES
+    include/rs-grpc/detail/rs_grpc_tag.h
+    include/rs-grpc/detail/subscriber.h
+    include/rs-grpc/detail/subscription.h
+    include/rs-grpc/call_context.h
+    include/rs-grpc/client.h
+    include/rs-grpc/grpc_error.h
+    include/rs-grpc/server.h
+    src/rs_grpc_tag.cpp
+  DEPENDENCIES
+    rs grpc++
+  PUBLIC_INCLUDES include)
 
 add_custom_command(
   OUTPUT
