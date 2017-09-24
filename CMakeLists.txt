@@ -70,6 +70,32 @@ function(shk_library)
   target_include_directories(${shk_library_NAME} PUBLIC ${shk_library_PUBLIC_INCLUDES})
 endfunction()
 
+function(shk_executable)
+  set(OPTIONS USER_FACING)
+  set(ONE_VALUE_ARGS NAME)
+  set(MULTI_VALUE_ARGS SOURCES DEPENDENCIES PRIVATE_INCLUDES)
+  cmake_parse_arguments(shk_executable "${OPTIONS}" "${ONE_VALUE_ARGS}" "${MULTI_VALUE_ARGS}" ${ARGN})
+
+  add_executable(${shk_executable_NAME}
+    ${shk_executable_SOURCES})
+  shk_cpp_target(${shk_executable_NAME})
+  target_link_libraries(${shk_executable_NAME} ${shk_executable_DEPENDENCIES})
+  target_include_directories(${shk_executable_NAME} PRIVATE ${shk_executable_PRIVATE_INCLUDES})
+
+  if (${shk_executable_USER_FACING})
+    set_target_properties(${shk_executable_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+  endif()
+endfunction()
+
+function(shk_test)
+  set(OPTIONS)
+  set(ONE_VALUE_ARGS NAME)
+  set(MULTI_VALUE_ARGS)
+  cmake_parse_arguments(shk_test "${OPTIONS}" "${ONE_VALUE_ARGS}" "${MULTI_VALUE_ARGS}" ${ARGN})
+  shk_executable(${ARGV})
+  add_test(NAME ${shk_test_NAME} COMMAND ${shk_test_NAME})
+endfunction()
+
 add_subdirectory(vendor)
 add_subdirectory(src/benchmark)
 add_subdirectory(src/rs)

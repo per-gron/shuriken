@@ -23,14 +23,14 @@ shk_library(
   PUBLIC_INCLUDES
     include ${CMAKE_CURRENT_BINARY_DIR}/include)
 
-add_executable(shk-util-test
-  test/assert_test.cpp
-  test/main.cpp
-  test/path_operations_test.cpp
-  test/raii_helper_test.cpp
-  test/shktrace_test.cpp
-  test/string_view_test.cpp)
-shk_cpp_target(shk-util-test)
-target_link_libraries(shk-util-test shk-util catch)
-
-add_test(NAME shk-util-unit COMMAND shk-util-test)
+shk_test(
+  NAME shk-util-test
+  SOURCES
+    test/assert_test.cpp
+    test/main.cpp
+    test/path_operations_test.cpp
+    test/raii_helper_test.cpp
+    test/shktrace_test.cpp
+    test/string_view_test.cpp
+  DEPENDENCIES
+    shk-util catch)

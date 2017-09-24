@@ -9,17 +9,19 @@ shk_library(
   DEPENDENCIES
     shk-store-proto)
 
-add_executable(shk-store
-  src/shk-store.cpp)
-shk_cpp_target(shk-store)
-add_sanitizers(shk-store)
-target_link_libraries(shk-store libshk-store rs-grpc)
-set_target_properties(shk-store PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+shk_executable(
+  NAME shk-store
+  SOURCES
+    src/shk-store.cpp
+  DEPENDENCIES
+    libshk-store rs-grpc
+  USER_FACING)
 
-add_executable(shk-store-test
-  test/main.cpp)
-shk_cpp_target(shk-store-test)
-target_link_libraries(shk-store-test catch libshk-store)
-target_include_directories(shk-store-test PRIVATE src)
-
-add_test(NAME shk-store-unit COMMAND shk-store-test)
+shk_test(
+  NAME shk-store-test
+  SOURCES
+    test/main.cpp
+  DEPENDENCIES
+    catch libshk-store
+  PRIVATE_INCLUDES
+    src)

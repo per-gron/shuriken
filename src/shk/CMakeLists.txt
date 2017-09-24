@@ -112,67 +112,72 @@ shk_library(
   PUBLIC_INCLUDES
     src ${CMAKE_CURRENT_BINARY_DIR}/include)
 
-add_executable(shk
-  src/shk.cpp)
-shk_cpp_target(shk)
-target_link_libraries(shk shklib)
-set_target_properties(shk PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+shk_executable(
+  NAME shk
+  SOURCES
+    src/shk.cpp
+  DEPENDENCIES
+    shklib
+  USER_FACING)
 
-add_executable(shk-trace-dummy
-  test/cmd/shk_trace_dummy.cpp)
-shk_cpp_target(shk-trace-dummy)
+shk_executable(
+  NAME shk-trace-dummy
+  SOURCES
+    test/cmd/shk_trace_dummy.cpp)
 
-add_executable(shk-test
-  test/build_test.cpp
-  test/cache/cache_lookup_result_test.cpp
-  test/cache/file_hasher_test.cpp
-  test/cache/interner_test.cpp
-  test/cmd/dry_run_command_runner_test.cpp
-  test/cmd/limited_command_runner_test.cpp
-  test/cmd/pooled_command_runner_test.cpp
-  test/cmd/real_command_runner_test.cpp
-  test/cmd/tracing_command_runner_test.cpp
-  test/cmd/trace_server_handle_test.cpp
-  test/dummy_command_runner.cpp
-  test/dummy_command_runner.h
-  test/dummy_command_runner_test.cpp
-  test/edit_distance_test.cpp
-  test/fs/cleaning_file_system_test.cpp
-  test/fs/dry_run_file_system_test.cpp
-  test/fs/file_id_test.cpp
-  test/fs/file_lock_test.cpp
-  test/fs/file_system_test.cpp
-  test/fs/fingerprint_test.cpp
-  test/fs/path_test.cpp
-  test/fs/persistent_file_system_test.cpp
-  test/in_memory_file_system.cpp
-  test/in_memory_file_system.h
-  test/in_memory_file_system_test.cpp
-  test/in_memory_invocation_log.cpp
-  test/in_memory_invocation_log.h
-  test/in_memory_invocation_log_test.cpp
-  test/io_error_test.cpp
-  test/log/delayed_invocation_log_test.cpp
-  test/log/invocation_log_test.cpp
-  test/log/invocations_test.cpp
-  test/log/persistent_invocation_log_test.cpp
-  test/main.cpp
-  test/manifest/compiled_manifest_test.cpp
-  test/manifest/lexer_test.cpp
-  test/manifest/raw_manifest_test.cpp
-  test/manifest/raw_step_test.cpp
-  test/manifest/step_builder.cpp
-  test/manifest/step_builder.h
-  test/manifest/step_test.cpp
-  test/manifest/wrapper_view_test.cpp
-  test/nullterminated_string_test.cpp
-  test/status/line_printer_test.cpp
-  test/status/stopwatch_test.cpp
-  test/util_test.cpp)
-shk_cpp_target(shk-test)
-target_link_libraries(shk-test shklib catch)
+shk_test(
+  NAME shk-test
+  SOURCES
+    test/build_test.cpp
+    test/cache/cache_lookup_result_test.cpp
+    test/cache/file_hasher_test.cpp
+    test/cache/interner_test.cpp
+    test/cmd/dry_run_command_runner_test.cpp
+    test/cmd/limited_command_runner_test.cpp
+    test/cmd/pooled_command_runner_test.cpp
+    test/cmd/real_command_runner_test.cpp
+    test/cmd/tracing_command_runner_test.cpp
+    test/cmd/trace_server_handle_test.cpp
+    test/dummy_command_runner.cpp
+    test/dummy_command_runner.h
+    test/dummy_command_runner_test.cpp
+    test/edit_distance_test.cpp
+    test/fs/cleaning_file_system_test.cpp
+    test/fs/dry_run_file_system_test.cpp
+    test/fs/file_id_test.cpp
+    test/fs/file_lock_test.cpp
+    test/fs/file_system_test.cpp
+    test/fs/fingerprint_test.cpp
+    test/fs/path_test.cpp
+    test/fs/persistent_file_system_test.cpp
+    test/in_memory_file_system.cpp
+    test/in_memory_file_system.h
+    test/in_memory_file_system_test.cpp
+    test/in_memory_invocation_log.cpp
+    test/in_memory_invocation_log.h
+    test/in_memory_invocation_log_test.cpp
+    test/io_error_test.cpp
+    test/log/delayed_invocation_log_test.cpp
+    test/log/invocation_log_test.cpp
+    test/log/invocations_test.cpp
+    test/log/persistent_invocation_log_test.cpp
+    test/main.cpp
+    test/manifest/compiled_manifest_test.cpp
+    test/manifest/lexer_test.cpp
+    test/manifest/raw_manifest_test.cpp
+    test/manifest/raw_step_test.cpp
+    test/manifest/step_builder.cpp
+    test/manifest/step_builder.h
+    test/manifest/step_test.cpp
+    test/manifest/wrapper_view_test.cpp
+    test/nullterminated_string_test.cpp
+    test/status/line_printer_test.cpp
+    test/status/stopwatch_test.cpp
+    test/util_test.cpp
+  DEPENDENCIES
+    shklib catch)
 add_dependencies(shk-test shk-trace-dummy)
-add_test(NAME shk-unit COMMAND shk-test)
+
 add_test(
   NAME shk-integration
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/integrationtest

@@ -64,25 +64,27 @@ set_target_properties(shk-trace-nosuid PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 set_property(TARGET shk-trace-nosuid PROPERTY CXX_STANDARD 14)
 
-add_executable(shk-trace-test
-  test/cmdline_options_test.cpp
-  test/cwd_memo_test.cpp
-  test/debug_capture_log_test.cpp
-  test/event_consolidator_test.cpp
-  test/event_info_map_test.cpp
-  test/file_descriptor_memo_test.cpp
-  test/mach_port_test.cpp
-  test/main.cpp
-  test/mock_tracer_delegate.h
-  test/named_mach_port_test.cpp
-  test/path_resolver_test.cpp
-  test/process_tracer_test.cpp
-  test/to_json_test.cpp
-  test/trace_writer_test.cpp
-  test/tracer_test.cpp
-  test/tracing_server_test.cpp)
-shk_cpp_target(shk-trace-test)
-target_link_libraries(shk-trace-test pthread catch libshk-trace)
+shk_test(
+  NAME shk-trace-test
+  SOURCES
+    test/cmdline_options_test.cpp
+    test/cwd_memo_test.cpp
+    test/debug_capture_log_test.cpp
+    test/event_consolidator_test.cpp
+    test/event_info_map_test.cpp
+    test/file_descriptor_memo_test.cpp
+    test/mach_port_test.cpp
+    test/main.cpp
+    test/mock_tracer_delegate.h
+    test/named_mach_port_test.cpp
+    test/path_resolver_test.cpp
+    test/process_tracer_test.cpp
+    test/to_json_test.cpp
+    test/trace_writer_test.cpp
+    test/tracer_test.cpp
+    test/tracing_server_test.cpp
+  DEPENDENCIES
+    pthread catch libshk-trace)
 
 add_executable(shktrace-integrationtest-helper
   integrationtest/test.cpp)
@@ -100,7 +102,6 @@ add_custom_target(shk-trace
   DEPENDS shk-trace-nosuid
   VERBATIM USES_TERMINAL)
 
-add_test(NAME shk-trace-unit COMMAND shk-trace-test)
 add_test(
   NAME trace-integration
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/integrationtest

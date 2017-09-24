@@ -48,60 +48,59 @@ shk_library(
     src/subscriber.cpp
     src/subscription.cpp
   DEPENDENCIES
-    shk-cache-proto)
-target_include_directories(rs PUBLIC include)
+    shk-cache-proto
+  PUBLIC_INCLUDES
+    include)
 
-add_executable(rs-test
-  test/all_test.cpp
-  test/average_test.cpp
-  test/backpressure_violator.h
-  test/catch_test.cpp
-  test/concat_map_test.cpp
-  test/concat_test.cpp
-  test/contains_test.cpp
-  test/count_test.cpp
-  test/default_if_empty_test.cpp
-  test/detail/optional_test.cpp
-  test/element_at_test.cpp
-  test/element_count_test.cpp
-  test/empty_test.cpp
-  test/filter_test.cpp
-  test/first_test.cpp
-  test/from_test.cpp
-  test/if_empty_test.cpp
-  test/is_empty_test.cpp
-  test/just_test.cpp
-  test/last_test.cpp
-  test/main.cpp
-  test/map_test.cpp
-  test/max_test.cpp
-  test/merge_test.cpp
-  test/min_test.cpp
-  test/never_test.cpp
-  test/pipe_test.cpp
-  test/publisher_test.cpp
-  test/range_test.cpp
-  test/reduce_test.cpp
-  test/repeat_test.cpp
-  test/scan_test.cpp
-  test/skip_test.cpp
-  test/skip_while_test.cpp
-  test/some_test.cpp
-  test/splat_test.cpp
-  test/start_test.cpp
-  test/start_with_test.cpp
-  test/subscriber_test.cpp
-  test/subscription_test.cpp
-  test/take_test.cpp
-  test/take_while_test.cpp
-  test/sum_test.cpp
-  test/test_util.h
-  test/throw_test.cpp
-  test/weak_reference_test.cpp
-  test/zip_test.cpp)
-add_sanitizers(rs-test)
-set_property(TARGET rs-test PROPERTY CXX_STANDARD 14)
-target_link_libraries(rs-test rs catch)
-set_property(TARGET rs-test APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
-
-add_test(NAME rs-unit COMMAND rs-test)
+shk_test(
+  NAME rs-test
+  SOURCES
+    test/all_test.cpp
+    test/average_test.cpp
+    test/backpressure_violator.h
+    test/catch_test.cpp
+    test/concat_map_test.cpp
+    test/concat_test.cpp
+    test/contains_test.cpp
+    test/count_test.cpp
+    test/default_if_empty_test.cpp
+    test/detail/optional_test.cpp
+    test/element_at_test.cpp
+    test/element_count_test.cpp
+    test/empty_test.cpp
+    test/filter_test.cpp
+    test/first_test.cpp
+    test/from_test.cpp
+    test/if_empty_test.cpp
+    test/is_empty_test.cpp
+    test/just_test.cpp
+    test/last_test.cpp
+    test/main.cpp
+    test/map_test.cpp
+    test/max_test.cpp
+    test/merge_test.cpp
+    test/min_test.cpp
+    test/never_test.cpp
+    test/pipe_test.cpp
+    test/publisher_test.cpp
+    test/range_test.cpp
+    test/reduce_test.cpp
+    test/repeat_test.cpp
+    test/scan_test.cpp
+    test/skip_test.cpp
+    test/skip_while_test.cpp
+    test/some_test.cpp
+    test/splat_test.cpp
+    test/start_test.cpp
+    test/start_with_test.cpp
+    test/subscriber_test.cpp
+    test/subscription_test.cpp
+    test/take_test.cpp
+    test/take_while_test.cpp
+    test/sum_test.cpp
+    test/test_util.h
+    test/throw_test.cpp
+    test/weak_reference_test.cpp
+    test/zip_test.cpp
+  DEPENDENCIES
+    rs catch)
