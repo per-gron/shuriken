@@ -23,7 +23,7 @@
 #include <rs/subscription.h>
 #include <rs-grpc/server.h>
 
-#include "rsgrpctest.grpc.pb.h"
+#include "rs-grpc/test/rsgrpctest.grpc.pb.h"
 
 #if defined(__GNUC__) && (__GNUC__ >= 4)
 #define RS_GPRC_USE_RESULT __attribute__ ((warn_unused_result))

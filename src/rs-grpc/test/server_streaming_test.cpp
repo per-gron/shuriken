@@ -37,7 +37,7 @@
 #include <rs/zip.h>
 #include <rs-grpc/server.h>
 
-#include "rsgrpctest.grpc.pb.h"
+#include "rs-grpc/test/rsgrpctest.grpc.pb.h"
 #include "test_util.h"
 
 namespace shk {

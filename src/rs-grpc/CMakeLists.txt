@@ -13,19 +13,10 @@ shk_library(
     rs grpc++
   PUBLIC_INCLUDES include)
 
-add_custom_command(
-  OUTPUT
-      ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.pb.cc
-      ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.pb.h
-  COMMAND protoc --cpp_out=test/include --proto_path=${CMAKE_CURRENT_LIST_DIR}/test ${CMAKE_CURRENT_LIST_DIR}/test/rsgrpctest.proto
-  DEPENDS test/rsgrpctest.proto protoc)
-
-add_custom_command(
-  OUTPUT
-      ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.pb.cc
-      ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.pb.h
-  COMMAND protoc --grpc_out=test/include --plugin=protoc-gen-grpc="$<TARGET_FILE:grpc_cpp_plugin>" --proto_path=${CMAKE_CURRENT_LIST_DIR}/test ${CMAKE_CURRENT_LIST_DIR}/test/rsgrpctest.proto
-  DEPENDS test/rsgrpctest.proto protoc grpc_cpp_plugin)
+shk_proto(
+  LIB_NAME rs-grpc-test-proto
+  PROTO_FILE rs-grpc/test/rsgrpctest.proto
+  GRPC)
 
 add_executable(rs-grpc-test
   test/detail/rs_grpc_tag_test.cpp
@@ -37,14 +28,10 @@ add_executable(rs-grpc-test
   test/server_streaming_test.cpp
   test/test_util.cpp
   test/test_util.h
-  test/unary_test.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.pb.cc
-  ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.grpc.pb.h
-  ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.pb.cc
-  ${CMAKE_CURRENT_BINARY_DIR}/test/include/rsgrpctest.pb.h)
+  test/unary_test.cpp)
 add_sanitizers(rs-grpc-test)
 set_property(TARGET rs-grpc-test PROPERTY CXX_STANDARD 14)
-target_link_libraries(rs-grpc-test rs-grpc catch libprotobuf)
+target_link_libraries(rs-grpc-test rs-grpc catch rs-grpc-test-proto)
 target_include_directories(rs-grpc-test PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/test/include src)
 set_property(TARGET rs-grpc-test APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
 

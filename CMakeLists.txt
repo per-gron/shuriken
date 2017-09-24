@@ -16,27 +16,39 @@ set(PROTO_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/src")
 set(PROTO_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cpp_proto")
 
 function(shk_proto)
-  set(OPTIONS)
+  set(OPTIONS GRPC)
   set(ONE_VALUE_ARGS LIB_NAME PROTO_FILE)
   set(MULTI_VALUE_ARGS DEPENDENCIES)
   cmake_parse_arguments(shk_proto "${OPTIONS}" "${ONE_VALUE_ARGS}" "${MULTI_VALUE_ARGS}" ${ARGN})
 
   get_filename_component(PROTO_NAME ${shk_proto_PROTO_FILE} NAME_WE)
   get_filename_component(PROTO_DIR ${shk_proto_PROTO_FILE} DIRECTORY)
+
+  set(PROTO_SRCS
+    ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.cc
+    ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.h)
   add_custom_command(
-    OUTPUT
-        ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.cc
-        ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.h
+    OUTPUT ${PROTO_SRCS}
     COMMAND protoc --cpp_out="${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --proto_path="${PROTO_ROOT_DIR}" "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}"
     DEPENDS ${shk_proto_PROTO_FILE} protoc)
 
-  add_library(${shk_proto_LIB_NAME}
-    ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.cc
-    ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.h)
+  if(${shk_proto_GRPC})
+    set(PROTO_GRPC_SRCS
+      ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.grpc.pb.cc
+      ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.grpc.pb.h)
+    set(PROTO_GRPC_DEP grpc++)
+    set(PROTO_SRCS ${PROTO_SRCS} ${PROTO_GRPC_SRCS})
+    add_custom_command(
+      OUTPUT ${PROTO_GRPC_SRCS}
+      COMMAND protoc --grpc_out="${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --plugin=protoc-gen-grpc="$<TARGET_FILE:grpc_cpp_plugin>" --proto_path="${PROTO_ROOT_DIR}" "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}"
+      DEPENDS ${shk_proto_PROTO_FILE} protoc)
+  endif()
+
+  add_library(${shk_proto_LIB_NAME} ${PROTO_SRCS})
   set_property(TARGET ${shk_proto_LIB_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS ${SHK_COMPILER_FLAGS})
   set_property(TARGET ${shk_proto_LIB_NAME} PROPERTY CXX_STANDARD 14)
   target_include_directories(${shk_proto_LIB_NAME} PUBLIC ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME})
-  target_link_libraries(${shk_proto_LIB_NAME} libprotobuf ${shk_proto_DEPENDENCIES})
+  target_link_libraries(${shk_proto_LIB_NAME} libprotobuf ${PROTO_GRPC_DEP} ${shk_proto_DEPENDENCIES})
 endfunction()
 
 function(shk_cpp_target NAME)
