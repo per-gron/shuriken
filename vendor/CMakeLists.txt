@@ -39,3 +39,5 @@ add_subdirectory(re2c_cmake)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/sanitizers-cmake/cmake" ${CMAKE_MODULE_PATH})
 find_package(Sanitizers)
+
+add_subdirectory(googleapis_cmake)

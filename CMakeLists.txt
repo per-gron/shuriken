@@ -13,10 +13,12 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 set(PROTO_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/src")
+set(GOOGLE_PROTO_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/vendor/googleapis")
+set(BUILTIN_PROTO_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/vendor/grpc/third_party/protobuf/src")
 set(PROTO_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cpp_proto")
 
 function(shk_proto)
-  set(OPTIONS GRPC)
+  set(OPTIONS GRPC GOOGLEAPI)
   set(ONE_VALUE_ARGS LIB_NAME PROTO_FILE)
   set(MULTI_VALUE_ARGS DEPENDENCIES)
   cmake_parse_arguments(shk_proto "${OPTIONS}" "${ONE_VALUE_ARGS}" "${MULTI_VALUE_ARGS}" ${ARGN})
@@ -24,13 +26,21 @@ function(shk_proto)
   get_filename_component(PROTO_NAME ${shk_proto_PROTO_FILE} NAME_WE)
   get_filename_component(PROTO_DIR ${shk_proto_PROTO_FILE} DIRECTORY)
 
+  if(${shk_proto_GOOGLEAPI})
+    set(PROTO_PATH "${GOOGLE_PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}")
+  else()
+    set(PROTO_PATH "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}")
+  endif()
+
+  set(PROTO_PATHS --proto_path="${PROTO_ROOT_DIR}" --proto_path="${GOOGLE_PROTO_ROOT_DIR}" --proto_path="${BUILTIN_PROTO_ROOT_DIR}")
+
   set(PROTO_SRCS
     ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.cc
     ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.pb.h)
   add_custom_command(
     OUTPUT ${PROTO_SRCS}
-    COMMAND protoc --cpp_out="${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --proto_path="${PROTO_ROOT_DIR}" "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}"
-    DEPENDS "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}" protoc)
+    COMMAND protoc --cpp_out="${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" ${PROTO_PATHS} "${PROTO_PATH}"
+    DEPENDS "${PROTO_PATH}" protoc)
 
   if(${shk_proto_GRPC})
     set(PROTO_GRPC_SRCS
@@ -40,8 +50,8 @@ function(shk_proto)
     set(PROTO_SRCS ${PROTO_SRCS} ${PROTO_GRPC_SRCS})
     add_custom_command(
       OUTPUT ${PROTO_GRPC_SRCS}
-      COMMAND protoc --grpc_out="${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --plugin=protoc-gen-grpc="$<TARGET_FILE:grpc_cpp_plugin>" --proto_path="${PROTO_ROOT_DIR}" "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}"
-      DEPENDS "${PROTO_ROOT_DIR}/${shk_proto_PROTO_FILE}" protoc)
+      COMMAND protoc --grpc_out="${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --plugin=protoc-gen-grpc="$<TARGET_FILE:grpc_cpp_plugin>" ${PROTO_PATHS} "${PROTO_PATH}"
+      DEPENDS "${PROTO_PATH}" protoc)
   endif()
 
   add_library(${shk_proto_LIB_NAME} ${PROTO_SRCS})
