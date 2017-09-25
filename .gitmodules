@@ -19,3 +19,6 @@
 [submodule "vendor/sanitizers-cmake"]
 	path = vendor/sanitizers-cmake
 	url = https://github.com/arsenm/sanitizers-cmake.git
+[submodule "vendor/googleapis"]
+	path = vendor/googleapis
+	url = https://github.com/googleapis/googleapis.git
