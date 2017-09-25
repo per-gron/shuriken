@@ -977,7 +977,8 @@ class RsGrpcServer {
       std::unique_ptr<grpc::Server> &&server)
       : services_(std::move(services)),
         cq_(std::move(cq)),
-        server_(std::move(server)) {}
+        server_(std::move(server)),
+        ctx_(detail::CallContextBuilder::Build(cq_.get())) {}
 
   RsGrpcServer(RsGrpcServer &&) = default;
   RsGrpcServer &operator=(RsGrpcServer &&) = default;
@@ -1195,6 +1196,10 @@ class RsGrpcServer {
     }
   }
 
+  const CallContext &CallContext() {
+    return ctx_;
+  }
+
  private:
   // This object doesn't really do anything with the services other than owning
   // them, so that they are valid while the server is servicing requests and
@@ -1202,6 +1207,7 @@ class RsGrpcServer {
   Services services_;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_;
   std::unique_ptr<grpc::Server> server_;
+  ::shk::CallContext ctx_;
 };
 
 }  // namespace shk
