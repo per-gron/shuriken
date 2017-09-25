@@ -25,17 +25,13 @@ using GrpcErrorHandler = std::function<void (std::exception_ptr)>;
 class GrpcError : public std::runtime_error {
  public:
   explicit GrpcError(const grpc::Status &status)
-      : runtime_error(what(status)),
+      : runtime_error(What(status)),
         status_(status) {}
 
-  const char *what() const throw() override {
-    return what(status_);
-  }
-
  private:
-  static const char *what(const grpc::Status &status) throw() {
-    const auto &message = status.error_message();
-    return message.empty() ? "[No error message]" : message.c_str();
+  static std::string What(const grpc::Status &status) throw() {
+    const auto message = status.error_message();
+    return message.empty() ? std::string("[No error message]") : message;
   }
 
   const grpc::Status status_;

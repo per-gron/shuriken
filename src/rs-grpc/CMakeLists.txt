@@ -26,6 +26,7 @@ shk_test(
     test/detail/subscriber_test.cpp
     test/bidi_streaming_test.cpp
     test/client_streaming_test.cpp
+    test/grpc_error_test.cpp
     test/main.cpp
     test/server_streaming_test.cpp
     test/test_util.cpp
