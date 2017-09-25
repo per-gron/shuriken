@@ -14,7 +14,7 @@ shk_executable(
   SOURCES
     src/shk-store.cpp
   DEPENDENCIES
-    libshk-store rs-grpc
+    libshk-store rs-grpc google-bigtable-v2-proto
   USER_FACING)
 
 shk_test(

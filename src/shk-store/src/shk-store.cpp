@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <string>
 
+#include <google/bigtable/v2/bigtable.grpc.pb.h>
+#include <rs-grpc/client.h>
 #include <rs-grpc/server.h>
 
 namespace shk {
@@ -31,10 +33,41 @@ int main(int /*argc*/, const char * /*argv*/[]) {
 
   // TODO(peck): Register service
 
-  auto channel = grpc::CreateChannel(
-      server_address, grpc::InsecureChannelCredentials());
-
   auto server = server_builder.BuildAndStart();
+
+  auto channel = grpc::CreateChannel(
+      "127.0.0.1:8086", grpc::InsecureChannelCredentials());
+
+  auto bigtable_client = MakeRsGrpcClient(
+      google::bigtable::v2::Bigtable::NewStub(channel));
+
+  google::bigtable::v2::MutateRowRequest request;
+  request.set_table_name("test_table");
+  request.set_row_key("row_key");
+
+  auto &mutation = *request.add_mutations();
+  auto &set_cell = *mutation.mutable_set_cell();
+  set_cell.set_family_name("family");
+  set_cell.set_column_qualifier("col");
+  set_cell.set_timestamp_micros(-1);
+  set_cell.set_value("val");
+
+  auto sub = bigtable_client
+      .Invoke(
+          server.CallContext(),
+          &google::bigtable::v2::Bigtable::Stub::AsyncMutateRow,
+          request)
+      .Subscribe(MakeSubscriber(
+          [](auto &&) {
+            printf("ONNEXT\n");
+          },
+          [](std::exception_ptr error) {
+            printf("ERROR: %s\n", ExceptionMessage(error).c_str());
+          },
+          []() {
+            printf("COMPLETE\n");
+          }));
+  sub.Request(ElementCount::Unbounded());
 
   printf("\nshk-store listening to %s\n\n", server_address.c_str());
   server.Run();
