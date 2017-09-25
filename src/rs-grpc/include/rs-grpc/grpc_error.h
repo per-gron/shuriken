@@ -26,10 +26,10 @@ class GrpcError : public std::runtime_error {
  public:
   explicit GrpcError(const grpc::Status &status)
       : runtime_error(what(status)),
-        _status(status) {}
+        status_(status) {}
 
   const char *what() const throw() override {
-    return what(_status);
+    return what(status_);
   }
 
  private:
@@ -38,7 +38,7 @@ class GrpcError : public std::runtime_error {
     return message.empty() ? "[No error message]" : message.c_str();
   }
 
-  const grpc::Status _status;
+  const grpc::Status status_;
 };
 
 inline std::string ExceptionMessage(const std::exception_ptr &error) {
