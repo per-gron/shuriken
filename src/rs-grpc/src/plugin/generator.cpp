@@ -154,8 +154,8 @@ void PrintHeaderMethod(
   printer->Print(method->GetLeadingComments("//").c_str());
   printer->Print(
       *vars,
-      "virtual ::shk::AnyPublisher<$ResponseStream$$Response$> $Method$("
-      "const ::shk::CallContext &context, "
+      "virtual ::shk::AnyPublisher<$ResponseStream$$Response$> $Method$(\n"
+      "    const ::shk::CallContext &context, "
       "$RequestPrelude$$Request$$RequestPostlude$ &&request) = 0;\n");
   printer->Print(method->GetTrailingComments("//").c_str());
 }
@@ -180,9 +180,9 @@ void PrintHeaderService(
 
   printer->Print(
       *vars,
-      "\nstatic ::std::unique_ptr<$Service$> NewClient(const ::std::shared_ptr<"
-      "::grpc::ChannelInterface> &channel, "
-      "const ::grpc::StubOptions &options = ::grpc::StubOptions());\n");
+      "\nstatic ::std::unique_ptr<$Service$> NewClient(\n"
+      "    const ::std::shared_ptr<::grpc::ChannelInterface> &channel,\n"
+      "    const ::grpc::StubOptions &options = ::grpc::StubOptions());\n");
 
   printer->Outdent();
   printer->Print("};\n");
