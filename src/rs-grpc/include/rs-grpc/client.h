@@ -36,7 +36,7 @@ template <
     typename SubscriberType>
 void HandleUnaryResponse(
     bool success,
-    const grpc::Status &status,
+    const ::grpc::Status &status,
     ResponseType &&response,
     SubscriberType *subscriber) {
   if (!success) {
@@ -63,7 +63,7 @@ template <
     typename ResponseType,
     typename RequestType>
 class RsGrpcClientCall<
-    grpc::ClientAsyncResponseReader<ResponseType>,
+    ::grpc::ClientAsyncResponseReader<ResponseType>,
     ResponseType,
     RequestType> : public RsGrpcTag, Subscription {
  public:
@@ -75,13 +75,13 @@ class RsGrpcClientCall<
 
   template <typename Stub>
   auto Invoke(
-      std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
+      std::unique_ptr<::grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
-          grpc::ClientContext *context,
+          ::grpc::ClientContext *context,
           const RequestType &request,
-          grpc::CompletionQueue *cq),
+          ::grpc::CompletionQueue *cq),
       Stub *stub,
-      grpc::CompletionQueue *cq) {
+      ::grpc::CompletionQueue *cq) {
     invoke_ = [this, stub, invoke, cq] {
       return (stub->*invoke)(&context_, request_, cq);
     };
@@ -117,16 +117,16 @@ class RsGrpcClientCall<
   // invoke_ is set on the initial call to Invoke and unset when the actual
   // request has been made.
   std::function<std::unique_ptr<
-      grpc::ClientAsyncResponseReader<ResponseType>> ()> invoke_;
+      ::grpc::ClientAsyncResponseReader<ResponseType>> ()> invoke_;
   bool cancelled_ = false;
   static_assert(
       !std::is_reference<RequestType>::value,
       "Request type must be held by value");
   RequestType request_;
-  grpc::ClientContext context_;
+  ::grpc::ClientContext context_;
   ResponseType response_;
   AnySubscriber<ResponseType> subscriber_;
-  grpc::Status status_;
+  ::grpc::Status status_;
 };
 
 /**
@@ -136,7 +136,7 @@ template <
     typename ResponseType,
     typename RequestType>
 class RsGrpcClientCall<
-    grpc::ClientAsyncReader<ResponseType>,
+    ::grpc::ClientAsyncReader<ResponseType>,
     ResponseType,
     RequestType> : public RsGrpcTag, public Subscription {
  public:
@@ -148,14 +148,14 @@ class RsGrpcClientCall<
 
   template <typename Stub>
   auto Invoke(
-      std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
+      std::unique_ptr<::grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
-          grpc::ClientContext *context,
+          ::grpc::ClientContext *context,
           const RequestType &request,
-          grpc::CompletionQueue *cq,
+          ::grpc::CompletionQueue *cq,
           void *tag),
       Stub *stub,
-      grpc::CompletionQueue *cq) {
+      ::grpc::CompletionQueue *cq) {
     invoke_ = [this, stub, invoke, cq] {
       return (stub->*invoke)(&context_, request_, cq, ToTag());
     };
@@ -255,19 +255,19 @@ class RsGrpcClientCall<
       !std::is_reference<RequestType>::value,
       "Request type must be held by value");
   RequestType request_;
-  grpc::ClientContext context_;
+  ::grpc::ClientContext context_;
 
   State state_ = State::INIT;
   ResponseType response_;
   AnySubscriber<ResponseType> subscriber_;
-  grpc::Status status_;
-  std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> stream_;
+  ::grpc::Status status_;
+  std::unique_ptr<::grpc::ClientAsyncReader<ResponseType>> stream_;
 
   // Member variables that are stored in Invoke for use by Request. Set only
   // between the Invoke call and the first Request call that requests non-zero
   // elements.
   std::function<
-      std::unique_ptr<grpc::ClientAsyncReader<ResponseType>> ()> invoke_;
+      std::unique_ptr<::grpc::ClientAsyncReader<ResponseType>> ()> invoke_;
   bool cancelled_ = false;
 };
 
@@ -282,7 +282,7 @@ template <
     typename RequestType,
     typename ResponseType>
 class RsGrpcClientCall<
-    grpc::ClientAsyncWriter<RequestType>,
+    ::grpc::ClientAsyncWriter<RequestType>,
     ResponseType,
     RequestType> :
         public RsGrpcTag, public Subscriber, public Subscription {
@@ -295,14 +295,14 @@ class RsGrpcClientCall<
 
   template <typename Stub>
   auto Invoke(
-      std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
+      std::unique_ptr<::grpc::ClientAsyncWriter<RequestType>>
       (Stub::*invoke)(
-          grpc::ClientContext *context,
+          ::grpc::ClientContext *context,
           ResponseType *response,
-          grpc::CompletionQueue *cq,
+          ::grpc::CompletionQueue *cq,
           void *tag),
       Stub *stub,
-      grpc::CompletionQueue *cq) {
+      ::grpc::CompletionQueue *cq) {
     invoke_ = [this, stub, invoke, cq] {
       return (stub->*invoke)(&context_, &response_, cq, ToTag());
     };
@@ -404,12 +404,12 @@ class RsGrpcClientCall<
   bool cancelled_ = false;
   AnyPublisher<RequestType> requests_;
   ResponseType response_;
-  grpc::ClientContext context_;
+  ::grpc::ClientContext context_;
   // stream_ has to be after context_ and response_ because it must be destroyed
   // after them since it has unsafe weak references to them.
-  std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> stream_;
+  std::unique_ptr<::grpc::ClientAsyncWriter<RequestType>> stream_;
   std::function<
-      std::unique_ptr<grpc::ClientAsyncWriter<RequestType>> ()> invoke_;
+      std::unique_ptr<::grpc::ClientAsyncWriter<RequestType>> ()> invoke_;
   AnySubscriber<ResponseType> subscriber_;
   AnySubscription subscription_;
 
@@ -419,7 +419,7 @@ class RsGrpcClientCall<
   std::unique_ptr<RequestType> next_request_;
   bool enqueued_writes_done_ = false;
   bool enqueued_finish_ = false;
-  grpc::Status status_;
+  ::grpc::Status status_;
 };
 
 /**
@@ -429,7 +429,7 @@ template <
     typename RequestType,
     typename ResponseType>
 class RsGrpcClientCall<
-    grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
+    ::grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
     ResponseType,
     RequestType>
         : public RsGrpcTag, public Subscriber, public Subscription {
@@ -449,7 +449,7 @@ class RsGrpcClientCall<
           subscriber_(std::move(subscriber)) {}
 
     void Invoke(
-        grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream) {
+        ::grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream) {
       stream_ = stream;
     }
 
@@ -478,7 +478,7 @@ class RsGrpcClientCall<
      * then because it's not until both the read stream and the write stream
      * have finished that it is known for sure that there was no error.
      */
-    void Finish(bool cancelled, const grpc::Status &status) {
+    void Finish(bool cancelled, const ::grpc::Status &status) {
       if (!cancelled) {
         if (!status.ok()) {
           subscriber_.OnError(std::make_exception_ptr(GrpcError(status)));
@@ -519,7 +519,8 @@ class RsGrpcClientCall<
     // Should be called when the read stream is finished. Care must be taken so
     // that this is not called when there is an outstanding async operation.
     std::function<void ()> shutdown_;
-    grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream_ = nullptr;
+    ::grpc::ClientAsyncReaderWriter<RequestType, ResponseType> *stream_ =
+        nullptr;
     AnySubscriber<ResponseType> subscriber_;
     ResponseType response_;
   };
@@ -536,13 +537,14 @@ class RsGrpcClientCall<
 
   template <typename Stub>
   auto Invoke(
-      std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
+      std::unique_ptr<
+          ::grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
       (Stub::*invoke)(
-          grpc::ClientContext *context,
-          grpc::CompletionQueue *cq,
+          ::grpc::ClientContext *context,
+          ::grpc::CompletionQueue *cq,
           void *tag),
       Stub *stub,
-      grpc::CompletionQueue *cq) {
+      ::grpc::CompletionQueue *cq) {
     invoke_ = [this, stub, invoke, cq] {
       return (stub->*invoke)(&context_, cq, ToTag());
     };
@@ -660,18 +662,18 @@ class RsGrpcClientCall<
   // Set only between the Invoke call and the first Request call that requests
   // non-zero elements.
   std::function<std::unique_ptr<
-      grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> ()> invoke_;
+      ::grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> ()> invoke_;
   bool cancelled_ = false;
   Reader reader_;
   bool reader_done_ = false;
 
   AnyPublisher<RequestType> requests_;
   ResponseType response_;
-  grpc::ClientContext context_;
+  ::grpc::ClientContext context_;
   // stream_ has to be after context_ because it must be destroyed after it
   // since it has unsafe weak references to them.
   std::unique_ptr<
-      grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> stream_;
+      ::grpc::ClientAsyncReaderWriter<RequestType, ResponseType>> stream_;
   AnySubscription subscription_;
 
   bool sent_final_request_ = false;
@@ -680,7 +682,7 @@ class RsGrpcClientCall<
   std::unique_ptr<RequestType> next_request_;
   bool enqueued_writes_done_ = false;
   bool enqueued_finish_ = false;
-  grpc::Status status_;
+  ::grpc::Status status_;
 };
 
 }  // namespace detail
@@ -700,15 +702,15 @@ class RsGrpcClient {
   template <typename ResponseType, typename RequestType>
   auto Invoke(
       const CallContext &ctx,
-      std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseType>>
+      std::unique_ptr<::grpc::ClientAsyncResponseReader<ResponseType>>
       (Stub::*invoke)(
-          grpc::ClientContext *context,
+          ::grpc::ClientContext *context,
           const RequestType &request,
-          grpc::CompletionQueue *cq),
+          ::grpc::CompletionQueue *cq),
       const RequestType &request,
-      grpc::ClientContext &&context = grpc::ClientContext()) {
+      ::grpc::ClientContext &&context = ::grpc::ClientContext()) {
     return InvokeImpl<
-        grpc::ClientAsyncResponseReader<ResponseType>,
+        ::grpc::ClientAsyncResponseReader<ResponseType>,
         ResponseType,
         RequestType>(
             ctx,
@@ -723,16 +725,16 @@ class RsGrpcClient {
   template <typename ResponseType, typename RequestType>
   auto Invoke(
       const CallContext &ctx,
-      std::unique_ptr<grpc::ClientAsyncReader<ResponseType>>
+      std::unique_ptr<::grpc::ClientAsyncReader<ResponseType>>
       (Stub::*invoke)(
-          grpc::ClientContext *context,
+          ::grpc::ClientContext *context,
           const RequestType &request,
-          grpc::CompletionQueue *cq,
+          ::grpc::CompletionQueue *cq,
           void *tag),
       const RequestType &request,
-      grpc::ClientContext &&context = grpc::ClientContext()) {
+      ::grpc::ClientContext &&context = ::grpc::ClientContext()) {
     return InvokeImpl<
-        grpc::ClientAsyncReader<ResponseType>,
+        ::grpc::ClientAsyncReader<ResponseType>,
         ResponseType,
         RequestType>(
             ctx,
@@ -747,16 +749,16 @@ class RsGrpcClient {
   template <typename RequestType, typename ResponseType, typename PublisherType>
   auto Invoke(
       const CallContext &ctx,
-      std::unique_ptr<grpc::ClientAsyncWriter<RequestType>>
+      std::unique_ptr<::grpc::ClientAsyncWriter<RequestType>>
       (Stub::*invoke)(
-          grpc::ClientContext *context,
+          ::grpc::ClientContext *context,
           ResponseType *response,
-          grpc::CompletionQueue *cq,
+          ::grpc::CompletionQueue *cq,
           void *tag),
       PublisherType &&requests,
-      grpc::ClientContext &&context = grpc::ClientContext()) {
+      ::grpc::ClientContext &&context = ::grpc::ClientContext()) {
     return InvokeImpl<
-        grpc::ClientAsyncWriter<RequestType>,
+        ::grpc::ClientAsyncWriter<RequestType>,
         ResponseType,
         RequestType>(
             ctx,
@@ -771,15 +773,16 @@ class RsGrpcClient {
   template <typename RequestType, typename ResponseType, typename PublisherType>
   auto Invoke(
       const CallContext &ctx,
-      std::unique_ptr<grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
+      std::unique_ptr<
+          ::grpc::ClientAsyncReaderWriter<RequestType, ResponseType>>
       (Stub::*invoke)(
-          grpc::ClientContext *context,
-          grpc::CompletionQueue *cq,
+          ::grpc::ClientContext *context,
+          ::grpc::CompletionQueue *cq,
           void *tag),
       PublisherType &&requests,
-      grpc::ClientContext &&context = grpc::ClientContext()) {
+      ::grpc::ClientContext &&context = ::grpc::ClientContext()) {
     return InvokeImpl<
-        grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
+        ::grpc::ClientAsyncReaderWriter<RequestType, ResponseType>,
         ResponseType,
         RequestType>(
             ctx,
@@ -799,7 +802,7 @@ class RsGrpcClient {
       const CallContext &ctx,
       Invoke invoke,
       RequestOrPublisher &&request_or_publisher,
-      grpc::ClientContext &&context = grpc::ClientContext()) {
+      ::grpc::ClientContext &&context = ::grpc::ClientContext()) {
 
     return MakePublisher([
         this,
@@ -860,7 +863,7 @@ class RsGrpcClientRunloop {
    * Block and process one asynchronous event, with a timeout.
    */
   template <typename T>
-  grpc::CompletionQueue::NextStatus Next(const T& deadline) {
+  ::grpc::CompletionQueue::NextStatus Next(const T& deadline) {
     return detail::RsGrpcTag::ProcessOneEvent(&cq_, deadline);
   }
 
@@ -873,7 +876,7 @@ class RsGrpcClientRunloop {
   }
 
  private:
-  grpc::CompletionQueue cq_;
+  ::grpc::CompletionQueue cq_;
   ::shk::CallContext ctx_;
 };
 

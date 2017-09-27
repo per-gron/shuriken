@@ -41,16 +41,16 @@ class CallContext {
   friend class RsGrpcClient;
 
   // cq must not be null
-  explicit CallContext(grpc::CompletionQueue *cq) : cq_(cq) {}
+  explicit CallContext(::grpc::CompletionQueue *cq) : cq_(cq) {}
 
-  grpc::CompletionQueue *cq_;
+  ::grpc::CompletionQueue *cq_;
 };
 
 namespace detail {
 
 class CallContextBuilder {
  public:
-  static CallContext Build(grpc::CompletionQueue *cq) {
+  static CallContext Build(::grpc::CompletionQueue *cq) {
     return CallContext(cq);
   }
 };

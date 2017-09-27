@@ -226,7 +226,7 @@ class RsGrpcTag {
    *
    * Returns false if the event queue is shutting down.
    */
-  static bool ProcessOneEvent(grpc::CompletionQueue *cq);
+  static bool ProcessOneEvent(::grpc::CompletionQueue *cq);
 
   /**
    * Block and process one asynchronous event, with timeout.
@@ -234,18 +234,18 @@ class RsGrpcTag {
    * Returns false if the event queue is shutting down.
    */
   template <typename T>
-  static grpc::CompletionQueue::NextStatus ProcessOneEvent(
-      grpc::CompletionQueue *cq, const T& deadline) {
+  static ::grpc::CompletionQueue::NextStatus ProcessOneEvent(
+      ::grpc::CompletionQueue *cq, const T& deadline) {
     void *got_tag;
     bool success = false;
     auto next_status = cq->AsyncNext(&got_tag, &success, deadline);
-    if (next_status == grpc::CompletionQueue::GOT_EVENT) {
+    if (next_status == ::grpc::CompletionQueue::GOT_EVENT) {
       Invoke(got_tag, success);
     }
     return next_status;
   }
 
-  static void ProcessAllEvents(grpc::CompletionQueue *cq);
+  static void ProcessAllEvents(::grpc::CompletionQueue *cq);
 
  protected:
   virtual void TagOperationDone(bool success) = 0;

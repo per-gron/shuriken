@@ -46,11 +46,20 @@ function(shk_proto)
     set(PROTO_GRPC_SRCS
       ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.grpc.pb.cc
       ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.grpc.pb.h)
-    set(PROTO_GRPC_DEP grpc++)
-    set(PROTO_SRCS ${PROTO_SRCS} ${PROTO_GRPC_SRCS})
+    set(PROTO_RSGRPC_SRCS
+      ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.rsgrpc.pb.cc
+      ${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}/${PROTO_DIR}/${PROTO_NAME}.rsgrpc.pb.h)
+    set(PROTO_GRPC_DEP grpc++ rs-grpc)
+    set(PROTO_SRCS ${PROTO_SRCS} ${PROTO_GRPC_SRCS} ${PROTO_RSGRPC_SRCS})
+
     add_custom_command(
       OUTPUT ${PROTO_GRPC_SRCS}
-      COMMAND protoc --grpc_out="${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --plugin=protoc-gen-grpc="$<TARGET_FILE:grpc_cpp_plugin>" ${PROTO_PATHS} "${PROTO_PATH}"
+      COMMAND protoc --grpc_out="services_namespace=grpc:${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --plugin=protoc-gen-grpc="$<TARGET_FILE:grpc_cpp_plugin>" ${PROTO_PATHS} "${PROTO_PATH}"
+      DEPENDS "${PROTO_PATH}" protoc)
+
+    add_custom_command(
+      OUTPUT ${PROTO_RSGRPC_SRCS}
+      COMMAND protoc --grpc_out="grpc_services_namespace=grpc:${PROTO_OUT_DIR}/${shk_proto_LIB_NAME}" --plugin=protoc-gen-grpc="$<TARGET_FILE:rs_grpc_plugin>" ${PROTO_PATHS} "${PROTO_PATH}"
       DEPENDS "${PROTO_PATH}" protoc)
   endif()
 

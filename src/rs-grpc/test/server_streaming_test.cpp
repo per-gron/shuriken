@@ -125,13 +125,15 @@ auto ServerStreamAsyncResponseHandler(AsyncResponder *responder) {
 }  // anonymous namespace
 
 TEST_CASE("Server streaming RPC") {
+  using grpc::TestService;
+
   InitTests();
 
   auto server_address = "unix:rs_grpc_test.socket";
 
   RsGrpcServer::Builder server_builder;
   server_builder.GrpcServerBuilder()
-      .AddListeningPort(server_address, grpc::InsecureServerCredentials());
+      .AddListeningPort(server_address, ::grpc::InsecureServerCredentials());
 
   AsyncResponder async_responder;
 
@@ -158,8 +160,8 @@ TEST_CASE("Server streaming RPC") {
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();
 
-  auto channel = grpc::CreateChannel(
-      server_address, grpc::InsecureChannelCredentials());
+  auto channel = ::grpc::CreateChannel(
+      server_address, ::grpc::InsecureChannelCredentials());
 
   auto test_client = MakeRsGrpcClient(TestService::NewStub(channel));
 
@@ -241,7 +243,7 @@ TEST_CASE("Server streaming RPC") {
         // There should be nothing on the runloop
         using namespace std::chrono_literals;
         auto deadline = std::chrono::system_clock::now() + 20ms;
-        CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
+        CHECK(runloop.Next(deadline) == ::grpc::CompletionQueue::TIMEOUT);
       }
     }
   }

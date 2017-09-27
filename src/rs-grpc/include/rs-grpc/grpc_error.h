@@ -24,17 +24,17 @@ using GrpcErrorHandler = std::function<void (std::exception_ptr)>;
 
 class GrpcError : public std::runtime_error {
  public:
-  explicit GrpcError(const grpc::Status &status)
+  explicit GrpcError(const ::grpc::Status &status)
       : runtime_error(What(status)),
         status_(status) {}
 
  private:
-  static std::string What(const grpc::Status &status) throw() {
+  static std::string What(const ::grpc::Status &status) throw() {
     const auto message = status.error_message();
     return message.empty() ? std::string("[No error message]") : message;
   }
 
-  const grpc::Status status_;
+  const ::grpc::Status status_;
 };
 
 inline std::string ExceptionMessage(const std::exception_ptr &error) {
@@ -47,14 +47,14 @@ inline std::string ExceptionMessage(const std::exception_ptr &error) {
   }
 }
 
-inline grpc::Status ExceptionToStatus(const std::exception_ptr &error) {
+inline ::grpc::Status ExceptionToStatus(const std::exception_ptr &error) {
   if (!error) {
-    return grpc::Status::OK;
+    return ::grpc::Status::OK;
   } else {
     // TODO(peck): Make it possible to respond with other errors
     // than INTERNAL (by catching GrpcErrors and reporting that)
     const auto what = ExceptionMessage(error);
-    return grpc::Status(grpc::INTERNAL, what);
+    return ::grpc::Status(::grpc::INTERNAL, what);
   }
 }
 

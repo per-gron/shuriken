@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string>
 
-#include <google/bigtable/v2/bigtable.grpc.pb.h>
+#include <google/bigtable/v2/bigtable.rsgrpc.pb.h>
 #include <rs-grpc/client.h>
 #include <rs-grpc/server.h>
 
@@ -29,17 +29,16 @@ int main(int /*argc*/, const char * /*argv*/[]) {
 
   RsGrpcServer::Builder server_builder;
   server_builder.GrpcServerBuilder()
-      .AddListeningPort(server_address, grpc::InsecureServerCredentials());
+      .AddListeningPort(server_address, ::grpc::InsecureServerCredentials());
 
   // TODO(peck): Register service
 
   auto server = server_builder.BuildAndStart();
 
-  auto channel = grpc::CreateChannel(
-      "127.0.0.1:8086", grpc::InsecureChannelCredentials());
+  auto channel = ::grpc::CreateChannel(
+      "127.0.0.1:8086", ::grpc::InsecureChannelCredentials());
 
-  auto bigtable_client = MakeRsGrpcClient(
-      google::bigtable::v2::Bigtable::NewStub(channel));
+  auto bigtable_client = google::bigtable::v2::Bigtable::NewClient(channel);
 
   google::bigtable::v2::MutateRowRequest request;
   request.set_table_name("test_table");
@@ -53,10 +52,7 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   set_cell.set_value("val");
 
   auto sub = bigtable_client
-      .Invoke(
-          server.CallContext(),
-          &google::bigtable::v2::Bigtable::Stub::AsyncMutateRow,
-          request)
+      ->MutateRow(server.CallContext(), std::move(request))
       .Subscribe(MakeSubscriber(
           [](auto &&) {
             printf("ONNEXT\n");

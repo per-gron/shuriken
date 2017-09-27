@@ -111,7 +111,7 @@ RS_GPRC_USE_RESULT std::shared_ptr<void> RunExpectTimeout(
   for (;;) {
     using namespace std::chrono_literals;
     auto deadline = std::chrono::system_clock::now() + 20ms;
-    if (runloop->Next(deadline) == grpc::CompletionQueue::TIMEOUT) {
+    if (runloop->Next(deadline) == ::grpc::CompletionQueue::TIMEOUT) {
       break;
     }
   }

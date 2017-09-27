@@ -8,7 +8,9 @@ shk_library(
     include/rs-grpc/client.h
     include/rs-grpc/grpc_error.h
     include/rs-grpc/server.h
+    include/rs-grpc/service.h
     src/rs_grpc_tag.cpp
+    src/service.cpp
   DEPENDENCIES
     rs grpc++
   PUBLIC_INCLUDES include)
@@ -17,6 +19,19 @@ shk_proto(
   LIB_NAME rs-grpc-test-proto
   PROTO_FILE rs-grpc/test/rsgrpctest.proto
   GRPC)
+
+shk_executable(
+  NAME rs_grpc_plugin
+  SOURCES
+    src/plugin/plugin.cpp
+    src/plugin/generator.cpp
+    src/plugin/generator.h
+  DEPENDENCIES
+    libprotobuf
+    libprotoc
+  PRIVATE_INCLUDES
+    ../../vendor/grpc
+    ../../vendor/grpc/include)
 
 shk_test(
   NAME rs-grpc-test

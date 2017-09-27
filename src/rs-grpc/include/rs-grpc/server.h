@@ -39,15 +39,15 @@ namespace detail {
 template <
     typename Service,
     typename RequestType,
-    // grpc::ServerAsyncResponseWriter<ResponseType> or
-    // grpc::ServerAsyncWriter<ResponseType>
+    // ::grpc::ServerAsyncResponseWriter<ResponseType> or
+    // ::grpc::ServerAsyncWriter<ResponseType>
     typename Stream>
 using RequestMethod = void (Service::*)(
-    grpc::ServerContext *context,
+    ::grpc::ServerContext *context,
     RequestType *request,
     Stream *stream,
-    grpc::CompletionQueue *new_call_cq,
-    grpc::ServerCompletionQueue *notification_cq,
+    ::grpc::CompletionQueue *new_call_cq,
+    ::grpc::ServerCompletionQueue *notification_cq,
     void *tag);
 
 /**
@@ -55,14 +55,14 @@ using RequestMethod = void (Service::*)(
  */
 template <
     typename Service,
-    // grpc::ServerAsyncReader<ResponseType, RequestType> or
-    // grpc::ServerAsyncReaderWriter<ResponseType, RequestType>
+    // ::grpc::ServerAsyncReader<ResponseType, RequestType> or
+    // ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType>
     typename Stream>
 using StreamingRequestMethod = void (Service::*)(
-    grpc::ServerContext *context,
+    ::grpc::ServerContext *context,
     Stream *stream,
-    grpc::CompletionQueue *new_call_cq,
-    grpc::ServerCompletionQueue *notification_cq,
+    ::grpc::CompletionQueue *new_call_cq,
+    ::grpc::ServerCompletionQueue *notification_cq,
     void *tag);
 
 /**
@@ -70,10 +70,10 @@ using StreamingRequestMethod = void (Service::*)(
  * pass around tons and tons of template parameters everywhere.
  */
 template <
-    // grpc::ServerAsyncResponseWriter<ResponseType> (non-streaming) or
-    // grpc::ServerAsyncWriter<ResponseType> (streaming response) or
-    // grpc::ServerAsyncReader<ResponseType, RequestType> (streaming request) or
-    // grpc::ServerAsyncReaderWriter<ResponseType, RequestType> (bidi streaming)
+    // ::grpc::ServerAsyncResponseWriter<ResponseType> (non-streaming) or
+    // ::grpc::ServerAsyncWriter<ResponseType> (streaming response) or
+    // ::grpc::ServerAsyncReader<ResponseType, RequestType> (streaming request) or
+    // ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType> (bidi streaming)
     typename StreamType,
     // Generated service class
     typename ServiceType,
@@ -97,10 +97,10 @@ class RsGrpcServerCall;
  */
 template <typename ResponseType, typename ServerCallTraits, typename Callback>
 class RsGrpcServerCall<
-    grpc::ServerAsyncResponseWriter<ResponseType>,
+    ::grpc::ServerAsyncResponseWriter<ResponseType>,
     ServerCallTraits,
     Callback> : public RsGrpcTag, public Subscriber {
-  using Stream = grpc::ServerAsyncResponseWriter<ResponseType>;
+  using Stream = ::grpc::ServerAsyncResponseWriter<ResponseType>;
   using Service = typename ServerCallTraits::Service;
 
   using Method = RequestMethod<
@@ -112,7 +112,7 @@ class RsGrpcServerCall<
       Method method,
       Callback &&callback,
       Service *service,
-      grpc::ServerCompletionQueue *cq) {
+      ::grpc::ServerCompletionQueue *cq) {
     auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
         new RsGrpcServerCall(
             error_handler, method, std::move(callback), service, cq));
@@ -137,12 +137,12 @@ class RsGrpcServerCall<
 
   void OnComplete() {
     if (num_responses_ == 1) {
-      stream_.Finish(response_, grpc::Status::OK, ToTag());
+      stream_.Finish(response_, ::grpc::Status::OK, ToTag());
     } else {
       const auto *error_message =
           num_responses_ == 0 ? "No response" : "Too many responses";
       stream_.FinishWithError(
-          grpc::Status(grpc::StatusCode::INTERNAL, error_message),
+          ::grpc::Status(::grpc::StatusCode::INTERNAL, error_message),
           ToTag());
     }
   }
@@ -186,7 +186,7 @@ class RsGrpcServerCall<
       Method method,
       Callback &&callback,
       Service *service,
-      grpc::ServerCompletionQueue *cq)
+      ::grpc::ServerCompletionQueue *cq)
       : error_handler_(error_handler),
         method_(method),
         callback_(std::move(callback)),
@@ -209,8 +209,8 @@ class RsGrpcServerCall<
   Method method_;
   Callback callback_;
   Service &service_;
-  grpc::ServerCompletionQueue &cq_;
-  grpc::ServerContext context_;
+  ::grpc::ServerCompletionQueue &cq_;
+  ::grpc::ServerContext context_;
   typename ServerCallTraits::Request request_;
   Stream stream_;
   int num_responses_ = 0;
@@ -222,10 +222,10 @@ class RsGrpcServerCall<
  */
 template <typename ResponseType, typename ServerCallTraits, typename Callback>
 class RsGrpcServerCall<
-    grpc::ServerAsyncWriter<ResponseType>,
+    ::grpc::ServerAsyncWriter<ResponseType>,
     ServerCallTraits,
     Callback> : public RsGrpcTag, public Subscriber {
-  using Stream = grpc::ServerAsyncWriter<ResponseType>;
+  using Stream = ::grpc::ServerAsyncWriter<ResponseType>;
   using Service = typename ServerCallTraits::Service;
 
   using Method = RequestMethod<
@@ -237,7 +237,7 @@ class RsGrpcServerCall<
       Method method,
       Callback &&callback,
       Service *service,
-      grpc::ServerCompletionQueue *cq) {
+      ::grpc::ServerCompletionQueue *cq) {
     auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
         new RsGrpcServerCall(
             error_handler, method, std::move(callback), service, cq));
@@ -269,7 +269,7 @@ class RsGrpcServerCall<
   }
 
   void OnComplete() {
-    enqueued_finish_status_ = grpc::Status::OK;
+    enqueued_finish_status_ = ::grpc::Status::OK;
     enqueued_finish_ = true;
     RunEnqueuedOperation();
   }
@@ -343,7 +343,7 @@ class RsGrpcServerCall<
       Method method,
       Callback &&callback,
       Service *service,
-      grpc::ServerCompletionQueue *cq)
+      ::grpc::ServerCompletionQueue *cq)
       : error_handler_(error_handler),
         method_(method),
         callback_(std::move(callback)),
@@ -379,7 +379,7 @@ class RsGrpcServerCall<
 
   State state_ = State::AWAITING_REQUEST;
   bool enqueued_finish_ = false;
-  grpc::Status enqueued_finish_status_;
+  ::grpc::Status enqueued_finish_status_;
   AnySubscription subscription_;
   std::unique_ptr<ResponseType> next_response_;
 
@@ -388,8 +388,8 @@ class RsGrpcServerCall<
   Method method_;
   Callback callback_;
   Service &service_;
-  grpc::ServerCompletionQueue &cq_;
-  grpc::ServerContext context_;
+  ::grpc::ServerCompletionQueue &cq_;
+  ::grpc::ServerContext context_;
   typename ServerCallTraits::Request request_;
   Stream stream_;
 };
@@ -403,11 +403,11 @@ template <
     typename ServerCallTraits,
     typename Callback>
 class RsGrpcServerCall<
-    grpc::ServerAsyncReader<ResponseType, RequestType>,
+    ::grpc::ServerAsyncReader<ResponseType, RequestType>,
     ServerCallTraits,
     Callback>
         : public RsGrpcTag, public Subscriber, public Subscription {
-  using Stream = grpc::ServerAsyncReader<ResponseType, RequestType>;
+  using Stream = ::grpc::ServerAsyncReader<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
   using Method = StreamingRequestMethod<Service, Stream>;
 
@@ -417,7 +417,7 @@ class RsGrpcServerCall<
       Method method,
       Callback &&callback,
       Service *service,
-      grpc::ServerCompletionQueue *cq) {
+      ::grpc::ServerCompletionQueue *cq) {
     auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
         new RsGrpcServerCall(
             error_handler, method, std::move(callback), service, cq));
@@ -513,7 +513,7 @@ class RsGrpcServerCall<
       Method method,
       Callback &&callback,
       Service *service,
-      grpc::ServerCompletionQueue *cq)
+      ::grpc::ServerCompletionQueue *cq)
       : error_handler_(error_handler),
         method_(method),
         callback_(std::move(callback)),
@@ -575,12 +575,12 @@ class RsGrpcServerCall<
       if (response_error_) {
         reader_.FinishWithError(ExceptionToStatus(response_error_), ToTag());
       } else if (num_responses_ == 1) {
-        reader_.Finish(response_, grpc::Status::OK, ToTag());
+        reader_.Finish(response_, ::grpc::Status::OK, ToTag());
       } else {
         const auto *error_message =
             num_responses_ == 0 ? "No response" : "Too many responses";
         reader_.FinishWithError(
-            grpc::Status(grpc::StatusCode::INTERNAL, error_message),
+            ::grpc::Status(::grpc::StatusCode::INTERNAL, error_message),
             ToTag());
       }
     }
@@ -596,10 +596,10 @@ class RsGrpcServerCall<
   Method method_;
   Callback callback_;
   Service &service_;
-  grpc::ServerCompletionQueue &cq_;
-  grpc::ServerContext context_;
+  ::grpc::ServerCompletionQueue &cq_;
+  ::grpc::ServerContext context_;
   typename ServerCallTraits::Request request_;
-  grpc::ServerAsyncReader<ResponseType, RequestType> reader_;
+  ::grpc::ServerAsyncReader<ResponseType, RequestType> reader_;
 
   ResponseType response_;
   int num_responses_ = 0;
@@ -617,11 +617,11 @@ template <
     typename ServerCallTraits,
     typename Callback>
 class RsGrpcServerCall<
-    grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
+    ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
     ServerCallTraits,
     Callback>
         : public RsGrpcTag, public Subscriber, public Subscription {
-  using Stream = grpc::ServerAsyncReaderWriter<ResponseType, RequestType>;
+  using Stream = ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType>;
   using Service = typename ServerCallTraits::Service;
 
   using Method = StreamingRequestMethod<Service, Stream>;
@@ -634,8 +634,8 @@ class RsGrpcServerCall<
    public:
     Writer(
         RsGrpcServerCall *parent,
-        grpc::ServerContext *context,
-        grpc::ServerAsyncReaderWriter<ResponseType, RequestType> *stream)
+        ::grpc::ServerContext *context,
+        ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType> *stream)
         : parent_(*parent),
           context_(*context),
           stream_(*stream) {}
@@ -754,9 +754,9 @@ class RsGrpcServerCall<
     bool enqueued_finish_ = false;
     bool operation_in_progress_ = false;
     bool sent_final_request_ = false;
-    grpc::ServerContext &context_;
-    grpc::ServerAsyncReaderWriter<ResponseType, RequestType> &stream_;
-    grpc::Status status_;
+    ::grpc::ServerContext &context_;
+    ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType> &stream_;
+    ::grpc::Status status_;
   };
 
  public:
@@ -765,7 +765,7 @@ class RsGrpcServerCall<
       Method method,
       Callback &&callback,
       Service *service,
-      grpc::ServerCompletionQueue *cq) {
+      ::grpc::ServerCompletionQueue *cq) {
     auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
         new RsGrpcServerCall(
             error_handler, method, std::move(callback), service, cq));
@@ -854,7 +854,7 @@ class RsGrpcServerCall<
       Method method,
       Callback &&callback,
       Service *service,
-      grpc::ServerCompletionQueue *cq)
+      ::grpc::ServerCompletionQueue *cq)
       : error_handler_(error_handler),
         method_(method),
         callback_(std::move(callback)),
@@ -915,10 +915,10 @@ class RsGrpcServerCall<
   Method method_;
   Callback callback_;
   Service &service_;
-  grpc::ServerCompletionQueue &cq_;
-  grpc::ServerContext context_;
+  ::grpc::ServerCompletionQueue &cq_;
+  ::grpc::ServerContext context_;
   typename ServerCallTraits::Request request_;
-  grpc::ServerAsyncReaderWriter<ResponseType, RequestType> stream_;
+  ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType> stream_;
   Writer writer_;
 
   ResponseType response_;
@@ -931,7 +931,7 @@ class InvocationRequester {
 
   virtual void RequestInvocation(
       GrpcErrorHandler error_handler,
-      grpc::ServerCompletionQueue *cq) = 0;
+      ::grpc::ServerCompletionQueue *cq) = 0;
 };
 
 template <
@@ -950,7 +950,7 @@ class RsGrpcServerCallRequester : public InvocationRequester {
 
   void RequestInvocation(
       GrpcErrorHandler error_handler,
-      grpc::ServerCompletionQueue *cq) override {
+      ::grpc::ServerCompletionQueue *cq) override {
     using ServerInvocation = RsGrpcServerCall<
         typename ServerCallTraits::Stream,
         ServerCallTraits,
@@ -973,8 +973,8 @@ class RsGrpcServer {
  public:
   RsGrpcServer(
       Services &&services,
-      std::unique_ptr<grpc::ServerCompletionQueue> &&cq,
-      std::unique_ptr<grpc::Server> &&server)
+      std::unique_ptr<::grpc::ServerCompletionQueue> &&cq,
+      std::unique_ptr<::grpc::Server> &&server)
       : services_(std::move(services)),
         cq_(std::move(cq)),
         server_(std::move(server)),
@@ -1012,11 +1012,11 @@ class RsGrpcServer {
           detail::RequestMethod<
               InnerService,
               RequestType,
-              grpc::ServerAsyncResponseWriter<ResponseType>> method,
+              ::grpc::ServerAsyncResponseWriter<ResponseType>> method,
           Callback &&callback) {
         RegisterMethodImpl<
             detail::ServerCallTraits<
-                grpc::ServerAsyncResponseWriter<ResponseType>,
+                ::grpc::ServerAsyncResponseWriter<ResponseType>,
                 Service,
                 ResponseType,
                 RequestType,
@@ -1036,11 +1036,11 @@ class RsGrpcServer {
           detail::RequestMethod<
               InnerService,
               RequestType,
-              grpc::ServerAsyncWriter<ResponseType>> method,
+              ::grpc::ServerAsyncWriter<ResponseType>> method,
           Callback &&callback) {
         RegisterMethodImpl<
             detail::ServerCallTraits<
-                grpc::ServerAsyncWriter<ResponseType>,
+                ::grpc::ServerAsyncWriter<ResponseType>,
                 Service,
                 ResponseType,
                 RequestType,
@@ -1059,11 +1059,11 @@ class RsGrpcServer {
       ServiceBuilder &RegisterMethod(
           detail::StreamingRequestMethod<
               InnerService,
-              grpc::ServerAsyncReader<ResponseType, RequestType>> method,
+              ::grpc::ServerAsyncReader<ResponseType, RequestType>> method,
           Callback &&callback) {
         RegisterMethodImpl<
             detail::ServerCallTraits<
-                grpc::ServerAsyncReader<ResponseType, RequestType>,
+                ::grpc::ServerAsyncReader<ResponseType, RequestType>,
                 Service,
                 ResponseType,
                 RequestType,
@@ -1082,11 +1082,12 @@ class RsGrpcServer {
       ServiceBuilder &RegisterMethod(
           detail::StreamingRequestMethod<
               InnerService,
-              grpc::ServerAsyncReaderWriter<ResponseType, RequestType>> method,
+              ::grpc::ServerAsyncReaderWriter<
+                  ResponseType, RequestType>> method,
           Callback &&callback) {
         RegisterMethodImpl<
             detail::ServerCallTraits<
-                grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
+                ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
                 Service,
                 ResponseType,
                 RequestType,
@@ -1130,7 +1131,7 @@ class RsGrpcServer {
       return ServiceBuilder<Service>(service, &invocation_requesters_);
     }
 
-    grpc::ServerBuilder &GrpcServerBuilder() {
+    ::grpc::ServerBuilder &GrpcServerBuilder() {
       return builder_;
     }
 
@@ -1158,7 +1159,7 @@ class RsGrpcServer {
     Services services_;
     std::vector<std::unique_ptr<detail::InvocationRequester>>
         invocation_requesters_;
-    grpc::ServerBuilder builder_;
+    ::grpc::ServerBuilder builder_;
   };
 
   /**
@@ -1181,7 +1182,7 @@ class RsGrpcServer {
    * Block and process one asynchronous event, with a timeout.
    */
   template <typename T>
-  grpc::CompletionQueue::NextStatus Next(const T& deadline) {
+  ::grpc::CompletionQueue::NextStatus Next(const T& deadline) {
     return detail::RsGrpcTag::ProcessOneEvent(cq_.get(), deadline);
   }
 
@@ -1205,8 +1206,8 @@ class RsGrpcServer {
   // them, so that they are valid while the server is servicing requests and
   // that they can be destroyed at the right time.
   Services services_;
-  std::unique_ptr<grpc::ServerCompletionQueue> cq_;
-  std::unique_ptr<grpc::Server> server_;
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_;
+  std::unique_ptr<::grpc::Server> server_;
   ::shk::CallContext ctx_;
 };
 

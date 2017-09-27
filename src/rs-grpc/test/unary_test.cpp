@@ -66,6 +66,8 @@ auto UnaryHangHandler(const CallContext &ctx, TestRequest &&request) {
 }  // anonymous namespace
 
 TEST_CASE("Unary RPC") {
+  using grpc::TestService;
+
   InitTests();
 
   // TODO(peck): Add support for server-side cancellation
@@ -76,7 +78,7 @@ TEST_CASE("Unary RPC") {
 
   RsGrpcServer::Builder server_builder;
   server_builder.GrpcServerBuilder()
-      .AddListeningPort(server_address, grpc::InsecureServerCredentials());
+      .AddListeningPort(server_address, ::grpc::InsecureServerCredentials());
 
   std::atomic<int> hang_on_seen_elements(0);
 
@@ -100,8 +102,8 @@ TEST_CASE("Unary RPC") {
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();
 
-  auto channel = grpc::CreateChannel(
-      server_address, grpc::InsecureChannelCredentials());
+  auto channel = ::grpc::CreateChannel(
+      server_address, ::grpc::InsecureChannelCredentials());
 
   auto test_client = MakeRsGrpcClient(TestService::NewStub(channel));
 
@@ -246,7 +248,7 @@ TEST_CASE("Unary RPC") {
         // There should be nothing on the runloop
         using namespace std::chrono_literals;
         auto deadline = std::chrono::system_clock::now() + 20ms;
-        CHECK(runloop.Next(deadline) == grpc::CompletionQueue::TIMEOUT);
+        CHECK(runloop.Next(deadline) == ::grpc::CompletionQueue::TIMEOUT);
       }
     }
   }
