@@ -36,7 +36,7 @@
 #include <rs/zip.h>
 #include <rs-grpc/server.h>
 
-#include "rs-grpc/test/rsgrpctest.grpc.pb.h"
+#include "rs-grpc/test/rsgrpctest.rsgrpc.pb.h"
 #include "test_util.h"
 
 namespace shk {
@@ -98,8 +98,6 @@ auto BidiStreamBackpressureViolationHandler(
 }  // anonymous namespace
 
 TEST_CASE("Bidi streaming RPC") {
-  using grpc::TestService;
-
   InitTests();
 
   auto server_address = "unix:rs_grpc_test.socket";
@@ -111,27 +109,28 @@ TEST_CASE("Bidi streaming RPC") {
   std::atomic<int> hang_on_seen_elements(0);
   std::shared_ptr<AnySubscription> hung_subscription;
 
-  server_builder.RegisterService<TestService::AsyncService>()
+  server_builder.RegisterService<grpc::TestService::AsyncService>()
       .RegisterMethod(
-          &TestService::AsyncService::RequestCumulativeSum,
+          &grpc::TestService::AsyncService::RequestCumulativeSum,
           &CumulativeSumHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestImmediatelyFailingCumulativeSum,
+          &grpc::TestService::AsyncService::
+              RequestImmediatelyFailingCumulativeSum,
           &ImmediatelyFailingCumulativeSumHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestFailingCumulativeSum,
+          &grpc::TestService::AsyncService::RequestFailingCumulativeSum,
           &FailingCumulativeSumHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestBidiStreamRequestZero,
+          &grpc::TestService::AsyncService::RequestBidiStreamRequestZero,
           &RequestZeroHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestBidiStreamHangOnZero,
+          &grpc::TestService::AsyncService::RequestBidiStreamHangOnZero,
           MakeHangOnZeroHandler(&hang_on_seen_elements, &hung_subscription))
       .RegisterMethod(
-          &TestService::AsyncService::RequestBidiStreamInfiniteResponse,
+          &grpc::TestService::AsyncService::RequestBidiStreamInfiniteResponse,
           &BidiStreamInfiniteResponseHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestBidiStreamBackpressureViolation,
+          &grpc::TestService::AsyncService::RequestBidiStreamBackpressureViolation,
           &BidiStreamBackpressureViolationHandler);
 
   RsGrpcClientRunloop runloop;
@@ -146,17 +145,14 @@ TEST_CASE("Bidi streaming RPC") {
       ::grpc::InsecureChannelCredentials(),
       channel_args);
 
-  auto test_client = MakeRsGrpcClient(TestService::NewStub(channel));
+  auto test_client = TestService::NewClient(channel);
 
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });
 
   SECTION("no messages") {
     Run(&runloop, Pipe(
-        test_client.Invoke(
-            ctx,
-            &TestService::Stub::AsyncCumulativeSum,
-            Empty()),
+        test_client->CumulativeSum(ctx, AnyPublisher<TestRequest>(Empty())),
         Count(),
         Map([](int count) {
           CHECK(count == 0);
@@ -180,10 +176,8 @@ TEST_CASE("Bidi streaming RPC") {
 
     SECTION("from client side") {
       SECTION("after Request") {
-        auto call = test_client.Invoke(
-            ctx,
-            &TestService::Stub::AsyncBidiStreamRequestZero,
-            Empty());
+        auto call = test_client->BidiStreamRequestZero(
+            ctx, AnyPublisher<TestRequest>(Empty()));
 
         auto subscription = call.Subscribe(std::move(null_subscriber));
         subscription.Request(ElementCount::Unbounded());
@@ -202,10 +196,9 @@ TEST_CASE("Bidi streaming RPC") {
       }
 
       SECTION("before Request") {
-        auto call = test_client.Invoke(
+        auto call = test_client->CumulativeSum(
             ctx,
-            &TestService::Stub::AsyncCumulativeSum,
-            Never());
+            AnyPublisher<TestRequest>(Never()));
 
         auto subscription = call.Subscribe(std::move(null_subscriber));
         subscription.Cancel();
@@ -231,10 +224,9 @@ TEST_CASE("Bidi streaming RPC") {
                   });
             });
 
-        auto call = test_client.Invoke(
+        auto call = test_client->BidiStreamRequestZero(
             ctx,
-            &TestService::Stub::AsyncBidiStreamRequestZero,
-            detect_cancel);
+            AnyPublisher<TestRequest>(detect_cancel));
 
         auto subscription = call.Subscribe(std::move(null_subscriber));
         subscription.Request(ElementCount::Unbounded());
@@ -254,10 +246,9 @@ TEST_CASE("Bidi streaming RPC") {
   SECTION("backpressure") {
     int latest_seen_response = 0;
     auto publisher = Pipe(
-        test_client.Invoke(
+        test_client->CumulativeSum(
             ctx,
-            &TestService::Stub::AsyncCumulativeSum,
-            Repeat(MakeTestRequest(1), 10)),
+            AnyPublisher<TestRequest>(Repeat(MakeTestRequest(1), 10))),
         Map([&latest_seen_response](TestResponse &&response) {
           CHECK(++latest_seen_response == response.data());
           return "ignored";
@@ -305,10 +296,9 @@ TEST_CASE("Bidi streaming RPC") {
 
     SECTION("make call that never requests elements") {
       auto publisher = Pipe(
-          test_client.Invoke(
+          test_client->BidiStreamRequestZero(
               ctx,
-              &TestService::Stub::AsyncBidiStreamRequestZero,
-              Just(MakeTestRequest(432))),
+              AnyPublisher<TestRequest>(Just(MakeTestRequest(432)))),
           Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
@@ -319,13 +309,12 @@ TEST_CASE("Bidi streaming RPC") {
 
     SECTION("make call that requests one element") {
       auto publisher = Pipe(
-          test_client.Invoke(
+          test_client->BidiStreamHangOnZero(
               ctx,
-              &TestService::Stub::AsyncBidiStreamHangOnZero,
-              Just(
+              AnyPublisher<TestRequest>(Just(
                   MakeTestRequest(1),
                   MakeTestRequest(0),  // Hang on this one
-                  MakeTestRequest(1))),
+                  MakeTestRequest(1)))),
           Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
@@ -341,14 +330,13 @@ TEST_CASE("Bidi streaming RPC") {
 
     SECTION("make call that requests two elements") {
       auto publisher = Pipe(
-          test_client.Invoke(
+          test_client->BidiStreamHangOnZero(
               ctx,
-              &TestService::Stub::AsyncBidiStreamHangOnZero,
-              Just(
+              AnyPublisher<TestRequest>(Just(
                   MakeTestRequest(1),
                   MakeTestRequest(2),
                   MakeTestRequest(0),  // Hang on this one
-                  MakeTestRequest(1))),
+                  MakeTestRequest(1)))),
           Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
@@ -374,10 +362,9 @@ TEST_CASE("Bidi streaming RPC") {
       // server does not do), then this will smash the stack or run out of
       // memory.
       auto publisher = Pipe(
-          test_client.Invoke(
+          test_client->BidiStreamRequestZero(
               ctx,
-              &TestService::Stub::AsyncBidiStreamRequestZero,
-              MakeInfiniteRequest()),
+              AnyPublisher<TestRequest>(MakeInfiniteRequest())),
           Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
@@ -389,10 +376,9 @@ TEST_CASE("Bidi streaming RPC") {
     }
 
     SECTION("Request one element from infinite response stream") {
-      auto request = test_client.Invoke(
+      auto request = test_client->BidiStreamInfiniteResponse(
           ctx,
-          &TestService::Stub::AsyncBidiStreamInfiniteResponse,
-          Empty());
+          AnyPublisher<TestRequest>(Empty()));
 
       auto subscription = request.Subscribe(MakeSubscriber());
       subscription.Request(ElementCount(1));
@@ -409,26 +395,24 @@ TEST_CASE("Bidi streaming RPC") {
 
     SECTION("violate backpressure in provided publisher (client side)") {
       auto publisher = Pipe(
-          test_client.Invoke(
+          test_client->CumulativeSum(
               ctx,
-              &TestService::Stub::AsyncCumulativeSum,
-              MakePublisher([](auto &&subscriber) {
+              AnyPublisher<TestRequest>(MakePublisher([](auto &&subscriber) {
                 // Emit element before it was asked for: streams should not do
                 // this.
                 subscriber.OnNext(MakeTestRequest(1));
                 subscriber.OnNext(MakeTestRequest(2));
                 return MakeSubscription();
-              })));
+              }))));
       auto error = RunExpectError(&runloop, publisher);
       CHECK(ExceptionMessage(error) == "Backpressure violation");
     }
 
     SECTION("violate backpressure in provided publisher (server side)") {
       auto publisher = Pipe(
-          test_client.Invoke(
+          test_client->BidiStreamBackpressureViolation(
               ctx,
-              &TestService::Stub::AsyncBidiStreamBackpressureViolation,
-              Empty()));
+              AnyPublisher<TestRequest>(Empty())));
       auto error = RunExpectError(&runloop, publisher);
       CHECK(ExceptionMessage(error) == "Backpressure violation");
     }
@@ -436,10 +420,9 @@ TEST_CASE("Bidi streaming RPC") {
 
   SECTION("one message") {
     Run(&runloop, Pipe(
-        test_client.Invoke(
+        test_client->CumulativeSum(
             ctx,
-            &TestService::Stub::AsyncCumulativeSum,
-            Just(MakeTestRequest(1337))),
+            AnyPublisher<TestRequest>(Just(MakeTestRequest(1337)))),
         Map([](TestResponse &&response) {
           CHECK(response.data() == 1337);
           return "ignored";
@@ -453,30 +436,29 @@ TEST_CASE("Bidi streaming RPC") {
 
   SECTION("immediately failed stream") {
     auto error = RunExpectError(&runloop, 
-        test_client.Invoke(
+        test_client->CumulativeSum(
             ctx,
-            &TestService::Stub::AsyncCumulativeSum,
-            Throw(std::runtime_error("test_error"))));
+            AnyPublisher<TestRequest>(
+                Throw(std::runtime_error("test_error")))));
     CHECK(ExceptionMessage(error) == "test_error");
   }
 
   SECTION("stream failed after one message") {
     auto error = RunExpectError(&runloop, test_client
-        .Invoke(
+        ->CumulativeSum(
             ctx,
-            &TestService::Stub::AsyncCumulativeSum,
-            Concat(
+            AnyPublisher<TestRequest>(Concat(
                 Just(MakeTestRequest(0)),
-                Throw(std::runtime_error("test_error")))));
+                Throw(std::runtime_error("test_error"))))));
     CHECK(ExceptionMessage(error) == "test_error");
   }
 
   SECTION("two message") {
     Run(&runloop, Pipe(
-        test_client.Invoke(
+        test_client->CumulativeSum(
             ctx,
-            &TestService::Stub::AsyncCumulativeSum,
-            Just(MakeTestRequest(10), MakeTestRequest(20))),
+            AnyPublisher<TestRequest>(
+                Just(MakeTestRequest(10), MakeTestRequest(20)))),
         Map([](TestResponse &&response) {
           return response.data();
         }),
@@ -489,10 +471,9 @@ TEST_CASE("Bidi streaming RPC") {
 
   SECTION("no messages then fail") {
     auto error = RunExpectError(&runloop, Pipe(
-        test_client.Invoke(
+        test_client->ImmediatelyFailingCumulativeSum(
             ctx,
-            &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
-            Empty()),
+            AnyPublisher<TestRequest>(Empty())),
         Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
@@ -502,10 +483,9 @@ TEST_CASE("Bidi streaming RPC") {
 
   SECTION("message then immediately fail") {
     auto error = RunExpectError(&runloop, Pipe(
-        test_client.Invoke(
+        test_client->ImmediatelyFailingCumulativeSum(
             ctx,
-            &TestService::Stub::AsyncImmediatelyFailingCumulativeSum,
-            Just(MakeTestRequest(1337))),
+            AnyPublisher<TestRequest>(Just(MakeTestRequest(1337)))),
         Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
@@ -515,10 +495,9 @@ TEST_CASE("Bidi streaming RPC") {
 
   SECTION("fail on first message") {
     auto error = RunExpectError(&runloop, Pipe(
-        test_client.Invoke(
+        test_client->FailingCumulativeSum(
             ctx,
-            &TestService::Stub::AsyncFailingCumulativeSum,
-            Just(MakeTestRequest(-1))),
+            AnyPublisher<TestRequest>(Just(MakeTestRequest(-1)))),
         Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
@@ -529,10 +508,10 @@ TEST_CASE("Bidi streaming RPC") {
   SECTION("fail on second message") {
     int count = 0;
     auto error = RunExpectError(&runloop, Pipe(
-        test_client.Invoke(
+        test_client->FailingCumulativeSum(
             ctx,
-            &TestService::Stub::AsyncFailingCumulativeSum,
-            Just(MakeTestRequest(321), MakeTestRequest(-1))),
+            AnyPublisher<TestRequest>(
+                Just(MakeTestRequest(321), MakeTestRequest(-1)))),
         Map([&count](TestResponse &&response) {
           CHECK(response.data() == 321);
           count++;
@@ -544,10 +523,10 @@ TEST_CASE("Bidi streaming RPC") {
 
   SECTION("two calls") {
     auto call_0 = Pipe(
-        test_client.Invoke(
+        test_client->CumulativeSum(
             ctx,
-            &TestService::Stub::AsyncCumulativeSum,
-            Just(MakeTestRequest(10), MakeTestRequest(20))),
+            AnyPublisher<TestRequest>(
+                Just(MakeTestRequest(10), MakeTestRequest(20)))),
         Map([](TestResponse &&response) {
           return response.data();
         }),
@@ -558,10 +537,10 @@ TEST_CASE("Bidi streaming RPC") {
         }));
 
     auto call_1 = Pipe(
-        test_client.Invoke(
+        test_client->CumulativeSum(
             ctx,
-            &TestService::Stub::AsyncCumulativeSum,
-            Just(MakeTestRequest(1), MakeTestRequest(2))),
+            AnyPublisher<TestRequest>(
+                Just(MakeTestRequest(1), MakeTestRequest(2)))),
         Map([](TestResponse &&response) {
           return response.data();
         }),
@@ -576,10 +555,10 @@ TEST_CASE("Bidi streaming RPC") {
 
   SECTION("same call twice") {
     auto call = Pipe(
-        test_client.Invoke(
+        test_client->CumulativeSum(
             ctx,
-            &TestService::Stub::AsyncCumulativeSum,
-            Just(MakeTestRequest(10), MakeTestRequest(20))),
+            AnyPublisher<TestRequest>(
+                Just(MakeTestRequest(10), MakeTestRequest(20)))),
         Map([](TestResponse &&response) {
           return response.data();
         }),

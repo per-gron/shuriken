@@ -35,7 +35,7 @@
 #include <rs/zip.h>
 #include <rs-grpc/server.h>
 
-#include "rs-grpc/test/rsgrpctest.grpc.pb.h"
+#include "rs-grpc/test/rsgrpctest.rsgrpc.pb.h"
 #include "test_util.h"
 
 namespace shk {
@@ -66,8 +66,6 @@ auto UnaryHangHandler(const CallContext &ctx, TestRequest &&request) {
 }  // anonymous namespace
 
 TEST_CASE("Unary RPC") {
-  using grpc::TestService;
-
   InitTests();
 
   // TODO(peck): Add support for server-side cancellation
@@ -82,21 +80,21 @@ TEST_CASE("Unary RPC") {
 
   std::atomic<int> hang_on_seen_elements(0);
 
-  server_builder.RegisterService<TestService::AsyncService>()
+  server_builder.RegisterService<grpc::TestService::AsyncService>()
       .RegisterMethod(
-          &TestService::AsyncService::RequestDouble,
+          &grpc::TestService::AsyncService::RequestDouble,
           &DoubleHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestUnaryFail,
+          &grpc::TestService::AsyncService::RequestUnaryFail,
           &UnaryFailHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestUnaryNoResponse,
+          &grpc::TestService::AsyncService::RequestUnaryNoResponse,
           &UnaryNoResponseHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestUnaryTwoResponses,
+          &grpc::TestService::AsyncService::RequestUnaryTwoResponses,
           &UnaryTwoResponsesHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestUnaryHang,
+          &grpc::TestService::AsyncService::RequestUnaryHang,
           &UnaryHangHandler);
 
   RsGrpcClientRunloop runloop;
@@ -105,7 +103,7 @@ TEST_CASE("Unary RPC") {
   auto channel = ::grpc::CreateChannel(
       server_address, ::grpc::InsecureChannelCredentials());
 
-  auto test_client = MakeRsGrpcClient(TestService::NewStub(channel));
+  auto test_client = TestService::NewClient(channel);
 
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });
@@ -115,8 +113,7 @@ TEST_CASE("Unary RPC") {
 
   SECTION("direct") {
     Run(&runloop, Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+        test_client->Double(ctx, MakeTestRequest(123)),
         Map([](TestResponse &&response) {
           CHECK(response.data() == 123 * 2);
           return "ignored";
@@ -126,8 +123,7 @@ TEST_CASE("Unary RPC") {
   SECTION("backpressure") {
     SECTION("call Invoke but don't request a value") {
       auto publisher = Pipe(
-          test_client.Invoke(
-              ctx, &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+          test_client->Double(ctx, MakeTestRequest(123)),
           Map([](TestResponse &&response) {
             CHECK(!"should not be invoked");
             return "ignored";
@@ -138,8 +134,7 @@ TEST_CASE("Unary RPC") {
 
   SECTION("Request twice") {
     auto request = Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+        test_client->Double(ctx, MakeTestRequest(123)),
         Map([](TestResponse &&response) {
           CHECK(response.data() == 123 * 2);
           return "ignored";
@@ -152,8 +147,7 @@ TEST_CASE("Unary RPC") {
 
   SECTION("failed RPC") {
     auto error = RunExpectError(&runloop, Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncUnaryFail, MakeTestRequest(0)),
+        test_client->UnaryFail(ctx, MakeTestRequest(0)),
         Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
@@ -163,8 +157,7 @@ TEST_CASE("Unary RPC") {
 
   SECTION("failed RPC because of no response") {
     auto error = RunExpectError(&runloop, Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncUnaryNoResponse, MakeTestRequest(0)),
+        test_client->UnaryNoResponse(ctx, MakeTestRequest(0)),
         Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
@@ -174,10 +167,7 @@ TEST_CASE("Unary RPC") {
 
   SECTION("failed RPC because of two responses") {
     auto error = RunExpectError(&runloop, Pipe(
-        test_client.Invoke(
-            ctx,
-            &TestService::Stub::AsyncUnaryTwoResponses,
-            MakeTestRequest(0)),
+        test_client->UnaryTwoResponses(ctx, MakeTestRequest(0)),
         Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
@@ -186,10 +176,7 @@ TEST_CASE("Unary RPC") {
   }
 
   SECTION("RPC that never completes") {
-    auto call = test_client.Invoke(
-        ctx,
-        &TestService::Stub::AsyncUnaryHang,
-        MakeTestRequest(0));
+    auto call = test_client->UnaryHang(ctx, MakeTestRequest(0));
 
     auto error = RunExpectError(&runloop, call);
     CHECK(ExceptionMessage(error) == "Cancelled");
@@ -198,10 +185,7 @@ TEST_CASE("Unary RPC") {
   SECTION("cancellation") {
     SECTION("from client side") {
       SECTION("after Request") {
-        auto call = test_client.Invoke(
-            ctx,
-            &TestService::Stub::AsyncUnaryHang,
-            MakeTestRequest(0));
+        auto call = test_client->UnaryHang(ctx, MakeTestRequest(0));
 
         auto subscription = call
             .Subscribe(MakeSubscriber(
@@ -224,10 +208,7 @@ TEST_CASE("Unary RPC") {
       }
 
       SECTION("before Request") {
-        auto call = test_client.Invoke(
-            ctx,
-            &TestService::Stub::AsyncDouble,
-            MakeTestRequest(0));
+        auto call = test_client->Double(ctx, MakeTestRequest(0));
 
         auto subscription = call
             .Subscribe(MakeSubscriber(
@@ -257,8 +238,7 @@ TEST_CASE("Unary RPC") {
     // This test can break if invoke doesn't take ownership of the request for
     // example.
     auto call = Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncDouble, MakeTestRequest(123)),
+        test_client->Double(ctx, MakeTestRequest(123)),
         Map([](TestResponse &&response) {
           CHECK(response.data() == 123 * 2);
           return "ignored";
@@ -267,10 +247,8 @@ TEST_CASE("Unary RPC") {
   }
 
   SECTION("two calls") {
-    auto call_a = test_client.Invoke(
-        ctx, &TestService::Stub::AsyncDouble, MakeTestRequest(123));
-    auto call_b = test_client.Invoke(
-        ctx, &TestService::Stub::AsyncDouble, MakeTestRequest(321));
+    auto call_a = test_client->Double(ctx, MakeTestRequest(123));
+    auto call_b = test_client->Double(ctx, MakeTestRequest(321));
     Run(&runloop, Pipe(
         Zip<std::tuple<TestResponse, TestResponse>>(call_a, call_b),
         Map(Splat([](TestResponse &&a, TestResponse &&b) {
@@ -281,8 +259,7 @@ TEST_CASE("Unary RPC") {
   }
 
   SECTION("same call twice") {
-    auto call = test_client.Invoke(
-        ctx, &TestService::Stub::AsyncDouble, MakeTestRequest(123));
+    auto call = test_client->Double(ctx, MakeTestRequest(123));
     Run(&runloop, Pipe(
         Zip<std::tuple<TestResponse, TestResponse>>(call, call),
         Map(Splat([](TestResponse &&a, TestResponse &&b) {

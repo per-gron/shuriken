@@ -37,7 +37,7 @@
 #include <rs/zip.h>
 #include <rs-grpc/server.h>
 
-#include "rs-grpc/test/rsgrpctest.grpc.pb.h"
+#include "rs-grpc/test/rsgrpctest.rsgrpc.pb.h"
 #include "test_util.h"
 
 namespace shk {
@@ -125,8 +125,6 @@ auto ServerStreamAsyncResponseHandler(AsyncResponder *responder) {
 }  // anonymous namespace
 
 TEST_CASE("Server streaming RPC") {
-  using grpc::TestService;
-
   InitTests();
 
   auto server_address = "unix:rs_grpc_test.socket";
@@ -137,24 +135,25 @@ TEST_CASE("Server streaming RPC") {
 
   AsyncResponder async_responder;
 
-  server_builder.RegisterService<TestService::AsyncService>()
+  server_builder.RegisterService<grpc::TestService::AsyncService>()
       .RegisterMethod(
-          &TestService::AsyncService::RequestRepeat,
+          &grpc::TestService::AsyncService::RequestRepeat,
           &RepeatHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestRepeatThenFail,
+          &grpc::TestService::AsyncService::RequestRepeatThenFail,
           &RepeatThenFailHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestServerStreamHang,
+          &grpc::TestService::AsyncService::RequestServerStreamHang,
           &ServerStreamHangHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestInfiniteRepeat,
+          &grpc::TestService::AsyncService::RequestInfiniteRepeat,
           &InfiniteRepeatHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestServerStreamBackpressureViolation,
+          &grpc::TestService::AsyncService::
+              RequestServerStreamBackpressureViolation,
           &ServerStreamBackpressureViolationHandler)
       .RegisterMethod(
-          &TestService::AsyncService::RequestServerStreamAsyncResponse,
+          &grpc::TestService::AsyncService::RequestServerStreamAsyncResponse,
           ServerStreamAsyncResponseHandler(&async_responder));
 
   RsGrpcClientRunloop runloop;
@@ -163,15 +162,14 @@ TEST_CASE("Server streaming RPC") {
   auto channel = ::grpc::CreateChannel(
       server_address, ::grpc::InsecureChannelCredentials());
 
-  auto test_client = MakeRsGrpcClient(TestService::NewStub(channel));
+  auto test_client = TestService::NewClient(channel);
 
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });
 
   SECTION("no responses") {
     Run(&runloop, Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(0)),
+        test_client->Repeat(ctx, MakeTestRequest(0)),
         Map([](TestResponse &&response) {
           // Should never be called; this should be a stream that ends
           // without any values
@@ -184,10 +182,7 @@ TEST_CASE("Server streaming RPC") {
     SECTION("from client side") {
 #if 0  // TODO(peck): This test is racy, it sometimes leaks memory
       SECTION("after Request") {
-        auto call = test_client.Invoke(
-            ctx,
-            &TestService::Stub::AsyncServerStreamHang,
-            MakeTestRequest(0));
+        auto call = test_client->ServerStreamHang(ctx, MakeTestRequest(0));
 
         bool cancelled = false;
         auto subscription = call
@@ -219,10 +214,7 @@ TEST_CASE("Server streaming RPC") {
 #endif
 
       SECTION("before Request") {
-        auto call = test_client.Invoke(
-            ctx,
-            &TestService::Stub::AsyncRepeat,
-            MakeTestRequest(1));
+        auto call = test_client->Repeat(ctx, MakeTestRequest(1));
 
         auto subscription = call
             .Subscribe(MakeSubscriber(
@@ -251,8 +243,7 @@ TEST_CASE("Server streaming RPC") {
   SECTION("backpressure") {
     int latest_seen_response = 0;
     auto publisher = Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(10)),
+        test_client->Repeat(ctx, MakeTestRequest(10)),
         Map([&latest_seen_response](TestResponse &&response) {
           CHECK(++latest_seen_response == response.data());
           return "ignored";
@@ -329,8 +320,7 @@ TEST_CASE("Server streaming RPC") {
     }
 
     SECTION("Request one element from infinite stream") {
-      auto request = test_client.Invoke(
-          ctx, &TestService::Stub::AsyncInfiniteRepeat, MakeTestRequest(0));
+      auto request = test_client->InfiniteRepeat(ctx, MakeTestRequest(0));
 
       auto subscription = request.Subscribe(MakeSubscriber());
       subscription.Request(ElementCount(1));
@@ -343,10 +333,8 @@ TEST_CASE("Server streaming RPC") {
 
     SECTION("violate backpressure in provided publisher (server side)") {
       auto publisher = Pipe(
-          test_client.Invoke(
-              ctx,
-              &TestService::Stub::AsyncServerStreamBackpressureViolation,
-              MakeTestRequest(0)));
+          test_client->ServerStreamBackpressureViolation(
+              ctx, MakeTestRequest(0)));
       auto error = RunExpectError(&runloop, publisher);
       CHECK(ExceptionMessage(error) == "Backpressure violation");
     }
@@ -354,8 +342,7 @@ TEST_CASE("Server streaming RPC") {
 
   SECTION("one response") {
     Run(&runloop, Pipe(
-        test_client
-            .Invoke(ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(1)),
+        test_client->Repeat(ctx, MakeTestRequest(1)),
         Map([](TestResponse &&response) {
           CHECK(response.data() == 1);
           return "ignored";
@@ -368,8 +355,7 @@ TEST_CASE("Server streaming RPC") {
   }
 
   SECTION("two responses") {
-    auto responses = test_client.Invoke(
-        ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(2));
+    auto responses = test_client->Repeat(ctx, MakeTestRequest(2));
 
     auto check_count = Pipe(
         responses,
@@ -395,8 +381,7 @@ TEST_CASE("Server streaming RPC") {
 
   SECTION("no responses then fail") {
     auto error = RunExpectError(&runloop, Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(0)),
+        test_client->RepeatThenFail(ctx, MakeTestRequest(0)),
         Map([](TestResponse &&response) {
           CHECK(!"should not happen");
           return "unused";
@@ -407,8 +392,7 @@ TEST_CASE("Server streaming RPC") {
   SECTION("one response then fail") {
     int count = 0;
     auto error = RunExpectError(&runloop, Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(1)),
+        test_client->RepeatThenFail(ctx, MakeTestRequest(1)),
         Map([&count](TestResponse &&response) {
           count++;
           return "unused";
@@ -420,8 +404,7 @@ TEST_CASE("Server streaming RPC") {
   SECTION("two responses then fail") {
     int count = 0;
     auto error = RunExpectError(&runloop, Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncRepeatThenFail, MakeTestRequest(2)),
+        test_client->RepeatThenFail(ctx, MakeTestRequest(2)),
         Map([&count](TestResponse &&response) {
           count++;
           return "unused";
@@ -432,8 +415,7 @@ TEST_CASE("Server streaming RPC") {
 
   SECTION("two calls") {
     auto responses_1 = Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(2)),
+        test_client->Repeat(ctx, MakeTestRequest(2)),
         Map([](TestResponse &&response) {
           return response.data();
         }),
@@ -444,8 +426,7 @@ TEST_CASE("Server streaming RPC") {
         }));
 
     auto responses_2 = Pipe(
-        test_client.Invoke(
-            ctx, &TestService::Stub::AsyncRepeat, MakeTestRequest(3)),
+        test_client->Repeat(ctx, MakeTestRequest(3)),
         Map([](TestResponse &&response) {
           return response.data();
         }),
@@ -460,10 +441,7 @@ TEST_CASE("Server streaming RPC") {
 
   SECTION("asynchronous response") {
     auto stream = Pipe(
-        test_client.Invoke(
-            ctx,
-            &TestService::Stub::AsyncServerStreamAsyncResponse,
-            MakeTestRequest(1)),
+        test_client->ServerStreamAsyncResponse(ctx, MakeTestRequest(1)),
         Map([](TestResponse &&response) {
           CHECK(response.data() == 1);
           return "ignored";
