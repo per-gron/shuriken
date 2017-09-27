@@ -135,25 +135,26 @@ TEST_CASE("Server streaming RPC") {
 
   AsyncResponder async_responder;
 
-  server_builder.RegisterService<grpc::TestService::AsyncService>()
+  server_builder.RegisterService<grpc::ServerStreamingTest::AsyncService>()
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestRepeat,
+          &grpc::ServerStreamingTest::AsyncService::RequestRepeat,
           &RepeatHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestRepeatThenFail,
+          &grpc::ServerStreamingTest::AsyncService::RequestRepeatThenFail,
           &RepeatThenFailHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestServerStreamHang,
+          &grpc::ServerStreamingTest::AsyncService::RequestServerStreamHang,
           &ServerStreamHangHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestInfiniteRepeat,
+          &grpc::ServerStreamingTest::AsyncService::RequestInfiniteRepeat,
           &InfiniteRepeatHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::
+          &grpc::ServerStreamingTest::AsyncService::
               RequestServerStreamBackpressureViolation,
           &ServerStreamBackpressureViolationHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestServerStreamAsyncResponse,
+          &grpc::ServerStreamingTest::AsyncService::
+              RequestServerStreamAsyncResponse,
           ServerStreamAsyncResponseHandler(&async_responder));
 
   RsGrpcClientRunloop runloop;
@@ -162,7 +163,7 @@ TEST_CASE("Server streaming RPC") {
   auto channel = ::grpc::CreateChannel(
       server_address, ::grpc::InsecureChannelCredentials());
 
-  auto test_client = TestService::NewClient(channel);
+  auto test_client = ServerStreamingTest::NewClient(channel);
 
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });

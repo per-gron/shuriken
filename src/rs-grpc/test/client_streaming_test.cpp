@@ -113,30 +113,35 @@ TEST_CASE("Client streaming RPC") {
   std::atomic<int> hang_on_seen_elements(0);
   std::shared_ptr<AnySubscription> hung_subscription;
 
-  server_builder.RegisterService<grpc::TestService::AsyncService>()
+  server_builder.RegisterService<grpc::ClientStreamingTest::AsyncService>()
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestSum,
+          &grpc::ClientStreamingTest::AsyncService::RequestSum,
           &SumHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestImmediatelyFailingSum,
+          &grpc::ClientStreamingTest::AsyncService::
+              RequestImmediatelyFailingSum,
           &ImmediatelyFailingSumHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestFailingSum,
+          &grpc::ClientStreamingTest::AsyncService::RequestFailingSum,
           &FailingSumHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestClientStreamNoResponse,
+          &grpc::ClientStreamingTest::AsyncService::
+              RequestClientStreamNoResponse,
           &ClientStreamNoResponseHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestClientStreamTwoResponses,
+          &grpc::ClientStreamingTest::AsyncService::
+              RequestClientStreamTwoResponses,
           &ClientStreamTwoResponsesHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestClientStreamRequestZero,
+          &grpc::ClientStreamingTest::AsyncService::
+              RequestClientStreamRequestZero,
           &RequestZeroHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestClientStreamHangOnZero,
+          &grpc::ClientStreamingTest::AsyncService::
+              RequestClientStreamHangOnZero,
           MakeHangOnZeroHandler(&hang_on_seen_elements, &hung_subscription))
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestClientStreamEchoAll,
+          &grpc::ClientStreamingTest::AsyncService::RequestClientStreamEchoAll,
           &ClientStreamEchoAllHandler);
 
   RsGrpcClientRunloop runloop;
@@ -151,7 +156,7 @@ TEST_CASE("Client streaming RPC") {
       ::grpc::InsecureChannelCredentials(),
       channel_args);
 
-  auto test_client = TestService::NewClient(channel);
+  auto test_client = ClientStreamingTest::NewClient(channel);
 
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });

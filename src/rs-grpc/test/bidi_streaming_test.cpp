@@ -109,28 +109,30 @@ TEST_CASE("Bidi streaming RPC") {
   std::atomic<int> hang_on_seen_elements(0);
   std::shared_ptr<AnySubscription> hung_subscription;
 
-  server_builder.RegisterService<grpc::TestService::AsyncService>()
+  server_builder.RegisterService<grpc::BidiStreamingTest::AsyncService>()
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestCumulativeSum,
+          &grpc::BidiStreamingTest::AsyncService::RequestCumulativeSum,
           &CumulativeSumHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::
+          &grpc::BidiStreamingTest::AsyncService::
               RequestImmediatelyFailingCumulativeSum,
           &ImmediatelyFailingCumulativeSumHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestFailingCumulativeSum,
+          &grpc::BidiStreamingTest::AsyncService::RequestFailingCumulativeSum,
           &FailingCumulativeSumHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestBidiStreamRequestZero,
+          &grpc::BidiStreamingTest::AsyncService::RequestBidiStreamRequestZero,
           &RequestZeroHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestBidiStreamHangOnZero,
+          &grpc::BidiStreamingTest::AsyncService::RequestBidiStreamHangOnZero,
           MakeHangOnZeroHandler(&hang_on_seen_elements, &hung_subscription))
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestBidiStreamInfiniteResponse,
+          &grpc::BidiStreamingTest::AsyncService::
+              RequestBidiStreamInfiniteResponse,
           &BidiStreamInfiniteResponseHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestBidiStreamBackpressureViolation,
+          &grpc::BidiStreamingTest::AsyncService::
+              RequestBidiStreamBackpressureViolation,
           &BidiStreamBackpressureViolationHandler);
 
   RsGrpcClientRunloop runloop;
@@ -145,7 +147,7 @@ TEST_CASE("Bidi streaming RPC") {
       ::grpc::InsecureChannelCredentials(),
       channel_args);
 
-  auto test_client = TestService::NewClient(channel);
+  auto test_client = BidiStreamingTest::NewClient(channel);
 
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });

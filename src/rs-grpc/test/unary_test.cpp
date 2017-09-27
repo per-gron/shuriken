@@ -80,21 +80,21 @@ TEST_CASE("Unary RPC") {
 
   std::atomic<int> hang_on_seen_elements(0);
 
-  server_builder.RegisterService<grpc::TestService::AsyncService>()
+  server_builder.RegisterService<grpc::UnaryTest::AsyncService>()
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestDouble,
+          &grpc::UnaryTest::AsyncService::RequestDouble,
           &DoubleHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestUnaryFail,
+          &grpc::UnaryTest::AsyncService::RequestUnaryFail,
           &UnaryFailHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestUnaryNoResponse,
+          &grpc::UnaryTest::AsyncService::RequestUnaryNoResponse,
           &UnaryNoResponseHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestUnaryTwoResponses,
+          &grpc::UnaryTest::AsyncService::RequestUnaryTwoResponses,
           &UnaryTwoResponsesHandler)
       .RegisterMethod(
-          &grpc::TestService::AsyncService::RequestUnaryHang,
+          &grpc::UnaryTest::AsyncService::RequestUnaryHang,
           &UnaryHangHandler);
 
   RsGrpcClientRunloop runloop;
@@ -103,7 +103,7 @@ TEST_CASE("Unary RPC") {
   auto channel = ::grpc::CreateChannel(
       server_address, ::grpc::InsecureChannelCredentials());
 
-  auto test_client = TestService::NewClient(channel);
+  auto test_client = UnaryTest::NewClient(channel);
 
   auto server = server_builder.BuildAndStart();
   std::thread server_thread([&] { server.Run(); });

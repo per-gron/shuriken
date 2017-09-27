@@ -2,13 +2,15 @@ syntax = "proto3";
 
 package shk;
 
-service TestService {
+service UnaryTest {
   rpc Double (TestRequest) returns (TestResponse) {}
   rpc UnaryFail (TestRequest) returns (TestResponse) {}
   rpc UnaryNoResponse (TestRequest) returns (TestResponse) {}
   rpc UnaryTwoResponses (TestRequest) returns (TestResponse) {}
   rpc UnaryHang (TestRequest) returns (TestResponse) {}
+}
 
+service ServerStreamingTest {
   rpc Repeat (TestRequest) returns (stream TestResponse) {}
   rpc RepeatThenFail (TestRequest) returns (stream TestResponse) {}
   rpc ServerStreamHang (TestRequest) returns (stream TestResponse) {}
@@ -16,7 +18,9 @@ service TestService {
   rpc ServerStreamBackpressureViolation (TestRequest)
       returns (stream TestResponse) {}
   rpc ServerStreamAsyncResponse (TestRequest) returns (stream TestResponse) {}
+}
 
+service ClientStreamingTest {
   rpc Sum (stream TestRequest) returns (TestResponse) {}
   rpc ImmediatelyFailingSum (stream TestRequest) returns (TestResponse) {}
   rpc FailingSum (stream TestRequest) returns (TestResponse) {}
@@ -25,7 +29,9 @@ service TestService {
   rpc ClientStreamRequestZero (stream TestRequest) returns (TestResponse) {}
   rpc ClientStreamHangOnZero (stream TestRequest) returns (TestResponse) {}
   rpc ClientStreamEchoAll (stream TestRequest) returns (TestResponse) {}
+}
 
+service BidiStreamingTest {
   rpc CumulativeSum(stream TestRequest) returns (stream TestResponse) {}
   rpc ImmediatelyFailingCumulativeSum (stream TestRequest)
       returns (stream TestResponse) {}
