@@ -29,6 +29,7 @@
 #include <rs-grpc/call_context.h>
 #include <rs-grpc/client.h>
 #include <rs-grpc/grpc_error.h>
+#include <rs-grpc/service.h>
 
 namespace shk {
 namespace detail {
@@ -72,8 +73,9 @@ using StreamingRequestMethod = void (Service::*)(
 template <
     // ::grpc::ServerAsyncResponseWriter<ResponseType> (non-streaming) or
     // ::grpc::ServerAsyncWriter<ResponseType> (streaming response) or
-    // ::grpc::ServerAsyncReader<ResponseType, RequestType> (streaming request) or
-    // ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType> (bidi streaming)
+    // ::grpc::ServerAsyncReader<ResponseType, RequestType> (streaming request)
+    // or ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType> (bidi
+    // streaming)
     typename StreamType,
     // Generated service class
     typename ServiceType,
@@ -969,13 +971,16 @@ class RsGrpcServerCallRequester : public InvocationRequester {
 
 class RsGrpcServer {
   using ServiceRef = std::unique_ptr<void, std::function<void (void *)>>;
-  using Services = std::vector<ServiceRef>;
+  using GrpcServices = std::vector<ServiceRef>;
+  using RsServices = std::vector<std::unique_ptr<Service>>;
  public:
   RsGrpcServer(
-      Services &&services,
+      GrpcServices &&grpc_services,
+      RsServices &&rs_services,
       std::unique_ptr<::grpc::ServerCompletionQueue> &&cq,
       std::unique_ptr<::grpc::Server> &&server)
-      : services_(std::move(services)),
+      : grpc_services_(std::move(grpc_services)),
+        rs_services_(std::move(rs_services)),
         cq_(std::move(cq)),
         server_(std::move(server)),
         ctx_(detail::CallContextBuilder::Build(cq_.get())) {}
@@ -1121,14 +1126,16 @@ class RsGrpcServer {
           invocation_requesters_;
     };
 
-    template <typename Service>
-    ServiceBuilder<Service> RegisterService() {
-      auto service = new Service();
-      services_.emplace_back(service, [](void *service) {
-        delete reinterpret_cast<Service *>(service);
+    template <typename GrpcService, typename RsService>
+    ServiceBuilder<GrpcService> RegisterService(
+        std::unique_ptr<RsService> rs_service) {
+      auto service = new GrpcService();
+      grpc_services_.emplace_back(service, [](void *service) {
+        delete reinterpret_cast<GrpcService *>(service);
       });
+      rs_services_.push_back(std::move(rs_service));
       builder_.RegisterService(service);
-      return ServiceBuilder<Service>(service, &invocation_requesters_);
+      return ServiceBuilder<GrpcService>(service, &invocation_requesters_);
     }
 
     ::grpc::ServerBuilder &GrpcServerBuilder() {
@@ -1141,7 +1148,8 @@ class RsGrpcServer {
      */
     RsGrpcServer BuildAndStart() {
       RsGrpcServer server(
-          std::move(services_),
+          std::move(grpc_services_),
+          std::move(rs_services_),
           builder_.AddCompletionQueue(),
           builder_.BuildAndStart());
 
@@ -1156,7 +1164,8 @@ class RsGrpcServer {
     GrpcErrorHandler error_handler_ = [](std::exception_ptr error) {
       std::rethrow_exception(error);
     };
-    Services services_;
+    GrpcServices grpc_services_;
+    RsServices rs_services_;
     std::vector<std::unique_ptr<detail::InvocationRequester>>
         invocation_requesters_;
     ::grpc::ServerBuilder builder_;
@@ -1205,7 +1214,11 @@ class RsGrpcServer {
   // This object doesn't really do anything with the services other than owning
   // them, so that they are valid while the server is servicing requests and
   // that they can be destroyed at the right time.
-  Services services_;
+  GrpcServices grpc_services_;
+  // This object doesn't really do anything with the services other than owning
+  // them, so that they are valid while the server is servicing requests and
+  // that they can be destroyed at the right time.
+  RsServices rs_services_;
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_;
   std::unique_ptr<::grpc::Server> server_;
   ::shk::CallContext ctx_;

@@ -95,6 +95,87 @@ auto BidiStreamBackpressureViolationHandler(
   });
 }
 
+class BidiStreamingTestServer : public BidiStreamingTest {
+ public:
+  BidiStreamingTestServer(
+      std::atomic<int> *hang_on_seen_elements,
+      std::shared_ptr<AnySubscription> *hung_subscription)
+      : hang_on_seen_elements_(*hang_on_seen_elements),
+        hung_subscription_(*hung_subscription) {}
+
+  AnyPublisher</*stream*/ TestResponse> CumulativeSum(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    return AnyPublisher<TestResponse>(Pipe(
+      requests,
+      Map([](TestRequest &&request) {
+        return request.data();
+      }),
+      Scan(0, [](int x, int y) { return x + y; }),
+      Map(MakeTestResponse)));
+  }
+
+  AnyPublisher</*stream*/ TestResponse> ImmediatelyFailingCumulativeSum(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    // Hack: unless requests is subscribed to, nothing happens. Would be nice to
+    // fix this.
+    requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
+
+    return AnyPublisher<TestResponse>(
+        Throw(std::runtime_error("cumulative_sum_fail")));
+  }
+
+  AnyPublisher</*stream*/ TestResponse> FailingCumulativeSum(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    return AnyPublisher<TestResponse>(
+        CumulativeSumHandler(ctx, AnyPublisher<TestRequest>(Pipe(
+            requests,
+            Map([](TestRequest &&request) {
+              if (request.data() == -1) {
+                throw std::runtime_error("cumulative_sum_fail");
+              }
+              return request;
+            })))));
+  }
+
+  AnyPublisher</*stream*/ TestResponse> BidiStreamRequestZero(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    return AnyPublisher<TestResponse>(
+        RequestZeroHandler(ctx, std::move(requests)));
+  }
+
+  AnyPublisher</*stream*/ TestResponse> BidiStreamHangOnZero(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    return AnyPublisher<TestResponse>(
+        MakeHangOnZeroHandler(&hang_on_seen_elements_, &hung_subscription_)(
+            ctx, std::move(requests)));
+  }
+
+  AnyPublisher</*stream*/ TestResponse> BidiStreamInfiniteResponse(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    // Hack: unless requests is subscribed to, nothing happens. Would be nice to
+    // fix this.
+    requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
+
+    return AnyPublisher<TestResponse>(MakeInfiniteResponse());
+  }
+
+  AnyPublisher</*stream*/ TestResponse> BidiStreamBackpressureViolation(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    return AnyPublisher<TestResponse>(MakePublisher([](auto &&subscriber) {
+      // Emit element before it was asked for: streams should not do
+      // this.
+      subscriber.OnNext(MakeTestResponse(1));
+      subscriber.OnNext(MakeTestResponse(2));
+      subscriber.OnNext(MakeTestResponse(3));
+      return MakeSubscription();
+    }));
+  }
+
+ private:
+  std::atomic<int> &hang_on_seen_elements_;
+  std::shared_ptr<AnySubscription> &hung_subscription_;
+};
+
 }  // anonymous namespace
 
 TEST_CASE("Bidi streaming RPC") {
@@ -109,7 +190,12 @@ TEST_CASE("Bidi streaming RPC") {
   std::atomic<int> hang_on_seen_elements(0);
   std::shared_ptr<AnySubscription> hung_subscription;
 
-  server_builder.RegisterService<grpc::BidiStreamingTest::AsyncService>()
+  server_builder
+      .RegisterService<grpc::BidiStreamingTest::AsyncService>(
+          std::unique_ptr<BidiStreamingTestServer>(
+              new BidiStreamingTestServer(
+                  &hang_on_seen_elements,
+                  &hung_subscription)))
       .RegisterMethod(
           &grpc::BidiStreamingTest::AsyncService::RequestCumulativeSum,
           &CumulativeSumHandler)

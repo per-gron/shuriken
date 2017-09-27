@@ -99,6 +99,96 @@ auto ClientStreamEchoAllHandler(
       Map(MakeTestResponse));
 }
 
+class ClientStreamingTestServer : public ClientStreamingTest {
+ public:
+  ClientStreamingTestServer(
+      std::atomic<int> *hang_on_seen_elements,
+      std::shared_ptr<AnySubscription> *hung_subscription)
+      : hang_on_seen_elements_(*hang_on_seen_elements),
+        hung_subscription_(*hung_subscription) {}
+
+  AnyPublisher<TestResponse> Sum(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    return AnyPublisher<TestResponse>(Pipe(
+        requests,
+        Map([](TestRequest &&request) {
+          return request.data();
+        }),
+        ::shk::Sum(),
+        Map(MakeTestResponse)));
+  }
+
+  AnyPublisher<TestResponse> ImmediatelyFailingSum(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    // Hack: unless requests is subscribed to, nothing happens. Would be nice to
+    // fix this.
+    requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
+
+    return AnyPublisher<TestResponse>(
+        Throw(std::runtime_error("sum_fail")));
+  }
+
+  AnyPublisher<TestResponse> FailingSum(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    return AnyPublisher<TestResponse>(
+        SumHandler(ctx, AnyPublisher<TestRequest>(Pipe(
+            requests,
+            Map([](TestRequest &&request) {
+              if (request.data() == -1) {
+                throw std::runtime_error("sum_fail");
+              }
+              return request;
+            })))));
+  }
+
+  AnyPublisher<TestResponse> ClientStreamNoResponse(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    // Hack: unless requests is subscribed to, nothing happens. Would be nice to
+    // fix this.
+    requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
+
+    return AnyPublisher<TestResponse>(Empty());
+  }
+
+  AnyPublisher<TestResponse> ClientStreamTwoResponses(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    // Hack: unless requests is subscribed to, nothing happens. Would be nice to
+    // fix this. TODO(peck): Try to this unnecessary
+    requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
+
+    return AnyPublisher<TestResponse>(Just(
+        MakeTestResponse(1),
+        MakeTestResponse(2)));
+  }
+
+  AnyPublisher<TestResponse> ClientStreamRequestZero(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    return AnyPublisher<TestResponse>(
+        RequestZeroHandler(ctx, std::move(requests)));
+  }
+
+  AnyPublisher<TestResponse> ClientStreamHangOnZero(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    return AnyPublisher<TestResponse>(
+        MakeHangOnZeroHandler(&hang_on_seen_elements_, &hung_subscription_)(
+            ctx, std::move(requests)));
+  }
+
+  AnyPublisher<TestResponse> ClientStreamEchoAll(
+      const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
+    return AnyPublisher<TestResponse>(Pipe(
+        requests,
+        Map([](TestRequest &&request) {
+          return request.data();
+        }),
+        Map(MakeTestResponse)));
+  }
+
+ private:
+  std::atomic<int> &hang_on_seen_elements_;
+  std::shared_ptr<AnySubscription> &hung_subscription_;
+};
+
 }  // anonymous namespace
 
 TEST_CASE("Client streaming RPC") {
@@ -113,7 +203,12 @@ TEST_CASE("Client streaming RPC") {
   std::atomic<int> hang_on_seen_elements(0);
   std::shared_ptr<AnySubscription> hung_subscription;
 
-  server_builder.RegisterService<grpc::ClientStreamingTest::AsyncService>()
+  server_builder
+      .RegisterService<grpc::ClientStreamingTest::AsyncService>(
+          std::unique_ptr<ClientStreamingTestServer>(
+              new ClientStreamingTestServer(
+                  &hang_on_seen_elements,
+                  &hung_subscription)))
       .RegisterMethod(
           &grpc::ClientStreamingTest::AsyncService::RequestSum,
           &SumHandler)

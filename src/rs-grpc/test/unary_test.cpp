@@ -63,6 +63,39 @@ auto UnaryHangHandler(const CallContext &ctx, TestRequest &&request) {
   return Never();
 }
 
+class UnaryTestServer : public UnaryTest {
+ public:
+  AnyPublisher<TestResponse> Double(
+      const CallContext &ctx, TestRequest &&request) override {
+    return AnyPublisher<TestResponse>(
+        Just(MakeTestResponse(request.data() * 2)));
+  }
+
+  AnyPublisher<TestResponse> UnaryFail(
+      const CallContext &ctx, TestRequest &&request) override {
+    return AnyPublisher<TestResponse>(
+        Throw(std::runtime_error("unary_fail")));
+  }
+
+  AnyPublisher<TestResponse> UnaryNoResponse(
+      const CallContext &ctx, TestRequest &&request) override {
+    return AnyPublisher<TestResponse>(Empty());
+  }
+
+  AnyPublisher<TestResponse> UnaryTwoResponses(
+      const CallContext &ctx, TestRequest &&request) override {
+    return AnyPublisher<TestResponse>(Just(
+        MakeTestResponse(1),
+        MakeTestResponse(2)));
+  }
+
+  AnyPublisher<TestResponse> UnaryHang(
+      const CallContext &ctx, TestRequest &&request) override {
+    return AnyPublisher<TestResponse>(Never());
+  }
+};
+
+
 }  // anonymous namespace
 
 TEST_CASE("Unary RPC") {
@@ -78,9 +111,9 @@ TEST_CASE("Unary RPC") {
   server_builder.GrpcServerBuilder()
       .AddListeningPort(server_address, ::grpc::InsecureServerCredentials());
 
-  std::atomic<int> hang_on_seen_elements(0);
-
-  server_builder.RegisterService<grpc::UnaryTest::AsyncService>()
+  server_builder
+      .RegisterService<grpc::UnaryTest::AsyncService>(
+          std::unique_ptr<UnaryTestServer>(new UnaryTestServer()))
       .RegisterMethod(
           &grpc::UnaryTest::AsyncService::RequestDouble,
           &DoubleHandler)

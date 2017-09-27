@@ -1,3 +1,4 @@
+
 // Copyright 2017 Per Grön. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,6 +123,70 @@ auto ServerStreamAsyncResponseHandler(AsyncResponder *responder) {
   };
 }
 
+class ServerStreamingTestServer : public ServerStreamingTest {
+ public:
+  explicit ServerStreamingTestServer(AsyncResponder *async_responder)
+      : async_responder_(*async_responder) {}
+
+  AnyPublisher</*stream*/ TestResponse> Repeat(
+      const CallContext &ctx, TestRequest &&request) override {
+    int count = request.data();
+    return AnyPublisher<TestResponse>(Pipe(
+        Range(1, count),
+        Map(&MakeTestResponse)));
+  }
+
+  AnyPublisher</*stream*/ TestResponse> RepeatThenFail(
+      const CallContext &ctx, TestRequest &&request) override {
+    return AnyPublisher<TestResponse>(Concat(
+        RepeatHandler(ctx, std::move(request)),
+        Throw(std::runtime_error("repeat_fail"))));
+  }
+
+  AnyPublisher</*stream*/ TestResponse> ServerStreamHang(
+      const CallContext &ctx, TestRequest &&request) override {
+    return AnyPublisher<TestResponse>(Never());
+  }
+
+  AnyPublisher</*stream*/ TestResponse> InfiniteRepeat(
+      const CallContext &ctx, TestRequest &&request) override {
+    // If client-side rs-grpc violates backpressure requirements by requesting
+    // an unbounded number of elements from this infinite stream, then this will
+    // smash the stack or run out of memory.
+    return AnyPublisher<TestResponse>(MakeInfiniteResponse());
+  }
+
+  AnyPublisher</*stream*/ TestResponse> ServerStreamBackpressureViolation(
+      const CallContext &ctx, TestRequest &&request) override {
+    return AnyPublisher<TestResponse>(MakePublisher([](auto &&subscriber) {
+      // Emit element before it was asked for: streams should not do
+      // this.
+      subscriber.OnNext(MakeTestResponse(1));
+      subscriber.OnNext(MakeTestResponse(2));
+      subscriber.OnNext(MakeTestResponse(3));
+      return MakeSubscription();
+    }));
+  }
+
+  AnyPublisher</*stream*/ TestResponse> ServerStreamAsyncResponse(
+      const CallContext &ctx, TestRequest &&request) override {
+    return AnyPublisher<TestResponse>(MakePublisher([this](auto subscriber) {
+      auto shared_sub = std::make_shared<decltype(subscriber)>(
+          decltype(subscriber)(std::move(subscriber)));
+
+      async_responder_.SetCallback([shared_sub] {
+        shared_sub->OnNext(MakeTestResponse(1));
+        shared_sub->OnComplete();
+      });
+
+      return MakeSubscription();
+    }));
+  }
+
+ private:
+  AsyncResponder &async_responder_;
+};
+
 }  // anonymous namespace
 
 TEST_CASE("Server streaming RPC") {
@@ -135,7 +200,10 @@ TEST_CASE("Server streaming RPC") {
 
   AsyncResponder async_responder;
 
-  server_builder.RegisterService<grpc::ServerStreamingTest::AsyncService>()
+  server_builder
+      .RegisterService<grpc::ServerStreamingTest::AsyncService>(
+          std::unique_ptr<ServerStreamingTestServer>(
+              new ServerStreamingTestServer(&async_responder)))
       .RegisterMethod(
           &grpc::ServerStreamingTest::AsyncService::RequestRepeat,
           &RepeatHandler)

@@ -151,12 +151,14 @@ void PrintHeaderMethod(
       method->ClientStreaming() ? ">" : "";
   (*vars)["Response"] = method->output_type_name();
   (*vars)["ResponseStream"] = method->ServerStreaming() ? "/*stream*/ " : "";
+  (*vars)["RequestPlural"] = method->ClientStreaming() ? "s" : "";
   printer->Print(method->GetLeadingComments("//").c_str());
   printer->Print(
       *vars,
       "virtual ::shk::AnyPublisher<$ResponseStream$$Response$> $Method$(\n"
-      "    const ::shk::CallContext &context, "
-      "$RequestPrelude$$Request$$RequestPostlude$ &&request) = 0;\n");
+      "    const ::shk::CallContext &ctx, "
+      "$RequestPrelude$$Request$$RequestPostlude$ &&"
+      "request$RequestPlural$) = 0;\n");
   printer->Print(method->GetTrailingComments("//").c_str());
 }
 
@@ -323,20 +325,22 @@ void PrintSourceClientMethod(
       method->ClientStreaming() ? ">" : "";
   (*vars)["Response"] = method->output_type_name();
   (*vars)["ResponseStream"] = method->ServerStreaming() ? "/*stream*/ " : "";
+  (*vars)["RequestPlural"] = method->ClientStreaming() ? "s" : "";
 
   printer->Print(
     *vars,
     "::shk::AnyPublisher<$ResponseStream$$Response$>\n"
     "$Method$(\n"
-    "    const ::shk::CallContext &context,\n"
-    "    $RequestPrelude$$Request$$RequestPostlude$ &&request) override {\n");
+    "    const ::shk::CallContext &ctx,\n"
+    "    $RequestPrelude$$Request$$RequestPostlude$ &&request$RequestPlural$) "
+    "override {\n");
   printer->Print(
     *vars,
     "  return ::shk::AnyPublisher<$Response$>(\n"
     "      client_->Invoke(\n"
-    "          context,\n"
+    "          ctx,\n"
     "          &$grpc_ns$$Service$::Stub::Async$Method$,\n"
-    "          ::std::move(request)));\n"
+    "          ::std::move(request$RequestPlural$)));\n"
     "}\n\n");
 }
 
