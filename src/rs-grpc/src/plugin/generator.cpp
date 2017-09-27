@@ -348,8 +348,13 @@ void PrintSourceService(
 
   printer->Print(
       *vars,
-      "$ns$$Service$::$Service$() {}"
-      "$ns$$Service$::~$Service$() {}\n\n");
+      // Have spaces in the front to work around bug in protobufs printer.cc
+      // that causes heap overflow (as caught by ASan) when at_start_of_line_.
+      //
+      // TODO(pgron): Investigate this further. I think the root cause might be
+      // something else.
+      " $ns$$Service$::$Service$() {}\n"
+      " $ns$$Service$::~$Service$() {}\n\n");
 
   printer->Print("namespace {\n\n");
   printer->Print(
