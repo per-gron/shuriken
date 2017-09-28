@@ -19,26 +19,28 @@
 #include <rs-grpc/client.h>
 #include <rs-grpc/server.h>
 
+#include "store_server.h"
+
 namespace shk {
 
 int main(int /*argc*/, const char * /*argv*/[]) {
   setenv("GRPC_VERBOSITY", "DEBUG", /*overwrite:*/0);
   setenv("GRPC_ABORT_ON_LEAKS", "YES", /*overwrite:*/0);
 
+  auto channel = ::grpc::CreateChannel(
+      "127.0.0.1:8086", ::grpc::InsecureChannelCredentials());
+
+  auto bigtable_client = std::shared_ptr<google::bigtable::v2::Bigtable>(
+      google::bigtable::v2::Bigtable::NewClient(channel));
+
   std::string server_address = "unix:shk_store_test.socket";
 
   RsGrpcServer::Builder server_builder;
   server_builder.GrpcServerBuilder()
       .AddListeningPort(server_address, ::grpc::InsecureServerCredentials());
-
-  // TODO(peck): Register service
+  server_builder.RegisterService(MakeStore(bigtable_client));
 
   auto server = server_builder.BuildAndStart();
-
-  auto channel = ::grpc::CreateChannel(
-      "127.0.0.1:8086", ::grpc::InsecureChannelCredentials());
-
-  auto bigtable_client = google::bigtable::v2::Bigtable::NewClient(channel);
 
   google::bigtable::v2::MutateRowRequest request;
   request.set_table_name("test_table");

@@ -1,20 +1,27 @@
 shk_proto(
   LIB_NAME shk-store-proto
-  PROTO_FILE shk-store/api/shkstore.proto)
+  PROTO_FILE shk-store/api/shkstore.proto
+  GRPC)
 
 shk_library(
   NAME libshk-store
   SOURCES
-    src/dummy.cpp
+    src/constants.h
+    src/store_server.cpp
+    src/store_server.h
   DEPENDENCIES
-    shk-store-proto)
+    google-bigtable-v2-proto
+    rs
+    rs-grpc
+    shk-store-proto
+    shk-util)
 
 shk_executable(
   NAME shk-store
   SOURCES
     src/shk-store.cpp
   DEPENDENCIES
-    libshk-store rs-grpc google-bigtable-v2-proto
+    libshk-store
   USER_FACING)
 
 shk_test(

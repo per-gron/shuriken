@@ -73,7 +73,6 @@ class UnaryTestServer : public UnaryTest {
   }
 };
 
-
 }  // anonymous namespace
 
 TEST_CASE("Unary RPC") {

@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package shk;
+
 // An IndexFileReference points to an output file of a build step.
 message IndexFileReference {
   enum Type {

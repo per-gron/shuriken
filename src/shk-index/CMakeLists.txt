@@ -1,6 +1,7 @@
 shk_proto(
   LIB_NAME shk-index-proto
-  PROTO_FILE shk-index/api/shkindex.proto)
+  PROTO_FILE shk-index/api/shkindex.proto
+  GRPC)
 
 shk_library(
   NAME libshk-index

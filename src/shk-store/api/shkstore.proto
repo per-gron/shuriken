@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package shk;
+
 message StoreInsertRequest {
   int64 expiry_time = 1;  // Unix time in seconds
   bytes contents = 2;

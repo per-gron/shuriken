@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package shk;
+
 import "shk-index/api/shkindex.proto";
 
 message Root {
