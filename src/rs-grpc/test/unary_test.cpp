@@ -89,24 +89,8 @@ TEST_CASE("Unary RPC") {
   server_builder.GrpcServerBuilder()
       .AddListeningPort(server_address, ::grpc::InsecureServerCredentials());
 
-  server_builder
-      .RegisterService(
-          std::unique_ptr<UnaryTestServer>(new UnaryTestServer()))
-      .RegisterMethod(
-          &grpc::UnaryTest::AsyncService::RequestDouble,
-          &UnaryTestServer::Double)
-      .RegisterMethod(
-          &grpc::UnaryTest::AsyncService::RequestUnaryFail,
-          &UnaryTestServer::UnaryFail)
-      .RegisterMethod(
-          &grpc::UnaryTest::AsyncService::RequestUnaryNoResponse,
-          &UnaryTestServer::UnaryNoResponse)
-      .RegisterMethod(
-          &grpc::UnaryTest::AsyncService::RequestUnaryTwoResponses,
-          &UnaryTestServer::UnaryTwoResponses)
-      .RegisterMethod(
-          &grpc::UnaryTest::AsyncService::RequestUnaryHang,
-          &UnaryTestServer::UnaryHang);
+  server_builder.RegisterService(
+      std::unique_ptr<UnaryTestServer>(new UnaryTestServer()));
 
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();

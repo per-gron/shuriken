@@ -148,30 +148,9 @@ TEST_CASE("Server streaming RPC") {
 
   AsyncResponder async_responder;
 
-  server_builder
-      .RegisterService(
-          std::unique_ptr<ServerStreamingTestServer>(
-              new ServerStreamingTestServer(&async_responder)))
-      .RegisterMethod(
-          &grpc::ServerStreamingTest::AsyncService::RequestRepeat,
-          &ServerStreamingTestServer::Repeat)
-      .RegisterMethod(
-          &grpc::ServerStreamingTest::AsyncService::RequestRepeatThenFail,
-          &ServerStreamingTestServer::RepeatThenFail)
-      .RegisterMethod(
-          &grpc::ServerStreamingTest::AsyncService::RequestServerStreamHang,
-          &ServerStreamingTestServer::ServerStreamHang)
-      .RegisterMethod(
-          &grpc::ServerStreamingTest::AsyncService::RequestInfiniteRepeat,
-          &ServerStreamingTestServer::InfiniteRepeat)
-      .RegisterMethod(
-          &grpc::ServerStreamingTest::AsyncService::
-              RequestServerStreamBackpressureViolation,
-          &ServerStreamingTestServer::ServerStreamBackpressureViolation)
-      .RegisterMethod(
-          &grpc::ServerStreamingTest::AsyncService::
-              RequestServerStreamAsyncResponse,
-          &ServerStreamingTestServer::ServerStreamAsyncResponse);
+  server_builder.RegisterService(
+      std::unique_ptr<ServerStreamingTestServer>(
+          new ServerStreamingTestServer(&async_responder)));
 
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();

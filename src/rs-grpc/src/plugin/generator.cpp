@@ -140,6 +140,7 @@ std::string GetHeaderIncludes(
     static const char *headers_strs[] = {
         "grpc++/impl/codegen/stub_options.h",
         "rs/publisher.h",
+        "rs-grpc/server.h",
         "rs-grpc/service.h"};
     std::vector<std::string> headers(headers_strs, array_end(headers_strs));
     PrintIncludes(printer.get(), headers, params);
@@ -209,10 +210,19 @@ void PrintHeaderService(
       *vars,
       "\nstatic ::std::unique_ptr<$Service$> NewClient(\n"
       "    const ::std::shared_ptr<::grpc::ChannelInterface> &channel,\n"
-      "    const ::grpc::StubOptions &options = ::grpc::StubOptions());\n");
+      "    const ::grpc::StubOptions &options = ::grpc::StubOptions());\n\n");
+
   printer->Print(
       *vars,
       "using UnderlyingService = $grpc_ns$$Service$;\n");
+  printer->Print(
+      *vars,
+      "using ServiceInterface = $Service$;\n");
+  printer->Print(
+      *vars,
+      "static void RegisterService(\n"
+      "    ::shk::RsGrpcServer::Builder::ServiceBuilder<\n"
+      "        UnderlyingService::AsyncService, $Service$> *builder);\n");
 
   printer->Outdent();
   printer->Print("};\n");
@@ -419,6 +429,35 @@ void PrintSourceService(
       "Rs$Service$Client(channel, options));\n"
       "  return client;\n"
       "}\n\n");
+
+  printer->Print(
+      *vars,
+      "void $ns$$Service$::RegisterService(\n"
+      "    ::shk::RsGrpcServer::Builder::ServiceBuilder<\n"
+      "        UnderlyingService::AsyncService, $Service$> *builder) {\n");
+  printer->Indent();
+  if (service->method_count() > 0) {
+    printer->Print("(*builder)");
+    printer->Indent();
+    printer->Indent();
+    for (int i = 0; i < service->method_count(); ++i) {
+      (*vars)["Method"] = service->method(i)->name();
+      printer->Print("\n.RegisterMethod(");
+      printer->Indent();
+      printer->Indent();
+      printer->Print(
+          *vars, "\n&$grpc_ns$$Service$::AsyncService::Request$Method$,");
+      printer->Print(
+          *vars, "\n&$ns$$Service$::$Method$)");
+      printer->Outdent();
+      printer->Outdent();
+    }
+    printer->Outdent();
+    printer->Outdent();
+    printer->Print(";\n");
+  }
+  printer->Outdent();
+  printer->Print("}\n\n");
 }
 
 std::string GetSourceServices(

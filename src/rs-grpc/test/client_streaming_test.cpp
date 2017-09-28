@@ -142,41 +142,11 @@ TEST_CASE("Client streaming RPC") {
   std::atomic<int> hang_on_seen_elements(0);
   std::shared_ptr<AnySubscription> hung_subscription;
 
-  server_builder
-      .RegisterService(
-          std::unique_ptr<ClientStreamingTestServer>(
-              new ClientStreamingTestServer(
-                  &hang_on_seen_elements,
-                  &hung_subscription)))
-      .RegisterMethod(
-          &grpc::ClientStreamingTest::AsyncService::RequestSum,
-          &ClientStreamingTestServer::Sum)
-      .RegisterMethod(
-          &grpc::ClientStreamingTest::AsyncService::
-              RequestImmediatelyFailingSum,
-          &ClientStreamingTestServer::ImmediatelyFailingSum)
-      .RegisterMethod(
-          &grpc::ClientStreamingTest::AsyncService::RequestFailingSum,
-          &ClientStreamingTestServer::FailingSum)
-      .RegisterMethod(
-          &grpc::ClientStreamingTest::AsyncService::
-              RequestClientStreamNoResponse,
-          &ClientStreamingTestServer::ClientStreamNoResponse)
-      .RegisterMethod(
-          &grpc::ClientStreamingTest::AsyncService::
-              RequestClientStreamTwoResponses,
-          &ClientStreamingTestServer::ClientStreamTwoResponses)
-      .RegisterMethod(
-          &grpc::ClientStreamingTest::AsyncService::
-              RequestClientStreamRequestZero,
-          &ClientStreamingTestServer::ClientStreamRequestZero)
-      .RegisterMethod(
-          &grpc::ClientStreamingTest::AsyncService::
-              RequestClientStreamHangOnZero,
-          &ClientStreamingTestServer::ClientStreamHangOnZero)
-      .RegisterMethod(
-          &grpc::ClientStreamingTest::AsyncService::RequestClientStreamEchoAll,
-          &ClientStreamingTestServer::ClientStreamEchoAll);
+  server_builder.RegisterService(
+      std::unique_ptr<ClientStreamingTestServer>(
+          new ClientStreamingTestServer(
+              &hang_on_seen_elements,
+              &hung_subscription)));
 
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();
