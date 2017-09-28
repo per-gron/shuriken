@@ -90,7 +90,7 @@ TEST_CASE("Unary RPC") {
       .AddListeningPort(server_address, ::grpc::InsecureServerCredentials());
 
   server_builder
-      .RegisterService<grpc::UnaryTest::AsyncService>(
+      .RegisterService(
           std::unique_ptr<UnaryTestServer>(new UnaryTestServer()))
       .RegisterMethod(
           &grpc::UnaryTest::AsyncService::RequestDouble,

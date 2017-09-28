@@ -143,7 +143,7 @@ TEST_CASE("Client streaming RPC") {
   std::shared_ptr<AnySubscription> hung_subscription;
 
   server_builder
-      .RegisterService<grpc::ClientStreamingTest::AsyncService>(
+      .RegisterService(
           std::unique_ptr<ClientStreamingTestServer>(
               new ClientStreamingTestServer(
                   &hang_on_seen_elements,

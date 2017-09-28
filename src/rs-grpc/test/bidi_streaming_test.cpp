@@ -138,7 +138,7 @@ TEST_CASE("Bidi streaming RPC") {
   std::shared_ptr<AnySubscription> hung_subscription;
 
   server_builder
-      .RegisterService<grpc::BidiStreamingTest::AsyncService>(
+      .RegisterService(
           std::unique_ptr<BidiStreamingTestServer>(
               new BidiStreamingTestServer(
                   &hang_on_seen_elements,

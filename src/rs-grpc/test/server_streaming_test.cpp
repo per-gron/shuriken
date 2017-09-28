@@ -149,7 +149,7 @@ TEST_CASE("Server streaming RPC") {
   AsyncResponder async_responder;
 
   server_builder
-      .RegisterService<grpc::ServerStreamingTest::AsyncService>(
+      .RegisterService(
           std::unique_ptr<ServerStreamingTestServer>(
               new ServerStreamingTestServer(&async_responder)))
       .RegisterMethod(
