@@ -30,8 +30,8 @@ shk_executable(
     libprotobuf
     libprotoc
   PRIVATE_INCLUDES
-    ../../vendor/grpc
-    ../../vendor/grpc/include)
+    ../../third_party/grpc
+    ../../third_party/grpc/include)
 
 shk_test(
   NAME rs-grpc-test
