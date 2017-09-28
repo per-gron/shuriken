@@ -41,28 +41,6 @@
 namespace shk {
 namespace {
 
-auto DoubleHandler(const CallContext &ctx, TestRequest &&request) {
-  return Just(MakeTestResponse(request.data() * 2));
-}
-
-auto UnaryFailHandler(const CallContext &ctx, TestRequest &&request) {
-  return Throw(std::runtime_error("unary_fail"));
-}
-
-auto UnaryNoResponseHandler(const CallContext &ctx, TestRequest &&request) {
-  return Empty();
-}
-
-auto UnaryTwoResponsesHandler(const CallContext &ctx, TestRequest &&request) {
-  return Just(
-      MakeTestResponse(1),
-      MakeTestResponse(2));
-}
-
-auto UnaryHangHandler(const CallContext &ctx, TestRequest &&request) {
-  return Never();
-}
-
 class UnaryTestServer : public UnaryTest {
  public:
   AnyPublisher<TestResponse> Double(
@@ -116,19 +94,19 @@ TEST_CASE("Unary RPC") {
           std::unique_ptr<UnaryTestServer>(new UnaryTestServer()))
       .RegisterMethod(
           &grpc::UnaryTest::AsyncService::RequestDouble,
-          &DoubleHandler)
+          &UnaryTestServer::Double)
       .RegisterMethod(
           &grpc::UnaryTest::AsyncService::RequestUnaryFail,
-          &UnaryFailHandler)
+          &UnaryTestServer::UnaryFail)
       .RegisterMethod(
           &grpc::UnaryTest::AsyncService::RequestUnaryNoResponse,
-          &UnaryNoResponseHandler)
+          &UnaryTestServer::UnaryNoResponse)
       .RegisterMethod(
           &grpc::UnaryTest::AsyncService::RequestUnaryTwoResponses,
-          &UnaryTwoResponsesHandler)
+          &UnaryTestServer::UnaryTwoResponses)
       .RegisterMethod(
           &grpc::UnaryTest::AsyncService::RequestUnaryHang,
-          &UnaryHangHandler);
+          &UnaryTestServer::UnaryHang);
 
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();

@@ -42,59 +42,6 @@
 namespace shk {
 namespace {
 
-auto CumulativeSumHandler(
-    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
-  return Pipe(
-    requests,
-    Map([](TestRequest &&request) {
-      return request.data();
-    }),
-    Scan(0, [](int x, int y) { return x + y; }),
-    Map(MakeTestResponse));
-}
-
-auto ImmediatelyFailingCumulativeSumHandler(
-    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
-  // Hack: unless requests is subscribed to, nothing happens. Would be nice to
-  // fix this.
-  requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
-
-  return Throw(std::runtime_error("cumulative_sum_fail"));
-}
-
-auto FailingCumulativeSumHandler(
-    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
-  return CumulativeSumHandler(ctx, AnyPublisher<TestRequest>(Pipe(
-      requests,
-      Map([](TestRequest &&request) {
-        if (request.data() == -1) {
-          throw std::runtime_error("cumulative_sum_fail");
-        }
-        return request;
-      }))));
-}
-
-auto BidiStreamInfiniteResponseHandler(
-    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
-  // Hack: unless requests is subscribed to, nothing happens. Would be nice to
-  // fix this.
-  requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
-
-  return MakeInfiniteResponse();
-}
-
-auto BidiStreamBackpressureViolationHandler(
-    const CallContext &ctx, AnyPublisher<TestRequest> &&request) {
-  return MakePublisher([](auto &&subscriber) {
-    // Emit element before it was asked for: streams should not do
-    // this.
-    subscriber.OnNext(MakeTestResponse(1));
-    subscriber.OnNext(MakeTestResponse(2));
-    subscriber.OnNext(MakeTestResponse(3));
-    return MakeSubscription();
-  });
-}
-
 class BidiStreamingTestServer : public BidiStreamingTest {
  public:
   BidiStreamingTestServer(
@@ -127,7 +74,7 @@ class BidiStreamingTestServer : public BidiStreamingTest {
   AnyPublisher</*stream*/ TestResponse> FailingCumulativeSum(
       const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
     return AnyPublisher<TestResponse>(
-        CumulativeSumHandler(ctx, AnyPublisher<TestRequest>(Pipe(
+        CumulativeSum(ctx, AnyPublisher<TestRequest>(Pipe(
             requests,
             Map([](TestRequest &&request) {
               if (request.data() == -1) {
@@ -198,28 +145,28 @@ TEST_CASE("Bidi streaming RPC") {
                   &hung_subscription)))
       .RegisterMethod(
           &grpc::BidiStreamingTest::AsyncService::RequestCumulativeSum,
-          &CumulativeSumHandler)
+          &BidiStreamingTestServer::CumulativeSum)
       .RegisterMethod(
           &grpc::BidiStreamingTest::AsyncService::
               RequestImmediatelyFailingCumulativeSum,
-          &ImmediatelyFailingCumulativeSumHandler)
+          &BidiStreamingTestServer::ImmediatelyFailingCumulativeSum)
       .RegisterMethod(
           &grpc::BidiStreamingTest::AsyncService::RequestFailingCumulativeSum,
-          &FailingCumulativeSumHandler)
+          &BidiStreamingTestServer::FailingCumulativeSum)
       .RegisterMethod(
           &grpc::BidiStreamingTest::AsyncService::RequestBidiStreamRequestZero,
-          &RequestZeroHandler)
+          &BidiStreamingTestServer::BidiStreamRequestZero)
       .RegisterMethod(
           &grpc::BidiStreamingTest::AsyncService::RequestBidiStreamHangOnZero,
-          MakeHangOnZeroHandler(&hang_on_seen_elements, &hung_subscription))
+          &BidiStreamingTestServer::BidiStreamHangOnZero)
       .RegisterMethod(
           &grpc::BidiStreamingTest::AsyncService::
               RequestBidiStreamInfiniteResponse,
-          &BidiStreamInfiniteResponseHandler)
+          &BidiStreamingTestServer::BidiStreamInfiniteResponse)
       .RegisterMethod(
           &grpc::BidiStreamingTest::AsyncService::
               RequestBidiStreamBackpressureViolation,
-          &BidiStreamBackpressureViolationHandler);
+          &BidiStreamingTestServer::BidiStreamBackpressureViolation);
 
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();

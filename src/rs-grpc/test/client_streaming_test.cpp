@@ -38,67 +38,6 @@
 namespace shk {
 namespace {
 
-auto SumHandler(const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
-  return Pipe(
-      requests,
-      Map([](TestRequest &&request) {
-        return request.data();
-      }),
-      Sum(),
-      Map(MakeTestResponse));
-}
-
-auto ImmediatelyFailingSumHandler(
-    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
-  // Hack: unless requests is subscribed to, nothing happens. Would be nice to
-  // fix this.
-  requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
-
-  return Throw(std::runtime_error("sum_fail"));
-}
-
-auto FailingSumHandler(
-    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
-  return SumHandler(ctx, AnyPublisher<TestRequest>(Pipe(
-      requests,
-      Map([](TestRequest &&request) {
-        if (request.data() == -1) {
-          throw std::runtime_error("sum_fail");
-        }
-        return request;
-      }))));
-}
-
-auto ClientStreamNoResponseHandler(
-    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
-  // Hack: unless requests is subscribed to, nothing happens. Would be nice to
-  // fix this.
-  requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
-
-  return Empty();
-}
-
-auto ClientStreamTwoResponsesHandler(
-    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
-  // Hack: unless requests is subscribed to, nothing happens. Would be nice to
-  // fix this. TODO(peck): Try to this unnecessary
-  requests.Subscribe(MakeSubscriber()).Request(ElementCount::Unbounded());
-
-  return Just(
-      MakeTestResponse(1),
-      MakeTestResponse(2));
-}
-
-auto ClientStreamEchoAllHandler(
-    const CallContext &ctx, AnyPublisher<TestRequest> &&requests) {
-  return Pipe(
-      requests,
-      Map([](TestRequest &&request) {
-        return request.data();
-      }),
-      Map(MakeTestResponse));
-}
-
 class ClientStreamingTestServer : public ClientStreamingTest {
  public:
   ClientStreamingTestServer(
@@ -131,7 +70,7 @@ class ClientStreamingTestServer : public ClientStreamingTest {
   AnyPublisher<TestResponse> FailingSum(
       const CallContext &ctx, AnyPublisher<TestRequest> &&requests) override {
     return AnyPublisher<TestResponse>(
-        SumHandler(ctx, AnyPublisher<TestRequest>(Pipe(
+        Sum(ctx, AnyPublisher<TestRequest>(Pipe(
             requests,
             Map([](TestRequest &&request) {
               if (request.data() == -1) {
@@ -211,33 +150,33 @@ TEST_CASE("Client streaming RPC") {
                   &hung_subscription)))
       .RegisterMethod(
           &grpc::ClientStreamingTest::AsyncService::RequestSum,
-          &SumHandler)
+          &ClientStreamingTestServer::Sum)
       .RegisterMethod(
           &grpc::ClientStreamingTest::AsyncService::
               RequestImmediatelyFailingSum,
-          &ImmediatelyFailingSumHandler)
+          &ClientStreamingTestServer::ImmediatelyFailingSum)
       .RegisterMethod(
           &grpc::ClientStreamingTest::AsyncService::RequestFailingSum,
-          &FailingSumHandler)
+          &ClientStreamingTestServer::FailingSum)
       .RegisterMethod(
           &grpc::ClientStreamingTest::AsyncService::
               RequestClientStreamNoResponse,
-          &ClientStreamNoResponseHandler)
+          &ClientStreamingTestServer::ClientStreamNoResponse)
       .RegisterMethod(
           &grpc::ClientStreamingTest::AsyncService::
               RequestClientStreamTwoResponses,
-          &ClientStreamTwoResponsesHandler)
+          &ClientStreamingTestServer::ClientStreamTwoResponses)
       .RegisterMethod(
           &grpc::ClientStreamingTest::AsyncService::
               RequestClientStreamRequestZero,
-          &RequestZeroHandler)
+          &ClientStreamingTestServer::ClientStreamRequestZero)
       .RegisterMethod(
           &grpc::ClientStreamingTest::AsyncService::
               RequestClientStreamHangOnZero,
-          MakeHangOnZeroHandler(&hang_on_seen_elements, &hung_subscription))
+          &ClientStreamingTestServer::ClientStreamHangOnZero)
       .RegisterMethod(
           &grpc::ClientStreamingTest::AsyncService::RequestClientStreamEchoAll,
-          &ClientStreamEchoAllHandler);
+          &ClientStreamingTestServer::ClientStreamEchoAll);
 
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();

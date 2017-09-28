@@ -38,12 +38,12 @@ namespace detail {
  * For server requests with a non-streaming response.
  */
 template <
-    typename Service,
+    typename GrpcService,
     typename RequestType,
     // ::grpc::ServerAsyncResponseWriter<ResponseType> or
     // ::grpc::ServerAsyncWriter<ResponseType>
     typename Stream>
-using RequestMethod = void (Service::*)(
+using RequestMethod = void (GrpcService::*)(
     ::grpc::ServerContext *context,
     RequestType *request,
     Stream *stream,
@@ -55,11 +55,11 @@ using RequestMethod = void (Service::*)(
  * For server requests with a streaming response.
  */
 template <
-    typename Service,
+    typename GrpcService,
     // ::grpc::ServerAsyncReader<ResponseType, RequestType> or
     // ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType>
     typename Stream>
-using StreamingRequestMethod = void (Service::*)(
+using StreamingRequestMethod = void (GrpcService::*)(
     ::grpc::ServerContext *context,
     Stream *stream,
     ::grpc::CompletionQueue *new_call_cq,
@@ -78,48 +78,60 @@ template <
     // streaming)
     typename StreamType,
     // Generated service class
-    typename ServiceType,
+    typename GrpcServiceType,
+    // Generated rs-grpc Service interface
+    typename RsServiceType,
     typename ResponseType,
-    typename RequestType,
-    typename Callback>
+    typename RequestType>
 class ServerCallTraits {
  public:
   using Stream = StreamType;
-  using Service = ServiceType;
+  using GrpcService = GrpcServiceType;
+  using RsService = RsServiceType;
   using Response = ResponseType;
   using Request = RequestType;
 };
 
 
-template <typename Stream, typename ServerCallTraits, typename Callback>
+template <typename Stream, typename ServerCallTraits, typename HandlerMemberPtr>
 class RsGrpcServerCall;
 
 /**
  * Unary server RPC.
  */
-template <typename ResponseType, typename ServerCallTraits, typename Callback>
+template <
+    typename ResponseType,
+    typename ServerCallTraits,
+    typename HandlerMemberPtr>
 class RsGrpcServerCall<
     ::grpc::ServerAsyncResponseWriter<ResponseType>,
     ServerCallTraits,
-    Callback> : public RsGrpcTag, public Subscriber {
+    HandlerMemberPtr> : public RsGrpcTag, public Subscriber {
   using Stream = ::grpc::ServerAsyncResponseWriter<ResponseType>;
-  using Service = typename ServerCallTraits::Service;
+  using GrpcService = typename ServerCallTraits::GrpcService;
+  using RsService = typename ServerCallTraits::RsService;
 
   using Method = RequestMethod<
-      Service, typename ServerCallTraits::Request, Stream>;
+      GrpcService, typename ServerCallTraits::Request, Stream>;
 
  public:
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
-      Callback &&callback,
-      Service *service,
+      GrpcService *grpc_service,
+      RsService *rs_service,
+      HandlerMemberPtr handler_member_ptr,
       ::grpc::ServerCompletionQueue *cq) {
     auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
         new RsGrpcServerCall(
-            error_handler, method, std::move(callback), service, cq));
+            error_handler,
+            method,
+            grpc_service,
+            rs_service,
+            handler_member_ptr,
+            cq));
 
-    (service->*method)(
+    (grpc_service->*method)(
         &call->context_,
         &call->request_,
         &call->stream_,
@@ -159,14 +171,14 @@ class RsGrpcServerCall<
     if (awaiting_request_) {
       // The server has just received a request. Handle it.
 
-      auto values = callback_(
+      auto values = (rs_service_.*handler_member_ptr_)(
           CallContextBuilder::Build(&cq_), std::move(request_));
 
       // Request the a new request, so that the server is always waiting for
-      // one. This is done after the callback (because this steals it) but
-      // before the subscribe call because that could tell gRPC to respond,
-      // after which it's not safe to do anything with `this` anymore.
-      IssueNewServerRequest(std::move(callback_));
+      // one. This is done before the subscribe call because that could tell
+      // gRPC to respond, after which it's not safe to do anything with `this`
+      // anymore.
+      IssueNewServerRequest();
 
       awaiting_request_ = false;
 
@@ -186,31 +198,34 @@ class RsGrpcServerCall<
   RsGrpcServerCall(
       GrpcErrorHandler error_handler,
       Method method,
-      Callback &&callback,
-      Service *service,
+      GrpcService *grpc_service,
+      RsService *rs_service,
+      HandlerMemberPtr handler_member_ptr,
       ::grpc::ServerCompletionQueue *cq)
       : error_handler_(error_handler),
         method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
+        grpc_service_(*grpc_service),
+        rs_service_(*rs_service),
+        handler_member_ptr_(handler_member_ptr),
         cq_(*cq),
         stream_(&context_) {}
 
-  void IssueNewServerRequest(Callback &&callback) {
-    // Take callback as an rvalue parameter to make it obvious that we steal it.
+  void IssueNewServerRequest() {
     Request(
         error_handler_,
         method_,
-        std::move(callback),  // Reuse the callback functor, don't copy
-        &service_,
+        &grpc_service_,
+        &rs_service_,
+        handler_member_ptr_,
         &cq_);
   }
 
   bool awaiting_request_ = true;
   GrpcErrorHandler error_handler_;
   Method method_;
-  Callback callback_;
-  Service &service_;
+  GrpcService &grpc_service_;
+  RsService &rs_service_;
+  HandlerMemberPtr handler_member_ptr_;
   ::grpc::ServerCompletionQueue &cq_;
   ::grpc::ServerContext context_;
   typename ServerCallTraits::Request request_;
@@ -222,29 +237,39 @@ class RsGrpcServerCall<
 /**
  * Server streaming.
  */
-template <typename ResponseType, typename ServerCallTraits, typename Callback>
+template <
+    typename ResponseType,
+    typename ServerCallTraits,
+    typename HandlerMemberPtr>
 class RsGrpcServerCall<
     ::grpc::ServerAsyncWriter<ResponseType>,
     ServerCallTraits,
-    Callback> : public RsGrpcTag, public Subscriber {
+    HandlerMemberPtr> : public RsGrpcTag, public Subscriber {
   using Stream = ::grpc::ServerAsyncWriter<ResponseType>;
-  using Service = typename ServerCallTraits::Service;
+  using GrpcService = typename ServerCallTraits::GrpcService;
+  using RsService = typename ServerCallTraits::RsService;
 
   using Method = RequestMethod<
-      Service, typename ServerCallTraits::Request, Stream>;
+      GrpcService, typename ServerCallTraits::Request, Stream>;
 
  public:
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
-      Callback &&callback,
-      Service *service,
+      GrpcService *grpc_service,
+      RsService *rs_service,
+      HandlerMemberPtr handler_member_ptr,
       ::grpc::ServerCompletionQueue *cq) {
     auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
         new RsGrpcServerCall(
-            error_handler, method, std::move(callback), service, cq));
+            error_handler,
+            method,
+            grpc_service,
+            rs_service,
+            handler_member_ptr,
+            cq));
 
-    (service->*method)(
+    (grpc_service->*method)(
         &call->context_,
         &call->request_,
         &call->stream_,
@@ -290,14 +315,14 @@ class RsGrpcServerCall<
         // The server has just received a request. Handle it.
         state_ = State::AWAITING_RESPONSE;
 
-        auto values = callback_(
+        auto values = (rs_service_.*handler_member_ptr_)(
             CallContextBuilder::Build(&cq_), std::move(request_));
 
         // Request the a new request, so that the server is always waiting for
-        // one. This is done after the callback (because this steals it) but
-        // before the subscribe call because that could tell gRPC to respond,
-        // after which it's not safe to do anything with `this` anymore.
-        IssueNewServerRequest(std::move(callback_));
+        // one. This is done before the subscribe call because that could tell
+        // gRPC to respond, after which it's not safe to do anything with `this`
+        // anymore.
+        IssueNewServerRequest();
 
         // Subscribe to the values Publisher. In doing so, we keep the returned
         // Subscription. Because the Subscription can own the Subscriber that
@@ -343,23 +368,25 @@ class RsGrpcServerCall<
   RsGrpcServerCall(
       GrpcErrorHandler error_handler,
       Method method,
-      Callback &&callback,
-      Service *service,
+      GrpcService *grpc_service,
+      RsService *rs_service,
+      HandlerMemberPtr handler_member_ptr,
       ::grpc::ServerCompletionQueue *cq)
       : error_handler_(error_handler),
         method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
+        grpc_service_(*grpc_service),
+        rs_service_(*rs_service),
+        handler_member_ptr_(handler_member_ptr),
         cq_(*cq),
         stream_(&context_) {}
 
-  void IssueNewServerRequest(Callback &&callback) {
-    // Take callback as an rvalue parameter to make it obvious that we steal it.
+  void IssueNewServerRequest() {
     Request(
         error_handler_,
         method_,
-        std::move(callback),  // Reuse the callback functor, don't copy
-        &service_,
+        &grpc_service_,
+        &rs_service_,
+        handler_member_ptr_,
         &cq_);
   }
 
@@ -388,8 +415,9 @@ class RsGrpcServerCall<
   Ptr<RsGrpcServerCall> retained_self_;
   GrpcErrorHandler error_handler_;
   Method method_;
-  Callback callback_;
-  Service &service_;
+  GrpcService &grpc_service_;
+  RsService &rs_service_;
+  HandlerMemberPtr handler_member_ptr_;
   ::grpc::ServerCompletionQueue &cq_;
   ::grpc::ServerContext context_;
   typename ServerCallTraits::Request request_;
@@ -403,28 +431,35 @@ template <
     typename ResponseType,
     typename RequestType,
     typename ServerCallTraits,
-    typename Callback>
+    typename HandlerMemberPtr>
 class RsGrpcServerCall<
     ::grpc::ServerAsyncReader<ResponseType, RequestType>,
     ServerCallTraits,
-    Callback>
+    HandlerMemberPtr>
         : public RsGrpcTag, public Subscriber, public Subscription {
   using Stream = ::grpc::ServerAsyncReader<ResponseType, RequestType>;
-  using Service = typename ServerCallTraits::Service;
-  using Method = StreamingRequestMethod<Service, Stream>;
+  using GrpcService = typename ServerCallTraits::GrpcService;
+  using RsService = typename ServerCallTraits::RsService;
+  using Method = StreamingRequestMethod<GrpcService, Stream>;
 
  public:
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
-      Callback &&callback,
-      Service *service,
+      GrpcService *grpc_service,
+      RsService *rs_service,
+      HandlerMemberPtr handler_member_ptr,
       ::grpc::ServerCompletionQueue *cq) {
     auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
         new RsGrpcServerCall(
-            error_handler, method, std::move(callback), service, cq));
+            error_handler,
+            method,
+            grpc_service,
+            rs_service,
+            handler_member_ptr,
+            cq));
 
-    (service->*method)(
+    (grpc_service->*method)(
         &call->context_,
         &call->reader_,
         cq,
@@ -513,18 +548,20 @@ class RsGrpcServerCall<
   RsGrpcServerCall(
       GrpcErrorHandler error_handler,
       Method method,
-      Callback &&callback,
-      Service *service,
+      GrpcService *grpc_service,
+      RsService *rs_service,
+      HandlerMemberPtr handler_member_ptr,
       ::grpc::ServerCompletionQueue *cq)
       : error_handler_(error_handler),
         method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
+        grpc_service_(*grpc_service),
+        rs_service_(*rs_service),
+        handler_member_ptr_(handler_member_ptr),
         cq_(*cq),
         reader_(&context_) {}
 
   void Init() {
-    auto response = callback_(
+    auto response = (rs_service_.*handler_member_ptr_)(
         CallContextBuilder::Build(&cq_),
         AnyPublisher<RequestType>(MakePublisher(
             [self = ToShared(this)](auto &&subscriber) {
@@ -558,8 +595,9 @@ class RsGrpcServerCall<
     Request(
         error_handler_,
         method_,
-        std::move(callback_),  // Reuse the callback functor, don't copy
-        &service_,
+        &grpc_service_,
+        &rs_service_,
+        handler_member_ptr_,
         &cq_);
   }
 
@@ -596,8 +634,9 @@ class RsGrpcServerCall<
   State state_ = State::INIT;
   GrpcErrorHandler error_handler_;
   Method method_;
-  Callback callback_;
-  Service &service_;
+  GrpcService &grpc_service_;
+  RsService &rs_service_;
+  HandlerMemberPtr handler_member_ptr_;
   ::grpc::ServerCompletionQueue &cq_;
   ::grpc::ServerContext context_;
   typename ServerCallTraits::Request request_;
@@ -617,16 +656,17 @@ template <
     typename ResponseType,
     typename RequestType,
     typename ServerCallTraits,
-    typename Callback>
+    typename HandlerMemberPtr>
 class RsGrpcServerCall<
     ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
     ServerCallTraits,
-    Callback>
+    HandlerMemberPtr>
         : public RsGrpcTag, public Subscriber, public Subscription {
   using Stream = ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType>;
-  using Service = typename ServerCallTraits::Service;
+  using GrpcService = typename ServerCallTraits::GrpcService;
+  using RsService = typename ServerCallTraits::RsService;
 
-  using Method = StreamingRequestMethod<Service, Stream>;
+  using Method = StreamingRequestMethod<GrpcService, Stream>;
 
   /**
    * The purpose of this class is to encapsulate the logic for writing from
@@ -765,14 +805,20 @@ class RsGrpcServerCall<
   static void Request(
       GrpcErrorHandler error_handler,
       Method method,
-      Callback &&callback,
-      Service *service,
+      GrpcService *grpc_service,
+      RsService *rs_service,
+      HandlerMemberPtr handler_member_ptr,
       ::grpc::ServerCompletionQueue *cq) {
     auto call = RsGrpcTag::Ptr<RsGrpcServerCall>::TakeOver(
         new RsGrpcServerCall(
-            error_handler, method, std::move(callback), service, cq));
+            error_handler,
+            method,
+            grpc_service,
+            rs_service,
+            handler_member_ptr,
+            cq));
 
-    (service->*method)(
+    (grpc_service->*method)(
         &call->context_,
         &call->stream_,
         cq,
@@ -854,13 +900,15 @@ class RsGrpcServerCall<
   RsGrpcServerCall(
       GrpcErrorHandler error_handler,
       Method method,
-      Callback &&callback,
-      Service *service,
+      GrpcService *grpc_service,
+      RsService *rs_service,
+      HandlerMemberPtr handler_member_ptr,
       ::grpc::ServerCompletionQueue *cq)
       : error_handler_(error_handler),
         method_(method),
-        callback_(std::move(callback)),
-        service_(*service),
+        grpc_service_(*grpc_service),
+        rs_service_(*rs_service),
+        handler_member_ptr_(handler_member_ptr),
         cq_(*cq),
         stream_(&context_),
         writer_(
@@ -869,7 +917,7 @@ class RsGrpcServerCall<
             &stream_) {}
 
   void Init() {
-    auto response = callback_(
+    auto response = (rs_service_.*handler_member_ptr_)(
         CallContextBuilder::Build(&cq_),
         AnyPublisher<RequestType>(MakePublisher(
           [self = ToShared(this)](auto &&subscriber) {
@@ -894,8 +942,9 @@ class RsGrpcServerCall<
     Request(
         error_handler_,
         method_,
-        std::move(callback_),  // Reuse the callback functor, don't copy
-        &service_,
+        &grpc_service_,
+        &rs_service_,
+        handler_member_ptr_,
         &cq_);
   }
 
@@ -915,8 +964,9 @@ class RsGrpcServerCall<
   State state_ = State::INIT;
   GrpcErrorHandler error_handler_;
   Method method_;
-  Callback callback_;
-  Service &service_;
+  GrpcService &grpc_service_;
+  RsService &rs_service_;
+  HandlerMemberPtr handler_member_ptr_;
   ::grpc::ServerCompletionQueue &cq_;
   ::grpc::ServerContext context_;
   typename ServerCallTraits::Request request_;
@@ -937,18 +987,25 @@ class InvocationRequester {
 };
 
 template <
-    // RequestMethod<Service, RequestType, Stream> or
-    // StreamingRequestMethod<Service, Stream>
+    // RequestMethod<GrpcService, RequestType, Stream> or
+    // StreamingRequestMethod<GrpcService, Stream>
     typename Method,
     typename ServerCallTraits,
-    typename Callback>
+    typename HandlerMemberPtr>
 class RsGrpcServerCallRequester : public InvocationRequester {
-  using Service = typename ServerCallTraits::Service;
+  using GrpcService = typename ServerCallTraits::GrpcService;
+  using RsService = typename ServerCallTraits::RsService;
 
  public:
   RsGrpcServerCallRequester(
-      Method method, Callback &&callback, Service *service)
-      : method_(method), callback_(std::move(callback)), service_(*service) {}
+      Method method,
+      GrpcService *grpc_service,
+      RsService *rs_service,
+      HandlerMemberPtr handler_member_ptr)
+      : method_(method),
+        grpc_service_(*grpc_service),
+        rs_service_(*rs_service),
+        handler_member_ptr_(handler_member_ptr) {}
 
   void RequestInvocation(
       GrpcErrorHandler error_handler,
@@ -956,15 +1013,21 @@ class RsGrpcServerCallRequester : public InvocationRequester {
     using ServerInvocation = RsGrpcServerCall<
         typename ServerCallTraits::Stream,
         ServerCallTraits,
-        Callback>;
+        HandlerMemberPtr>;
     ServerInvocation::Request(
-        error_handler, method_, Callback(callback_), &service_, cq);
+        error_handler,
+        method_,
+        &grpc_service_,
+        &rs_service_,
+        handler_member_ptr_,
+        cq);
   }
 
  private:
   Method method_;
-  Callback callback_;
-  Service &service_;
+  GrpcService &grpc_service_;
+  RsService &rs_service_;
+  HandlerMemberPtr handler_member_ptr_;
 };
 
 }  // namespace detail
@@ -994,7 +1057,7 @@ class RsGrpcServer {
 
   class Builder {
    public:
-    template <typename Service>
+    template <typename GrpcService, typename RsService>
     class ServiceBuilder {
      public:
       /**
@@ -1002,102 +1065,100 @@ class RsGrpcServer {
        * class; they need to stay alive for as long as this object exists.
        */
       ServiceBuilder(
-          Service *service,
+          GrpcService *grpc_service,
+          RsService *rs_service,
           std::vector<std::unique_ptr<detail::InvocationRequester>> *requesters)
-          : service_(*service),
+          : grpc_service_(*grpc_service),
+            rs_service_(*rs_service),
             invocation_requesters_(*requesters) {}
 
       // Unary RPC
       template <
-          typename InnerService,
+          typename InnerGrpcService,
           typename ResponseType,
           typename RequestType,
-          typename Callback>
+          typename HandlerMemberPtr>
       ServiceBuilder &RegisterMethod(
           detail::RequestMethod<
-              InnerService,
+              InnerGrpcService,
               RequestType,
               ::grpc::ServerAsyncResponseWriter<ResponseType>> method,
-          Callback &&callback) {
+          HandlerMemberPtr handler_member_ptr) {
         RegisterMethodImpl<
             detail::ServerCallTraits<
                 ::grpc::ServerAsyncResponseWriter<ResponseType>,
-                Service,
+                GrpcService,
+                RsService,
                 ResponseType,
-                RequestType,
-                Callback>>(
-                    method, std::forward<Callback>(callback));
+                RequestType>>(method, handler_member_ptr);
 
         return *this;
       }
 
       // Server streaming
       template <
-          typename InnerService,
+          typename InnerGrpcService,
           typename ResponseType,
           typename RequestType,
-          typename Callback>
+          typename HandlerMemberPtr>
       ServiceBuilder &RegisterMethod(
           detail::RequestMethod<
-              InnerService,
+              InnerGrpcService,
               RequestType,
               ::grpc::ServerAsyncWriter<ResponseType>> method,
-          Callback &&callback) {
+          HandlerMemberPtr handler_member_ptr) {
         RegisterMethodImpl<
             detail::ServerCallTraits<
                 ::grpc::ServerAsyncWriter<ResponseType>,
-                Service,
+                GrpcService,
+                RsService,
                 ResponseType,
-                RequestType,
-                Callback>>(
-                    method, std::forward<Callback>(callback));
+                RequestType>>(method, handler_member_ptr);
 
         return *this;
       }
 
       // Client streaming
       template <
-          typename InnerService,
+          typename InnerGrpcService,
           typename ResponseType,
           typename RequestType,
-          typename Callback>
+          typename HandlerMemberPtr>
       ServiceBuilder &RegisterMethod(
           detail::StreamingRequestMethod<
-              InnerService,
+              InnerGrpcService,
               ::grpc::ServerAsyncReader<ResponseType, RequestType>> method,
-          Callback &&callback) {
+          HandlerMemberPtr handler_member_ptr) {
         RegisterMethodImpl<
             detail::ServerCallTraits<
                 ::grpc::ServerAsyncReader<ResponseType, RequestType>,
-                Service,
+                GrpcService,
+                RsService,
                 ResponseType,
-                RequestType,
-                Callback>>(
-                    method, std::forward<Callback>(callback));
+                RequestType>>(method, handler_member_ptr);
 
         return *this;
       }
 
       // Bidi streaming
       template <
-          typename InnerService,
+          typename InnerGrpcService,
           typename ResponseType,
           typename RequestType,
-          typename Callback>
+          typename HandlerMemberPtr>
       ServiceBuilder &RegisterMethod(
           detail::StreamingRequestMethod<
-              InnerService,
+              InnerGrpcService,
               ::grpc::ServerAsyncReaderWriter<
                   ResponseType, RequestType>> method,
-          Callback &&callback) {
+          HandlerMemberPtr handler_member_ptr) {
         RegisterMethodImpl<
             detail::ServerCallTraits<
                 ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
-                Service,
+                GrpcService,
+                RsService,
                 ResponseType,
-                RequestType,
-                Callback>>(
-                    method, std::forward<Callback>(callback));
+                RequestType>>(method, handler_member_ptr);
 
         return *this;
       }
@@ -1106,36 +1167,40 @@ class RsGrpcServer {
       template <
           typename ServerCallTraits,
           typename Method,
-          typename Callback>
+          typename HandlerMemberPtr>
       void RegisterMethodImpl(
           Method method,
-          Callback &&callback) {
+          HandlerMemberPtr handler_member_ptr) {
         using ServerInvocationRequester =
             detail::RsGrpcServerCallRequester<
                 Method,
                 ServerCallTraits,
-                Callback>;
+                HandlerMemberPtr>;
 
         invocation_requesters_.emplace_back(
             new ServerInvocationRequester(
-                method, std::move(callback), &service_));
+                method, &grpc_service_, &rs_service_, handler_member_ptr));
       }
 
-      Service &service_;
+      GrpcService &grpc_service_;
+      RsService &rs_service_;
       std::vector<std::unique_ptr<detail::InvocationRequester>> &
           invocation_requesters_;
     };
 
     template <typename GrpcService, typename RsService>
-    ServiceBuilder<GrpcService> RegisterService(
+    ServiceBuilder<GrpcService, RsService> RegisterService(
         std::unique_ptr<RsService> rs_service) {
-      auto service = new GrpcService();
-      grpc_services_.emplace_back(service, [](void *service) {
+      auto grpc_service = new GrpcService();
+      grpc_services_.emplace_back(grpc_service, [](void *service) {
         delete reinterpret_cast<GrpcService *>(service);
       });
       rs_services_.push_back(std::move(rs_service));
-      builder_.RegisterService(service);
-      return ServiceBuilder<GrpcService>(service, &invocation_requesters_);
+      builder_.RegisterService(grpc_service);
+      return ServiceBuilder<GrpcService, RsService>(
+          grpc_service,
+          static_cast<RsService *>(rs_services_.back().get()),
+          &invocation_requesters_);
     }
 
     ::grpc::ServerBuilder &GrpcServerBuilder() {

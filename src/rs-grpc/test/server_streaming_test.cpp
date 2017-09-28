@@ -71,58 +71,6 @@ class AsyncResponder {
   std::function<void ()> callback_;
 };
 
-auto RepeatHandler(const CallContext &ctx, TestRequest &&request) {
-  int count = request.data();
-  return Pipe(
-      Range(1, count),
-      Map(&MakeTestResponse));
-}
-
-auto RepeatThenFailHandler(const CallContext &ctx, TestRequest &&request) {
-  return Concat(
-      RepeatHandler(ctx, std::move(request)),
-      Throw(std::runtime_error("repeat_fail")));
-}
-
-auto ServerStreamHangHandler(const CallContext &ctx, TestRequest &&request) {
-  return Never();
-}
-
-auto InfiniteRepeatHandler(const CallContext &ctx, TestRequest &&request) {
-  // If client-side rs-grpc violates backpressure requirements by requesting
-  // an unbounded number of elements from this infinite stream, then this will
-  // smash the stack or run out of memory.
-  return MakeInfiniteResponse();
-}
-
-auto ServerStreamBackpressureViolationHandler(
-    const CallContext &ctx, TestRequest &&request) {
-  return MakePublisher([](auto &&subscriber) {
-    // Emit element before it was asked for: streams should not do
-    // this.
-    subscriber.OnNext(MakeTestResponse(1));
-    subscriber.OnNext(MakeTestResponse(2));
-    subscriber.OnNext(MakeTestResponse(3));
-    return MakeSubscription();
-  });
-}
-
-auto ServerStreamAsyncResponseHandler(AsyncResponder *responder) {
-  return [responder](const CallContext &ctx, TestRequest &&request) {
-    return MakePublisher([responder](auto subscriber) {
-      auto shared_sub = std::make_shared<decltype(subscriber)>(
-          decltype(subscriber)(std::move(subscriber)));
-
-      responder->SetCallback([shared_sub] {
-        shared_sub->OnNext(MakeTestResponse(1));
-        shared_sub->OnComplete();
-      });
-
-      return MakeSubscription();
-    });
-  };
-}
-
 class ServerStreamingTestServer : public ServerStreamingTest {
  public:
   explicit ServerStreamingTestServer(AsyncResponder *async_responder)
@@ -139,7 +87,7 @@ class ServerStreamingTestServer : public ServerStreamingTest {
   AnyPublisher</*stream*/ TestResponse> RepeatThenFail(
       const CallContext &ctx, TestRequest &&request) override {
     return AnyPublisher<TestResponse>(Concat(
-        RepeatHandler(ctx, std::move(request)),
+        Repeat(ctx, std::move(request)),
         Throw(std::runtime_error("repeat_fail"))));
   }
 
@@ -206,24 +154,24 @@ TEST_CASE("Server streaming RPC") {
               new ServerStreamingTestServer(&async_responder)))
       .RegisterMethod(
           &grpc::ServerStreamingTest::AsyncService::RequestRepeat,
-          &RepeatHandler)
+          &ServerStreamingTestServer::Repeat)
       .RegisterMethod(
           &grpc::ServerStreamingTest::AsyncService::RequestRepeatThenFail,
-          &RepeatThenFailHandler)
+          &ServerStreamingTestServer::RepeatThenFail)
       .RegisterMethod(
           &grpc::ServerStreamingTest::AsyncService::RequestServerStreamHang,
-          &ServerStreamHangHandler)
+          &ServerStreamingTestServer::ServerStreamHang)
       .RegisterMethod(
           &grpc::ServerStreamingTest::AsyncService::RequestInfiniteRepeat,
-          &InfiniteRepeatHandler)
+          &ServerStreamingTestServer::InfiniteRepeat)
       .RegisterMethod(
           &grpc::ServerStreamingTest::AsyncService::
               RequestServerStreamBackpressureViolation,
-          &ServerStreamBackpressureViolationHandler)
+          &ServerStreamingTestServer::ServerStreamBackpressureViolation)
       .RegisterMethod(
           &grpc::ServerStreamingTest::AsyncService::
               RequestServerStreamAsyncResponse,
-          ServerStreamAsyncResponseHandler(&async_responder));
+          &ServerStreamingTestServer::ServerStreamAsyncResponse);
 
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();
