@@ -212,17 +212,28 @@ void PrintHeaderService(
       "    const ::std::shared_ptr<::grpc::ChannelInterface> &channel,\n"
       "    const ::grpc::StubOptions &options = ::grpc::StubOptions());\n\n");
 
+  printer->Outdent();
+  printer->Print(" private:\n");
+  printer->Indent();
+  printer->Print(
+      "template <typename, typename>\n"
+      "friend class ::shk::detail::ServiceBuilder;\n");
+  printer->Print(
+      "friend class ::shk::RsGrpcServer::Builder;\n\n");
+  // Prefix the names with RsGrpc_ to reduce risk of name collisions with RPC
+  // calls.
   printer->Print(
       *vars,
-      "using UnderlyingService = $grpc_ns$$Service$;\n");
+      "using RsGrpc_UnderlyingService = $grpc_ns$$Service$;\n");
   printer->Print(
       *vars,
-      "using ServiceInterface = $Service$;\n");
+      "using RsGrpc_ServiceInterface = $Service$;\n");
   printer->Print(
       *vars,
-      "static void RegisterService(\n"
+      "static void RsGrpc_RegisterService(\n"
       "    ::shk::detail::ServiceBuilder<\n"
-      "        UnderlyingService::AsyncService, $Service$> *builder);\n");
+      "        RsGrpc_UnderlyingService::AsyncService, $Service$> *builder);"
+      "\n");
 
   printer->Outdent();
   printer->Print("};\n");
@@ -432,9 +443,10 @@ void PrintSourceService(
 
   printer->Print(
       *vars,
-      "void $ns$$Service$::RegisterService(\n"
+      "void $ns$$Service$::RsGrpc_RegisterService(\n"
       "    ::shk::detail::ServiceBuilder<\n"
-      "        UnderlyingService::AsyncService, $Service$> *builder) {\n");
+      "        RsGrpc_UnderlyingService::AsyncService, $Service$> *builder) {"
+      "\n");
   printer->Indent();
   if (service->method_count() > 0) {
     printer->Print("(*builder)");

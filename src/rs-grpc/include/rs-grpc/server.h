@@ -1191,8 +1191,9 @@ class RsGrpcServer {
     template <typename RsServiceImpl>
     Builder &RegisterService(
         std::unique_ptr<RsServiceImpl> rs_service) {
-      using RsService = typename RsServiceImpl::ServiceInterface;
-      using GrpcService = typename RsService::UnderlyingService::AsyncService;
+      using RsService = typename RsServiceImpl::RsGrpc_ServiceInterface;
+      using GrpcService =
+          typename RsService::RsGrpc_UnderlyingService::AsyncService;
       auto grpc_service = new GrpcService();
       grpc_services_.emplace_back(grpc_service, [](void *service) {
         delete reinterpret_cast<GrpcService *>(service);
@@ -1204,7 +1205,7 @@ class RsGrpcServer {
           grpc_service,
           static_cast<RsService *>(rs_services_.back().get()),
           &invocation_requesters_);
-      RsService::RegisterService(&service_builder);
+      RsService::RsGrpc_RegisterService(&service_builder);
 
       return *this;
     }
