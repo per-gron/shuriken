@@ -1209,6 +1209,12 @@ class RsGrpcServer {
       return *this;
     }
 
+    template <typename RsServiceImpl, typename... Args>
+    Builder &EmplaceService(Args &&...args) {
+      return RegisterService(std::unique_ptr<RsServiceImpl>(new RsServiceImpl(
+          std::forward<Args>(args)...)));
+    }
+
     ::grpc::ServerBuilder &GrpcServerBuilder() {
       return builder_;
     }

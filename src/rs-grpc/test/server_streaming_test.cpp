@@ -148,9 +148,7 @@ TEST_CASE("Server streaming RPC") {
 
   AsyncResponder async_responder;
 
-  server_builder.RegisterService(
-      std::unique_ptr<ServerStreamingTestServer>(
-          new ServerStreamingTestServer(&async_responder)));
+  server_builder.EmplaceService<ServerStreamingTestServer>(&async_responder);
 
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();

@@ -89,8 +89,7 @@ TEST_CASE("Unary RPC") {
   server_builder.GrpcServerBuilder()
       .AddListeningPort(server_address, ::grpc::InsecureServerCredentials());
 
-  server_builder.RegisterService(
-      std::unique_ptr<UnaryTestServer>(new UnaryTestServer()));
+  server_builder.EmplaceService<UnaryTestServer>();
 
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();

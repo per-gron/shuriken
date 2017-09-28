@@ -137,11 +137,9 @@ TEST_CASE("Bidi streaming RPC") {
   std::atomic<int> hang_on_seen_elements(0);
   std::shared_ptr<AnySubscription> hung_subscription;
 
-  server_builder.RegisterService(
-      std::unique_ptr<BidiStreamingTestServer>(
-          new BidiStreamingTestServer(
-              &hang_on_seen_elements,
-              &hung_subscription)));
+  server_builder.EmplaceService<BidiStreamingTestServer>(
+      &hang_on_seen_elements,
+      &hung_subscription);
 
   RsGrpcClientRunloop runloop;
   CallContext ctx = runloop.CallContext();
