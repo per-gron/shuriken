@@ -1030,6 +1030,137 @@ class RsGrpcServerCallRequester : public InvocationRequester {
   HandlerMemberPtr handler_member_ptr_;
 };
 
+template <typename GrpcService, typename RsService>
+class ServiceBuilder {
+ public:
+  /**
+   * The pointers passed to the constructor are not transformed by this
+   * class; they need to stay alive for as long as this object exists.
+   */
+  ServiceBuilder(
+      GrpcService *grpc_service,
+      RsService *rs_service,
+      std::vector<std::unique_ptr<detail::InvocationRequester>> *requesters)
+      : grpc_service_(*grpc_service),
+        rs_service_(*rs_service),
+        invocation_requesters_(*requesters) {}
+
+  // Unary RPC
+  template <
+      typename InnerGrpcService,
+      typename ResponseType,
+      typename RequestType,
+      typename HandlerMemberPtr>
+  ServiceBuilder &RegisterMethod(
+      detail::RequestMethod<
+          InnerGrpcService,
+          RequestType,
+          ::grpc::ServerAsyncResponseWriter<ResponseType>> method,
+      HandlerMemberPtr handler_member_ptr) {
+    RegisterMethodImpl<
+        detail::ServerCallTraits<
+            ::grpc::ServerAsyncResponseWriter<ResponseType>,
+            GrpcService,
+            RsService,
+            ResponseType,
+            RequestType>>(method, handler_member_ptr);
+
+    return *this;
+  }
+
+  // Server streaming
+  template <
+      typename InnerGrpcService,
+      typename ResponseType,
+      typename RequestType,
+      typename HandlerMemberPtr>
+  ServiceBuilder &RegisterMethod(
+      detail::RequestMethod<
+          InnerGrpcService,
+          RequestType,
+          ::grpc::ServerAsyncWriter<ResponseType>> method,
+      HandlerMemberPtr handler_member_ptr) {
+    RegisterMethodImpl<
+        detail::ServerCallTraits<
+            ::grpc::ServerAsyncWriter<ResponseType>,
+            GrpcService,
+            RsService,
+            ResponseType,
+            RequestType>>(method, handler_member_ptr);
+
+    return *this;
+  }
+
+  // Client streaming
+  template <
+      typename InnerGrpcService,
+      typename ResponseType,
+      typename RequestType,
+      typename HandlerMemberPtr>
+  ServiceBuilder &RegisterMethod(
+      detail::StreamingRequestMethod<
+          InnerGrpcService,
+          ::grpc::ServerAsyncReader<ResponseType, RequestType>> method,
+      HandlerMemberPtr handler_member_ptr) {
+    RegisterMethodImpl<
+        detail::ServerCallTraits<
+            ::grpc::ServerAsyncReader<ResponseType, RequestType>,
+            GrpcService,
+            RsService,
+            ResponseType,
+            RequestType>>(method, handler_member_ptr);
+
+    return *this;
+  }
+
+  // Bidi streaming
+  template <
+      typename InnerGrpcService,
+      typename ResponseType,
+      typename RequestType,
+      typename HandlerMemberPtr>
+  ServiceBuilder &RegisterMethod(
+      detail::StreamingRequestMethod<
+          InnerGrpcService,
+          ::grpc::ServerAsyncReaderWriter<
+              ResponseType, RequestType>> method,
+      HandlerMemberPtr handler_member_ptr) {
+    RegisterMethodImpl<
+        detail::ServerCallTraits<
+            ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
+            GrpcService,
+            RsService,
+            ResponseType,
+            RequestType>>(method, handler_member_ptr);
+
+    return *this;
+  }
+
+ private:
+  template <
+      typename ServerCallTraits,
+      typename Method,
+      typename HandlerMemberPtr>
+  void RegisterMethodImpl(
+      Method method,
+      HandlerMemberPtr handler_member_ptr) {
+    using ServerInvocationRequester =
+        detail::RsGrpcServerCallRequester<
+            Method,
+            ServerCallTraits,
+            HandlerMemberPtr>;
+
+    invocation_requesters_.emplace_back(
+        new ServerInvocationRequester(
+            method, &grpc_service_, &rs_service_, handler_member_ptr));
+  }
+
+  GrpcService &grpc_service_;
+  RsService &rs_service_;
+  std::vector<std::unique_ptr<detail::InvocationRequester>> &
+      invocation_requesters_;
+};
+
 }  // namespace detail
 
 class RsGrpcServer {
@@ -1057,137 +1188,6 @@ class RsGrpcServer {
 
   class Builder {
    public:
-    template <typename GrpcService, typename RsService>
-    class ServiceBuilder {
-     public:
-      /**
-       * The pointers passed to the constructor are not transformed by this
-       * class; they need to stay alive for as long as this object exists.
-       */
-      ServiceBuilder(
-          GrpcService *grpc_service,
-          RsService *rs_service,
-          std::vector<std::unique_ptr<detail::InvocationRequester>> *requesters)
-          : grpc_service_(*grpc_service),
-            rs_service_(*rs_service),
-            invocation_requesters_(*requesters) {}
-
-      // Unary RPC
-      template <
-          typename InnerGrpcService,
-          typename ResponseType,
-          typename RequestType,
-          typename HandlerMemberPtr>
-      ServiceBuilder &RegisterMethod(
-          detail::RequestMethod<
-              InnerGrpcService,
-              RequestType,
-              ::grpc::ServerAsyncResponseWriter<ResponseType>> method,
-          HandlerMemberPtr handler_member_ptr) {
-        RegisterMethodImpl<
-            detail::ServerCallTraits<
-                ::grpc::ServerAsyncResponseWriter<ResponseType>,
-                GrpcService,
-                RsService,
-                ResponseType,
-                RequestType>>(method, handler_member_ptr);
-
-        return *this;
-      }
-
-      // Server streaming
-      template <
-          typename InnerGrpcService,
-          typename ResponseType,
-          typename RequestType,
-          typename HandlerMemberPtr>
-      ServiceBuilder &RegisterMethod(
-          detail::RequestMethod<
-              InnerGrpcService,
-              RequestType,
-              ::grpc::ServerAsyncWriter<ResponseType>> method,
-          HandlerMemberPtr handler_member_ptr) {
-        RegisterMethodImpl<
-            detail::ServerCallTraits<
-                ::grpc::ServerAsyncWriter<ResponseType>,
-                GrpcService,
-                RsService,
-                ResponseType,
-                RequestType>>(method, handler_member_ptr);
-
-        return *this;
-      }
-
-      // Client streaming
-      template <
-          typename InnerGrpcService,
-          typename ResponseType,
-          typename RequestType,
-          typename HandlerMemberPtr>
-      ServiceBuilder &RegisterMethod(
-          detail::StreamingRequestMethod<
-              InnerGrpcService,
-              ::grpc::ServerAsyncReader<ResponseType, RequestType>> method,
-          HandlerMemberPtr handler_member_ptr) {
-        RegisterMethodImpl<
-            detail::ServerCallTraits<
-                ::grpc::ServerAsyncReader<ResponseType, RequestType>,
-                GrpcService,
-                RsService,
-                ResponseType,
-                RequestType>>(method, handler_member_ptr);
-
-        return *this;
-      }
-
-      // Bidi streaming
-      template <
-          typename InnerGrpcService,
-          typename ResponseType,
-          typename RequestType,
-          typename HandlerMemberPtr>
-      ServiceBuilder &RegisterMethod(
-          detail::StreamingRequestMethod<
-              InnerGrpcService,
-              ::grpc::ServerAsyncReaderWriter<
-                  ResponseType, RequestType>> method,
-          HandlerMemberPtr handler_member_ptr) {
-        RegisterMethodImpl<
-            detail::ServerCallTraits<
-                ::grpc::ServerAsyncReaderWriter<ResponseType, RequestType>,
-                GrpcService,
-                RsService,
-                ResponseType,
-                RequestType>>(method, handler_member_ptr);
-
-        return *this;
-      }
-
-     private:
-      template <
-          typename ServerCallTraits,
-          typename Method,
-          typename HandlerMemberPtr>
-      void RegisterMethodImpl(
-          Method method,
-          HandlerMemberPtr handler_member_ptr) {
-        using ServerInvocationRequester =
-            detail::RsGrpcServerCallRequester<
-                Method,
-                ServerCallTraits,
-                HandlerMemberPtr>;
-
-        invocation_requesters_.emplace_back(
-            new ServerInvocationRequester(
-                method, &grpc_service_, &rs_service_, handler_member_ptr));
-      }
-
-      GrpcService &grpc_service_;
-      RsService &rs_service_;
-      std::vector<std::unique_ptr<detail::InvocationRequester>> &
-          invocation_requesters_;
-    };
-
     template <typename RsServiceImpl>
     Builder &RegisterService(
         std::unique_ptr<RsServiceImpl> rs_service) {
@@ -1200,7 +1200,7 @@ class RsGrpcServer {
       rs_services_.push_back(std::move(rs_service));
       builder_.RegisterService(grpc_service);
 
-      auto service_builder = ServiceBuilder<GrpcService, RsService>(
+      auto service_builder = detail::ServiceBuilder<GrpcService, RsService>(
           grpc_service,
           static_cast<RsService *>(rs_services_.back().get()),
           &invocation_requesters_);

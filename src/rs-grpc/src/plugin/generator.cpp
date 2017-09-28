@@ -221,7 +221,7 @@ void PrintHeaderService(
   printer->Print(
       *vars,
       "static void RegisterService(\n"
-      "    ::shk::RsGrpcServer::Builder::ServiceBuilder<\n"
+      "    ::shk::detail::ServiceBuilder<\n"
       "        UnderlyingService::AsyncService, $Service$> *builder);\n");
 
   printer->Outdent();
@@ -433,7 +433,7 @@ void PrintSourceService(
   printer->Print(
       *vars,
       "void $ns$$Service$::RegisterService(\n"
-      "    ::shk::RsGrpcServer::Builder::ServiceBuilder<\n"
+      "    ::shk::detail::ServiceBuilder<\n"
       "        UnderlyingService::AsyncService, $Service$> *builder) {\n");
   printer->Indent();
   if (service->method_count() > 0) {
