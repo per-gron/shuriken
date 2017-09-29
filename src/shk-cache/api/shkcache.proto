@@ -4,6 +4,10 @@ package shk;
 
 import "shk-index/api/shkindex.proto";
 
+service Cache {
+  rpc Lookup (CacheLookupRequest) returns (stream CacheLookupResponse);
+}
+
 message Root {
   string name = 1;
   bytes store_key = 2;  // 20 byte hash reference to shk-store entry
@@ -19,8 +23,4 @@ message CacheLookupResponse {
   repeated IndexFileReference files = 2;
   repeated uint32 ignored_dependencies = 3;
   repeated bytes additional_dependencies = 4;  // 20 byte hashes
-}
-
-service Cache {
-  rpc Lookup (CacheLookupRequest) returns (stream CacheLookupResponse);
 }

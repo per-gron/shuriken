@@ -19,5 +19,7 @@ namespace shk {
 static constexpr char kShkStoreTableName[] = "shk_store";
 static constexpr char kShkStoreContentsFamily[] = "contents";
 static constexpr char kShkStoreContentsColumn[] = "contents";
+static constexpr long long kShkStoreTableTtlMicros = 1;
+static constexpr size_t kShkStoreInsertChunkSizeLimit = 64 * 1024;
 
 }  // namespace shk

@@ -2,6 +2,12 @@ syntax = "proto3";
 
 package shk;
 
+service Index {
+  rpc Insert (IndexInsertRequest) returns (IndexInsertResponse);
+  rpc Lookup (IndexLookupRequest) returns (stream IndexLookupResponse);
+  rpc GetEntry (IndexGetEntryRequest) returns (IndexGetEntryResponse);
+}
+
 // An IndexFileReference points to an output file of a build step.
 message IndexFileReference {
   enum Type {
@@ -77,10 +83,4 @@ message IndexGetEntryResponse {
   repeated uint32 ignored_dependencies = 2;
   repeated bytes additional_dependencies = 3;  // 20 byte hashes
   repeated IndexFileReference files = 4;
-}
-
-service Index {
-  rpc Insert (IndexInsertRequest) returns (IndexInsertResponse);
-  rpc Lookup (IndexLookupRequest) returns (stream IndexLookupResponse);
-  rpc GetEntry (IndexGetEntryRequest) returns (IndexGetEntryResponse);
 }

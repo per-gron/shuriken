@@ -2,36 +2,9 @@ syntax = "proto3";
 
 package shk;
 
-message StoreInsertRequest {
-  int64 expiry_time = 1;  // Unix time in seconds
-  bytes contents = 2;
-}
-
-message StoreInsertResponse {
-  bytes key = 1;  // 20 byte hash
-  int64 expiry_time = 2;  // Unix time in seconds
-}
-
-message StoreGetRequest {
-  bytes key = 1;  // 20 byte hash
-}
-
-message StoreGetResponse {
-  int64 expiry_time = 1;  // Unix time in seconds
-  bytes contents = 2;
-}
-
-message StoreTouchRequest {
-  bytes key = 1;  // 20 byte hash
-  int64 expiry_time = 2;  // Unix time in seconds
-}
-
-message StoreTouchResponse {
-}
-
 service Store {
   // Insert an entry into the Store.
-  rpc Insert (StoreInsertRequest) returns (StoreInsertResponse);
+  rpc Insert (stream StoreInsertRequest) returns (StoreInsertResponse);
 
   // Bump an already present entry's expiry time in the store. If it does not
   // exist, fails with a not found error.Check if an entry is already present in
@@ -40,5 +13,51 @@ service Store {
   rpc Touch (StoreTouchRequest) returns (StoreTouchResponse);
 
   // Download an entry from the Store.
-  rpc Get (StoreGetRequest) returns (StoreGetResponse);
+  rpc Get (StoreGetRequest) returns (stream StoreGetResponse);
+}
+
+message StoreInsertRequest {
+  // Must be a blake2b hash of the contents, or the call will fail.
+  bytes key = 1;
+  // Total size in bytes of the contents. The call will fail is not set to the
+  // correct value.
+  int64 size = 2;
+  // Unix time in microseconds
+  int64 expiry_time_micros = 3;
+  // Must be no more than 64KB. If it is larger (or if the client wants to send
+  // smaller chunks) the client can stream the data in the Insert request.
+  // Subsequent StoreInsertRequest objects should have only the contents field
+  // set. The provided key in the first message must still be a hash of the
+  // entire contents before chunking.
+  bytes contents = 4;
+}
+
+message StoreInsertResponse {
+}
+
+message StoreTouchRequest {
+  bytes key = 1;  // 20 byte hash
+  int64 expiry_time_micros = 2;  // Unix time in microseconds
+}
+
+message StoreTouchResponse {
+}
+
+message StoreGetRequest {
+  bytes key = 1;  // 20 byte hash
+}
+
+message StoreGetResponse {
+  // Unix time in microseconds. Set only in the first response message of the
+  // stream.
+  int64 expiry_time_micros = 1;
+  // Contains the full size of the cell contents, even if the response is
+  // chunked. Set only in the first response message of the stream.
+  int64 size = 2;
+  // The contents of the entry. If the entry is large, the response may be split
+  // into smaller chunks and streamed.
+  bytes contents = 3;
+  // Indicates that the client should drop all previous chunks, as it will be
+  // re-read from the beginning.
+  bool reset_row = 4;
 }
