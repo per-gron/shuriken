@@ -49,7 +49,7 @@ struct RepeatContainer {
   template <typename ValueT>
   RepeatContainer(ValueT &&value, size_t count)
       : value_(std::forward<ValueT>(value)),
-        count_(count) {} 
+        count_(count) {}
 
   RepeatIterator begin() const {
     return RepeatIterator(value_, count_);

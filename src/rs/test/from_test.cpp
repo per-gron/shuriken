@@ -23,6 +23,53 @@
 #include "test_util.h"
 
 namespace shk {
+namespace {
+
+class DummyContainer {
+ public:
+  template <typename Value>
+  class Iterator {
+   public:
+    Iterator() {}
+
+    Value &operator*() {
+      return v_;
+    }
+
+    const Value &operator*() const {
+      return v_;
+    }
+
+    Iterator &operator++() {
+      return *this;
+    }
+
+    bool operator==(const Iterator &other) {
+      return true;
+    }
+
+   private:
+    Value v_;
+  };
+
+  Iterator<std::string> begin() {
+    return Iterator<std::string>();
+  }
+
+  Iterator<const std::string> begin() const {
+    return Iterator<const std::string>();
+  }
+
+  Iterator<std::string> end() {
+    return Iterator<std::string>();
+  }
+
+  Iterator<const std::string> end() const {
+    return Iterator<const std::string>();
+  }
+};
+
+}  // anonymous namespace
 
 TEST_CASE("From") {
   SECTION("construct") {
@@ -88,6 +135,11 @@ TEST_CASE("From") {
     sub.Request(ElementCount(1));
     CHECK(done == 1);
     CHECK(next == 1);
+  }
+
+  SECTION("container with const and non-const accessor") {
+    // Make sure it doesn't mix up const and non-const iterator types
+    From(DummyContainer()).Subscribe(MakeSubscriber());
   }
 
   SECTION("move Subscription with string container") {

@@ -89,8 +89,8 @@ class FromSubscription : public Subscription {
   // TODO(peck): It would be nice to make this an optional instead of
   // unique_ptr; there is no need for this heap allocation.
   std::unique_ptr<Subscriber> subscriber_;
-  decltype(std::begin(std::declval<Container>())) it_;
-  decltype(std::end(std::declval<Container>())) end_;
+  decltype(std::begin(std::declval<Container &>())) it_;
+  decltype(std::end(std::declval<Container &>())) end_;
   bool cancelled_ = false;
   ElementCount outstanding_request_count_ = ElementCount(0);
 };
