@@ -14,12 +14,16 @@
 
 #include "store_server.h"
 
+#include <blake2.h>
 #include <rs/concat_map.h>
 #include <rs/empty.h>
 #include <rs/from.h>
+#include <rs/if_empty.h>
 #include <rs/map.h>
 #include <rs/pipe.h>
 #include <rs/reduce.h>
+#include <rs/throw.h>
+#include <util/hash.h>
 #include <util/string_view.h>
 
 #include "constants.h"
@@ -27,8 +31,10 @@
 namespace shk {
 namespace {
 
-// Wraps (and owns) a protobuf object and exposes one of its repeated fields as
-// an STL-style container.
+/**
+ * Wraps (and owns) a protobuf object and exposes one of its repeated fields as
+ * an STL-style container, for use with the From rs operator.
+ */
 template <
     typename Message,
     typename ElementType,
@@ -88,6 +94,210 @@ class ProtobufContainer {
   Message message_;
 };
 
+/**
+ * This is an rs operator that is a little bit like Reduce, but it is a little
+ * bit more flexible: For each incoming value, it allows emitting the
+ * accumulator value instead of only emitting a value at the end. If there
+ * are no input values, the output stream is also empty. If there are values,
+ * the accumulator is always emitted after the input stream ends.
+ *
+ * The signature of the Reducer function is:
+ *
+ * void Reducer(Accumulator &&accum, Value &&value, bool *emit_now);
+ *
+ * If *emit_now is set to true, the returned Accumulator value is emitted
+ * immediately and the next call to Reducer will get a default constructed
+ * Accumulator value.
+ */
+template <typename Accumulator, typename Reducer>
+auto ReduceMultiple(Accumulator &&initial, Reducer &&reducer) {
+  // Return an operator (it takes a Publisher and returns a Publisher)
+  return [
+      initial = std::forward<Accumulator>(initial),
+      reducer = std::forward<Reducer>(reducer)](auto source) {
+    return Pipe(
+        source,
+        // TODO(peck): Emit the last value too
+        ConcatMap([accum = initial, reducer](auto &&value) mutable {
+          bool emit_now = false;
+          accum = reducer(
+              std::move(accum),
+              std::forward<decltype(value)>(value),
+              &emit_now);
+
+          if (emit_now) {
+            auto result = AnyPublisher<decltype(accum)>(
+                Just(std::move(accum)));
+            accum = decltype(accum)();
+            return result;
+          } else {
+            return AnyPublisher<decltype(accum)>(Empty());
+          }
+        }));
+  };
+}
+
+std::string HashContents(const string_view &contents) {
+  // TODO(peck): Implement me
+  return "";
+}
+
+auto ValidateInsertRequests() {
+  return [](auto input) {
+    return Pipe(
+        input,
+        IfEmpty(Throw(GrpcError(::grpc::Status(
+            ::grpc::INVALID_ARGUMENT,
+            "Got RPC with no request messages")))),
+        Map([](StoreInsertRequest &&request) {
+          if (request.contents().size() > kShkStoreInsertChunkSizeLimit) {
+            throw GrpcError(::grpc::Status(
+                ::grpc::INVALID_ARGUMENT,
+                "Got too large StoreInsertRequest"));
+          }
+          if (request.size() < 0) {
+            throw GrpcError(::grpc::Status(
+                ::grpc::INVALID_ARGUMENT,
+                "Got negative size StoreInsertRequest"));
+          }
+          if (request.expiry_time_micros() < 0) {
+            throw GrpcError(::grpc::Status(
+                ::grpc::INVALID_ARGUMENT,
+                "Got negative expiry timestamp in StoreInsertRequest"));
+          }
+          return request;
+        }));
+  };
+}
+
+auto GroupInsertRequests() {
+  // Group into cells into sufficiently large chunks to be stored in db
+  return ReduceMultiple(
+      StoreInsertRequest(),
+      [](
+          StoreInsertRequest &&accumulator,
+          StoreInsertRequest &&value,
+          bool *emit_now) {
+        accumulator.mutable_contents()->append(value.contents());
+        if (accumulator.contents().size() >=
+            kShkStoreCellSplitThreshold) {
+          *emit_now = true;
+        }
+        return accumulator;
+      });
+}
+
+auto SetExpiryTimeOnAllInsertRequests() {
+  // Set expiry time on all parts, not just the first one
+  return Map([expiry = ::google::protobuf::int64(0)](
+      StoreInsertRequest &&request) mutable {
+    if (expiry == 0) {
+      expiry = request.expiry_time_micros();
+    } else {
+      request.set_expiry_time_micros(expiry);
+    }
+    return request;
+  });
+}
+
+/**
+ * This is an operator that takes a stream of chunked insert requests and
+ * ensures that they can be written to the db: Set the key to be the key for
+ * each write and add a multi entry if needed.
+ *
+ * This might return entries (after the initial one) that don't have
+ * expiry_time_micros set; that needs to be populated. It might also return
+ * entries with an empty key; they should not be written.
+ */
+auto AddMultiEntryInsertIfChunked() {
+  return [](auto input) {
+    // A special fake insert value added to the end that may or may not be
+    // replaced with a multi entry write. Size -1 ensures that it is
+    // distinguishable from other inserts because any such insert would have
+    // already caused the RPC to fail.
+    StoreInsertRequest sentinel_insert;
+    sentinel_insert.set_size(-1);
+
+    return Pipe(
+        Concat(input, Just(sentinel_insert)),
+        Map([
+            num_inserts = 0,
+            claimed_key = std::string(),
+            hash_state = blake2b_state()](
+                StoreInsertRequest &&request) mutable {
+          if (claimed_key.empty()) {
+            // This must be the first StoreInsertRequest in the stream
+            if (claimed_key.empty()) {
+              throw GrpcError(::grpc::Status(
+                  ::grpc::INVALID_ARGUMENT,
+                  "key field not set on the first StoreInsertRequest"));
+            }
+            claimed_key = request.key();
+            blake2b_init(&hash_state, kHashSize);
+          }
+
+          if (request.size() != -1) {
+            num_inserts++;
+            request.set_key(HashContents(request.contents()));
+            blake2b_update(
+                &hash_state,
+                reinterpret_cast<const uint8_t *>(request.contents().data()),
+                request.contents().size());
+          } else {
+            // This is the final sentinel value
+            std::string actual_key(kHashSize, '\0');
+            blake2b_final(
+                &hash_state,
+                static_cast<void *>(&actual_key[0]),
+                actual_key.size());
+            if (claimed_key != actual_key) {
+              throw GrpcError(::grpc::Status(
+                  ::grpc::INVALID_ARGUMENT,
+                  "Got key that does not match contents"));
+            }
+
+            if (num_inserts > 1) {
+              // Need to make a multi-entry
+              request.set_key(actual_key);
+              // TODO(peck): Need to let the db writer know that this is a multi entry
+              request.set_contents("TODO");
+            }
+          }
+          return request;
+        }));
+  };
+}
+
+auto WriteInsertsToDb(
+    const CallContext &ctx,
+    const std::shared_ptr<google::bigtable::v2::Bigtable> &bigtable) {
+  return ConcatMap([ctx, bigtable](StoreInsertRequest &&request) {
+    auto key = HashContents(request.contents());
+
+    google::bigtable::v2::MutateRowRequest write;
+    write.set_table_name(kShkStoreTableName);
+    write.set_row_key(key);
+
+    auto &mutation = *write.add_mutations();
+    auto &set_cell = *mutation.mutable_set_cell();
+    set_cell.set_family_name(kShkStoreContentsFamily);
+    set_cell.set_column_qualifier(kShkStoreContentsColumn);
+    set_cell.set_timestamp_micros(
+        request.expiry_time_micros() - kShkStoreTableTtlMicros);
+    set_cell.set_value(std::move(*request.mutable_contents()));
+
+    return bigtable->MutateRow(ctx, std::move(write));
+  });
+}
+
+auto SwallowInputAndReturnInsertResponse() {
+  // TODO(peck): This Reduce call is really just to add a value to the
+  // end. Change to something more intuitive.
+  return Reduce(
+      StoreInsertResponse(),
+      [](auto &&accum, auto &&) { return accum; });
+}
+
 class StoreServer : public Store {
  public:
   StoreServer(const std::shared_ptr<google::bigtable::v2::Bigtable> &bigtable)
@@ -98,53 +308,12 @@ class StoreServer : public Store {
       AnyPublisher<StoreInsertRequest> &&requests) override {
     return AnyPublisher<StoreInsertResponse>(Pipe(
         requests,
-        // First, group into >=128KB cells
-        ConcatMap([](StoreInsertRequest &&request) {
-          if (request.contents().size() > kShkStoreInsertChunkSizeLimit) {
-            return AnyPublisher<StoreInsertRequest>(
-                Throw(GrpcError(::grpc::Status(
-                    ::grpc::INVALID_ARGUMENT,
-                    "Got too large StoreInsertRequest"))));
-          }
-
-          return AnyPublisher<StoreInsertRequest>(Empty());
-        }),
-        // TODO(peck): Make sure to validate the hash before writing the final
-        // entry.
-
-        // Then, store the cells
-        //
-        // TODO(peck): Should store the cells in parallel, which ConcatMap does
-        // not do.
-
-        // Finally, respond with one response
-        //
-        // TODO(peck): This Reduce call is really just to add a value to the
-        // end. Change to something more intuitive.
-        Reduce(
-            StoreInsertResponse(),
-            [](auto &&accum, auto &&) { return accum; })));
-
-#if 0
-    // auto key = HashContents(request.contents());
-
-    google::bigtable::v2::MutateRowRequest write;
-    write.set_table_name(kShkStoreTableName);
-    write.set_row_key(key);
-
-    auto &mutation = *write.add_mutations();
-    auto &set_cell = *mutation.mutable_set_cell();
-    set_cell.set_family_name(kShkStoreContentsFamily);
-    set_cell.set_column_qualifier(kShkStoreContentsColumn);
-    set_cell.set_timestamp_micros(-1);  // TODO(peck): Handle expiry time
-    set_cell.set_value(std::move(*request.mutable_contents()));
-
-    return AnyPublisher<StoreInsertResponse>(Pipe(
-        bigtable_->MutateRow(ctx, std::move(write)),
-        Map([](google::bigtable::v2::MutateRowResponse) {
-          return StoreInsertResponse();
-        })));
-#endif
+        ValidateInsertRequests(),
+        GroupInsertRequests(),
+        AddMultiEntryInsertIfChunked(),
+        SetExpiryTimeOnAllInsertRequests(),
+        WriteInsertsToDb(ctx, bigtable_),
+        SwallowInputAndReturnInsertResponse()));
   }
 
   AnyPublisher<StoreTouchResponse> Touch(
@@ -179,15 +348,12 @@ class StoreServer : public Store {
             response.set_size(chunk.value_size());
           }
           response.set_contents(std::move(*chunk.mutable_value()));
+          response.set_reset_row(chunk.reset_row());
           return response;
         })));
   }
 
  private:
-  std::string HashContents(const string_view &contents) {
-    return "";
-  }
-
   std::shared_ptr<google::bigtable::v2::Bigtable> bigtable_;
 };
 

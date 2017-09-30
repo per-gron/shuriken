@@ -17,12 +17,13 @@ service Store {
 }
 
 message StoreInsertRequest {
-  // Must be a blake2b hash of the contents, or the call will fail.
+  // Must be a 20 byte blake2b hash of the entire contents without chunking, or
+  // the call will fail.
   bytes key = 1;
   // Total size in bytes of the contents. The call will fail is not set to the
-  // correct value.
+  // correct value. Must not be negative.
   int64 size = 2;
-  // Unix time in microseconds
+  // Unix time in microseconds. Must not be negative.
   int64 expiry_time_micros = 3;
   // Must be no more than 64KB. If it is larger (or if the client wants to send
   // smaller chunks) the client can stream the data in the Insert request.

@@ -10,6 +10,7 @@ shk_library(
     src/store_server.cpp
     src/store_server.h
   DEPENDENCIES
+    blake2
     google-bigtable-v2-proto
     rs
     rs-grpc
