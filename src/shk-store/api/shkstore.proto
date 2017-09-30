@@ -67,8 +67,9 @@ message StoreGetResponse {
   // The contents of the entry. If the entry is large, the response may be split
   // into smaller chunks and streamed.
   bytes contents = 3;
-  // If not -1, indicates that the client should write this chunk's content
-  // starting from the position indicated by reset_to, as some or all of the
-  // contents will be re-read. This field is never used to jump forward.
-  int64 reset_to = 4;
+  // Indicates that the client should drop all chunks since the last chunk that
+  // was a reset_checkpoint (including the reset_checkpoint chunk), as data will
+  // be re-read from the checkpoint.
+  bool reset_row = 4;
+  bool reset_checkpoint = 5;
 }

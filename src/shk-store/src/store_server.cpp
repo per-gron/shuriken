@@ -407,7 +407,7 @@ class CellChunkReader {
 
 StoreGetResponse CellChunkToStoreGetResponse(
     google::bigtable::v2::ReadRowsResponse::CellChunk &&chunk,
-    ::google::protobuf::int64 reset_to_position) {
+    bool reset_checkpoint) {
   StoreGetResponse response;
   if (chunk.timestamp_micros() != 0) {
     response.set_expiry_time_micros(
@@ -415,7 +415,8 @@ StoreGetResponse CellChunkToStoreGetResponse(
     response.set_size(chunk.value_size());
   }
   response.set_contents(std::move(*chunk.mutable_value()));
-  response.set_reset_to(chunk.reset_row() ? reset_to_position : -1);
+  response.set_reset_row(chunk.reset_row());
+  response.set_reset_checkpoint(reset_checkpoint);
   return response;
 }
 
@@ -441,10 +442,10 @@ class StoreServer : public Store {
     // TODO(peck): Make it less expensive when there is already a sufficiently
     // up-to-date entry.
 
-    // TODO(peck): Handle reset_to
+    // TODO(peck): Handle reset_row
 
     return AnyPublisher<StoreTouchResponse>(Pipe(
-        Get(ctx, request.key(), 0),
+        Get(ctx, request.key()),
         Map([request, first = true](StoreGetResponse &&response) mutable {
           StoreInsertRequest insert_request;
           if (first) {
@@ -467,14 +468,12 @@ class StoreServer : public Store {
 
   AnyPublisher<StoreGetResponse> Get(
       const CallContext &ctx, StoreGetRequest &&request) override {
-    return Get(ctx, request.key(), 0);
+    return Get(ctx, request.key());
   }
 
  private:
   AnyPublisher<StoreGetResponse> Get(
-      const CallContext &ctx,
-      const std::string &key,
-      ::google::protobuf::int64 reset_to_position) {
+      const CallContext &ctx, const std::string &key) {
     // TODO(peck): Make sure nonexisting entries are handled properly
 
     google::bigtable::v2::ReadRowsRequest read;
@@ -490,24 +489,20 @@ class StoreServer : public Store {
         FlattenReadRowsResponsesToCellChunks(),
         ConcatMap([
             chunk_reader,
-            reset_to_position,
             multi_entry = false,
             data_entry = false](
                 google::bigtable::v2::ReadRowsResponse::CellChunk &&
                 chunk) mutable {
+          bool reset_checkpoint = false;
           if (!multi_entry && !data_entry) {
             // This is the first chunk. Decide if this is a multi entry or not.
             multi_entry =
                 chunk.qualifier().value() == kShkStoreMultiEntryColumn;
             data_entry = !multi_entry;
-
-            if (multi_entry && reset_to_position != 0) {
-              // The reset_to_position logic does not work if a multi entry is
-              // a chunk of another multi entry.
-              throw GrpcError(::grpc::Status(
-                  ::grpc::INTERNAL,
-                  "Cannot process multi entries that contain multi entries"));
-            }
+            // The first chunk of a Bigtable read operation is a reset
+            // checkpoint; if Bigtable sets reset_row, this is where it should
+            // be reset to.
+            reset_checkpoint = true;
           }
 
           if (multi_entry) {
@@ -518,7 +513,7 @@ class StoreServer : public Store {
             return AnyPublisher<StoreGetResponse>(Just(
                 CellChunkToStoreGetResponse(
                     std::move(chunk),
-                    reset_to_position)));
+                    reset_checkpoint)));
           }
         }),
         Append(MakePublisher([this, ctx, chunk_reader](auto &&subscriber) {
@@ -557,7 +552,7 @@ class StoreServer : public Store {
     return AnyPublisher<StoreGetResponse>(Pipe(
         MultiEntryEntries(std::move(multi_entry)),
         ConcatMap([this, ctx](MultiEntry::Entry &&entry) {
-          return Get(ctx, entry.key(), entry.start());
+          return Get(ctx, entry.key());
         }),
         Map([size, expiry_time_micros, first = true](
             StoreGetResponse &&response) mutable {
