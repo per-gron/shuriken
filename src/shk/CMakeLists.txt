@@ -52,7 +52,6 @@ shk_library(
     src/fs/path.h
     src/fs/persistent_file_system.cpp
     src/fs/persistent_file_system.h
-    src/hash.h
     src/manifest/eval_env.cpp
     src/manifest/eval_env.h
     src/manifest/eval_string.cpp

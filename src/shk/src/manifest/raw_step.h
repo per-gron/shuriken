@@ -17,7 +17,8 @@
 #include <string>
 #include <vector>
 
-#include "hash.h"
+#include <util/hash.h>
+
 #include "fs/path.h"
 
 namespace shk {

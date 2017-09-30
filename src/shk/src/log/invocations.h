@@ -17,9 +17,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include <util/hash.h>
+
 #include "fs/file_id.h"
 #include "fs/fingerprint.h"
-#include "hash.h"
 #include "manifest/wrapper_view.h"
 
 namespace shk {

@@ -18,10 +18,10 @@
 #include <vector>
 
 #include <util/assert.h>
+#include <util/hash.h>
 #include <util/string_view.h>
 
 #include "cache/interner.h"
-#include "hash.h"
 #include "manifest/step.h"
 
 namespace shk {

@@ -18,8 +18,9 @@
 #include <unordered_set>
 #include <vector>
 
+#include <util/hash.h>
+
 #include "fs/fingerprint.h"
-#include "hash.h"
 #include "io_error.h"
 
 namespace shk {

@@ -18,9 +18,9 @@
 
 #include <sys/types.h>
 
+#include <util/hash.h>
 #include <util/string_view.h>
 
-#include "hash.h"
 #include "io_error.h"
 #include "util.h"
 

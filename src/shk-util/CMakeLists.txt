@@ -8,6 +8,7 @@ shk_library(
   SOURCES
     include/util/assert.h
     include/util/file_descriptor.h
+    include/util/hash.h
     include/util/intrinsics.h
     include/util/path_error.h
     include/util/path_operations.h

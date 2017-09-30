@@ -19,11 +19,11 @@
 
 #include <sys/types.h>
 
+#include <util/hash.h>
 #include <util/string_view.h>
 
 #include "fs/file_id.h"
 #include "fs/file_system.h"
-#include "hash.h"
 
 namespace shk {
 namespace detail {

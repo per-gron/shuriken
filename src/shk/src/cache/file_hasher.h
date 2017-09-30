@@ -14,9 +14,8 @@
 
 #pragma once
 
+#include <util/hash.h>
 #include <util/string_view.h>
-
-#include "hash.h"
 
 namespace shk {
 

@@ -18,12 +18,14 @@
 
 namespace shk {
 
+static constexpr size_t kHashSize = 20;
+
 /**
  * The reason Hash isn't a simple using type alias is to be able to define a
  * std::hash function for it.
  */
 struct Hash {
-  std::array<uint8_t, 20> data;
+  std::array<uint8_t, kHashSize> data;
 };
 
 inline bool operator==(const Hash &a, const Hash &b) {
