@@ -98,9 +98,8 @@ class ProtobufContainer {
 /**
  * This is an rs operator that is a little bit like Reduce, but it is a little
  * bit more flexible: For each incoming value, it allows emitting the
- * accumulator value instead of only emitting a value at the end. If there
- * are no input values, the output stream is also empty. If there are values,
- * the accumulator is always emitted after the input stream ends.
+ * accumulator value instead of only emitting a value at the end. The
+ * accumulator is always emitted after the input stream ends.
  *
  * The signature of the Reducer function is:
  *
@@ -110,31 +109,33 @@ class ProtobufContainer {
  * immediately and the next call to Reducer will get a default constructed
  * Accumulator value.
  */
-template <typename Accumulator, typename Reducer>
-auto ReduceMultiple(Accumulator &&initial, Reducer &&reducer) {
+template <typename AccumulatorType, typename Reducer>
+auto ReduceMultiple(AccumulatorType &&initial, Reducer &&reducer) {
   // Return an operator (it takes a Publisher and returns a Publisher)
   return [
-      initial = std::forward<Accumulator>(initial),
+      initial = std::forward<AccumulatorType>(initial),
       reducer = std::forward<Reducer>(reducer)](auto source) {
-    return Pipe(
-        source,
-        // TODO(peck): Emit the last value too
-        ConcatMap([accum = initial, reducer](auto &&value) mutable {
+    using Accumulator = typename std::decay<AccumulatorType>::type;
+    auto accum = std::make_shared<Accumulator>(initial);
+
+    return Concat(
+        ConcatMap([accum, reducer](auto &&value) mutable {
           bool emit_now = false;
-          accum = reducer(
-              std::move(accum),
+          *accum = reducer(
+              std::move(*accum),
               std::forward<decltype(value)>(value),
               &emit_now);
 
           if (emit_now) {
-            auto result = AnyPublisher<decltype(accum)>(
-                Just(std::move(accum)));
-            accum = decltype(accum)();
+            auto result = AnyPublisher<Accumulator>(
+                Just(std::move(*accum)));
+            *accum = Accumulator();
             return result;
           } else {
-            return AnyPublisher<decltype(accum)>(Empty());
+            return AnyPublisher<Accumulator>(Empty());
           }
-        }));
+        })(source),
+        Start([accum] { return std::move(*accum); }));
   };
 }
 
@@ -309,7 +310,8 @@ auto WriteInsertsToDb(
     auto &mutation = *write.add_mutations();
     auto &set_cell = *mutation.mutable_set_cell();
     set_cell.set_family_name(kShkStoreContentsFamily);
-    set_cell.set_column_qualifier(kShkStoreContentsColumn);
+    set_cell.set_column_qualifier(entry_to_write.multi_entry() ?
+        kShkStoreMultiEntryColumn : kShkStoreDataColumn);
     set_cell.set_timestamp_micros(
         entry_to_write.expiry_time_micros() - kShkStoreTableTtlMicros);
     set_cell.set_value(std::move(*entry_to_write.mutable_contents()));
