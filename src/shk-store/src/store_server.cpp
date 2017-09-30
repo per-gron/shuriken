@@ -442,8 +442,6 @@ class StoreServer : public Store {
     // TODO(peck): Make it less expensive when there is already a sufficiently
     // up-to-date entry.
 
-    // TODO(peck): Handle reset_row
-
     return AnyPublisher<StoreTouchResponse>(Pipe(
         Get(ctx, request.key()),
         Map([request, first = true](StoreGetResponse &&response) mutable {
@@ -457,6 +455,7 @@ class StoreServer : public Store {
           insert_request.set_contents(std::move(*response.mutable_contents()));
           return insert_request;
         }),
+        // TODO(peck): Group the writes per reset_checkpoint and handle reset_row
         [this, ctx](auto &&insert_request_publisher) {
           return Insert(
               ctx, AnyPublisher<StoreInsertRequest>(insert_request_publisher));

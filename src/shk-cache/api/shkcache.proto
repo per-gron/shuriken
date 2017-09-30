@@ -14,13 +14,13 @@ message Root {
 }
 
 message CacheLookupRequest {
-  repeated Root roots = 1;
-  repeated bytes step_hashes = 2;  // 20 byte hashes
+  repeated Root root = 1;
+  repeated bytes step_hash = 2;  // 20 byte hashes
 }
 
 message CacheLookupResponse {
   bytes step_hash = 1;  // 20 byte hash
-  repeated IndexFileReference files = 2;
-  repeated uint32 ignored_dependencies = 3;
-  repeated bytes additional_dependencies = 4;  // 20 byte hashes
+  repeated IndexFileReference file = 2;
+  repeated uint32 ignored_dependency = 3;
+  repeated bytes additional_dependency = 4;  // 20 byte hashes
 }

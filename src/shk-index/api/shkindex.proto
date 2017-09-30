@@ -3,7 +3,7 @@ syntax = "proto3";
 package shk;
 
 service Index {
-  rpc Insert (IndexInsertRequest) returns (IndexInsertResponse);
+  rpc Insert (stream IndexInsertRequest) returns (IndexInsertResponse);
   rpc Lookup (IndexLookupRequest) returns (stream IndexLookupResponse);
   rpc GetEntry (IndexGetEntryRequest) returns (IndexGetEntryResponse);
 }
@@ -40,11 +40,11 @@ message SecondaryIndexKey {
 // eventually written (after the actual output files have been uploaded).
 message IndexEntry {
   bytes step_hash = 1;  // 20 byte hash
-  repeated SecondaryIndexKey secondary_keys = 2;
+  repeated SecondaryIndexKey secondary_key = 2;
   int64 expiry_time = 3;  // Unix time in seconds
-  repeated uint32 ignored_dependencies = 4;
-  repeated bytes additional_dependencies = 5;  // 20 byte hashes
-  repeated IndexFileReference output_files = 6;
+  repeated uint32 ignored_dependency = 4;
+  repeated bytes additional_dependency = 5;  // 20 byte hashes
+  repeated IndexFileReference output_file = 6;
 }
 
 // A LookupSecondaryIndexKey is like a SecondaryIndexKey but it has indices to a
@@ -56,7 +56,7 @@ message LookupSecondaryIndexKey {
 }
 
 message IndexInsertRequest {
-  repeated IndexEntry entries = 1;
+  IndexEntry entry = 1;
 }
 
 message IndexInsertResponse {
@@ -67,11 +67,11 @@ message IndexLookupRequest {
 }
 
 message IndexLookupResponse {
-  repeated Path paths = 1;
-  repeated bytes fingerprints = 2;  // 20 byte hashes
+  repeated Path path = 1;
+  repeated bytes fingerprint = 2;  // 20 byte hashes
 
   bytes entry_id = 3;
-  repeated LookupSecondaryIndexKey secondary_keys = 4;
+  repeated LookupSecondaryIndexKey secondary_key = 4;
 }
 
 message IndexGetEntryRequest {
@@ -80,7 +80,7 @@ message IndexGetEntryRequest {
 
 message IndexGetEntryResponse {
   int64 expiry_time = 1;  // Unix time in seconds
-  repeated uint32 ignored_dependencies = 2;
-  repeated bytes additional_dependencies = 3;  // 20 byte hashes
-  repeated IndexFileReference files = 4;
+  repeated uint32 ignored_dependency = 2;
+  repeated bytes additional_dependency = 3;  // 20 byte hashes
+  repeated IndexFileReference file = 4;
 }
