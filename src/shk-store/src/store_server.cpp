@@ -438,8 +438,31 @@ class StoreServer : public Store {
 
   AnyPublisher<StoreTouchResponse> Touch(
       const CallContext &ctx, StoreTouchRequest &&request) override {
-    // TODO(peck): Implement me
-    return AnyPublisher<StoreTouchResponse>(Empty());
+    // TODO(peck): Make it less expensive when there is already a sufficiently
+    // up-to-date entry.
+
+    // TODO(peck): Handle reset_to
+
+    return AnyPublisher<StoreTouchResponse>(Pipe(
+        Get(ctx, request.key(), 0),
+        Map([request, first = true](StoreGetResponse &&response) mutable {
+          StoreInsertRequest insert_request;
+          if (first) {
+            insert_request.set_key(request.key());
+            insert_request.set_size(response.size());
+            insert_request.set_expiry_time_micros(request.expiry_time_micros());
+            first = false;
+          }
+          insert_request.set_contents(std::move(*response.mutable_contents()));
+          return insert_request;
+        }),
+        [this, ctx](auto &&insert_request_publisher) {
+          return Insert(
+              ctx, AnyPublisher<StoreInsertRequest>(insert_request_publisher));
+        },
+        Map([](StoreInsertResponse &&response) {
+          return StoreTouchResponse();
+        })));
   }
 
   AnyPublisher<StoreGetResponse> Get(
