@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package shk;
+
+// If a shk-store entry is too large to be good to store in a single database
+// cell, it is split into smaller pieces. Each part is written as its own entry
+// and then a "multi entry" is written at the key for the overall entry. The
+// multi entry's contents is a MultiEntry protobuf message.
+message MultiEntry {
+  message Entry {
+    // The position where this entry begins. The first Entry will have start 0,
+    // the next one will have the first entry's size as start etc. This is there
+    // to make it easier to find the chunk at a specific offset.
+    int64 start = 1;
+    // The key to where this chunk is stored.
+    bytes key = 2;
+  }
+
+  // Size of the whole entry
+  int64 size = 1;
+  repeated Entry entry = 2;
+}
+
+// This contains information about one entry to write to the database, after
+// multi entry processing.
+message EntryToWrite {
+  bytes key = 1;  // The key can be empty. If so, don't write it to the db.
+  int64 expiry_time_micros = 2;  // Unix time in microseconds.
+  bool multi_entry = 3;  // Always set.
+  bytes contents = 4;
+}

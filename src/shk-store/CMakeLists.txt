@@ -3,6 +3,10 @@ shk_proto(
   PROTO_FILE shk-store/api/shkstore.proto
   GRPC)
 
+shk_proto(
+  LIB_NAME shk-store-internal-proto
+  PROTO_FILE shk-store/src/internal.proto)
+
 shk_library(
   NAME libshk-store
   SOURCES
@@ -14,6 +18,7 @@ shk_library(
     google-bigtable-v2-proto
     rs
     rs-grpc
+    shk-store-internal-proto
     shk-store-proto
     shk-util)
 

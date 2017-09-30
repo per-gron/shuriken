@@ -23,6 +23,7 @@
 #include <rs/pipe.h>
 #include <rs/reduce.h>
 #include <rs/throw.h>
+#include <shk-store/src/internal.pb.h>
 #include <util/hash.h>
 #include <util/string_view.h>
 
@@ -138,8 +139,15 @@ auto ReduceMultiple(Accumulator &&initial, Reducer &&reducer) {
 }
 
 std::string HashContents(const string_view &contents) {
-  // TODO(peck): Implement me
-  return "";
+  blake2b_state hash_state;
+  blake2b_init(&hash_state, kHashSize);
+  blake2b_update(
+      &hash_state,
+      reinterpret_cast<const uint8_t *>(contents.data()),
+      contents.size());
+  std::string hash(kHashSize, '\0');
+  blake2b_final(&hash_state, static_cast<void *>(&hash[0]), hash.size());
+  return hash;
 }
 
 auto ValidateInsertRequests() {
@@ -170,8 +178,10 @@ auto ValidateInsertRequests() {
   };
 }
 
+/**
+ * Group into cells into sufficiently large chunks to be stored in db
+ */
 auto GroupInsertRequests() {
-  // Group into cells into sufficiently large chunks to be stored in db
   return ReduceMultiple(
       StoreInsertRequest(),
       [](
@@ -187,29 +197,14 @@ auto GroupInsertRequests() {
       });
 }
 
-auto SetExpiryTimeOnAllInsertRequests() {
-  // Set expiry time on all parts, not just the first one
-  return Map([expiry = ::google::protobuf::int64(0)](
-      StoreInsertRequest &&request) mutable {
-    if (expiry == 0) {
-      expiry = request.expiry_time_micros();
-    } else {
-      request.set_expiry_time_micros(expiry);
-    }
-    return request;
-  });
-}
-
 /**
  * This is an operator that takes a stream of chunked insert requests and
- * ensures that they can be written to the db: Set the key to be the key for
- * each write and add a multi entry if needed.
- *
- * This might return entries (after the initial one) that don't have
- * expiry_time_micros set; that needs to be populated. It might also return
- * entries with an empty key; they should not be written.
+ * converts it to a stream of EntryToWrite messages that are ready to be written
+ * to the database. It is responsible for potentially creating a multientry if
+ * the contents are chunked, and it will set the other EntryToWrite fields, for
+ * example the expiry time and the key for each write.
  */
-auto AddMultiEntryInsertIfChunked() {
+auto ConvertToEntriesToWrite() {
   return [](auto input) {
     // A special fake insert value added to the end that may or may not be
     // replaced with a multi entry write. Size -1 ensures that it is
@@ -222,8 +217,12 @@ auto AddMultiEntryInsertIfChunked() {
         Concat(input, Just(sentinel_insert)),
         Map([
             num_inserts = 0,
+            expiry = ::google::protobuf::int64(0),
+            total_size = ::google::protobuf::int64(0),
+            claimed_size = ::google::protobuf::int64(0),
             claimed_key = std::string(),
-            hash_state = blake2b_state()](
+            hash_state = blake2b_state(),
+            multi_entry = MultiEntry()](
                 StoreInsertRequest &&request) mutable {
           if (claimed_key.empty()) {
             // This must be the first StoreInsertRequest in the stream
@@ -232,17 +231,34 @@ auto AddMultiEntryInsertIfChunked() {
                   ::grpc::INVALID_ARGUMENT,
                   "key field not set on the first StoreInsertRequest"));
             }
+            expiry = request.expiry_time_micros();
             claimed_key = request.key();
+            claimed_size = request.size();
             blake2b_init(&hash_state, kHashSize);
           }
 
+          EntryToWrite entry_to_write;
+          entry_to_write.set_expiry_time_micros(expiry);
+
           if (request.size() != -1) {
             num_inserts++;
-            request.set_key(HashContents(request.contents()));
+            total_size += request.size();
+
+            auto key = HashContents(request.contents());
+
             blake2b_update(
                 &hash_state,
                 reinterpret_cast<const uint8_t *>(request.contents().data()),
                 request.contents().size());
+
+            MultiEntry::Entry &entry = *multi_entry.add_entry();
+            entry.set_start(multi_entry.size());
+            entry.set_key(key);
+            multi_entry.set_size(
+                multi_entry.size() + request.contents().size());
+
+            entry_to_write.set_key(key);
+            entry_to_write.set_contents(std::move(*request.mutable_contents()));
           } else {
             // This is the final sentinel value
             std::string actual_key(kHashSize, '\0');
@@ -255,15 +271,25 @@ auto AddMultiEntryInsertIfChunked() {
                   ::grpc::INVALID_ARGUMENT,
                   "Got key that does not match contents"));
             }
+            if (claimed_size != total_size) {
+              throw GrpcError(::grpc::Status(
+                  ::grpc::INVALID_ARGUMENT,
+                  "Claimed size does not match actual size"));
+            }
 
             if (num_inserts > 1) {
               // Need to make a multi-entry
-              request.set_key(actual_key);
-              // TODO(peck): Need to let the db writer know that this is a multi entry
-              request.set_contents("TODO");
+              if (!multi_entry.SerializeToString(
+                      entry_to_write.mutable_contents())) {
+                throw GrpcError(::grpc::Status(
+                    ::grpc::INTERNAL,
+                    "Failed to serialize MultiEntry protobuf message"));
+              }
+              entry_to_write.set_key(actual_key);
+              entry_to_write.set_multi_entry(true);
             }
           }
-          return request;
+          return entry_to_write;
         }));
   };
 }
@@ -271,22 +297,25 @@ auto AddMultiEntryInsertIfChunked() {
 auto WriteInsertsToDb(
     const CallContext &ctx,
     const std::shared_ptr<google::bigtable::v2::Bigtable> &bigtable) {
-  return ConcatMap([ctx, bigtable](StoreInsertRequest &&request) {
-    auto key = HashContents(request.contents());
+  return ConcatMap([ctx, bigtable](EntryToWrite &&entry_to_write) {
+    if (entry_to_write.key().empty()) {
+      return AnyPublisher<google::bigtable::v2::MutateRowResponse>(Empty());
+    }
 
     google::bigtable::v2::MutateRowRequest write;
     write.set_table_name(kShkStoreTableName);
-    write.set_row_key(key);
+    write.set_row_key(entry_to_write.key());
 
     auto &mutation = *write.add_mutations();
     auto &set_cell = *mutation.mutable_set_cell();
     set_cell.set_family_name(kShkStoreContentsFamily);
     set_cell.set_column_qualifier(kShkStoreContentsColumn);
     set_cell.set_timestamp_micros(
-        request.expiry_time_micros() - kShkStoreTableTtlMicros);
-    set_cell.set_value(std::move(*request.mutable_contents()));
+        entry_to_write.expiry_time_micros() - kShkStoreTableTtlMicros);
+    set_cell.set_value(std::move(*entry_to_write.mutable_contents()));
 
-    return bigtable->MutateRow(ctx, std::move(write));
+    return AnyPublisher<google::bigtable::v2::MutateRowResponse>(
+        bigtable->MutateRow(ctx, std::move(write)));
   });
 }
 
@@ -310,8 +339,7 @@ class StoreServer : public Store {
         requests,
         ValidateInsertRequests(),
         GroupInsertRequests(),
-        AddMultiEntryInsertIfChunked(),
-        SetExpiryTimeOnAllInsertRequests(),
+        ConvertToEntriesToWrite(),
         WriteInsertsToDb(ctx, bigtable_),
         SwallowInputAndReturnInsertResponse()));
   }
