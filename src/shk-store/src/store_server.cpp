@@ -32,6 +32,24 @@
 namespace shk {
 namespace {
 
+template <typename Publisher>
+auto Append(Publisher &&appended_publisher) {
+  return [appended_publisher = std::forward<Publisher>(appended_publisher)](
+      auto &&stream) {
+    return Concat(
+        std::forward<decltype(stream)>(stream),
+        appended_publisher);
+  };
+}
+
+template <typename ...MakeValues>
+auto EndWithGet(MakeValues &&...make_values) {
+  auto postfix_stream = Start(std::forward<MakeValues>(make_values)...);
+  return [postfix_stream = std::move(postfix_stream)](auto &&stream) {
+    return Concat(std::forward<decltype(stream)>(stream), postfix_stream);
+  };
+}
+
 /**
  * Wraps (and owns) a protobuf object and exposes one of its repeated fields as
  * an STL-style container, for use with the From rs operator.
@@ -118,7 +136,8 @@ auto ReduceMultiple(AccumulatorType &&initial, Reducer &&reducer) {
     using Accumulator = typename std::decay<AccumulatorType>::type;
     auto accum = std::make_shared<Accumulator>(initial);
 
-    return Concat(
+    return Pipe(
+        source,
         ConcatMap([accum, reducer](auto &&value) mutable {
           bool emit_now = false;
           *accum = reducer(
@@ -134,8 +153,8 @@ auto ReduceMultiple(AccumulatorType &&initial, Reducer &&reducer) {
           } else {
             return AnyPublisher<Accumulator>(Empty());
           }
-        })(source),
-        Start([accum] { return std::move(*accum); }));
+        }),
+        EndWithGet([accum] { return std::move(*accum); }));
   };
 }
 
@@ -329,6 +348,77 @@ auto SwallowInputAndReturnInsertResponse() {
       [](auto &&accum, auto &&) { return accum; });
 }
 
+/**
+ * Takes a stream of ReadRowsResponse messages and emits a stream of all the
+ * CellChunk messages they contain.
+ */
+auto FlattenReadRowsResponsesToCellChunks() {
+  return ConcatMap([](google::bigtable::v2::ReadRowsResponse &&response) {
+    return From(ProtobufContainer<
+        google::bigtable::v2::ReadRowsResponse,
+        google::bigtable::v2::ReadRowsResponse::CellChunk,
+        &google::bigtable::v2::ReadRowsResponse::chunks_size,
+        &google::bigtable::v2::ReadRowsResponse::mutable_chunks>(
+            std::move(response)));
+  });
+}
+
+auto MultiEntryEntries(MultiEntry &&multi_entry) {
+  return From(ProtobufContainer<
+      MultiEntry,
+      MultiEntry::Entry,
+      &MultiEntry::entry_size,
+      &MultiEntry::mutable_entry>(std::move(multi_entry)));
+}
+
+/**
+ * Class that takes a stream of CellChunks from Bigtable and parses them into a
+ * single continuous value.
+ */
+class CellChunkReader {
+ public:
+  void ReadChunk(
+      const google::bigtable::v2::ReadRowsResponse::CellChunk &chunk) {
+    if (chunk.reset_row()) {
+      buffer_.clear();
+    }
+    if (chunk.value_size() > 0) {
+      buffer_.reserve(chunk.value_size());
+    }
+    buffer_.append(chunk.value());
+  }
+
+  /**
+   * This method steals the internal buffer of this class. It can only be called
+   * once.
+   */
+  std::string ExtractData() {
+    return std::move(buffer_);
+  }
+
+  ::google::protobuf::int64 ExpiryTimeMicros() {
+    return timestamp_micros_;
+  }
+
+ private:
+  ::google::protobuf::int64 timestamp_micros_ = 0;
+  std::string buffer_;
+};
+
+StoreGetResponse CellChunkToStoreGetResponse(
+    google::bigtable::v2::ReadRowsResponse::CellChunk &&chunk,
+    ::google::protobuf::int64 reset_to_position) {
+  StoreGetResponse response;
+  if (chunk.timestamp_micros() != 0) {
+    response.set_expiry_time_micros(
+        chunk.timestamp_micros() + kShkStoreTableTtlMicros);
+    response.set_size(chunk.value_size());
+  }
+  response.set_contents(std::move(*chunk.mutable_value()));
+  response.set_reset_to(chunk.reset_row() ? reset_to_position : -1);
+  return response;
+}
+
 class StoreServer : public Store {
  public:
   StoreServer(const std::shared_ptr<google::bigtable::v2::Bigtable> &bigtable)
@@ -354,36 +444,116 @@ class StoreServer : public Store {
 
   AnyPublisher<StoreGetResponse> Get(
       const CallContext &ctx, StoreGetRequest &&request) override {
-    // TODO(peck): Handle split entries
+    return Get(ctx, request.key(), 0);
+  }
+
+ private:
+  AnyPublisher<StoreGetResponse> Get(
+      const CallContext &ctx,
+      const std::string &key,
+      ::google::protobuf::int64 reset_to_position) {
+    // TODO(peck): Make sure nonexisting entries are handled properly
 
     google::bigtable::v2::ReadRowsRequest read;
     read.set_table_name(kShkStoreTableName);
-    read.mutable_rows()->add_row_keys(request.key());
+    read.mutable_rows()->add_row_keys(key);
+
+    // For multi entries, we need to read the entire contents of the cell to
+    // be able to parse the MultiEntry protobuf message. chunk_reader does that.
+    auto chunk_reader = std::make_shared<CellChunkReader>();
 
     return AnyPublisher<StoreGetResponse>(Pipe(
         bigtable_->ReadRows(ctx, std::move(read)),
-        ConcatMap([](google::bigtable::v2::ReadRowsResponse &&response) {
-          return From(ProtobufContainer<
-              google::bigtable::v2::ReadRowsResponse,
-              google::bigtable::v2::ReadRowsResponse::CellChunk,
-              &google::bigtable::v2::ReadRowsResponse::chunks_size,
-              &google::bigtable::v2::ReadRowsResponse::mutable_chunks>(
-                  std::move(response)));
-        }),
-        Map([](google::bigtable::v2::ReadRowsResponse::CellChunk &&chunk) {
-          StoreGetResponse response;
-          if (chunk.timestamp_micros() != 0) {
-            response.set_expiry_time_micros(
-                chunk.timestamp_micros() + kShkStoreTableTtlMicros);
-            response.set_size(chunk.value_size());
+        FlattenReadRowsResponsesToCellChunks(),
+        ConcatMap([
+            chunk_reader,
+            reset_to_position,
+            multi_entry = false,
+            data_entry = false](
+                google::bigtable::v2::ReadRowsResponse::CellChunk &&
+                chunk) mutable {
+          if (!multi_entry && !data_entry) {
+            // This is the first chunk. Decide if this is a multi entry or not.
+            multi_entry =
+                chunk.qualifier().value() == kShkStoreMultiEntryColumn;
+            data_entry = !multi_entry;
+
+            if (multi_entry && reset_to_position != 0) {
+              // The reset_to_position logic does not work if a multi entry is
+              // a chunk of another multi entry.
+              throw GrpcError(::grpc::Status(
+                  ::grpc::INTERNAL,
+                  "Cannot process multi entries that contain multi entries"));
+            }
           }
-          response.set_contents(std::move(*chunk.mutable_value()));
-          response.set_reset_row(chunk.reset_row());
+
+          if (multi_entry) {
+            chunk_reader->ReadChunk(chunk);
+            // Just return Empty here, the actual result is handled at the end.
+            return AnyPublisher<StoreGetResponse>(Empty());
+          } else {
+            return AnyPublisher<StoreGetResponse>(Just(
+                CellChunkToStoreGetResponse(
+                    std::move(chunk),
+                    reset_to_position)));
+          }
+        }),
+        Append(MakePublisher([this, ctx, chunk_reader](auto &&subscriber) {
+          std::string multi_entry_data = chunk_reader->ExtractData();
+          if (multi_entry_data.empty()) {
+            // This is not a multi entry. Do nothing.
+            return AnySubscription(Empty().Subscribe(
+                std::forward<decltype(subscriber)>(subscriber)));
+          } else {
+            // This *is* a multi entry. Handle it.
+            auto result_stream = HandleMultiEntry(
+                ctx,
+                std::move(multi_entry_data),
+                chunk_reader->ExpiryTimeMicros());
+            return AnySubscription(result_stream.Subscribe(
+                std::forward<decltype(subscriber)>(subscriber)));
+          }
+        }))));
+  }
+
+  AnyPublisher<StoreGetResponse> HandleMultiEntry(
+      const CallContext &ctx,
+      std::string &&multi_entry_data,
+      ::google::protobuf::int64 expiry_time_micros) {
+    MultiEntry multi_entry;
+    if (!multi_entry.ParseFromString(multi_entry_data)) {
+      return AnyPublisher<StoreGetResponse>(Throw(GrpcError(::grpc::Status(
+          ::grpc::DATA_LOSS,
+          "Encountered corrupt MultiEntry"))));
+    }
+
+    // TODO(peck): Make sure missing chunks are handled properly
+
+    ::google::protobuf::int64 size = multi_entry.size();
+
+    return AnyPublisher<StoreGetResponse>(Pipe(
+        MultiEntryEntries(std::move(multi_entry)),
+        ConcatMap([this, ctx](MultiEntry::Entry &&entry) {
+          return Get(ctx, entry.key(), entry.start());
+        }),
+        Map([size, expiry_time_micros, first = true](
+            StoreGetResponse &&response) mutable {
+          if (response.expiry_time_micros() < expiry_time_micros) {
+            // TODO(peck): Log that this is broken. Failing is overkill I think.
+          }
+
+          if (first) {
+            first = false;
+            response.set_size(size);
+            response.set_expiry_time_micros(expiry_time_micros);
+          } else {
+            response.clear_size();
+            response.clear_expiry_time_micros();
+          }
           return response;
         })));
   }
 
- private:
   std::shared_ptr<google::bigtable::v2::Bigtable> bigtable_;
 };
 

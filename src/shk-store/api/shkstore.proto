@@ -2,6 +2,15 @@ syntax = "proto3";
 
 package shk;
 
+// This is the interface for a basic Content Addressable Storage service. It is
+// used in Shuriken to store build outputs as well as the input source tree.
+//
+// One special aspect of this service is that all data stored in it has a
+// time-to-live associated with it; nothing is ever stored forever. (This is
+// because no data that a build system handles is valuable to keep forever.)
+//
+// This service has no knowledge of what it stores; it just handles binary blobs
+// of data and the hashes of those blobs.
 service Store {
   // Insert an entry into the Store.
   rpc Insert (stream StoreInsertRequest) returns (StoreInsertResponse);
@@ -58,7 +67,8 @@ message StoreGetResponse {
   // The contents of the entry. If the entry is large, the response may be split
   // into smaller chunks and streamed.
   bytes contents = 3;
-  // Indicates that the client should drop all previous chunks, as it will be
-  // re-read from the beginning.
-  bool reset_row = 4;
+  // If not -1, indicates that the client should write this chunk's content
+  // starting from the position indicated by reset_to, as some or all of the
+  // contents will be re-read. This field is never used to jump forward.
+  int64 reset_to = 4;
 }
