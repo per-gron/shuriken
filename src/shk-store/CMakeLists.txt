@@ -12,6 +12,7 @@ shk_library(
   SOURCES
     src/constants.h
     src/protobuf_container.h
+    src/reduce_multiple.h
     src/store_server.cpp
     src/store_server.h
   DEPENDENCIES

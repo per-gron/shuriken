@@ -29,6 +29,7 @@
 
 #include "constants.h"
 #include "protobuf_container.h"
+#include "reduce_multiple.h"
 
 namespace shk {
 namespace {
@@ -40,71 +41,6 @@ auto Append(Publisher &&appended_publisher) {
     return Concat(
         std::forward<decltype(stream)>(stream),
         appended_publisher);
-  };
-}
-
-template <typename ...MakeValues>
-auto EndWithGet(MakeValues &&...make_values) {
-  auto postfix_stream = Start(std::forward<MakeValues>(make_values)...);
-  return [postfix_stream = std::move(postfix_stream)](auto &&stream) {
-    return Concat(std::forward<decltype(stream)>(stream), postfix_stream);
-  };
-}
-
-/**
- * This is an rs operator that is a little bit like Reduce, but it is a little
- * bit more flexible: For each incoming value, it allows emitting the
- * accumulator value instead of only emitting a value at the end. The
- * accumulator is always emitted after the input stream ends.
- *
- * Like normal Reduce, the signature of the Reducer function is:
- *
- * Accumulator Reducer(Accumulator &&accum, Value &&value);
- *
- * The signature of ShouldEmit is:
- *
- * bool ShouldEmit(const Accumulator &accum, const Value &next_value);
- *
- * ShouldEmit is called before the call to Reducer. If it returns true, the
- * Accumulator value is emitted and reset to a default constructed value prior
- * to the subsequent call to Reducer.
- */
-template <typename AccumulatorType, typename Reducer, typename ShouldEmit>
-auto ReduceMultiple(
-    AccumulatorType &&initial, Reducer &&reducer, ShouldEmit &&should_emit) {
-  // Return an operator (it takes a Publisher and returns a Publisher)
-  return [
-      initial = std::forward<AccumulatorType>(initial),
-      reducer = std::forward<Reducer>(reducer),
-      should_emit = std::forward<ShouldEmit>(should_emit)](auto source) {
-    using Accumulator = typename std::decay<AccumulatorType>::type;
-    auto accum = std::make_shared<Accumulator>(initial);
-
-    return Pipe(
-        source,
-        ConcatMap([accum, reducer, should_emit](auto &&value) mutable {
-          Accumulator to_emit;
-
-          using Value = typename std::decay<decltype(value)>::type;
-          bool emit_now = should_emit(
-              static_cast<const Accumulator &>(*accum),
-              static_cast<const Value &>(value));
-          if (emit_now) {
-            to_emit = std::move(*accum);
-            *accum = Accumulator();
-          }
-
-          *accum = reducer(
-              std::move(*accum),
-              std::forward<decltype(value)>(value));
-
-          if (emit_now) {
-            return AnyPublisher<Accumulator>(Just(std::move(to_emit)));
-          } else {
-            return AnyPublisher<Accumulator>(Empty());
-          }
-        }),
-        EndWithGet([accum] { return std::move(*accum); }));
   };
 }
 
