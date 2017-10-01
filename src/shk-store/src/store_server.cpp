@@ -236,6 +236,39 @@ auto SwallowInputAndReturnInsertResponse() {
       [](auto &&accum, auto &&) { return accum; });
 }
 
+auto EliminateResetRowInStoreGetResponses() {
+  // In order to handle reset_row, we exploit the fact that we know that
+  // reset_checkpoints occur as often as entries are chunked: It is safe
+  // to buffer a whole checkpoint in memory (it is small enough).
+  return ReduceMultiple(
+      StoreGetResponse(),
+      [](StoreGetResponse &&accum, StoreGetResponse &&value) {
+        if (value.reset_row()) {
+          accum.mutable_contents()->clear();
+        }
+        accum.mutable_contents()->append(value.contents());
+        return accum;
+      },
+      [](const StoreGetResponse &accum, const StoreGetResponse &value) {
+        return value.reset_checkpoint();
+      });
+}
+
+auto ConvertStoreGetResponsesToInsertRequests(
+    const StoreTouchRequest &request) {
+  return Map([request, first = true](StoreGetResponse &&response) mutable {
+    StoreInsertRequest insert_request;
+    if (first) {
+      insert_request.set_key(request.key());
+      insert_request.set_size(response.size());
+      insert_request.set_expiry_time_micros(request.expiry_time_micros());
+      first = false;
+    }
+    insert_request.set_contents(std::move(*response.mutable_contents()));
+    return insert_request;
+  });
+}
+
 /**
  * Takes a stream of ReadRowsResponse messages and emits a stream of all the
  * CellChunk messages they contain.
@@ -326,34 +359,8 @@ class StoreServer : public Store {
 
     return AnyPublisher<StoreTouchResponse>(Pipe(
         Get(ctx, request.key()),
-        // It is necessary to handle reset_row. In order to do that, we exploit
-        // the fact that we know that reset_checkpoints occur as often as
-        // entries are chunked: It is safe to buffer a whole checkpoint in
-        // memory (it is small enough).
-        ReduceMultiple(
-            StoreGetResponse(),
-            [](StoreGetResponse &&accum, StoreGetResponse &&value) {
-              if (value.reset_row()) {
-                accum.mutable_contents()->clear();
-              }
-              accum.mutable_contents()->append(value.contents());
-              return accum;
-            },
-            [](const StoreGetResponse &accum, const StoreGetResponse &value) {
-              return value.reset_checkpoint();
-            }),
-        Map([request, first = true](StoreGetResponse &&response) mutable {
-          StoreInsertRequest insert_request;
-          if (first) {
-            insert_request.set_key(request.key());
-            insert_request.set_size(response.size());
-            insert_request.set_expiry_time_micros(request.expiry_time_micros());
-            first = false;
-          }
-          insert_request.set_contents(std::move(*response.mutable_contents()));
-          return insert_request;
-        }),
-
+        EliminateResetRowInStoreGetResponses(),
+        ConvertStoreGetResponsesToInsertRequests(request),
         [this, ctx](auto &&insert_request_publisher) {
           // Need to bypass the chunk limit, since we have already grouped the
           // writes to db entry size.
