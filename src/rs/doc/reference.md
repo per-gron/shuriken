@@ -35,6 +35,8 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`ElementAt(size_t)`](#elementatsize_t)
 * [`ElementCount`](#elementcount)
 * [`Empty()`](#empty)
+* [`EndWith(Value...)`](#endwithvalue)
+* [`EndWithGet(MakeValue...)`](#endwithgetmakevalue)
 * [`Filter(Predicate)`](#filterpredicate)
 * [`First()`](#first)
 * [`First(Predicate)`](#firstpredicate)
@@ -617,6 +619,66 @@ auto empty = Empty();
 ```
 
 **See also:** [`Just(Value...)`](#justvalue), [`Never()`](#never)
+
+
+## `EndWith(Value...)`
+
+**Defined in:** [`rs/end_with.h`](../include/rs/end_with.h)
+
+**Kind:** [Operator Builder](#kind_operator_builder)
+
+**[Type](#types):** `a, b, ... -> (Publisher[c] -> Publisher[a, b, ..., c]`
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#startWith), [ReactiveX](http://reactivex.io/documentation/operators/startwith.html)
+
+**Description:** Appends the provided values to a stream.
+
+The parameters of `EndWith` must be copyable. If they are not, consider using [`EndWithGet(MakeValue...)`](#endwithgetmakevalue).
+
+**Example usage:**
+
+```cpp
+// stream is a stream that emits 1, 2, 3, "hello", "world"
+auto stream = Pipe(
+    Just(1, 2, 3),
+    EndWith("hello", "world"));
+```
+
+```cpp
+// It is possible to call EndWith with no parameters. Then it is a no-op
+// operator.
+//
+// stream is a stream that emits 1, 2, 3
+auto stream = Pipe(
+    Just(1, 2, 3),
+    EndWith());
+```
+
+**See also:** [`Concat(Publisher...)`](#concatpublisher), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`StartWith(Value...)`](#startwithvalue), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
+
+
+## `EndWithGet(MakeValue...)`
+
+**Defined in:** [`rs/end_with.h`](../include/rs/end_with.h)
+
+**Kind:** [Operator Builder](#kind_operator_builder)
+
+**[Type](#types):** `(void -> a), (void -> b), ... -> (Publisher[c] -> Publisher[a, b, ..., c]`
+
+**External documentation:** [RxMarbles](http://rxmarbles.com/#startWith), [ReactiveX](http://reactivex.io/documentation/operators/startwith.html)
+
+**Description:** `EndWithGet` is like [`EndWith(Value...)`](#endwithvalue), but it takes functions that create the values to be emitted rather than the values directly. This can be used when the values are expensive to craete or when they are noncopyable.
+
+**Example usage:***
+
+```cpp
+// stream is a stream that emits 1, 2, 3, "hello", "world"
+auto stream = Pipe(
+    Just(1, 2, 3),
+    EndWithGet([] { return "hello"; }, [] { return "world"; }));
+```
+
+**See also:** [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`StartWith(Value...)`](#startwithvalue), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
 
 
 ## `Filter(Predicate)`
@@ -1670,7 +1732,7 @@ auto stream = Pipe(
     StartWith());
 ```
 
-**See also:** [`Concat(Publisher...)`](#concatpublisher), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
+**See also:** [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
 
 
 ## `StartWithGet(MakeValue...)`
@@ -1694,7 +1756,7 @@ auto stream = Pipe(
     StartWithGet([] { return "hello"; }, [] { return "world"; }));
 ```
 
-**See also:** [`Concat(Publisher...)`](#concatpublisher), [`StartWith(Value...)`](#startwithvalue)
+**See also:** [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`StartWith(Value...)`](#startwithvalue)
 
 
 ## `Subscriber`

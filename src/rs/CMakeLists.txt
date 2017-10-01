@@ -13,6 +13,7 @@ shk_library(
     include/rs/element_at.h
     include/rs/element_count.h
     include/rs/empty.h
+    include/rs/end_with.h
     include/rs/filter.h
     include/rs/first.h
     include/rs/from.h
@@ -68,6 +69,7 @@ shk_test(
     test/element_at_test.cpp
     test/element_count_test.cpp
     test/empty_test.cpp
+    test/end_with_test.cpp
     test/filter_test.cpp
     test/first_test.cpp
     test/from_test.cpp

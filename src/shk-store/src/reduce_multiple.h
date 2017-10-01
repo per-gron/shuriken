@@ -18,18 +18,11 @@
 
 #include <rs/concat.h>
 #include <rs/concat_map.h>
+#include <rs/end_with.h>
 #include <rs/pipe.h>
 #include <rs/start.h>
 
 namespace shk {
-
-template <typename ...MakeValues>
-auto EndWithGet(MakeValues &&...make_values) {
-  auto postfix_stream = Start(std::forward<MakeValues>(make_values)...);
-  return [postfix_stream = std::move(postfix_stream)](auto &&stream) {
-    return Concat(std::forward<decltype(stream)>(stream), postfix_stream);
-  };
-}
 
 /**
  * This is an rs operator that is a little bit like Reduce, but it is a little
