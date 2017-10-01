@@ -11,6 +11,7 @@ shk_library(
   NAME libshk-store
   SOURCES
     src/constants.h
+    src/protobuf_container.h
     src/store_server.cpp
     src/store_server.h
   DEPENDENCIES
