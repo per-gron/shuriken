@@ -182,15 +182,21 @@ std::string HashContents(const string_view &contents) {
   return hash;
 }
 
-auto ValidateInsertRequests() {
-  return [](auto input) {
+enum class InsertValidations {
+  ALL,
+  BYPASS_CHUNK_LIMIT
+};
+
+auto ValidateInsertRequests(InsertValidations insert_validations) {
+  return [insert_validations](auto input) {
     return Pipe(
         input,
         IfEmpty(Throw(GrpcError(::grpc::Status(
             ::grpc::INVALID_ARGUMENT,
             "Got RPC with no request messages")))),
-        Map([](StoreInsertRequest &&request) {
-          if (request.contents().size() > kShkStoreInsertChunkSizeLimit) {
+        Map([insert_validations](StoreInsertRequest &&request) {
+          if (insert_validations != InsertValidations::BYPASS_CHUNK_LIMIT &&
+              request.contents().size() > kShkStoreInsertChunkSizeLimit) {
             throw GrpcError(::grpc::Status(
                 ::grpc::INVALID_ARGUMENT,
                 "Got too large StoreInsertRequest"));
@@ -436,13 +442,7 @@ class StoreServer : public Store {
   AnyPublisher<StoreInsertResponse> Insert(
       const CallContext &ctx,
       AnyPublisher<StoreInsertRequest> &&requests) override {
-    return AnyPublisher<StoreInsertResponse>(Pipe(
-        requests,
-        ValidateInsertRequests(),
-        GroupInsertRequests(),
-        ConvertToEntriesToWrite(),
-        WriteInsertsToDb(ctx, bigtable_),
-        SwallowInputAndReturnInsertResponse()));
+    return Insert(ctx, std::move(requests), InsertValidations::ALL);
   }
 
   AnyPublisher<StoreTouchResponse> Touch(
@@ -481,9 +481,12 @@ class StoreServer : public Store {
         }),
 
         [this, ctx](auto &&insert_request_publisher) {
-          // TODO(peck): Bypass cell size check, otherwise it won't work.
+          // Need to bypass the chunk limit, since we have already grouped the
+          // writes to db entry size.
           return Insert(
-              ctx, AnyPublisher<StoreInsertRequest>(insert_request_publisher));
+              ctx,
+              AnyPublisher<StoreInsertRequest>(insert_request_publisher),
+              InsertValidations::BYPASS_CHUNK_LIMIT);
         },
         Map([](StoreInsertResponse &&response) {
           return StoreTouchResponse();
@@ -496,6 +499,19 @@ class StoreServer : public Store {
   }
 
  private:
+  AnyPublisher<StoreInsertResponse> Insert(
+      const CallContext &ctx,
+      AnyPublisher<StoreInsertRequest> &&requests,
+      InsertValidations insert_validations) {
+    return AnyPublisher<StoreInsertResponse>(Pipe(
+        requests,
+        ValidateInsertRequests(insert_validations),
+        GroupInsertRequests(),
+        ConvertToEntriesToWrite(),
+        WriteInsertsToDb(ctx, bigtable_),
+        SwallowInputAndReturnInsertResponse()));
+  }
+
   AnyPublisher<StoreGetResponse> Get(
       const CallContext &ctx, const std::string &key) {
     // TODO(peck): Make sure nonexisting entries are handled properly
