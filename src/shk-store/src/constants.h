@@ -22,6 +22,7 @@ static constexpr char kShkStoreDataColumn[] = "data";
 static constexpr char kShkStoreMultiEntryColumn[] = "multi_entry";
 static constexpr long long kShkStoreTableTtlMicros = 1;
 static constexpr size_t kShkStoreInsertChunkSizeLimit = 64 * 1024;
-static constexpr size_t kShkStoreCellSplitThreshold = 128 * 1024;
+static constexpr size_t kShkStoreCellSplitThreshold =
+    kShkStoreInsertChunkSizeLimit * 2;
 
 }  // namespace shk

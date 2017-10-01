@@ -119,37 +119,49 @@ class ProtobufContainer {
  * accumulator value instead of only emitting a value at the end. The
  * accumulator is always emitted after the input stream ends.
  *
- * The signature of the Reducer function is:
+ * Like normal Reduce, the signature of the Reducer function is:
  *
- * void Reducer(Accumulator &&accum, Value &&value, bool *emit_now);
+ * Accumulator Reducer(Accumulator &&accum, Value &&value);
  *
- * If *emit_now is set to true, the returned Accumulator value is emitted
- * immediately and the next call to Reducer will get a default constructed
- * Accumulator value.
+ * The signature of ShouldEmit is:
+ *
+ * bool ShouldEmit(const Accumulator &accum, const Value &next_value);
+ *
+ * ShouldEmit is called before the call to Reducer. If it returns true, the
+ * Accumulator value is emitted and reset to a default constructed value prior
+ * to the subsequent call to Reducer.
  */
-template <typename AccumulatorType, typename Reducer>
-auto ReduceMultiple(AccumulatorType &&initial, Reducer &&reducer) {
+template <typename AccumulatorType, typename Reducer, typename ShouldEmit>
+auto ReduceMultiple(
+    AccumulatorType &&initial, Reducer &&reducer, ShouldEmit &&should_emit) {
   // Return an operator (it takes a Publisher and returns a Publisher)
   return [
       initial = std::forward<AccumulatorType>(initial),
-      reducer = std::forward<Reducer>(reducer)](auto source) {
+      reducer = std::forward<Reducer>(reducer),
+      should_emit = std::forward<ShouldEmit>(should_emit)](auto source) {
     using Accumulator = typename std::decay<AccumulatorType>::type;
     auto accum = std::make_shared<Accumulator>(initial);
 
     return Pipe(
         source,
-        ConcatMap([accum, reducer](auto &&value) mutable {
-          bool emit_now = false;
+        ConcatMap([accum, reducer, should_emit](auto &&value) mutable {
+          Accumulator to_emit;
+
+          using Value = typename std::decay<decltype(value)>::type;
+          bool emit_now = should_emit(
+              static_cast<const Accumulator &>(*accum),
+              static_cast<const Value &>(value));
+          if (emit_now) {
+            to_emit = std::move(*accum);
+            *accum = Accumulator();
+          }
+
           *accum = reducer(
               std::move(*accum),
-              std::forward<decltype(value)>(value),
-              &emit_now);
+              std::forward<decltype(value)>(value));
 
           if (emit_now) {
-            auto result = AnyPublisher<Accumulator>(
-                Just(std::move(*accum)));
-            *accum = Accumulator();
-            return result;
+            return AnyPublisher<Accumulator>(Just(std::move(to_emit)));
           } else {
             return AnyPublisher<Accumulator>(Empty());
           }
@@ -204,16 +216,12 @@ auto ValidateInsertRequests() {
 auto GroupInsertRequests() {
   return ReduceMultiple(
       StoreInsertRequest(),
-      [](
-          StoreInsertRequest &&accumulator,
-          StoreInsertRequest &&value,
-          bool *emit_now) {
-        accumulator.mutable_contents()->append(value.contents());
-        if (accumulator.contents().size() >=
-            kShkStoreCellSplitThreshold) {
-          *emit_now = true;
-        }
-        return accumulator;
+      [](StoreInsertRequest &&accum, StoreInsertRequest &&value) {
+        accum.mutable_contents()->append(value.contents());
+        return accum;
+      },
+      [](const StoreInsertRequest &accum, const StoreInsertRequest &value) {
+        return accum.contents().size() >= kShkStoreCellSplitThreshold;
       });
 }
 
@@ -444,6 +452,22 @@ class StoreServer : public Store {
 
     return AnyPublisher<StoreTouchResponse>(Pipe(
         Get(ctx, request.key()),
+        // It is necessary to handle reset_row. In order to do that, we exploit
+        // the fact that we know that reset_checkpoints occur as often as
+        // entries are chunked: It is safe to buffer a whole checkpoint in
+        // memory (it is small enough).
+        ReduceMultiple(
+            StoreGetResponse(),
+            [](StoreGetResponse &&accum, StoreGetResponse &&value) {
+              if (value.reset_row()) {
+                accum.mutable_contents()->clear();
+              }
+              accum.mutable_contents()->append(value.contents());
+              return accum;
+            },
+            [](const StoreGetResponse &accum, const StoreGetResponse &value) {
+              return value.reset_checkpoint();
+            }),
         Map([request, first = true](StoreGetResponse &&response) mutable {
           StoreInsertRequest insert_request;
           if (first) {
@@ -455,8 +479,9 @@ class StoreServer : public Store {
           insert_request.set_contents(std::move(*response.mutable_contents()));
           return insert_request;
         }),
-        // TODO(peck): Group the writes per reset_checkpoint and handle reset_row
+
         [this, ctx](auto &&insert_request_publisher) {
+          // TODO(peck): Bypass cell size check, otherwise it won't work.
           return Insert(
               ctx, AnyPublisher<StoreInsertRequest>(insert_request_publisher));
         },
