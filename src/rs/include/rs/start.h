@@ -92,7 +92,7 @@ class StartSubscription : public Subscription {
 
       // Need to decrement this after calling OnNext/OnComplete, to ensure that
       // re-entrant Request calls always see that they are re-entrant.
-      outstanding_request_count_--;
+      --outstanding_request_count_;
     }
   }
 
