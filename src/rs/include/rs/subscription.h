@@ -147,6 +147,14 @@ MakeVirtualSubscription(T &&t) {
 }
 
 template <typename T>
+std::unique_ptr<VirtualSubscription<typename std::decay<T>::type>>
+MakeVirtualSubscriptionPtr(T &&t) {
+  using SubscriptionType = VirtualSubscription<typename std::decay<T>::type>;
+  return std::unique_ptr<SubscriptionType>(new SubscriptionType(
+      std::forward<T>(t)));
+}
+
+template <typename T>
 constexpr bool IsSubscription = std::is_base_of<Subscription, T>::value;
 
 /**

@@ -153,6 +153,33 @@ TEST_CASE("Subscription") {
       sub.Cancel();
       CHECK(cancelled);
     }
+
+    SECTION("MakeVirtualSubscriptionPtr") {
+      SECTION("Request") {
+        ElementCount requested;
+        {
+          std::unique_ptr<PureVirtualSubscription> sub =
+              MakeVirtualSubscriptionPtr(MakeSubscription(
+                  [&requested](ElementCount count) { requested += count; },
+                  [] { CHECK(!"Cancel should not be invoked"); }));
+          CHECK(requested == 0);
+          sub->Request(ElementCount(13));
+          CHECK(requested == 13);
+        }
+        CHECK(requested == 13);
+      }
+
+      SECTION("Cancel") {
+        bool cancelled = false;
+        std::unique_ptr<PureVirtualSubscription> sub =
+            MakeVirtualSubscriptionPtr(MakeSubscription(
+                [](ElementCount) { CHECK(!"Request should not be invoked"); },
+                [&cancelled] { CHECK(!cancelled); cancelled = true; }));
+        CHECK(!cancelled);
+        sub->Cancel();
+        CHECK(cancelled);
+      }
+    }
   }
 
   SECTION("Dummy MakeSubscription") {
