@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <utility>
+
 #include <rs/concat.h>
 #include <rs/just.h>
 #include <rs/start.h>
