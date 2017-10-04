@@ -24,6 +24,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`AnyPublisher`](#anypublisher)
 * [`AnySubscriber`](#anysubscriber)
 * [`AnySubscription`](#anysubscription)
+* [`Append(Publisher...)`](#appendpublisher)
 * [`Average()`](#average)
 * [`BuildPipe(Operator...)`](#buildpipeoperator)
 * [`Catch(Publisher)`](#catchpublisher)
@@ -59,6 +60,7 @@ Array.from(document.getElementsByTagName('article')[0].getElementsByTagName('h2'
 * [`Min(Compare?)`](#mincompare)
 * [`Never()`](#never)
 * [`Pipe(Publisher, Operator...)`](#pipepublisher-operator)
+* [`Prepend(Publisher...)`](#prependpublisher)
 * [`Publisher`](#publisher)
 * [`PureVirtualSubscription`](#purevirtualsubscription)
 * [`Range(Value, size_t)`](#rangevalue-size_t)
@@ -228,6 +230,38 @@ AnySubscription sub = AnySubscription(MakeSubscription(
 **See also:** [`AnyPublisher`](#anypublisher), [`AnySubscriber`](#anysubscriber)
 
 
+## `Append(Publisher...)`
+
+**Defined in:** [`rs/append.h`](../include/rs/append.h)
+
+**Kind:** [Operator Builder](#kind_operator_builder)
+
+**[Type](#types):** `Publisher[b], Publisher[c], ... -> (Publisher[a] -> Publisher[a, b, c, ...])`
+
+**Description:** Appends the provided streams to the end of a stream. `Append` is similar to [`Concat`](#concatpublisher) but it is more ergonomic to use together with [`Pipe`](#pipepublisher-operator).
+
+**Example usage:**
+
+```cpp
+// stream is a stream that emits 1, 2, 3, "hello", "world"
+auto stream = Pipe(
+    Just(1, 2, 3),
+    Append(Just("hello"), Just("world")));
+```
+
+```cpp
+// It is possible to call Append with no parameters. Then it is a no-op
+// operator.
+//
+// stream is a stream that emits 1, 2, 3
+auto stream = Pipe(
+    Just(1, 2, 3),
+    Append());
+```
+
+**See also:** [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`Prepend(Publisher...)`](#prependpublisher), [`StartWith(Value...)`](#startwithvalue), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
+
+
 ## `Average()`
 
 **Defined in:** [`rs/average.h`](../include/rs/average.h)
@@ -359,7 +393,7 @@ auto one_two_three_stream = Concat(Just(1, 2, 3));
 auto empty = Concat();
 ```
 
-**See also:** [`Empty()`](#empty)
+**See also:** [`Append(Publisher...)`](#appendpublisher), [`Empty()`](#empty), [`Prepend(Publisher...)`](#prependpublisher)
 
 
 ## `ConcatMap(Mapper)`
@@ -420,7 +454,7 @@ auto numbers = Pipe(
 
 **Kind:** [Operator Builder](#kind_operator_builder)
 
-**[Type](#types):** `Value, (Value, Value -> bool)? -> (Publisher[a] -> Publisher[bool])
+**[Type](#types):** `Value, (Value, Value -> bool)? -> (Publisher[a] -> Publisher[bool])`
 
 **External documentation:** [RxMarbles](http://rxmarbles.com/#includes), [ReactiveX](http://reactivex.io/documentation/operators/contains.html)
 
@@ -654,7 +688,7 @@ auto stream = Pipe(
     EndWith());
 ```
 
-**See also:** [`Concat(Publisher...)`](#concatpublisher), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`StartWith(Value...)`](#startwithvalue), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
+**See also:** [`Append(Publisher...)`](#appendpublisher), [`Concat(Publisher...)`](#concatpublisher), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`Prepend(Publisher...)`](#prependpublisher), [`StartWith(Value...)`](#startwithvalue), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
 
 
 ## `EndWithGet(MakeValue...)`
@@ -669,7 +703,7 @@ auto stream = Pipe(
 
 **Description:** `EndWithGet` is like [`EndWith(Value...)`](#endwithvalue), but it takes functions that create the values to be emitted rather than the values directly. This can be used when the values are expensive to craete or when they are noncopyable.
 
-**Example usage:***
+**Example usage:**
 
 ```cpp
 // stream is a stream that emits 1, 2, 3, "hello", "world"
@@ -678,7 +712,7 @@ auto stream = Pipe(
     EndWithGet([] { return "hello"; }, [] { return "world"; }));
 ```
 
-**See also:** [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`StartWith(Value...)`](#startwithvalue), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
+**See also:** [`Append(Publisher...)`](#appendpublisher), [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`Prepend(Publisher...)`](#prependpublisher), [`StartWith(Value...)`](#startwithvalue), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
 
 
 ## `Filter(Predicate)`
@@ -1267,6 +1301,38 @@ This allows third-party code to add custom operators on Publishers that can be u
 **See also:** [`BuildPipe(Operator...)`](#buildpipeoperator)
 
 
+## `Prepend(Publisher...)`
+
+**Defined in:** [`rs/prepend.h`](../include/rs/prepend.h)
+
+**Kind:** [Operator Builder](#kind_operator_builder)
+
+**[Type](#types):** `Publisher[b], Publisher[c], ... -> (Publisher[a] -> Publisher[a, b, c, ...])`
+
+**Description:** Prepends the provided streams in the front of a stream. `Prepend` is similar to [`Concat`](#concatpublisher) but it is more ergonomic to use together with [`Pipe`](#pipepublisher-operator).
+
+**Example usage:**
+
+```cpp
+// stream is a stream that emits "hello", "world", 1, 2, 3
+auto stream = Pipe(
+    Just(1, 2, 3),
+    Prepend(Just("hello"), Just("world")));
+```
+
+```cpp
+// It is possible to call Prepend with no parameters. Then it is a no-op
+// operator.
+//
+// stream is a stream that emits 1, 2, 3
+auto stream = Pipe(
+    Just(1, 2, 3),
+    Prepend());
+```
+
+**See also:** [`Append(Publisher...)`](#appendpublisher), [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`StartWith(Value...)`](#startwithvalue), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
+
+
 ## `Publisher`
 
 **Defined in:** [`rs/publisher.h`](../include/rs/publisher.h)
@@ -1732,7 +1798,7 @@ auto stream = Pipe(
     StartWith());
 ```
 
-**See also:** [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
+**See also:** [`Append(Publisher...)`](#appendpublisher), [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`Prepend(Publisher...)`](#prependpublisher), [`StartWithGet(MakeValue...)`](#startwithgetmakevalue)
 
 
 ## `StartWithGet(MakeValue...)`
@@ -1756,7 +1822,7 @@ auto stream = Pipe(
     StartWithGet([] { return "hello"; }, [] { return "world"; }));
 ```
 
-**See also:** [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`StartWith(Value...)`](#startwithvalue)
+**See also:** [`Append(Publisher...)`](#appendpublisher), [`Concat(Publisher...)`](#concatpublisher), [`EndWith(Value...)`](#endwithvalue), [`EndWithGet(MakeValue...)`](#endwithgetmakevalue), [`Prepend(Publisher...)`](#prependpublisher), [`StartWith(Value...)`](#startwithvalue)
 
 
 ## `Subscriber`

@@ -2,6 +2,7 @@ shk_library(
   NAME rs
   SOURCES
     include/rs/all.h
+    include/rs/append.h
     include/rs/average.h
     include/rs/catch.h
     include/rs/concat.h
@@ -27,6 +28,7 @@ shk_library(
     include/rs/min.h
     include/rs/never.h
     include/rs/pipe.h
+    include/rs/prepend.h
     include/rs/publisher.h
     include/rs/range.h
     include/rs/reduce.h
@@ -57,6 +59,7 @@ shk_test(
   NAME rs-test
   SOURCES
     test/all_test.cpp
+    test/append_test.cpp
     test/average_test.cpp
     test/backpressure_violator.h
     test/catch_test.cpp
@@ -84,6 +87,7 @@ shk_test(
     test/min_test.cpp
     test/never_test.cpp
     test/pipe_test.cpp
+    test/prepend_test.cpp
     test/publisher_test.cpp
     test/range_test.cpp
     test/reduce_test.cpp
