@@ -15,6 +15,7 @@
 #include "store_server.h"
 
 #include <blake2.h>
+#include <rs/append.h>
 #include <rs/concat_map.h>
 #include <rs/empty.h>
 #include <rs/from.h>
@@ -33,16 +34,6 @@
 
 namespace shk {
 namespace {
-
-template <typename Publisher>
-auto Append(Publisher &&appended_publisher) {
-  return [appended_publisher = std::forward<Publisher>(appended_publisher)](
-      auto &&stream) {
-    return Concat(
-        std::forward<decltype(stream)>(stream),
-        appended_publisher);
-  };
-}
 
 std::string HashContents(const string_view &contents) {
   blake2b_state hash_state;
