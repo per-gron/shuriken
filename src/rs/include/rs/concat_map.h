@@ -48,12 +48,41 @@ class ConcatMap {
         : inner_subscriber_(std::move(inner_subscriber)) {}
 
     void Request(ElementCount count) {
-      requested_ += count;
-      subscription_.Request(count);
+      to_be_requested_ += count;
+      if (subscription_) {
+        do {
+          ElementCount to_be_requested = to_be_requested_;
+          // Reset to_be_requested_ before the call to subscription->Request
+          // because that might bump that number again.
+          to_be_requested_ = 0;
+          // Increase requested_ before the call to Request because otherwise
+          // the backpressure violation logic might erroneously trigger.
+          requested_ += to_be_requested;
+          // There is a possibility that this call to Request will call
+          // OnValuesComplete, which might request a new Publisher, which might
+          // invoke OnPublishersNext, which will reset subscription_, which will
+          // destroy the current subscription_, which would cause a this pointer
+          // that is currently on the stack to be destroyed, causing all kinds of
+          // brokenness.
+          //
+          // To avoid this, let's steal subscription_ and keep it on the stack to
+          // guarantee that it won't get destroyed too early.
+          auto subscription = std::move(subscription_);
+          subscription->Request(to_be_requested);
+          // Now we need to reset the subscription_ pointer, but if subscription_
+          // has been written it means that the Subscription that we called has
+          // been completed and should be left to die.
+          if (!subscription_) {
+            subscription_ = std::move(subscription);
+          }
+        } while (to_be_requested_ != 0);
+      }
     }
 
     void Cancel() {
-      subscription_.Cancel();
+      if (subscription_) {
+        subscription_->Cancel();
+      }
       publishers_subscription_.Cancel();
     }
 
@@ -121,10 +150,9 @@ class ConcatMap {
             std::logic_error("Got value that was not Request-ed")));
         return;
       }
-      last_subscription_ = std::move(subscription_);
-      subscription_ = AnySubscription(
-          publisher.Subscribe(ConcatMapValuesSubscriber(std::move(self_ref_))));
-      subscription_.Request(requested_);
+      subscription_ = MakeVirtualSubscriptionPtr(publisher.Subscribe(
+              ConcatMapValuesSubscriber(std::move(self_ref_))));
+      subscription_->Request(requested_);
     }
 
     void OnPublishersComplete() {
@@ -142,19 +170,17 @@ class ConcatMap {
 
     bool failed_ = false;
     bool publishers_complete_ = false;
+    // The number of elements that have been Requested and not yet delivered.
     ElementCount requested_;
+    // The sum of all ElementCounts that have been sent to Request but not yet
+    // been requested from subscription_.
+    ElementCount to_be_requested_;
     // The subscription to the current values Publisher. This is re-set whenever
     // a new values Publisher is received. But beware! There is a risk that the
     // time that this class wants to set subscription_ is when the subscription_
     // object itself is this of current stack frames. In those cases, it is not
     // safe to set (and consequently destroy the previous) subscription_.
-    AnySubscription subscription_;
-    // The subscription (if any) to the latest values Publisher. This is not
-    // actually read; the only reason it's there is to avoid having to destroy
-    // the current subscription_ from within OnValuesComplete, which because it
-    // is called from the subscription_ will destroy a this pointer on the stack
-    // under its feet.
-    AnySubscription last_subscription_;
+    std::unique_ptr<PureVirtualSubscription> subscription_;
     // During times when there is no current Publisher that is being flattened,
     // the ConcatMapSubscription holds a WeakReference to itself.
     WeakReference<ConcatMapSubscription> self_ref_;

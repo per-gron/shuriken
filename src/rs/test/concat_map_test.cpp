@@ -127,6 +127,32 @@ TEST_CASE("ConcatMap") {
     }
   }
 
+  SECTION("requesting from within OnNext") {
+    auto concat_map = ConcatMap([](auto &&) {
+      return From(std::vector<int>{ 1, 2, 3 });
+    });
+    auto stream = concat_map(Just(1, 2));
+
+    std::vector<int> result;
+    bool is_done = false;
+    AnySubscription sub = AnySubscription(stream.Subscribe(MakeSubscriber(
+        [&is_done, &result, &sub](auto &&val) {
+          CHECK(!is_done);
+          result.emplace_back(std::forward<decltype(val)>(val));
+          sub.Request(ElementCount(1));
+        },
+        [](std::exception_ptr &&error) {
+          CHECK(!"OnError should not be called");
+        },
+        [&is_done] {
+          CHECK(!is_done);
+          is_done = true;
+        })));
+    sub.Request(ElementCount(1));
+    CHECK(is_done);
+    CHECK(result == std::vector<int>({ 1, 2, 3, 1, 2, 3 }));
+  }
+
   SECTION("get first and only value asynchronously") {
     bool subscribed = false;
     std::function<void (int)> on_next;
@@ -177,6 +203,13 @@ TEST_CASE("ConcatMap") {
     on_next(123);
     CHECK(next_called);
     CHECK(complete_called);
+  }
+
+  SECTION("ConcatMap of three") {
+    // This has caused use-after-free errors
+    auto concat_map = ConcatMap([](auto &&publisher) { return publisher; });
+    auto stream = concat_map(Just(Just(1), Just(2), Empty()));
+    CHECK(GetAll<int>(stream) == std::vector<int>({ 1, 2 }));
   }
 
   SECTION("don't leak the subscriber") {
